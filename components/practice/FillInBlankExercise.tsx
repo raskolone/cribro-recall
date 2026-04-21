@@ -1,14 +1,19 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import confetti from 'canvas-confetti';
 import { Word } from '../../types';
 import Button from '../ui/Button';
+
+import { useVocabulary } from '../../context/VocabularyContext';
 
 interface FillInBlankExerciseProps {
   words: Word[];
   onExit: () => void;
+  onComplete: () => void;
 }
 
-const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit }) => {
+const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit, onComplete }) => {
+  const { updateWordSpacedRepetition } = useVocabulary();
   const shuffledWords = useMemo(() => [...words].sort(() => Math.random() - 0.5), [words]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [inputValue, setInputValue] = useState('');
@@ -30,6 +35,9 @@ const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit
     if (correct) {
       setScore(s => s + 1);
     }
+
+    // Update Spaced Repetition
+    updateWordSpacedRepetition(currentWord.id, correct);
   };
   
   const handleNext = () => {
@@ -40,6 +48,7 @@ const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit
       setIsCorrect(false);
     } else {
       setIsFinished(true);
+      onComplete();
     }
   };
 
@@ -51,10 +60,20 @@ const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit
     setIsSubmitted(false);
     setIsCorrect(false);
   };
+
+  useEffect(() => {
+    if (isFinished) {
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+    }
+  }, [isFinished]);
   
   if (isFinished) {
     return (
-      <div className="text-center p-8 bg-white rounded-lg shadow-md max-w-md mx-auto">
+      <div className="text-center p-8 bg-base-200/40 backdrop-blur-xl border border-white/20 rounded-lg shadow-2xl max-w-md mx-auto">
           <h2 className="text-2xl font-bold mb-4">Exercise Complete!</h2>
           <p className="text-lg mb-6">Your score: <span className="font-bold text-primary">{score} / {shuffledWords.length}</span></p>
           <div className="flex gap-4 justify-center">
@@ -71,7 +90,7 @@ const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit
         <h2 className="text-2xl font-bold">Fill in the Blank</h2>
         <p className="font-semibold">Score: {score}</p>
       </div>
-      <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="bg-base-200/40 backdrop-blur-xl border border-white/20 p-6 rounded-lg shadow-2xl">
         <p className="text-lg text-center mb-2">Complete the sentence:</p>
         <p className="text-center text-gray-600 mb-6">(Hint: the word means "{currentWord.definition}")</p>
 
@@ -83,8 +102,8 @@ const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     disabled={isSubmitted}
-                    className={`w-36 text-center border-b-2 focus:outline-none transition-colors ${
-                        isSubmitted ? (isCorrect ? 'border-green-500 bg-green-100' : 'border-red-500 bg-red-100') : 'border-gray-400 focus:border-primary'
+                    className={`w-36 text-center border-b-2 bg-transparent focus:outline-none transition-colors ${
+                        isSubmitted ? (isCorrect ? 'border-green-500 bg-green-500/20' : 'border-red-500 bg-red-500/20') : 'border-gray-400 focus:border-primary'
                     }`}
                     style={{ minWidth: `${currentWord.word.length * 0.8}em` }}
                 />

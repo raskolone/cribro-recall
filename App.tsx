@@ -1,30 +1,51 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { VocabularyProvider } from './context/VocabularyContext';
+import { LanguageProvider } from './context/LanguageContext';
+import { FlashcardProvider } from './context/FlashcardContext';
 import AuthScreen from './components/auth/AuthScreen';
 import Dashboard from './components/dashboard/Dashboard';
+import LandingPage from './components/landing/LandingPage';
+import NodeGraph from './components/landing/NodeGraph';
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </LanguageProvider>
   );
 };
 
 const AppContent: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isAuthReady } = useAuth();
+  const [showAuth, setShowAuth] = useState(false);
+
+  if (!isAuthReady) {
+    return <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    </div>;
+  }
 
   return (
-    <div className="min-h-screen">
-      {user ? (
-        <VocabularyProvider>
-          <Dashboard />
-        </VocabularyProvider>
-      ) : (
-        <AuthScreen />
-      )}
+    <div className="min-h-screen relative bg-base-100 dark:bg-dark-base-100 text-content transition-colors duration-300">
+      <NodeGraph fullScreen />
+      
+      <div className="relative z-10 w-full min-h-screen pointer-events-auto flex flex-col">
+        {user ? (
+          <VocabularyProvider>
+            <FlashcardProvider>
+              <Dashboard />
+            </FlashcardProvider>
+          </VocabularyProvider>
+        ) : showAuth ? (
+          <AuthScreen onBack={() => setShowAuth(false)} />
+        ) : (
+          <LandingPage onLoginClick={() => setShowAuth(true)} />
+        )}
+      </div>
     </div>
   );
 };

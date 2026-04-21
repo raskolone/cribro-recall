@@ -6,9 +6,12 @@ interface CardProps {
   className?: string;
 }
 
-const Card: React.FC<CardProps> = ({ children, className }) => {
+const Card: React.FC<CardProps & React.HTMLAttributes<HTMLDivElement>> = ({ children, className, ...props }) => {
   return (
-    <div className={`bg-white rounded-xl shadow-md p-6 ${className}`}>
+    <div 
+      className={`bg-base-100 border border-base-300 rounded-[8px] p-4 sm:p-6 ${className || ''}`}
+      {...props}
+    >
       {children}
     </div>
   );

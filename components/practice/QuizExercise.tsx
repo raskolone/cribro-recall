@@ -1,14 +1,19 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import confetti from 'canvas-confetti';
 import { Word } from '../../types';
 import Button from '../ui/Button';
+
+import { useVocabulary } from '../../context/VocabularyContext';
 
 interface QuizExerciseProps {
   words: Word[];
   onExit: () => void;
+  onComplete: () => void;
 }
 
-const QuizExercise: React.FC<QuizExerciseProps> = ({ words, onExit }) => {
+const QuizExercise: React.FC<QuizExerciseProps> = ({ words, onExit, onComplete }) => {
+  const { updateWordSpacedRepetition } = useVocabulary();
   const shuffledWords = useMemo(() => [...words].sort(() => Math.random() - 0.5), [words]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [options, setOptions] = useState<string[]>([]);
@@ -38,13 +43,16 @@ const QuizExercise: React.FC<QuizExerciseProps> = ({ words, onExit }) => {
   const handleAnswer = (option: string) => {
     if (selectedAnswer) return;
 
+    const correct = option === currentWord.word;
     setSelectedAnswer(option);
-    if (option === currentWord.word) {
-      setIsCorrect(true);
+    setIsCorrect(correct);
+    
+    if (correct) {
       setScore(s => s + 1);
-    } else {
-      setIsCorrect(false);
     }
+    
+    // Update Spaced Repetition
+    updateWordSpacedRepetition(currentWord.id, correct);
   };
 
   const handleNext = () => {
@@ -52,6 +60,7 @@ const QuizExercise: React.FC<QuizExerciseProps> = ({ words, onExit }) => {
       setCurrentIndex(i => i + 1);
     } else {
       setIsFinished(true);
+      onComplete();
     }
   };
 
@@ -60,10 +69,20 @@ const QuizExercise: React.FC<QuizExerciseProps> = ({ words, onExit }) => {
     setScore(0);
     setIsFinished(false);
   };
+
+  useEffect(() => {
+    if (isFinished) {
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+    }
+  }, [isFinished]);
   
   if (isFinished) {
       return (
-        <div className="text-center p-8 bg-white rounded-lg shadow-md max-w-md mx-auto">
+        <div className="text-center p-8 bg-base-200/40 backdrop-blur-xl border border-white/20 rounded-lg shadow-2xl max-w-md mx-auto">
             <h2 className="text-2xl font-bold mb-4">Quiz Complete!</h2>
             <p className="text-lg mb-6">Your score: <span className="font-bold text-primary">{score} / {shuffledWords.length}</span></p>
             <div className="flex gap-4 justify-center">
@@ -80,13 +99,13 @@ const QuizExercise: React.FC<QuizExerciseProps> = ({ words, onExit }) => {
         <h2 className="text-2xl font-bold">Quiz</h2>
         <p className="font-semibold">Score: {score}</p>
       </div>
-      <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="bg-base-200/40 backdrop-blur-xl border border-white/20 p-6 rounded-lg shadow-2xl">
         <p className="text-lg text-center mb-6">Which word means: "{currentWord.definition}"?</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {options.map(option => {
             const isSelected = selectedAnswer === option;
             const isCorrectAnswer = option === currentWord.word;
-            let buttonClass = 'bg-white hover:bg-gray-100 border-gray-300';
+            let buttonClass = 'bg-base-200/40 hover:bg-base-200/60 border-white/10';
             if (isSelected) {
               buttonClass = isCorrect ? 'bg-green-500 text-white border-green-500' : 'bg-red-500 text-white border-red-500';
             } else if (selectedAnswer && isCorrectAnswer) {

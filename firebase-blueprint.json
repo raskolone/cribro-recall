@@ -1,0 +1,73 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role and streak information.",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "streakCount": { "type": "number" },
+        "lastStreakDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["username", "email", "role"]
+    },
+    "Word": {
+      "title": "Word",
+      "description": "A vocabulary word saved by the user.",
+      "type": "object",
+      "properties": {
+        "word": { "type": "string" },
+        "ipa": { "type": "string" },
+        "definition": { "type": "string" },
+        "example": { "type": "string" },
+        "language": { "type": "string" },
+        "isDifficult": { "type": "boolean" },
+        "setId": { "type": "string" }
+      },
+      "required": ["word", "ipa", "definition", "example", "language", "isDifficult"]
+    },
+    "WordSet": {
+      "title": "WordSet",
+      "description": "A custom set of vocabulary words.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "language": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "description", "createdAt"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "User specific settings and practice history.",
+      "type": "object",
+      "properties": {
+        "lastExerciseType": { "type": "string" },
+        "lastPracticeDate": { "type": "string", "format": "date-time" },
+        "revisionFrequency": { "type": "string" },
+        "lastRevisionDate": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile data."
+    },
+    "/users/{userId}/words/{wordId}": {
+      "schema": { "$ref": "#/entities/Word" },
+      "description": "User's saved vocabulary words."
+    },
+    "/users/{userId}/wordSets/{setId}": {
+      "schema": { "$ref": "#/entities/WordSet" },
+      "description": "User's custom word sets."
+    },
+    "/users/{userId}/settings/practice": {
+      "schema": { "$ref": "#/entities/UserSettings" },
+      "description": "User's practice history and settings."
+    }
+  }
+}

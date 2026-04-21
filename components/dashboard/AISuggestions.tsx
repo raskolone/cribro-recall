@@ -46,18 +46,18 @@ const AISuggestions: React.FC = () => {
       {suggestion ? (
         <div className="space-y-4">
           <div>
-            <h3 className="font-semibold text-gray-800">Context is Key:</h3>
-            <p className="text-sm text-gray-600 mt-1 bg-blue-50 p-3 rounded-md border border-blue-200">{suggestion.paragraph}</p>
+            <h3 className="font-bold text-gray-900 dark:text-white">Context is Key:</h3>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mt-2 bg-base-100 dark:bg-dark-base-100 p-4 rounded-xl border border-base-300 dark:border-dark-base-300 shadow-sm leading-relaxed">{suggestion.paragraph}</p>
           </div>
           <div>
-            <h3 className="font-semibold text-gray-800">Expand Your Vocabulary:</h3>
-            <ul className="mt-2 space-y-2">
+            <h3 className="font-bold text-gray-900 dark:text-white">Expand Your Vocabulary:</h3>
+            <ul className="mt-3 space-y-3">
               {suggestion.wordSuggestions.map(ws => (
-                <li key={ws.word} className="text-sm border-b pb-2">
-                  <strong className="text-primary">{ws.word}</strong>
-                  <div className="flex justify-between">
-                    <span className="text-green-600">Synonym: {ws.synonym}</span>
-                    <span className="text-red-600">Antonym: {ws.antonym}</span>
+                <li key={ws.word} className="text-sm border-b border-base-300 dark:border-dark-base-300 pb-3">
+                  <strong className="text-primary text-base block mb-1">{ws.word}</strong>
+                  <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                    <span><span className="font-semibold">Synonym:</span> {ws.synonym}</span>
+                    <span><span className="font-semibold">Antonym:</span> {ws.antonym}</span>
                   </div>
                 </li>
               ))}
@@ -69,7 +69,7 @@ const AISuggestions: React.FC = () => {
         </div>
       ) : (
         <div className="text-center flex flex-col items-center justify-center h-full">
-          <p className="text-gray-500 mb-4">
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
             {error || "Struggling with some words? Mark them as difficult and get AI-powered learning suggestions!"}
           </p>
           <Button onClick={fetchSuggestions} isLoading={isLoading} disabled={difficultWords.length < 3}>
