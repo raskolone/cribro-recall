@@ -19,8 +19,27 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
   const [isFlipped, setIsFlipped] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [results, setResults] = useState<Record<string, boolean>>({});
+  
+  // Multiple choice state
+  const [options, setOptions] = useState<string[]>([]);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
 
   const currentWord = shuffledWords[currentIndex];
+
+  useEffect(() => {
+    if (!isFinished && currentWord) {
+      const correctOption = currentWord.definition;
+      const wrongOptions = words
+        .filter(w => w.id !== currentWord.id)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3)
+        .map(w => w.definition);
+      
+      setOptions([correctOption, ...wrongOptions].sort(() => Math.random() - 0.5));
+      setSelectedAnswer(null);
+      setIsFlipped(false);
+    }
+  }, [currentIndex, isFinished, currentWord, words]);
 
   useEffect(() => {
     if (isFinished) {
@@ -32,21 +51,30 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
     }
   }, [isFinished]);
 
-  const handleResponse = (isCorrect: boolean) => {
+  const handleAnswer = (option: string) => {
+    if (selectedAnswer) return; // Prevent multiple submissions
+    
+    setSelectedAnswer(option);
+    const isCorrect = option === currentWord.definition;
+    
+    // Provide visual feedback by flipping the card to show back content
+    setIsFlipped(true);
+
     updateWordSpacedRepetition(currentWord.id, isCorrect);
     setResults(prev => ({ ...prev, [currentWord.id]: isCorrect }));
     
-    if (currentIndex === shuffledWords.length - 1) {
-      setIsFinished(true);
-      onComplete();
-    } else {
-      setIsFlipped(false);
-      setCurrentIndex((prev) => prev + 1);
-    }
+    // Automatically advance after a delay so they can see the visual feedback
+    setTimeout(() => {
+      if (currentIndex === shuffledWords.length - 1) {
+        setIsFinished(true);
+        onComplete();
+      } else {
+        setCurrentIndex((prev) => prev + 1);
+      }
+    }, isCorrect ? 1500 : 3000);
   };
   
   const handlePrev = () => {
-    setIsFlipped(false);
     setCurrentIndex((prev) => (prev - 1 + shuffledWords.length) % shuffledWords.length);
   };
 
@@ -74,18 +102,17 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
         </div>
         
         <div
-          className="relative w-full h-80 cursor-pointer transition-transform duration-500"
-          onClick={() => setIsFlipped(!isFlipped)}
+          className="relative w-full h-80 transition-transform duration-500"
           style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
         >
           {/* Front of card */}
           <div className="absolute w-full h-full flex items-center justify-center p-6 backface-hidden bg-base-200/40 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl">
-            <h3 className="text-4xl font-bold text-primary">{currentWord.word}</h3>
+            <h3 className="text-4xl font-bold text-primary">{currentWord?.word}</h3>
           </div>
           {/* Back of card */}
           <div className="absolute w-full h-full p-6 backface-hidden bg-primary/40 backdrop-blur-xl border border-white/20 text-white rounded-xl shadow-2xl flex flex-col justify-center text-center" style={{ transform: 'rotateY(180deg)' }}>
-            <p className="text-xl font-semibold">{currentWord.definition}</p>
-            <p className="mt-4 text-base italic opacity-80">"{currentWord.example}"</p>
+            <p className="text-xl font-semibold">{currentWord?.definition}</p>
+            <p className="mt-4 text-base italic opacity-80">"{currentWord?.example}"</p>
           </div>
         </div>
         
@@ -93,16 +120,42 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
           Card {currentIndex + 1} of {shuffledWords.length}
         </p>
 
-        <div className="flex justify-between mt-8 gap-4">
-          <Button variant="ghost" onClick={handlePrev} disabled={currentIndex === 0}>Previous</Button>
-          <div className="flex gap-4">
-            <Button variant="secondary" className="bg-red-500/20 hover:bg-red-500/40 border-red-500/50 text-red-500" onClick={() => handleResponse(false)}>
-              Need Practice
-            </Button>
-            <Button className="bg-green-500/20 hover:bg-green-500/40 border-green-500/50 text-green-500" onClick={() => handleResponse(true)}>
-              Got It!
-            </Button>
-          </div>
+        <div className="mt-6 grid grid-cols-1 gap-3">
+          {options.map((option, idx) => {
+            const isSelected = selectedAnswer === option;
+            const isCorrectAnswer = option === currentWord?.definition;
+            
+            let btnClass = "bg-base-200/40 hover:bg-base-200/60 border-white/10 text-left";
+            
+            // Visual feedback after submission
+            if (selectedAnswer) {
+              if (isSelected) {
+                btnClass = isCorrectAnswer 
+                  ? 'bg-green-500 text-white border-green-500 ring-2 ring-green-400' 
+                  : 'bg-red-500 text-white border-red-500';
+              } else if (isCorrectAnswer) {
+                // Highlight the correct answer if the user chose incorrectly
+                btnClass = 'bg-green-500 text-white border-green-500 ring-2 ring-green-400 animate-pulse';
+              } else {
+                btnClass = 'opacity-50 cursor-not-allowed';
+              }
+            }
+
+            return (
+              <button
+                key={idx}
+                onClick={() => handleAnswer(option)}
+                disabled={!!selectedAnswer}
+                className={`w-full p-4 rounded-lg border-2 transition-all duration-300 ${btnClass}`}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex justify-between mt-8">
+          <Button variant="ghost" onClick={handlePrev} disabled={currentIndex === 0 || !!selectedAnswer}>Previous</Button>
         </div>
       </div>
     </div>

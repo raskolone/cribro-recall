@@ -11,6 +11,8 @@ interface SidebarProps {
   onClose: () => void;
 }
 
+import BrandLogo from '../ui/BrandLogo';
+
 const NavLink: React.FC<{
   onClick: () => void;
   isActive: boolean;
@@ -58,15 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
         }`}
       >
         <div className="p-6 flex items-center justify-between border-b border-base-300 mb-6">
-          <div className="flex items-center space-x-3">
-            <div className="bg-primary/10 p-2 rounded-xl border border-primary/20">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v1.5M12 9.75v6.5M18.375 9a8.25 8.25 0 01-12.75 0" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5a4.125 4.125 0 004.125-4.125h-8.25A4.125 4.125 0 0012 16.5z" />
-              </svg>
-            </div>
-            <span className="text-xl font-display font-bold tracking-tight">VocabBoost</span>
-          </div>
+          <BrandLogo className="text-xl" showTagline={false} />
           <button onClick={onClose} className="md:hidden text-content-muted hover:text-white">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

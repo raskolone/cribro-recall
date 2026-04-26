@@ -5,6 +5,8 @@ import NodeGraph from './NodeGraph';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 
+import BrandLogo from '../ui/BrandLogo';
+
 interface LandingPageProps {
   onLoginClick: () => void;
 }
@@ -34,11 +36,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
     <div className="min-h-screen text-content relative overflow-hidden font-sans bg-transparent">
       {/* Navigation */}
       <nav className="absolute top-0 left-0 right-0 z-10 flex justify-between items-start px-8 py-6 max-w-7xl mx-auto">
-        <a href="https://www.maciej.pro" target="_blank" rel="noopener noreferrer" className="group flex flex-col">
-          <span className="text-xl font-display font-bold tracking-wider group-hover:text-primary transition-colors">MW.</span>
-          <span className="text-[10px] font-mono text-content-muted group-hover:text-primary/80 transition-colors uppercase tracking-widest mt-0.5">{t('nav.creator')}</span>
-        </a>
+        <BrandLogo className="text-xl md:text-2xl" showTagline={true} />
+        
         <div className="flex items-center gap-8">
+          <a href="https://www.maciej.pro" target="_blank" rel="noopener noreferrer" className="hidden sm:flex group flex-col text-right">
+            <span className="text-xl font-display font-bold tracking-wider group-hover:text-primary transition-colors">MW.</span>
+            <span className="text-[10px] font-mono text-content-muted group-hover:text-primary/80 transition-colors uppercase tracking-widest mt-0.5">{t('nav.creator')}</span>
+          </a>
           <div className="font-mono text-sm border border-white/20 px-3 py-1 rounded flex gap-2">
             <button 
               onClick={() => setLanguage('pl')} 
@@ -61,19 +65,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
         
         {/* Hero Section */}
         <section className={`flex flex-col items-center text-center transition-all duration-1000 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-          <div className="relative mb-8 group">
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-2 border-primary p-1 shadow-[0_0_20px_rgba(74,222,128,0.4)] group-hover:shadow-[0_0_30px_rgba(74,222,128,0.6)] transition-all duration-500 bg-base-200 relative">
-              <img 
-                src="https://picsum.photos/seed/maciej/200/200" 
-                alt="Maciej Wyrozumski" 
-                className="w-full h-full rounded-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute bottom-2 right-2 w-4 h-4 bg-primary rounded-full border-2 border-base-100 shadow-[0_0_10px_rgba(74,222,128,0.8)]"></div>
-            </div>
-          </div>
-
-          <h2 className="text-sm md:text-base font-sans tracking-[0.3em] text-content-muted uppercase mb-4">
+          <h2 className="text-sm md:text-base font-sans tracking-[0.3em] text-content-muted uppercase mb-4 mt-8">
             {t('hero.subtitle')}
           </h2>
           

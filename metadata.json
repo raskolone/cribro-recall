@@ -1,6 +1,6 @@
 {
-  "name": "VocabBoost AI",
-  "description": "An AI-powered vocabulary revision application to help users learn English, Spanish, and French. Features include customizable difficulty levels, revision schedules, AI-driven suggestions for difficult words, audio pronunciations, and interactive exercises.",
+  "name": "CRIBRO ENGLISH",
+  "description": "An AI-powered vocabulary revision application to help users learn English. Features include customizable difficulty levels, revision schedules, AI-driven suggestions for difficult words, audio pronunciations, and interactive exercises.",
   "requestFramePermissions": [
     "microphone"
   ]
