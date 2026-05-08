@@ -48,7 +48,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const newUser: User = {
               username: defaultName,
               email: email,
-              role: role
+              role: role,
+              photoURL: firebaseUser.photoURL || undefined
             };
             
             await setDoc(userDocRef, newUser);

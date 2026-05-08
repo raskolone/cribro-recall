@@ -8,6 +8,7 @@ export interface User {
   username: string;
   email: string;
   role: 'admin' | 'user';
+  photoURL?: string;
   streakCount?: number;
   lastStreakDate?: string;
 }
