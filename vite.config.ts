@@ -8,6 +8,12 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        allowedHosts: 'all' as any,
+      },
+      preview: {
+        port: 4173,
+        host: '0.0.0.0',
+        allowedHosts: 'all' as any,
       },
       plugins: [react()],
       define: {
