@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   currentView: string;
-  onNavigate: (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'listen-learn') => void;
+  onNavigate: (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin') => void;
   onStartPractice: (exercise: ExerciseType) => void;
   isOpen: boolean;
   onClose: () => void;
@@ -34,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
   const [practiceOpen, setPracticeOpen] = useState(false);
   const { user } = useAuth();
 
-  const handleNavigate = (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'listen-learn') => {
+  const handleNavigate = (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin') => {
     onNavigate(view);
     onClose();
   };
@@ -71,22 +71,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           <NavLink onClick={() => handleNavigate('dashboard')} isActive={currentView === 'dashboard'}>
               <span>Dashboard</span>
           </NavLink>
-          
-          <NavLink onClick={() => handleNavigate('listen-learn')} isActive={currentView === 'listen-learn'}>
-              <div className="relative w-full">
-                {currentView !== 'listen-learn' && (
-                  <div className="absolute inset-0 rounded-lg animate-pulse z-0" style={{ boxShadow: '0 0 16px 4px rgba(74, 222, 128, 0.45)' }}></div>
-                )}
-                <div className={`relative z-10 w-full flex items-center justify-between rounded-lg px-3 py-1.5 transition-all ${
-                  currentView === 'listen-learn' 
-                    ? 'bg-black/10 text-black' 
-                    : 'bg-gradient-to-r from-primary to-secondary text-black'
-                }`}>
-                    <span className="font-extrabold tracking-tight">Kurs audio</span>
-                    <span className={`w-2 h-2 rounded-full animate-pulse ${currentView === 'listen-learn' ? 'bg-black/60' : 'bg-black'}`}></span>
-                </div>
-              </div>
-          </NavLink>
 
           <NavLink onClick={() => handleNavigate('flashcard-sets')} isActive={currentView === 'flashcard-sets'}>
               <span>My Word Lists</span>
@@ -111,16 +95,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           {user?.role === 'admin' && (
             <div className="pt-4 mt-4 border-t border-base-300">
               <NavLink onClick={() => handleNavigate('admin')} isActive={currentView === 'admin'}>
-                <span className="text-secondary">Admin Panel</span>
+                <span className="text-secondary">Teacher Panel</span>
               </NavLink>
             </div>
           )}
         </nav>
-        <div className="p-4 border-t border-base-300">
-          <NavLink onClick={() => handleNavigate('settings')} isActive={currentView === 'settings'}>
-              <span>Settings</span>
-          </NavLink>
-        </div>
+
       </aside>
     </>
   );

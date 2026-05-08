@@ -15,6 +15,7 @@ const AdminPanel: React.FC = () => {
   const [users, setUsers] = useState<UserWithId[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserWithId | null>(null);
   const [practiceLogs, setPracticeLogs] = useState<PracticeLog[]>([]);
+  const [userStats, setUserStats] = useState<{ totalWords: number; difficultWords: number; masteryCount: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigningSet, setIsAssigningSet] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -44,8 +45,10 @@ const AdminPanel: React.FC = () => {
     }
   };
 
-  const fetchUserLogs = async (userId: string) => {
+  const fetchUserLogsAndStats = async (userId: string) => {
     try {
+      setUserStats(null);
+      
       const logsRef = collection(db, `users/${userId}/practiceLogs`);
       const q = query(logsRef, orderBy('date', 'desc'));
       const logsSnapshot = await getDocs(q);
@@ -54,14 +57,25 @@ const AdminPanel: React.FC = () => {
         ...doc.data()
       } as PracticeLog));
       setPracticeLogs(logsList);
+
+      const wordsRef = collection(db, `users/${userId}/words`);
+      const wordsSnap = await getDocs(wordsRef);
+      const diffWords = wordsSnap.docs.filter(d => d.data().isDifficult === true).length;
+      
+      setUserStats({
+        totalWords: wordsSnap.size,
+        difficultWords: diffWords,
+        masteryCount: wordsSnap.size > 0 ? Math.round(((wordsSnap.size - diffWords) / wordsSnap.size) * 100) : 0
+      });
+
     } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, `users/${userId}/practiceLogs`);
+      handleFirestoreError(error, OperationType.LIST, `users/${userId} stats`);
     }
   };
 
   const handleSelectUser = (user: UserWithId) => {
     setSelectedUser(user);
-    fetchUserLogs(user.id);
+    fetchUserLogsAndStats(user.id);
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -135,12 +149,12 @@ const AdminPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-extrabold tracking-tight mb-6">Admin Panel</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight mb-6">Teacher Panel</h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Users List */}
         <Card className="lg:col-span-1 h-[calc(100vh-12rem)] overflow-y-auto">
-          <h2 className="text-xl font-bold mb-4">Users</h2>
+          <h2 className="text-xl font-bold mb-4">Students</h2>
           <div className="space-y-2">
             {users.map(user => (
               <div 
@@ -155,7 +169,7 @@ const AdminPanel: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-1 rounded-full ${user.role === 'admin' ? 'bg-secondary/20 text-secondary' : 'bg-base-300 text-content-muted'}`}>
-                      {user.role}
+                      {user.role === 'admin' ? 'teacher' : 'student'}
                     </span>
                     <button 
                       onClick={(e) => { e.stopPropagation(); setUserToDelete(user.id); }}
@@ -221,6 +235,23 @@ const AdminPanel: React.FC = () => {
                   </div>
                 </div>
                 
+                {userStats && (
+                  <div className="grid grid-cols-3 gap-4 mb-8">
+                    <div className="bg-base-200/50 p-4 rounded-xl border border-white/5 text-center">
+                      <div className="text-sm text-content-muted mb-1 font-mono uppercase">Total Words</div>
+                      <div className="text-3xl font-display font-bold text-white">{userStats.totalWords}</div>
+                    </div>
+                    <div className="bg-base-200/50 p-4 rounded-xl border border-white/5 text-center">
+                      <div className="text-sm text-content-muted mb-1 font-mono uppercase">Mastery</div>
+                      <div className="text-3xl font-display font-bold text-primary">{userStats.masteryCount}%</div>
+                    </div>
+                    <div className="bg-base-200/50 p-4 rounded-xl border border-white/5 text-center">
+                      <div className="text-sm text-content-muted mb-1 font-mono uppercase">Difficult</div>
+                      <div className="text-3xl font-display font-bold text-amber-500">{userStats.difficultWords}</div>
+                    </div>
+                  </div>
+                )}
+
                 <h3 className="text-lg font-bold mb-4">Practice History</h3>
                 {practiceLogs.length > 0 ? (
                   <div className="space-y-3 max-h-96 overflow-y-auto pr-2">

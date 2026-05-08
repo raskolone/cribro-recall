@@ -22,7 +22,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
     try {
       await login();
     } catch (err: any) {
-      setError(err.message || 'Google sign in failed');
+      if (err?.code !== 'auth/popup-closed-by-user') {
+        setError(err.message || 'Google sign in failed');
+      }
       setIsLoading(false);
     }
   };

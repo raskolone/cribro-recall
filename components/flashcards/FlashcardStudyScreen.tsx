@@ -4,6 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { Flashcard, FlashcardSet } from '../../types';
+import PronunciationMic from '../ui/PronunciationMic';
 
 interface FlashcardStudyScreenProps {
   setId: string;
@@ -11,7 +12,7 @@ interface FlashcardStudyScreenProps {
   onBack: () => void;
 }
 
-type StudyMode = 'flashcards' | 'quiz' | 'writing' | 'matching' | null;
+type StudyMode = 'flashcards' | 'quiz' | 'writing' | 'matching' | 'intro' | null;
 
 const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, initialMode = null, onBack }) => {
   const { sets, getFlashcards, saveSession } = useFlashcards();
@@ -59,7 +60,20 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
           <h2 className="text-2xl font-bold">{set?.title}</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card 
+            className="cursor-pointer hover:border-primary transition-colors group"
+            onClick={() => setSelectedMode('intro')}
+          >
+            <div className="text-4xl mb-4">👀</div>
+            <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+              {language === 'pl' ? 'Fiszki Intro' : 'Flashcards Intro'}
+            </h3>
+            <p className="text-content-muted text-sm">
+              {language === 'pl' ? 'Zapoznaj się powoli z nowym materiałem, bez sprawdzania i wyników.' : 'Familiarize yourself gently with new material, without testing or scoring.'}
+            </p>
+          </Card>
+
           <Card 
             className="cursor-pointer hover:border-primary transition-colors group"
             onClick={() => setSelectedMode('flashcards')}
@@ -114,6 +128,10 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
         </div>
       </div>
     );
+  }
+
+  if (selectedMode === 'intro') {
+    return <IntroMode cards={cards} onBack={() => setSelectedMode(null)} t={t} />;
   }
 
   if (selectedMode === 'quiz') {
@@ -234,6 +252,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: 
         <div className={`w-full h-full transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
           <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 bg-base-200 border-2 border-base-300 hover:border-primary/50 transition-colors">
             <div className="absolute top-4 right-4 z-10 flex gap-2">
+              <PronunciationMic targetWord={currentCard.term.replace(/<[^>]+>/g, '')} />
               {currentCard.audioUrl && (
                 <button 
                   onClick={(e) => {
@@ -400,7 +419,23 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t }: any) =
         />
       </div>
 
-      <Card className="flex flex-col items-center justify-center text-center p-12 bg-base-200 border-2 border-base-300 min-h-[200px]">
+      <Card className="relative flex flex-col items-center justify-center text-center p-12 bg-base-200 border-2 border-base-300 min-h-[200px]">
+        <div className="absolute top-4 right-4 z-10 flex gap-2">
+          <PronunciationMic targetWord={currentCard?.term.replace(/<[^>]+>/g, '') || ''} />
+          {currentCard?.audioUrl && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                const audio = new Audio(currentCard.audioUrl!);
+                audio.play();
+              }}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-base-300 text-primary hover:bg-base-100 border border-base-300 transition-colors"
+              title="Play audio"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            </button>
+          )}
+        </div>
         <div className="text-sm font-mono text-content-muted uppercase tracking-widest mb-8">{t('flashcards.term')}</div>
         <div className="text-4xl md:text-5xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard?.term || '' }} />
       </Card>
@@ -559,7 +594,23 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t }: any
         />
       </div>
 
-      <Card className="flex flex-col items-center justify-center text-center p-12 bg-base-200 border-2 border-base-300 min-h-[200px]">
+      <Card className="relative flex flex-col items-center justify-center text-center p-12 bg-base-200 border-2 border-base-300 min-h-[200px]">
+        <div className="absolute top-4 right-4 z-10 flex gap-2">
+          <PronunciationMic targetWord={currentCard?.term.replace(/<[^>]+>/g, '') || ''} />
+          {currentCard?.audioUrl && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                const audio = new Audio(currentCard.audioUrl!);
+                audio.play();
+              }}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-base-300 text-primary hover:bg-base-100 border border-base-300 transition-colors"
+              title="Play audio"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            </button>
+          )}
+        </div>
         <div className="text-sm font-mono text-content-muted uppercase tracking-widest mb-8">{t('flashcards.term')}</div>
         <div className="text-4xl md:text-5xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard?.term || '' }} />
       </Card>
@@ -739,6 +790,107 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t }: an
             </Card>
           );
         })}
+      </div>
+    </div>
+  );
+};
+
+// --- Intro Mode Component ---
+const IntroMode = ({ cards, onBack, t }: any) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
+
+  const handleNext = () => {
+    if (currentIndex < cards.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setIsFlipped(false);
+    } else {
+      onBack();
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+      setIsFlipped(false);
+    }
+  };
+
+  const currentCard = cards[currentIndex];
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-8">
+      <div className="flex items-center justify-between">
+        <button onClick={onBack} className="text-content-muted hover:text-white flex items-center gap-2">
+          &larr; {t('flashcards.quit')}
+        </button>
+        <div className="font-mono text-sm">
+          {currentIndex + 1} / {cards.length}
+        </div>
+      </div>
+
+      <div className="w-full bg-base-300 h-2 rounded-full overflow-hidden">
+        <div 
+          className="bg-secondary h-full transition-all duration-300"
+          style={{ width: `${((currentIndex + 1) / cards.length) * 100}%` }}
+        />
+      </div>
+
+      <div 
+        className="relative w-full aspect-[3/2] perspective-1000 cursor-pointer"
+        onClick={() => setIsFlipped(!isFlipped)}
+      >
+        <div className={`w-full h-full transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
+          <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 bg-base-200 border-2 border-base-300 hover:border-secondary/50 transition-colors">
+            <div className="absolute top-4 right-4 z-10 flex gap-2">
+              <PronunciationMic targetWord={currentCard.term.replace(/<[^>]+>/g, '')} />
+              {currentCard.audioUrl && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const audio = new Audio(currentCard.audioUrl!);
+                    audio.play();
+                  }}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-base-300 text-secondary hover:bg-base-100 border border-base-300 transition-colors"
+                  title="Play audio"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                </button>
+              )}
+            </div>
+            <div className="text-sm font-mono text-content-muted uppercase tracking-widest mb-8">{t('flashcards.term')}</div>
+            <div className="text-4xl md:text-5xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard.term }} />
+          </Card>
+          
+          <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 bg-base-200 border-2 border-secondary rotate-y-180">
+            <div className="absolute top-4 right-4 z-10 flex gap-2">
+              {currentCard.audioUrl && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const audio = new Audio(currentCard.audioUrl!);
+                    audio.play();
+                  }}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-base-100 text-secondary hover:bg-base-300 border border-base-300 transition-colors"
+                  title="Play audio"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                </button>
+              )}
+            </div>
+            <div className="text-sm font-mono text-secondary uppercase tracking-widest mb-8">{t('flashcards.definition')}</div>
+            <div className="text-3xl md:text-4xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard.definition }} />
+          </Card>
+        </div>
+      </div>
+
+      <div className="flex justify-between mt-8">
+        <Button variant="secondary" onClick={handlePrev} disabled={currentIndex === 0}>
+          &larr; Previous
+        </Button>
+        <Button onClick={handleNext}>
+          {currentIndex === cards.length - 1 ? 'Finish' : 'Next \u2192'}
+        </Button>
       </div>
     </div>
   );

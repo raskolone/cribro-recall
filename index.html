@@ -13,25 +13,26 @@
         theme: {
           extend: {
             colors: {
-              primary: '#4ade80', // Accent green
-              secondary: '#c9a86c', // Accent gold
-              'base-100': '#0d1117', // Main background
-              'base-200': '#0d1117', // Section background (same as main)
-              'base-300': 'rgba(255, 255, 255, 0.1)', // Subtle borders
-              'content': '#ffffff', // Main text
-              'content-muted': '#a0a0a0', // Muted text
-              'dark-base-100': '#0d1117',
-              'dark-base-200': '#0d1117',
-              'dark-base-300': 'rgba(255, 255, 255, 0.1)',
-              'dark-content': '#ffffff',
+              primary: '#72f0b4', // Accent green
+              secondary: '#7a8da6', // Accent gray/muted
+              'base-100': '#0a0e1a', // Main dark background
+              'base-200': '#141b2a', // Panel background
+              'base-300': 'rgba(255, 255, 255, 0.08)', // Subtle borders
+              'content': '#eae8e3', // Main text
+              'content-muted': '#7a8da6', // Muted text
+              'dark-base-100': '#0a0e1a',
+              'dark-base-200': '#141b2a',
+              'dark-base-300': 'rgba(255, 255, 255, 0.08)',
+              'dark-content': '#eae8e3',
             },
             fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-              display: ['"Playfair Display"', 'serif'],
-              mono: ['"JetBrains Mono"', 'monospace'],
+              sans: ['"DM Sans"', 'sans-serif'],
+              display: ['"Cormorant Garamond"', 'serif'],
+              mono: ['"DM Mono"', 'monospace'],
             },
             animation: {
               shake: 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
+              'fade-in-up': 'fadeInUp 0.65s ease-out forwards',
             },
             keyframes: {
               shake: {
@@ -39,6 +40,10 @@
                 '20%, 80%': { transform: 'translate3d(2px, 0, 0)' },
                 '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' },
                 '40%, 60%': { transform: 'translate3d(4px, 0, 0)' },
+              },
+              fadeInUp: {
+                from: { opacity: 0, transform: 'translateY(24px)' },
+                to: { opacity: 1, transform: 'translateY(0)' },
               }
             }
           },
@@ -47,12 +52,30 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@700&family=DM+Mono:wght@500&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-      :root { font-family: 'Inter', sans-serif; }
+      :root { font-family: 'DM Sans', sans-serif; }
       body {
-        background-color: #0d1117;
-        color: #ffffff;
+        background-color: #0a0e1a;
+        color: #eae8e3;
+        line-height: 1.6;
+        letter-spacing: 0.02em;
+      }
+      h1, h2, h3 {
+        font-family: 'Cormorant Garamond', serif;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      .tag-green {
+        background: rgba(114, 240, 180, 0.12); /* base-primary 12% */
+        border: 1px solid rgba(114, 240, 180, 0.3);
+        color: #72f0b4;
+        padding: 3px 9px;
+        border-radius: 2px;
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
       }
       .perspective-1000 {
         perspective: 1000px;

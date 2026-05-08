@@ -1,12 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { initializeFirestore } from 'firebase/firestore';
-import firebaseConfigJson from './firebase-applet-config.json';
-
-const firebaseConfig = {
-  ...firebaseConfigJson,
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || (firebaseConfigJson as any).apiKey,
-};
+import firebaseConfig from './firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);

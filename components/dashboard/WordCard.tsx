@@ -5,6 +5,7 @@ import { useVocabulary } from '../../context/VocabularyContext';
 import { getAudioPronunciation } from '../../services/geminiService';
 import { playAudio } from '../../utils/audioUtils';
 import { VOICE_CONFIG } from '../../constants';
+import PronunciationMic from '../ui/PronunciationMic';
 
 interface WordCardProps {
   word: Word;
@@ -51,29 +52,35 @@ const WordCard: React.FC<WordCardProps> = ({ word }) => {
         </div>
         <div className="flex items-center space-x-2">
           {word.language === 'English' ? (
-            <div className="flex items-center bg-primary/10 rounded-full pr-1 overflow-hidden">
-              <span className="px-3 text-xs font-bold text-primary border-r border-primary/20 hidden sm:block">
-                Audio Pronunciation
-              </span>
-              <AudioButton
-                label="US"
-                onClick={() => handlePlayAudio('American')}
-                isLoading={isPlaying === 'American'}
-                className="bg-transparent hover:bg-primary/20"
-              />
-              <AudioButton
-                label="UK"
-                onClick={() => handlePlayAudio('British')}
-                isLoading={isPlaying === 'British'}
-                className="bg-transparent hover:bg-primary/20"
-              />
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center bg-primary/10 rounded-full pr-1 overflow-hidden">
+                <span className="px-3 text-xs font-bold text-primary border-r border-primary/20 hidden sm:block">
+                  Audio Pronunciation
+                </span>
+                <AudioButton
+                  label="US"
+                  onClick={() => handlePlayAudio('American')}
+                  isLoading={isPlaying === 'American'}
+                  className="bg-transparent hover:bg-primary/20"
+                />
+                <AudioButton
+                  label="UK"
+                  onClick={() => handlePlayAudio('British')}
+                  isLoading={isPlaying === 'British'}
+                  className="bg-transparent hover:bg-primary/20"
+                />
+              </div>
+              <PronunciationMic targetWord={word.word} />
             </div>
           ) : (
-            <AudioButton
-              label={`Audio Pronunciation (${word.language === 'Spanish' ? 'ES' : word.language === 'French' ? 'FR' : 'NL'})`}
-              onClick={() => handlePlayAudio(word.language)}
-              isLoading={isPlaying === word.language}
-            />
+            <div className="flex items-center space-x-2">
+              <AudioButton
+                label={`Audio Pronunciation (${word.language === 'Spanish' ? 'ES' : word.language === 'French' ? 'FR' : 'NL'})`}
+                onClick={() => handlePlayAudio(word.language)}
+                isLoading={isPlaying === word.language}
+              />
+              <PronunciationMic targetWord={word.word} />
+            </div>
           )}
           <button
             onClick={() => toggleWordDifficulty(word.id)}
