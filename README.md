@@ -47,8 +47,8 @@ CRIBRO ENGLISH to nowoczesna, oparta na sztucznej inteligencji platforma do nauk
 
 1. Sklonuj repozytorium:
    ```bash
-   git clone https://github.com/yourusername/cribro-english.git
-   cd cribro-english
+   git clone https://github.com/yourusername/cribro-recall.git
+   cd cribro-recall
    ```
 
 2. Zainstaluj zależności:

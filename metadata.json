@@ -1,5 +1,5 @@
 {
-  "name": "CRIBRO ENGLISH",
+  "name": "cribro-recall",
   "description": "An AI-powered vocabulary revision application to help users learn English. Features include customizable difficulty levels, revision schedules, AI-driven suggestions for difficult words, audio pronunciations, and interactive exercises.",
   "requestFramePermissions": [
     "microphone"
