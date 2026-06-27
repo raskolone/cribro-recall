@@ -22,7 +22,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
     try {
       await login();
     } catch (err: any) {
-      if (err?.code !== 'auth/popup-closed-by-user') {
+      if (err?.code !== 'auth/popup-closed-by-user' && err?.code !== 'auth/cancelled-popup-request') {
         setError(err.message || 'Google sign in failed');
       }
       setIsLoading(false);
@@ -39,15 +39,20 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
     setError('');
     setIsLoading(true);
     try {
+      let formattedEmail = email;
+      if (!email.includes('@')) {
+        formattedEmail = `${email.toLowerCase().replace(/\s+/g, '')}@student.vocabboost.com`;
+      }
+      
       if (isLoginMode) {
-        await loginWithEmail(email, password);
+        await loginWithEmail(formattedEmail, password);
       } else {
-        await registerWithEmail(email, password);
+        await registerWithEmail(formattedEmail, password);
       }
     } catch (err: any) {
       let message = err.message || 'Authentication failed';
-      if (err.code === 'auth/invalid-credential') message = 'Invalid email or password';
-      if (err.code === 'auth/email-already-in-use') message = 'Email is already registered';
+      if (err.code === 'auth/invalid-credential') message = 'Invalid username/email or password';
+      if (err.code === 'auth/email-already-in-use') message = 'User is already registered';
       if (err.code === 'auth/weak-password') message = 'Password should be at least 6 characters';
       setError(message);
       setIsLoading(false);
@@ -88,13 +93,13 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
 
         <form onSubmit={handleEmailAuth} className="space-y-4">
           <div>
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Email</label>
+            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Email or Username (Students)</label>
             <input
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2 bg-base-100 dark:bg-dark-base-100 border border-base-300 dark:border-dark-base-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-              placeholder="you@example.com"
+              placeholder="you@example.com or username"
               required
             />
           </div>

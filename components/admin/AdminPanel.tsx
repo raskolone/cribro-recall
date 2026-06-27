@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, doc, deleteDoc, query, orderBy, setDoc, writeBatch } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../../firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
 import { User, PracticeLog, FlashcardSet } from '../../types';
 import { useFlashcards } from '../../context/FlashcardContext';
 import Card from '../ui/Card';
@@ -21,9 +21,38 @@ const AdminPanel: React.FC = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedSetIdToAssign, setSelectedSetIdToAssign] = useState('');
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
+  const [newStudentUsername, setNewStudentUsername] = useState('');
+  const [newStudentPassword, setNewStudentPassword] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [isAutoGeneratePassword, setIsAutoGeneratePassword] = useState(true);
+  const [isCreatingStudent, setIsCreatingStudent] = useState(false);
+  const [createStudentError, setCreateStudentError] = useState('');
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [newPasswordForUser, setNewPasswordForUser] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [changePasswordError, setChangePasswordError] = useState('');
 
   useEffect(() => {
     fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowAssignModal(false);
+        setShowCreateStudentModal(false);
+        setCreateStudentError('');
+        setNewStudentPassword('');
+        setNewStudentUsername('');
+        setUserToDelete(null);
+        setShowChangePasswordModal(false);
+        setChangePasswordError('');
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const fetchUsers = async () => {
@@ -80,6 +109,21 @@ const AdminPanel: React.FC = () => {
 
   const handleDeleteUser = async (userId: string) => {
     try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Not authenticated");
+
+      const res = await fetch(`/api/firebase-admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to delete auth user');
+      }
+
       await deleteDoc(doc(db, 'users', userId));
       setUsers(users.filter(u => u.id !== userId));
       if (selectedUser?.id === userId) {
@@ -88,6 +132,99 @@ const AdminPanel: React.FC = () => {
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `users/${userId}`);
+    }
+  };
+
+  const normalizeUsername = (str: string) => {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, '');
+  };
+
+  const handleCreateStudent = async () => {
+    if (!newStudentUsername) return;
+    if (!isAutoGeneratePassword && passwordInput.length < 6) {
+      setCreateStudentError("Password must be at least 6 characters.");
+      return;
+    }
+    
+    setCreateStudentError('');
+    setIsCreatingStudent(true);
+    try {
+      const email = `${normalizeUsername(newStudentUsername)}@student.vocabboost.com`;
+      const generatedPassword = isAutoGeneratePassword 
+        ? Math.random().toString(36).slice(-8)
+        : passwordInput;
+      
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Not authenticated");
+
+      const res = await fetch('/api/firebase-admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ email, password: generatedPassword, role: 'user' })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to create user');
+      }
+
+      const newUserData = await res.json();
+
+      // Create user document in Firestore
+      await setDoc(doc(db, 'users', newUserData.uid), {
+        username: newStudentUsername,
+        email: email,
+        role: 'user',
+        streakCount: 0,
+        lastStreakDate: new Date().toISOString()
+      });
+
+      setNewStudentPassword(generatedPassword);
+      fetchUsers(); // Refresh the list
+    } catch (error: any) {
+      setCreateStudentError(`Error creating student: ${error.message}`);
+    } finally {
+      setIsCreatingStudent(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!selectedUser || !newPasswordForUser) return;
+    if (newPasswordForUser.length < 6) {
+      setChangePasswordError("Password must be at least 6 characters.");
+      return;
+    }
+    
+    setChangePasswordError('');
+    setIsChangingPassword(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Not authenticated");
+
+      const res = await fetch(`/api/firebase-admin/users/${selectedUser.id}/password`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ password: newPasswordForUser })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to update password');
+      }
+
+      alert('Password changed successfully!');
+      setShowChangePasswordModal(false);
+      setNewPasswordForUser('');
+    } catch (error: any) {
+      setChangePasswordError(`Error changing password: ${error.message}`);
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -153,8 +290,11 @@ const AdminPanel: React.FC = () => {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Users List */}
-        <Card className="lg:col-span-1 h-[calc(100vh-12rem)] overflow-y-auto">
-          <h2 className="text-xl font-bold mb-4">Students</h2>
+        <Card className="lg:col-span-1 h-[calc(100vh-12rem)] overflow-y-auto relative">
+          <div className="flex justify-between items-center mb-4 sticky top-0 bg-base-200 z-10 py-2">
+            <h2 className="text-xl font-bold">Students</h2>
+            <Button size="sm" onClick={() => setShowCreateStudentModal(true)}>+ Add Student</Button>
+          </div>
           <div className="space-y-2">
             {users.map(user => (
               <div 
@@ -171,15 +311,6 @@ const AdminPanel: React.FC = () => {
                     <span className={`text-xs px-2 py-1 rounded-full ${user.role === 'admin' ? 'bg-secondary/20 text-secondary' : 'bg-base-300 text-content-muted'}`}>
                       {user.role === 'admin' ? 'teacher' : 'student'}
                     </span>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setUserToDelete(user.id); }}
-                      className="text-red-500 hover:text-red-400 p-1"
-                      title="Delete User"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
                   </div>
                 </div>
               </div>
@@ -196,6 +327,11 @@ const AdminPanel: React.FC = () => {
                   <div>
                     <h2 className="text-2xl font-bold">{selectedUser.username}</h2>
                     <p className="text-content-muted">{selectedUser.email}</p>
+                    <div className="mt-2 text-sm text-content-muted flex flex-wrap gap-x-4 gap-y-2">
+                      <div><span className="font-bold text-white">Logins:</span> {selectedUser.loginCount || 0}</div>
+                      <div><span className="font-bold text-white">Last Login:</span> {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString() : 'Never'}</div>
+                      <div><span className="font-bold text-white">Exercises:</span> {practiceLogs.length}</div>
+                    </div>
                   </div>
                   <div className="relative">
                     {showAssignModal ? (
@@ -228,9 +364,17 @@ const AdminPanel: React.FC = () => {
                         </div>
                       </div>
                     ) : (
-                      <Button onClick={() => setShowAssignModal(true)} isLoading={isAssigningSet}>
-                        Assign Word Set
-                      </Button>
+                      <div className="flex flex-col gap-2">
+                        <Button onClick={() => setShowAssignModal(true)} isLoading={isAssigningSet}>
+                          Assign Word Set
+                        </Button>
+                        <Button variant="secondary" onClick={() => setShowChangePasswordModal(true)}>
+                          Change Password
+                        </Button>
+                        <Button variant="secondary" className="text-red-500 hover:bg-red-500/10" onClick={() => setUserToDelete(selectedUser.id)}>
+                          Delete Account
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -303,8 +447,148 @@ const AdminPanel: React.FC = () => {
                 }} 
                 variant="danger"
               >
-                Delete User
+                Delete Account
               </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Change Password Modal */}
+      {showChangePasswordModal && (
+        <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md shadow-2xl border-primary/20">
+            <h3 className="text-xl font-bold mb-4">Change Password</h3>
+            <div className="space-y-4 mb-6">
+              {changePasswordError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-sm">
+                  {changePasswordError}
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-bold text-content-muted mb-1">New Password</label>
+                <input
+                  type="text"
+                  value={newPasswordForUser}
+                  onChange={(e) => setNewPasswordForUser(e.target.value)}
+                  className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 transition-colors"
+                  placeholder="Enter new password"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button onClick={() => { setShowChangePasswordModal(false); setChangePasswordError(''); setNewPasswordForUser(''); }} variant="secondary">
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleChangePassword} 
+                isLoading={isChangingPassword}
+                disabled={!newPasswordForUser}
+              >
+                Change Password
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Create Student Modal */}
+      {showCreateStudentModal && (
+        <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md shadow-2xl border-primary/20">
+            <h3 className="text-xl font-bold mb-4">Create New Student</h3>
+            
+            {!newStudentPassword ? (
+              <div className="space-y-4 mb-6">
+                {createStudentError && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-sm">
+                    {createStudentError}
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-bold text-content-muted mb-1">Student Username / Name</label>
+                  <input
+                    type="text"
+                    value={newStudentUsername}
+                    onChange={(e) => setNewStudentUsername(e.target.value)}
+                    className="w-full bg-base-200 border border-base-300 rounded-lg p-3 focus:border-primary focus:outline-none"
+                    placeholder="e.g. John Doe"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-bold text-content-muted mb-2">Password Option</label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="passwordMode" 
+                        checked={isAutoGeneratePassword} 
+                        onChange={() => setIsAutoGeneratePassword(true)} 
+                        className="accent-primary"
+                      />
+                      <span>Auto-generate</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="passwordMode" 
+                        checked={!isAutoGeneratePassword} 
+                        onChange={() => setIsAutoGeneratePassword(false)}
+                        className="accent-primary"
+                      />
+                      <span>Set custom</span>
+                    </label>
+                  </div>
+                </div>
+                
+                {!isAutoGeneratePassword && (
+                  <div>
+                    <label className="block text-sm font-bold text-content-muted mb-1">Custom Password</label>
+                    <input
+                      type="text"
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      className="w-full bg-base-200 border border-base-300 rounded-lg p-3 focus:border-primary focus:outline-none"
+                      placeholder="Minimum 6 characters"
+                      minLength={6}
+                    />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4 mb-6">
+                <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg text-center space-y-2 relative">
+                  <div className="text-green-500 font-bold mb-2">Student Created Successfully!</div>
+                  <div className="text-sm text-content-muted">Email (Login):</div>
+                  <div className="font-mono text-lg">{`${normalizeUsername(newStudentUsername)}@student.vocabboost.com`}</div>
+                  <div className="text-sm text-content-muted mt-2">Password:</div>
+                  <div className="font-mono text-lg font-bold tracking-widest bg-base-100 p-2 rounded inline-flex items-center gap-2 border border-base-300">
+                    {newStudentPassword}
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(newStudentPassword);
+                        alert('Password copied to clipboard!');
+                      }}
+                      className="text-xs text-primary hover:underline px-2 py-1 rounded bg-primary/10 ml-2"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <p className="text-xs text-amber-500 mt-2">Please copy these credentials and share them securely with the student. This password will not be shown again.</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              {!newStudentPassword ? (
+                <>
+                  <Button onClick={() => { setShowCreateStudentModal(false); setCreateStudentError(''); }} variant="secondary">Cancel</Button>
+                  <Button onClick={handleCreateStudent} isLoading={isCreatingStudent} disabled={!newStudentUsername}>Create Account</Button>
+                </>
+              ) : (
+                <Button onClick={() => { setShowCreateStudentModal(false); setNewStudentPassword(''); setNewStudentUsername(''); }}>Close</Button>
+              )}
             </div>
           </Card>
         </div>

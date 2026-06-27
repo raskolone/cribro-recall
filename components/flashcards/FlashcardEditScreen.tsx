@@ -100,6 +100,16 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
   const [importTermLang, setImportTermLang] = useState('en');
   const [importDefLang, setImportDefLang] = useState('pl');
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsImportModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Toolbar State
   const [focusedField, setFocusedField] = useState<{index: number, field: 'term' | 'definition'} | null>(null);
 
@@ -527,6 +537,32 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                     audioUrl={card.audioUrl} 
                     onAudioUpload={(base64Audio) => handleUpdateCard(index, 'audioUrl', base64Audio)}
                     onAudioRemove={() => handleUpdateCard(index, 'audioUrl', '')}
+                  />
+                </div>
+              </div>
+              
+              {/* Context Sentence (Full Width) */}
+              <div className="col-span-1 md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-10 pt-4 border-t border-base-300/50">
+                <div>
+                  <div className="flex justify-between mb-3 border-b-2 border-transparent">
+                    <span className="text-xs font-bold text-content-muted uppercase tracking-widest">{language === 'pl' ? 'ZDANIE Z KONTEKSTEM (OPCJONALNIE)' : 'CONTEXT SENTENCE (OPTIONAL)'}</span>
+                  </div>
+                  <RichTextInput
+                    value={card.contextSentence || ''}
+                    disabled={card.isLocked}
+                    onChange={(val) => handleUpdateCard(index, 'contextSentence', val)}
+                    className={`w-full bg-transparent border-b-2 border-base-300 focus:border-primary focus:outline-none py-1 text-base transition-colors min-h-[36px] ${card.isLocked ? 'cursor-not-allowed text-content-muted' : ''}`}
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between mb-3 border-b-2 border-transparent">
+                    <span className="text-xs font-bold text-content-muted uppercase tracking-widest">{language === 'pl' ? 'TŁUMACZENIE KONTEKSTU (OPCJONALNIE)' : 'CONTEXT TRANSLATION (OPTIONAL)'}</span>
+                  </div>
+                  <RichTextInput
+                    value={card.contextTranslation || ''}
+                    disabled={card.isLocked}
+                    onChange={(val) => handleUpdateCard(index, 'contextTranslation', val)}
+                    className={`w-full bg-transparent border-b-2 border-base-300 focus:border-primary focus:outline-none py-1 text-base transition-colors min-h-[36px] ${card.isLocked ? 'cursor-not-allowed text-content-muted' : ''}`}
                   />
                 </div>
               </div>

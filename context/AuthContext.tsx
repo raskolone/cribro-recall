@@ -80,9 +80,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      await updateLoginStats(result.user.uid);
     } catch (error: any) {
-      if (error?.code !== 'auth/popup-closed-by-user') {
+      if (error?.code !== 'auth/popup-closed-by-user' && error?.code !== 'auth/cancelled-popup-request') {
         console.error('Login failed:', error);
       }
       throw error;
@@ -90,7 +91,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const loginWithEmail = async (email: string, pass: string) => {
-    await signInWithEmailAndPassword(auth, email, pass);
+    const result = await signInWithEmailAndPassword(auth, email, pass);
+    await updateLoginStats(result.user.uid);
+  };
+
+  const updateLoginStats = async (uid: string) => {
+    try {
+      const userRef = doc(db, 'users', uid);
+      const userDoc = await getDoc(userRef);
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        await updateDoc(userRef, {
+          loginCount: (userData.loginCount || 0) + 1,
+          lastLoginDate: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update login stats:', error);
+    }
   };
 
   const registerWithEmail = async (email: string, pass: string) => {

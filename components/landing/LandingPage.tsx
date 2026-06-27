@@ -23,7 +23,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
     try {
       await login();
     } catch (error: any) {
-      if (error?.code !== 'auth/popup-closed-by-user') {
+      if (error?.code !== 'auth/popup-closed-by-user' && error?.code !== 'auth/cancelled-popup-request') {
         console.error("Google login failed:", error);
       }
     }
@@ -142,7 +142,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
 
               <div className="relative flex items-center py-2">
                 <div className="flex-grow border-t border-white/5"></div>
-                <span className="flex-shrink-0 mx-4 text-[10px] font-mono text-content-muted uppercase tracking-widest">or email</span>
+                <span className="flex-shrink-0 mx-4 text-[10px] font-mono text-content-muted uppercase tracking-widest">or email / username</span>
                 <div className="flex-grow border-t border-white/5"></div>
               </div>
 
@@ -151,7 +151,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                 className="w-full bg-black/40 hover:bg-black/60 border border-white/5 text-white font-medium py-4 px-6 rounded-2xl flex items-center justify-center gap-3 transition-colors"
               >
                 <Mail className="w-5 h-5 text-content-muted" />
-                <span>Sign in with Email</span>
+                <span>Sign in with Email / Username</span>
               </button>
 
               <div className="pt-4 text-center">

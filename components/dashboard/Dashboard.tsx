@@ -12,17 +12,30 @@ import FlashcardEditScreen from '../flashcards/FlashcardEditScreen';
 import FlashcardStudyScreen from '../flashcards/FlashcardStudyScreen';
 import FlashcardStatsScreen from '../flashcards/FlashcardStatsScreen';
 import AdminPanel from '../admin/AdminPanel';
+import AIExerciseGeneratorScreen from './AIExerciseGeneratorScreen';
 import { useAuth } from '../../context/AuthContext';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { ExerciseType, PracticeHistory } from '../../types';
 import Button from '../ui/Button';
 
-type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin';
+import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
+
+type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'presentation' | 'ai-generator';
 type PracticeView = { type: 'exercise'; exercise: ExerciseType; isRevisionMode?: boolean; isSpacedRepetitionMode?: boolean } | null;
 
 const PracticeSetSelector = ({ onSelectSet, onCancel }: { onSelectSet: (id: string) => void, onCancel: () => void }) => {
   const { sets } = useFlashcards();
+  
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onCancel]);
   
   if (sets.length === 0) {
     return (
@@ -113,6 +126,7 @@ const Dashboard: React.FC = () => {
         onStudySet={(setId) => { setActiveSetId(setId); setView('flashcard-study'); setPracticeView(null); }}
         onEditSet={(setId) => { setActiveSetId(setId); setView('flashcard-edit'); }}
         onStatsSet={(setId) => { setActiveSetId(setId); setView('flashcard-stats'); }}
+        onPresentSet={(setId) => { setActiveSetId(setId); setView('presentation'); }}
       />;
     }
     if (view === 'flashcard-edit' && activeSetId) {
@@ -132,8 +146,14 @@ const Dashboard: React.FC = () => {
     if (view === 'flashcard-stats' && activeSetId) {
       return <FlashcardStatsScreen setId={activeSetId} onBack={() => setView('flashcard-sets')} />;
     }
+    if (view === 'presentation' && activeSetId) {
+      return <FlashcardPresentationScreen setId={activeSetId} onBack={() => setView('flashcard-sets')} />;
+    }
     if (view === 'admin' && user?.role === 'admin') {
       return <AdminPanel />;
+    }
+    if (view === 'ai-generator') {
+      return <AIExerciseGeneratorScreen />;
     }
     // Default to dashboard view
     

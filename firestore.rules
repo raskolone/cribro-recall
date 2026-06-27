@@ -46,7 +46,7 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() &&
         ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
-          ('email' in request.auth.token && 'email_verified' in request.auth.token && request.auth.token.email == "maciej.wyrozumski@gmail.com" && request.auth.token.email_verified == true)); // Default admin
+          ('email' in request.auth.token && request.auth.token.email == "maciej.wyrozumski@gmail.com")); // Default admin
     }
     
     function isOwner(userId) {
@@ -113,12 +113,15 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['username', 'role', 'email', 'streakCount', 'lastStreakDate']) &&
+      return hasOnlyAllowedFields(['username', 'role', 'email', 'streakCount', 'lastStreakDate', 'createdAt', 'loginCount', 'lastLoginDate']) &&
              validStringLength('username', 1, 100) &&
              validStringLength('email', 0, 100) &&
              data.role in ['admin', 'user'] &&
              (!('streakCount' in data) || data.streakCount is number) &&
-             (!('lastStreakDate' in data) || isValidDateString(data.lastStreakDate));
+             (!('lastStreakDate' in data) || isValidDateString(data.lastStreakDate)) &&
+             (!('createdAt' in data) || isValidDateString(data.createdAt)) &&
+             (!('loginCount' in data) || data.loginCount is number) &&
+             (!('lastLoginDate' in data) || isValidDateString(data.lastLoginDate));
     }
 
     function isValidPracticeLog(data) {
@@ -137,8 +140,8 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && isValidUser(request.resource.data) && ((request.resource.data.role == 'user') || isAdmin());
-      allow update: if isOwner(userId) && isValidUser(request.resource.data) && ((request.resource.data.role == resource.data.role) || isAdmin());
+      allow create: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) && ((request.resource.data.role == 'user') || isAdmin());
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) && ((request.resource.data.role == resource.data.role) || isAdmin());
       allow delete: if isAdmin();
 
       match /words/{wordId} {

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { FlashcardSet } from '../../types';
@@ -9,13 +10,25 @@ interface FlashcardSetsScreenProps {
   onStudySet: (setId: string) => void;
   onEditSet: (setId: string) => void;
   onStatsSet: (setId: string) => void;
+  onPresentSet?: (setId: string) => void;
 }
 
-const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, onEditSet, onStatsSet }) => {
+const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, onEditSet, onStatsSet, onPresentSet }) => {
   const { sets, createSet, deleteSet, sessions } = useFlashcards();
+  const { user } = useAuth();
   const { t, language } = useLanguage();
   const [isCreating, setIsCreating] = useState(false);
   const [setToDelete, setSetToDelete] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSetToDelete(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleCreateNewSet = async () => {
     setIsCreating(true);
@@ -134,6 +147,16 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
         >
           {language === 'pl' ? 'Opis' : 'Stats'}
         </Button>
+        {user?.role === 'admin' && onPresentSet && (
+          <Button 
+            variant="secondary"
+            className="flex-[1_1_auto] shadow-[0_0_15px_rgba(201,168,108,0.2)] bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 border-orange-500/30"
+            onClick={() => onPresentSet(set.id)}
+            disabled={set.cardCount === 0}
+          >
+            ▶ {language === 'pl' ? 'Prezentuj' : 'Present'}
+          </Button>
+        )}
         <Button 
           variant="danger" 
           className="flex-[0_0_auto] px-3"

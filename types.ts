@@ -5,12 +5,16 @@ export type RevisionFrequency = 'Daily' | 'Weekly' | 'Monthly';
 export type ExerciseType = 'flashcards' | 'quiz' | 'fill-in-the-blank' | 'match';
 
 export interface User {
+  id?: string;
   username: string;
   email: string;
   role: 'admin' | 'user';
   photoURL?: string;
   streakCount?: number;
   lastStreakDate?: string;
+  loginCount?: number;
+  lastLoginDate?: string;
+  createdAt?: string;
 }
 
 export interface WordSet {
@@ -78,6 +82,8 @@ export interface Flashcard {
   termLanguage: string;
   definition: string;
   definitionLanguage: string;
+  contextSentence?: string;
+  contextTranslation?: string;
   imageUrl: string | null;
   audioUrl?: string | null;
   createdAt: any; // Timestamp

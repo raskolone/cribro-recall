@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   currentView: string;
-  onNavigate: (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin') => void;
+  onNavigate: (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'ai-generator') => void;
   onStartPractice: (exercise: ExerciseType) => void;
   isOpen: boolean;
   onClose: () => void;
@@ -34,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
   const [practiceOpen, setPracticeOpen] = useState(false);
   const { user } = useAuth();
 
-  const handleNavigate = (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin') => {
+  const handleNavigate = (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'ai-generator') => {
     onNavigate(view);
     onClose();
   };
@@ -75,6 +75,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           <NavLink onClick={() => handleNavigate('flashcard-sets')} isActive={currentView === 'flashcard-sets'}>
               <span>My Word Lists</span>
           </NavLink>
+          
+          <NavLink onClick={() => handleNavigate('ai-generator')} isActive={currentView === 'ai-generator'}>
+              <span className="text-primary font-bold">✨ AI Generator</span>
+          </NavLink>
+          
           <div>
             <button
               onClick={() => setPracticeOpen(!practiceOpen)}
@@ -92,6 +97,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               </div>
             )}
           </div>
+          
+          <div className="pt-4 mt-4 border-t border-base-300">
+            <NavLink onClick={() => handleNavigate('settings')} isActive={currentView === 'settings'}>
+              <span>Settings</span>
+            </NavLink>
+          </div>
+          
           {user?.role === 'admin' && (
             <div className="pt-4 mt-4 border-t border-base-300">
               <NavLink onClick={() => handleNavigate('admin')} isActive={currentView === 'admin'}>
