@@ -16,6 +16,7 @@ import AIExerciseGeneratorScreen from './AIExerciseGeneratorScreen';
 import { useAuth } from '../../context/AuthContext';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { useFlashcards } from '../../context/FlashcardContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { ExerciseType, PracticeHistory } from '../../types';
 import Button from '../ui/Button';
 
@@ -74,11 +75,26 @@ const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const { sets } = useFlashcards();
   const { difficultWords, dueWords, frequency, lastPractice, lastRevisionDate } = useVocabulary();
+  const { language } = useLanguage();
   const [view, setView] = useState<View>('dashboard');
   const [practiceView, setPracticeView] = useState<PracticeView>(null);
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+  const [checkedSets, setCheckedSets] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('checked_sets') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const handleCheckSet = (setId: string) => {
+    const updated = [...checkedSets, setId];
+    setCheckedSets(updated);
+    localStorage.setItem('checked_sets', JSON.stringify(updated));
+  };
 
   const isRevisionDue = useMemo(() => {
     if (difficultWords.length < 4) return false;
@@ -163,32 +179,53 @@ const Dashboard: React.FC = () => {
 
     return (
       <div className="space-y-6">
-        {latestTeacherSet && (
-          <div className="bg-base-200 border-[1.5px] border-secondary/40 p-8 rounded-lg shadow-[0_0_32px_rgba(201,168,108,0.15)] relative overflow-hidden mt-2 group hover:border-secondary/80 transition-all duration-300">
-            <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none group-hover:opacity-[0.06] transition-opacity duration-300">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-64 w-64 -mt-12 -mr-12 transform rotate-12 text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 14l9-5-9-5-9 5 9 5z" />
-                <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
-              </svg>
-            </div>
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-secondary/10 rounded text-xs font-mono font-bold mb-4 border border-secondary/30 text-secondary">
-                   <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
-                   NEW ASSIGNMENT
-                </div>
-                <h2 className="text-3xl sm:text-4xl font-display font-bold tracking-tight mb-3">Teacher's Task: {latestTeacherSet.title}</h2>
-                <p className="text-content-muted text-lg max-w-xl">
-                  Your teacher assigned a new word list. Start practicing today to master these words!
-                </p>
+        {latestTeacherSet && !checkedSets.includes(latestTeacherSet.id) && (
+          <div className="bg-base-200 border border-primary/40 p-5 rounded-xl shadow-[0_0_15px_rgba(114,240,180,0.1)] relative overflow-hidden mt-2 animate-pulsar transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-primary/10 text-primary rounded-lg shrink-0 mt-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
               </div>
-              <Button onClick={() => {
-                setActiveSetId(latestTeacherSet.id);
-                setView('flashcard-study');
-              }} size="lg" className="whitespace-nowrap">
-                Start Practice
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] tracking-wider uppercase font-mono font-bold text-primary">
+                    {language === 'pl' ? 'Nowy zestaw od nauczyciela' : 'New Teacher Assignment'}
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
+                </div>
+                <h3 className="text-lg font-bold text-white mt-0.5">
+                  {latestTeacherSet.title}
+                </h3>
+                {latestTeacherSet.lessonTopic && (
+                  <p className="text-xs text-content-muted mt-0.5">
+                    {language === 'pl' ? 'Temat lekcji: ' : 'Lesson topic: '}{latestTeacherSet.lessonTopic}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 self-end sm:self-center shrink-0">
+              <Button 
+                onClick={() => {
+                  handleCheckSet(latestTeacherSet.id);
+                  setActiveSetId(latestTeacherSet.id);
+                  setView('flashcard-study');
+                }} 
+                size="sm" 
+                className="text-xs px-4"
+              >
+                {language === 'pl' ? 'Sprawdź i ucz się' : 'Check & Learn'}
               </Button>
+              <button 
+                onClick={() => handleCheckSet(latestTeacherSet.id)}
+                className="p-1.5 text-content-muted hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+                title={language === 'pl' ? 'Ukryj' : 'Hide'}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
         )}

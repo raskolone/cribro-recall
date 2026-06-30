@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, Modality, HarmCategory, HarmBlockThreshold } from "@google/genai";
-import { Language, Difficulty, Word, AISuggestion, AudioVocabulary } from '../types';
+import { Language, Difficulty, Word, AISuggestion, AudioVocabulary, TranslationExercise, TranslationEvaluationResult } from '../types';
 
 if (!process.env.API_KEY) {
   throw new Error("API_KEY environment variable is not set");
@@ -205,5 +205,108 @@ export const getAISuggestions = async (difficultWords: Word[]): Promise<AISugges
   } catch (error) {
     console.error("Error getting AI suggestions:", error);
     throw new Error("Failed to get AI suggestions.");
+  }
+};
+
+const translationExerciseSchema = {
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      polishSentence: { type: Type.STRING, description: "Zdanie po polsku do przetłumaczenia" },
+      englishTranslation: { type: Type.STRING, description: "The correct or recommended English translation" },
+      hint: { type: Type.STRING, description: "A subtle hint in Polish, e.g., suggesting a grammar structure or key vocabulary word to use" }
+    },
+    required: ['polishSentence', 'englishTranslation', 'hint']
+  }
+};
+
+const evaluationResultSchema = {
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      polishSentence: { type: Type.STRING },
+      correctTranslation: { type: Type.STRING },
+      studentAnswer: { type: Type.STRING },
+      isCorrect: { type: Type.BOOLEAN, description: "Whether the answer is mostly correct or functionally accurate" },
+      score: { type: Type.INTEGER, description: "Accuracy score from 0 to 100 based on grammar, choice of words, and meaning" },
+      explanation: { type: Type.STRING, description: "Detailed explanation in Polish highlighting mistakes, grammar rules, and alternative correct translations" }
+    },
+    required: ['polishSentence', 'correctTranslation', 'studentAnswer', 'isCorrect', 'score', 'explanation']
+  }
+};
+
+export const generateTranslationExercises = async (
+  level: string,
+  words: string[],
+  customPrompt?: string,
+  lessonContext?: string
+): Promise<TranslationExercise[]> => {
+  const basePrompt = `Generate a list of 5 unique sentences in Polish for a student to translate into English.
+  The exercises must be suitable for CEFR level: ${level}.
+  ${words.length > 0 ? `The sentences should incorporate or test the following English vocabulary/concepts: ${words.join(', ')}.` : ''}
+  ${lessonContext ? `Here are some summaries of the student's recent lessons to help personalize the content:\n${lessonContext}` : ''}
+  For each sentence, provide the Polish sentence, the correct English translation, and a helpful Polish hint.`;
+
+  const finalPrompt = customPrompt ? `${customPrompt}\n\nContext and Constraints:\n${basePrompt}` : basePrompt;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3.1-flash-lite",
+      contents: finalPrompt,
+      config: {
+        systemInstruction: "Wygeneruj zdania na podstawie słownictwa wybranego przez usera, dostosuj poziom zdań",
+        responseMimeType: "application/json",
+        responseSchema: translationExerciseSchema,
+      },
+    });
+
+    const jsonText = response.text.trim();
+    return JSON.parse(jsonText) as TranslationExercise[];
+  } catch (error) {
+    console.error("Error generating translation exercises:", error);
+    throw new Error("Failed to generate translation exercises from AI.");
+  }
+};
+
+export const evaluateTranslations = async (
+  exercises: TranslationExercise[],
+  studentAnswers: string[],
+  customEvaluationPrompt?: string
+): Promise<TranslationEvaluationResult[]> => {
+  const formattedPairs = exercises.map((ex, idx) => {
+    return `Sentence ${idx + 1}:
+    Polish: ${ex.polishSentence}
+    Reference English: ${ex.englishTranslation}
+    Student's Answer: ${studentAnswers[idx] || '(no answer)'}`;
+  }).join('\n\n');
+
+  const basePrompt = `Review the student's English translations of the Polish sentences.
+  For each sentence:
+  1. Compare the Student's Answer with the Reference English.
+  2. Grade it. If it's functionally correct and has no major grammar errors, mark isCorrect as true, and give a high score.
+  3. Provide a clear, friendly, and detailed explanation in Polish (explanation) explaining mistakes, grammar points, or why it is correct. Include any alternative correct translations.
+  
+  Student's Work:
+  ${formattedPairs}`;
+
+  const finalPrompt = customEvaluationPrompt ? `${customEvaluationPrompt}\n\nContext:\n${basePrompt}` : basePrompt;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: finalPrompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: evaluationResultSchema,
+      },
+    });
+
+    const jsonText = response.text.trim();
+    return JSON.parse(jsonText) as TranslationEvaluationResult[];
+  } catch (error) {
+    console.error("Error evaluating translations:", error);
+    throw new Error("Failed to evaluate translations with AI.");
   }
 };

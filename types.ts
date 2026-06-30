@@ -73,6 +73,9 @@ export interface FlashcardSet {
   createdAt: any; // Timestamp
   updatedAt: any; // Timestamp
   assignedByTeacher?: boolean;
+  isLessonVocabulary?: boolean;
+  lessonDate?: string;
+  lessonTopic?: string;
 }
 
 export interface Flashcard {
@@ -122,3 +125,29 @@ export interface AudioVocabulary {
   translation: string;
   contextSentence: string;
 }
+
+export interface TranslationExercise {
+  polishSentence: string;
+  englishTranslation: string;
+  hint?: string;
+}
+
+export interface TranslationEvaluationResult {
+  polishSentence: string;
+  correctTranslation: string;
+  studentAnswer: string;
+  isCorrect: boolean;
+  score: number;
+  explanation: string;
+}
+
+export interface LessonRecord {
+  id: string;
+  studentId: string;
+  date: string;
+  topic: string;
+  words: string;
+  summary: string;
+  createdAt: any;
+}
+

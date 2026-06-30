@@ -81,8 +81,9 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     return last;
   }, [sets, sessions]);
 
-  const mySets = sets.filter(s => !s.assignedByTeacher);
-  const teacherSets = sets.filter(s => s.assignedByTeacher);
+  const mySets = sets.filter(s => !s.assignedByTeacher && !s.isLessonVocabulary);
+  const teacherSets = sets.filter(s => s.assignedByTeacher && !s.isLessonVocabulary);
+  const lessonSets = sets.filter(s => s.isLessonVocabulary);
 
   const renderSetCard = (set: FlashcardSet) => (
     <Card key={set.id} className="flex flex-col h-full hover:border-primary/50 transition-colors group">
@@ -202,6 +203,83 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
         </Card>
       </div>
 
+      {/* Lesson Sets */}
+      {lessonSets.length > 0 && (
+        <div className="mt-8 space-y-4">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            📚 {language === 'pl' ? 'Słownictwo z lekcji' : 'Lesson Vocabulary'}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {lessonSets.map(set => (
+              <Card key={set.id} className="flex flex-col h-full hover:border-primary/50 transition-colors group">
+                <div className="flex-1">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-xl font-bold group-hover:text-primary transition-colors">{set.title}</h3>
+                    <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full font-bold bg-amber-500/10 text-amber-500">
+                      {language === 'pl' ? 'Lekcja' : 'Lesson'}
+                    </span>
+                  </div>
+                  
+                  {set.lessonDate && (
+                    <div className="text-xs text-content-muted mb-1 font-mono">
+                      {language === 'pl' ? 'Data lekcji: ' : 'Lesson Date: '}{set.lessonDate}
+                    </div>
+                  )}
+                  {set.lessonTopic && (
+                    <div className="text-sm font-medium mb-3 italic text-content-muted line-clamp-2">
+                      {language === 'pl' ? 'Temat: ' : 'Topic: '}{set.lessonTopic}
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center gap-3 mb-6 mt-4">
+                    <div className="inline-block bg-base-300 text-content px-3 py-1 rounded-full text-xs font-mono">
+                      {set.cardCount} {t('flashcards.cards')}
+                    </div>
+                    {lastPracticed[set.id] && (
+                      <div className="text-xs text-content-muted">
+                        {language === 'pl' ? 'Ostatnio: ' : 'Last: '} 
+                        {lastPracticed[set.id]?.toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Mastery Progress */}
+                  <div className="space-y-1.5 mb-2">
+                    <div className="flex justify-between text-xs font-medium">
+                      <span className="text-content-muted">{language === 'pl' ? 'Opanowanie' : 'Mastery'}</span>
+                      <span className={setMastery[set.id] >= 80 ? 'text-green-400' : 'text-primary'}>{setMastery[set.id]}%</span>
+                    </div>
+                    <div className="w-full bg-base-300 h-1.5 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all duration-500 ${setMastery[set.id] >= 80 ? 'bg-green-400' : 'bg-primary'}`}
+                        style={{ width: `${setMastery[set.id]}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-base-300">
+                  <Button 
+                    className="flex-[2_1_auto]" 
+                    onClick={() => onStudySet(set.id)}
+                    disabled={set.cardCount === 0}
+                  >
+                    {t('flashcards.study')}
+                  </Button>
+                  <Button 
+                    variant="secondary" 
+                    className="flex-[1_1_auto]"
+                    onClick={() => onStatsSet(set.id)}
+                  >
+                    {language === 'pl' ? 'Statystyki' : 'Stats'}
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Teacher Assigned Sets */}
       {teacherSets.length > 0 && (
         <div className="mt-8 space-y-4">
@@ -216,7 +294,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
 
       {/* My Word Sets Grid */}
       <div className="mt-8 space-y-4">
-        {teacherSets.length > 0 && (
+        {(teacherSets.length > 0 || lessonSets.length > 0) && (
           <h2 className="text-xl font-bold flex items-center gap-2">
             👤 {language === 'pl' ? 'Moja lista słów' : 'My Word Lists'}
           </h2>

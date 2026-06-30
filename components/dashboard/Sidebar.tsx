@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ExerciseType } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface SidebarProps {
   currentView: string;
@@ -33,6 +34,7 @@ const NavLink: React.FC<{
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPractice, isOpen, onClose }) => {
   const [practiceOpen, setPracticeOpen] = useState(false);
   const { user } = useAuth();
+  const { language } = useLanguage();
 
   const handleNavigate = (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'ai-generator') => {
     onNavigate(view);
@@ -69,15 +71,17 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
         </div>
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           <NavLink onClick={() => handleNavigate('dashboard')} isActive={currentView === 'dashboard'}>
-              <span>Dashboard</span>
+              <span>{language === 'pl' ? 'Panel główny' : 'Dashboard'}</span>
           </NavLink>
 
           <NavLink onClick={() => handleNavigate('flashcard-sets')} isActive={currentView === 'flashcard-sets'}>
-              <span>My Word Lists</span>
+              <span>{language === 'pl' ? 'Słownictwo' : 'My Word Lists'}</span>
           </NavLink>
           
           <NavLink onClick={() => handleNavigate('ai-generator')} isActive={currentView === 'ai-generator'}>
-              <span className="text-primary font-bold">✨ AI Generator</span>
+              <span className="text-primary font-bold animate-pulse-delicate inline-block">
+                ✨ {language === 'pl' ? 'Ucz się' : 'Learn'}
+              </span>
           </NavLink>
           
           <div>
@@ -85,7 +89,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               onClick={() => setPracticeOpen(!practiceOpen)}
               className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-xl text-content-muted hover:bg-white/5 hover:text-white transition-colors"
             >
-              <span>Practice</span>
+              <span>{language === 'pl' ? 'Trening' : 'Practice'}</span>
               <svg className={`w-4 h-4 transition-transform ${practiceOpen ? 'rotate-90' : ''}`} fill="currentColor" viewBox="0 0 20 20"><path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"></path></svg>
             </button>
             {practiceOpen && (
@@ -100,14 +104,14 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           
           <div className="pt-4 mt-4 border-t border-base-300">
             <NavLink onClick={() => handleNavigate('settings')} isActive={currentView === 'settings'}>
-              <span>Settings</span>
+              <span>{language === 'pl' ? 'Ustawienia' : 'Settings'}</span>
             </NavLink>
           </div>
           
           {user?.role === 'admin' && (
             <div className="pt-4 mt-4 border-t border-base-300">
               <NavLink onClick={() => handleNavigate('admin')} isActive={currentView === 'admin'}>
-                <span className="text-secondary">Teacher Panel</span>
+                <span className="text-secondary">{language === 'pl' ? 'Panel nauczyciela' : 'Teacher Panel'}</span>
               </NavLink>
             </div>
           )}

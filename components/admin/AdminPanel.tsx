@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, doc, deleteDoc, query, orderBy, setDoc, writeBatch } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
-import { User, PracticeLog, FlashcardSet } from '../../types';
+import { User, PracticeLog, FlashcardSet, LessonRecord } from '../../types';
 import { useFlashcards } from '../../context/FlashcardContext';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
@@ -15,6 +15,7 @@ const AdminPanel: React.FC = () => {
   const [users, setUsers] = useState<UserWithId[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserWithId | null>(null);
   const [practiceLogs, setPracticeLogs] = useState<PracticeLog[]>([]);
+  const [lessonRecords, setLessonRecords] = useState<LessonRecord[]>([]);
   const [userStats, setUserStats] = useState<{ totalWords: number; difficultWords: number; masteryCount: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigningSet, setIsAssigningSet] = useState(false);
@@ -32,6 +33,18 @@ const AdminPanel: React.FC = () => {
   const [newPasswordForUser, setNewPasswordForUser] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [changePasswordError, setChangePasswordError] = useState('');
+  const [isLessonVocabulary, setIsLessonVocabulary] = useState(false);
+  const [lessonDate, setLessonDate] = useState(new Date().toISOString().split('T')[0]);
+  const [lessonTopic, setLessonTopic] = useState('');
+
+  // Lesson Record Form States
+  const [showLessonRecordModal, setShowLessonRecordModal] = useState(false);
+  const [newLessonDate, setNewLessonDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newLessonTopic, setNewLessonTopic] = useState('');
+  const [newLessonWords, setNewLessonWords] = useState('');
+  const [newLessonSummary, setNewLessonSummary] = useState('');
+  const [isSavingLessonRecord, setIsSavingLessonRecord] = useState(false);
+
 
   useEffect(() => {
     fetchUsers();
@@ -48,6 +61,7 @@ const AdminPanel: React.FC = () => {
         setUserToDelete(null);
         setShowChangePasswordModal(false);
         setChangePasswordError('');
+        setShowLessonRecordModal(false);
       }
     };
     
@@ -75,9 +89,10 @@ const AdminPanel: React.FC = () => {
   };
 
   const fetchUserLogsAndStats = async (userId: string) => {
+    setUserStats(null);
+    setLessonRecords([]);
+    
     try {
-      setUserStats(null);
-      
       const logsRef = collection(db, `users/${userId}/practiceLogs`);
       const q = query(logsRef, orderBy('date', 'desc'));
       const logsSnapshot = await getDocs(q);
@@ -86,7 +101,24 @@ const AdminPanel: React.FC = () => {
         ...doc.data()
       } as PracticeLog));
       setPracticeLogs(logsList);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, `users/${userId}/practiceLogs`);
+    }
 
+    try {
+      const lessonRecordsRef = collection(db, `users/${userId}/lessonRecords`);
+      const qLR = query(lessonRecordsRef, orderBy('date', 'desc'));
+      const lrSnapshot = await getDocs(qLR);
+      const lrList = lrSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as LessonRecord));
+      setLessonRecords(lrList);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, `users/${userId}/lessonRecords`);
+    }
+
+    try {
       const wordsRef = collection(db, `users/${userId}/words`);
       const wordsSnap = await getDocs(wordsRef);
       const diffWords = wordsSnap.docs.filter(d => d.data().isDifficult === true).length;
@@ -96,9 +128,8 @@ const AdminPanel: React.FC = () => {
         difficultWords: diffWords,
         masteryCount: wordsSnap.size > 0 ? Math.round(((wordsSnap.size - diffWords) / wordsSnap.size) * 100) : 0
       });
-
     } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, `users/${userId} stats`);
+      handleFirestoreError(error, OperationType.LIST, `users/${userId}/words stats`);
     }
   };
 
@@ -228,6 +259,39 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleSaveLessonRecord = async () => {
+    if (!selectedUser || !newLessonDate || !newLessonTopic) return;
+    setIsSavingLessonRecord(true);
+
+    try {
+      const recordId = `lesson-${Date.now()}`;
+      const recordRef = doc(db, `users/${selectedUser.id}/lessonRecords/${recordId}`);
+      
+      const newRecord: Omit<LessonRecord, 'id'> = {
+        studentId: selectedUser.id,
+        date: newLessonDate,
+        topic: newLessonTopic,
+        words: newLessonWords,
+        summary: newLessonSummary,
+        createdAt: new Date().toISOString()
+      };
+
+      await setDoc(recordRef, newRecord);
+
+      setLessonRecords([{ id: recordId, ...newRecord }, ...lessonRecords]);
+      setShowLessonRecordModal(false);
+      setNewLessonTopic('');
+      setNewLessonWords('');
+      setNewLessonSummary('');
+      alert('Lesson record saved successfully!');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to save lesson record.');
+    } finally {
+      setIsSavingLessonRecord(false);
+    }
+  };
+
   const executeAssignWordSet = async () => {
     if (!selectedUser || !selectedSetIdToAssign) return;
     setIsAssigningSet(true);
@@ -253,7 +317,10 @@ const AdminPanel: React.FC = () => {
         cardCount: originalSet.cardCount,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        assignedByTeacher: true
+        assignedByTeacher: true,
+        isLessonVocabulary: isLessonVocabulary,
+        lessonDate: isLessonVocabulary ? lessonDate : null,
+        lessonTopic: isLessonVocabulary ? lessonTopic : null,
       });
 
       // Copy flashcards
@@ -340,7 +407,13 @@ const AdminPanel: React.FC = () => {
                         <select 
                           className="w-full bg-base-200 border border-base-300 rounded p-2 mb-4 text-sm"
                           value={selectedSetIdToAssign}
-                          onChange={(e) => setSelectedSetIdToAssign(e.target.value)}
+                          onChange={(e) => {
+                            setSelectedSetIdToAssign(e.target.value);
+                            if (isLessonVocabulary) {
+                              const set = adminSets.find(s => s.id === e.target.value);
+                              if (set) setLessonTopic(set.title);
+                            }
+                          }}
                         >
                           <option value="" disabled>-- Select a word list --</option>
                           {adminSets.map(set => (
@@ -349,6 +422,48 @@ const AdminPanel: React.FC = () => {
                             </option>
                           ))}
                         </select>
+                        
+                        <div className="flex items-center gap-2 mb-3">
+                          <input 
+                            type="checkbox" 
+                            id="isLesson" 
+                            checked={isLessonVocabulary}
+                            onChange={(e) => {
+                              setIsLessonVocabulary(e.target.checked);
+                              if (e.target.checked && selectedSetIdToAssign) {
+                                const set = adminSets.find(s => s.id === selectedSetIdToAssign);
+                                if (set) setLessonTopic(set.title);
+                              }
+                            }}
+                            className="rounded border-base-300 text-primary focus:ring-primary/50 bg-base-200"
+                          />
+                          <label htmlFor="isLesson" className="text-sm cursor-pointer select-none">Assign as Lesson Vocabulary</label>
+                        </div>
+
+                        {isLessonVocabulary && (
+                          <div className="space-y-3 bg-base-200/50 p-3 rounded-lg border border-white/5 mb-4">
+                            <div>
+                              <label className="block text-xs font-bold text-content-muted mb-1">Lesson Date</label>
+                              <input 
+                                type="date" 
+                                value={lessonDate}
+                                onChange={(e) => setLessonDate(e.target.value)}
+                                className="w-full bg-base-200 border border-base-300 rounded p-1.5 outline-none focus:border-primary/50 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-content-muted mb-1">Topic</label>
+                              <input 
+                                type="text" 
+                                value={lessonTopic}
+                                onChange={(e) => setLessonTopic(e.target.value)}
+                                placeholder="e.g. Travel vocabulary"
+                                className="w-full bg-base-200 border border-base-300 rounded p-1.5 outline-none focus:border-primary/50 text-sm"
+                              />
+                            </div>
+                          </div>
+                        )}
+
                         <div className="flex justify-end gap-2">
                           <Button variant="secondary" onClick={() => setShowAssignModal(false)} size="sm">
                             Cancel
@@ -357,7 +472,7 @@ const AdminPanel: React.FC = () => {
                             onClick={executeAssignWordSet} 
                             isLoading={isAssigningSet} 
                             size="sm"
-                            disabled={!selectedSetIdToAssign}
+                            disabled={!selectedSetIdToAssign || (isLessonVocabulary && (!lessonDate || !lessonTopic))}
                           >
                             Assign
                           </Button>
@@ -394,6 +509,32 @@ const AdminPanel: React.FC = () => {
                       <div className="text-3xl font-display font-bold text-amber-500">{userStats.difficultWords}</div>
                     </div>
                   </div>
+                )}
+
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold">Lesson Records</h3>
+                  <Button size="sm" onClick={() => setShowLessonRecordModal(true)}>Add Record</Button>
+                </div>
+                {lessonRecords.length > 0 ? (
+                  <div className="space-y-3 mb-8">
+                    {lessonRecords.map(record => (
+                      <div key={record.id} className="p-4 bg-base-200/50 rounded-xl border border-white/5">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-bold text-primary">{record.topic}</h4>
+                          <span className="text-xs font-mono text-content-muted">{record.date}</span>
+                        </div>
+                        <div className="text-sm text-white/80 mb-2 whitespace-pre-wrap">{record.summary}</div>
+                        {record.words && (
+                          <div className="mt-2 pt-2 border-t border-white/5">
+                            <span className="text-xs text-content-muted font-bold block mb-1">Words:</span>
+                            <span className="text-xs text-white">{record.words}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-content-muted italic mb-8">No lesson records found.</p>
                 )}
 
                 <h3 className="text-lg font-bold mb-4">Practice History</h3>
@@ -454,6 +595,70 @@ const AdminPanel: React.FC = () => {
         </div>
       )}
 
+      {/* Add Lesson Record Modal */}
+      {showLessonRecordModal && (
+        <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg shadow-2xl border-primary/20 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold mb-4">Add Lesson Record</h3>
+            <div className="space-y-4 mb-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-content-muted mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={newLessonDate}
+                    onChange={(e) => setNewLessonDate(e.target.value)}
+                    className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-content-muted mb-1">Topic</label>
+                  <input
+                    type="text"
+                    value={newLessonTopic}
+                    onChange={(e) => setNewLessonTopic(e.target.value)}
+                    placeholder="e.g. Present Simple"
+                    className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-content-muted mb-1">Vocabulary / Words</label>
+                <textarea
+                  value={newLessonWords}
+                  onChange={(e) => setNewLessonWords(e.target.value)}
+                  placeholder="Paste words covered in this lesson..."
+                  rows={3}
+                  className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm resize-y"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-content-muted mb-1">Lesson Summary</label>
+                <textarea
+                  value={newLessonSummary}
+                  onChange={(e) => setNewLessonSummary(e.target.value)}
+                  placeholder="Summary of the lesson..."
+                  rows={4}
+                  className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm resize-y"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button onClick={() => setShowLessonRecordModal(false)} variant="secondary">
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSaveLessonRecord} 
+                isLoading={isSavingLessonRecord}
+                disabled={!newLessonDate || !newLessonTopic}
+              >
+                Save Record
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Change Password Modal */}
       {showChangePasswordModal && (
         <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -466,14 +671,39 @@ const AdminPanel: React.FC = () => {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-bold text-content-muted mb-1">New Password</label>
-                <input
-                  type="text"
-                  value={newPasswordForUser}
-                  onChange={(e) => setNewPasswordForUser(e.target.value)}
-                  className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 transition-colors"
-                  placeholder="Enter new password"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-bold text-content-muted">New Password</label>
+                  <button 
+                    onClick={() => setNewPasswordForUser(Math.random().toString(36).slice(-8))}
+                    className="text-xs text-primary hover:text-primary/80"
+                  >
+                    Auto-generate
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={newPasswordForUser}
+                    onChange={(e) => setNewPasswordForUser(e.target.value)}
+                    className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 transition-colors pr-10"
+                    placeholder="Enter new password"
+                  />
+                  {newPasswordForUser && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(newPasswordForUser);
+                        alert('Password copied to clipboard!');
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-content-muted hover:text-primary"
+                      title="Copy to clipboard"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex justify-end gap-3">
