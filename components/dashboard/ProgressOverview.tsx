@@ -1,10 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useVocabulary } from '../../context/VocabularyContext';
 import Card from '../ui/Card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { useLanguage } from '../../context/LanguageContext';
 
 const ProgressOverview: React.FC = () => {
   const { words, difficultWords, lastPractice } = useVocabulary();
+  const { language } = useLanguage();
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const stats = useMemo(() => {
     const totalWords = words.length;
@@ -55,96 +58,110 @@ const ProgressOverview: React.FC = () => {
 
   return (
     <Card className="mb-6">
-      <div className="flex items-center gap-4 mb-6">
-        <span className="font-mono text-xs tracking-[0.25em] text-primary uppercase whitespace-nowrap">Learning Progress</span>
-        <div className="h-[1px] w-full bg-white/10"></div>
+      <div 
+        className="flex items-center gap-4 cursor-pointer select-none group"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <span className="font-mono text-xs tracking-[0.25em] text-primary uppercase whitespace-nowrap group-hover:text-primary-focus transition-colors">
+          {language === 'pl' ? 'Postępy w nauce' : 'Learning Progress'}
+        </span>
+        <div className="h-[1px] w-full bg-white/10 group-hover:bg-primary/20 transition-colors"></div>
+        <button className="p-1 text-content-muted group-hover:text-primary transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 mb-6">
-        <div className="bg-base-200/50 p-3 md:p-4 rounded-xl border border-white/5">
-          <div className="text-xs sm:text-sm font-sans text-content-muted uppercase mb-1">Total Words</div>
-          <div className="text-2xl sm:text-4xl font-bold text-primary">{stats.totalWords}</div>
-        </div>
-        <div className="bg-base-200/50 p-3 md:p-4 rounded-xl border border-white/5">
-          <div className="text-xs sm:text-sm font-sans text-content-muted uppercase mb-1">Difficult Words</div>
-          <div className="text-2xl sm:text-4xl font-bold text-secondary">{stats.difficultCount}</div>
-        </div>
-        <div className="bg-base-200/50 p-3 md:p-4 rounded-xl border border-white/5 col-span-2 lg:col-span-1 flex flex-row items-center justify-between lg:flex-col lg:items-start lg:justify-start">
-          <div className="text-xs sm:text-sm font-sans text-content-muted uppercase mb-0 lg:mb-1">Last Practice</div>
-          <div className="text-right lg:text-left">
-            <div className="text-base sm:text-xl font-bold text-content mt-0 lg:mt-2">
-              {lastPractice ? new Date(lastPractice.lastPracticeDate).toLocaleDateString() : 'Never'}
+      {isExpanded && (
+        <div className="mt-6 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 mb-6">
+            <div className="bg-base-200/50 p-3 md:p-4 rounded-xl border border-white/5">
+              <div className="text-xs sm:text-sm font-sans text-content-muted uppercase mb-1">Total Words</div>
+              <div className="text-2xl sm:text-4xl font-bold text-primary">{stats.totalWords}</div>
             </div>
-            <div className="text-[10px] sm:text-xs text-content-muted mt-0.5 lg:mt-1">
-              {lastPractice ? lastPractice.lastExerciseType : '-'}
+            <div className="bg-base-200/50 p-3 md:p-4 rounded-xl border border-white/5">
+              <div className="text-xs sm:text-sm font-sans text-content-muted uppercase mb-1">Difficult Words</div>
+              <div className="text-2xl sm:text-4xl font-bold text-secondary">{stats.difficultCount}</div>
+            </div>
+            <div className="bg-base-200/50 p-3 md:p-4 rounded-xl border border-white/5 col-span-2 lg:col-span-1 flex flex-row items-center justify-between lg:flex-col lg:items-start lg:justify-start">
+              <div className="text-xs sm:text-sm font-sans text-content-muted uppercase mb-0 lg:mb-1">Last Practice</div>
+              <div className="text-right lg:text-left">
+                <div className="text-base sm:text-xl font-bold text-content mt-0 lg:mt-2">
+                  {lastPractice ? new Date(lastPractice.lastPracticeDate).toLocaleDateString() : 'Never'}
+                </div>
+                <div className="text-[10px] sm:text-xs text-content-muted mt-0.5 lg:mt-1">
+                  {lastPractice ? lastPractice.lastExerciseType : '-'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            {/* Language Distribution Chart */}
+            <div className="h-48 sm:h-56 lg:h-64">
+              <h3 className="text-sm font-mono text-content-muted uppercase mb-2 lg:mb-4 text-center">Words by Language</h3>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.languageData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                  <XAxis dataKey="name" stroke="#a0a0a0" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#a0a0a0" fontSize={10} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    contentStyle={{ backgroundColor: '#0d1117', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                    itemStyle={{ color: '#4ade80' }}
+                  />
+                  <Bar dataKey="count" fill="#4ade80" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* SRA Level Distribution Chart */}
+            <div className="h-48 sm:h-56 lg:h-64">
+              <h3 className="text-sm font-mono text-content-muted uppercase mb-2 lg:mb-4 text-center">Spaced Repetition</h3>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.levelData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                  <XAxis dataKey="name" stroke="#a0a0a0" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#a0a0a0" fontSize={10} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    contentStyle={{ backgroundColor: '#0d1117', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                    itemStyle={{ color: '#2563eb' }}
+                  />
+                  <Bar dataKey="count" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Difficulty Distribution Chart */}
+            <div className="h-48 sm:h-56 lg:h-64 col-span-1 md:col-span-2 lg:col-span-1">
+              <h3 className="text-sm font-mono text-content-muted uppercase mb-2 lg:mb-4 text-center">Mastery Level</h3>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={stats.difficultyData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {stats.difficultyData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={index === 0 ? '#4ade80' : '#c9a86c'} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0d1117', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                    itemStyle={{ color: '#ffffff' }}
+                  />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', color: '#a0a0a0' }} />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-        {/* Language Distribution Chart */}
-        <div className="h-48 sm:h-56 lg:h-64">
-          <h3 className="text-sm font-mono text-content-muted uppercase mb-2 lg:mb-4 text-center">Words by Language</h3>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={stats.languageData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-              <XAxis dataKey="name" stroke="#a0a0a0" fontSize={10} tickLine={false} axisLine={false} />
-              <YAxis stroke="#a0a0a0" fontSize={10} tickLine={false} axisLine={false} />
-              <Tooltip 
-                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                contentStyle={{ backgroundColor: '#0d1117', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                itemStyle={{ color: '#4ade80' }}
-              />
-              <Bar dataKey="count" fill="#4ade80" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* SRA Level Distribution Chart */}
-        <div className="h-48 sm:h-56 lg:h-64">
-          <h3 className="text-sm font-mono text-content-muted uppercase mb-2 lg:mb-4 text-center">Spaced Repetition</h3>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={stats.levelData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-              <XAxis dataKey="name" stroke="#a0a0a0" fontSize={10} tickLine={false} axisLine={false} />
-              <YAxis stroke="#a0a0a0" fontSize={10} tickLine={false} axisLine={false} />
-              <Tooltip 
-                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                contentStyle={{ backgroundColor: '#0d1117', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                itemStyle={{ color: '#2563eb' }}
-              />
-              <Bar dataKey="count" fill="#2563eb" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Difficulty Distribution Chart */}
-        <div className="h-48 sm:h-56 lg:h-64 col-span-1 md:col-span-2 lg:col-span-1">
-          <h3 className="text-sm font-mono text-content-muted uppercase mb-2 lg:mb-4 text-center">Mastery Level</h3>
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={stats.difficultyData}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={80}
-                paddingAngle={5}
-                dataKey="value"
-                stroke="none"
-              >
-                {stats.difficultyData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={index === 0 ? '#4ade80' : '#c9a86c'} />
-                ))}
-              </Pie>
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#0d1117', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                itemStyle={{ color: '#ffffff' }}
-              />
-              <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', color: '#a0a0a0' }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      )}
     </Card>
   );
 };

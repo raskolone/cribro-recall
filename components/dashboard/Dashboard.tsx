@@ -5,6 +5,7 @@ import VocabularyGenerator from './VocabularyGenerator';
 import WordList from './WordList';
 import ProgressOverview from './ProgressOverview';
 import LessonHistory from './LessonHistory';
+import AssignedTasks from './AssignedTasks';
 import PracticeZone from '../practice/PracticeZone';
 import SettingsScreen from '../settings/SettingsScreen';
 import FlashcardSetsScreen from '../flashcards/FlashcardSetsScreen';
@@ -173,64 +174,10 @@ const Dashboard: React.FC = () => {
       return <AIExerciseGeneratorScreen />;
     }
     // Default to dashboard view
-    
-    // Find the most recently assigned teacher set
-    const teacherSets = sets.filter(s => s.assignedByTeacher);
-    const latestTeacherSet = teacherSets.length > 0 ? teacherSets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] : null;
-
     return (
       <div className="space-y-6">
-        {latestTeacherSet && !checkedSets.includes(latestTeacherSet.id) && (
-          <div className="bg-base-200 border border-primary/40 p-5 rounded-xl shadow-[0_0_15px_rgba(114,240,180,0.1)] relative overflow-hidden mt-2 animate-pulsar transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-primary/10 text-primary rounded-lg shrink-0 mt-0.5">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                </svg>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] tracking-wider uppercase font-mono font-bold text-primary">
-                    {language === 'pl' ? 'Nowy zestaw od nauczyciela' : 'New Teacher Assignment'}
-                  </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
-                </div>
-                <h3 className="text-lg font-bold text-white mt-0.5">
-                  {latestTeacherSet.title}
-                </h3>
-                {latestTeacherSet.lessonTopic && (
-                  <p className="text-xs text-content-muted mt-0.5">
-                    {language === 'pl' ? 'Temat lekcji: ' : 'Lesson topic: '}{latestTeacherSet.lessonTopic}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2.5 self-end sm:self-center shrink-0">
-              <Button 
-                onClick={() => {
-                  handleCheckSet(latestTeacherSet.id);
-                  setActiveSetId(latestTeacherSet.id);
-                  setView('flashcard-study');
-                }} 
-                size="sm" 
-                className="text-xs px-4"
-              >
-                {language === 'pl' ? 'Sprawdź i ucz się' : 'Check & Learn'}
-              </Button>
-              <button 
-                onClick={() => handleCheckSet(latestTeacherSet.id)}
-                className="p-1.5 text-content-muted hover:text-white rounded-lg hover:bg-white/5 transition-colors"
-                title={language === 'pl' ? 'Ukryj' : 'Hide'}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
-
+        <ProgressOverview />
+        
         {dueWords.length >= 4 && (
           <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 dark:from-green-500/20 dark:to-emerald-500/20 p-6 rounded-2xl shadow-xl border border-green-500/20 dark:border-green-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors duration-300">
             <div>
@@ -253,15 +200,17 @@ const Dashboard: React.FC = () => {
             </Button>
           </div>
         )}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <ProgressOverview />
-            <VocabularyGenerator />
-            <WordList />
+
+        {user?.role !== 'admin' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AssignedTasks onStudySet={(setId) => { setActiveSetId(setId); setView('flashcard-study'); }} />
+            <LessonHistory />
           </div>
-          <div className="space-y-6">
-            {user?.role !== 'admin' && <LessonHistory />}
-          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-6">
+          <VocabularyGenerator />
+          <WordList />
         </div>
       </div>
     );
