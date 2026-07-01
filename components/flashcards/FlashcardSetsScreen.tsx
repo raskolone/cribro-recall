@@ -81,13 +81,26 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     return last;
   }, [sets, sessions]);
 
+  const isRecent = (dateStr: string) => {
+    if (!dateStr) return false;
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return false;
+    const diffDays = Math.ceil(Math.abs(Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDays <= 2;
+  };
+
   const mySets = sets.filter(s => !s.assignedByTeacher && !s.isLessonVocabulary);
   const teacherSets = sets.filter(s => s.assignedByTeacher && !s.isLessonVocabulary);
   const lessonSets = sets.filter(s => s.isLessonVocabulary);
 
   const renderSetCard = (set: FlashcardSet) => (
-    <Card key={set.id} className="flex flex-col h-full hover:border-primary/50 transition-colors group">
-      <div className="flex-1">
+    <Card key={set.id} className="flex flex-col h-full hover:border-primary/50 transition-colors group relative overflow-hidden">
+      {isRecent(set.createdAt) && (set.assignedByTeacher || set.isLessonVocabulary) && (
+         <div className="absolute top-0 right-0 px-2 py-1 bg-secondary text-secondary-content text-[10px] font-bold uppercase rounded-bl-lg z-10 animate-pulse">
+           {language === 'pl' ? 'Nowe' : 'New'}
+         </div>
+      )}
+      <div className="flex-1 mt-2">
         <div className="flex justify-between items-start mb-2">
           <h3 className="text-xl font-bold group-hover:text-primary transition-colors">{set.title}</h3>
           {(set.isPublic || set.assignedByTeacher) && (
@@ -211,8 +224,13 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {lessonSets.map(set => (
-              <Card key={set.id} className="flex flex-col h-full hover:border-primary/50 transition-colors group">
-                <div className="flex-1">
+              <Card key={set.id} className="flex flex-col h-full hover:border-primary/50 transition-colors group relative overflow-hidden">
+                {isRecent(set.createdAt) && (
+                   <div className="absolute top-0 right-0 px-2 py-1 bg-secondary text-secondary-content text-[10px] font-bold uppercase rounded-bl-lg z-10 animate-pulse">
+                     {language === 'pl' ? 'Nowe' : 'New'}
+                   </div>
+                )}
+                <div className="flex-1 mt-2">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="text-xl font-bold group-hover:text-primary transition-colors">{set.title}</h3>
                     <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full font-bold bg-amber-500/10 text-amber-500">

@@ -270,6 +270,29 @@ export const generateTranslationExercises = async (
   }
 };
 
+export const generateHomework = async (topic: string, summary: string, words: string): Promise<string> => {
+  const prompt = `Jako doświadczony nauczyciel języka angielskiego, wygeneruj spersonalizowaną pracę domową dla ucznia na podstawie odbytej lekcji.
+  Temat lekcji: ${topic}
+  Podsumowanie lekcji: ${summary}
+  Przerobione słownictwo: ${words}
+  
+  Praca domowa powinna być krótka, angażująca i utrwalać przerobiony materiał. Zaproponuj 3-5 zdań do przetłumaczenia na angielski, 
+  kilka pytań otwartych do odpowiedzi pisemnej po angielsku lub krótkie ćwiczenie (np. "uzupełnij luki") polegające na użyciu słownictwa z lekcji. 
+  
+  Zwróć wynik formacie Markdown (użyj nagłówków np. ### Zadanie 1, list punktowanych itp.), aby tekst był czytelny i przejrzysty dla ucznia. Pisz bezpośrednio do ucznia w przyjaznym tonie po polsku.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: prompt,
+    });
+    return response.text.trim();
+  } catch (error) {
+    console.error("Error generating homework:", error);
+    throw new Error("Failed to generate homework from AI.");
+  }
+};
+
 export const evaluateTranslations = async (
   exercises: TranslationExercise[],
   studentAnswers: string[],

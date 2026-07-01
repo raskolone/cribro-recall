@@ -39,11 +39,37 @@ const AdminPanel: React.FC = () => {
 
   // Lesson Record Form States
   const [showLessonRecordModal, setShowLessonRecordModal] = useState(false);
-  const [newLessonDate, setNewLessonDate] = useState(new Date().toISOString().split('T')[0]);
-  const [newLessonTopic, setNewLessonTopic] = useState('');
-  const [newLessonWords, setNewLessonWords] = useState('');
-  const [newLessonSummary, setNewLessonSummary] = useState('');
+  const [lessonFormDate, setLessonFormDate] = useState(new Date().toISOString().split('T')[0]);
+  const [lessonFormTopic, setLessonFormTopic] = useState('');
+  const [lessonFormWords, setLessonFormWords] = useState('');
+  const [lessonFormSummary, setLessonFormSummary] = useState('');
   const [isSavingLessonRecord, setIsSavingLessonRecord] = useState(false);
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+
+  const openLessonRecordModal = (record?: LessonRecord) => {
+    if (record) {
+      setEditingRecordId(record.id);
+      setLessonFormDate(record.date);
+      setLessonFormTopic(record.topic);
+      setLessonFormWords(record.words || '');
+      setLessonFormSummary(record.summary || '');
+    } else {
+      setEditingRecordId(null);
+      setLessonFormDate(new Date().toISOString().split('T')[0]);
+      setLessonFormTopic('');
+      setLessonFormWords('');
+      setLessonFormSummary('');
+    }
+    setShowLessonRecordModal(true);
+  };
+
+  const closeLessonRecordModal = () => {
+    setShowLessonRecordModal(false);
+    setEditingRecordId(null);
+    setLessonFormTopic('');
+    setLessonFormWords('');
+    setLessonFormSummary('');
+  };
 
 
   useEffect(() => {
@@ -61,7 +87,7 @@ const AdminPanel: React.FC = () => {
         setUserToDelete(null);
         setShowChangePasswordModal(false);
         setChangePasswordError('');
-        setShowLessonRecordModal(false);
+        closeLessonRecordModal();
       }
     };
     
@@ -260,29 +286,31 @@ const AdminPanel: React.FC = () => {
   };
 
   const handleSaveLessonRecord = async () => {
-    if (!selectedUser || !newLessonDate || !newLessonTopic) return;
+    if (!selectedUser || !lessonFormDate || !lessonFormTopic) return;
     setIsSavingLessonRecord(true);
 
     try {
-      const recordId = `lesson-${Date.now()}`;
+      const recordId = editingRecordId || `lesson-${Date.now()}`;
       const recordRef = doc(db, `users/${selectedUser.id}/lessonRecords/${recordId}`);
       
       const newRecord: Omit<LessonRecord, 'id'> = {
         studentId: selectedUser.id,
-        date: newLessonDate,
-        topic: newLessonTopic,
-        words: newLessonWords,
-        summary: newLessonSummary,
-        createdAt: new Date().toISOString()
+        date: lessonFormDate,
+        topic: lessonFormTopic,
+        words: lessonFormWords,
+        summary: lessonFormSummary,
+        createdAt: editingRecordId ? lessonRecords.find(r => r.id === editingRecordId)?.createdAt || new Date().toISOString() : new Date().toISOString()
       };
 
       await setDoc(recordRef, newRecord);
 
-      setLessonRecords([{ id: recordId, ...newRecord }, ...lessonRecords]);
-      setShowLessonRecordModal(false);
-      setNewLessonTopic('');
-      setNewLessonWords('');
-      setNewLessonSummary('');
+      if (editingRecordId) {
+        setLessonRecords(lessonRecords.map(r => r.id === recordId ? { id: recordId, ...newRecord } : r));
+      } else {
+        setLessonRecords([{ id: recordId, ...newRecord }, ...lessonRecords]);
+      }
+
+      closeLessonRecordModal();
       alert('Lesson record saved successfully!');
     } catch (error) {
       console.error(error);
@@ -513,24 +541,25 @@ const AdminPanel: React.FC = () => {
 
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold">Lesson Records</h3>
-                  <Button size="sm" onClick={() => setShowLessonRecordModal(true)}>Add Record</Button>
+                  <Button size="sm" onClick={() => openLessonRecordModal()}>Add Record</Button>
                 </div>
                 {lessonRecords.length > 0 ? (
-                  <div className="space-y-3 mb-8">
-                    {lessonRecords.map(record => (
-                      <div key={record.id} className="p-4 bg-base-200/50 rounded-xl border border-white/5">
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-bold text-primary">{record.topic}</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                    {lessonRecords.map((record, index) => (
+                      <Card 
+                        key={record.id} 
+                        className="cursor-pointer hover:border-primary/50 transition-colors bg-base-200/50"
+                        onClick={() => openLessonRecordModal(record)}
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="font-mono text-xs uppercase tracking-wider text-primary mb-1">
+                            Lekcja {lessonRecords.length - index}
+                          </div>
                           <span className="text-xs font-mono text-content-muted">{record.date}</span>
                         </div>
-                        <div className="text-sm text-white/80 mb-2 whitespace-pre-wrap">{record.summary}</div>
-                        {record.words && (
-                          <div className="mt-2 pt-2 border-t border-white/5">
-                            <span className="text-xs text-content-muted font-bold block mb-1">Words:</span>
-                            <span className="text-xs text-white">{record.words}</span>
-                          </div>
-                        )}
-                      </div>
+                        <h4 className="font-bold mb-2 line-clamp-1">{record.topic}</h4>
+                        <div className="text-sm text-content-muted line-clamp-2">{record.summary}</div>
+                      </Card>
                     ))}
                   </div>
                 ) : (
@@ -595,19 +624,19 @@ const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Add Lesson Record Modal */}
+      {/* Add/Edit Lesson Record Modal */}
       {showLessonRecordModal && (
         <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <Card className="w-full max-w-lg shadow-2xl border-primary/20 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold mb-4">Add Lesson Record</h3>
+            <h3 className="text-xl font-bold mb-4">{editingRecordId ? 'Edit Lesson Record' : 'Add Lesson Record'}</h3>
             <div className="space-y-4 mb-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-content-muted mb-1">Date</label>
                   <input
                     type="date"
-                    value={newLessonDate}
-                    onChange={(e) => setNewLessonDate(e.target.value)}
+                    value={lessonFormDate}
+                    onChange={(e) => setLessonFormDate(e.target.value)}
                     className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
                   />
                 </div>
@@ -615,8 +644,8 @@ const AdminPanel: React.FC = () => {
                   <label className="block text-sm font-bold text-content-muted mb-1">Topic</label>
                   <input
                     type="text"
-                    value={newLessonTopic}
-                    onChange={(e) => setNewLessonTopic(e.target.value)}
+                    value={lessonFormTopic}
+                    onChange={(e) => setLessonFormTopic(e.target.value)}
                     placeholder="e.g. Present Simple"
                     className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
                   />
@@ -625,8 +654,8 @@ const AdminPanel: React.FC = () => {
               <div>
                 <label className="block text-sm font-bold text-content-muted mb-1">Vocabulary / Words</label>
                 <textarea
-                  value={newLessonWords}
-                  onChange={(e) => setNewLessonWords(e.target.value)}
+                  value={lessonFormWords}
+                  onChange={(e) => setLessonFormWords(e.target.value)}
                   placeholder="Paste words covered in this lesson..."
                   rows={3}
                   className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm resize-y"
@@ -635,8 +664,8 @@ const AdminPanel: React.FC = () => {
               <div>
                 <label className="block text-sm font-bold text-content-muted mb-1">Lesson Summary</label>
                 <textarea
-                  value={newLessonSummary}
-                  onChange={(e) => setNewLessonSummary(e.target.value)}
+                  value={lessonFormSummary}
+                  onChange={(e) => setLessonFormSummary(e.target.value)}
                   placeholder="Summary of the lesson..."
                   rows={4}
                   className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm resize-y"
@@ -644,13 +673,13 @@ const AdminPanel: React.FC = () => {
               </div>
             </div>
             <div className="flex justify-end gap-3">
-              <Button onClick={() => setShowLessonRecordModal(false)} variant="secondary">
+              <Button onClick={closeLessonRecordModal} variant="secondary">
                 Cancel
               </Button>
               <Button 
                 onClick={handleSaveLessonRecord} 
                 isLoading={isSavingLessonRecord}
-                disabled={!newLessonDate || !newLessonTopic}
+                disabled={!lessonFormDate || !lessonFormTopic}
               >
                 Save Record
               </Button>
