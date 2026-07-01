@@ -10,6 +10,7 @@ interface SidebarProps {
   onStartPractice: (exercise: ExerciseType) => void;
   isOpen: boolean;
   onClose: () => void;
+  isDesktopCollapsed?: boolean;
 }
 
 import BrandLogo from '../ui/BrandLogo';
@@ -31,7 +32,7 @@ const NavLink: React.FC<{
   </button>
 );
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPractice, isOpen, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPractice, isOpen, onClose, isDesktopCollapsed = false }) => {
   const [practiceOpen, setPracticeOpen] = useState(false);
   const { user } = useAuth();
   const { language } = useLanguage();
@@ -57,9 +58,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
       )}
       
       <aside 
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-base-100/80 backdrop-blur-md flex-shrink-0 border-r border-base-300 shadow-xl flex flex-col transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 bg-base-100/80 backdrop-blur-md flex-shrink-0 border-r border-base-300 shadow-xl flex flex-col transform transition-all duration-300 ease-in-out md:relative ${
+          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        } ${isDesktopCollapsed ? 'md:hidden md:w-0 overflow-hidden' : 'w-64'}`}
       >
         <div className="p-6 flex items-center justify-between border-b border-base-300 mb-6">
           <BrandLogo className="text-xl" showTagline={false} />

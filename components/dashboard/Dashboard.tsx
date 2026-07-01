@@ -3,8 +3,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from './Sidebar';
 import VocabularyGenerator from './VocabularyGenerator';
 import WordList from './WordList';
-import AISuggestions from './AISuggestions';
 import ProgressOverview from './ProgressOverview';
+import LessonHistory from './LessonHistory';
 import PracticeZone from '../practice/PracticeZone';
 import SettingsScreen from '../settings/SettingsScreen';
 import FlashcardSetsScreen from '../flashcards/FlashcardSetsScreen';
@@ -80,6 +80,7 @@ const Dashboard: React.FC = () => {
   const [practiceView, setPracticeView] = useState<PracticeView>(null);
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   const [checkedSets, setCheckedSets] = useState<string[]>(() => {
@@ -259,7 +260,7 @@ const Dashboard: React.FC = () => {
             <WordList />
           </div>
           <div className="space-y-6">
-            <AISuggestions />
+            {user?.role !== 'admin' && <LessonHistory />}
           </div>
         </div>
       </div>
@@ -277,6 +278,7 @@ const Dashboard: React.FC = () => {
         onStartPractice={startPractice}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        isDesktopCollapsed={isDesktopCollapsed}
       />
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <header className="flex justify-between items-center mb-6">
@@ -284,6 +286,15 @@ const Dashboard: React.FC = () => {
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="md:hidden p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <button 
+              onClick={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
+              className="hidden md:block p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+              title={isDesktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
