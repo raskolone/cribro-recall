@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, deleteDoc, query, orderBy, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, deleteDoc, query, orderBy, setDoc, writeBatch, updateDoc } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
 import { User, PracticeLog, FlashcardSet, LessonRecord } from '../../types';
 import { useFlashcards } from '../../context/FlashcardContext';
@@ -104,7 +104,23 @@ const AdminPanel: React.FC = () => {
     };
     
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+  
+  const handleRoleChange = async (newRole: 'admin' | 'user' | 'admin_student') => {
+    if (!selectedUser) return;
+    try {
+      const userRef = doc(db, 'users', selectedUser.id);
+      await updateDoc(userRef, { role: newRole });
+      
+      // Update local state
+      const updatedUser = { ...selectedUser, role: newRole };
+      setSelectedUser(updatedUser);
+      setUsers(users.map(u => u.id === selectedUser.id ? updatedUser : u));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${selectedUser.id}`);
+    }
+  };
+
+  return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const fetchUsers = async () => {
@@ -460,6 +476,22 @@ const AdminPanel: React.FC = () => {
     return <div className="flex justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
   }
 
+
+  const handleRoleChange = async (newRole: 'admin' | 'user' | 'admin_student') => {
+    if (!selectedUser) return;
+    try {
+      const userRef = doc(db, 'users', selectedUser.id);
+      await updateDoc(userRef, { role: newRole });
+      
+      // Update local state
+      const updatedUser = { ...selectedUser, role: newRole };
+      setSelectedUser(updatedUser);
+      setUsers(users.map(u => u.id === selectedUser.id ? updatedUser : u));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${selectedUser.id}`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-extrabold tracking-tight mb-6">Teacher Panel</h1>
@@ -477,7 +509,7 @@ const AdminPanel: React.FC = () => {
           >
             <option value="" disabled>-- Choose a student --</option>
             {users.map(u => (
-              <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
+              <option key={u.id} value={u.id}>{u.username} ({u.email}) - {u.role === 'admin_student' ? 'Admin+Kursant' : u.role === 'admin' ? 'Admin' : 'Kursant'}</option>
             ))}
           </select>
         </div>
@@ -498,6 +530,18 @@ const AdminPanel: React.FC = () => {
                 {selectedUser.email} 
                 {selectedUser.level && <span className="ml-3 px-2 py-0.5 bg-primary/20 text-primary rounded text-xs uppercase font-bold">{selectedUser.level}</span>}
               </p>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-sm font-bold text-white">Uprawnienia:</span>
+                <select
+                  value={selectedUser.role}
+                  onChange={(e) => handleRoleChange(e.target.value as 'admin' | 'user' | 'admin_student')}
+                  className="bg-base-200 border border-base-300 text-sm text-white rounded p-1"
+                >
+                  <option value="user">Kursant (User)</option>
+                  <option value="admin">Admin</option>
+                  <option value="admin_student">Admin + Kursant</option>
+                </select>
+              </div>
               <div className="mt-2 text-sm text-content-muted flex flex-wrap gap-x-4 gap-y-2">
                 <div><span className="font-bold text-white">Logins:</span> {selectedUser.loginCount || 0}</div>
                 <div><span className="font-bold text-white">Last Login:</span> {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString() : 'Never'}</div>

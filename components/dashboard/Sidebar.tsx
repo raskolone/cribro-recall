@@ -89,7 +89,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
             </NavLink>
           </div>
           
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'admin_student') && (
             <div className="pt-4 mt-4 border-t border-base-300">
               <NavLink onClick={() => handleNavigate('admin')} isActive={currentView === 'admin'}>
                 <span className="text-secondary">{language === 'pl' ? 'Panel nauczyciela' : 'Teacher Panel'}</span>

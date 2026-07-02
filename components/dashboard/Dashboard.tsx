@@ -200,7 +200,7 @@ const Dashboard: React.FC = () => {
     if (view === 'presentation' && activeSetId) {
       return <FlashcardPresentationScreen setId={activeSetId} onBack={() => setView('flashcard-sets')} />;
     }
-    if (view === 'admin' && user?.role === 'admin') {
+    if (view === 'admin' && (user?.role === 'admin' || user?.role === 'admin_student')) {
       return <AdminPanel />;
     }
     if (view === 'ai-generator') {

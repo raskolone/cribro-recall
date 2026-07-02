@@ -29,11 +29,11 @@ import {
   Timer
 } from 'lucide-react';
 
-const DEFAULT_GENERATION_PROMPT = `Jesteś wirtualnym nauczycielem języka angielskiego. Wygeneruj dokładnie [NUM_SENTENCES] unikalnych zdań po polsku, które kursant będzie musiał przetłumaczyć na język angielski.
-Zdania powinny być naturalne, używane w codziennym życiu i dostosowane do wybranego poziomu CEFR.
-Pobierz zestaw słów (jeśli został przypisany przez nauczyciela) i na tej podstawie wygeneruj zdania. Musisz wykorzystać wszystkie dostępne informacje w danym zestawie (np. kontekst słówek).
-W późniejszym czasie otrzymasz dodatkowe informacje o kursancie - jeśli to pole jest puste lub niedostępne, po prostu je pomiń.
-Zapewnij również wskazówkę dla każdego zdania po polsku, sugerując np. przydatne słownictwo lub strukturę gramatyczną.`;
+const DEFAULT_GENERATION_PROMPT = `Jesteś wirtualnym nauczycielem języka angielskiego. Twoim absolutnym priorytetem jest personalizacja UX - wygenerowane zdania muszą być maksymalnie dopasowane do profilu kursanta (jeśli został dostarczony).
+Wygeneruj dokładnie [NUM_SENTENCES] unikalnych zdań po polsku do przetłumaczenia na język angielski, na wybranym poziomie CEFR.
+Pobierz dostarczony zestaw słówek z historii lekcji i na ich podstawie zbuduj zdania. Nawiązuj do tematu lekcji, jeśli to możliwe.
+Wykorzystaj informacje z profilu kursanta (np. hobby, wiek, praca), aby zdania były dla niego angażujące i osobiście interesujące.
+Zapewnij również krótką wskazówkę (po polsku) dla każdego zdania, ułatwiającą tłumaczenie.`;
 
 const DEFAULT_EVALUATION_PROMPT = `Przeanalizuj i oceń tłumaczenie angielskie wykonane przez ucznia dla każdego zdania po polsku.
 Zwróć uwagę na poprawność gramatyczną, słownictwo, idiomy i naturalność wypowiedzi.
@@ -168,7 +168,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
           const matchedVocab = vocabularySets.find(s => `vocab-${s.id}` === selectedSetId);
           if (matchedVocab && matchedVocab.vocabularyText) {
              const items = matchedVocab.vocabularyText.split(/[\n,;]+/).map(i => i.trim()).filter(i => i.length > 0);
-             wordsToUse = Array.from(new Set(items)).slice(0, 15);
+             wordsToUse = Array.from(new Set(items)); // AI analyzes all vocabulary from lesson
           }
         } else {
           let setsToProcess: FlashcardSet[] = [];
@@ -190,7 +190,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
       }
 
       // Call Gemini API service function
-      const studentProfileContext = user?.description ? `Student profile details (use to personalize sentences if relevant): ${user.description}` : '';
+      const studentProfileContext = user?.description ? `Kluczowy profil kursanta (obowiązkowo spersonalizuj zdania pod kątem tych informacji): ${user.description}` : 'Brak danych profilu - stwórz naturalne zdania.';
       const generated = await generateTranslationExercises(level, wordsToUse, customGenPrompt, lessonContextString, studentProfileContext, practiceMode === 'time' ? 10 : numSentences);
       
       if (generated && generated.length > 0) {
@@ -320,7 +320,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'admin_student') && (
             <Button 
               variant="secondary" 
               size="sm" 
@@ -344,7 +344,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
       </div>
 
       {/* Prompts config panel */}
-      {user?.role === 'admin' && isConfigOpen && (
+      {(user?.role === 'admin' || user?.role === 'admin_student') && isConfigOpen && (
         <Card className="p-5 border-amber-500/30 bg-amber-500/[0.02] space-y-4 animate-fade-in-up">
           <div className="flex justify-between items-center">
             <h3 className="font-bold text-amber-500 flex items-center gap-2 text-sm uppercase tracking-wider">
@@ -430,7 +430,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
                 </div>
               </div>
               <div className="flex flex-col items-end">
-                {user?.role === 'admin' ? (
+                {(user?.role === 'admin' || user?.role === 'admin_student') ? (
                   <select 
                     value={level} 
                     onChange={(e) => setLevel(e.target.value)}
@@ -502,8 +502,10 @@ const AIExerciseGeneratorScreen: React.FC = () => {
                         className="text-primary focus:ring-primary/50 bg-base-300 border-base-300"
                       />
                       <div className="text-sm">
-                        <div className="font-bold">{set.title}</div>
-                        <div className="text-xs text-amber-500 italic">Lesson record vocabulary ({set.itemCount} words)</div>
+                        <div className="font-bold">{language === 'pl' ? 'Lekcja: ' : 'Lesson: '}{set.topic}</div>
+                        <div className="text-xs text-amber-500 italic">
+                          {language === 'pl' ? 'Z dnia: ' : 'Date: '}{new Date(set.date).toLocaleDateString()} &bull; {set.itemCount} {language === 'pl' ? 'słów' : 'words'}
+                        </div>
                       </div>
                     </label>
                   ))}
