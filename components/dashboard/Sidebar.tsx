@@ -6,7 +6,7 @@ import { useLanguage } from '../../context/LanguageContext';
 
 interface SidebarProps {
   currentView: string;
-  onNavigate: (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'ai-generator') => void;
+  onNavigate: (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'ai-generator' | 'lesson-history') => void;
   onStartPractice: (exercise: ExerciseType) => void;
   isOpen: boolean;
   onClose: () => void;
@@ -37,7 +37,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
   const { user } = useAuth();
   const { language } = useLanguage();
 
-  const handleNavigate = (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'ai-generator') => {
+  const handleNavigate = (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'ai-generator' | 'lesson-history') => {
     onNavigate(view);
     onClose();
   };
@@ -76,23 +76,25 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           </NavLink>
 
           <NavLink onClick={() => handleNavigate('flashcard-sets')} isActive={currentView === 'flashcard-sets'}>
-              <span>{language === 'pl' ? 'Moje słownictwo' : 'My Word Lists'}</span>
+              <span>{language === 'pl' ? 'Słownictwo' : 'My Word Lists'}</span>
+          </NavLink>
+
+          <NavLink onClick={() => handleNavigate('lesson-history')} isActive={currentView === 'lesson-history'}>
+              <span>{language === 'pl' ? 'Historia lekcji' : 'Lesson History'}</span>
           </NavLink>
           
+          <div className="pt-4 mt-4 border-t border-base-300">
+            <NavLink onClick={() => handleNavigate('settings')} isActive={currentView === 'settings'}>
+              <span>{language === 'pl' ? 'Ustawienia' : 'Settings'}</span>
+            </NavLink>
+          </div>
+          
           {user?.role === 'admin' && (
-            <>
-              <div className="pt-4 mt-4 border-t border-base-300">
-                <NavLink onClick={() => handleNavigate('settings')} isActive={currentView === 'settings'}>
-                  <span>{language === 'pl' ? 'Ustawienia' : 'Settings'}</span>
-                </NavLink>
-              </div>
-              
-              <div className="pt-4 mt-4 border-t border-base-300">
-                <NavLink onClick={() => handleNavigate('admin')} isActive={currentView === 'admin'}>
-                  <span className="text-secondary">{language === 'pl' ? 'Panel nauczyciela' : 'Teacher Panel'}</span>
-                </NavLink>
-              </div>
-            </>
+            <div className="pt-4 mt-4 border-t border-base-300">
+              <NavLink onClick={() => handleNavigate('admin')} isActive={currentView === 'admin'}>
+                <span className="text-secondary">{language === 'pl' ? 'Panel nauczyciela' : 'Teacher Panel'}</span>
+              </NavLink>
+            </div>
           )}
         </nav>
 

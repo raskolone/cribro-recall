@@ -61,6 +61,20 @@ export async function createLessonRecordWithVocabularySet(input: {
   return { lessonRecordId, vocabularySetId };
 }
 
+export async function getLessonRecordsForStudent(studentId: string): Promise<LessonRecord[]> {
+  const recordsRef = collection(db, `users/${studentId}/lessonRecords`);
+  const q = query(recordsRef, orderBy('createdAt', 'desc'));
+  
+  const snapshot = await getDocs(q);
+  const records: LessonRecord[] = [];
+  
+  snapshot.forEach((doc) => {
+    records.push({ id: doc.id, ...doc.data() } as LessonRecord);
+  });
+  
+  return records;
+}
+
 export async function getVocabularySetsForStudent(studentId: string): Promise<VocabularySet[]> {
   const setsRef = collection(db, `users/${studentId}/vocabularySets`);
   const q = query(setsRef, orderBy('createdAt', 'desc'));

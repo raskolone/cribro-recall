@@ -14,6 +14,7 @@ import FlashcardStudyScreen from '../flashcards/FlashcardStudyScreen';
 import FlashcardStatsScreen from '../flashcards/FlashcardStatsScreen';
 import AdminPanel from '../admin/AdminPanel';
 import AIExerciseGeneratorScreen from './AIExerciseGeneratorScreen';
+import LessonHistoryScreen from './LessonHistoryScreen';
 import { useAuth } from '../../context/AuthContext';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { useFlashcards } from '../../context/FlashcardContext';
@@ -23,7 +24,7 @@ import Button from '../ui/Button';
 
 import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
 
-type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'presentation' | 'ai-generator';
+type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'presentation' | 'ai-generator' | 'lesson-history';
 type PracticeView = { type: 'exercise'; exercise: ExerciseType; isRevisionMode?: boolean; isSpacedRepetitionMode?: boolean } | null;
 
 const PracticeSetSelector = ({ onSelectSet, onCancel }: { onSelectSet: (id: string) => void, onCancel: () => void }) => {
@@ -81,7 +82,7 @@ const Dashboard: React.FC = () => {
   const [practiceView, setPracticeView] = useState<PracticeView>(null);
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
+  const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   const [checkedSets, setCheckedSets] = useState<string[]>(() => {
@@ -204,6 +205,9 @@ const Dashboard: React.FC = () => {
     }
     if (view === 'ai-generator') {
       return <AIExerciseGeneratorScreen />;
+    }
+    if (view === 'lesson-history') {
+      return <LessonHistoryScreen />;
     }
     // Default to dashboard view
     return (

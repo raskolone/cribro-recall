@@ -26,7 +26,7 @@ import {
   Play
 } from 'lucide-react';
 
-const DEFAULT_GENERATION_PROMPT = `Jesteś wirtualnym nauczycielem języka angielskiego. Wygeneruj dokładnie 5 unikalnych zdań po polsku, które kursant będzie musiał przetłumaczyć na język angielski.
+const DEFAULT_GENERATION_PROMPT = `Jesteś wirtualnym nauczycielem języka angielskiego. Wygeneruj dokładnie [NUM_SENTENCES] unikalnych zdań po polsku, które kursant będzie musiał przetłumaczyć na język angielski.
 Zdania powinny być naturalne, używane w codziennym życiu i dostosowane do wybranego poziomu CEFR.
 Pobierz zestaw słów (jeśli został przypisany przez nauczyciela) i na tej podstawie wygeneruj zdania. Musisz wykorzystać wszystkie dostępne informacje w danym zestawie (np. kontekst słówek).
 W późniejszym czasie otrzymasz dodatkowe informacje o kursancie - jeśli to pole jest puste lub niedostępne, po prostu je pomiń.
@@ -45,6 +45,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
   // Settings states
   const [selectedSetId, setSelectedSetId] = useState<string>('all');
   const [level, setLevel] = useState<string>(user?.level || 'B1');
+  const [numSentences, setNumSentences] = useState<number>(5);
   const [customGenPrompt, setCustomGenPrompt] = useState<string>(() => {
     return localStorage.getItem('ai_custom_gen_prompt') || DEFAULT_GENERATION_PROMPT;
   });
@@ -163,7 +164,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
 
       // Call Gemini API service function
       const studentProfileContext = user?.description ? `Student profile details (use to personalize sentences if relevant): ${user.description}` : '';
-      const generated = await generateTranslationExercises(level, wordsToUse, customGenPrompt, lessonContextString, studentProfileContext);
+      const generated = await generateTranslationExercises(level, wordsToUse, customGenPrompt, lessonContextString, studentProfileContext, numSentences);
       
       if (generated && generated.length > 0) {
         setExercises(generated);
@@ -454,14 +455,37 @@ const AIExerciseGeneratorScreen: React.FC = () => {
               </div>
             </div>
 
-            <Button
-              onClick={handleGenerate}
-              isLoading={isLoading}
-              className="w-full py-3 text-base flex items-center justify-center gap-2 mt-6"
-            >
-              <Sparkles className="w-5 h-5 animate-pulse" />
-              {language === 'pl' ? 'Generuj zdania przez AI' : 'Generate sentences with AI'}
-            </Button>
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-sm font-bold text-content-muted mb-2">
+                  {language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}
+                </label>
+                <div className="flex gap-2">
+                  {[5, 10, 15, 20].map((num) => (
+                    <button
+                      key={num}
+                      onClick={() => setNumSentences(num)}
+                      className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${
+                        numSentences === num 
+                          ? 'bg-primary text-black' 
+                          : 'bg-base-200 border border-base-300 text-content-muted hover:text-white'
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <Button
+                onClick={handleGenerate}
+                isLoading={isLoading}
+                className="w-full py-3 text-base flex items-center justify-center gap-2 mt-2"
+              >
+                <Sparkles className="w-5 h-5 animate-pulse" />
+                {language === 'pl' ? 'Generuj zdania przez AI' : 'Generate sentences with AI'}
+              </Button>
+            </div>
           </Card>
         </div>
       )}
