@@ -144,12 +144,27 @@ service cloud.firestore {
     }
 
     function isValidLessonRecord(data) {
-      return hasRequiredFields(['studentId', 'date', 'topic', 'words', 'summary', 'createdAt']) &&
-             hasOnlyAllowedFields(['studentId', 'date', 'topic', 'words', 'summary', 'createdAt']) &&
+      return hasRequiredFields(['studentId', 'date', 'topic', 'vocabularyText', 'createdAt', 'updatedAt']) &&
+             hasOnlyAllowedFields(['studentId', 'date', 'topic', 'vocabularyText', 'lessonSummary', 'vocabularySetId', 'createdAt', 'updatedAt']) &&
              validStringLength('studentId', 1, 100) &&
              isValidSimpleDateString(data.date) &&
              validStringLength('topic', 1, 200) &&
-             isValidDateString(data.createdAt);
+             isValidDateString(data.createdAt) &&
+             isValidDateString(data.updatedAt);
+    }
+
+    function isValidVocabularySet(data) {
+      return hasRequiredFields(['studentId', 'lessonRecordId', 'title', 'date', 'topic', 'vocabularyText', 'itemCount', 'status', 'source', 'createdAt', 'updatedAt']) &&
+             hasOnlyAllowedFields(['studentId', 'lessonRecordId', 'title', 'date', 'topic', 'vocabularyText', 'itemCount', 'status', 'source', 'createdAt', 'updatedAt']) &&
+             validStringLength('studentId', 1, 100) &&
+             validStringLength('lessonRecordId', 1, 100) &&
+             validStringLength('title', 1, 200) &&
+             isValidSimpleDateString(data.date) &&
+             data.itemCount is number &&
+             data.status in ['draft', 'ready'] &&
+             data.source == 'lesson_record' &&
+             isValidDateString(data.createdAt) &&
+             isValidDateString(data.updatedAt);
     }
 
     // ===============================================================
@@ -196,6 +211,20 @@ service cloud.firestore {
         allow update: if isAdmin() && isValidLessonRecord(request.resource.data);
         allow delete: if isAdmin();
       }
+
+      match /vocabularySets/{setId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isAdmin() && isValidVocabularySet(request.resource.data);
+        allow update: if isAdmin() && isValidVocabularySet(request.resource.data);
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /vocabulary/{vocabId} {
+      allow read: if request.auth != null && (resource.data.studentId == request.auth.uid || isAdmin());
+      // For create/update, we validate studentId is set to the user or it's an admin
+      allow create, update: if request.auth != null && (request.resource.data.studentId == request.auth.uid || isAdmin());
+      allow delete: if request.auth != null && (resource.data.studentId == request.auth.uid || isAdmin());
     }
 
     match /sets/{setId} {

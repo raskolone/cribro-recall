@@ -25,10 +25,10 @@ export const importVocabularyFromLessons = async (studentId: string): Promise<{ 
     for (let i = 0; i < lessons.length; i++) {
       const lesson = lessons[i];
       const lessonNumber = i + 1; // 1-based index
-      if (!lesson.words) continue;
+      if (!lesson.vocabularyText) continue;
 
       // Parse words: recognize commas or newlines
-      const rawItems = lesson.words.split(/[\n,;]+/).map(item => item.trim()).filter(item => item.length > 0);
+      const rawItems = lesson.vocabularyText.split(/[\n,;]+/).map(item => item.trim()).filter(item => item.length > 0);
 
       for (const rawItem of rawItems) {
         // Try to split into english and polish (usually separated by -, =, or :)

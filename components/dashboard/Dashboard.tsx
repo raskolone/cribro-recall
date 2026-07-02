@@ -98,6 +98,38 @@ const Dashboard: React.FC = () => {
     localStorage.setItem('checked_sets', JSON.stringify(updated));
   };
 
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isProfileMenuOpen) {
+          setIsProfileMenuOpen(false);
+          return;
+        }
+        if (isSidebarOpen) {
+          setIsSidebarOpen(false);
+          return;
+        }
+
+        const openModals = document.querySelectorAll('.fixed.inset-0.z-50');
+        let hasActiveModal = false;
+        openModals.forEach(el => {
+          if (!el.classList.contains('bg-transparent')) { // simple heuristic, just check if it's a real modal
+            hasActiveModal = true;
+          }
+        });
+        
+        if (hasActiveModal) return;
+
+        if (view !== 'dashboard') {
+          setView('dashboard');
+          setPracticeView(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [view, isProfileMenuOpen, isSidebarOpen]);
+
   const isRevisionDue = useMemo(() => {
     if (difficultWords.length < 4) return false;
     if (!lastRevisionDate) return true;
@@ -189,43 +221,37 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-transparent transition-colors duration-300 overflow-hidden">
-      {user?.role === 'admin' && (
-        <Sidebar 
-          currentView={view} 
-          onNavigate={(newView) => {
-            setView(newView)
-            setPracticeView(null)
-          }} 
-          onStartPractice={startPractice}
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          isDesktopCollapsed={isDesktopCollapsed}
-        />
-      )}
+      <Sidebar 
+        currentView={view} 
+        onNavigate={(newView) => {
+          setView(newView)
+          setPracticeView(null)
+        }} 
+        onStartPractice={startPractice}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        isDesktopCollapsed={isDesktopCollapsed}
+      />
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <header className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
-            {user?.role === 'admin' && (
-              <>
-                <button 
-                  onClick={() => setIsSidebarOpen(true)}
-                  className="md:hidden p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
-                <button 
-                  onClick={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
-                  className="hidden md:block p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5 transition-colors"
-                  title={isDesktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
-              </>
-            )}
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="md:hidden p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <button 
+              onClick={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
+              className="hidden md:block p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+              title={isDesktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
               Welcome, {user?.username}! 
             </h1>

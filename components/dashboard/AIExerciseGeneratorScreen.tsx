@@ -5,7 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { generateTranslationExercises, evaluateTranslations } from '../../services/geminiService';
-import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord } from '../../types';
+import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet } from '../../types';
+import { getVocabularySetsForStudent } from '../../services/lessonRecord';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { 
@@ -72,6 +73,15 @@ const AIExerciseGeneratorScreen: React.FC = () => {
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
   const [activeSentenceIndex, setActiveSentenceIndex] = useState<number>(0);
   const [step, setStep] = useState<'setup' | 'practice' | 'results'>('setup');
+  const [vocabularySets, setVocabularySets] = useState<VocabularySet[]>([]);
+
+  useEffect(() => {
+    if (user?.id) {
+      getVocabularySetsForStudent(user.id)
+        .then(setVocabularySets)
+        .catch(console.error);
+    }
+  }, [user?.id]);
 
   // Filter out sets assigned to the student (assignedByTeacher or belongs to user)
   const availableSets = sets.filter(s => s.assignedByTeacher || s.userId);
@@ -116,7 +126,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
           
           if (lrList.length > 0) {
             lessonContextString = lrList.map((lr, idx) => 
-              `Lesson ${idx + 1} (${lr.date}): Topic: ${lr.topic}. Summary: ${lr.summary}. Words covered: ${lr.words}`
+              `Lesson ${idx + 1} (${lr.date}): Topic: ${lr.topic}. Summary: ${lr.lessonSummary || ''}. Words covered: ${lr.vocabularyText || ''}`
             ).join('\n\n');
           }
         } catch (lrErr) {
@@ -126,21 +136,29 @@ const AIExerciseGeneratorScreen: React.FC = () => {
 
       // Extract words from chosen set if applicable
       if (selectedSetId !== 'general') {
-        let setsToProcess: FlashcardSet[] = [];
-        if (selectedSetId === 'all') {
-          setsToProcess = availableSets;
+        if (selectedSetId.startsWith('vocab-')) {
+          const matchedVocab = vocabularySets.find(s => `vocab-${s.id}` === selectedSetId);
+          if (matchedVocab && matchedVocab.vocabularyText) {
+             const items = matchedVocab.vocabularyText.split(/[\n,;]+/).map(i => i.trim()).filter(i => i.length > 0);
+             wordsToUse = Array.from(new Set(items)).slice(0, 15);
+          }
         } else {
-          const matchedSet = availableSets.find(s => s.id === selectedSetId);
-          if (matchedSet) setsToProcess = [matchedSet];
-        }
+          let setsToProcess: FlashcardSet[] = [];
+          if (selectedSetId === 'all') {
+            setsToProcess = availableSets;
+          } else {
+            const matchedSet = availableSets.find(s => s.id === selectedSetId);
+            if (matchedSet) setsToProcess = [matchedSet];
+          }
 
-        // Fetch cards for each chosen set
-        const allCardsPromises = setsToProcess.map(s => getFlashcards(s.id));
-        const allCardsLists = await Promise.all(allCardsPromises);
-        const allCards = allCardsLists.flat();
-        
-        // Pick unique words/terms
-        wordsToUse = Array.from(new Set(allCards.map(c => c.term))).slice(0, 15);
+          // Fetch cards for each chosen set
+          const allCardsPromises = setsToProcess.map(s => getFlashcards(s.id));
+          const allCardsLists = await Promise.all(allCardsPromises);
+          const allCards = allCardsLists.flat();
+          
+          // Pick unique words/terms
+          wordsToUse = Array.from(new Set(allCards.map(c => c.term))).slice(0, 15);
+        }
       }
 
       // Call Gemini API service function
@@ -402,6 +420,22 @@ const AIExerciseGeneratorScreen: React.FC = () => {
                       </label>
                     );
                   })}
+
+                  {vocabularySets.map(set => (
+                    <label key={`vocab-${set.id}`} className="flex items-center gap-3 p-3 bg-base-200 rounded-lg border border-base-300 cursor-pointer hover:border-white/10 transition-colors">
+                      <input 
+                        type="radio" 
+                        name="vocabSource" 
+                        checked={selectedSetId === `vocab-${set.id}`} 
+                        onChange={() => setSelectedSetId(`vocab-${set.id}`)}
+                        className="text-primary focus:ring-primary/50 bg-base-300 border-base-300"
+                      />
+                      <div className="text-sm">
+                        <div className="font-bold">{set.title}</div>
+                        <div className="text-xs text-amber-500 italic">Lesson record vocabulary ({set.itemCount} words)</div>
+                      </div>
+                    </label>
+                  ))}
 
                   <label className="flex items-center gap-3 p-3 bg-base-200 rounded-lg border border-base-300 cursor-pointer hover:border-white/10 transition-colors">
                     <input 

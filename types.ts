@@ -150,8 +150,25 @@ export interface LessonRecord {
   studentId: string;
   date: string;
   topic: string;
-  words: string;
-  summary: string;
-  createdAt: any;
+  vocabularyText: string;
+  lessonSummary?: string;
+  vocabularySetId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VocabularySet {
+  id: string;
+  studentId: string;
+  lessonRecordId: string;
+  title: string;
+  date: string;
+  topic: string;
+  vocabularyText: string;
+  itemCount: number;
+  status: "draft" | "ready";
+  source: "lesson_record";
+  createdAt: string;
+  updatedAt: string;
 }
 

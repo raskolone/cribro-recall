@@ -45,7 +45,7 @@ const LessonHistory: React.FC = () => {
   const handleGenerateHomework = async (lesson: LessonRecord) => {
     setGeneratingHomeworkFor(lesson.id);
     try {
-      const hw = await generateHomework(lesson.topic, lesson.summary, lesson.words || '');
+      const hw = await generateHomework(lesson.topic, lesson.lessonSummary || '', lesson.vocabularyText || '');
       setGeneratedHomework(prev => ({ ...prev, [lesson.id]: hw }));
     } catch (error) {
       console.error('Error generating homework:', error);
@@ -105,14 +105,14 @@ const LessonHistory: React.FC = () => {
               <h4 className="font-bold text-white pr-12">{lesson.topic}</h4>
               <span className="text-xs font-mono text-content-muted">{lesson.date}</span>
             </div>
-            <div className="text-sm text-white/80 mb-4 whitespace-pre-wrap">{lesson.summary}</div>
+            <div className="text-sm text-white/80 mb-4 whitespace-pre-wrap">{lesson.lessonSummary}</div>
             
-            {lesson.words && (
+            {lesson.vocabularyText && (
               <div className="mt-2 pt-2 border-t border-white/5 mb-4">
                 <span className="text-xs text-content-muted font-bold block mb-1">
                   {language === 'pl' ? 'Słownictwo z lekcji:' : 'Lesson vocabulary:'}
                 </span>
-                <span className="text-xs text-white">{lesson.words}</span>
+                <span className="text-xs text-white">{lesson.vocabularyText}</span>
               </div>
             )}
 

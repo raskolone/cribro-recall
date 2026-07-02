@@ -53,8 +53,8 @@ const AdminPanel: React.FC = () => {
       setEditingRecordId(record.id);
       setLessonFormDate(record.date);
       setLessonFormTopic(record.topic);
-      setLessonFormWords(record.words || '');
-      setLessonFormSummary(record.summary || '');
+      setLessonFormWords(record.vocabularyText || (record as any).words || '');
+      setLessonFormSummary(record.lessonSummary || (record as any).summary || '');
     } else {
       setEditingRecordId(null);
       setLessonFormDate(new Date().toISOString().split('T')[0]);
@@ -331,24 +331,50 @@ const AdminPanel: React.FC = () => {
     setIsSavingLessonRecord(true);
 
     try {
-      const recordId = editingRecordId || `lesson-${Date.now()}`;
-      const recordRef = doc(db, `users/${selectedUser.id}/lessonRecords/${recordId}`);
-      
-      const newRecord: Omit<LessonRecord, 'id'> = {
-        studentId: selectedUser.id,
-        date: lessonFormDate,
-        topic: lessonFormTopic,
-        words: lessonFormWords,
-        summary: lessonFormSummary,
-        createdAt: editingRecordId ? lessonRecords.find(r => r.id === editingRecordId)?.createdAt || new Date().toISOString() : new Date().toISOString()
-      };
-
-      await setDoc(recordRef, newRecord);
-
       if (editingRecordId) {
-        setLessonRecords(lessonRecords.map(r => r.id === recordId ? { id: recordId, ...newRecord } : r));
+        const recordId = editingRecordId;
+        const recordRef = doc(db, `users/${selectedUser.id}/lessonRecords/${recordId}`);
+        const existingRecord = lessonRecords.find(r => r.id === editingRecordId);
+        
+        const updatedRecord: Omit<LessonRecord, 'id'> = {
+          studentId: selectedUser.id,
+          date: lessonFormDate,
+          topic: lessonFormTopic,
+          vocabularyText: lessonFormWords,
+          lessonSummary: lessonFormSummary,
+          createdAt: existingRecord?.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        if (existingRecord?.vocabularySetId) {
+          updatedRecord.vocabularySetId = existingRecord.vocabularySetId;
+        }
+
+        await setDoc(recordRef, updatedRecord);
+        setLessonRecords(lessonRecords.map(r => r.id === recordId ? { id: recordId, ...updatedRecord } : r));
       } else {
-        setLessonRecords([{ id: recordId, ...newRecord }, ...lessonRecords]);
+        const { createLessonRecordWithVocabularySet } = await import('../../services/lessonRecord');
+        const { lessonRecordId, vocabularySetId } = await createLessonRecordWithVocabularySet({
+          studentId: selectedUser.id,
+          date: lessonFormDate,
+          topic: lessonFormTopic,
+          vocabularyText: lessonFormWords,
+          lessonSummary: lessonFormSummary,
+        });
+        
+        // We need to fetch it again or construct it to push to state
+        const newRecord: LessonRecord = {
+          id: lessonRecordId,
+          studentId: selectedUser.id,
+          date: lessonFormDate,
+          topic: lessonFormTopic,
+          vocabularyText: lessonFormWords,
+          lessonSummary: lessonFormSummary,
+          vocabularySetId: vocabularySetId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setLessonRecords([newRecord, ...lessonRecords]);
       }
 
       closeLessonRecordModal();
@@ -628,7 +654,7 @@ const AdminPanel: React.FC = () => {
                         <span className="text-xs font-mono text-content-muted">{record.date}</span>
                       </div>
                       <h4 className="font-bold mb-2 line-clamp-1">{record.topic}</h4>
-                      <div className="text-sm text-content-muted line-clamp-2">{record.summary}</div>
+                      <div className="text-sm text-content-muted line-clamp-2">{record.lessonSummary || (record as any).summary}</div>
                     </Card>
                   ))}
                 </div>
