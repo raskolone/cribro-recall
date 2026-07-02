@@ -241,12 +241,14 @@ export const generateTranslationExercises = async (
   level: string,
   words: string[],
   customPrompt?: string,
-  lessonContext?: string
+  lessonContext?: string,
+  studentProfileContext?: string
 ): Promise<TranslationExercise[]> => {
   const basePrompt = `Generate a list of 5 unique sentences in Polish for a student to translate into English.
   The exercises must be suitable for CEFR level: ${level}.
   ${words.length > 0 ? `The sentences should incorporate or test the following English vocabulary/concepts: ${words.join(', ')}.` : ''}
   ${lessonContext ? `Here are some summaries of the student's recent lessons to help personalize the content:\n${lessonContext}` : ''}
+  ${studentProfileContext ? `Here are details about the student's profile (interests, weaknesses, goals):\n${studentProfileContext}\nPlease use these details to personalize the context of the sentences (e.g. if they like football, make a sentence about football).` : ''}
   For each sentence, provide the Polish sentence, the correct English translation, and a helpful Polish hint.`;
 
   const finalPrompt = customPrompt ? `${customPrompt}\n\nContext and Constraints:\n${basePrompt}` : basePrompt;

@@ -20,10 +20,10 @@ const LessonHistory: React.FC = () => {
 
   useEffect(() => {
     const fetchLessons = async () => {
-      if (!user?.uid) return;
+      if (!user?.id) return;
       try {
         const q = query(
-          collection(db, `users/${user.uid}/lessonRecords`),
+          collection(db, `users/${user.id}/lessonRecords`),
           orderBy('date', 'desc')
         );
         const snapshot = await getDocs(q);

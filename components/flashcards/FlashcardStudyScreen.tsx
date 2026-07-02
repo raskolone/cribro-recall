@@ -456,7 +456,7 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t }: any) =
           return (
             <Button 
               key={i} 
-              variant={selectedOption === null ? "secondary" : "outline"}
+              variant="secondary"
               className={btnClass} 
               onClick={() => handleAnswer(option)}
               disabled={selectedOption !== null}

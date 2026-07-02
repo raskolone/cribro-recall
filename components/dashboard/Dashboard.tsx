@@ -176,79 +176,87 @@ const Dashboard: React.FC = () => {
     // Default to dashboard view
     return (
       <div className="space-y-6">
-        <ProgressOverview />
-        
-        {dueWords.length >= 4 && (
-          <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 dark:from-green-500/20 dark:to-emerald-500/20 p-6 rounded-2xl shadow-xl border border-green-500/20 dark:border-green-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors duration-300">
-            <div>
-              <h3 className="text-lg font-bold text-green-600 dark:text-green-400">Spaced Repetition Review Due!</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">You have {dueWords.length} words scheduled for review today.</p>
-            </div>
-            <Button onClick={() => startPractice('flashcards', false, true)} className="bg-green-600 hover:bg-green-700 border-green-600">
-              Review Now
-            </Button>
-          </div>
-        )}
-        {isRevisionDue && (
-          <div className="bg-gradient-to-r from-primary/10 to-secondary/10 dark:from-primary/20 dark:to-secondary/20 p-6 rounded-2xl shadow-xl border border-primary/20 dark:border-primary/40 flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors duration-300">
-            <div>
-              <h3 className="text-lg font-bold text-primary">Time for your {frequency.toLowerCase()} revision!</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">You have {difficultWords.length} difficult words waiting to be practiced.</p>
-            </div>
-            <Button onClick={() => startPractice('flashcards', true)}>
-              Start Revision
-            </Button>
-          </div>
-        )}
+        {user?.role === 'admin' ? (
+          <>
+            <ProgressOverview />
+            
+            {dueWords.length >= 4 && (
+              <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 dark:from-green-500/20 dark:to-emerald-500/20 p-6 rounded-2xl shadow-xl border border-green-500/20 dark:border-green-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors duration-300">
+                <div>
+                  <h3 className="text-lg font-bold text-green-600 dark:text-green-400">Spaced Repetition Review Due!</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">You have {dueWords.length} words scheduled for review today.</p>
+                </div>
+                <Button onClick={() => startPractice('flashcards', false, true)} className="bg-green-600 hover:bg-green-700 border-green-600">
+                  Review Now
+                </Button>
+              </div>
+            )}
+            {isRevisionDue && (
+              <div className="bg-gradient-to-r from-primary/10 to-secondary/10 dark:from-primary/20 dark:to-secondary/20 p-6 rounded-2xl shadow-xl border border-primary/20 dark:border-primary/40 flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors duration-300">
+                <div>
+                  <h3 className="text-lg font-bold text-primary">Time for your {frequency.toLowerCase()} revision!</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">You have {difficultWords.length} difficult words waiting to be practiced.</p>
+                </div>
+                <Button onClick={() => startPractice('flashcards', true)}>
+                  Start Revision
+                </Button>
+              </div>
+            )}
 
-        {user?.role !== 'admin' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <AssignedTasks onStudySet={(setId) => { setActiveSetId(setId); setView('flashcard-study'); }} />
-            <LessonHistory />
-          </div>
+            <div className="grid grid-cols-1 gap-6">
+              <VocabularyGenerator />
+              <WordList />
+            </div>
+          </>
+        ) : (
+          <>
+            <AIExerciseGeneratorScreen />
+            <ProgressOverview />
+          </>
         )}
-
-        <div className="grid grid-cols-1 gap-6">
-          <VocabularyGenerator />
-          <WordList />
-        </div>
       </div>
     );
   };
 
   return (
     <div className="flex h-screen bg-transparent transition-colors duration-300 overflow-hidden">
-      <Sidebar 
-        currentView={view} 
-        onNavigate={(newView) => {
-          setView(newView)
-          setPracticeView(null)
-        }} 
-        onStartPractice={startPractice}
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        isDesktopCollapsed={isDesktopCollapsed}
-      />
+      {user?.role === 'admin' && (
+        <Sidebar 
+          currentView={view} 
+          onNavigate={(newView) => {
+            setView(newView)
+            setPracticeView(null)
+          }} 
+          onStartPractice={startPractice}
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          isDesktopCollapsed={isDesktopCollapsed}
+        />
+      )}
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <header className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="md:hidden p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <button 
-              onClick={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
-              className="hidden md:block p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5 transition-colors"
-              title={isDesktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+            {user?.role === 'admin' && (
+              <>
+                <button 
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="md:hidden p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                <button 
+                  onClick={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
+                  className="hidden md:block p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+                  title={isDesktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+              </>
+            )}
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
               Welcome, {user?.username}! 
             </h1>

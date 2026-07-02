@@ -15,6 +15,10 @@ export interface User {
   loginCount?: number;
   lastLoginDate?: string;
   createdAt?: string;
+  firstName?: string;
+  lastName?: string;
+  level?: string;
+  description?: string;
 }
 
 export interface WordSet {

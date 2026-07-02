@@ -117,15 +117,20 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['username', 'role', 'email', 'streakCount', 'lastStreakDate', 'createdAt', 'loginCount', 'lastLoginDate']) &&
+      return hasOnlyAllowedFields(['id', 'username', 'role', 'email', 'photoURL', 'streakCount', 'lastStreakDate', 'createdAt', 'loginCount', 'lastLoginDate', 'firstName', 'lastName', 'level', 'description']) &&
              validStringLength('username', 1, 100) &&
              validStringLength('email', 0, 100) &&
              data.role in ['admin', 'user'] &&
+             (!('photoURL' in data) || data.photoURL is string) &&
              (!('streakCount' in data) || data.streakCount is number) &&
              (!('lastStreakDate' in data) || isValidDateString(data.lastStreakDate)) &&
              (!('createdAt' in data) || isValidDateString(data.createdAt)) &&
              (!('loginCount' in data) || data.loginCount is number) &&
-             (!('lastLoginDate' in data) || isValidDateString(data.lastLoginDate));
+             (!('lastLoginDate' in data) || isValidDateString(data.lastLoginDate)) &&
+             isValidOptionalString('firstName', 0, 100) &&
+             isValidOptionalString('lastName', 0, 100) &&
+             isValidOptionalString('level', 0, 50) &&
+             isValidOptionalString('description', 0, 1000);
     }
 
     function isValidPracticeLog(data) {

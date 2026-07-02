@@ -25,9 +25,10 @@ import {
   Play
 } from 'lucide-react';
 
-const DEFAULT_GENERATION_PROMPT = `Wygeneruj dokładnie 5 unikalnych zdań po polsku do przetłumaczenia na język angielski.
+const DEFAULT_GENERATION_PROMPT = `Jesteś wirtualnym nauczycielem języka angielskiego. Wygeneruj dokładnie 5 unikalnych zdań po polsku, które kursant będzie musiał przetłumaczyć na język angielski.
 Zdania powinny być naturalne, używane w codziennym życiu i dostosowane do wybranego poziomu CEFR.
-Jeśli uczeń ma przypisane słówka, wpleć je w te zdania naturalnie.
+Pobierz zestaw słów (jeśli został przypisany przez nauczyciela) i na tej podstawie wygeneruj zdania. Musisz wykorzystać wszystkie dostępne informacje w danym zestawie (np. kontekst słówek).
+W późniejszym czasie otrzymasz dodatkowe informacje o kursancie - jeśli to pole jest puste lub niedostępne, po prostu je pomiń.
 Zapewnij również wskazówkę dla każdego zdania po polsku, sugerując np. przydatne słownictwo lub strukturę gramatyczną.`;
 
 const DEFAULT_EVALUATION_PROMPT = `Przeanalizuj i oceń tłumaczenie angielskie wykonane przez ucznia dla każdego zdania po polsku.
@@ -42,13 +43,19 @@ const AIExerciseGeneratorScreen: React.FC = () => {
 
   // Settings states
   const [selectedSetId, setSelectedSetId] = useState<string>('all');
-  const [level, setLevel] = useState<string>('B1');
+  const [level, setLevel] = useState<string>(user?.level || 'B1');
   const [customGenPrompt, setCustomGenPrompt] = useState<string>(() => {
     return localStorage.getItem('ai_custom_gen_prompt') || DEFAULT_GENERATION_PROMPT;
   });
   const [customEvalPrompt, setCustomEvalPrompt] = useState<string>(() => {
     return localStorage.getItem('ai_custom_eval_prompt') || DEFAULT_EVALUATION_PROMPT;
   });
+
+  useEffect(() => {
+    if (user?.level) {
+      setLevel(user.level);
+    }
+  }, [user?.level]);
 
   // App states
   const [exercises, setExercises] = useState<TranslationExercise[]>([]);
@@ -102,7 +109,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
       // Fetch user's recent lesson records for context
       if (user) {
         try {
-          const lessonRecordsRef = collection(db, `users/${user.uid}/lessonRecords`);
+          const lessonRecordsRef = collection(db, `users/${user.id}/lessonRecords`);
           const qLR = query(lessonRecordsRef, orderBy('date', 'desc'), limit(3));
           const lrSnapshot = await getDocs(qLR);
           const lrList = lrSnapshot.docs.map(doc => doc.data() as LessonRecord);
@@ -137,7 +144,8 @@ const AIExerciseGeneratorScreen: React.FC = () => {
       }
 
       // Call Gemini API service function
-      const generated = await generateTranslationExercises(level, wordsToUse, customGenPrompt, lessonContextString);
+      const studentProfileContext = user?.description ? `Student profile details (use to personalize sentences if relevant): ${user.description}` : '';
+      const generated = await generateTranslationExercises(level, wordsToUse, customGenPrompt, lessonContextString, studentProfileContext);
       
       if (generated && generated.length > 0) {
         setExercises(generated);
@@ -223,15 +231,17 @@ const AIExerciseGeneratorScreen: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="secondary" 
-            size="sm" 
-            onClick={() => setIsConfigOpen(!isConfigOpen)}
-            className="flex items-center gap-1.5"
-          >
-            <Settings className="w-4 h-4" />
-            {language === 'pl' ? 'Konfiguracja Promptu' : 'Prompt Setup'}
-          </Button>
+          {user?.role === 'admin' && (
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              onClick={() => setIsConfigOpen(!isConfigOpen)}
+              className="flex items-center gap-1.5"
+            >
+              <Settings className="w-4 h-4" />
+              {language === 'pl' ? 'Konfiguracja Promptu' : 'Prompt Setup'}
+            </Button>
+          )}
           {step !== 'setup' && (
             <Button 
               variant="secondary" 
@@ -245,7 +255,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
       </div>
 
       {/* Prompts config panel */}
-      {isConfigOpen && (
+      {user?.role === 'admin' && isConfigOpen && (
         <Card className="p-5 border-amber-500/30 bg-amber-500/[0.02] space-y-4 animate-fade-in-up">
           <div className="flex justify-between items-center">
             <h3 className="font-bold text-amber-500 flex items-center gap-2 text-sm uppercase tracking-wider">
@@ -306,44 +316,34 @@ const AIExerciseGeneratorScreen: React.FC = () => {
       {step === 'setup' && (
         <div className="max-w-2xl mx-auto space-y-6">
           <Card className="p-6 md:p-8 space-y-6 border border-white/5 shadow-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <BookOpen className="w-6 h-6" />
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">
+                    {language === 'pl' ? 'Skonfiguruj ćwiczenie' : 'Setup your practice session'}
+                  </h2>
+                  <p className="text-xs text-content-muted">
+                    {language === 'pl' ? 'Wybierz poziom oraz źródło słownictwa' : 'Choose your target level and source vocabulary'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold">
-                  {language === 'pl' ? 'Skonfiguruj ćwiczenie' : 'Setup your practice session'}
-                </h2>
-                <p className="text-xs text-content-muted">
-                  {language === 'pl' ? 'Wybierz poziom oraz źródło słownictwa' : 'Choose your target level and source vocabulary'}
-                </p>
+              <div className="flex flex-col items-end">
+                <select 
+                  value={level} 
+                  onChange={(e) => setLevel(e.target.value)}
+                  className="bg-base-200 border border-base-300 text-sm font-bold text-primary rounded-lg p-2 outline-none focus:border-primary/50 cursor-pointer"
+                >
+                  {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((lvl) => (
+                    <option key={lvl} value={lvl}>{lvl}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
             <div className="space-y-4">
-              {/* Level selection */}
-              <div>
-                <label className="block text-sm font-bold text-content-muted mb-2">
-                  {language === 'pl' ? 'Poziom zaawansowania (CEFR)' : 'CEFR Level'}
-                </label>
-                <div className="grid grid-cols-6 gap-2">
-                  {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((lvl) => (
-                    <button
-                      key={lvl}
-                      type="button"
-                      onClick={() => setLevel(lvl)}
-                      className={`py-2 text-center rounded-lg font-bold border transition-all duration-200 ${
-                        level === lvl
-                          ? 'bg-primary text-black border-primary font-extrabold shadow-[0_0_12px_rgba(114,240,180,0.3)]'
-                          : 'bg-base-200 border-base-300 text-content-muted hover:text-white hover:border-white/20'
-                      }`}
-                    >
-                      {lvl}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Source selection */}
               <div>
                 <label className="block text-sm font-bold text-content-muted mb-2">
@@ -364,21 +364,28 @@ const AIExerciseGeneratorScreen: React.FC = () => {
                     </div>
                   </label>
 
-                  {availableSets.map(set => (
-                    <label key={set.id} className="flex items-center gap-3 p-3 bg-base-200 rounded-lg border border-base-300 cursor-pointer hover:border-white/10 transition-colors">
-                      <input 
-                        type="radio" 
-                        name="vocabSource" 
-                        checked={selectedSetId === set.id} 
-                        onChange={() => setSelectedSetId(set.id)}
-                        className="text-primary focus:ring-primary/50 bg-base-300 border-base-300"
-                      />
-                      <div className="text-sm">
-                        <div className="font-bold">{set.title}</div>
-                        {set.lessonTopic && <div className="text-xs text-amber-500 italic">Topic: {set.lessonTopic}</div>}
-                      </div>
-                    </label>
-                  ))}
+                  {availableSets.map(set => {
+                    const isNewSet = set.title.toLowerCase().includes('nowy zestaw');
+                    const displayTitle = isNewSet && set.lessonTopic 
+                      ? (language === 'pl' ? `Słownictwo z: ${set.lessonTopic}` : `Vocabulary from: ${set.lessonTopic}`)
+                      : set.title;
+                      
+                    return (
+                      <label key={set.id} className="flex items-center gap-3 p-3 bg-base-200 rounded-lg border border-base-300 cursor-pointer hover:border-white/10 transition-colors">
+                        <input 
+                          type="radio" 
+                          name="vocabSource" 
+                          checked={selectedSetId === set.id} 
+                          onChange={() => setSelectedSetId(set.id)}
+                          className="text-primary focus:ring-primary/50 bg-base-300 border-base-300"
+                        />
+                        <div className="text-sm">
+                          <div className="font-bold">{displayTitle}</div>
+                          {!isNewSet && set.lessonTopic && <div className="text-xs text-amber-500 italic">Topic: {set.lessonTopic}</div>}
+                        </div>
+                      </label>
+                    );
+                  })}
 
                   <label className="flex items-center gap-3 p-3 bg-base-200 rounded-lg border border-base-300 cursor-pointer hover:border-white/10 transition-colors">
                     <input 

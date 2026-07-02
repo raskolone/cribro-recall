@@ -3,6 +3,7 @@ import { collection, getDocs, doc, deleteDoc, query, orderBy, setDoc, writeBatch
 import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
 import { User, PracticeLog, FlashcardSet, LessonRecord } from '../../types';
 import { useFlashcards } from '../../context/FlashcardContext';
+import { importVocabularyFromLessons } from '../../services/vocabularyService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 
@@ -45,6 +46,7 @@ const AdminPanel: React.FC = () => {
   const [lessonFormSummary, setLessonFormSummary] = useState('');
   const [isSavingLessonRecord, setIsSavingLessonRecord] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [isImportingVocabulary, setIsImportingVocabulary] = useState(false);
 
   const openLessonRecordModal = (record?: LessonRecord) => {
     if (record) {
@@ -71,6 +73,16 @@ const AdminPanel: React.FC = () => {
     setLessonFormSummary('');
   };
 
+
+  // User Profile Edit States
+  const [activeTab, setActiveTab] = useState<'stats' | 'profile'>('stats');
+  const [profileForm, setProfileForm] = useState({
+    firstName: '',
+    lastName: '',
+    level: '',
+    description: ''
+  });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -161,7 +173,36 @@ const AdminPanel: React.FC = () => {
 
   const handleSelectUser = (user: UserWithId) => {
     setSelectedUser(user);
+    setProfileForm({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      level: user.level || '',
+      description: user.description || ''
+    });
     fetchUserLogsAndStats(user.id);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!selectedUser) return;
+    setIsSavingProfile(true);
+    try {
+      const userRef = doc(db, 'users', selectedUser.id);
+      await setDoc(userRef, {
+        firstName: profileForm.firstName,
+        lastName: profileForm.lastName,
+        level: profileForm.level,
+        description: profileForm.description
+      }, { merge: true });
+      
+      const updatedUser = { ...selectedUser, ...profileForm };
+      setSelectedUser(updatedUser);
+      setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
+      alert('Profile saved successfully!');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${selectedUser.id}`);
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -320,6 +361,20 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleImportVocabulary = async () => {
+    if (!selectedUser) return;
+    setIsImportingVocabulary(true);
+    try {
+      const result = await importVocabularyFromLessons(selectedUser.id);
+      alert(`Vocabulary imported successfully!\nAdded: ${result.added}\nSkipped (duplicates): ${result.skipped}`);
+    } catch (error) {
+      console.error('Error importing vocabulary:', error);
+      alert('Failed to import vocabulary. See console for details.');
+    } finally {
+      setIsImportingVocabulary(false);
+    }
+  };
+
   const executeAssignWordSet = async () => {
     if (!selectedUser || !selectedSetIdToAssign) return;
     setIsAssigningSet(true);
@@ -383,220 +438,290 @@ const AdminPanel: React.FC = () => {
     <div className="space-y-6">
       <h1 className="text-2xl font-extrabold tracking-tight mb-6">Teacher Panel</h1>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Users List */}
-        <Card className="lg:col-span-1 h-[calc(100vh-12rem)] overflow-y-auto relative">
-          <div className="flex justify-between items-center mb-4 sticky top-0 bg-base-200 z-10 py-2">
-            <h2 className="text-xl font-bold">Students</h2>
-            <Button size="sm" onClick={() => setShowCreateStudentModal(true)}>+ Add Student</Button>
-          </div>
-          <div className="space-y-2">
-            {users.map(user => (
-              <div 
-                key={user.id} 
-                className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedUser?.id === user.id ? 'border-primary bg-primary/10' : 'border-base-300 hover:border-primary/50'}`}
-                onClick={() => handleSelectUser(user)}
-              >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="font-bold">{user.username}</div>
-                    <div className="text-xs text-content-muted">{user.email}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-1 rounded-full ${user.role === 'admin' ? 'bg-secondary/20 text-secondary' : 'bg-base-300 text-content-muted'}`}>
-                      {user.role === 'admin' ? 'teacher' : 'student'}
-                    </span>
-                  </div>
-                </div>
-              </div>
+      <Card className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-base-200/50">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto">
+          <label className="font-bold whitespace-nowrap">Select Student:</label>
+          <select 
+            value={selectedUser?.id || ''} 
+            onChange={(e) => {
+              const u = users.find(u => u.id === e.target.value);
+              if (u) handleSelectUser(u);
+            }}
+            className="w-full sm:w-64 bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
+          >
+            <option value="" disabled>-- Choose a student --</option>
+            {users.map(u => (
+              <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
             ))}
-          </div>
-        </Card>
+          </select>
+        </div>
+        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="text-sm font-mono text-content-muted">Total: {users.length}</div>
+          <Button size="sm" onClick={() => setShowCreateStudentModal(true)}>+ Add Student</Button>
+        </div>
+      </Card>
 
-        {/* User Details */}
-        <div className="lg:col-span-2 space-y-6">
-          {selectedUser ? (
-            <>
-              <Card>
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold">{selectedUser.username}</h2>
-                    <p className="text-content-muted">{selectedUser.email}</p>
-                    <div className="mt-2 text-sm text-content-muted flex flex-wrap gap-x-4 gap-y-2">
-                      <div><span className="font-bold text-white">Logins:</span> {selectedUser.loginCount || 0}</div>
-                      <div><span className="font-bold text-white">Last Login:</span> {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString() : 'Never'}</div>
-                      <div><span className="font-bold text-white">Exercises:</span> {practiceLogs.length}</div>
-                    </div>
+      {selectedUser ? (
+        <Card className="space-y-6">
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <h2 className="text-2xl font-bold">
+                {selectedUser.firstName || selectedUser.lastName ? `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() : selectedUser.username}
+              </h2>
+              <p className="text-content-muted">
+                {selectedUser.email} 
+                {selectedUser.level && <span className="ml-3 px-2 py-0.5 bg-primary/20 text-primary rounded text-xs uppercase font-bold">{selectedUser.level}</span>}
+              </p>
+              <div className="mt-2 text-sm text-content-muted flex flex-wrap gap-x-4 gap-y-2">
+                <div><span className="font-bold text-white">Logins:</span> {selectedUser.loginCount || 0}</div>
+                <div><span className="font-bold text-white">Last Login:</span> {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString() : 'Never'}</div>
+                <div><span className="font-bold text-white">Exercises:</span> {practiceLogs.length}</div>
+              </div>
+            </div>
+            <div className="relative">
+              {showAssignModal ? (
+                <div className="absolute right-0 top-0 bg-base-100 border border-base-300 rounded-lg p-4 shadow-xl z-10 w-80">
+                  <h4 className="font-bold mb-3">Select Set to Assign</h4>
+                  <select 
+                    className="w-full bg-base-200 border border-base-300 rounded p-2 mb-4 text-sm"
+                    value={selectedSetIdToAssign}
+                    onChange={(e) => {
+                      setSelectedSetIdToAssign(e.target.value);
+                      if (isLessonVocabulary) {
+                        const set = adminSets.find(s => s.id === e.target.value);
+                        if (set) setLessonTopic(set.title);
+                      }
+                    }}
+                  >
+                    <option value="" disabled>-- Select a word list --</option>
+                    {adminSets.map(set => (
+                      <option key={set.id} value={set.id}>
+                        {set.title} ({set.cardCount} cards)
+                      </option>
+                    ))}
+                  </select>
+                  
+                  <div className="flex items-center gap-2 mb-3">
+                    <input 
+                      type="checkbox" 
+                      id="isLesson" 
+                      checked={isLessonVocabulary}
+                      onChange={(e) => {
+                        setIsLessonVocabulary(e.target.checked);
+                        if (e.target.checked && selectedSetIdToAssign) {
+                          const set = adminSets.find(s => s.id === selectedSetIdToAssign);
+                          if (set) setLessonTopic(set.title);
+                        }
+                      }}
+                      className="rounded border-base-300 text-primary focus:ring-primary/50 bg-base-200"
+                    />
+                    <label htmlFor="isLesson" className="text-sm cursor-pointer select-none">Assign as Lesson Vocabulary</label>
                   </div>
-                  <div className="relative">
-                    {showAssignModal ? (
-                      <div className="absolute right-0 top-0 bg-base-100 border border-base-300 rounded-lg p-4 shadow-xl z-10 w-80">
-                        <h4 className="font-bold mb-3">Select Set to Assign</h4>
-                        <select 
-                          className="w-full bg-base-200 border border-base-300 rounded p-2 mb-4 text-sm"
-                          value={selectedSetIdToAssign}
-                          onChange={(e) => {
-                            setSelectedSetIdToAssign(e.target.value);
-                            if (isLessonVocabulary) {
-                              const set = adminSets.find(s => s.id === e.target.value);
-                              if (set) setLessonTopic(set.title);
-                            }
-                          }}
-                        >
-                          <option value="" disabled>-- Select a word list --</option>
-                          {adminSets.map(set => (
-                            <option key={set.id} value={set.id}>
-                              {set.title} ({set.cardCount} cards)
-                            </option>
-                          ))}
-                        </select>
-                        
-                        <div className="flex items-center gap-2 mb-3">
-                          <input 
-                            type="checkbox" 
-                            id="isLesson" 
-                            checked={isLessonVocabulary}
-                            onChange={(e) => {
-                              setIsLessonVocabulary(e.target.checked);
-                              if (e.target.checked && selectedSetIdToAssign) {
-                                const set = adminSets.find(s => s.id === selectedSetIdToAssign);
-                                if (set) setLessonTopic(set.title);
-                              }
-                            }}
-                            className="rounded border-base-300 text-primary focus:ring-primary/50 bg-base-200"
-                          />
-                          <label htmlFor="isLesson" className="text-sm cursor-pointer select-none">Assign as Lesson Vocabulary</label>
-                        </div>
 
-                        {isLessonVocabulary && (
-                          <div className="space-y-3 bg-base-200/50 p-3 rounded-lg border border-white/5 mb-4">
-                            <div>
-                              <label className="block text-xs font-bold text-content-muted mb-1">Lesson Date</label>
-                              <input 
-                                type="date" 
-                                value={lessonDate}
-                                onChange={(e) => setLessonDate(e.target.value)}
-                                className="w-full bg-base-200 border border-base-300 rounded p-1.5 outline-none focus:border-primary/50 text-sm"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-bold text-content-muted mb-1">Topic</label>
-                              <input 
-                                type="text" 
-                                value={lessonTopic}
-                                onChange={(e) => setLessonTopic(e.target.value)}
-                                placeholder="e.g. Travel vocabulary"
-                                className="w-full bg-base-200 border border-base-300 rounded p-1.5 outline-none focus:border-primary/50 text-sm"
-                              />
-                            </div>
-                          </div>
-                        )}
+                  {isLessonVocabulary && (
+                    <div className="space-y-3 bg-base-200/50 p-3 rounded-lg border border-white/5 mb-4">
+                      <div>
+                        <label className="block text-xs font-bold text-content-muted mb-1">Lesson Date</label>
+                        <input 
+                          type="date" 
+                          value={lessonDate}
+                          onChange={(e) => setLessonDate(e.target.value)}
+                          className="w-full bg-base-200 border border-base-300 rounded p-1.5 outline-none focus:border-primary/50 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-content-muted mb-1">Topic</label>
+                        <input 
+                          type="text" 
+                          value={lessonTopic}
+                          onChange={(e) => setLessonTopic(e.target.value)}
+                          placeholder="e.g. Travel vocabulary"
+                          className="w-full bg-base-200 border border-base-300 rounded p-1.5 outline-none focus:border-primary/50 text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
 
-                        <div className="flex justify-end gap-2">
-                          <Button variant="secondary" onClick={() => setShowAssignModal(false)} size="sm">
-                            Cancel
-                          </Button>
-                          <Button 
-                            onClick={executeAssignWordSet} 
-                            isLoading={isAssigningSet} 
-                            size="sm"
-                            disabled={!selectedSetIdToAssign || (isLessonVocabulary && (!lessonDate || !lessonTopic))}
-                          >
-                            Assign
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        <Button onClick={() => setShowAssignModal(true)} isLoading={isAssigningSet}>
-                          Assign Word Set
-                        </Button>
-                        <Button variant="secondary" onClick={() => setShowChangePasswordModal(true)}>
-                          Change Password
-                        </Button>
-                        <Button variant="secondary" className="text-red-500 hover:bg-red-500/10" onClick={() => setUserToDelete(selectedUser.id)}>
-                          Delete Account
-                        </Button>
-                      </div>
-                    )}
+                  <div className="flex justify-end gap-2">
+                    <Button variant="secondary" onClick={() => setShowAssignModal(false)} size="sm">
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={executeAssignWordSet} 
+                      isLoading={isAssigningSet} 
+                      size="sm"
+                      disabled={!selectedSetIdToAssign || (isLessonVocabulary && (!lessonDate || !lessonTopic))}
+                    >
+                      Assign
+                    </Button>
                   </div>
                 </div>
-                
-                {userStats && (
-                  <div className="grid grid-cols-3 gap-4 mb-8">
-                    <div className="bg-base-200/50 p-4 rounded-xl border border-white/5 text-center">
-                      <div className="text-sm text-content-muted mb-1 font-mono uppercase">Total Words</div>
-                      <div className="text-3xl font-display font-bold text-white">{userStats.totalWords}</div>
-                    </div>
-                    <div className="bg-base-200/50 p-4 rounded-xl border border-white/5 text-center">
-                      <div className="text-sm text-content-muted mb-1 font-mono uppercase">Mastery</div>
-                      <div className="text-3xl font-display font-bold text-primary">{userStats.masteryCount}%</div>
-                    </div>
-                    <div className="bg-base-200/50 p-4 rounded-xl border border-white/5 text-center">
-                      <div className="text-sm text-content-muted mb-1 font-mono uppercase">Difficult</div>
-                      <div className="text-3xl font-display font-bold text-amber-500">{userStats.difficultWords}</div>
-                    </div>
-                  </div>
-                )}
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <Button onClick={() => setShowAssignModal(true)} isLoading={isAssigningSet}>
+                    Assign Word Set
+                  </Button>
+                  <Button variant="secondary" onClick={() => setShowChangePasswordModal(true)}>
+                    Change Password
+                  </Button>
+                  <Button variant="secondary" className="text-red-500 hover:bg-red-500/10" onClick={() => setUserToDelete(selectedUser.id)}>
+                    Delete Account
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
 
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold">Lesson Records</h3>
+          <div className="flex border-b border-white/10 mb-6">
+            <button 
+              className={`px-4 py-2 font-bold text-sm transition-colors ${activeTab === 'stats' ? 'text-primary border-b-2 border-primary' : 'text-content-muted hover:text-white'}`}
+              onClick={() => setActiveTab('stats')}
+            >
+              Statystyki & Historia
+            </button>
+            <button 
+              className={`px-4 py-2 font-bold text-sm transition-colors ${activeTab === 'profile' ? 'text-primary border-b-2 border-primary' : 'text-content-muted hover:text-white'}`}
+              onClick={() => setActiveTab('profile')}
+            >
+              Profil kursanta
+            </button>
+          </div>
+
+          {activeTab === 'stats' && (
+            <>
+              {userStats && (
+                <div className="grid grid-cols-3 gap-4 mb-8">
+                  <div className="bg-base-200/50 p-4 rounded-xl border border-white/5 text-center">
+                    <div className="text-sm text-content-muted mb-1 font-mono uppercase">Total Words</div>
+                    <div className="text-3xl font-display font-bold text-white">{userStats.totalWords}</div>
+                  </div>
+                  <div className="bg-base-200/50 p-4 rounded-xl border border-white/5 text-center">
+                    <div className="text-sm text-content-muted mb-1 font-mono uppercase">Mastery</div>
+                    <div className="text-3xl font-display font-bold text-primary">{userStats.masteryCount}%</div>
+                  </div>
+                  <div className="bg-base-200/50 p-4 rounded-xl border border-white/5 text-center">
+                    <div className="text-sm text-content-muted mb-1 font-mono uppercase">Difficult</div>
+                    <div className="text-3xl font-display font-bold text-amber-500">{userStats.difficultWords}</div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold">Lesson Records</h3>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="secondary" onClick={handleImportVocabulary} isLoading={isImportingVocabulary}>Import Vocabulary</Button>
                   <Button size="sm" onClick={() => openLessonRecordModal()}>Add Record</Button>
                 </div>
-                {lessonRecords.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                    {lessonRecords.map((record, index) => (
-                      <Card 
-                        key={record.id} 
-                        className="cursor-pointer hover:border-primary/50 transition-colors bg-base-200/50"
-                        onClick={() => openLessonRecordModal(record)}
-                      >
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="font-mono text-xs uppercase tracking-wider text-primary mb-1">
-                            Lekcja {lessonRecords.length - index}
-                          </div>
-                          <span className="text-xs font-mono text-content-muted">{record.date}</span>
+              </div>
+              {lessonRecords.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                  {lessonRecords.map((record, index) => (
+                    <Card 
+                      key={record.id} 
+                      className="cursor-pointer hover:border-primary/50 transition-colors bg-base-200/50"
+                      onClick={() => openLessonRecordModal(record)}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="font-mono text-xs uppercase tracking-wider text-primary mb-1">
+                          Lekcja {lessonRecords.length - index}
                         </div>
-                        <h4 className="font-bold mb-2 line-clamp-1">{record.topic}</h4>
-                        <div className="text-sm text-content-muted line-clamp-2">{record.summary}</div>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-content-muted italic mb-8">No lesson records found.</p>
-                )}
+                        <span className="text-xs font-mono text-content-muted">{record.date}</span>
+                      </div>
+                      <h4 className="font-bold mb-2 line-clamp-1">{record.topic}</h4>
+                      <div className="text-sm text-content-muted line-clamp-2">{record.summary}</div>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-content-muted italic mb-8">No lesson records found.</p>
+              )}
 
-                <h3 className="text-lg font-bold mb-4">Practice History</h3>
-                {practiceLogs.length > 0 ? (
-                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                    {practiceLogs.map(log => (
-                      <div key={log.id} className="flex justify-between items-center p-3 bg-base-200/50 rounded-lg border border-white/5">
-                        <div>
-                          <div className="font-bold capitalize">{log.exerciseType.replace('-', ' ')}</div>
-                          <div className="text-xs text-content-muted">
-                            {new Date(log.date).toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          {log.isRevisionMode && (
-                            <span className="text-xs bg-secondary/20 text-secondary px-2 py-1 rounded-full mr-2">Revision</span>
-                          )}
+              <h3 className="text-lg font-bold mb-4">Practice History</h3>
+              {practiceLogs.length > 0 ? (
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                  {practiceLogs.map(log => (
+                    <div key={log.id} className="flex justify-between items-center p-3 bg-base-200/50 rounded-lg border border-white/5">
+                      <div>
+                        <div className="font-bold capitalize">{log.exerciseType.replace('-', ' ')}</div>
+                        <div className="text-xs text-content-muted">
+                          {new Date(log.date).toLocaleString()}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-content-muted italic">No practice history found for this user.</p>
-                )}
-              </Card>
+                      <div className="text-right">
+                        {log.isRevisionMode && (
+                          <span className="text-xs bg-secondary/20 text-secondary px-2 py-1 rounded-full mr-2">Revision</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-content-muted italic">No practice history found for this user.</p>
+              )}
             </>
-          ) : (
-            <Card className="h-full flex items-center justify-center text-content-muted">
-              Select a user to view details
-            </Card>
           )}
-        </div>
-      </div>
+
+          {activeTab === 'profile' && (
+            <div className="max-w-2xl space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-content-muted mb-1">Imię</label>
+                  <input
+                    type="text"
+                    value={profileForm.firstName}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, firstName: e.target.value }))}
+                    className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-content-muted mb-1">Nazwisko</label>
+                  <input
+                    type="text"
+                    value={profileForm.lastName}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, lastName: e.target.value }))}
+                    className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-content-muted mb-1">Poziom zaawansowania</label>
+                <input
+                  type="text"
+                  value={profileForm.level}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, level: e.target.value }))}
+                  placeholder="np. B1/B2"
+                  className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-content-muted mb-1">Opis kursanta (wykorzystywany przez AI)</label>
+                <textarea
+                  value={profileForm.description}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Zainteresowania, słabe strony, cele nauki..."
+                  rows={6}
+                  className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 resize-y"
+                />
+                <p className="text-xs text-content-muted mt-2">
+                  Ten opis będzie wysyłany do sztucznej inteligencji jako dodatkowy kontekst podczas generowania zadań domowych, aby lepiej dopasować je do kursanta.
+                </p>
+              </div>
+
+              <div className="pt-4 border-t border-white/10 flex justify-end">
+                <Button onClick={handleSaveProfile} isLoading={isSavingProfile}>
+                  Zapisz profil
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
+      ) : (
+        <Card className="h-[400px] flex items-center justify-center text-content-muted border-dashed border-2">
+          Select a student from the dropdown menu to view their details
+        </Card>
+      )}
 
       {/* Delete User Modal */}
       {userToDelete && (

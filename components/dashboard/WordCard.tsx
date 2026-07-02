@@ -101,11 +101,11 @@ const WordCard: React.FC<WordCardProps> = ({ word }) => {
   );
 };
 
-const AudioButton: React.FC<{ label: string; onClick: () => void; isLoading: boolean }> = ({ label, onClick, isLoading }) => (
+const AudioButton: React.FC<{ label: string; onClick: () => void; isLoading: boolean; className?: string }> = ({ label, onClick, isLoading, className = "" }) => (
     <button
         onClick={onClick}
         disabled={isLoading}
-        className="h-8 px-3 flex items-center justify-center gap-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-bold disabled:opacity-50"
+        className={`h-8 px-3 flex items-center justify-center gap-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-bold disabled:opacity-50 ${className}`}
         title={`Play ${label} pronunciation`}
     >
         {isLoading ? (

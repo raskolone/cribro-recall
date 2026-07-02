@@ -85,24 +85,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               </span>
           </NavLink>
           
-          <div>
-            <button
-              onClick={() => setPracticeOpen(!practiceOpen)}
-              className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-xl text-content-muted hover:bg-white/5 hover:text-white transition-colors"
-            >
-              <span>{language === 'pl' ? 'Trening' : 'Practice'}</span>
-              <svg className={`w-4 h-4 transition-transform ${practiceOpen ? 'rotate-90' : ''}`} fill="currentColor" viewBox="0 0 20 20"><path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"></path></svg>
-            </button>
-            {practiceOpen && (
-              <div className="mt-2 pl-4 space-y-1 border-l border-base-300 ml-4">
-                <NavLink onClick={() => handleStartPractice('flashcards')} isActive={false}><span>Flashcards</span></NavLink>
-                <NavLink onClick={() => handleStartPractice('quiz')} isActive={false}><span>Quiz</span></NavLink>
-                <NavLink onClick={() => handleStartPractice('fill-in-the-blank')} isActive={false}><span>Fill in the Blank</span></NavLink>
-                <NavLink onClick={() => handleStartPractice('match')} isActive={false}><span>Match</span></NavLink>
-              </div>
-            )}
-          </div>
-          
           <div className="pt-4 mt-4 border-t border-base-300">
             <NavLink onClick={() => handleNavigate('settings')} isActive={currentView === 'settings'}>
               <span>{language === 'pl' ? 'Ustawienia' : 'Settings'}</span>
