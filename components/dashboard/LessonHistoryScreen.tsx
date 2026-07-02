@@ -2,24 +2,35 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
-import { LessonRecord } from '../../types';
+import { LessonRecord, PracticeLog } from '../../types';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { db } from '../../firebase';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import { Calendar, ChevronLeft, FileText, CheckCircle, Tag, Search, Sparkles } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { Calendar, ChevronLeft, FileText, CheckCircle, Tag, Search, Sparkles, BookOpen, Clock } from 'lucide-react';
+import Markdown from 'react-markdown';
 
 const LessonHistoryScreen: React.FC = () => {
   const { user } = useAuth();
   const { language } = useLanguage();
-  const [lessons, setLessons] = useState<LessonRecord[]>([]);
+const [lessons, setLessons] = useState<LessonRecord[]>([]);
+  const [practiceLogs, setPracticeLogs] = useState<PracticeLog[]>([]);
+  const [activeTab, setActiveTab] = useState<'lessons' | 'sessions'>('lessons');
   const [selectedLesson, setSelectedLesson] = useState<LessonRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (user?.id) {
       setIsLoading(true);
-      getLessonRecordsForStudent(user.id)
-        .then(setLessons)
+      Promise.all([
+        getLessonRecordsForStudent(user.id),
+        getDocs(query(collection(db, `users/${user.id}/practiceLogs`), orderBy('date', 'desc')))
+      ])
+        .then(([lessonsData, logsSnapshot]) => {
+          setLessons(lessonsData);
+          const logs = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PracticeLog));
+          setPracticeLogs(logs);
+        })
         .catch(console.error)
         .finally(() => setIsLoading(false));
     }
@@ -65,7 +76,7 @@ const LessonHistoryScreen: React.FC = () => {
                </h3>
                <div className="bg-primary/5 border border-primary/10 rounded-2xl p-6 text-content">
                   <div className="markdown-body text-sm leading-relaxed prose prose-invert max-w-none">
-                    <ReactMarkdown>{selectedLesson.lessonSummary}</ReactMarkdown>
+                    <Markdown>{selectedLesson.lessonSummary}</Markdown>
                   </div>
                </div>
             </div>
@@ -100,19 +111,36 @@ const LessonHistoryScreen: React.FC = () => {
     );
   }
 
-  return (
+return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-base-300 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
              <FileText className="w-8 h-8 text-primary" />
-             {language === 'pl' ? 'Historia Lekcji' : 'Lesson History'}
+             {language === 'pl' ? 'Historia i Postępy' : 'History & Progress'}
           </h1>
           <p className="text-content-muted text-sm mt-1">
              {language === 'pl' 
-               ? 'Przeglądaj podsumowania i słownictwo z poprzednich zajęć.' 
-               : 'Review summaries and vocabulary from past classes.'}
+                ? 'Przeglądaj notatki z lekcji i historię sesji ćwiczeniowych.' 
+                : 'Review lesson notes and practice session history.'}
           </p>
+        </div>
+        
+        <div className="flex bg-base-200 p-1 rounded-lg border border-base-300">
+           <button
+             onClick={() => setActiveTab('lessons')}
+             className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'lessons' ? 'bg-primary text-black' : 'text-content-muted hover:text-white'}`}
+           >
+             <FileText className="w-4 h-4" />
+             {language === 'pl' ? 'Notatki z lekcji' : 'Lesson Notes'}
+           </button>
+           <button
+             onClick={() => setActiveTab('sessions')}
+             className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'sessions' ? 'bg-primary text-black' : 'text-content-muted hover:text-white'}`}
+           >
+             <Clock className="w-4 h-4" />
+             {language === 'pl' ? 'Historia Sesji' : 'Session History'}
+           </button>
         </div>
       </div>
 
@@ -120,20 +148,21 @@ const LessonHistoryScreen: React.FC = () => {
          <div className="flex justify-center p-12">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
          </div>
-      ) : lessons.length === 0 ? (
-         <div className="text-center p-12 bg-base-200 border border-base-300 rounded-2xl mx-auto max-w-2xl mt-8 shadow-sm">
-           <Search className="w-12 h-12 text-content-muted mx-auto mb-4 opacity-50" />
-           <h2 className="text-xl font-bold mb-2">
-             {language === 'pl' ? 'Brak historii lekcji' : 'No lesson history'}
-           </h2>
-           <p className="text-content-muted text-sm">
-             {language === 'pl' 
-               ? 'Nie masz jeszcze przypisanych żadnych kart lekcji.' 
-               : 'You do not have any lesson records assigned yet.'}
-           </p>
-         </div>
-      ) : (
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      ) : activeTab === 'lessons' ? (
+         lessons.length === 0 ? (
+           <div className="text-center p-12 bg-base-200 border border-base-300 rounded-2xl mx-auto max-w-2xl mt-8 shadow-sm">
+             <Search className="w-12 h-12 text-content-muted mx-auto mb-4 opacity-50" />
+             <h2 className="text-xl font-bold mb-2">
+               {language === 'pl' ? 'Brak historii lekcji' : 'No lesson history'}
+             </h2>
+             <p className="text-content-muted text-sm">
+               {language === 'pl' 
+                  ? 'Nie masz jeszcze przypisanych żadnych kart lekcji.' 
+                  : 'You do not have any lesson records assigned yet.'}
+             </p>
+           </div>
+        ) : (
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
            {lessons.map(lesson => (
              <Card 
                key={lesson.id} 
@@ -163,11 +192,69 @@ const LessonHistoryScreen: React.FC = () => {
                   )}
                </div>
              </Card>
-           ))}
+))}
          </div>
+        )
+      ) : (
+         practiceLogs.length === 0 ? (
+           <div className="text-center p-12 bg-base-200 border border-base-300 rounded-2xl mx-auto max-w-2xl mt-8 shadow-sm">
+             <BookOpen className="w-12 h-12 text-content-muted mx-auto mb-4 opacity-50" />
+             <h2 className="text-xl font-bold mb-2">
+               {language === 'pl' ? 'Brak historii sesji' : 'No session history'}
+             </h2>
+             <p className="text-content-muted text-sm">
+               {language === 'pl' 
+                  ? 'Nie masz jeszcze żadnych zapisanych sesji ćwiczeniowych.' 
+                  : 'You do not have any recorded practice sessions yet.'}
+             </p>
+           </div>
+         ) : (
+           <div className="space-y-3">
+             {practiceLogs.map(log => (
+               <div key={log.id} className="bg-base-200 p-4 rounded-xl border border-white/5 flex items-center justify-between">
+                 <div className="flex flex-col gap-1">
+                   <div className="flex items-center gap-2">
+                     <span className="font-bold text-white text-base">
+                       {log.exerciseType === 'ai_translation' ? (language === 'pl' ? 'Trening z AI' : 'AI Translation') :
+                        log.exerciseType === 'flashcards' ? (language === 'pl' ? 'Fiszki' : 'Flashcards') : 
+                        log.exerciseType}
+                     </span>
+                     {log.isRevisionMode && (
+                       <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-500">
+                         {language === 'pl' ? 'Powtórka' : 'Revision'}
+                       </span>
+                     )}
+                   </div>
+                   <div className="text-xs text-content-muted font-mono flex items-center gap-1.5">
+                     <Calendar className="w-3 h-3" />
+                     {new Date(log.date).toLocaleString()}
+                   </div>
+                 </div>
+                 
+                 <div className="flex gap-4 text-sm font-mono text-right">
+                   {log.totalWords && (
+                     <div>
+                       <div className="text-content-muted text-[10px] uppercase">{language === 'pl' ? 'Słów/Zdań' : 'Items'}</div>
+                       <div className="font-bold text-white">{log.totalWords}</div>
+                     </div>
+                   )}
+                   {log.score !== undefined && (
+                     <div>
+                       <div className="text-content-muted text-[10px] uppercase">{language === 'pl' ? 'Wynik' : 'Score'}</div>
+                       <div className={`font-bold ${log.score >= 80 ? 'text-green-400' : log.score >= 50 ? 'text-amber-500' : 'text-red-400'}`}>
+                         {log.score}%
+                       </div>
+                     </div>
+                   )}
+                 </div>
+               </div>
+             ))}
+           </div>
+         )
       )}
     </div>
   );
 };
+;
 
 export default LessonHistoryScreen;

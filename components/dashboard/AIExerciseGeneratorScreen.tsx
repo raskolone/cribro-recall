@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { generateTranslationExercises, evaluateTranslations } from '../../services/geminiService';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet } from '../../types';
@@ -23,7 +23,10 @@ import {
   ChevronUp,
   AlertTriangle,
   HelpCircle,
-  Play
+  Play,
+  Clock,
+  Hash,
+  Timer
 } from 'lucide-react';
 
 const DEFAULT_GENERATION_PROMPT = `Jesteś wirtualnym nauczycielem języka angielskiego. Wygeneruj dokładnie [NUM_SENTENCES] unikalnych zdań po polsku, które kursant będzie musiał przetłumaczyć na język angielski.
@@ -46,6 +49,10 @@ const AIExerciseGeneratorScreen: React.FC = () => {
   const [selectedSetId, setSelectedSetId] = useState<string>('all');
   const [level, setLevel] = useState<string>(user?.level || 'B1');
   const [numSentences, setNumSentences] = useState<number>(5);
+  const [practiceMode, setPracticeMode] = useState<'fixed' | 'time'>('fixed');
+  const [timeLimit, setTimeLimit] = useState<number>(3); // minutes
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [isGeneratingMore, setIsGeneratingMore] = useState(false);
   const [customGenPrompt, setCustomGenPrompt] = useState<string>(() => {
     return localStorage.getItem('ai_custom_gen_prompt') || DEFAULT_GENERATION_PROMPT;
   });
@@ -88,6 +95,17 @@ const AIExerciseGeneratorScreen: React.FC = () => {
   const availableSets = sets.filter(s => s.assignedByTeacher || s.userId);
 
   // Save customized prompts to localStorage
+  
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (timeLeft !== null && timeLeft > 0 && step === 'practice') {
+      timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+    } else if (timeLeft === 0 && step === 'practice') {
+      handleEvaluate();
+    }
+    return () => clearTimeout(timer);
+  }, [timeLeft, step]);
+
   const handleSavePrompts = () => {
     localStorage.setItem('ai_custom_gen_prompt', customGenPrompt);
     localStorage.setItem('ai_custom_eval_prompt', customEvalPrompt);
@@ -104,14 +122,23 @@ const AIExerciseGeneratorScreen: React.FC = () => {
   };
 
   // Generate exercises using Gemini
-  const handleGenerate = async () => {
-    setIsLoading(true);
-    setError(null);
-    setExercises([]);
-    setStudentAnswers([]);
-    setEvaluationResults([]);
-    setShowHints([]);
-    setActiveSentenceIndex(0);
+  const handleGenerate = async (isAppending = false) => {
+    if (isAppending) {
+      setIsGeneratingMore(true);
+    } else {
+      setIsLoading(true);
+      setError(null);
+      setExercises([]);
+      setStudentAnswers([]);
+      setEvaluationResults([]);
+      setShowHints([]);
+      setActiveSentenceIndex(0);
+      if (practiceMode === 'time') {
+        setTimeLeft(timeLimit * 60);
+      } else {
+        setTimeLeft(null);
+      }
+    }
 
     try {
       let wordsToUse: string[] = [];
@@ -164,23 +191,32 @@ const AIExerciseGeneratorScreen: React.FC = () => {
 
       // Call Gemini API service function
       const studentProfileContext = user?.description ? `Student profile details (use to personalize sentences if relevant): ${user.description}` : '';
-      const generated = await generateTranslationExercises(level, wordsToUse, customGenPrompt, lessonContextString, studentProfileContext, numSentences);
+      const generated = await generateTranslationExercises(level, wordsToUse, customGenPrompt, lessonContextString, studentProfileContext, practiceMode === 'time' ? 10 : numSentences);
       
       if (generated && generated.length > 0) {
-        setExercises(generated);
-        setStudentAnswers(new Array(generated.length).fill(''));
-        setShowHints(new Array(generated.length).fill(false));
-        setStep('practice');
+        if (isAppending) {
+           setExercises(prev => [...prev, ...generated]);
+           setStudentAnswers(prev => [...prev, ...new Array(generated.length).fill('')]);
+           setShowHints(prev => [...prev, ...new Array(generated.length).fill(false)]);
+        } else {
+           setExercises(generated);
+           setStudentAnswers(new Array(generated.length).fill(''));
+           setShowHints(new Array(generated.length).fill(false));
+           setStep('practice');
+        }
       } else {
-        throw new Error('AI returned empty exercises.');
+        if (!isAppending) throw new Error('AI returned empty exercises.');
       }
     } catch (err: any) {
       console.error(err);
-      setError(language === 'pl' 
-        ? 'Wystąpił błąd podczas generowania ćwiczeń przez AI. Upewnij się, że Twój klucz API w Settings > Secrets jest poprawny.' 
-        : 'Failed to generate exercises from AI. Please check your API key in Settings > Secrets.');
+      if (!isAppending) {
+        setError(language === 'pl' 
+           ? 'Wystąpił błąd podczas generowania ćwiczeń przez AI. Upewnij się, że Twój klucz API w Settings > Secrets jest poprawny.' 
+           : 'Failed to generate exercises from AI. Please check your API key in Settings > Secrets.');
+      }
     } finally {
-      setIsLoading(false);
+      if (isAppending) setIsGeneratingMore(false);
+      else setIsLoading(false);
     }
   };
 
@@ -188,12 +224,43 @@ const AIExerciseGeneratorScreen: React.FC = () => {
   const handleEvaluate = async () => {
     setIsEvaluating(true);
     setError(null);
-
+    setTimeLeft(null); // Stop timer
     try {
-      const results = await evaluateTranslations(exercises, studentAnswers, customEvalPrompt);
+      // Only evaluate answered exercises
+      const answeredExercises = [];
+      const answeredAnswers = [];
+      for (let i = 0; i < exercises.length; i++) {
+        if (studentAnswers[i]?.trim()) {
+          answeredExercises.push(exercises[i]);
+          answeredAnswers.push(studentAnswers[i]);
+        }
+      }
+      
+      if (answeredExercises.length === 0) {
+        setStep('results');
+        return;
+      }
+      
+      const results = await evaluateTranslations(answeredExercises, answeredAnswers, customEvalPrompt);
       if (results && results.length > 0) {
         setEvaluationResults(results);
         setStep('results');
+
+        if (user) {
+          const score = Math.round(results.reduce((acc, r) => acc + r.score, 0) / results.length);
+          const logData = {
+            exerciseType: 'ai_translation',
+            date: new Date().toISOString(),
+            isRevisionMode: false,
+            score: score,
+            totalWords: answeredExercises.length
+          };
+          try {
+            await addDoc(collection(db, `users/${user.id}/practiceLogs`), logData);
+          } catch (e) {
+            console.warn("Could not save practice log", e);
+          }
+        }
       } else {
         throw new Error('AI returned empty evaluation results.');
       }
@@ -210,6 +277,9 @@ const AIExerciseGeneratorScreen: React.FC = () => {
   const handleNext = () => {
     if (activeSentenceIndex < exercises.length - 1) {
       setActiveSentenceIndex(activeSentenceIndex + 1);
+      if (practiceMode === 'time' && activeSentenceIndex === exercises.length - 3 && !isGeneratingMore) {
+         handleGenerate(true); // fetch more in background
+      }
     }
   };
 
@@ -458,27 +528,65 @@ const AIExerciseGeneratorScreen: React.FC = () => {
             <div className="flex flex-col gap-4">
               <div>
                 <label className="block text-sm font-bold text-content-muted mb-2">
-                  {language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}
+                  {language === 'pl' ? 'Tryb nauki' : 'Practice Mode'}
                 </label>
-                <div className="flex gap-2">
-                  {[5, 10, 15, 20].map((num) => (
-                    <button
-                      key={num}
-                      onClick={() => setNumSentences(num)}
-                      className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${
-                        numSentences === num 
-                          ? 'bg-primary text-black' 
-                          : 'bg-base-200 border border-base-300 text-content-muted hover:text-white'
-                      }`}
-                    >
-                      {num}
-                    </button>
-                  ))}
+                <div className="flex rounded-lg overflow-hidden border border-base-300">
+                  <button
+                    onClick={() => setPracticeMode('fixed')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition-colors ${practiceMode === 'fixed' ? 'bg-primary text-black' : 'bg-base-200 text-content-muted hover:bg-base-300'}`}
+                  >
+                    <Hash className="w-4 h-4" />
+                    {language === 'pl' ? 'Ilość zdań' : 'Fixed Amount'}
+                  </button>
+                  <button
+                    onClick={() => setPracticeMode('time')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition-colors ${practiceMode === 'time' ? 'bg-primary text-black' : 'bg-base-200 text-content-muted hover:bg-base-300'}`}
+                  >
+                    <Timer className="w-4 h-4" />
+                    {language === 'pl' ? 'Na czas' : 'Time Challenge'}
+                  </button>
                 </div>
               </div>
 
+              {practiceMode === 'fixed' ? (
+                <div>
+                  <label className="block text-sm font-bold text-content-muted mb-2">
+                    {language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}
+                  </label>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    max="20" 
+                    value={numSentences} 
+                    onChange={(e) => setNumSentences(Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))}
+                    className="w-full bg-base-200 border border-base-300 focus:border-primary/50 text-white rounded-lg p-3 text-sm font-bold"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-bold text-content-muted mb-2">
+                    {language === 'pl' ? 'Czas ćwiczenia (minuty)' : 'Practice time (minutes)'}
+                  </label>
+                  <div className="flex gap-2">
+                    {[1, 3, 5, 10].map((mins) => (
+                      <button
+                        key={mins}
+                        onClick={() => setTimeLimit(mins)}
+                        className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors ${
+                          timeLimit === mins 
+                            ? 'bg-primary/20 text-primary border border-primary/50' 
+                            : 'bg-base-200 border border-base-300 text-content-muted hover:text-white'
+                        }`}
+                      >
+                        {mins} min
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <Button
-                onClick={handleGenerate}
+                onClick={() => handleGenerate(false)}
                 isLoading={isLoading}
                 className="w-full py-3 text-base flex items-center justify-center gap-2 mt-2"
               >
@@ -496,9 +604,16 @@ const AIExerciseGeneratorScreen: React.FC = () => {
           {/* Progress header */}
           <div className="flex items-center justify-between text-sm">
             <span className="font-mono text-content-muted">
-              {language === 'pl' ? 'Postęp:' : 'Progress:'} {activeSentenceIndex + 1} / {exercises.length}
+              {language === 'pl' ? 'Postęp:' : 'Progress:'} {activeSentenceIndex + 1} {practiceMode === 'fixed' ? `/ ${exercises.length}` : ''}
             </span>
-            <div className="flex gap-1 h-2 bg-base-300 rounded-full w-48 overflow-hidden">
+            {practiceMode === 'time' && timeLeft !== null && (
+              <div className={`font-mono text-lg font-bold flex items-center gap-2 ${timeLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-primary'}`}>
+                <Clock className="w-5 h-5" />
+                {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+              </div>
+            )}
+            {practiceMode === 'fixed' && (
+              <div className="flex gap-1 h-2 bg-base-300 rounded-full w-48 overflow-hidden">
               {exercises.map((_, idx) => (
                 <div 
                   key={idx}
@@ -510,6 +625,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
                 />
               ))}
             </div>
+            )}
           </div>
 
           <Card className="p-6 md:p-8 space-y-6 border border-white/5 shadow-xl relative overflow-hidden">
@@ -574,14 +690,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
                 {language === 'pl' ? 'Poprzednie' : 'Previous'}
               </Button>
               
-              {activeSentenceIndex < exercises.length - 1 ? (
-                <Button
-                  onClick={handleNext}
-                  disabled={!studentAnswers[activeSentenceIndex]?.trim()}
-                >
-                  {language === 'pl' ? 'Następne' : 'Next'}
-                </Button>
-              ) : (
+              {practiceMode === 'fixed' && activeSentenceIndex === exercises.length - 1 ? (
                 <Button
                   onClick={handleEvaluate}
                   isLoading={isEvaluating}
@@ -589,6 +698,14 @@ const AIExerciseGeneratorScreen: React.FC = () => {
                   className="bg-primary hover:bg-primary/95 text-black font-extrabold"
                 >
                   {language === 'pl' ? 'Sprawdź i oceń odpowiedzi' : 'Submit & evaluate answers'}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleNext}
+                  disabled={!studentAnswers[activeSentenceIndex]?.trim() || isGeneratingMore}
+                  isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
+                >
+                  {language === 'pl' ? 'Następne' : 'Next'}
                 </Button>
               )}
             </div>
@@ -633,7 +750,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
               <Button onClick={() => setStep('setup')} variant="secondary">
                 {language === 'pl' ? 'Nowy trening' : 'New session'}
               </Button>
-              <Button onClick={handleGenerate} isLoading={isLoading}>
+              <Button onClick={() => handleGenerate(false)} isLoading={isLoading}>
                 {language === 'pl' ? 'Generuj kolejne zdania' : 'Generate next set'}
               </Button>
             </div>
