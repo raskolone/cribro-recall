@@ -79,12 +79,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               <span>{language === 'pl' ? 'Słownictwo' : 'My Word Lists'}</span>
           </NavLink>
           
-          <NavLink onClick={() => handleNavigate('ai-generator')} isActive={currentView === 'ai-generator'}>
-              <span className="text-primary font-bold animate-pulse-delicate inline-block">
-                ✨ {language === 'pl' ? 'Ucz się' : 'Learn'}
-              </span>
-          </NavLink>
-          
           <div className="pt-4 mt-4 border-t border-base-300">
             <NavLink onClick={() => handleNavigate('settings')} isActive={currentView === 'settings'}>
               <span>{language === 'pl' ? 'Ustawienia' : 'Settings'}</span>

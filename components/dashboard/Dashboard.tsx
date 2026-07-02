@@ -175,45 +175,14 @@ const Dashboard: React.FC = () => {
     }
     // Default to dashboard view
     return (
-      <div className="space-y-6">
-        {user?.role === 'admin' ? (
-          <>
-            <ProgressOverview />
-            
-            {dueWords.length >= 4 && (
-              <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 dark:from-green-500/20 dark:to-emerald-500/20 p-6 rounded-2xl shadow-xl border border-green-500/20 dark:border-green-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors duration-300">
-                <div>
-                  <h3 className="text-lg font-bold text-green-600 dark:text-green-400">Spaced Repetition Review Due!</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">You have {dueWords.length} words scheduled for review today.</p>
-                </div>
-                <Button onClick={() => startPractice('flashcards', false, true)} className="bg-green-600 hover:bg-green-700 border-green-600">
-                  Review Now
-                </Button>
-              </div>
-            )}
-            {isRevisionDue && (
-              <div className="bg-gradient-to-r from-primary/10 to-secondary/10 dark:from-primary/20 dark:to-secondary/20 p-6 rounded-2xl shadow-xl border border-primary/20 dark:border-primary/40 flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors duration-300">
-                <div>
-                  <h3 className="text-lg font-bold text-primary">Time for your {frequency.toLowerCase()} revision!</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">You have {difficultWords.length} difficult words waiting to be practiced.</p>
-                </div>
-                <Button onClick={() => startPractice('flashcards', true)}>
-                  Start Revision
-                </Button>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 gap-6">
-              <VocabularyGenerator />
-              <WordList />
-            </div>
-          </>
-        ) : (
-          <>
-            <AIExerciseGeneratorScreen />
-            <ProgressOverview />
-          </>
-        )}
+      <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">
+        <div className="flex-1">
+          <AIExerciseGeneratorScreen />
+        </div>
+        
+        <div className="mt-8 pt-8 border-t border-white/10">
+          <ProgressOverview />
+        </div>
       </div>
     );
   };

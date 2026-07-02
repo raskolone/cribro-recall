@@ -315,6 +315,16 @@ const AIExerciseGeneratorScreen: React.FC = () => {
       {/* STEP 1: SETUP */}
       {step === 'setup' && (
         <div className="max-w-2xl mx-auto space-y-6">
+          <div className="bg-primary/10 border border-primary/30 p-6 rounded-2xl text-center shadow-lg animate-pulse-delicate">
+            <h2 className="text-xl font-bold text-primary mb-2 flex justify-center items-center gap-2">
+              <Sparkles className="w-5 h-5" />
+              {language === 'pl' ? 'Wciśnij "Generuj zdania przez AI", żeby rozpocząć nową lekcję!' : 'Click "Generate sentences with AI" to start a new lesson!'}
+            </h2>
+            <p className="text-sm text-primary/80">
+              {language === 'pl' ? 'Przygotujemy dla Ciebie spersonalizowane ćwiczenia.' : 'We will prepare personalized exercises just for you.'}
+            </p>
+          </div>
+          
           <Card className="p-6 md:p-8 space-y-6 border border-white/5 shadow-xl">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -331,15 +341,21 @@ const AIExerciseGeneratorScreen: React.FC = () => {
                 </div>
               </div>
               <div className="flex flex-col items-end">
-                <select 
-                  value={level} 
-                  onChange={(e) => setLevel(e.target.value)}
-                  className="bg-base-200 border border-base-300 text-sm font-bold text-primary rounded-lg p-2 outline-none focus:border-primary/50 cursor-pointer"
-                >
-                  {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((lvl) => (
-                    <option key={lvl} value={lvl}>{lvl}</option>
-                  ))}
-                </select>
+                {user?.role === 'admin' ? (
+                  <select 
+                    value={level} 
+                    onChange={(e) => setLevel(e.target.value)}
+                    className="bg-base-200 border border-base-300 text-sm font-bold text-primary rounded-lg p-2 outline-none focus:border-primary/50 cursor-pointer"
+                  >
+                    {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((lvl) => (
+                      <option key={lvl} value={lvl}>{lvl}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="bg-base-200 border border-base-300 text-sm font-bold text-primary rounded-lg p-2 cursor-default">
+                    {level}
+                  </div>
+                )}
               </div>
             </div>
 
