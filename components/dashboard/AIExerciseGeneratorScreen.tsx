@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { collection, getDocs, query, orderBy, limit, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { generateTranslationExercises, evaluateTranslations } from '../../services/geminiService';
-import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet } from '../../types';
+import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog } from '../../types';
 import { getVocabularySetsForStudent } from '../../services/lessonRecord';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
@@ -143,6 +143,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
     try {
       let wordsToUse: string[] = [];
       let lessonContextString = '';
+      let pastExercisesContext = "";
 
       // Fetch user's recent lesson records for context
       if (user) {
@@ -159,6 +160,22 @@ const AIExerciseGeneratorScreen: React.FC = () => {
           }
         } catch (lrErr) {
           console.warn('Could not fetch lesson records:', lrErr);
+        }
+      }
+
+      if (user) {
+        try {
+          const practiceLogsRef = collection(db, `users/${user.id}/practiceLogs`);
+          const qPL = query(practiceLogsRef, orderBy('date', 'desc'), limit(10));
+          const plSnapshot = await getDocs(qPL);
+          const plList = plSnapshot.docs.map(doc => doc.data() as PracticeLog);
+          
+          const pastExercises = plList.map(pl => pl.exercisesData).filter(Boolean);
+          if (pastExercises.length > 0) {
+            pastExercisesContext = pastExercises.join(' | ');
+          }
+        } catch (e) {
+          console.warn("Could not fetch recent practice logs", e);
         }
       }
 
@@ -191,7 +208,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
 
       // Call Gemini API service function
       const studentProfileContext = user?.description ? `Kluczowy profil kursanta (obowiązkowo spersonalizuj zdania pod kątem tych informacji): ${user.description}` : 'Brak danych profilu - stwórz naturalne zdania.';
-      const generated = await generateTranslationExercises(level, wordsToUse, customGenPrompt, lessonContextString, studentProfileContext, practiceMode === 'time' ? 10 : numSentences);
+      const generated = await generateTranslationExercises(level, wordsToUse, customGenPrompt, lessonContextString, studentProfileContext, practiceMode === 'time' ? 10 : numSentences, pastExercisesContext);
       
       if (generated && generated.length > 0) {
         if (isAppending) {
@@ -248,12 +265,14 @@ const AIExerciseGeneratorScreen: React.FC = () => {
 
         if (user) {
           const score = Math.round(results.reduce((acc, r) => acc + r.score, 0) / results.length);
+          const exercisesDetails = answeredExercises.map((ex, i) => `${ex.polish} -> ${answeredAnswers[i]}`).join(' | ');
           const logData = {
             exerciseType: 'ai_translation',
             date: new Date().toISOString(),
             isRevisionMode: false,
             score: score,
-            totalWords: answeredExercises.length
+            totalWords: answeredExercises.length,
+            exercisesData: exercisesDetails
           };
           try {
             await addDoc(collection(db, `users/${user.id}/practiceLogs`), logData);

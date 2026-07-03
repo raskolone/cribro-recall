@@ -211,8 +211,9 @@ return (
          ) : (
            <div className="space-y-3">
              {practiceLogs.map(log => (
-               <div key={log.id} className="bg-base-200 p-4 rounded-xl border border-white/5 flex items-center justify-between">
-                 <div className="flex flex-col gap-1">
+               <div key={log.id} className="bg-base-200 p-4 rounded-xl border border-white/5 flex flex-col gap-3">
+                 <div className="flex items-center justify-between">
+                   <div className="flex flex-col gap-1">
                    <div className="flex items-center gap-2">
                      <span className="font-bold text-white text-base">
                        {log.exerciseType === 'ai_translation' ? (language === 'pl' ? 'Trening z AI' : 'AI Translation') :
@@ -247,7 +248,18 @@ return (
                      </div>
                    )}
                  </div>
-               </div>
+                 </div>
+               {log.exercisesData && (
+                 <div className="mt-3 text-sm text-content-muted bg-base-300 p-3 rounded border border-base-300/50">
+                   <p className="font-bold mb-1">{language === 'pl' ? 'Przećwiczone zdania:' : 'Practiced sentences:'}</p>
+                   <ul className="list-disc pl-5 space-y-1">
+                     {log.exercisesData.split(' | ').map((ex, idx) => (
+                       <li key={idx} className="italic opacity-80">{ex}</li>
+                     ))}
+                   </ul>
+                 </div>
+               )}
+             </div>
              ))}
            </div>
          )

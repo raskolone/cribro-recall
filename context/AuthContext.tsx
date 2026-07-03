@@ -38,7 +38,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const userDoc = await getDoc(userDocRef);
           
           if (userDoc.exists()) {
-            setUser(userDoc.data() as User);
+            setUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
           } else {
             // Create user document
             const defaultName = firebaseUser.isAnonymous ? 'Demo User' : (firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User'));
@@ -46,6 +46,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const role = email === 'maciej.wyrozumski@gmail.com' ? 'admin' : 'user';
             
             const newUser: User = {
+              id: firebaseUser.uid,
               username: defaultName,
               email: email,
               role: role,
@@ -62,6 +63,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (error?.code === 'unavailable' || error?.message?.includes('offline') || error?.message?.includes('unavailable')) {
              const fallbackEmail = firebaseUser.email || '';
              setUser({
+               id: firebaseUser.uid,
                username: firebaseUser.isAnonymous ? 'Demo User (Offline)' : (firebaseUser.displayName || 'User (Offline)'),
                email: fallbackEmail,
                role: fallbackEmail === 'maciej.wyrozumski@gmail.com' ? 'admin' : 'user'
@@ -129,6 +131,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                // The user likely hasn't enabled ANY auth methods.
                // Setup a fully local mocked demo user without touching Firebase Auth.
                setUser({
+                 id: 'demo-id',
                  username: 'Local Demo',
                  email: 'demo@vocabboost.com',
                  role: 'user'

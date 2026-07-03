@@ -64,6 +64,7 @@ export interface PracticeLog {
   isRevisionMode: boolean;
   score?: number;
   totalWords?: number;
+  exercisesData?: string;
 }
 
 // New Flashcard Module Types

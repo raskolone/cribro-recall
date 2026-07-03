@@ -63,7 +63,7 @@ export async function createLessonRecordWithVocabularySet(input: {
 
 export async function getLessonRecordsForStudent(studentId: string): Promise<LessonRecord[]> {
   const recordsRef = collection(db, `users/${studentId}/lessonRecords`);
-  const q = query(recordsRef, orderBy('createdAt', 'desc'));
+  const q = query(recordsRef, orderBy('date', 'desc'));
   
   const snapshot = await getDocs(q);
   const records: LessonRecord[] = [];
@@ -77,7 +77,7 @@ export async function getLessonRecordsForStudent(studentId: string): Promise<Les
 
 export async function getVocabularySetsForStudent(studentId: string): Promise<VocabularySet[]> {
   const setsRef = collection(db, `users/${studentId}/vocabularySets`);
-  const q = query(setsRef, orderBy('createdAt', 'desc'));
+  const q = query(setsRef, orderBy('date', 'desc'));
   
   const snapshot = await getDocs(q);
   const sets: VocabularySet[] = [];
