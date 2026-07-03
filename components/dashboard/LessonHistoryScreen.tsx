@@ -38,9 +38,36 @@ const [lessons, setLessons] = useState<LessonRecord[]>([]);
 
   if (selectedLesson) {
     // Parse vocabulary
-    const vocabList = selectedLesson.vocabularyText
-      ? selectedLesson.vocabularyText.split(/[\n,;]+/).map(i => i.trim()).filter(i => i.length > 0)
-      : [];
+    const parseVocabularyLine = (line: string) => {
+      let cleanLine = line.replace(/^[\s\*\-\•\d\.]+\s*/, '').trim();
+
+      const separatorMatch = cleanLine.match(/\s+[\-\–\—\:=]\s+/);
+      if (separatorMatch && separatorMatch.index !== undefined) {
+        const word = cleanLine.substring(0, separatorMatch.index).trim();
+        const translation = cleanLine.substring(separatorMatch.index + separatorMatch[0].length).trim();
+        return { word, translation };
+      } else {
+        const fallbackMatch = cleanLine.match(/[:=]/) || cleanLine.match(/[\-\–\—]/);
+        if (fallbackMatch && fallbackMatch.index !== undefined) {
+          const word = cleanLine.substring(0, fallbackMatch.index).trim();
+          const translation = cleanLine.substring(fallbackMatch.index + fallbackMatch[0].length).trim();
+          return { word, translation };
+        }
+      }
+
+      return { word: cleanLine, translation: null };
+    };
+
+    let rawLines: string[] = [];
+    if (selectedLesson.vocabularyText) {
+      if (selectedLesson.vocabularyText.includes('\n')) {
+        rawLines = selectedLesson.vocabularyText.split('\n');
+      } else {
+        rawLines = selectedLesson.vocabularyText.split(/[,;]+/);
+      }
+    }
+
+    const vocabList = rawLines.map(i => i.trim()).filter(i => i.length > 0).map(parseVocabularyLine);
 
     return (
       <div className="max-w-4xl mx-auto space-y-6">
@@ -88,13 +115,13 @@ const [lessons, setLessons] = useState<LessonRecord[]>([]);
                  <Tag className="w-4 h-4 text-amber-500" />
                  {language === 'pl' ? 'Słownictwo z lekcji' : 'Lesson Vocabulary'}
                </h3>
-               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                 {vocabList.map((word, idx) => (
-                   <div key={idx} className="bg-base-200 border border-white/5 rounded-xl p-3 flex items-center gap-3 shadow-sm hover:border-primary/30 transition-colors">
-                      <div className="w-6 h-6 rounded-full bg-base-300 flex items-center justify-center shrink-0">
-                         <span className="text-xs font-mono text-content-muted">{idx + 1}</span>
-                      </div>
-                      <span className="font-medium text-sm text-white">{word}</span>
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                 {vocabList.map((item, idx) => (
+                   <div key={idx} className="bg-base-200 border border-white/5 rounded-xl p-4 flex flex-col justify-center shadow-sm hover:border-primary/30 hover:bg-base-200/80 transition-all group">
+                      <span className="font-bold text-white text-base group-hover:text-primary transition-colors">{item.word}</span>
+                      {item.translation && (
+                        <span className="text-sm text-content-muted mt-1">{item.translation}</span>
+                      )}
                    </div>
                  ))}
                </div>
