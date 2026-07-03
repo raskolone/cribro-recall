@@ -1,7 +1,7 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { FlashcardSet, Flashcard, StudySession, SessionResult, AISuggestionCache } from '../types';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
-import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, writeBatch, getDocs, where, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, writeBatch, getDocs, getDoc, where, orderBy, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 
 interface FlashcardContextType {
@@ -28,18 +28,59 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
   const userId = auth.currentUser?.uid;
 
   useEffect(() => {
-    // If no real UID but user is populated -> it is a demo mock, bypass firestore
     if (!userId && user) return; 
     if (!userId) return;
+
+    let currentDbSets: FlashcardSet[] = [];
+    let currentLessonSets: FlashcardSet[] = [];
+
+    const updateMergedSets = () => {
+      setSets([...currentDbSets, ...currentLessonSets]);
+    };
 
     const setsRef = collection(db, 'sets');
     const q = query(setsRef, where('userId', '==', userId));
     
     const unsubscribeSets = onSnapshot(q, (snapshot) => {
-      const setsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FlashcardSet));
-      setSets(setsData);
+      currentDbSets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FlashcardSet));
+      updateMergedSets();
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'sets');
+    });
+
+    const lessonsRef = collection(db, `users/${userId}/lessonRecords`);
+    const qLessons = query(lessonsRef, orderBy('date', 'desc'));
+    const unsubscribeLessons = onSnapshot(qLessons, (snapshot) => {
+      const lessonSets: FlashcardSet[] = [];
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.vocabularyText && data.vocabularyText.trim().length > 0) {
+            let rawLines: string[] = [];
+            if (data.vocabularyText.includes('\n')) {
+              rawLines = data.vocabularyText.split('\n');
+            } else {
+              rawLines = data.vocabularyText.split(/[,;]+/);
+            }
+            const vocabList = rawLines.map((i: string) => i.trim()).filter((i: string) => i.length > 0);
+            if (vocabList.length > 0) {
+                lessonSets.push({
+                    id: `lesson_${doc.id}`,
+                    userId: userId,
+                    title: `[Lekcja] ${data.topic || 'Bez tematu'}`,
+                    description: `Słownictwo z lekcji: ${data.date}`,
+                    isPublic: false,
+                    cardCount: vocabList.length,
+                    createdAt: data.createdAt || data.date,
+                    updatedAt: data.date,
+                    isLessonVocabulary: true
+                });
+            }
+        }
+      });
+      currentLessonSets = lessonSets;
+      updateMergedSets();
+    }, (error) => {
+      console.error('Error fetching lessons for vocab:', error);
     });
 
     const sessionsRef = collection(db, 'sessions');
@@ -54,6 +95,7 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
 
     return () => {
       unsubscribeSets();
+      unsubscribeLessons();
       unsubscribeSessions();
     };
   }, [userId]);
@@ -111,8 +153,62 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   };
 
+  const parseVocabularyLine = (line: string) => {
+    let cleanLine = line.replace(/^[\s\*\-\•\d\.]+\s*/, '').trim();
+    const separatorMatch = cleanLine.match(/\s+[\-\–\—\:=]\s+/);
+    if (separatorMatch && separatorMatch.index !== undefined) {
+      const word = cleanLine.substring(0, separatorMatch.index).trim();
+      const translation = cleanLine.substring(separatorMatch.index + separatorMatch[0].length).trim();
+      return { word, translation };
+    } else {
+      const fallbackMatch = cleanLine.match(/[:=]/) || cleanLine.match(/[\-\–\—]/);
+      if (fallbackMatch && fallbackMatch.index !== undefined) {
+        const word = cleanLine.substring(0, fallbackMatch.index).trim();
+        const translation = cleanLine.substring(fallbackMatch.index + fallbackMatch[0].length).trim();
+        return { word, translation };
+      }
+    }
+    return { word: cleanLine, translation: null };
+  };
+
   const getFlashcards = async (setId: string) => {
     if (!userId) return [];
+    
+    if (setId.startsWith('lesson_')) {
+      const lessonId = setId.replace('lesson_', '');
+      try {
+        const lessonRef = doc(db, `users/${userId}/lessonRecords`, lessonId);
+        const lessonSnap = await getDoc(lessonRef);
+        if (lessonSnap.exists()) {
+          const lessonData = lessonSnap.data();
+          if (lessonData.vocabularyText) {
+            let rawLines: string[] = [];
+            if (lessonData.vocabularyText.includes('\n')) {
+              rawLines = lessonData.vocabularyText.split('\n');
+            } else {
+              rawLines = lessonData.vocabularyText.split(/[,;]+/);
+            }
+            const vocabList = rawLines.map((i: string) => i.trim()).filter((i: string) => i.length > 0).map(parseVocabularyLine);
+            return vocabList.map((item: any, idx: number) => ({
+              id: `card_${idx}`,
+              setId: setId,
+              term: item.word,
+              termLanguage: 'en',
+              definition: item.translation || '',
+              definitionLanguage: 'pl',
+              position: idx,
+              masteryLevel: 0,
+              nextReview: Date.now(),
+              imageUrl: null
+            } as unknown as Flashcard));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching lesson vocabulary:', error);
+      }
+      return [];
+    }
+
     try {
       const cardsRef = collection(db, `sets/${setId}/flashcards`);
       const q = query(cardsRef, orderBy('position', 'asc'));

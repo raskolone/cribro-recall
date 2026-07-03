@@ -756,13 +756,19 @@ const AdminPanel: React.FC = () => {
               
               <div>
                 <label className="block text-sm font-bold text-content-muted mb-1">Poziom zaawansowania</label>
-                <input
-                  type="text"
+                <select
                   value={profileForm.level}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, level: e.target.value }))}
-                  placeholder="np. B1/B2"
-                  className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50"
-                />
+                  className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-white appearance-none cursor-pointer"
+                >
+                  <option value="">Wybierz poziom...</option>
+                  <option value="A1">A1</option>
+                  <option value="A2">A2</option>
+                  <option value="B1">B1</option>
+                  <option value="B2">B2</option>
+                  <option value="C1">C1</option>
+                  <option value="C2">C2</option>
+                </select>
               </div>
 
               <div>
