@@ -571,37 +571,88 @@ const AIExerciseGeneratorScreen: React.FC = () => {
 
               {practiceMode === 'fixed' ? (
                 <div>
-                  <label className="block text-sm font-bold text-content-muted mb-2">
-                    {language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}
+                  <label className="flex items-center justify-between text-sm font-bold text-content-muted mb-2">
+                    <span>{language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}</span>
+                    <span className="text-white bg-base-300 px-2 py-0.5 rounded text-xs font-mono">{numSentences}</span>
                   </label>
-                  <input 
-                    type="number" 
-                    min="1" 
-                    max="20" 
-                    value={numSentences} 
-                    onChange={(e) => setNumSentences(Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))}
-                    className="w-full bg-base-200 border border-base-300 focus:border-primary/50 text-white rounded-lg p-3 text-sm font-bold"
-                  />
+                  <div className="relative pt-2 pb-8 mt-2">
+                    {/* Custom track */}
+                    <div className="absolute top-1/2 left-0 right-0 h-1.5 bg-base-300/50 rounded-full -translate-y-1/2" />
+                    <div 
+                      className="absolute top-1/2 left-0 h-1.5 bg-primary rounded-full -translate-y-1/2 pointer-events-none transition-all duration-150" 
+                      style={{ width: `${(numSentences - 1) / 24 * 100}%` }}
+                    />
+                    
+                    {/* Invisible native range input */}
+                    <input 
+                      type="range" 
+                      min="1" 
+                      max="25" 
+                      value={numSentences} 
+                      onChange={(e) => setNumSentences(parseInt(e.target.value) || 1)}
+                      className="w-full h-6 appearance-none cursor-pointer absolute top-1/2 -translate-y-1/2 opacity-0 z-20 m-0"
+                    />
+                    
+                    {/* Custom thumb */}
+                    <div 
+                      className="w-4 h-4 bg-primary rounded-full absolute top-1/2 -translate-y-1/2 z-10 shadow-[0_0_10px_rgba(114,240,180,0.5)] pointer-events-none transition-all duration-150"
+                      style={{ left: `calc(${(numSentences - 1) / 24 * 100}% - 8px)` }}
+                    >
+                      <div className="absolute inset-0.5 bg-base-100 rounded-full"></div>
+                      <div className="absolute inset-1.5 bg-primary rounded-full"></div>
+                    </div>
+
+                    <div className="absolute top-8 left-0 right-0 flex justify-between px-1 pointer-events-none">
+                      {[1, 5, 10, 15, 20, 25].map(tick => (
+                        <div key={tick} className="flex flex-col items-center absolute" style={{ left: `${(tick - 1) / 24 * 100}%`, transform: 'translateX(-50%)' }}>
+                          <div className={`w-0.5 h-1.5 rounded-full mb-1 ${numSentences >= tick ? 'bg-primary' : 'bg-base-300'}`}></div>
+                          <span className={`text-[10px] font-mono ${numSentences >= tick ? 'text-primary/80' : 'text-content-muted'}`}>{tick}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div>
-                  <label className="block text-sm font-bold text-content-muted mb-2">
-                    {language === 'pl' ? 'Czas ćwiczenia (minuty)' : 'Practice time (minutes)'}
+                  <label className="flex items-center justify-between text-sm font-bold text-content-muted mb-2">
+                    <span>{language === 'pl' ? 'Czas ćwiczenia (minuty)' : 'Practice time (minutes)'}</span>
+                    <span className="text-white bg-base-300 px-2 py-0.5 rounded text-xs font-mono">{timeLimit} min</span>
                   </label>
-                  <div className="flex gap-2">
-                    {[1, 3, 5, 10].map((mins) => (
-                      <button
-                        key={mins}
-                        onClick={() => setTimeLimit(mins)}
-                        className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors ${
-                          timeLimit === mins 
-                            ? 'bg-primary/20 text-primary border border-primary/50' 
-                            : 'bg-base-200 border border-base-300 text-content-muted hover:text-white'
-                        }`}
-                      >
-                        {mins} min
-                      </button>
-                    ))}
+                  <div className="relative pt-2 pb-8 mt-2">
+                    {/* Custom track */}
+                    <div className="absolute top-1/2 left-0 right-0 h-1.5 bg-base-300/50 rounded-full -translate-y-1/2" />
+                    <div 
+                      className="absolute top-1/2 left-0 h-1.5 bg-primary rounded-full -translate-y-1/2 pointer-events-none transition-all duration-150" 
+                      style={{ width: `${(timeLimit - 1) / 24 * 100}%` }}
+                    />
+                    
+                    {/* Invisible native range input */}
+                    <input 
+                      type="range" 
+                      min="1" 
+                      max="25" 
+                      value={timeLimit} 
+                      onChange={(e) => setTimeLimit(parseInt(e.target.value) || 1)}
+                      className="w-full h-6 appearance-none cursor-pointer absolute top-1/2 -translate-y-1/2 opacity-0 z-20 m-0"
+                    />
+                    
+                    {/* Custom thumb */}
+                    <div 
+                      className="w-4 h-4 bg-primary rounded-full absolute top-1/2 -translate-y-1/2 z-10 shadow-[0_0_10px_rgba(114,240,180,0.5)] pointer-events-none transition-all duration-150"
+                      style={{ left: `calc(${(timeLimit - 1) / 24 * 100}% - 8px)` }}
+                    >
+                      <div className="absolute inset-0.5 bg-base-100 rounded-full"></div>
+                      <div className="absolute inset-1.5 bg-primary rounded-full"></div>
+                    </div>
+
+                    <div className="absolute top-8 left-0 right-0 flex justify-between px-1 pointer-events-none">
+                      {[1, 5, 10, 15, 20, 25].map(tick => (
+                        <div key={tick} className="flex flex-col items-center absolute" style={{ left: `${(tick - 1) / 24 * 100}%`, transform: 'translateX(-50%)' }}>
+                          <div className={`w-0.5 h-1.5 rounded-full mb-1 ${timeLimit >= tick ? 'bg-primary' : 'bg-base-300'}`}></div>
+                          <span className={`text-[10px] font-mono ${timeLimit >= tick ? 'text-primary/80' : 'text-content-muted'}`}>{tick}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
