@@ -9,6 +9,7 @@ import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonR
 import { getVocabularySetsForStudent } from '../../services/lessonRecord';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
   Settings, 
@@ -82,6 +83,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
   const [activeSentenceIndex, setActiveSentenceIndex] = useState<number>(0);
   const [step, setStep] = useState<'setup' | 'practice' | 'results'>('setup');
   const [vocabularySets, setVocabularySets] = useState<VocabularySet[]>([]);
+  const [isLessonsExpanded, setIsLessonsExpanded] = useState<boolean>(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -92,7 +94,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
   }, [user?.id]);
 
   // Filter out sets assigned to the student (assignedByTeacher or belongs to user)
-  const availableSets = sets.filter(s => s.assignedByTeacher || s.userId);
+  const availableSets = sets.filter(s => (s.assignedByTeacher || s.userId) && !s.isLessonVocabulary);
 
   // Save customized prompts to localStorage
   
@@ -511,23 +513,56 @@ const AIExerciseGeneratorScreen: React.FC = () => {
                     );
                   })}
 
-                  {vocabularySets.map(set => (
-                    <label key={`vocab-${set.id}`} className="flex items-center gap-3 p-3 bg-base-200 rounded-lg border border-base-300 cursor-pointer hover:border-white/10 transition-colors">
-                      <input 
-                        type="radio" 
-                        name="vocabSource" 
-                        checked={selectedSetId === `vocab-${set.id}`} 
-                        onChange={() => setSelectedSetId(`vocab-${set.id}`)}
-                        className="text-primary focus:ring-primary/50 bg-base-300 border-base-300"
-                      />
-                      <div className="text-sm">
-                        <div className="font-bold">{language === 'pl' ? 'Lekcja: ' : 'Lesson: '}{set.topic}</div>
-                        <div className="text-xs text-amber-500 italic">
-                          {language === 'pl' ? 'Z dnia: ' : 'Date: '}{new Date(set.date).toLocaleDateString()} &bull; {set.itemCount} {language === 'pl' ? 'słów' : 'words'}
+                  {vocabularySets.length > 0 && (
+                    <div className="border border-base-300 rounded-lg overflow-hidden bg-base-200/50">
+                      <button
+                        className="w-full flex items-center justify-between p-3 font-bold text-sm hover:bg-base-300/50 transition-colors"
+                        onClick={() => setIsLessonsExpanded(!isLessonsExpanded)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>📚</span>
+                          {language === 'pl' ? 'Słownictwo z moich lekcji' : 'Vocabulary from my lessons'}
                         </div>
-                      </div>
-                    </label>
-                  ))}
+                        <motion.div
+                          animate={{ rotate: isLessonsExpanded ? 180 : 0 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                        </motion.div>
+                      </button>
+                      <AnimatePresence>
+                        {isLessonsExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="p-2 flex flex-col gap-2 border-t border-base-300 bg-base-200">
+                              {vocabularySets.map(set => (
+                                <label key={`vocab-${set.id}`} className="flex items-center gap-3 p-3 bg-base-100 rounded-lg border border-base-300 cursor-pointer hover:border-white/10 transition-colors">
+                                  <input 
+                                    type="radio" 
+                                    name="vocabSource" 
+                                    checked={selectedSetId === `vocab-${set.id}`} 
+                                    onChange={() => setSelectedSetId(`vocab-${set.id}`)}
+                                    className="text-primary focus:ring-primary/50 bg-base-300 border-base-300"
+                                  />
+                                  <div className="text-sm">
+                                    <div className="font-bold">{language === 'pl' ? 'Lekcja: ' : 'Lesson: '}{set.topic}</div>
+                                    <div className="text-xs text-amber-500 italic">
+                                      {language === 'pl' ? 'Z dnia: ' : 'Date: '}{new Date(set.date).toLocaleDateString()} &bull; {set.itemCount} {language === 'pl' ? 'słów' : 'words'}
+                                    </div>
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
 
                   <label className="flex items-center gap-3 p-3 bg-base-200 rounded-lg border border-base-300 cursor-pointer hover:border-white/10 transition-colors">
                     <input 

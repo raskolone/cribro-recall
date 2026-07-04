@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useLanguage } from '../../context/LanguageContext';
 import Card from '../ui/Card';
@@ -20,7 +21,7 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
   const [set, setSet] = useState<FlashcardSet | null>(null);
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedMode, setSelectedMode] = useState<StudyMode>(initialMode);
+  const [selectedMode, setSelectedMode] = useState<StudyMode>(initialMode || 'flashcards');
 
   useEffect(() => {
     const currentSet = sets.find(s => s.id === setId);
@@ -172,11 +173,11 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: 
     setStartTime(Date.now());
   }, [initialCards]);
 
-  const handleFlip = () => {
-    setIsFlipped(!isFlipped);
-  };
+  const handleFlip = useCallback(() => {
+    setIsFlipped(prev => !prev);
+  }, []);
 
-  const handleAnswer = async (isCorrect: boolean) => {
+  const handleAnswer = useCallback(async (isCorrect: boolean) => {
     const responseTimeMs = Date.now() - startTime;
     const currentCard = cards[currentIndex];
     
@@ -189,7 +190,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: 
     setResults(newResults);
     
     if (currentIndex < cards.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      setCurrentIndex(prev => prev + 1);
       setIsFlipped(false);
       setStartTime(Date.now());
     } else {
@@ -203,7 +204,48 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: 
         scorePercent: Math.round((correctCount / cards.length) * 100)
       }, newResults);
     }
-  };
+  }, [currentIndex, cards, results, startTime, setId, saveSession]);
+
+  const handlePrev = useCallback(() => {
+    if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1);
+      setIsFlipped(false);
+    }
+  }, [currentIndex]);
+
+  const handleNext = useCallback(() => {
+    if (currentIndex < cards.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+      setIsFlipped(false);
+    }
+  }, [currentIndex, cards.length]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isFinished) return;
+      
+      if (e.code === 'Space') {
+        e.preventDefault();
+        handleFlip();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        if (isFlipped) {
+          handleAnswer(false);
+        } else {
+          handlePrev();
+        }
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        if (isFlipped) {
+          handleAnswer(true);
+        } else {
+          handleNext();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFlipped, isFinished, handleFlip, handleAnswer, handlePrev, handleNext]);
 
   if (cards.length === 0) return null;
 
@@ -245,66 +287,112 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: 
         />
       </div>
 
-      <div 
-        className="relative w-full aspect-[3/2] perspective-1000 cursor-pointer"
-        onClick={handleFlip}
-      >
-        <div className={`w-full h-full transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
-          <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 bg-base-200 border-2 border-base-300 hover:border-primary/50 transition-colors">
-            <div className="absolute top-4 right-4 z-10 flex gap-2">
-              <PronunciationMic targetWord={currentCard.term.replace(/<[^>]+>/g, '')} />
-              {currentCard.audioUrl && (
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const audio = new Audio(currentCard.audioUrl!);
-                    audio.play();
-                  }}
-                  className="w-10 h-10 flex items-center justify-center rounded-full bg-base-300 text-primary hover:bg-base-100 border border-base-300 transition-colors"
-                  title="Play audio"
+      <div className="flex items-center gap-4">
+        <button 
+          onClick={handlePrev} 
+          disabled={currentIndex === 0}
+          className={`hidden md:flex p-4 rounded-full transition-colors ${currentIndex === 0 ? 'text-base-300 cursor-not-allowed' : 'text-content hover:bg-base-300'}`}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+
+        <div className="flex-1 perspective-1000">
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={currentCard.id}
+              initial={{ x: 50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -50, opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="relative w-full aspect-[3/2] cursor-pointer"
+              onClick={handleFlip}
+            >
+              <motion.div 
+                className="w-full h-full relative preserve-3d"
+                initial={false}
+                animate={{ rotateY: isFlipped ? 180 : 0 }}
+                transition={{ duration: 0.6, type: "spring", stiffness: 200, damping: 20 }}
+                style={{ transformStyle: 'preserve-3d' }}
+              >
+                {/* Front Side */}
+                <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 bg-base-200 border-2 border-base-300 hover:border-primary/50 transition-colors" style={{ backfaceVisibility: 'hidden' }}>
+                  <div className="absolute top-4 right-4 z-10 flex gap-2">
+                    <PronunciationMic targetWord={currentCard.term.replace(/<[^>]+>/g, '')} />
+                    {currentCard.audioUrl && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const audio = new Audio(currentCard.audioUrl!);
+                          audio.play();
+                        }}
+                        className="w-10 h-10 flex items-center justify-center rounded-full bg-base-300 text-primary hover:bg-base-100 border border-base-300 transition-colors"
+                        title="Play audio"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-sm font-mono text-content-muted uppercase tracking-widest mb-8">{t('flashcards.term')}</div>
+                  <div className="text-4xl md:text-5xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard.term }} />
+                </Card>
+                
+                {/* Back Side */}
+                <Card 
+                  className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 bg-base-200 border-2 border-primary" 
+                  style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                </button>
-              )}
-            </div>
-            <div className="text-sm font-mono text-content-muted uppercase tracking-widest mb-8">{t('flashcards.term')}</div>
-            <div className="text-4xl md:text-5xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard.term }} />
-          </Card>
-          
-          <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 bg-base-200 border-2 border-primary rotate-y-180">
-            <div className="absolute top-4 right-4 z-10 flex gap-2">
-              {currentCard.audioUrl && (
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const audio = new Audio(currentCard.audioUrl!);
-                    audio.play();
-                  }}
-                  className="w-10 h-10 flex items-center justify-center rounded-full bg-base-100 text-primary hover:bg-base-300 border border-base-300 transition-colors"
-                  title="Play audio"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                </button>
-              )}
-            </div>
-            <div className="text-sm font-mono text-primary uppercase tracking-widest mb-8">{t('flashcards.definition')}</div>
-            <div className="text-3xl md:text-4xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard.definition }} />
-          </Card>
+                  <div className="absolute top-4 right-4 z-10 flex gap-2">
+                    {currentCard.audioUrl && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const audio = new Audio(currentCard.audioUrl!);
+                          audio.play();
+                        }}
+                        className="w-10 h-10 flex items-center justify-center rounded-full bg-base-100 text-primary hover:bg-base-300 border border-base-300 transition-colors"
+                        title="Play audio"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-sm font-mono text-primary uppercase tracking-widest mb-8">{t('flashcards.definition')}</div>
+                  <div className="text-3xl md:text-4xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard.definition }} />
+                </Card>
+              </motion.div>
+            </motion.div>
+          </AnimatePresence>
         </div>
+
+        <button 
+          onClick={handleNext} 
+          disabled={currentIndex === cards.length - 1}
+          className={`hidden md:flex p-4 rounded-full transition-colors ${currentIndex === cards.length - 1 ? 'text-base-300 cursor-not-allowed' : 'text-content hover:bg-base-300'}`}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+
+      <div className="flex justify-between md:hidden px-4">
+         <button onClick={handlePrev} disabled={currentIndex === 0} className={`p-2 ${currentIndex === 0 ? 'opacity-30' : ''}`}>&larr; Poprzednia</button>
+         <button onClick={handleNext} disabled={currentIndex === cards.length - 1} className={`p-2 ${currentIndex === cards.length - 1 ? 'opacity-30' : ''}`}>Następna &rarr;</button>
       </div>
 
       {isFlipped ? (
-        <div className="grid grid-cols-2 gap-4">
-          <Button variant="danger" className="py-4 text-lg" onClick={() => handleAnswer(false)}>
-            {t('flashcards.incorrect')}
+        <div className="grid grid-cols-2 gap-4 mt-8">
+          <Button variant="danger" className="py-4 text-lg flex flex-col items-center justify-center gap-1" onClick={() => handleAnswer(false)}>
+            <span>Umiem</span>
+            <span className="text-[10px] uppercase opacity-70">Nie umiem (Strzałka w lewo)</span>
           </Button>
-          <Button className="py-4 text-lg" onClick={() => handleAnswer(true)}>
-            {t('flashcards.correct')}
+          <Button className="py-4 text-lg flex flex-col items-center justify-center gap-1" onClick={() => handleAnswer(true)}>
+            <span>Umiem</span>
+            <span className="text-[10px] uppercase opacity-70">Umiem (Strzałka w prawo)</span>
           </Button>
         </div>
       ) : (
-        <div className="text-center text-content-muted text-sm animate-pulse">
-          {t('flashcards.clickReveal')}
+        <div className="text-center text-content-muted text-sm animate-pulse mt-8 flex flex-col items-center gap-2">
+          <span>{t('flashcards.clickReveal')}</span>
+          <span className="bg-base-300 px-2 py-1 rounded text-xs">Spacja</span>
         </div>
       )}
     </div>

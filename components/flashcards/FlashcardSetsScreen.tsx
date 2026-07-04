@@ -19,16 +19,36 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
   const { t, language } = useLanguage();
   const [isCreating, setIsCreating] = useState(false);
   const [setToDelete, setSetToDelete] = useState<string | null>(null);
+  const [previewSetId, setPreviewSetId] = useState<string | null>(null);
+  const [previewCards, setPreviewCards] = useState<any[]>([]);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const { getFlashcards } = useFlashcards();
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        setSetToDelete(null);
+        setPreviewSetId(null);
+
         setSetToDelete(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+    const handlePreviewSet = async (setId: string) => {
+    setPreviewSetId(setId);
+    setIsLoadingPreview(true);
+    try {
+      const cards = await getFlashcards(setId);
+      setPreviewCards(cards);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
 
   const handleCreateNewSet = async () => {
     setIsCreating(true);
@@ -337,6 +357,53 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
         </div>
       </div>
       {/* Delete Confirmation Modal */}
+      {previewSetId && (
+        <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-2xl shadow-2xl border-primary/20 max-h-[80vh] flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">{language === 'pl' ? 'Podgląd słownictwa' : 'Vocabulary Preview'}</h3>
+              <button onClick={() => setPreviewSetId(null)} className="text-content-muted hover:text-white">
+                ✕
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto pr-2 space-y-2">
+              {isLoadingPreview ? (
+                <div className="text-center py-8 text-content-muted">
+                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  {language === 'pl' ? 'Ładowanie...' : 'Loading...'}
+                </div>
+              ) : previewCards.length === 0 ? (
+                <div className="text-center py-8 text-content-muted">
+                  {language === 'pl' ? 'Brak słówek w zestawie.' : 'No words in this set.'}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {previewCards.map((card, idx) => (
+                    <div key={card.id || idx} className="bg-base-200 border border-base-300 p-3 rounded-lg flex flex-col gap-1">
+                      <div className="font-bold">{card.front || card.term}</div>
+                      <div className="text-content-muted text-sm">{card.back || card.definition}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-base-300 flex justify-end gap-3">
+              <Button onClick={() => setPreviewSetId(null)} variant="secondary">
+                {language === 'pl' ? 'Zamknij' : 'Close'}
+              </Button>
+              <Button onClick={() => {
+                onStudySet(previewSetId);
+                setPreviewSetId(null);
+              }} disabled={previewCards.length === 0}>
+                {t('flashcards.study')}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {setToDelete && (
         <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <Card className="w-full max-w-md shadow-2xl border-primary/20">
