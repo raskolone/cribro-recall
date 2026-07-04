@@ -62,6 +62,9 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [practiceMode, setPracticeMode] = useState<'fixed' | 'time'>('fixed');
   const [timeLimit, setTimeLimit] = useState<number>(3); // minutes
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const numSentencesRef = useRef<HTMLSpanElement>(null);
+  const timeLimitRef = useRef<HTMLSpanElement>(null);
+
   const [isGeneratingMore, setIsGeneratingMore] = useState(false);
   const [customGenPrompt, setCustomGenPrompt] = useState<string>(() => {
     return localStorage.getItem('ai_custom_gen_prompt') || DEFAULT_GENERATION_PROMPT;
@@ -94,6 +97,25 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [vocabularySets, setVocabularySets] = useState<VocabularySet[]>([]);
   const [isLessonsExpanded, setIsLessonsExpanded] = useState<boolean>(false);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (numSentencesRef.current) {
+      gsap.fromTo(numSentencesRef.current, 
+        { scale: 1.5, color: '#72f0b4' }, 
+        { scale: 1, color: '#eae8e3', duration: 0.5, ease: 'power2.out' }
+      );
+    }
+  }, [numSentences]);
+
+  useEffect(() => {
+    if (timeLimitRef.current) {
+      gsap.fromTo(timeLimitRef.current, 
+        { scale: 1.5, color: '#72f0b4' }, 
+        { scale: 1, color: '#eae8e3', duration: 0.5, ease: 'power2.out' }
+      );
+    }
+  }, [timeLimit]);
+
 
   useEffect(() => {
     if (user?.id) {
@@ -712,7 +734,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                 <div>
                   <label className="flex items-center justify-between text-sm font-bold text-content-muted mb-2">
                     <span>{language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}</span>
-                    <span className="text-white bg-base-300 px-2 py-0.5 rounded text-xs font-mono">{numSentences}</span>
+                    <span ref={numSentencesRef} className="text-primary font-bold bg-primary/10 border border-primary/20 shadow-[0_0_15px_rgba(114,240,180,0.15)] px-3 py-1 rounded-xl text-lg font-mono min-w-[3rem] text-center inline-block">{numSentences}</span>
                   </label>
                   <div className="relative pt-2 pb-8 mt-2">
                     {/* Custom track */}
@@ -755,7 +777,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                 <div>
                   <label className="flex items-center justify-between text-sm font-bold text-content-muted mb-2">
                     <span>{language === 'pl' ? 'Czas ćwiczenia (minuty)' : 'Practice time (minutes)'}</span>
-                    <span className="text-white bg-base-300 px-2 py-0.5 rounded text-xs font-mono">{timeLimit} min</span>
+                    <span ref={timeLimitRef} className="text-primary font-bold bg-primary/10 border border-primary/20 shadow-[0_0_15px_rgba(114,240,180,0.15)] px-3 py-1 rounded-xl text-lg font-mono min-w-[4rem] text-center inline-block">{timeLimit} min</span>
                   </label>
                   <div className="relative pt-2 pb-8 mt-2">
                     {/* Custom track */}
