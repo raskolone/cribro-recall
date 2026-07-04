@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import gsap from 'gsap';
 import { useLanguage } from '../../context/LanguageContext';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
@@ -41,12 +42,20 @@ Zwróć uwagę na poprawność gramatyczną, słownictwo, idiomy i naturalność
 Wskaż mocne strony, alternatywne poprawne opcje i precyzyjnie wyjaśnij ewentualne błędy po polsku.
 Dla każdego zdania określ procentowy wynik poprawności (score) od 0 do 100.`;
 
-const AIExerciseGeneratorScreen: React.FC = () => {
+import { ExerciseType } from '../../types';
+
+interface AIExerciseGeneratorScreenProps {
+  initialSetId?: string | null;
+  onStartPractice?: (exercise: ExerciseType) => void;
+}
+
+const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ initialSetId = null, onStartPractice }) => {
   const { language } = useLanguage();
   const { sets, getFlashcards } = useFlashcards();
   const { user } = useAuth();
 
   // Settings states
+  const [activeTab, setActiveTab] = useState<'ai' | 'other'>('ai');
   const [selectedSetId, setSelectedSetId] = useState<string>('all');
   const [level, setLevel] = useState<string>(user?.level || 'B1');
   const [numSentences, setNumSentences] = useState<number>(5);
@@ -84,6 +93,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
   const [step, setStep] = useState<'setup' | 'practice' | 'results'>('setup');
   const [vocabularySets, setVocabularySets] = useState<VocabularySet[]>([]);
   const [isLessonsExpanded, setIsLessonsExpanded] = useState<boolean>(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -107,6 +117,61 @@ const AIExerciseGeneratorScreen: React.FC = () => {
     }
     return () => clearTimeout(timer);
   }, [timeLeft, step]);
+
+  
+  useEffect(() => {
+    if (step === 'results' && evaluationResults.length > 0 && resultsRef.current) {
+      const tl = gsap.timeline();
+      
+      // Initial state
+      gsap.set(resultsRef.current.children, { y: 50, opacity: 0 });
+      const scoreBoard = resultsRef.current.querySelector('.score-board');
+      const scoreText = resultsRef.current.querySelector('.score-text');
+      const icon = resultsRef.current.querySelector('.score-icon');
+      
+      if (scoreBoard) gsap.set(scoreBoard, { scale: 0.8, opacity: 0 });
+      if (scoreText) gsap.set(scoreText, { scale: 0, rotation: -45 });
+      if (icon) gsap.set(icon, { scale: 0, rotation: 180 });
+      
+      // Animation sequence
+      tl.to(resultsRef.current.children, {
+        y: 0,
+        opacity: 1,
+        duration: 0.5,
+        stagger: 0.1,
+        ease: 'power3.out'
+      })
+      .to(scoreBoard, {
+        scale: 1,
+        opacity: 1,
+        duration: 0.6,
+        ease: 'elastic.out(1, 0.5)'
+      }, "-=0.3")
+      .to(icon, {
+        scale: 1,
+        rotation: 0,
+        duration: 0.6,
+        ease: 'back.out(2)'
+      }, "-=0.4")
+      .to(scoreText, {
+        scale: 1,
+        rotation: 0,
+        duration: 0.8,
+        ease: 'elastic.out(1.2, 0.3)'
+      }, "-=0.2");
+      
+      // Liquid glow effect on the board
+      if (scoreBoard) {
+        gsap.to(scoreBoard, {
+          boxShadow: '0 0 60px rgba(114, 240, 180, 0.3), inset 0 0 20px rgba(114, 240, 180, 0.1)',
+          duration: 1.5,
+          yoyo: true,
+          repeat: -1,
+          ease: 'sine.inOut'
+        });
+      }
+    }
+  }, [step, evaluationResults]);
 
   const handleSavePrompts = () => {
     localStorage.setItem('ai_custom_gen_prompt', customGenPrompt);
@@ -172,9 +237,15 @@ const AIExerciseGeneratorScreen: React.FC = () => {
           const plSnapshot = await getDocs(qPL);
           const plList = plSnapshot.docs.map(doc => doc.data() as PracticeLog);
           
-          const pastExercises = plList.map(pl => pl.exercisesData).filter(Boolean);
+          const pastExercises = plList.map((pl, index) => {
+            if (pl.exercisesData) {
+              return `Session ${index + 1} (${new Date(pl.date).toLocaleDateString()}): ${pl.exercisesData}`;
+            }
+            return null;
+          }).filter(Boolean);
+          
           if (pastExercises.length > 0) {
-            pastExercisesContext = pastExercises.join(' | ');
+            pastExercisesContext = pastExercises.join('\n');
           }
         } catch (e) {
           console.warn("Could not fetch recent practice logs", e);
@@ -209,7 +280,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
       }
 
       // Call Gemini API service function
-      const studentProfileContext = user?.description ? `Kluczowy profil kursanta (obowiązkowo spersonalizuj zdania pod kątem tych informacji): ${user.description}` : 'Brak danych profilu - stwórz naturalne zdania.';
+      const studentProfileContext = `Kluczowy profil kursanta: ${user?.firstName ? `Imię kursanta: ${user.firstName}. ` : ''}${user?.description ? `Dodatkowy profil: ${user.description}` : 'Brak dodatkowych danych profilu.'}`;
       const generated = await generateTranslationExercises(level, wordsToUse, customGenPrompt, lessonContextString, studentProfileContext, practiceMode === 'time' ? 10 : numSentences, pastExercisesContext);
       
       if (generated && generated.length > 0) {
@@ -260,7 +331,8 @@ const AIExerciseGeneratorScreen: React.FC = () => {
         return;
       }
       
-      const results = await evaluateTranslations(answeredExercises, answeredAnswers, customEvalPrompt);
+      const evalStudentContext = `${user?.firstName ? `Zwracaj się do ucznia po imieniu (${user.firstName}), odmieniając je naturalnie we wszystkich przypadkach w języku polskim zgodnie z regułami języka polskiego.` : ''}`;
+      const results = await evaluateTranslations(answeredExercises, answeredAnswers, customEvalPrompt, evalStudentContext);
       if (results && results.length > 0) {
         setEvaluationResults(results);
         setStep('results');
@@ -425,7 +497,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
       {/* STEP 1: SETUP */}
       {step === 'setup' && (
         <div className="max-w-2xl mx-auto space-y-6">
-          <div className="bg-primary/10 border border-primary/30 p-6 rounded-2xl text-center shadow-lg animate-pulse-delicate">
+          <div className="bg-primary/10 border border-primary/30 p-6 rounded-2xl text-center shadow-lg animate-pulse">
             <h2 className="text-xl font-bold text-primary mb-2 flex justify-center items-center gap-2">
               <Sparkles className="w-5 h-5" />
               {language === 'pl' ? 'Wciśnij "Generuj zdania przez AI", żeby rozpocząć nową lekcję!' : 'Click "Generate sentences with AI" to start a new lesson!'}
@@ -435,7 +507,39 @@ const AIExerciseGeneratorScreen: React.FC = () => {
             </p>
           </div>
           
-          <Card className="p-6 md:p-8 space-y-6 border border-white/5 shadow-xl">
+          <div className="flex bg-base-200/40 backdrop-blur-xl border border-white/10 p-1.5 rounded-2xl mb-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] gap-1">
+            <button
+              onClick={() => setActiveTab('ai')}
+              className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-500 relative ${
+                activeTab === 'ai' 
+                  ? 'text-primary bg-primary/10 shadow-[0_0_20px_rgba(74,222,128,0.2),inset_0_1px_0_0_rgba(255,255,255,0.1)] border border-primary/20 backdrop-blur-md animate-pulse' 
+                  : 'text-content-muted hover:text-white hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                {language === 'pl' ? 'Tłumaczenie z AI' : 'AI Translation'}
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('other')}
+              className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-500 ${
+                activeTab === 'other' 
+                  ? 'text-white bg-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_0_0_rgba(255,255,255,0.1)] border border-white/20 backdrop-blur-md' 
+                  : 'text-content-muted hover:text-white hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <BookOpen className="w-4 h-4" />
+                {language === 'pl' ? 'Pozostałe ćwiczenia' : 'Other exercises'}
+              </div>
+            </button>
+          </div>
+          
+          {activeTab === 'ai' ? (
+          <Card className="p-6 md:p-8 space-y-6 border border-white/5 shadow-xl bg-base-200/40 backdrop-blur-xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+            <div className="relative z-10">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -701,7 +805,76 @@ const AIExerciseGeneratorScreen: React.FC = () => {
                 {language === 'pl' ? 'Generuj zdania przez AI' : 'Generate sentences with AI'}
               </Button>
             </div>
+            </div>
           </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card 
+                className="cursor-pointer hover:border-primary transition-colors group"
+                onClick={() => onStartPractice?.('intro')}
+              >
+                <div className="text-4xl mb-4">👀</div>
+                <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+                  {language === 'pl' ? 'Fiszki Intro' : 'Flashcards Intro'}
+                </h3>
+                <p className="text-content-muted text-sm">
+                  {language === 'pl' ? 'Zapoznaj się powoli z nowym materiałem, bez sprawdzania i wyników.' : 'Familiarize yourself gently with new material, without testing or scoring.'}
+                </p>
+              </Card>
+
+              <Card 
+                className="cursor-pointer hover:border-primary transition-colors group"
+                onClick={() => onStartPractice?.('flashcards')}
+              >
+                <div className="text-4xl mb-4">🎴</div>
+                <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+                  {language === 'pl' ? 'Fiszki' : 'Flashcards'}
+                </h3>
+                <p className="text-content-muted text-sm">
+                  {language === 'pl' ? 'Przeglądaj pojęcia i definicje. Odwracaj karty, aby sprawdzić swoją wiedzę.' : 'Review terms and definitions. Flip cards to test your knowledge.'}
+                </p>
+              </Card>
+
+              <Card 
+                className="cursor-pointer hover:border-primary transition-colors group"
+                onClick={() => onStartPractice?.('quiz')}
+              >
+                <div className="text-4xl mb-4">📝</div>
+                <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+                  Quiz
+                </h3>
+                <p className="text-content-muted text-sm">
+                  {language === 'pl' ? 'Wybierz poprawną odpowiedź z 4 dostępnych opcji.' : 'Choose the correct answer from 4 available options.'}
+                </p>
+              </Card>
+
+              <Card 
+                className="cursor-pointer hover:border-primary transition-colors group"
+                onClick={() => onStartPractice?.('fill-in-the-blank')}
+              >
+                <div className="text-4xl mb-4">⌨️</div>
+                <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+                  {language === 'pl' ? 'Pisanie' : 'Writing'}
+                </h3>
+                <p className="text-content-muted text-sm">
+                  {language === 'pl' ? 'Wpisz poprawną definicję z klawiatury.' : 'Type the correct definition from your keyboard.'}
+                </p>
+              </Card>
+
+              <Card 
+                className="cursor-pointer hover:border-primary transition-colors group"
+                onClick={() => onStartPractice?.('match')}
+              >
+                <div className="text-4xl mb-4">🧩</div>
+                <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+                  {language === 'pl' ? 'Dopasowywanie' : 'Matching'}
+                </h3>
+                <p className="text-content-muted text-sm">
+                  {language === 'pl' ? 'Połącz pojęcia z definicjami na czas.' : 'Match terms with definitions against the clock.'}
+                </p>
+              </Card>
+            </div>
+          )}
         </div>
       )}
 
@@ -735,11 +908,28 @@ const AIExerciseGeneratorScreen: React.FC = () => {
             )}
           </div>
 
-          <Card className="p-6 md:p-8 space-y-6 border border-white/5 shadow-xl relative overflow-hidden">
-            {/* Background design accents */}
-            <div className="absolute top-0 right-0 p-8 opacity-[0.02] pointer-events-none select-none">
-              <Sparkles className="w-64 h-64 text-primary" />
-            </div>
+          <div className="relative">
+            {/* AI Motivating Bubble */}
+            <AnimatePresence>
+              {activeSentenceIndex > 0 && activeSentenceIndex % 3 === 0 && studentAnswers[activeSentenceIndex - 1]?.trim() && (
+                <motion.div 
+                  initial={{ opacity: 0, x: 20, y: -20, scale: 0.8 }}
+                  animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="absolute -right-4 -top-12 md:-right-12 md:-top-16 z-20"
+                >
+                  <div className="bg-primary text-black px-4 py-2 rounded-2xl rounded-bl-none shadow-lg font-bold text-sm flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    {language === 'pl' ? 'Świetnie Ci idzie! Oby tak dalej!' : 'Great job! Keep it up!'}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <Card className="p-6 md:p-8 space-y-6 border border-white/5 shadow-xl relative overflow-hidden">
+              {/* Background design accents */}
+              <div className="absolute top-0 right-0 p-8 opacity-[0.02] pointer-events-none select-none">
+                <Sparkles className="w-64 h-64 text-primary" />
+              </div>
 
             <div className="space-y-4 relative z-10">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 text-primary rounded-full text-xs font-mono font-bold">
@@ -817,6 +1007,7 @@ const AIExerciseGeneratorScreen: React.FC = () => {
               )}
             </div>
           </Card>
+          </div>
 
           {/* Prompt warning if fields are not completed */}
           {studentAnswers.some(ans => !ans?.trim()) && (
@@ -831,17 +1022,18 @@ const AIExerciseGeneratorScreen: React.FC = () => {
 
       {/* STEP 3: RESULTS EVALUATION */}
       {step === 'results' && evaluationResults.length > 0 && (
-        <div className="max-w-3xl mx-auto space-y-8 animate-fade-in-up">
+        <div ref={resultsRef} className="max-w-3xl mx-auto space-y-8">
           {/* Main score board */}
-          <Card className="p-8 border-primary/30 bg-primary/[0.01] text-center space-y-4 shadow-[0_0_32px_rgba(114,240,180,0.05)]">
-            <div className="inline-flex p-3 bg-primary/10 text-primary rounded-full mb-2">
-              <Award className="w-10 h-10" />
+          <Card className="score-board p-8 border-primary/30 bg-primary/[0.05] backdrop-blur-2xl text-center space-y-4 shadow-[0_0_40px_rgba(114,240,180,0.1),inset_0_1px_0_0_rgba(255,255,255,0.1)] rounded-3xl overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent pointer-events-none" />
+            <div className="score-icon inline-flex p-4 bg-primary/20 text-primary rounded-2xl mb-2 backdrop-blur-md border border-primary/30 shadow-[0_0_20px_rgba(114,240,180,0.2)]">
+              <Award className="w-12 h-12" />
             </div>
-            <h2 className="text-3xl font-black">
+            <h2 className="text-3xl font-black relative z-10 text-white">
               {language === 'pl' ? 'Twój spersonalizowany wynik!' : 'Your overall score!'}
             </h2>
-            <div className="flex justify-center items-baseline gap-2">
-              <span className="text-5xl font-black text-primary font-mono">{averageScore}%</span>
+            <div className="flex justify-center items-baseline gap-2 relative z-10">
+              <span className="score-text inline-block text-6xl font-black text-primary font-mono drop-shadow-[0_0_15px_rgba(114,240,180,0.4)]">{averageScore}%</span>
               <span className="text-sm text-content-muted">/ 100%</span>
             </div>
 

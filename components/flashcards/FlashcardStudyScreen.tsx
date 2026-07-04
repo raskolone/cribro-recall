@@ -11,17 +11,18 @@ interface FlashcardStudyScreenProps {
   setId: string;
   initialMode?: StudyMode;
   onBack: () => void;
+  onStartAIPractice?: () => void;
 }
 
 type StudyMode = 'flashcards' | 'quiz' | 'writing' | 'matching' | 'intro' | null;
 
-const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, initialMode = null, onBack }) => {
+const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, initialMode = null, onBack, onStartAIPractice }) => {
   const { sets, getFlashcards, saveSession } = useFlashcards();
   const { t, language } = useLanguage();
   const [set, setSet] = useState<FlashcardSet | null>(null);
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedMode, setSelectedMode] = useState<StudyMode>(initialMode || 'flashcards');
+  const [selectedMode, setSelectedMode] = useState<StudyMode>(initialMode || null);
 
   useEffect(() => {
     const currentSet = sets.find(s => s.id === setId);
@@ -62,6 +63,22 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {onStartAIPractice && (
+            <Card 
+              className="cursor-pointer hover:border-primary transition-colors group relative overflow-hidden"
+              onClick={onStartAIPractice}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+              <div className="text-4xl mb-4 relative z-10">✨</div>
+              <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors relative z-10">
+                {language === 'pl' ? 'Tłumacz z AI' : 'Translate with AI'}
+              </h3>
+              <p className="text-content-muted text-sm relative z-10">
+                {language === 'pl' ? 'Ćwicz tłumaczenie całych zdań z użyciem tego słownictwa, wspierany przez AI.' : 'Practice translating full sentences using this vocabulary, powered by AI.'}
+              </p>
+            </Card>
+          )}
+
           <Card 
             className="cursor-pointer hover:border-primary transition-colors group"
             onClick={() => setSelectedMode('intro')}

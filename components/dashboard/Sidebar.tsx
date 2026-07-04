@@ -11,6 +11,7 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   isDesktopCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 import BrandLogo from '../ui/BrandLogo';
@@ -32,7 +33,7 @@ const NavLink: React.FC<{
   </button>
 );
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPractice, isOpen, onClose, isDesktopCollapsed = false }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPractice, isOpen, onClose, isDesktopCollapsed = false, onToggleCollapse }) => {
   const [practiceOpen, setPracticeOpen] = useState(false);
   const { user } = useAuth();
   const { language } = useLanguage();
@@ -58,17 +59,33 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
       )}
       
       <aside 
-        className={`fixed inset-y-0 left-0 z-50 bg-base-100/80 backdrop-blur-md flex-shrink-0 border-r border-base-300 shadow-xl flex flex-col transform transition-all duration-300 ease-in-out md:relative ${
+        className={`fixed inset-y-0 left-0 z-50 bg-base-100/40 backdrop-blur-xl border-r border-white/10 shadow-[8px_0_32px_rgba(0,0,0,0.5)] flex flex-col transform transition-all duration-300 ease-in-out md:relative flex-shrink-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        } ${isDesktopCollapsed ? 'md:hidden md:w-0 overflow-hidden' : 'w-64'}`}
+        } ${isDesktopCollapsed ? 'md:hidden md:w-0 overflow-hidden opacity-0' : 'w-64 opacity-100'}`}
+        style={{
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05), 8px 0 32px rgba(0,0,0,0.5)",
+        }}
       >
         <div className="p-6 flex items-center justify-between border-b border-base-300 mb-6">
           <BrandLogo className="text-xl" showTagline={false} />
-          <button onClick={onClose} className="md:hidden text-content-muted hover:text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            {onToggleCollapse && (
+              <button 
+                onClick={onToggleCollapse}
+                className="hidden md:flex p-1.5 text-content-muted hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+                title="Collapse sidebar"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
+            <button onClick={onClose} className="md:hidden text-content-muted hover:text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           <NavLink onClick={() => handleNavigate('dashboard')} isActive={currentView === 'dashboard'}>
@@ -99,6 +116,18 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
         </nav>
 
       </aside>
+      {/* Floating expand button when collapsed */}
+      {isDesktopCollapsed && onToggleCollapse && (
+        <button 
+          onClick={onToggleCollapse}
+          className="hidden md:flex fixed left-0 top-6 z-40 p-2 bg-base-200/60 backdrop-blur-md border border-white/10 rounded-r-xl shadow-lg hover:bg-base-200 hover:text-primary transition-colors text-content-muted"
+          title="Expand sidebar"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
     </>
   );
 };

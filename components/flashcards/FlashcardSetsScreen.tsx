@@ -122,7 +122,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
       )}
       <div className="flex-1 mt-2">
         <div className="flex justify-between items-start mb-2">
-          <h3 className="text-xl font-bold group-hover:text-primary transition-colors">{set.title}</h3>
+          <h3 className="text-xl font-bold hover:text-primary transition-colors cursor-pointer hover:underline" onClick={() => handlePreviewSet(set.id)} title={language === "pl" ? "Podgląd słownictwa" : "Preview vocabulary"}>{set.title}</h3>
           {(set.isPublic || set.assignedByTeacher) && (
             <span className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded-full font-bold ${set.assignedByTeacher ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'}`}>
               {set.assignedByTeacher ? (language === 'pl' ? 'Nauczyciel' : 'Teacher') : (language === 'pl' ? 'Pub' : 'Pub')}
@@ -252,7 +252,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
                 )}
                 <div className="flex-1 mt-2">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-xl font-bold group-hover:text-primary transition-colors">{set.title}</h3>
+                    <h3 className="text-xl font-bold hover:text-primary transition-colors cursor-pointer hover:underline" onClick={() => handlePreviewSet(set.id)} title={language === "pl" ? "Podgląd słownictwa" : "Preview vocabulary"}>{set.title}</h3>
                     <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full font-bold bg-amber-500/10 text-amber-500">
                       {language === 'pl' ? 'Lekcja' : 'Lesson'}
                     </span>
@@ -356,10 +356,13 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           )}
         </div>
       </div>
-      {/* Delete Confirmation Modal */}
+      {/* Preview Modal */}
       {previewSetId && (
         <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-2xl shadow-2xl border-primary/20 max-h-[80vh] flex flex-col">
+          <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center animate-pulse" style={{ animationDuration: '4s' }}>
+            <div className="w-[80vw] max-w-3xl h-[80vh] max-h-[600px] bg-primary/10 rounded-full blur-[120px]"></div>
+          </div>
+          <div className="w-full max-w-2xl bg-base-200/40 backdrop-blur-2xl border border-white/10 rounded-2xl p-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.1),0_0_60px_rgba(74,222,128,0.15)] max-h-[80vh] flex flex-col relative z-10 animate-in fade-in zoom-in-95 duration-300">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">{language === 'pl' ? 'Podgląd słownictwa' : 'Vocabulary Preview'}</h3>
               <button onClick={() => setPreviewSetId(null)} className="text-content-muted hover:text-white">
@@ -378,29 +381,39 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
                   {language === 'pl' ? 'Brak słówek w zestawie.' : 'No words in this set.'}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {previewCards.map((card, idx) => (
-                    <div key={card.id || idx} className="bg-base-200 border border-base-300 p-3 rounded-lg flex flex-col gap-1">
-                      <div className="font-bold">{card.front || card.term}</div>
-                      <div className="text-content-muted text-sm">{card.back || card.definition}</div>
+                    <div key={card.id || idx} className="bg-base-200/50 backdrop-blur-md border border-white/5 p-4 rounded-xl flex items-center gap-3 transition-colors hover:bg-base-200 hover:border-primary/30">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex flex-shrink-0 items-center justify-center font-bold text-xs">
+                        {idx + 1}
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <div className="font-bold text-white text-base">{card.front || card.term}</div>
+                        <div className="text-primary/80 font-medium text-sm">{card.back || card.definition}</div>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            <div className="mt-6 pt-4 border-t border-base-300 flex justify-end gap-3">
-              <Button onClick={() => setPreviewSetId(null)} variant="secondary">
-                {language === 'pl' ? 'Zamknij' : 'Close'}
-              </Button>
-              <Button onClick={() => {
-                onStudySet(previewSetId);
-                setPreviewSetId(null);
-              }} disabled={previewCards.length === 0}>
-                {t('flashcards.study')}
-              </Button>
+            <div className="mt-6 pt-4 border-t border-base-300 flex flex-col sm:flex-row justify-between items-center gap-3">
+              <div className="text-sm text-content-muted">
+                {language === 'pl' ? `Słówka: ${previewCards.length}` : `Words: ${previewCards.length}`}
+              </div>
+              <div className="flex gap-3 w-full sm:w-auto">
+                <Button onClick={() => setPreviewSetId(null)} variant="secondary" className="flex-1 sm:flex-none">
+                  {language === 'pl' ? 'Zamknij' : 'Close'}
+                </Button>
+                <Button onClick={() => {
+                  onStudySet(previewSetId);
+                  setPreviewSetId(null);
+                }} disabled={previewCards.length === 0} className="flex-1 sm:flex-none">
+                  {language === 'pl' ? 'Wybierz ćwiczenie' : 'Choose exercise'}
+                </Button>
+              </div>
             </div>
-          </Card>
+          </div>
         </div>
       )}
 

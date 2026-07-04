@@ -184,7 +184,8 @@ const Dashboard: React.FC = () => {
       return <FlashcardEditScreen setId={activeSetId} onBack={() => setView('flashcard-sets')} onStudy={(setId) => { setActiveSetId(setId); setView('flashcard-study'); setPracticeView(null); }} />;
     }
     if (view === 'flashcard-study' && activeSetId) {
-      const modeMapping: Record<string, 'flashcards' | 'quiz' | 'writing' | 'matching'> = {
+      const modeMapping: Record<string, 'intro' | 'flashcards' | 'quiz' | 'writing' | 'matching'> = {
+        'intro': 'intro',
         'flashcards': 'flashcards',
         'quiz': 'quiz',
         'fill-in-the-blank': 'writing',
@@ -192,7 +193,16 @@ const Dashboard: React.FC = () => {
       };
       const initialMode = practiceView ? modeMapping[practiceView.exercise] : undefined;
       
-      return <FlashcardStudyScreen setId={activeSetId} initialMode={initialMode} onBack={() => { setView('flashcard-sets'); setPracticeView(null); }} />;
+      return <FlashcardStudyScreen 
+        setId={activeSetId} 
+        initialMode={initialMode} 
+        onBack={() => { setView('flashcard-sets'); setPracticeView(null); }} 
+        onStartAIPractice={() => {
+          setView('ai-generator');
+          // In the future we might want to pass the activeSetId to the AI generator
+          // But for now it just navigates there
+        }}
+      />;
     }
     if (view === 'flashcard-stats' && activeSetId) {
       return <FlashcardStatsScreen setId={activeSetId} onBack={() => setView('flashcard-sets')} />;
@@ -204,7 +214,7 @@ const Dashboard: React.FC = () => {
       return <AdminPanel />;
     }
     if (view === 'ai-generator') {
-      return <AIExerciseGeneratorScreen />;
+      return <AIExerciseGeneratorScreen initialSetId={activeSetId} />;
     }
     if (view === 'lesson-history') {
       return <LessonHistoryScreen />;
@@ -235,9 +245,10 @@ const Dashboard: React.FC = () => {
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         isDesktopCollapsed={isDesktopCollapsed}
+        onToggleCollapse={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
       />
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-        <header className="flex justify-between items-center mb-6">
+        <header className="flex justify-between items-center mb-6 p-4 rounded-2xl bg-base-200/40 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsSidebarOpen(true)}
@@ -247,17 +258,9 @@ const Dashboard: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <button 
-              onClick={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
-              className="hidden md:block p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5 transition-colors"
-              title={isDesktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-              Welcome, {user?.username}! 
+              Welcome, {user?.firstName || user?.username}! 
             </h1>
             {user?.streakCount !== undefined && user?.streakCount > 0 && (
                 <div className="flex items-center gap-1.5 ml-2 bg-black/20 px-3 py-1.5 rounded-full border border-base-300 shadow-sm" title="Your current streak">

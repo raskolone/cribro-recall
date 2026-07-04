@@ -250,11 +250,10 @@ export const generateTranslationExercises = async (
   The exercises must be suitable for CEFR level: ${level}.
   ${words.length > 0 ? `The sentences should incorporate or test the following English vocabulary/concepts: ${words.join(', ')}.` : ''}
   
-  IMPORTANT ANTI-REPETITION RULE: Every time you generate sentences, they MUST be completely new and unique. Even if you use the same vocabulary words, you must build different contexts, use different grammatical structures, or different situations. Never repeat the exact same sentence. Use a high degree of creativity. Random generation seed: ${Math.random()}.
-  
   ${lessonContext ? `Here are some summaries of the student's recent lessons to help personalize the content:\n${lessonContext}` : ''}
-  ${studentProfileContext ? `Here are details about the student's profile (interests, weaknesses, goals):\n${studentProfileContext}\nPlease use these details to personalize the context of the sentences (e.g. if they like football, make a sentence about football).` : ''}
-  ${pastExercisesContext ? `\nCRITICAL: The student has recently practiced the following sentences. YOU MUST NOT REPEAT THEM. Make the new sentences completely fresh while still practicing the requested vocabulary:\n${pastExercisesContext}` : ''}
+  ${studentProfileContext ? `Here are details about the student's profile (interests, weaknesses, goals):\n${studentProfileContext}\nPlease use these details to deeply personalize the context of the sentences (e.g., if they like football, make a sentence about football). Full UX personalization is required so that practice is tailor-made for this specific user.` : ''}
+  ${pastExercisesContext ? `\nCRITICAL HISTORY CHECK: The student's past practice sessions are listed below:\n${pastExercisesContext}\n\nZASADA ŻELAZNA (IRONCLAD RULE): You MUST analyze this session history and STRICTLY avoid repetition. A sentence or specific context completed by the student in Session 1, Session 2, or Session 3 is STRICTLY FORBIDDEN. Sentences from Session 4 and older MAY be brought back for review and spaced repetition. You must verify what the student has done so far and intelligently adapt the new sentences.` : ''}
+  
   For each sentence, provide the Polish sentence, the correct English translation, and a helpful Polish hint.`;
 
   // Ensure any [NUM_SENTENCES] placeholder in customPrompt is replaced
@@ -266,7 +265,7 @@ export const generateTranslationExercises = async (
       model: "gemini-3.1-flash-lite",
       contents: finalPrompt,
       config: {
-        systemInstruction: "Wygeneruj zdania na podstawie słownictwa wybranego przez usera, dostosuj poziom zdań",
+        systemInstruction: "Jesteś osobistym nauczycielem języka. Twoją żelazną zasadą jest analizowanie historii sesji kursanta i unikanie powtarzalności – zdanie zrobione przez kursanta wraca do powtórki dopiero po 3 sesjach. Inteligentnie dopasowuj zdania na podstawie profilu ucznia (Student Record) oraz weryfikuj jego dotychczasowe postępy, zapewniając w pełni spersonalizowane doświadczenie.",
         responseMimeType: "application/json",
         responseSchema: translationExerciseSchema,
       },
@@ -306,7 +305,8 @@ export const generateHomework = async (topic: string, summary: string, words: st
 export const evaluateTranslations = async (
   exercises: TranslationExercise[],
   studentAnswers: string[],
-  customEvaluationPrompt?: string
+  customEvaluationPrompt?: string,
+  studentProfileContext?: string
 ): Promise<TranslationEvaluationResult[]> => {
   const formattedPairs = exercises.map((ex, idx) => {
     return `Sentence ${idx + 1}:
@@ -320,6 +320,8 @@ export const evaluateTranslations = async (
   1. Compare the Student's Answer with the Reference English.
   2. Grade it. If it's functionally correct and has no major grammar errors, mark isCorrect as true, and give a high score.
   3. Provide a clear, friendly, and detailed explanation in Polish (explanation) explaining mistakes, grammar points, or why it is correct. Include any alternative correct translations.
+  ${studentProfileContext ? `
+Student context: ${studentProfileContext}` : ''}
   
   Student's Work:
   ${formattedPairs}`;
