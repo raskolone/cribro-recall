@@ -497,7 +497,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       {/* STEP 1: SETUP */}
       {step === 'setup' && (
         <div className="max-w-2xl mx-auto space-y-6">
-          <div className="bg-primary/10 border border-primary/30 p-6 rounded-2xl text-center shadow-lg animate-pulse">
+          <div className="bg-primary/10 border border-primary/30 p-6 rounded-2xl text-center shadow-lg">
             <h2 className="text-xl font-bold text-primary mb-2 flex justify-center items-center gap-2">
               <Sparkles className="w-5 h-5" />
               {language === 'pl' ? 'Wciśnij "Generuj zdania przez AI", żeby rozpocząć nową lekcję!' : 'Click "Generate sentences with AI" to start a new lesson!'}
@@ -512,7 +512,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
               onClick={() => setActiveTab('ai')}
               className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-500 relative ${
                 activeTab === 'ai' 
-                  ? 'text-primary bg-primary/10 shadow-[0_0_20px_rgba(74,222,128,0.2),inset_0_1px_0_0_rgba(255,255,255,0.1)] border border-primary/20 backdrop-blur-md animate-pulse' 
+                  ? 'text-primary bg-primary/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] border border-primary/30 backdrop-blur-md animate-pulsar' 
                   : 'text-content-muted hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
@@ -531,7 +531,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
             >
               <div className="flex items-center justify-center gap-2">
                 <BookOpen className="w-4 h-4" />
-                {language === 'pl' ? 'Pozostałe ćwiczenia' : 'Other exercises'}
+                {language === 'pl' ? 'Pozostałe ćwiczenia (beta)' : 'Other exercises (beta)'}
               </div>
             </button>
           </div>
@@ -559,14 +559,14 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   <select 
                     value={level} 
                     onChange={(e) => setLevel(e.target.value)}
-                    className="bg-base-200 border border-base-300 text-sm font-bold text-primary rounded-lg p-2 outline-none focus:border-primary/50 cursor-pointer"
+                    className="bg-base-200/40 backdrop-blur-md border border-white/10 text-sm font-bold text-primary rounded-lg p-2 outline-none focus:border-primary/50 cursor-pointer"
                   >
                     {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((lvl) => (
                       <option key={lvl} value={lvl}>{lvl}</option>
                     ))}
                   </select>
                 ) : (
-                  <div className="bg-base-200 border border-base-300 text-sm font-bold text-primary rounded-lg p-2 cursor-default">
+                  <div className="bg-base-200/40 backdrop-blur-md border border-white/10 text-sm font-bold text-primary rounded-lg p-2 cursor-default">
                     {level}
                   </div>
                 )}
@@ -580,7 +580,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   {language === 'pl' ? 'Baza słownictwa' : 'Vocabulary base'}
                 </label>
                 <div className="space-y-2">
-                  <label className="flex items-center gap-3 p-3 bg-base-200 rounded-lg border border-base-300 cursor-pointer hover:border-white/10 transition-colors">
+                  <label className="flex items-center gap-3 p-3 bg-base-200/40 backdrop-blur-md rounded-lg border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.1)] cursor-pointer hover:border-white/10 transition-colors">
                     <input 
                       type="radio" 
                       name="vocabSource" 
@@ -601,7 +601,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                       : set.title;
                       
                     return (
-                      <label key={set.id} className="flex items-center gap-3 p-3 bg-base-200 rounded-lg border border-base-300 cursor-pointer hover:border-white/10 transition-colors">
+                      <label key={set.id} className="flex items-center gap-3 p-3 bg-base-200/40 backdrop-blur-md rounded-lg border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.1)] cursor-pointer hover:border-white/10 transition-colors">
                         <input 
                           type="radio" 
                           name="vocabSource" 
@@ -618,7 +618,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   })}
 
                   {vocabularySets.length > 0 && (
-                    <div className="border border-base-300 rounded-lg overflow-hidden bg-base-200/50">
+                    <div className="border border-white/10 shadow-lg rounded-lg overflow-hidden bg-base-200/40 backdrop-blur-md">
                       <button
                         className="w-full flex items-center justify-between p-3 font-bold text-sm hover:bg-base-300/50 transition-colors"
                         onClick={() => setIsLessonsExpanded(!isLessonsExpanded)}
@@ -668,7 +668,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                     </div>
                   )}
 
-                  <label className="flex items-center gap-3 p-3 bg-base-200 rounded-lg border border-base-300 cursor-pointer hover:border-white/10 transition-colors">
+                  <label className="flex items-center gap-3 p-3 bg-base-200/40 backdrop-blur-md rounded-lg border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.1)] cursor-pointer hover:border-white/10 transition-colors">
                     <input 
                       type="radio" 
                       name="vocabSource" 

@@ -151,7 +151,7 @@ const FlashcardPresentationScreen: React.FC<FlashcardPresentationScreenProps> = 
         </div>
 
         {/* Context Sentence */}
-        <div className={`w-full max-w-3xl mt-4 px-8 py-6 rounded-2xl bg-base-200 border border-base-300 shadow-2xl transition-all duration-700 ease-out transform ${step >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0 pointer-events-none'}`}>
+        <div className={`w-full max-w-3xl mt-4 px-8 py-6 rounded-2xl bg-base-200/40 backdrop-blur-md border border-white/10 shadow-2xl transition-all duration-700 ease-out transform ${step >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0 pointer-events-none'}`}>
           <div className="text-xl md:text-2xl font-serif italic text-white/90 text-center leading-relaxed mb-4">
             {card.contextSentence ? (
               <span dangerouslySetInnerHTML={{ __html: card.contextSentence }} />

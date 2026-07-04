@@ -177,7 +177,7 @@ return (
          </div>
       ) : activeTab === 'lessons' ? (
          lessons.length === 0 ? (
-           <div className="text-center p-12 bg-base-200 border border-base-300 rounded-2xl mx-auto max-w-2xl mt-8 shadow-sm">
+           <div className="text-center p-12 bg-base-200/40 backdrop-blur-md border border-white/10 rounded-2xl mx-auto max-w-2xl mt-8 shadow-sm">
              <Search className="w-12 h-12 text-content-muted mx-auto mb-4 opacity-50" />
              <h2 className="text-xl font-bold mb-2">
                {language === 'pl' ? 'Brak historii lekcji' : 'No lesson history'}
@@ -224,7 +224,7 @@ return (
         )
       ) : (
          practiceLogs.length === 0 ? (
-           <div className="text-center p-12 bg-base-200 border border-base-300 rounded-2xl mx-auto max-w-2xl mt-8 shadow-sm">
+           <div className="text-center p-12 bg-base-200/40 backdrop-blur-md border border-white/10 rounded-2xl mx-auto max-w-2xl mt-8 shadow-sm">
              <BookOpen className="w-12 h-12 text-content-muted mx-auto mb-4 opacity-50" />
              <h2 className="text-xl font-bold mb-2">
                {language === 'pl' ? 'Brak historii sesji' : 'No session history'}

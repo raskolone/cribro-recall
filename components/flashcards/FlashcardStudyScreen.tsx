@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import gsap from 'gsap';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useLanguage } from '../../context/LanguageContext';
 import Card from '../ui/Card';
@@ -179,6 +180,7 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
 const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: any) => {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const cardContainerRef = useRef<HTMLDivElement>(null);
   const [isFlipped, setIsFlipped] = useState(false);
   const [results, setResults] = useState<{ flashcardId: string; isCorrect: boolean; responseTimeMs: number }[]>([]);
   const [startTime, setStartTime] = useState<number>(0);
@@ -206,34 +208,101 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: 
     
     setResults(newResults);
     
-    if (currentIndex < cards.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-      setIsFlipped(false);
-      setStartTime(Date.now());
+    const proceed = async () => {
+      if (currentIndex < cards.length - 1) {
+        setCurrentIndex(prev => prev + 1);
+        setIsFlipped(false);
+        setStartTime(Date.now());
+        
+        // Reset card position with gsap
+        if (cardContainerRef.current) {
+          gsap.fromTo(cardContainerRef.current, 
+            { x: isCorrect ? -200 : 200, opacity: 0, rotation: isCorrect ? -15 : 15 },
+            { x: 0, opacity: 1, rotation: 0, duration: 0.4, ease: "back.out(1.5)", clearProps: "all" }
+          );
+        }
+      } else {
+        setIsFinished(true);
+        const correctCount = newResults.filter(r => r.isCorrect).length;
+        await saveSession({
+          setId,
+          mode: 'flashcards',
+          totalCards: cards.length,
+          correctCount,
+          scorePercent: Math.round((correctCount / cards.length) * 100)
+        }, newResults);
+      }
+    };
+
+    if (cardContainerRef.current) {
+      gsap.to(cardContainerRef.current, {
+        x: isCorrect ? window.innerWidth : -window.innerWidth,
+        rotation: isCorrect ? 45 : -45,
+        opacity: 0,
+        duration: 0.4,
+        ease: "power2.in",
+        onComplete: proceed
+      });
     } else {
-      setIsFinished(true);
-      const correctCount = newResults.filter(r => r.isCorrect).length;
-      await saveSession({
-        setId,
-        mode: 'flashcards',
-        totalCards: cards.length,
-        correctCount,
-        scorePercent: Math.round((correctCount / cards.length) * 100)
-      }, newResults);
+      proceed();
     }
   }, [currentIndex, cards, results, startTime, setId, saveSession]);
 
   const handlePrev = useCallback(() => {
     if (currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1);
-      setIsFlipped(false);
+      const proceed = () => {
+        setCurrentIndex(prev => prev - 1);
+        setIsFlipped(false);
+        
+        if (cardContainerRef.current) {
+          gsap.fromTo(cardContainerRef.current, 
+            { x: 200, opacity: 0, rotation: 10 },
+            { x: 0, opacity: 1, rotation: 0, duration: 0.4, ease: "back.out(1.5)", clearProps: "all" }
+          );
+        }
+      };
+      
+      if (cardContainerRef.current) {
+        gsap.to(cardContainerRef.current, {
+          x: -window.innerWidth,
+          rotation: -20,
+          opacity: 0,
+          duration: 0.3,
+          ease: "power2.in",
+          onComplete: proceed
+        });
+      } else {
+        proceed();
+      }
     }
   }, [currentIndex]);
 
   const handleNext = useCallback(() => {
     if (currentIndex < cards.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-      setIsFlipped(false);
+      const proceed = () => {
+        setCurrentIndex(prev => prev + 1);
+        setIsFlipped(false);
+        
+        if (cardContainerRef.current) {
+          gsap.fromTo(cardContainerRef.current, 
+            { x: -200, opacity: 0, rotation: -10 },
+            { x: 0, opacity: 1, rotation: 0, duration: 0.4, ease: "back.out(1.5)", clearProps: "all" }
+          );
+        }
+      };
+
+      if (cardContainerRef.current) {
+        gsap.to(cardContainerRef.current, {
+          x: window.innerWidth,
+          rotation: 20,
+          opacity: 0,
+          duration: 0.3,
+          ease: "power2.in",
+          onComplete: proceed
+        });
+      } else {
+        proceed();
+      }
     }
   }, [currentIndex, cards.length]);
 
@@ -314,13 +383,9 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: 
         </button>
 
         <div className="flex-1 perspective-1000">
-          <AnimatePresence mode="wait">
-            <motion.div 
-              key={currentCard.id}
-              initial={{ x: 50, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -50, opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
+          <div>
+            <div 
+              ref={cardContainerRef}
               className="relative w-full aspect-[3/2] cursor-pointer"
               onClick={handleFlip}
             >
@@ -332,7 +397,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: 
                 style={{ transformStyle: 'preserve-3d' }}
               >
                 {/* Front Side */}
-                <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 bg-base-200 border-2 border-base-300 hover:border-primary/50 transition-colors" style={{ backfaceVisibility: 'hidden' }}>
+                <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 border border-white/10 hover:border-primary/50 transition-colors" style={{ backfaceVisibility: 'hidden' }}>
                   <div className="absolute top-4 right-4 z-10 flex gap-2">
                     <PronunciationMic targetWord={currentCard.term.replace(/<[^>]+>/g, '')} />
                     {currentCard.audioUrl && (
@@ -355,7 +420,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: 
                 
                 {/* Back Side */}
                 <Card 
-                  className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 bg-base-200 border-2 border-primary" 
+                  className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 border border-primary/50 shadow-[0_0_30px_rgba(114,240,180,0.15)]" 
                   style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
                 >
                   <div className="absolute top-4 right-4 z-10 flex gap-2">
@@ -377,8 +442,8 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: 
                   <div className="text-3xl md:text-4xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard.definition }} />
                 </Card>
               </motion.div>
-            </motion.div>
-          </AnimatePresence>
+            </div>
+          </div>
         </div>
 
         <button 
@@ -524,7 +589,7 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t }: any) =
         />
       </div>
 
-      <Card className="relative flex flex-col items-center justify-center text-center p-12 bg-base-200 border-2 border-base-300 min-h-[200px]">
+      <Card className="relative flex flex-col items-center justify-center text-center p-12 border border-white/10 min-h-[200px]">
         <div className="absolute top-4 right-4 z-10 flex gap-2">
           <PronunciationMic targetWord={currentCard?.term.replace(/<[^>]+>/g, '') || ''} />
           {currentCard?.audioUrl && (
@@ -699,7 +764,7 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t }: any
         />
       </div>
 
-      <Card className="relative flex flex-col items-center justify-center text-center p-12 bg-base-200 border-2 border-base-300 min-h-[200px]">
+      <Card className="relative flex flex-col items-center justify-center text-center p-12 border border-white/10 min-h-[200px]">
         <div className="absolute top-4 right-4 z-10 flex gap-2">
           <PronunciationMic targetWord={currentCard?.term.replace(/<[^>]+>/g, '') || ''} />
           {currentCard?.audioUrl && (
@@ -946,7 +1011,7 @@ const IntroMode = ({ cards, onBack, t }: any) => {
         onClick={() => setIsFlipped(!isFlipped)}
       >
         <div className={`w-full h-full transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
-          <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 bg-base-200 border-2 border-base-300 hover:border-secondary/50 transition-colors">
+          <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 border border-white/10 hover:border-secondary/50 transition-colors">
             <div className="absolute top-4 right-4 z-10 flex gap-2">
               <PronunciationMic targetWord={currentCard.term.replace(/<[^>]+>/g, '')} />
               {currentCard.audioUrl && (
@@ -967,7 +1032,7 @@ const IntroMode = ({ cards, onBack, t }: any) => {
             <div className="text-4xl md:text-5xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard.term }} />
           </Card>
           
-          <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 bg-base-200 border-2 border-secondary rotate-y-180">
+          <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 border border-secondary/50 rotate-y-180">
             <div className="absolute top-4 right-4 z-10 flex gap-2">
               {currentCard.audioUrl && (
                 <button 

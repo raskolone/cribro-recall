@@ -535,7 +535,7 @@ const AdminPanel: React.FC = () => {
                 <select
                   value={selectedUser.role}
                   onChange={(e) => handleRoleChange(e.target.value as 'admin' | 'user' | 'admin_student')}
-                  className="bg-base-200 border border-base-300 text-sm text-white rounded p-1"
+                  className="bg-base-200/40 backdrop-blur-md border border-white/10 text-sm text-white rounded p-1"
                 >
                   <option value="user">Kursant (User)</option>
                   <option value="admin">Admin</option>
@@ -553,7 +553,7 @@ const AdminPanel: React.FC = () => {
                 <div className="absolute right-0 top-0 bg-base-100 border border-base-300 rounded-lg p-4 shadow-xl z-10 w-80">
                   <h4 className="font-bold mb-3">Select Set to Assign</h4>
                   <select 
-                    className="w-full bg-base-200 border border-base-300 rounded p-2 mb-4 text-sm"
+                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded p-2 mb-4 text-sm"
                     value={selectedSetIdToAssign}
                     onChange={(e) => {
                       setSelectedSetIdToAssign(e.target.value);
@@ -596,7 +596,7 @@ const AdminPanel: React.FC = () => {
                           type="date" 
                           value={lessonDate}
                           onChange={(e) => setLessonDate(e.target.value)}
-                          className="w-full bg-base-200 border border-base-300 rounded p-1.5 outline-none focus:border-primary/50 text-sm"
+                          className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded p-1.5 outline-none focus:border-primary/50 text-sm"
                         />
                       </div>
                       <div>
@@ -606,7 +606,7 @@ const AdminPanel: React.FC = () => {
                           value={lessonTopic}
                           onChange={(e) => setLessonTopic(e.target.value)}
                           placeholder="e.g. Travel vocabulary"
-                          className="w-full bg-base-200 border border-base-300 rounded p-1.5 outline-none focus:border-primary/50 text-sm"
+                          className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded p-1.5 outline-none focus:border-primary/50 text-sm"
                         />
                       </div>
                     </div>
@@ -740,7 +740,7 @@ const AdminPanel: React.FC = () => {
                     type="text"
                     value={profileForm.firstName}
                     onChange={(e) => setProfileForm(prev => ({ ...prev, firstName: e.target.value }))}
-                    className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50"
+                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50"
                   />
                 </div>
                 <div>
@@ -749,7 +749,7 @@ const AdminPanel: React.FC = () => {
                     type="text"
                     value={profileForm.lastName}
                     onChange={(e) => setProfileForm(prev => ({ ...prev, lastName: e.target.value }))}
-                    className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50"
+                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50"
                   />
                 </div>
               </div>
@@ -759,7 +759,7 @@ const AdminPanel: React.FC = () => {
                 <select
                   value={profileForm.level}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, level: e.target.value }))}
-                  className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-white appearance-none cursor-pointer"
+                  className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 text-white appearance-none cursor-pointer"
                 >
                   <option value="">Wybierz poziom...</option>
                   <option value="A1">A1</option>
@@ -778,7 +778,7 @@ const AdminPanel: React.FC = () => {
                   onChange={(e) => setProfileForm(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Zainteresowania, słabe strony, cele nauki..."
                   rows={6}
-                  className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 resize-y"
+                  className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 resize-y"
                 />
                 <p className="text-xs text-content-muted mt-2">
                   Ten opis będzie wysyłany do sztucznej inteligencji jako dodatkowy kontekst podczas generowania zadań domowych, aby lepiej dopasować je do kursanta.
@@ -838,7 +838,7 @@ const AdminPanel: React.FC = () => {
                     type="date"
                     value={lessonFormDate}
                     onChange={(e) => setLessonFormDate(e.target.value)}
-                    className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
+                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
                   />
                 </div>
                 <div>
@@ -848,7 +848,7 @@ const AdminPanel: React.FC = () => {
                     value={lessonFormTopic}
                     onChange={(e) => setLessonFormTopic(e.target.value)}
                     placeholder="e.g. Present Simple"
-                    className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
+                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
                   />
                 </div>
               </div>
@@ -859,7 +859,7 @@ const AdminPanel: React.FC = () => {
                   onChange={(e) => setLessonFormWords(e.target.value)}
                   placeholder="Paste words covered in this lesson..."
                   rows={3}
-                  className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm resize-y"
+                  className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm resize-y"
                 />
               </div>
               <div>
@@ -869,7 +869,7 @@ const AdminPanel: React.FC = () => {
                   onChange={(e) => setLessonFormSummary(e.target.value)}
                   placeholder="Summary of the lesson..."
                   rows={4}
-                  className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm resize-y"
+                  className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm resize-y"
                 />
               </div>
             </div>
@@ -915,7 +915,7 @@ const AdminPanel: React.FC = () => {
                     type="text"
                     value={newPasswordForUser}
                     onChange={(e) => setNewPasswordForUser(e.target.value)}
-                    className="w-full bg-base-200 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 transition-colors pr-10"
+                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 transition-colors pr-10"
                     placeholder="Enter new password"
                   />
                   {newPasswordForUser && (
@@ -971,7 +971,7 @@ const AdminPanel: React.FC = () => {
                     type="text"
                     value={newStudentUsername}
                     onChange={(e) => setNewStudentUsername(e.target.value)}
-                    className="w-full bg-base-200 border border-base-300 rounded-lg p-3 focus:border-primary focus:outline-none"
+                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-3 focus:border-primary focus:outline-none"
                     placeholder="e.g. John Doe"
                   />
                 </div>
@@ -1009,7 +1009,7 @@ const AdminPanel: React.FC = () => {
                       type="text"
                       value={passwordInput}
                       onChange={(e) => setPasswordInput(e.target.value)}
-                      className="w-full bg-base-200 border border-base-300 rounded-lg p-3 focus:border-primary focus:outline-none"
+                      className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-3 focus:border-primary focus:outline-none"
                       placeholder="Minimum 6 characters"
                       minLength={6}
                     />

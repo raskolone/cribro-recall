@@ -30,8 +30,8 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen relative text-content transition-colors duration-300 ${user ? 'bg-base-100' : 'bg-transparent'}`}>
-      {(!user) && <ConstellationBackground />}
+    <div className={`min-h-screen relative text-content transition-colors duration-300 bg-transparent`}>
+      <ConstellationBackground />
       
       <div className="relative z-10 w-full min-h-screen pointer-events-auto flex flex-col">
         {user ? (

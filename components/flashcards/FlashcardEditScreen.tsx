@@ -488,7 +488,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                 
                 {/* AI Suggestions Dropdown */}
                 {activeSuggestionIndex === index && suggestions.length > 0 && (
-                  <div className="absolute top-full left-0 w-full mt-2 bg-base-200 border border-base-300 rounded-xl shadow-2xl z-30 overflow-hidden backdrop-blur-xl">
+                  <div className="absolute top-full left-0 w-full mt-2 bg-base-200/40 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl z-30 overflow-hidden backdrop-blur-xl">
                     {suggestions.map((sug, i) => (
                       <button
                         key={i}
@@ -605,7 +605,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                     <select 
                       value={importDelimiter} 
                       onChange={(e) => setImportDelimiter(e.target.value)}
-                      className="bg-base-200 border border-base-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-primary"
+                      className="bg-base-200/40 backdrop-blur-md border border-white/10 rounded px-2 py-1 text-sm focus:outline-none focus:border-primary"
                     >
                       <option value="tab">{language === 'pl' ? 'Tabulator' : 'Tab'}</option>
                       <option value="comma">{language === 'pl' ? 'Przecinek' : 'Comma'}</option>
@@ -618,7 +618,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                     <select 
                       value={importTermLang} 
                       onChange={(e) => setImportTermLang(e.target.value)}
-                      className="bg-base-200 border border-base-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-primary"
+                      className="bg-base-200/40 backdrop-blur-md border border-white/10 rounded px-2 py-1 text-sm focus:outline-none focus:border-primary"
                     >
                       {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
                     </select>
@@ -629,7 +629,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                     <select 
                       value={importDefLang} 
                       onChange={(e) => setImportDefLang(e.target.value)}
-                      className="bg-base-200 border border-base-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-primary"
+                      className="bg-base-200/40 backdrop-blur-md border border-white/10 rounded px-2 py-1 text-sm focus:outline-none focus:border-primary"
                     >
                       {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
                     </select>
@@ -639,7 +639,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                 <textarea
                   value={importText}
                   onChange={(e) => setImportText(e.target.value)}
-                  className="w-full h-64 bg-base-200 border border-base-300 rounded-lg p-4 focus:outline-none focus:border-primary font-mono text-sm resize-y"
+                  className="w-full h-64 bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-4 focus:outline-none focus:border-primary font-mono text-sm resize-y"
                   placeholder={language === 'pl' ? 'Pojęcie 1\\tDefinicja 1\\nPojęcie 2\\tDefinicja 2' : 'Term 1\\tDefinition 1\\nTerm 2\\tDefinition 2'}
                 />
               </div>

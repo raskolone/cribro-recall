@@ -42,7 +42,7 @@ const PracticeSetSelector = ({ onSelectSet, onCancel }: { onSelectSet: (id: stri
   
   if (sets.length === 0) {
     return (
-      <div className="text-center p-12 bg-base-200 border border-base-300 rounded-2xl mx-auto max-w-2xl mt-12">
+      <div className="text-center p-12 bg-base-200/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] mx-auto max-w-2xl mt-12">
         <h2 className="text-2xl font-bold mb-4">No Word Lists found</h2>
         <p className="text-content-muted mb-8">You need to create a Word List before practicing.</p>
         <Button onClick={onCancel}>Back to Dashboard</Button>
@@ -60,7 +60,7 @@ const PracticeSetSelector = ({ onSelectSet, onCancel }: { onSelectSet: (id: stri
         {sets.map(set => (
           <div 
             key={set.id} 
-            className="p-6 bg-base-100 hover:bg-base-200 border border-base-300 hover:border-primary cursor-pointer rounded-2xl transition-all"
+            className="p-6 bg-base-200/40 hover:bg-base-200/60 backdrop-blur-xl border border-white/10 hover:border-primary/50 cursor-pointer rounded-2xl transition-all shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]"
             onClick={() => onSelectSet(set.id)}
           >
             <h3 className="font-bold text-lg mb-2">{set.title}</h3>
@@ -88,7 +88,12 @@ const Dashboard: React.FC = () => {
   const [greeting, setGreeting] = useState('');
 
   useEffect(() => {
-    const name = user?.firstName;
+    let name = user?.firstName;
+    
+    // Fallback do username i wyciągnięcie samego imienia (bez nazwiska)
+    if (!name && user?.username) {
+      name = user.username.split(' ')[0];
+    }
     
     let options: string[] = [];
 
@@ -111,9 +116,12 @@ const Dashboard: React.FC = () => {
       
       const vocativeName = language === 'pl' ? getVocative(nameTitleCase) : nameTitleCase;
       
+      const isFemale = nameTitleCase.toLowerCase().endsWith('a');
+      const gotowy = isFemale ? 'gotowa' : 'gotowy';
+      
       const greetingsPl = [
         `${vocativeName}, witaj ponownie!`,
-        `${vocativeName}, gotowy na nową lekcję?`,
+        `${vocativeName}, ${gotowy} na nową lekcję?`,
         `${vocativeName}, miło Cię widzieć!`,
         `${vocativeName}, czas na codzienną porcję wiedzy!`,
         `${vocativeName}, co dzisiaj ćwiczymy?`
@@ -280,7 +288,7 @@ const Dashboard: React.FC = () => {
       return <AdminPanel />;
     }
     if (view === 'ai-generator') {
-      return <AIExerciseGeneratorScreen initialSetId={activeSetId} />;
+      return <AIExerciseGeneratorScreen initialSetId={activeSetId} onStartPractice={startPractice} />;
     }
     if (view === 'lesson-history') {
       return <LessonHistoryScreen />;
@@ -289,7 +297,7 @@ const Dashboard: React.FC = () => {
     return (
       <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">
         <div className="flex-1">
-          <AIExerciseGeneratorScreen />
+          <AIExerciseGeneratorScreen onStartPractice={startPractice} />
         </div>
         
         <div className="mt-8 pt-8 border-t border-white/10">
@@ -353,7 +361,7 @@ const Dashboard: React.FC = () => {
                   className="fixed inset-0 z-40"
                   onClick={() => setIsProfileMenuOpen(false)}
                 />
-                <div className="absolute right-0 top-12 mt-2 w-48 bg-base-200 border border-base-300 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-50 overflow-hidden divide-y divide-base-300">
+                <div className="absolute right-0 top-12 mt-2 w-48 bg-base-200/40 backdrop-blur-xl border border-white/10 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-50 overflow-hidden divide-y divide-base-300">
                   <div className="px-4 py-3">
                     <p className="text-sm text-white font-medium truncate">{user?.username}</p>
                     <p className="text-xs text-content-muted truncate">{user?.email}</p>
