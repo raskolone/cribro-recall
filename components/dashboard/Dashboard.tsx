@@ -85,6 +85,72 @@ const Dashboard: React.FC = () => {
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
+  const [greeting, setGreeting] = useState('');
+
+  useEffect(() => {
+    const name = user?.firstName;
+    
+    let options: string[] = [];
+
+    if (name) {
+      const nameTitleCase = name.charAt(0).toUpperCase() + name.slice(1);
+      
+      // Prosta heurystyka do Wołacza (Vocative) dla popularnych polskich imion
+      const getVocative = (n: string) => {
+        const lower = n.toLowerCase();
+        if (lower.endsWith('a')) return n.slice(0, -1) + 'o'; // Anna -> Anno
+        if (lower.endsWith('ek')) return n.slice(0, -2) + 'ku'; // Marek -> Marku
+        if (lower.endsWith('r')) return n + 'ze'; // Piotr -> Piotrze
+        if (lower.endsWith('eł')) return n.slice(0, -2) + 'le'; // Paweł -> Pawle
+        if (lower.endsWith('ł')) return n.slice(0, -1) + 'le'; // Michał -> Michale
+        if (lower.endsWith('j')) return n + 'u'; // Maciej -> Macieju
+        if (lower.endsWith('sz') || lower.endsWith('cz')) return n + 'u'; // Tomasz -> Tomaszu
+        if (lower.endsWith('n') || lower.endsWith('m') || lower.endsWith('d') || lower.endsWith('t') || lower.endsWith('w')) return n + 'ie'; // Marcin -> Marcinie
+        return n; // fallback
+      };
+      
+      const vocativeName = language === 'pl' ? getVocative(nameTitleCase) : nameTitleCase;
+      
+      const greetingsPl = [
+        `${vocativeName}, witaj ponownie!`,
+        `${vocativeName}, gotowy na nową lekcję?`,
+        `${vocativeName}, miło Cię widzieć!`,
+        `${vocativeName}, czas na codzienną porcję wiedzy!`,
+        `${vocativeName}, co dzisiaj ćwiczymy?`
+      ];
+      
+      const greetingsEn = [
+        `Welcome back, ${nameTitleCase}!`,
+        `Ready for a new lesson, ${nameTitleCase}?`,
+        `Good to see you, ${nameTitleCase}!`,
+        `Time to learn, ${nameTitleCase}!`,
+        `What are we practicing today, ${nameTitleCase}?`
+      ];
+      
+      options = language === 'pl' ? greetingsPl : greetingsEn;
+    } else {
+      const greetingsPlNoName = [
+        `Witaj ponownie!`,
+        `Gotowy na nową lekcję?`,
+        `Miło Cię widzieć!`,
+        `Czas na codzienną porcję wiedzy!`,
+        `Co dzisiaj ćwiczymy?`
+      ];
+      
+      const greetingsEnNoName = [
+        `Welcome back!`,
+        `Ready for a new lesson?`,
+        `Good to see you!`,
+        `Time to learn!`,
+        `What are we practicing today?`
+      ];
+
+      options = language === 'pl' ? greetingsPlNoName : greetingsEnNoName;
+    }
+    
+    setGreeting(options[Math.floor(Math.random() * options.length)]);
+  }, [user?.firstName, language]);
+
   const [checkedSets, setCheckedSets] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('checked_sets') || '[]');
@@ -260,7 +326,7 @@ const Dashboard: React.FC = () => {
             </button>
 
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-              Welcome, {user?.firstName || user?.username}! 
+              {greeting}
             </h1>
             {user?.streakCount !== undefined && user?.streakCount > 0 && (
                 <div className="flex items-center gap-1.5 ml-2 bg-black/20 px-3 py-1.5 rounded-full border border-base-300 shadow-sm" title="Your current streak">
