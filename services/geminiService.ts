@@ -247,12 +247,18 @@ export const generateTranslationExercises = async (
   pastExercisesContext?: string
 ): Promise<TranslationExercise[]> => {
   const basePrompt = `Generate a list of ${numSentences} unique sentences in Polish for a student to translate into English.
-  The exercises must be suitable for CEFR level: ${level}.
+  
+  CRITICAL LEVEL REQUIREMENT: The exercises MUST be strictly adequate for the selected CEFR level: ${level}. 
+  If the level is A1 or A2, the sentences MUST be simple, short, and use basic grammar so the student does not get discouraged. Do NOT overcomplicate sentences for lower levels.
+  
   ${words.length > 0 ? `The sentences should incorporate or test the following English vocabulary/concepts: ${words.join(', ')}.` : ''}
   
-  ${lessonContext ? `Here are some summaries of the student's recent lessons to help personalize the content:\n${lessonContext}` : ''}
-  ${studentProfileContext ? `Here are details about the student's profile (interests, weaknesses, goals):\n${studentProfileContext}\nPlease use these details to deeply personalize the context of the sentences (e.g., if they like football, make a sentence about football). Full UX personalization is required so that practice is tailor-made for this specific user.` : ''}
-  ${pastExercisesContext ? `\nCRITICAL HISTORY CHECK: The student's past practice sessions are listed below:\n${pastExercisesContext}\n\nZASADA ŻELAZNA (IRONCLAD RULE): You MUST analyze this session history and STRICTLY avoid repetition. A sentence or specific context completed by the student in Session 1, Session 2, or Session 3 is STRICTLY FORBIDDEN. Sentences from Session 4 and older MAY be brought back for review and spaced repetition. You must verify what the student has done so far and intelligently adapt the new sentences.` : ''}
+  ${lessonContext ? `Here are some summaries of the student's recent lessons. 
+  CRITICAL: Analyze the entire lesson entry, especially any example sentences the student practiced during the lesson. You MUST absolutely take these examples and structures into account when generating new sentences:\n${lessonContext}` : ''}
+  
+  ${studentProfileContext ? `Here are details about the student's profile (interests, weaknesses, goals, and potentially example sentences they struggle with or practiced):\n${studentProfileContext}\nPlease use these details to deeply personalize the context of the sentences. Full UX personalization is required so that practice is tailor-made for this specific user. If there are example sentences in their profile, study their structure and incorporate similar difficulty/context.` : ''}
+  
+  ${pastExercisesContext ? `\nCRITICAL HISTORY CHECK: The student's past practice sessions are listed below:\n${pastExercisesContext}\n\nZASADA ŻELAZNA (IRONCLAD RULE): You MUST analyze this session history and STRICTLY avoid repetition. A sentence or specific context completed by the student in Session 1, Session 2, or Session 3 is STRICTLY FORBIDDEN. Sentences from Session 4 and older MAY be brought back for review and spaced repetition.` : ''}
   
   For each sentence, provide the Polish sentence, the correct English translation, and a helpful Polish hint.`;
 

@@ -244,7 +244,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
           
           if (lrList.length > 0) {
             lessonContextString = lrList.map((lr, idx) => 
-              `Lesson ${idx + 1} (${lr.date}): Topic: ${lr.topic}. Summary: ${lr.lessonSummary || ''}. Words covered: ${lr.vocabularyText || ''}`
+              `Lesson ${idx + 1} (${lr.date}): Topic: ${lr.topic}. Pełny zapis z lekcji (Summary & Examples): ${lr.lessonSummary || ''}. Words covered: ${lr.vocabularyText || ''}`
             ).join('\n\n');
           }
         } catch (lrErr) {
@@ -302,7 +302,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       }
 
       // Call Gemini API service function
-      const studentProfileContext = `Kluczowy profil kursanta: ${user?.firstName ? `Imię kursanta: ${user.firstName}. ` : ''}${user?.description ? `Dodatkowy profil: ${user.description}` : 'Brak dodatkowych danych profilu.'}`;
+      const studentProfileContext = `Kluczowy profil kursanta: ${user?.firstName ? `Imię kursanta: ${user.firstName}. ` : ''}${user?.description ? `Cały wpis z profilu kursanta (zainteresowania, cele, przykładowe zdania): ${user.description}` : 'Brak dodatkowych danych profilu.'}`;
       const generated = await generateTranslationExercises(level, wordsToUse, customGenPrompt, lessonContextString, studentProfileContext, practiceMode === 'time' ? 10 : numSentences, pastExercisesContext);
       
       if (generated && generated.length > 0) {
