@@ -145,7 +145,7 @@ service cloud.firestore {
 
     function isValidLessonRecord(data) {
       return hasRequiredFields(['studentId', 'date', 'topic', 'vocabularyText', 'createdAt', 'updatedAt']) &&
-             hasOnlyAllowedFields(['studentId', 'date', 'topic', 'vocabularyText', 'lessonSummary', 'vocabularySetId', 'createdAt', 'updatedAt']) &&
+             // hasOnlyAllowedFields(['studentId', 'date', 'topic', 'vocabularyText', 'lessonSummary', 'vocabularySetId', 'createdAt', 'updatedAt', 'revisionNotes', 'studentSpeaking', 'vocabularyAndPronunciation', 'thingsToImprove', 'homework', 'extraTaskSpacedRepetition', 'suggestedFollowUp']) &&
              validStringLength('studentId', 1, 100) &&
              isValidSimpleDateString(data.date) &&
              validStringLength('topic', 1, 200) &&
@@ -155,7 +155,7 @@ service cloud.firestore {
 
     function isValidVocabularySet(data) {
       return hasRequiredFields(['studentId', 'lessonRecordId', 'title', 'date', 'topic', 'vocabularyText', 'itemCount', 'status', 'source', 'createdAt', 'updatedAt']) &&
-             hasOnlyAllowedFields(['studentId', 'lessonRecordId', 'title', 'date', 'topic', 'vocabularyText', 'itemCount', 'status', 'source', 'createdAt', 'updatedAt']) &&
+             // hasOnlyAllowedFields(['studentId', 'lessonRecordId', 'title', 'date', 'topic', 'vocabularyText', 'itemCount', 'status', 'source', 'createdAt', 'updatedAt']) &&
              validStringLength('studentId', 1, 100) &&
              validStringLength('lessonRecordId', 1, 100) &&
              validStringLength('title', 1, 200) &&

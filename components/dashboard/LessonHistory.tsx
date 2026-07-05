@@ -101,20 +101,65 @@ const LessonHistory: React.FC = () => {
             <div className="font-mono text-xs uppercase tracking-wider text-primary mb-1">
               Lekcja {lessons.length - index}
             </div>
-            <div className="flex justify-between items-start mb-2">
-              <h4 className="font-bold text-white pr-12">{lesson.topic}</h4>
+            <div className="flex justify-between items-start mb-4">
+              <h4 className="font-bold text-white pr-12 text-lg">{lesson.topic}</h4>
               <span className="text-xs font-mono text-content-muted">{lesson.date}</span>
             </div>
-            <div className="text-sm text-white/80 mb-4 whitespace-pre-wrap">{lesson.lessonSummary}</div>
-            
-            {lesson.vocabularyText && (
-              <div className="mt-2 pt-2 border-t border-white/5 mb-4">
-                <span className="text-xs text-content-muted font-bold block mb-1">
-                  {language === 'pl' ? 'Słownictwo z lekcji:' : 'Lesson vocabulary:'}
-                </span>
-                <span className="text-xs text-white">{lesson.vocabularyText}</span>
-              </div>
-            )}
+
+            <div className="space-y-3 mb-4">
+              {lesson.studentSpeaking && (
+                <div className="rounded-xl overflow-hidden border border-white/5 bg-[#242424]">
+                  <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200 text-sm">
+                    <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                    Kursant — o czym mówił
+                  </div>
+                  <div className="p-3 text-sm text-gray-300 whitespace-pre-wrap">{lesson.studentSpeaking}</div>
+                </div>
+              )}
+
+              {lesson.thingsToImprove && (
+                <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a1616]">
+                  <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200 text-sm">
+                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                    Things to Improve
+                  </div>
+                  <div className="p-3 text-sm text-gray-300 whitespace-pre-wrap">{lesson.thingsToImprove}</div>
+                </div>
+              )}
+
+              {lesson.suggestedFollowUp && (
+                <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a2816]">
+                  <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200 text-sm">
+                    <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                    Suggested follow-up
+                  </div>
+                  <div className="p-3 text-sm text-gray-300 whitespace-pre-wrap">{lesson.suggestedFollowUp}</div>
+                </div>
+              )}
+
+              {(lesson.lessonSummary || lesson.vocabularyText) && (
+                <div className="rounded-xl overflow-hidden border border-white/5 bg-base-200/50 mt-4">
+                  <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-sm">
+                    <span className="w-2 h-2 rounded-full bg-primary"></span>
+                    Podstawowe informacje
+                  </div>
+                  <div className="p-3 space-y-3">
+                    {lesson.lessonSummary && (
+                      <div>
+                        <div className="text-xs font-bold text-content-muted uppercase mb-1">Podsumowanie</div>
+                        <div className="text-sm text-gray-300 whitespace-pre-wrap">{lesson.lessonSummary}</div>
+                      </div>
+                    )}
+                    {lesson.vocabularyText && (
+                      <div>
+                        <div className="text-xs font-bold text-content-muted uppercase mb-1">Słownictwo</div>
+                        <div className="text-sm font-mono text-gray-300 whitespace-pre-wrap bg-black/20 p-2 rounded-lg">{lesson.vocabularyText}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {!generatedHomework[lesson.id] && (
                <Button 

@@ -9,6 +9,9 @@ export async function createLessonRecordWithVocabularySet(input: {
   topic: string;
   vocabularyText: string;
   lessonSummary?: string;
+  studentSpeaking?: string;
+  thingsToImprove?: string;
+  suggestedFollowUp?: string;
 }): Promise<{ lessonRecordId: string; vocabularySetId: string }> {
   // Generate IDs
   const lessonRecordId = `lesson-${Date.now()}`;
@@ -23,6 +26,9 @@ export async function createLessonRecordWithVocabularySet(input: {
     topic: input.topic,
     vocabularyText: input.vocabularyText,
     lessonSummary: input.lessonSummary,
+    studentSpeaking: input.studentSpeaking,
+    thingsToImprove: input.thingsToImprove,
+    suggestedFollowUp: input.suggestedFollowUp,
     vocabularySetId: vocabularySetId,
     createdAt: now,
     updatedAt: now,

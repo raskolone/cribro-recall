@@ -4,6 +4,7 @@ import { createServer as createViteServer } from "vite";
 import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { GoogleGenAI, Type, Schema } from "@google/genai";
 
 // Wait, I need VITE_FIREBASE_CONFIG for the project ID.
 // Wait, process.env is available here but VITE_ variables are loaded by Vite.
@@ -134,6 +135,81 @@ async function startServer() {
     }
   });
 
+
+  // Proxy for Gemini API
+  app.post('/api/gemini/lesson-summary', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { notes, students } = req.body;
+      if (!notes) {
+        return res.status(400).json({ error: 'Missing notes' });
+      }
+      
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: 'Gemini API key not configured' });
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const studentsListStr = students ? students.map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n') : 'Brak bazy kursantów';
+
+      const promptContext = `Baza kursantów:\n${studentsListStr}\n\nTranskrypcja/Notatki ze spotkania:\n${notes}`;
+
+      const sysInstruction = `# Cel
+Na podstawie AI meeting notes przygotuj podsumowanie lekcji języka angielskiego dla kursanta.
+Źródłem danych jest gotowe podsumowanie spotkania. Jeśli gotowe podsumowanie jest niewystarczające, użyj pełnej transkrypcji.
+Ta wersja promptu służy do uzupełniania pól w aplikacji Cribro. Każda sekcja ma odpowiadać jednemu polu w aplikacji.
+Nie generuj pracy domowej, zdań do tłumaczenia, ćwiczeń z lukami ani zadań spaced repetition.
+Wszystkie pola opisowe (revisionNotes, studentSpeaking, thingsToImprove, suggestedFollowUp) wygeneruj w języku polskim. Słownictwo naturalnie ma być w dwóch językach (słowo angielskie - polskie tłumaczenie).
+Jeśli w materiale brakuje danych do danej sekcji, wpisz po polsku:
+Brak danych w transkrypcji.
+
+# Zanim wygenerujesz
+Zidentyfikuj kursanta, którego dotyczy lekcja na podstawie podanej bazy kursantów i dopasuj studentId. Dostosuj poziom języka i szczegółowość treści do profilu wybranego kursanta.
+
+# Wygeneruj wynik w formacie JSON
+Zwróć wynik jako JSON z poniższymi polami:
+- studentId (string, ID wybranego kursanta z Bazy Kursantów, jeśli nie potrafisz dopasować zostaw puste)
+- lessonTopic (string, Krótkie, jednozdaniowe podsumowanie tematu lekcji na podstawie revision notes. Bez daty.)
+- revisionNotes (string, Krótkie podsumowanie lekcji w stronie biernej po polsku, 3-6 zdań)
+- vocabularyText (string, Słownictwo i wymowa z lekcji. Zasada formatowania: każde słowo i jego definicja (lub wymowa) mają być w osobnej linijce, oddzielone myślnikiem. Np. "word - tłumaczenie" i w następnej linii kolejne słowo)
+- studentSpeaking (string, Krótkie memory o kursancie po polsku, 5-6 zdań neutralnie o czym mówił, styl itp.)
+- thingsToImprove (string, 2-3 obszary wymagające poprawy z diagnozą i przykładami, po polsku)
+- suggestedFollowUp (string, Ustalenia i najlepsze tematy na kolejną lekcję, po polsku)
+`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: promptContext,
+        config: {
+          systemInstruction: sysInstruction,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              studentId: { type: Type.STRING },
+              lessonTopic: { type: Type.STRING },
+              revisionNotes: { type: Type.STRING },
+              vocabularyText: { type: Type.STRING },
+              studentSpeaking: { type: Type.STRING },
+              thingsToImprove: { type: Type.STRING },
+              suggestedFollowUp: { type: Type.STRING },
+            },
+            required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
+          }
+        }
+      });
+
+      const text = response.text;
+      if (!text) throw new Error("No response from Gemini");
+      
+      const json = JSON.parse(text);
+      res.json(json);
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ error: error.message });
+    }
+  });
   // Proxy for Gemini API if we ever want to move Gemini to server-side
   // Right now, keeping what's there on Vite fallback for now.
 

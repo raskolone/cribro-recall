@@ -153,6 +153,9 @@ export interface LessonRecord {
   topic: string;
   vocabularyText: string;
   lessonSummary?: string;
+  studentSpeaking?: string;
+  thingsToImprove?: string;
+  suggestedFollowUp?: string;
   vocabularySetId?: string;
   createdAt: string;
   updatedAt: string;

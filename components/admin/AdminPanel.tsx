@@ -12,7 +12,7 @@ interface UserWithId extends User {
   id: string;
 }
 
-interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: string) => void; }
+interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: any) => void; }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => {
   const { sets: adminSets, getFlashcards } = useFlashcards();
@@ -43,27 +43,56 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
 
   // Lesson Record Form States
   const [showLessonRecordModal, setShowLessonRecordModal] = useState(false);
+  const [lessonFormStudentId, setLessonFormStudentId] = useState('');
   const [lessonFormDate, setLessonFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [lessonFormTopic, setLessonFormTopic] = useState('');
   const [lessonFormWords, setLessonFormWords] = useState('');
   const [lessonFormSummary, setLessonFormSummary] = useState('');
+  const [lessonFormStudentSpeaking, setLessonFormStudentSpeaking] = useState('');
+  const [lessonFormThingsToImprove, setLessonFormThingsToImprove] = useState('');
+  const [lessonFormSuggestedFollowUp, setLessonFormSuggestedFollowUp] = useState('');
+  const [lessonRecordModalMode, setLessonRecordModalMode] = useState<'view' | 'edit'>('view');
+  
+  // AI Modal State
+  const [showAIModal, setShowAIModal] = useState(false);
+  
+  // Meeting Notes AI State
+  const [rawMeetingNotes, setRawMeetingNotes] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [viewingRecord, setViewingRecord] = useState<LessonRecord | null>(null);
   const [isSavingLessonRecord, setIsSavingLessonRecord] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [isImportingVocabulary, setIsImportingVocabulary] = useState(false);
 
-  const openLessonRecordModal = (record?: LessonRecord) => {
+  const openLessonRecordModal = (mode: 'view' | 'edit', record?: LessonRecord, preserveData: boolean = false) => {
+    setLessonRecordModalMode(mode);
     if (record) {
       setEditingRecordId(record.id);
+      setViewingRecord(record);
+      setLessonFormStudentId(record.studentId || selectedUser?.id || '');
       setLessonFormDate(record.date);
       setLessonFormTopic(record.topic);
       setLessonFormWords(record.vocabularyText || (record as any).words || '');
       setLessonFormSummary(record.lessonSummary || (record as any).summary || '');
+      setLessonFormStudentSpeaking(record.studentSpeaking || '');
+      setLessonFormThingsToImprove(record.thingsToImprove || '');
+      setLessonFormSuggestedFollowUp(record.suggestedFollowUp || '');
+      setRawMeetingNotes('');
     } else {
-      setEditingRecordId(null);
-      setLessonFormDate(new Date().toISOString().split('T')[0]);
-      setLessonFormTopic('');
-      setLessonFormWords('');
-      setLessonFormSummary('');
+      if (!preserveData) {
+        setLessonFormStudentId(selectedUser?.id || '');
+        setEditingRecordId(null);
+        setViewingRecord(null);
+        setLessonFormDate(new Date().toISOString().split('T')[0]);
+        setLessonFormTopic('');
+        setLessonFormWords('');
+        setLessonFormSummary('');
+        setLessonFormStudentSpeaking('');
+        setLessonFormThingsToImprove('');
+        setLessonFormSuggestedFollowUp('');
+        setRawMeetingNotes('');
+      }
+
     }
     setShowLessonRecordModal(true);
   };
@@ -354,22 +383,81 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
     }
   };
 
+  const handleGenerateFromNotes = async () => {
+    if (!rawMeetingNotes.trim()) return;
+    setIsGenerating(true);
+    try {
+      // Pobieranie tokenu od usera zalogowanego
+      const user = auth.currentUser;
+      const token = user ? await user.getIdToken() : '';
+
+      const allStudents = users.map(u => ({
+        id: u.id,
+        name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+        level: u.level || '',
+        description: u.description || ''
+      }));
+
+      const res = await fetch('/api/gemini/lesson-summary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          notes: rawMeetingNotes,
+          students: allStudents
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Wystąpił błąd podczas generowania podsumowania');
+      }
+
+      const generatedData = await res.json();
+
+      setLessonFormDate(new Date().toISOString().split('T')[0]);
+      setLessonFormTopic(generatedData.lessonTopic || 'Lekcja angielskiego');
+      
+      setLessonFormStudentId(generatedData.studentId || selectedUser?.id || '');
+      setLessonFormSummary(generatedData.revisionNotes || '');
+      setLessonFormWords(generatedData.vocabularyText || '');
+      setLessonFormStudentSpeaking(generatedData.studentSpeaking || '');
+      setLessonFormThingsToImprove(generatedData.thingsToImprove || '');
+      setLessonFormSuggestedFollowUp(generatedData.suggestedFollowUp || '');
+
+      setShowAIModal(false);
+      openLessonRecordModal('edit', undefined, true);
+
+    } catch (err: any) {
+      console.error(err);
+      alert('Błąd API: ' + err.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleSaveLessonRecord = async () => {
-    if (!selectedUser || !lessonFormDate || !lessonFormTopic) return;
+    const studentToSaveTo = lessonFormStudentId || selectedUser?.id;
+    if (!studentToSaveTo || !lessonFormDate || !lessonFormTopic) return;
     setIsSavingLessonRecord(true);
 
     try {
       if (editingRecordId) {
         const recordId = editingRecordId;
-        const recordRef = doc(db, `users/${selectedUser.id}/lessonRecords/${recordId}`);
+        const recordRef = doc(db, `users/${studentToSaveTo}/lessonRecords/${recordId}`);
         const existingRecord = lessonRecords.find(r => r.id === editingRecordId);
         
         const updatedRecord: Omit<LessonRecord, 'id'> = {
-          studentId: selectedUser.id,
+          studentId: studentToSaveTo,
           date: lessonFormDate,
           topic: lessonFormTopic,
           vocabularyText: lessonFormWords,
           lessonSummary: lessonFormSummary,
+          studentSpeaking: lessonFormStudentSpeaking,
+          thingsToImprove: lessonFormThingsToImprove,
+          suggestedFollowUp: lessonFormSuggestedFollowUp,
           createdAt: existingRecord?.createdAt || new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
@@ -379,25 +467,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
         }
 
         await setDoc(recordRef, updatedRecord);
-        setLessonRecords(lessonRecords.map(r => r.id === recordId ? { id: recordId, ...updatedRecord } : r));
+        if (studentToSaveTo === selectedUser?.id) {
+          setLessonRecords(lessonRecords.map(r => r.id === recordId ? { id: recordId, ...updatedRecord } : r));
+        }
       } else {
         const { createLessonRecordWithVocabularySet } = await import('../../services/lessonRecord');
         const { lessonRecordId, vocabularySetId } = await createLessonRecordWithVocabularySet({
-          studentId: selectedUser.id,
+          studentId: studentToSaveTo,
           date: lessonFormDate,
           topic: lessonFormTopic,
           vocabularyText: lessonFormWords,
           lessonSummary: lessonFormSummary,
+          studentSpeaking: lessonFormStudentSpeaking,
+          thingsToImprove: lessonFormThingsToImprove,
+          suggestedFollowUp: lessonFormSuggestedFollowUp,
         });
         
         // We need to fetch it again or construct it to push to state
         const newRecord: LessonRecord = {
           id: lessonRecordId,
-          studentId: selectedUser.id,
+          studentId: studentToSaveTo,
           date: lessonFormDate,
           topic: lessonFormTopic,
           vocabularyText: lessonFormWords,
           lessonSummary: lessonFormSummary,
+          studentSpeaking: lessonFormStudentSpeaking,
+          thingsToImprove: lessonFormThingsToImprove,
+          suggestedFollowUp: lessonFormSuggestedFollowUp,
           vocabularySetId: vocabularySetId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -527,7 +623,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
         </div>
         <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
           <div className="text-sm font-mono text-content-muted">Total: {users.length}</div>
-          <Button size="sm" onClick={() => setShowCreateStudentModal(true)}>+ Add Student</Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => setShowAIModal(true)} variant="secondary" className="border-primary/50 text-primary hover:bg-primary/10">
+              ✨ AI Lesson Generator
+            </Button>
+            <Button size="sm" onClick={() => setShowCreateStudentModal(true)}>+ Add Student</Button>
+          </div>
         </div>
       </Card>
 
@@ -733,7 +834,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
                   <h3 className="text-lg font-bold">Historia lekcji</h3>
                   <div className="flex gap-2">
                     <Button size="sm" variant="secondary" onClick={handleImportVocabulary} isLoading={isImportingVocabulary}>Import Słownictwa</Button>
-                    <Button size="sm" onClick={() => openLessonRecordModal()}>Dodaj wpis</Button>
+                    <Button size="sm" variant="secondary" onClick={() => setShowAIModal(true)}>
+                      ✨ AI Lesson Summary
+                    </Button>
+                    <Button size="sm" onClick={() => openLessonRecordModal('edit')}>Dodaj wpis</Button>
                   </div>
                 </div>
                 {lessonRecords.length > 0 ? (
@@ -741,17 +845,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
                     {lessonRecords.map((record, index) => (
                       <Card 
                         key={record.id} 
-                        className="cursor-pointer hover:border-primary/50 transition-colors bg-base-200/50"
-                        onClick={() => openLessonRecordModal(record)}
+                        className="relative group cursor-pointer hover:border-primary/50 transition-colors bg-base-200/50"
+                        onClick={() => openLessonRecordModal('view', record)}
                       >
-                        <div className="flex justify-between items-start mb-3">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); openLessonRecordModal('edit', record); }}
+                          className="absolute top-3 right-3 p-2 bg-base-100 rounded-lg text-content-muted hover:text-primary hover:bg-base-200 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </button>
+                        <div className="flex justify-between items-start mb-3 pr-8">
                           <div className="font-mono text-xs uppercase tracking-wider text-primary mb-1">
                             Lekcja {lessonRecords.length - index}
                           </div>
                           <span className="text-xs font-mono text-content-muted">{record.date}</span>
                         </div>
-                        <h4 className="font-bold mb-2 line-clamp-1">{record.topic}</h4>
-                        <div className="text-sm text-content-muted line-clamp-2">{record.lessonSummary || record.summary}</div>
+                        <h4 className="font-bold mb-2 line-clamp-1 pr-8">{record.topic}</h4>
+                        <div className="text-sm text-content-muted line-clamp-2">{record.lessonSummary || (record as any).summary}</div>
                       </Card>
                     ))}
                   </div>
@@ -775,19 +887,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
                       </thead>
                       <tbody className="divide-y divide-white/5">
                         {practiceLogs.map(log => {
-                          const percentage = log.score !== undefined && log.totalCards !== undefined && log.totalCards > 0
-                            ? Math.round((log.score / log.totalCards) * 100) 
+                          const percentage = log.score !== undefined && log.totalWords !== undefined && log.totalWords > 0
+                            ? Math.round((log.score / log.totalWords) * 100) 
                             : null
                           
                           return (
                           <tr key={log.id} className="hover:bg-white/5 transition-colors">
                             <td className="p-3 whitespace-nowrap">{new Date(log.date).toLocaleString()}</td>
                             <td className="p-3 capitalize">{log.exerciseType}</td>
-                            <td className="p-3 line-clamp-1">{log.setName}</td>
+                            <td className="p-3 line-clamp-1">{/* No setName in practice log */}</td>
                             <td className="p-3 text-right">
-                              {log.score !== undefined && log.totalCards !== undefined ? (
-                                <span className={log.score / log.totalCards >= 0.8 ? 'text-primary' : log.score / log.totalCards >= 0.5 ? 'text-amber-500' : 'text-red-500'}>
-                                  {log.score} / {log.totalCards} ({Math.round(log.score / log.totalCards * 100)}%)
+                              {log.score !== undefined && log.totalWords !== undefined ? (
+                                <span className={log.score / log.totalWords >= 0.8 ? 'text-primary' : log.score / log.totalWords >= 0.5 ? 'text-amber-500' : 'text-red-500'}>
+                                  {log.score} / {log.totalWords} ({Math.round(log.score / log.totalWords * 100)}%)
                                 </span>
                               ) : '-'}
                             </td>
@@ -901,67 +1013,202 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
         </div>
       )}
 
+      {/* AI Lesson Summary Modal */}
+      {showAIModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
+          <div className="bg-base-100 p-6 rounded-xl w-full max-w-4xl border border-white/10 shadow-2xl relative my-auto">
+            <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
+               <span className="text-primary">✨</span> AI Lesson Summary
+            </h3>
+            <p className="text-base text-content-muted mb-4">
+               Wklej treść notatek ze spotkania (plain text lub markdown), a AI wygeneruje na ich podstawie pełny wpis z lekcji, wypełniając automatycznie datę, temat i wszystkie inne pola formularza.
+            </p>
+            <textarea
+              value={rawMeetingNotes}
+              onChange={e => setRawMeetingNotes(e.target.value)}
+              className="w-full bg-base-200 border border-white/10 rounded-lg p-4 text-white h-[50vh] mb-4 font-mono text-sm leading-relaxed"
+              placeholder="Wklej tutaj surową transkrypcję z Google Meet lub własne notatki..."
+            />
+            <div className="flex justify-end gap-3">
+              <Button variant="ghost" onClick={() => setShowAIModal(false)}>Anuluj</Button>
+              <Button onClick={handleGenerateFromNotes} isLoading={isGenerating} disabled={!rawMeetingNotes.trim()}>
+                Generuj wpis z lekcji
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add/Edit Lesson Record Modal */}
       {showLessonRecordModal && (
-        <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-lg shadow-2xl border-primary/20 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold mb-4">{editingRecordId ? 'Edit Lesson Record' : 'Add Lesson Record'}</h3>
-            <div className="space-y-4 mb-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-content-muted mb-1">Date</label>
-                  <input
-                    type="date"
-                    value={lessonFormDate}
-                    onChange={(e) => setLessonFormDate(e.target.value)}
-                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
-                  />
+        <div className="fixed inset-0 bg-base-100/90 backdrop-blur-md z-50 flex items-center justify-center p-4 md:p-6 overflow-y-auto">
+          <div className="w-full max-w-3xl my-auto">
+            {lessonRecordModalMode === 'edit' ? (
+              <Card className="w-full shadow-2xl border-primary/20">
+                <h3 className="text-xl font-bold mb-4">{editingRecordId ? 'Edytuj lekcję' : 'Dodaj nową lekcję'}</h3>
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-bold text-content-muted mb-1">Kursant</label>
+                    <select 
+                      value={lessonFormStudentId} 
+                      onChange={e => setLessonFormStudentId(e.target.value)}
+                      className="w-full bg-base-200 border border-primary/30 rounded-lg p-2 text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary mb-2 transition-all"
+                    >
+                      <option value="">Wybierz kursanta...</option>
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username} ({u.level || 'Brak poziomu'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-content-muted mb-1">Data</label>
+                      <input 
+                        type="date" 
+                        value={lessonFormDate} 
+                        onChange={e => setLessonFormDate(e.target.value)}
+                        className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-content-muted mb-1">Temat</label>
+                      <input 
+                        type="text" 
+                        value={lessonFormTopic} 
+                        onChange={e => setLessonFormTopic(e.target.value)}
+                        className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white"
+                        placeholder="Np. Present Perfect vs Past Simple"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-content-muted mb-1">Revision Notes</label>
+                    <textarea 
+                      value={lessonFormSummary} 
+                      onChange={e => setLessonFormSummary(e.target.value)}
+                      className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
+                      placeholder="Zapis z lekcji..."
+                      rows={5}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-content-muted mb-1">Kursant — o czym mówił</label>
+                    <textarea 
+                      value={lessonFormStudentSpeaking} 
+                      onChange={e => setLessonFormStudentSpeaking(e.target.value)}
+                      className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
+                      rows={5}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-content-muted mb-1">Słownictwo & Wymowa (Vocabulary & Pronunciation)</label>
+                    <textarea 
+                      value={lessonFormWords} 
+                      onChange={e => setLessonFormWords(e.target.value)}
+                      className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white font-mono text-sm min-h-[120px] resize-y"
+                      placeholder="apple - jabłko&#10;banana - banan"
+                      rows={5}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-content-muted mb-1">Things to Improve</label>
+                    <textarea 
+                      value={lessonFormThingsToImprove} 
+                      onChange={e => setLessonFormThingsToImprove(e.target.value)}
+                      className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
+                      rows={5}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-content-muted mb-1">Suggested follow-up</label>
+                    <textarea 
+                      value={lessonFormSuggestedFollowUp} 
+                      onChange={e => setLessonFormSuggestedFollowUp(e.target.value)}
+                      className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
+                      rows={5}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-content-muted mb-1">Topic</label>
-                  <input
-                    type="text"
-                    value={lessonFormTopic}
-                    onChange={(e) => setLessonFormTopic(e.target.value)}
-                    placeholder="e.g. Present Simple"
-                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
-                  />
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" onClick={() => setShowLessonRecordModal(false)}>Anuluj</Button>
+                  <Button onClick={handleSaveLessonRecord} isLoading={isSavingLessonRecord}>Zapisz lekcję</Button>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-content-muted mb-1">Vocabulary / Words</label>
-                <textarea
-                  value={lessonFormWords}
-                  onChange={(e) => setLessonFormWords(e.target.value)}
-                  placeholder="Paste words covered in this lesson..."
-                  rows={3}
-                  className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm resize-y"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-content-muted mb-1">Lesson Summary</label>
-                <textarea
-                  value={lessonFormSummary}
-                  onChange={(e) => setLessonFormSummary(e.target.value)}
-                  placeholder="Podsumowanie lekcji oraz przykładowe zdania, które kursant przerabiał (ważne dla AI)..."
-                  rows={4}
-                  className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm resize-y"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3">
-              <Button onClick={closeLessonRecordModal} variant="secondary">
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleSaveLessonRecord} 
-                isLoading={isSavingLessonRecord}
-                disabled={!lessonFormDate || !lessonFormTopic}
-              >
-                Save Record
-              </Button>
-            </div>
-          </Card>
+              </Card>
+            ) : (
+              <Card className="w-full shadow-2xl border-white/10 bg-base-100 p-0 overflow-hidden">
+                <div className="p-6 border-b border-white/5 flex justify-between items-center bg-base-200/50">
+                  <div>
+                    <h3 className="text-2xl font-bold font-display">{viewingRecord?.topic}</h3>
+                    <div className="font-mono text-sm text-primary mt-1">{viewingRecord?.date}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" onClick={() => openLessonRecordModal('edit', viewingRecord!)}>
+                      Edytuj
+                    </Button>
+                    <button onClick={() => setShowLessonRecordModal(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-content-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                  
+                  {viewingRecord?.lessonSummary && (
+                    <div className="rounded-xl overflow-hidden border border-white/5 bg-[#1a1f2e]">
+                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200">
+                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                        Revision Notes
+                      </div>
+                      <div className="p-4 text-sm text-gray-300 whitespace-pre-wrap">{viewingRecord.lessonSummary}</div>
+                    </div>
+                  )}
+
+                  {viewingRecord?.studentSpeaking && (
+                    <div className="rounded-xl overflow-hidden border border-white/5 bg-[#242424]">
+                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200">
+                        <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                        Kursant — o czym mówił
+                      </div>
+                      <div className="p-4 text-sm text-gray-300 whitespace-pre-wrap">{viewingRecord.studentSpeaking}</div>
+                    </div>
+                  )}
+
+                  {viewingRecord?.vocabularyText && (
+                    <div className="rounded-xl overflow-hidden border border-white/5 bg-[#162a22]">
+                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200">
+                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                        Słownictwo & Wymowa
+                      </div>
+                      <div className="p-4 text-sm font-mono text-gray-300 whitespace-pre-wrap">{viewingRecord.vocabularyText}</div>
+                    </div>
+                  )}
+
+                  {viewingRecord?.thingsToImprove && (
+                    <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a1616]">
+                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200">
+                        <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                        Things to Improve
+                      </div>
+                      <div className="p-4 text-sm text-gray-300 whitespace-pre-wrap">{viewingRecord.thingsToImprove}</div>
+                    </div>
+                  )}
+
+                  {viewingRecord?.suggestedFollowUp && (
+                    <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a2816]">
+                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200">
+                        <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                        Suggested follow-up
+                      </div>
+                      <div className="p-4 text-sm text-gray-300 whitespace-pre-wrap">{viewingRecord.suggestedFollowUp}</div>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+          </div>
         </div>
       )}
 

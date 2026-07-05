@@ -243,9 +243,15 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
           const lrList = lrSnapshot.docs.map(doc => doc.data() as LessonRecord);
           
           if (lrList.length > 0) {
-            lessonContextString = lrList.map((lr, idx) => 
-              `Lesson ${idx + 1} (${lr.date}): Topic: ${lr.topic}. Pełny zapis z lekcji (Summary & Examples): ${lr.lessonSummary || ''}. Words covered: ${lr.vocabularyText || ''}`
-            ).join('\n\n');
+            lessonContextString = lrList.map((lr, idx) => {
+              let ctx = `Lesson ${idx + 1} (${lr.date}): Topic: ${lr.topic}. `;
+              if (lr.lessonSummary) ctx += `Revision Notes: ${lr.lessonSummary}. `;
+              if (lr.studentSpeaking) ctx += `Kursant o czym mówił: ${lr.studentSpeaking}. `;
+              if (lr.thingsToImprove) ctx += `Things to Improve: ${lr.thingsToImprove}. `;
+              if (lr.suggestedFollowUp) ctx += `Suggested follow-up: ${lr.suggestedFollowUp}. `;
+              if (lr.vocabularyText) ctx += `Vocabulary & Pronunciation: ${lr.vocabularyText}.`;
+              return ctx;
+            }).join('\n\n');
           }
         } catch (lrErr) {
           console.warn('Could not fetch lesson records:', lrErr);

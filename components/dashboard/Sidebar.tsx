@@ -6,7 +6,7 @@ import { useLanguage } from '../../context/LanguageContext';
 
 interface SidebarProps {
   currentView: string;
-  onNavigate: (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'ai-generator' | 'lesson-history' | 'tests') => void;
+  onNavigate: (view: any) => void;
   onStartPractice: (exercise: ExerciseType) => void;
   isOpen: boolean;
   onClose: () => void;
@@ -43,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
     if (currentView.startsWith('admin')) setIsAdminExpanded(true);
   }, [currentView]);
 
-  const handleNavigate = (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'ai-generator' | 'lesson-history' | 'tests') => {
+  const handleNavigate = (view: any) => {
     onNavigate(view);
     onClose();
   };
