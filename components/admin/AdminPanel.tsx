@@ -6,6 +6,7 @@ import { useFlashcards } from '../../context/FlashcardContext';
 import { importVocabularyFromLessons } from '../../services/vocabularyService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import AdminTestGenerator from './AdminTestGenerator';
 
 interface UserWithId extends User {
   id: string;
@@ -75,7 +76,7 @@ const AdminPanel: React.FC = () => {
 
 
   // User Profile Edit States
-  const [activeTab, setActiveTab] = useState<'stats' | 'profile'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'profile' | 'tests'>('stats');
   const [profileForm, setProfileForm] = useState({
     firstName: '',
     lastName: '',
@@ -655,6 +656,12 @@ const AdminPanel: React.FC = () => {
             >
               Profil kursanta
             </button>
+            <button 
+              className={`px-4 py-2 font-bold text-sm transition-colors ${activeTab === 'tests' ? 'text-primary border-b-2 border-primary' : 'text-content-muted hover:text-white'}`}
+              onClick={() => setActiveTab('tests')}
+            >
+              Testy
+            </button>
           </div>
 
           {activeTab === 'stats' && (
@@ -729,6 +736,10 @@ const AdminPanel: React.FC = () => {
                 <p className="text-content-muted italic">No practice history found for this user.</p>
               )}
             </>
+          )}
+
+          {activeTab === 'tests' && (
+            <AdminTestGenerator user={selectedUser} />
           )}
 
           {activeTab === 'profile' && (
@@ -867,7 +878,7 @@ const AdminPanel: React.FC = () => {
                 <textarea
                   value={lessonFormSummary}
                   onChange={(e) => setLessonFormSummary(e.target.value)}
-                  placeholder="Summary of the lesson..."
+                  placeholder="Podsumowanie lekcji oraz przykładowe zdania, które kursant przerabiał (ważne dla AI)..."
                   rows={4}
                   className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm resize-y"
                 />

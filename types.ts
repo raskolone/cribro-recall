@@ -173,3 +173,28 @@ export interface VocabularySet {
   updatedAt: string;
 }
 
+
+export type TestQuestionType = 'multiple_choice' | 'fill_in_blank' | 'translation';
+
+export interface TestQuestion {
+  id: string;
+  type: TestQuestionType;
+  prompt: string; // The question or sentence to translate
+  options?: string[]; // For multiple choice
+  correctAnswer: string; 
+  hint?: string;
+}
+
+export interface StudentTest {
+  id?: string;
+  studentId: string;
+  title: string;
+  scope: string; // Zakres materiału
+  dueDate: string;
+  createdAt: string;
+  status: 'pending' | 'completed' | 'graded';
+  questions: TestQuestion[];
+  score?: number;
+  maxScore?: number;
+  studentAnswers?: Record<string, string>; // Map of questionId to student's answer
+}

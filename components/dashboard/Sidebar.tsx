@@ -6,7 +6,7 @@ import { useLanguage } from '../../context/LanguageContext';
 
 interface SidebarProps {
   currentView: string;
-  onNavigate: (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'ai-generator' | 'lesson-history') => void;
+  onNavigate: (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'ai-generator' | 'lesson-history' | 'tests') => void;
   onStartPractice: (exercise: ExerciseType) => void;
   isOpen: boolean;
   onClose: () => void;
@@ -38,7 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
   const { user } = useAuth();
   const { language } = useLanguage();
 
-  const handleNavigate = (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'ai-generator' | 'lesson-history') => {
+  const handleNavigate = (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'ai-generator' | 'lesson-history' | 'tests') => {
     onNavigate(view);
     onClose();
   };
@@ -98,6 +98,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
 
           <NavLink onClick={() => handleNavigate('lesson-history')} isActive={currentView === 'lesson-history'}>
               <span>{language === 'pl' ? 'Historia lekcji' : 'Lesson History'}</span>
+          </NavLink>
+          <NavLink onClick={() => handleNavigate('tests')} isActive={currentView === 'tests'}>
+              <span>{language === 'pl' ? 'Testy' : 'Tests'}</span>
           </NavLink>
           
           <div className="pt-4 mt-4 border-t border-base-300">

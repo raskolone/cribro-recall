@@ -123,7 +123,7 @@ service cloud.firestore {
              data.role in ['admin', 'user', 'admin_student'] &&
              (!('photoURL' in data) || data.photoURL is string) &&
              (!('streakCount' in data) || data.streakCount is number) &&
-             (!('lastStreakDate' in data) || isValidDateString(data.lastStreakDate)) &&
+             (!('lastStreakDate' in data) || data.lastStreakDate == '' || isValidDateString(data.lastStreakDate)) &&
              (!('createdAt' in data) || isValidDateString(data.createdAt)) &&
              (!('loginCount' in data) || data.loginCount is number) &&
              (!('lastLoginDate' in data) || isValidDateString(data.lastLoginDate)) &&
@@ -216,6 +216,13 @@ service cloud.firestore {
         allow read: if isOwner(userId) || isAdmin();
         allow create: if isAdmin() && isValidVocabularySet(request.resource.data);
         allow update: if isAdmin() && isValidVocabularySet(request.resource.data);
+        allow delete: if isAdmin();
+      }
+
+      match /tests/{testId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isAdmin();
+        allow update: if isOwner(userId) || isAdmin();
         allow delete: if isAdmin();
       }
     }

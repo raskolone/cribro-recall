@@ -351,3 +351,66 @@ Student context: ${studentProfileContext}` : ''}
     throw new Error("Failed to evaluate translations with AI.");
   }
 };
+
+
+export const generateTest = async (
+  level: string,
+  testTitle: string,
+  scope: string,
+  studentProfile: string,
+  lessonContext: string
+): Promise<any[]> => {
+  const prompt = `Generate a language test for a student based on their recent lessons.
+  Test Title: ${testTitle}
+  Scope/Description: ${scope}
+  Student Level: ${level}
+  
+  Student Profile (for personalization): ${studentProfile}
+  
+  Lessons Context (IMPORTANT: Base the test strictly on the vocabulary and structures from these lessons. Review example sentences provided below):
+  ${lessonContext}
+  
+  Please generate 10 questions of mixed types:
+  1. 'multiple_choice' - 4 options, 1 correct.
+  2. 'fill_in_blank' - A sentence with a missing word or phrase to type in.
+  3. 'translation' - A simple sentence in Polish to translate into English (must match the level and past lessons).
+  
+  Return a JSON array of question objects.`;
+
+  const schema = {
+    type: Type.ARRAY,
+    description: "Array of test questions",
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        type: { type: Type.STRING, enum: ["multiple_choice", "fill_in_blank", "translation"], description: "Type of the question" },
+        prompt: { type: Type.STRING, description: "The question or the sentence to translate/fill" },
+        options: { 
+          type: Type.ARRAY, 
+          items: { type: Type.STRING },
+          description: "Options for multiple_choice. Leave empty for other types."
+        },
+        correctAnswer: { type: Type.STRING, description: "The correct answer (exact string). For translation, the correct English translation." },
+        hint: { type: Type.STRING, description: "Optional hint in Polish." }
+      },
+      required: ["type", "prompt", "correctAnswer"]
+    }
+  };
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3.1-flash-lite", // Using a light/fast model
+      contents: prompt,
+      config: {
+        systemInstruction: "You are an expert language teacher. Generate customized tests based on the student's lesson history, profile, and level. Ensure questions are practical and match the exact material covered.",
+        responseMimeType: "application/json",
+        responseSchema: schema,
+      },
+    });
+
+    return JSON.parse(response.text.trim());
+  } catch (err) {
+    console.error("Test generation failed", err);
+    throw new Error("Failed to generate test.");
+  }
+};

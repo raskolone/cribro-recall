@@ -15,6 +15,7 @@ import FlashcardStatsScreen from '../flashcards/FlashcardStatsScreen';
 import AdminPanel from '../admin/AdminPanel';
 import AIExerciseGeneratorScreen from './AIExerciseGeneratorScreen';
 import LessonHistoryScreen from './LessonHistoryScreen';
+import StudentTestsScreen from '../tests/StudentTestsScreen';
 import { useAuth } from '../../context/AuthContext';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { useFlashcards } from '../../context/FlashcardContext';
@@ -24,7 +25,7 @@ import Button from '../ui/Button';
 
 import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
 
-type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'presentation' | 'ai-generator' | 'lesson-history';
+type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests';
 type PracticeView = { type: 'exercise'; exercise: ExerciseType; isRevisionMode?: boolean; isSpacedRepetitionMode?: boolean } | null;
 
 const PracticeSetSelector = ({ onSelectSet, onCancel }: { onSelectSet: (id: string) => void, onCancel: () => void }) => {
@@ -292,6 +293,10 @@ const Dashboard: React.FC = () => {
     }
     if (view === 'lesson-history') {
       return <LessonHistoryScreen />;
+    }
+
+    if (view === 'tests') {
+      return <StudentTestsScreen onBack={() => setView('dashboard')} />;
     }
     // Default to dashboard view
     return (
