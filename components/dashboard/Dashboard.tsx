@@ -25,7 +25,7 @@ import Button from '../ui/Button';
 
 import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
 
-type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests';
+type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests';
 type PracticeView = { type: 'exercise'; exercise: ExerciseType; isRevisionMode?: boolean; isSpacedRepetitionMode?: boolean } | null;
 
 const PracticeSetSelector = ({ onSelectSet, onCancel }: { onSelectSet: (id: string) => void, onCancel: () => void }) => {
@@ -285,8 +285,8 @@ const Dashboard: React.FC = () => {
     if (view === 'presentation' && activeSetId) {
       return <FlashcardPresentationScreen setId={activeSetId} onBack={() => setView('flashcard-sets')} />;
     }
-    if (view === 'admin' && (user?.role === 'admin' || user?.role === 'admin_student')) {
-      return <AdminPanel />;
+    if (view.startsWith('admin') && (user?.role === 'admin' || user?.role === 'admin_student')) {
+      return <AdminPanel initialTab={view === 'admin' ? null : view.replace('admin-', '')} onViewChange={setView} />;
     }
     if (view === 'ai-generator') {
       return <AIExerciseGeneratorScreen initialSetId={activeSetId} onStartPractice={startPractice} />;

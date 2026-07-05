@@ -37,6 +37,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
   const [practiceOpen, setPracticeOpen] = useState(false);
   const { user } = useAuth();
   const { language } = useLanguage();
+  const [isAdminExpanded, setIsAdminExpanded] = useState(currentView.startsWith('admin'));
+
+  React.useEffect(() => {
+    if (currentView.startsWith('admin')) setIsAdminExpanded(true);
+  }, [currentView]);
 
   const handleNavigate = (view: 'dashboard' | 'settings' | 'flashcard-sets' | 'admin' | 'ai-generator' | 'lesson-history' | 'tests') => {
     onNavigate(view);
@@ -111,9 +116,42 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           
           {(user?.role === 'admin' || user?.role === 'admin_student') && (
             <div className="pt-4 mt-4 border-t border-base-300">
-              <NavLink onClick={() => handleNavigate('admin')} isActive={currentView === 'admin'}>
-                <span className="text-secondary">{language === 'pl' ? 'Panel nauczyciela' : 'Teacher Panel'}</span>
-              </NavLink>
+              <div className="flex flex-col">
+                <div className="flex items-center group">
+                  <div className="flex-1">
+                    <NavLink onClick={() => { handleNavigate('admin'); setIsAdminExpanded(true); }} isActive={currentView === 'admin' || currentView.startsWith('admin-')}>
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-secondary">{language === 'pl' ? 'Panel nauczyciela' : 'Teacher Panel'}</span>
+                      </div>
+                    </NavLink>
+                  </div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setIsAdminExpanded(!isAdminExpanded); }} 
+                    className="p-2 ml-1 text-content-muted hover:text-white rounded-lg hover:bg-white/5 transition-colors absolute right-4"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform duration-200 ${isAdminExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+                
+                {isAdminExpanded && (
+                  <div className="pl-4 mt-1 space-y-1 overflow-hidden transition-all duration-300">
+                    <NavLink onClick={() => handleNavigate('admin-stats')} isActive={currentView === 'admin-stats'}>
+                      <span className="text-sm">{language === 'pl' ? 'Statystyki' : 'Statistics'}</span>
+                    </NavLink>
+                    <NavLink onClick={() => handleNavigate('admin-history')} isActive={currentView === 'admin-history'}>
+                      <span className="text-sm">{language === 'pl' ? 'Historia' : 'History'}</span>
+                    </NavLink>
+                    <NavLink onClick={() => handleNavigate('admin-profile')} isActive={currentView === 'admin-profile'}>
+                      <span className="text-sm">{language === 'pl' ? 'Profil kursanta' : 'Student Profile'}</span>
+                    </NavLink>
+                    <NavLink onClick={() => handleNavigate('admin-tests')} isActive={currentView === 'admin-tests'}>
+                      <span className="text-sm">{language === 'pl' ? 'Testy' : 'Tests'}</span>
+                    </NavLink>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </nav>

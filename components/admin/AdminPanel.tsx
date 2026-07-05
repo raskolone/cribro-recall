@@ -12,7 +12,9 @@ interface UserWithId extends User {
   id: string;
 }
 
-const AdminPanel: React.FC = () => {
+interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: string) => void; }
+
+const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => {
   const { sets: adminSets, getFlashcards } = useFlashcards();
   const [users, setUsers] = useState<UserWithId[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserWithId | null>(null);
@@ -76,7 +78,16 @@ const AdminPanel: React.FC = () => {
 
 
   // User Profile Edit States
-  const [activeTab, setActiveTab] = useState<'stats' | 'profile' | 'tests'>('stats');
+  const [activeTab, setActiveTab] = useState<string | null>(initialTab || null);
+
+  useEffect(() => {
+    setActiveTab(initialTab || null);
+  }, [initialTab]);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (onViewChange) onViewChange(`admin-${tab}`);
+  };
   const [profileForm, setProfileForm] = useState({
     firstName: '',
     lastName: '',
@@ -643,99 +654,153 @@ const AdminPanel: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex border-b border-white/10 mb-6">
-            <button 
-              className={`px-4 py-2 font-bold text-sm transition-colors ${activeTab === 'stats' ? 'text-primary border-b-2 border-primary' : 'text-content-muted hover:text-white'}`}
-              onClick={() => setActiveTab('stats')}
-            >
-              Statystyki & Historia
-            </button>
-            <button 
-              className={`px-4 py-2 font-bold text-sm transition-colors ${activeTab === 'profile' ? 'text-primary border-b-2 border-primary' : 'text-content-muted hover:text-white'}`}
-              onClick={() => setActiveTab('profile')}
-            >
-              Profil kursanta
-            </button>
-            <button 
-              className={`px-4 py-2 font-bold text-sm transition-colors ${activeTab === 'tests' ? 'text-primary border-b-2 border-primary' : 'text-content-muted hover:text-white'}`}
-              onClick={() => setActiveTab('tests')}
-            >
-              Testy
-            </button>
-          </div>
+          
+          {activeTab ? (
+            <div className="mb-6 flex items-center gap-4">
+              <button 
+                onClick={() => { setActiveTab(null); if (onViewChange) onViewChange('admin'); }}
+                className="flex items-center gap-2 text-content-muted hover:text-white transition-colors bg-base-200/50 px-4 py-2 rounded-xl border border-white/5 hover:border-primary/50"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                </svg>
+                Wróć do panelu
+              </button>
+              <h2 className="text-xl font-bold">
+                {activeTab === 'stats' && 'Statystyki'}
+                {activeTab === 'history' && 'Historia'}
+                {activeTab === 'profile' && 'Profil kursanta'}
+                {activeTab === 'tests' && 'Testy'}
+              </h2>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <button onClick={() => handleTabChange('stats')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                </div>
+                <h3 className="font-bold text-lg">Statystyki</h3>
+              </button>
+              <button onClick={() => handleTabChange('history')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+                <h3 className="font-bold text-lg">Historia</h3>
+              </button>
+              <button onClick={() => handleTabChange('profile')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                </div>
+                <h3 className="font-bold text-lg">Profil kursanta</h3>
+              </button>
+              <button onClick={() => handleTabChange('tests')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                </div>
+                <h3 className="font-bold text-lg">Testy</h3>
+              </button>
+            </div>
+          )}
+
 
           {activeTab === 'stats' && (
-            <>
-              {userStats && (
-                <div className="grid grid-cols-3 gap-4 mb-8">
-                  <div className="bg-base-200/50 p-4 rounded-xl border border-white/5 text-center">
-                    <div className="text-sm text-content-muted mb-1 font-mono uppercase">Total Words</div>
-                    <div className="text-3xl font-display font-bold text-white">{userStats.totalWords}</div>
+            <div className="space-y-6">
+              {userStats ? (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                  <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
+                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">Słowa ogółem</div>
+                    <div className="text-4xl font-display font-bold text-white">{userStats.totalWords}</div>
                   </div>
-                  <div className="bg-base-200/50 p-4 rounded-xl border border-white/5 text-center">
-                    <div className="text-sm text-content-muted mb-1 font-mono uppercase">Mastery</div>
-                    <div className="text-3xl font-display font-bold text-primary">{userStats.masteryCount}%</div>
+                  <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
+                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">Opanowane</div>
+                    <div className="text-4xl font-display font-bold text-primary">{userStats.masteryCount}%</div>
                   </div>
-                  <div className="bg-base-200/50 p-4 rounded-xl border border-white/5 text-center">
-                    <div className="text-sm text-content-muted mb-1 font-mono uppercase">Difficult</div>
-                    <div className="text-3xl font-display font-bold text-amber-500">{userStats.difficultWords}</div>
+                  <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
+                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">Trudne słowa</div>
+                    <div className="text-4xl font-display font-bold text-amber-500">{userStats.difficultWords}</div>
                   </div>
                 </div>
+              ) : (
+                <div className="text-center p-8 bg-base-200/50 rounded-2xl border border-white/5 text-content-muted">Brak statystyk do wyświetlenia.</div>
               )}
+            </div>
+          )}
 
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold">Lesson Records</h3>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="secondary" onClick={handleImportVocabulary} isLoading={isImportingVocabulary}>Import Vocabulary</Button>
-                  <Button size="sm" onClick={() => openLessonRecordModal()}>Add Record</Button>
+          {activeTab === 'history' && (
+            <div className="space-y-8">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold">Historia lekcji</h3>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="secondary" onClick={handleImportVocabulary} isLoading={isImportingVocabulary}>Import Słownictwa</Button>
+                    <Button size="sm" onClick={() => openLessonRecordModal()}>Dodaj wpis</Button>
+                  </div>
                 </div>
+                {lessonRecords.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {lessonRecords.map((record, index) => (
+                      <Card 
+                        key={record.id} 
+                        className="cursor-pointer hover:border-primary/50 transition-colors bg-base-200/50"
+                        onClick={() => openLessonRecordModal(record)}
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="font-mono text-xs uppercase tracking-wider text-primary mb-1">
+                            Lekcja {lessonRecords.length - index}
+                          </div>
+                          <span className="text-xs font-mono text-content-muted">{record.date}</span>
+                        </div>
+                        <h4 className="font-bold mb-2 line-clamp-1">{record.topic}</h4>
+                        <div className="text-sm text-content-muted line-clamp-2">{record.lessonSummary || record.summary}</div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-content-muted italic">Brak historii lekcji.</p>
+                )}
               </div>
-              {lessonRecords.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                  {lessonRecords.map((record, index) => (
-                    <Card 
-                      key={record.id} 
-                      className="cursor-pointer hover:border-primary/50 transition-colors bg-base-200/50"
-                      onClick={() => openLessonRecordModal(record)}
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="font-mono text-xs uppercase tracking-wider text-primary mb-1">
-                          Lekcja {lessonRecords.length - index}
-                        </div>
-                        <span className="text-xs font-mono text-content-muted">{record.date}</span>
-                      </div>
-                      <h4 className="font-bold mb-2 line-clamp-1">{record.topic}</h4>
-                      <div className="text-sm text-content-muted line-clamp-2">{record.lessonSummary || (record as any).summary}</div>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-content-muted italic mb-8">No lesson records found.</p>
-              )}
 
-              <h3 className="text-lg font-bold mb-4">Practice History</h3>
-              {practiceLogs.length > 0 ? (
-                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                  {practiceLogs.map(log => (
-                    <div key={log.id} className="flex justify-between items-center p-3 bg-base-200/50 rounded-lg border border-white/5">
-                      <div>
-                        <div className="font-bold capitalize">{log.exerciseType.replace('-', ' ')}</div>
-                        <div className="text-xs text-content-muted">
-                          {new Date(log.date).toLocaleString()}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        {log.isRevisionMode && (
-                          <span className="text-xs bg-secondary/20 text-secondary px-2 py-1 rounded-full mr-2">Revision</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-content-muted italic">No practice history found for this user.</p>
-              )}
-            </>
+              <div>
+                <h3 className="text-lg font-bold mb-4">Historia ćwiczeń (App)</h3>
+                {practiceLogs.length > 0 ? (
+                  <div className="bg-base-200/50 rounded-xl border border-white/5 overflow-hidden">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-black/20 text-content-muted font-mono uppercase text-xs">
+                        <tr>
+                          <th className="p-3">Data</th>
+                          <th className="p-3">Typ</th>
+                          <th className="p-3">Zestaw</th>
+                          <th className="p-3 text-right">Wynik</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {practiceLogs.map(log => {
+                          const percentage = log.score !== undefined && log.totalCards !== undefined && log.totalCards > 0
+                            ? Math.round((log.score / log.totalCards) * 100) 
+                            : null
+                          
+                          return (
+                          <tr key={log.id} className="hover:bg-white/5 transition-colors">
+                            <td className="p-3 whitespace-nowrap">{new Date(log.date).toLocaleString()}</td>
+                            <td className="p-3 capitalize">{log.exerciseType}</td>
+                            <td className="p-3 line-clamp-1">{log.setName}</td>
+                            <td className="p-3 text-right">
+                              {log.score !== undefined && log.totalCards !== undefined ? (
+                                <span className={log.score / log.totalCards >= 0.8 ? 'text-primary' : log.score / log.totalCards >= 0.5 ? 'text-amber-500' : 'text-red-500'}>
+                                  {log.score} / {log.totalCards} ({Math.round(log.score / log.totalCards * 100)}%)
+                                </span>
+                              ) : '-'}
+                            </td>
+                          </tr>
+                        )})}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-content-muted italic">Brak ćwiczeń.</p>
+                )}
+              </div>
+            </div>
           )}
 
           {activeTab === 'tests' && (
