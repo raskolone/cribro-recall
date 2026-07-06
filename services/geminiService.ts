@@ -360,7 +360,8 @@ export const generateTest = async (
   testTitle: string,
   scope: string,
   studentProfile: string,
-  lessonContext: string
+  lessonContext: string,
+  selectedTypes: string[] = ['multiple_choice', 'fill_in_blank', 'translation']
 ): Promise<any[]> => {
   const prompt = `Generate a language test for a student based on their recent lessons.
   Test Title: ${testTitle}
