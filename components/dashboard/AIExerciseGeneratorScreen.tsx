@@ -1085,9 +1085,16 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
               
               {practiceMode === 'fixed' && activeSentenceIndex === exercises.length - 1 ? (
                 <Button
-                  onClick={handleEvaluate}
+                  onClick={() => {
+                    const unansweredCount = exercises.length - studentAnswers.filter(ans => ans?.trim()).length;
+                    if (unansweredCount > 0) {
+                      if (!window.confirm(language === 'pl' ? `Masz ${unansweredCount} nieodpowiedzianych pytań. Czy na pewno chcesz zakończyć i ocenić?` : `You have ${unansweredCount} unanswered questions. Are you sure you want to submit?`)) {
+                        return;
+                      }
+                    }
+                    handleEvaluate();
+                  }}
                   isLoading={isEvaluating}
-                  disabled={studentAnswers.some(ans => !ans?.trim())}
                   className="bg-primary hover:bg-primary/95 text-black font-extrabold"
                 >
                   {language === 'pl' ? 'Sprawdź i oceń odpowiedzi' : 'Submit & evaluate answers'}
@@ -1095,8 +1102,13 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
               ) : (
                 <Button
                   onClick={handleNext}
-                  disabled={!studentAnswers[activeSentenceIndex]?.trim() || isGeneratingMore}
+                  disabled={isGeneratingMore}
                   isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
+                  className={
+                    exerciseFormat === 'puzzle' && studentAnswers[activeSentenceIndex]?.trim() === exercises[activeSentenceIndex]?.englishTranslation?.trim().split(/\s+/).join(' ') 
+                      ? "animate-pulse bg-primary text-black border border-primary/50 shadow-[0_0_15px_rgba(114,240,180,0.5)]"
+                      : ""
+                  }
                 >
                   {language === 'pl' ? 'Następne' : 'Next'}
                 </Button>

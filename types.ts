@@ -141,6 +141,7 @@ export interface TranslationEvaluationResult {
   polishSentence: string;
   correctTranslation: string;
   studentAnswer: string;
+  highlightedAnswer?: string;
   isCorrect: boolean;
   score: number;
   explanation: string;

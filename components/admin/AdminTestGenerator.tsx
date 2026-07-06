@@ -13,6 +13,9 @@ interface AdminTestGeneratorProps {
 const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
   const [lessons, setLessons] = useState<LessonRecord[]>([]);
   const [selectedLessons, setSelectedLessons] = useState<string[]>([]);
+  const [sourceMode, setSourceMode] = useState<'lessons' | 'custom'>('lessons');
+  const [customMaterial, setCustomMaterial] = useState('');
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(['multiple_choice', 'fill_in_blank', 'translation']);
   
   const [testTitle, setTestTitle] = useState('');
   const [scope, setScope] = useState('');

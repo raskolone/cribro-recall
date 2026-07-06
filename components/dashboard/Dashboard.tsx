@@ -88,6 +88,7 @@ const Dashboard: React.FC = () => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   const [greeting, setGreeting] = useState('');
+  const [exerciseResetKey, setExerciseResetKey] = useState(0);
 
   useEffect(() => {
     let name = user?.firstName;
@@ -198,14 +199,28 @@ const Dashboard: React.FC = () => {
         if (hasActiveModal) return;
 
         if (view !== 'dashboard') {
+          if (isExerciseActive) {
+            const isPl = language === 'pl';
+            if (!window.confirm(isPl ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?')) {
+              return;
+            }
+          }
+          setIsExerciseActive(false);
           setView('dashboard');
           setPracticeView(null);
+        } else if (isExerciseActive) {
+          const isPl = language === 'pl';
+          if (!window.confirm(isPl ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?')) {
+            return;
+          }
+          setIsExerciseActive(false);
+          setExerciseResetKey(k => k + 1);
         }
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [view, isProfileMenuOpen, isSidebarOpen]);
+  }, [view, isProfileMenuOpen, isSidebarOpen, isExerciseActive, language]);
 
   const isRevisionDue = useMemo(() => {
     if (difficultWords.length < 4) return false;
@@ -290,7 +305,7 @@ const Dashboard: React.FC = () => {
       return <AdminPanel initialTab={view === 'admin' ? null : view.replace('admin-', '')} onViewChange={setView} />;
     }
     if (view === 'ai-generator') {
-      return <AIExerciseGeneratorScreen initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />;
+      return <AIExerciseGeneratorScreen key={`ai-gen-${exerciseResetKey}`} initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />;
     }
     if (view === 'lesson-history') {
       return <LessonHistoryScreen />;
@@ -303,7 +318,7 @@ const Dashboard: React.FC = () => {
     return (
       <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">
         <div className="flex-1">
-          <AIExerciseGeneratorScreen onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />
+          <AIExerciseGeneratorScreen key={exerciseResetKey} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />
         </div>
         
         <div className="mt-8 pt-8 border-t border-white/10">
@@ -322,6 +337,9 @@ const Dashboard: React.FC = () => {
             const isPl = language === 'pl';
             if (!window.confirm(isPl ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?')) {
               return;
+            }
+            if (newView === view) {
+              setExerciseResetKey(k => k + 1);
             }
           }
           setIsExerciseActive(false);

@@ -229,11 +229,12 @@ const evaluationResultSchema = {
       polishSentence: { type: Type.STRING },
       correctTranslation: { type: Type.STRING },
       studentAnswer: { type: Type.STRING },
+      highlightedAnswer: { type: Type.STRING, description: "The student's answer with HTML span tags. Wrap correct words in <span class='text-green-500 font-bold'>word</span>, and incorrect words in <span class='text-red-500 font-bold line-through'>word</span>. Add missing required words as <span class='text-amber-500 font-bold'>[missing]</span>." },
       isCorrect: { type: Type.BOOLEAN, description: "Whether the answer is mostly correct or functionally accurate" },
       score: { type: Type.INTEGER, description: "Accuracy score from 0 to 100 based on grammar, choice of words, and meaning" },
       explanation: { type: Type.STRING, description: "Detailed explanation in Polish highlighting mistakes, grammar rules, and alternative correct translations" }
     },
-    required: ['polishSentence', 'correctTranslation', 'studentAnswer', 'isCorrect', 'score', 'explanation']
+    required: ['polishSentence', 'correctTranslation', 'studentAnswer', 'highlightedAnswer', 'isCorrect', 'score', 'explanation']
   }
 };
 
@@ -326,6 +327,7 @@ export const evaluateTranslations = async (
   1. Compare the Student's Answer with the Reference English.
   2. Grade it. If it's functionally correct and has no major grammar errors, mark isCorrect as true, and give a high score.
   3. Provide a clear, friendly, and detailed explanation in Polish (explanation) explaining mistakes, grammar points, or why it is correct. Include any alternative correct translations.
+  4. Generate a 'highlightedAnswer' where you take the EXACT words the student wrote and wrap them in HTML tags: <span class='text-green-500 font-bold'>correct_word</span> or <span class='text-red-500 font-bold line-through'>wrong_word</span>. Also insert <span class='text-amber-500 font-bold'>[missing]</span> if something crucial was omitted. Do not wrap punctuation. Return the entire string.
   ${studentProfileContext ? `
 Student context: ${studentProfileContext}` : ''}
   
@@ -370,11 +372,12 @@ export const generateTest = async (
   Lessons Context (IMPORTANT: Base the test strictly on the vocabulary and structures from these lessons. Review example sentences provided below):
   ${lessonContext}
   
-  Please generate 10 questions of mixed types:
-  1. 'multiple_choice' - 4 options, 1 correct.
-  2. 'fill_in_blank' - A sentence with a missing word or phrase to type in.
-  3. 'translation' - A simple sentence in Polish to translate into English (must match the level and past lessons).
+  Please generate 10 questions using ONLY the following requested types:
+  ${selectedTypes.includes('multiple_choice') ? "1. 'multiple_choice' - 4 options, 1 correct." : ""}
+  ${selectedTypes.includes('fill_in_blank') ? "2. 'fill_in_blank' - A sentence with a missing word or phrase to type in." : ""}
+  ${selectedTypes.includes('translation') ? "3. 'translation' - A simple sentence in Polish to translate into English (must match the level and past lessons)." : ""}
   
+  If the list is empty, default to multiple_choice.
   Return a JSON array of question objects.`;
 
   const schema = {
