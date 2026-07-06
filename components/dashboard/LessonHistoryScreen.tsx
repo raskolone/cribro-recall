@@ -7,6 +7,7 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import TTSButtons from '../flashcards/TTSButtons';
 import { Calendar, ChevronLeft, FileText, CheckCircle, Tag, Search, Sparkles, BookOpen, Clock } from 'lucide-react';
 import Markdown from 'react-markdown';
 
@@ -117,11 +118,18 @@ const [lessons, setLessons] = useState<LessonRecord[]>([]);
                </h3>
                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                  {vocabList.map((item, idx) => (
-                   <div key={idx} className="bg-base-200 border border-white/5 rounded-xl p-4 flex flex-col justify-center shadow-sm hover:border-primary/30 hover:bg-base-200/80 transition-all group">
-                      <span className="font-bold text-white text-base group-hover:text-primary transition-colors">{item.word}</span>
-                      {item.translation && (
-                        <span className="text-sm text-content-muted mt-1">{item.translation}</span>
-                      )}
+                   <div key={idx} className="bg-base-200 border border-white/5 rounded-xl p-4 flex flex-col justify-center shadow-sm hover:border-primary/30 hover:bg-base-200/80 transition-all group relative">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-white text-base group-hover:text-primary transition-colors">{item.word}</span>
+                          {item.translation && (
+                            <span className="text-sm text-content-muted mt-1">{item.translation}</span>
+                          )}
+                        </div>
+                        <div className="transition-opacity opacity-70 group-hover:opacity-100">
+                          <TTSButtons text={item.word} />
+                        </div>
+                      </div>
                    </div>
                  ))}
                </div>

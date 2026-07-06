@@ -9,6 +9,7 @@ import { generateTranslationExercises, evaluateTranslations } from '../../servic
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog } from '../../types';
 import { getVocabularySetsForStudent } from '../../services/lessonRecord';
 import Card from '../ui/Card';
+import PuzzleExercise from './PuzzleExercise';
 import Button from '../ui/Button';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -47,9 +48,10 @@ import { ExerciseType } from '../../types';
 interface AIExerciseGeneratorScreenProps {
   initialSetId?: string | null;
   onStartPractice?: (exercise: ExerciseType) => void;
+  onExerciseStateChange?: (isActive: boolean) => void;
 }
 
-const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ initialSetId = null, onStartPractice }) => {
+const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ initialSetId = null, onStartPractice, onExerciseStateChange }) => {
   const { language } = useLanguage();
   const { sets, getFlashcards } = useFlashcards();
   const { user } = useAuth();
@@ -60,6 +62,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [level, setLevel] = useState<string>(user?.level || 'B1');
   const [numSentences, setNumSentences] = useState<number>(5);
   const [practiceMode, setPracticeMode] = useState<'fixed' | 'time'>('fixed');
+  const [exerciseFormat, setExerciseFormat] = useState<'typing' | 'puzzle'>('typing');
   const [timeLimit, setTimeLimit] = useState<number>(3); // minutes
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const numSentencesRef = useRef<HTMLSpanElement>(null);
@@ -94,6 +97,12 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
   const [activeSentenceIndex, setActiveSentenceIndex] = useState<number>(0);
   const [step, setStep] = useState<'setup' | 'practice' | 'results'>('setup');
+
+  useEffect(() => {
+    if (onExerciseStateChange) {
+      onExerciseStateChange(step === 'practice');
+    }
+  }, [step, onExerciseStateChange]);
   const [vocabularySets, setVocabularySets] = useState<VocabularySet[]>([]);
   const [isLessonsExpanded, setIsLessonsExpanded] = useState<boolean>(false);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -456,7 +465,26 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
             <Button 
               variant="secondary" 
               size="sm" 
-              onClick={() => setStep('setup')}
+              onClick={() => {
+                if (step === 'results') {
+                  setStep('setup');
+                  setExercises([]);
+                  setStudentAnswers([]);
+                  setTimeLeft(null);
+                  return;
+                }
+                if (window.confirm(language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję nauki? Dotychczasowe odpowiedzi zostaną ocenione.' : 'Are you sure you want to end this study session? Your answers will be evaluated.')) {
+                  const hasAnswers = studentAnswers.some(ans => ans?.trim());
+                  if (hasAnswers) {
+                    handleEvaluate();
+                  } else {
+                    setStep('setup');
+                    setExercises([]);
+                    setStudentAnswers([]);
+                    setTimeLeft(null);
+                  }
+                }
+              }}
             >
               {language === 'pl' ? 'Zakończ trening' : 'End session'}
             </Button>
@@ -736,6 +764,30 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                 </div>
               </div>
 
+              <div>
+                <label className="block text-sm font-bold text-content-muted mb-2">
+                  {language === 'pl' ? 'Format ćwiczenia' : 'Exercise Format'}
+                </label>
+                <div className="flex rounded-lg overflow-hidden border border-base-300">
+                  <button
+                    type="button"
+                    onClick={() => setExerciseFormat('typing')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition-colors ${exerciseFormat === 'typing' ? 'bg-primary text-black' : 'bg-base-200 text-content-muted hover:bg-base-300'}`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    {language === 'pl' ? 'Wpisywanie' : 'Typing'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExerciseFormat('puzzle')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition-colors ${exerciseFormat === 'puzzle' ? 'bg-primary text-black' : 'bg-base-200 text-content-muted hover:bg-base-300'}`}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {language === 'pl' ? 'Układanka' : 'Puzzle'}
+                  </button>
+                </div>
+              </div>
+
               {practiceMode === 'fixed' ? (
                 <div>
                   <label className="flex items-center justify-between text-sm font-bold text-content-muted mb-2">
@@ -995,13 +1047,29 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                 <label className="block text-xs font-bold text-content-muted">
                   {language === 'pl' ? 'Twoje tłumaczenie na angielski:' : 'Your translation to English:'}
                 </label>
-                <textarea
-                  value={studentAnswers[activeSentenceIndex]}
-                  onChange={(e) => handleAnswerChange(activeSentenceIndex, e.target.value)}
-                  placeholder={language === 'pl' ? 'Wpisz swoje tłumaczenie tutaj...' : 'Type your translation here...'}
-                  rows={3}
-                  className="w-full bg-base-300 border border-base-200 focus:border-primary/40 focus:ring-1 focus:ring-primary/20 rounded-xl p-4 text-base outline-none transition-all duration-200"
-                />
+                
+                {exerciseFormat === 'puzzle' ? (
+                  <PuzzleExercise 
+                    sentence={exercises[activeSentenceIndex].englishTranslation}
+                    level={level}
+                    currentAnswer={studentAnswers[activeSentenceIndex] || ''}
+                    onAnswerChange={(ans) => handleAnswerChange(activeSentenceIndex, ans)}
+                  />
+                ) : (
+                  <textarea
+                    value={studentAnswers[activeSentenceIndex] || ''}
+                    onChange={(e) => handleAnswerChange(activeSentenceIndex, e.target.value)}
+                    placeholder={language === 'pl' ? 'Wpisz swoje tłumaczenie tutaj...' : 'Type your translation here...'}
+                    rows={3}
+                    className="w-full bg-base-300 border border-base-200 focus:border-primary/40 focus:ring-1 focus:ring-primary/20 rounded-xl p-4 text-base outline-none transition-all duration-200"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleNext();
+                      }
+                    }}
+                  />
+                )}
               </div>
             </div>
 

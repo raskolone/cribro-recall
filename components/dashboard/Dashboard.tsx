@@ -83,6 +83,7 @@ const Dashboard: React.FC = () => {
   const [practiceView, setPracticeView] = useState<PracticeView>(null);
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isExerciseActive, setIsExerciseActive] = useState(false);
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
@@ -289,7 +290,7 @@ const Dashboard: React.FC = () => {
       return <AdminPanel initialTab={view === 'admin' ? null : view.replace('admin-', '')} onViewChange={setView} />;
     }
     if (view === 'ai-generator') {
-      return <AIExerciseGeneratorScreen initialSetId={activeSetId} onStartPractice={startPractice} />;
+      return <AIExerciseGeneratorScreen initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />;
     }
     if (view === 'lesson-history') {
       return <LessonHistoryScreen />;
@@ -302,7 +303,7 @@ const Dashboard: React.FC = () => {
     return (
       <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">
         <div className="flex-1">
-          <AIExerciseGeneratorScreen onStartPractice={startPractice} />
+          <AIExerciseGeneratorScreen onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />
         </div>
         
         <div className="mt-8 pt-8 border-t border-white/10">
@@ -317,6 +318,13 @@ const Dashboard: React.FC = () => {
       <Sidebar 
         currentView={view} 
         onNavigate={(newView) => {
+          if (isExerciseActive) {
+            const isPl = language === 'pl';
+            if (!window.confirm(isPl ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?')) {
+              return;
+            }
+          }
+          setIsExerciseActive(false);
           setView(newView)
           setPracticeView(null)
         }} 

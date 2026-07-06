@@ -213,6 +213,84 @@ Zwróć wynik jako JSON z poniższymi polami:
   // Proxy for Gemini API if we ever want to move Gemini to server-side
   // Right now, keeping what's there on Vite fallback for now.
 
+
+  // Text-to-Speech API
+  app.get("/api/tts", async (req, res) => {
+    try {
+      const text = req.query.text as string;
+      const lang = req.query.lang as string; // 'en-US' or 'en-GB'
+      if (!text) {
+        return res.status(400).json({ error: "Missing text parameter" });
+      }
+
+      const elevenLabsKey = process.env.ELEVENLABS_API_KEY;
+      
+      // If ElevenLabs API key is present, use it
+      if (elevenLabsKey) {
+        // Voice selection based on language
+        let voiceId = 'cgSgspJ2msm6clMCkdW9'; // Default to Jessica (US)
+        if (lang === 'en-GB') {
+          voiceId = 'Xb7hH8MSUJpSbSDYk0k2'; // Alice (GB)
+        } else if (lang === 'en-US') {
+          voiceId = 'EXAVITQu4vr4xnSDxMaL'; // Sarah (US)
+        }
+
+        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
+          method: 'POST',
+          headers: {
+            'Accept': 'audio/mpeg',
+            'xi-api-key': elevenLabsKey,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            text: text,
+            model_id: "eleven_multilingual_v2",
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75
+            }
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`ElevenLabs API error: ${response.status} ${errorText}`);
+        }
+
+        const audioBuffer = await response.arrayBuffer();
+        res.set({
+          'Content-Type': 'audio/mpeg',
+          'Cache-Control': 'public, max-age=31536000'
+        });
+        res.send(Buffer.from(audioBuffer));
+        return;
+      }
+
+      // Fallback to Google Translate TTS
+      const googleTranslateUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${lang || 'en'}&client=tw-ob`;
+      
+      const response = await fetch(googleTranslateUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Google Translate TTS error: ${response.status}`);
+      }
+      
+      const audioBuffer = await response.arrayBuffer();
+      res.set({
+        'Content-Type': 'audio/mpeg',
+        'Cache-Control': 'public, max-age=31536000'
+      });
+      res.send(Buffer.from(audioBuffer));
+    } catch (error: any) {
+      console.error('TTS error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

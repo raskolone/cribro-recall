@@ -7,6 +7,7 @@ import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { Flashcard, FlashcardSet } from '../../types';
 import PronunciationMic from '../ui/PronunciationMic';
+import TTSButtons from './TTSButtons';
 
 interface FlashcardStudyScreenProps {
   setId: string;
@@ -358,7 +359,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <button onClick={onBack} className="text-content-muted hover:text-white flex items-center gap-2">
+        <button onClick={() => { if (window.confirm(t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?')) onBack(); }} className="text-content-muted hover:text-white flex items-center gap-2">
           &larr; {t('flashcards.quit')}
         </button>
         <div className="font-mono text-sm">
@@ -400,19 +401,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: 
                 <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 border border-white/10 hover:border-primary/50 transition-colors" style={{ backfaceVisibility: 'hidden' }}>
                   <div className="absolute top-4 right-4 z-10 flex gap-2">
                     <PronunciationMic targetWord={currentCard.term.replace(/<[^>]+>/g, '')} />
-                    {currentCard.audioUrl && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const audio = new Audio(currentCard.audioUrl!);
-                          audio.play();
-                        }}
-                        className="w-10 h-10 flex items-center justify-center rounded-full bg-base-300 text-primary hover:bg-base-100 border border-base-300 transition-colors"
-                        title="Play audio"
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                      </button>
-                    )}
+                    <TTSButtons text={currentCard.term} />
                   </div>
                   <div className="text-sm font-mono text-content-muted uppercase tracking-widest mb-8">{t('flashcards.term')}</div>
                   <div className="text-4xl md:text-5xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard.term }} />
@@ -424,19 +413,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: 
                   style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
                 >
                   <div className="absolute top-4 right-4 z-10 flex gap-2">
-                    {currentCard.audioUrl && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const audio = new Audio(currentCard.audioUrl!);
-                          audio.play();
-                        }}
-                        className="w-10 h-10 flex items-center justify-center rounded-full bg-base-100 text-primary hover:bg-base-300 border border-base-300 transition-colors"
-                        title="Play audio"
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                      </button>
-                    )}
+                    {/* Definition might not be strictly English, but we can allow TTS for it as well if it's the target language. But usually it's native. We omit it here or keep it. Let's just remove audioUrl button for now. */}
                   </div>
                   <div className="text-sm font-mono text-primary uppercase tracking-widest mb-8">{t('flashcards.definition')}</div>
                   <div className="text-3xl md:text-4xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard.definition }} />
@@ -574,7 +551,7 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t }: any) =
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <button onClick={onBack} className="text-content-muted hover:text-white flex items-center gap-2">
+        <button onClick={() => { if (window.confirm(t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?')) onBack(); }} className="text-content-muted hover:text-white flex items-center gap-2">
           &larr; {t('flashcards.quit')}
         </button>
         <div className="font-mono text-sm">
@@ -749,7 +726,7 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t }: any
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <button onClick={onBack} className="text-content-muted hover:text-white flex items-center gap-2">
+        <button onClick={() => { if (window.confirm(t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?')) onBack(); }} className="text-content-muted hover:text-white flex items-center gap-2">
           &larr; {t('flashcards.quit')}
         </button>
         <div className="font-mono text-sm">
@@ -927,7 +904,7 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t }: an
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <button onClick={onBack} className="text-content-muted hover:text-white flex items-center gap-2">
+        <button onClick={() => { if (window.confirm(t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?')) onBack(); }} className="text-content-muted hover:text-white flex items-center gap-2">
           &larr; {t('flashcards.quit')}
         </button>
         <div className="font-mono text-xl font-bold">
@@ -991,7 +968,7 @@ const IntroMode = ({ cards, onBack, t }: any) => {
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <button onClick={onBack} className="text-content-muted hover:text-white flex items-center gap-2">
+        <button onClick={() => { if (window.confirm(t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?')) onBack(); }} className="text-content-muted hover:text-white flex items-center gap-2">
           &larr; {t('flashcards.quit')}
         </button>
         <div className="font-mono text-sm">

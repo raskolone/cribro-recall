@@ -414,3 +414,90 @@ export const generateTest = async (
     throw new Error("Failed to generate test.");
   }
 };
+
+
+export const generateFlashcardsFromText = async (text: string, termLang: string, defLang: string): Promise<any[]> => {
+  const prompt = `Analyze the following text and extract vocabulary words/phrases from it.
+Text: ${text}
+Source language of terms: ${termLang}
+Target language for definitions: ${defLang}
+
+For each term found, provide:
+1. The term itself.
+2. A clear definition or translation in the target language.
+3. An example context sentence in the source language (no translation needed).
+
+Return a JSON array of objects.`;
+
+  const schema = {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        term: { type: Type.STRING },
+        definition: { type: Type.STRING },
+        contextSentence: { type: Type.STRING }
+      },
+      required: ["term", "definition", "contextSentence"]
+    }
+  };
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: schema,
+      },
+    });
+    return JSON.parse(response.text.trim());
+  } catch (err) {
+    console.error("Error generating flashcards from text:", err);
+    throw new Error("Failed to parse vocabulary from text.");
+  }
+};
+
+export const generateContextSentence = async (term: string, termLang: string): Promise<string> => {
+  const prompt = `Write a short, clear, and natural example sentence using the following term.
+Term: "${term}"
+Language: ${termLang}
+Only return the sentence, nothing else.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: prompt,
+    });
+    return response.text.trim();
+  } catch (err) {
+    console.error("Error generating context sentence:", err);
+    return "";
+  }
+};
+
+export const generateImageForTerm = async (term: string, context?: string): Promise<string | null> => {
+  const prompt = `A clear, educational, and high-quality illustration representing the concept of "${term}". ${context ? `Context: ${context}.` : ''} Minimalist and clean style.`;
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3.1-flash-lite-image",
+      contents: { parts: [{ text: prompt }] },
+      config: {
+        imageConfig: {
+          aspectRatio: "1:1",
+        }
+      }
+    });
+
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return `data:image/jpeg;base64,${part.inlineData.data}`;
+      }
+    }
+    return null;
+  } catch (err) {
+    console.error("Error generating image:", err);
+    return null;
+  }
+};

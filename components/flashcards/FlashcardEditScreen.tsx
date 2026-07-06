@@ -5,7 +5,8 @@ import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { Flashcard, FlashcardSet } from '../../types';
 import { getAISuggestions } from '../../services/aiSuggestions';
-import AudioRecordButton from './AudioRecordButton';
+import { generateFlashcardsFromText, generateContextSentence, generateImageForTerm } from '../../services/geminiService';
+
 
 interface FlashcardEditScreenProps {
   setId: string;
@@ -99,6 +100,9 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
   const [importDelimiter, setImportDelimiter] = useState('tab');
   const [importTermLang, setImportTermLang] = useState('en');
   const [importDefLang, setImportDefLang] = useState('pl');
+  const [isImportingWithAI, setIsImportingWithAI] = useState(false);
+  const [isGeneratingImageFor, setIsGeneratingImageFor] = useState<number | null>(null);
+  const [isGeneratingContextFor, setIsGeneratingContextFor] = useState<number | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -182,6 +186,41 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
     }]);
   };
 
+
+  const handleGenerateImage = async (index: number) => {
+    const card = cards[index];
+    if (!card.term) return;
+    setIsGeneratingImageFor(index);
+    try {
+      const b64 = await generateImageForTerm(card.term, card.definition);
+      if (b64) {
+        handleUpdateCard(index, 'imageUrl', b64);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to generate image.');
+    } finally {
+      setIsGeneratingImageFor(null);
+    }
+  };
+
+  const handleGenerateContext = async (index: number) => {
+    const card = cards[index];
+    if (!card.term) return;
+    setIsGeneratingContextFor(index);
+    try {
+      const sentence = await generateContextSentence(card.term, card.termLanguage || 'en');
+      if (sentence) {
+        handleUpdateCard(index, 'contextSentence', sentence);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to generate context.');
+    } finally {
+      setIsGeneratingContextFor(null);
+    }
+  };
+
   const handleUpdateCard = (index: number, field: keyof Flashcard, value: string) => {
     const newCards = [...cards];
     newCards[index] = { ...newCards[index], [field]: value };
@@ -254,17 +293,27 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
     const plainTerm = stripHtml(card.term || '').trim();
     const plainDef = stripHtml(card.definition || '').trim();
     
-    if (aiSuggestionsEnabled && plainTerm && !plainDef) {
+    if (aiSuggestionsEnabled && plainTerm) {
       try {
-        const res = await getAISuggestions({
-          action: 'define',
-          term: plainTerm,
-          source_language: card.termLanguage || 'en',
-          target_language: card.definitionLanguage || 'pl',
-          context: title
-        });
-        if (res.definition) {
-          handleUpdateCard(index, 'definition', res.definition);
+        if (!plainDef) {
+          const res = await getAISuggestions({
+            action: 'define',
+            term: plainTerm,
+            source_language: card.termLanguage || 'en',
+            target_language: card.definitionLanguage || 'pl',
+            context: title
+          });
+          if (res.definition) {
+            handleUpdateCard(index, 'definition', res.definition);
+          }
+        }
+        // Always try to generate context sentence if missing and AI is enabled
+        const plainContext = stripHtml(card.contextSentence || '').trim();
+        if (!plainContext) {
+          const sentence = await generateContextSentence(plainTerm, card.termLanguage || 'en');
+          if (sentence) {
+            handleUpdateCard(index, 'contextSentence', sentence);
+          }
         }
       } catch (e) {
         console.error(e);
@@ -329,6 +378,33 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
     
     setIsImportModalOpen(false);
     setImportText('');
+  };
+
+  const handleImportWithAI = async () => {
+    if (!importText.trim()) return;
+    setIsImportingWithAI(true);
+    try {
+      const generatedCards = await generateFlashcardsFromText(importText, importTermLang, importDefLang);
+      if (generatedCards && generatedCards.length > 0) {
+        const newCards: Partial<Flashcard>[] = generatedCards.map((c, idx) => ({
+          id: `card-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 9)}`,
+          term: c.term,
+          definition: c.definition,
+          contextSentence: c.contextSentence,
+          termLanguage: importTermLang,
+          definitionLanguage: importDefLang,
+          isLocked: false
+        }));
+        setCards(prev => [...prev, ...newCards]);
+        setIsImportModalOpen(false);
+        setImportText('');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to import with AI. Check your API Key.');
+    } finally {
+      setIsImportingWithAI(false);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -525,43 +601,48 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
 
               {/* Media Controls */}
               <div className="h-full flex flex-row md:flex-col items-center md:items-end justify-center md:justify-end gap-6 md:gap-4 pb-2 pt-6 md:pt-2 border-t md:border-t-0 md:border-l border-base-300 md:pl-8">
-                <div className="flex flex-col items-center md:items-end gap-2 group/media cursor-pointer">
-                  <span className="text-[10px] font-bold text-content-muted uppercase tracking-widest group-hover/media:text-white transition-colors">{language === 'pl' ? 'OBRAZ' : 'IMAGE'}</span>
-                  <button className="w-16 h-12 border-2 border-dashed border-base-300 rounded-lg flex items-center justify-center text-content-muted group-hover/media:border-primary group-hover/media:text-primary transition-all bg-base-200/50 hover:bg-primary/5">
-                    <span className="text-lg font-bold">+</span>
-                  </button>
-                </div>
                 <div className="flex flex-col items-center md:items-end gap-2 group/media">
-                  <span className="text-[10px] font-bold text-content-muted uppercase tracking-widest group-hover/media:text-white transition-colors">{language === 'pl' ? 'WYMOWA' : 'AUDIO'}</span>
-                  <AudioRecordButton 
-                    audioUrl={card.audioUrl} 
-                    onAudioUpload={(base64Audio) => handleUpdateCard(index, 'audioUrl', base64Audio)}
-                    onAudioRemove={() => handleUpdateCard(index, 'audioUrl', '')}
-                  />
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-content-muted uppercase tracking-widest">{language === 'pl' ? 'OBRAZ' : 'IMAGE'}</span>
+                    <button onClick={() => handleGenerateImage(index)} disabled={isGeneratingImageFor === index || card.isLocked} className="text-[10px] font-bold text-purple-400 hover:text-purple-300 transition-colors uppercase" title="Generate with AI">✨ AI</button>
+                  </div>
+                  {card.imageUrl ? (
+                    <div className="relative group/img">
+                      <img src={card.imageUrl} alt="Card visual" className="w-16 h-12 object-cover rounded-lg border border-white/10" referrerPolicy="no-referrer" />
+                      <button onClick={() => handleUpdateCard(index, 'imageUrl', '')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover/img:opacity-100 transition-opacity">×</button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input type="file" accept="image/*" onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => handleUpdateCard(index, 'imageUrl', reader.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" title="Upload Image" />
+                      <button className="w-16 h-12 border-2 border-dashed border-base-300 rounded-lg flex items-center justify-center text-content-muted transition-all bg-base-200/50 hover:bg-primary/5 relative">
+                        {isGeneratingImageFor === index ? <span className="animate-spin text-lg">⏳</span> : <span className="text-lg font-bold">+</span>}
+                      </button>
+                    </div>
+                  )}
                 </div>
+
               </div>
               
               {/* Context Sentence (Full Width) */}
-              <div className="col-span-1 md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-10 pt-4 border-t border-base-300/50">
+              <div className="col-span-1 md:col-span-3 pt-4 border-t border-base-300/50">
                 <div>
                   <div className="flex justify-between mb-3 border-b-2 border-transparent">
-                    <span className="text-xs font-bold text-content-muted uppercase tracking-widest">{language === 'pl' ? 'ZDANIE Z KONTEKSTEM (OPCJONALNIE)' : 'CONTEXT SENTENCE (OPTIONAL)'}</span>
+                    <span className="text-xs font-bold text-content-muted uppercase tracking-widest">{language === 'pl' ? 'ZDANIE Z KONTEKSTEM' : 'CONTEXT SENTENCE'}</span>
+                    <button onClick={() => handleGenerateContext(index)} disabled={isGeneratingContextFor === index || card.isLocked} className="text-[10px] font-bold text-purple-400 hover:text-purple-300 transition-colors uppercase" title="Generate Context with AI">
+                      {isGeneratingContextFor === index ? '⏳' : '✨ AI'}
+                    </button>
                   </div>
                   <RichTextInput
                     value={card.contextSentence || ''}
                     disabled={card.isLocked}
                     onChange={(val) => handleUpdateCard(index, 'contextSentence', val)}
-                    className={`w-full bg-transparent border-b-2 border-base-300 focus:border-primary focus:outline-none py-1 text-base transition-colors min-h-[36px] ${card.isLocked ? 'cursor-not-allowed text-content-muted' : ''}`}
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between mb-3 border-b-2 border-transparent">
-                    <span className="text-xs font-bold text-content-muted uppercase tracking-widest">{language === 'pl' ? 'TŁUMACZENIE KONTEKSTU (OPCJONALNIE)' : 'CONTEXT TRANSLATION (OPTIONAL)'}</span>
-                  </div>
-                  <RichTextInput
-                    value={card.contextTranslation || ''}
-                    disabled={card.isLocked}
-                    onChange={(val) => handleUpdateCard(index, 'contextTranslation', val)}
                     className={`w-full bg-transparent border-b-2 border-base-300 focus:border-primary focus:outline-none py-1 text-base transition-colors min-h-[36px] ${card.isLocked ? 'cursor-not-allowed text-content-muted' : ''}`}
                   />
                 </div>
@@ -658,8 +739,11 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
               <Button variant="secondary" onClick={() => setIsImportModalOpen(false)}>
                 {language === 'pl' ? 'Anuluj' : 'Cancel'}
               </Button>
-              <Button onClick={handleImport} disabled={!importText.trim()}>
-                {language === 'pl' ? 'Importuj' : 'Import'}
+              <Button variant="secondary" onClick={handleImportWithAI} disabled={!importText.trim() || isImportingWithAI} className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 hover:text-white border-transparent">
+                {isImportingWithAI ? (language === 'pl' ? 'Analizowanie...' : 'Analyzing...') : (language === 'pl' ? 'Import z AI ✨' : 'Import with AI ✨')}
+              </Button>
+              <Button onClick={handleImport} disabled={!importText.trim() || isImportingWithAI}>
+                {language === 'pl' ? 'Importuj standardowo' : 'Standard Import'}
               </Button>
             </div>
           </Card>

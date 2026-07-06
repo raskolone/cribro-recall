@@ -4,6 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import TTSButtons from './TTSButtons';
 import { FlashcardSet } from '../../types';
 
 interface FlashcardSetsScreenProps {
@@ -370,7 +371,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
               </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto pr-2 space-y-2">
+            <div className="flex-1 overflow-y-auto scrollbar-hide space-y-2">
               {isLoadingPreview ? (
                 <div className="text-center py-8 text-content-muted">
                   <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -387,9 +388,12 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
                       <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex flex-shrink-0 items-center justify-center font-bold text-xs">
                         {idx + 1}
                       </div>
-                      <div className="flex flex-col gap-0.5">
+                      <div className="flex-1 flex flex-col gap-0.5">
                         <div className="font-bold text-white text-base">{card.front || card.term}</div>
                         <div className="text-primary/80 font-medium text-sm">{card.back || card.definition}</div>
+                      </div>
+                      <div className="transition-opacity opacity-70 group-hover:opacity-100">
+                        <TTSButtons text={card.front || card.term} />
                       </div>
                     </div>
                   ))}

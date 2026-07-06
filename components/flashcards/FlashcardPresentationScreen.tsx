@@ -3,6 +3,7 @@ import { useFlashcards } from '../../context/FlashcardContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Flashcard } from '../../types';
 import Button from '../ui/Button';
+import TTSButtons from './TTSButtons';
 
 interface FlashcardPresentationScreenProps {
   setId: string;
@@ -135,17 +136,21 @@ const FlashcardPresentationScreen: React.FC<FlashcardPresentationScreenProps> = 
         {/* Main Word/Phrase */}
         <div className="w-full max-w-4xl min-h-[40vh] flex flex-col items-center justify-center gap-8 relative p-12">
           
-          <div 
-            className="text-center font-display font-black text-5xl md:text-7xl text-white tracking-tight"
-            dangerouslySetInnerHTML={{ __html: frontContent }}
-          />
+          <div className="flex flex-col items-center gap-4">
+            <div 
+              className="text-center font-display font-black text-5xl md:text-7xl text-white tracking-tight"
+              dangerouslySetInnerHTML={{ __html: frontContent }}
+            />
+            {mode === 'term-first' ? <TTSButtons text={card.term} /> : null}
+          </div>
           
           {/* Back Content (Translation) */}
-          <div className={`transition-all duration-700 ease-out transform ${step >= 1 ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0 pointer-events-none'}`}>
+          <div className={`transition-all duration-700 ease-out transform ${step >= 1 ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0 pointer-events-none'} flex flex-col items-center gap-4`}>
             <div 
               className="text-center font-display font-medium text-3xl md:text-4xl text-primary"
               dangerouslySetInnerHTML={{ __html: backContent }}
             />
+            {mode === 'def-first' ? <TTSButtons text={card.term} /> : null}
           </div>
 
         </div>
@@ -161,11 +166,7 @@ const FlashcardPresentationScreen: React.FC<FlashcardPresentationScreenProps> = 
               </span>
             )}
           </div>
-          {card.contextTranslation && (
-            <div className="text-lg md:text-xl font-medium text-primary/80 text-center">
-              <span dangerouslySetInnerHTML={{ __html: card.contextTranslation }} />
-            </div>
-          )}
+
         </div>
 
       </div>

@@ -63,6 +63,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
   const [isSavingLessonRecord, setIsSavingLessonRecord] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [isImportingVocabulary, setIsImportingVocabulary] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
 
   const openLessonRecordModal = (mode: 'view' | 'edit', record?: LessonRecord, preserveData: boolean = false) => {
     setLessonRecordModalMode(mode);
@@ -604,36 +606,94 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
     <div className="space-y-6">
       <h1 className="text-2xl font-extrabold tracking-tight mb-6">Teacher Panel</h1>
       
-      <Card className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-base-200/50">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto">
-          <label className="font-bold whitespace-nowrap">Select Student:</label>
-          <select 
-            value={selectedUser?.id || ''} 
-            onChange={(e) => {
-              const u = users.find(u => u.id === e.target.value);
-              if (u) handleSelectUser(u);
-            }}
-            className="w-full sm:w-64 bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
-          >
-            <option value="" disabled>-- Choose a student --</option>
-            {users.map(u => (
-              <option key={u.id} value={u.id}>{u.username} ({u.email}) - {u.role === 'admin_student' ? 'Admin+Kursant' : u.role === 'admin' ? 'Admin' : 'Kursant'}</option>
+      {!selectedUser ? (
+        <div className="space-y-6">
+          <Card className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-base-200/50">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto flex-1">
+              <input 
+                type="text" 
+                placeholder="Szukaj po imieniu, nazwisku, emailu..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full sm:max-w-md bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
+              />
+              <select 
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="w-full sm:w-48 bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
+              >
+                <option value="all">Wszystkie role</option>
+                <option value="user">Kursant</option>
+                <option value="admin">Admin</option>
+                <option value="admin_student">Admin + Kursant</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+              <div className="text-sm font-mono text-content-muted">Total: {users.filter(u => {
+                const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.email} ${u.username}`.toLowerCase();
+                const matchesSearch = searchStr.includes(searchQuery.toLowerCase());
+                const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+                return matchesSearch && matchesRole;
+              }).length}</div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => setShowAIModal(true)} variant="secondary" className="border-primary/50 text-primary hover:bg-primary/10">
+                  ✨ AI Lesson Generator
+                </Button>
+                <Button size="sm" onClick={() => setShowCreateStudentModal(true)}>+ Add Student</Button>
+              </div>
+            </div>
+          </Card>
+          
+          <div className="grid grid-cols-1 gap-3">
+            {users.filter(u => {
+                const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.email} ${u.username}`.toLowerCase();
+                const matchesSearch = searchStr.includes(searchQuery.toLowerCase());
+                const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+                return matchesSearch && matchesRole;
+              }).map(u => (
+              <div 
+                key={u.id}
+                onClick={() => handleSelectUser(u)}
+                className="bg-base-200 border border-white/5 p-4 rounded-xl cursor-pointer hover:border-primary/30 hover:bg-base-200/80 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+              >
+                <div>
+                  <div className="font-bold text-lg group-hover:text-primary transition-colors">
+                    {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
+                  </div>
+                  <div className="text-sm text-content-muted">{u.email}</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-red-500/10 text-red-500' : u.role === 'admin_student' ? 'bg-purple-500/10 text-purple-500' : 'bg-primary/10 text-primary'}`}>
+                    {u.role === 'admin_student' ? 'Admin + Kursant' : u.role === 'admin' ? 'Admin' : 'Kursant'}
+                  </span>
+                  <div className="text-content-muted group-hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
             ))}
-          </select>
-        </div>
-        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-          <div className="text-sm font-mono text-content-muted">Total: {users.length}</div>
-          <div className="flex gap-2">
-            <Button size="sm" onClick={() => setShowAIModal(true)} variant="secondary" className="border-primary/50 text-primary hover:bg-primary/10">
-              ✨ AI Lesson Generator
-            </Button>
-            <Button size="sm" onClick={() => setShowCreateStudentModal(true)}>+ Add Student</Button>
           </div>
         </div>
-      </Card>
-
-      {selectedUser ? (
-        <Card className="space-y-6">
+      ) : (
+        <>
+          <div className="mb-4">
+            <button 
+              onClick={() => {
+                setSelectedUser(null);
+                setPracticeLogs([]);
+                setLessonRecords([]);
+              }}
+              className="text-sm font-bold text-content-muted hover:text-white flex items-center gap-2 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              Wróć do listy kursantów
+            </button>
+          </div>
+          <Card className="space-y-6">
           <div className="flex justify-between items-start mb-6">
             <div>
               <h2 className="text-2xl font-bold">
@@ -643,17 +703,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
                 {selectedUser.email} 
                 {selectedUser.level && <span className="ml-3 px-2 py-0.5 bg-primary/20 text-primary rounded text-xs uppercase font-bold">{selectedUser.level}</span>}
               </p>
-              <div className="mt-2 flex items-center gap-2">
-                <span className="text-sm font-bold text-white">Uprawnienia:</span>
-                <select
-                  value={selectedUser.role}
-                  onChange={(e) => handleRoleChange(e.target.value as 'admin' | 'user' | 'admin_student')}
-                  className="bg-base-200/40 backdrop-blur-md border border-white/10 text-sm text-white rounded p-1"
-                >
-                  <option value="user">Kursant (User)</option>
-                  <option value="admin">Admin</option>
-                  <option value="admin_student">Admin + Kursant</option>
-                </select>
+              <div className="mt-4">
+                <span className="text-sm font-bold text-white block mb-2">Uprawnienia:</span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleRoleChange('user')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'user' ? 'bg-primary text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
+                  >
+                    Kursant (User)
+                  </button>
+                  <button
+                    onClick={() => handleRoleChange('admin')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'admin' ? 'bg-red-500 text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
+                  >
+                    Admin
+                  </button>
+                  <button
+                    onClick={() => handleRoleChange('admin_student')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'admin_student' ? 'bg-purple-500 text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
+                  >
+                    Admin + Kursant
+                  </button>
+                </div>
               </div>
               <div className="mt-2 text-sm text-content-muted flex flex-wrap gap-x-4 gap-y-2">
                 <div><span className="font-bold text-white">Logins:</span> {selectedUser.loginCount || 0}</div>
@@ -981,10 +1052,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
             </div>
           )}
         </Card>
-      ) : (
-        <Card className="h-[400px] flex items-center justify-center text-content-muted border-dashed border-2">
-          Select a student from the dropdown menu to view their details
-        </Card>
+        </>
       )}
 
       {/* Delete User Modal */}

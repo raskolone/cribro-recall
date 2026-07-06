@@ -3,6 +3,7 @@ import { useFlashcards } from '../../context/FlashcardContext';
 import { useLanguage } from '../../context/LanguageContext';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import TTSButtons from './TTSButtons';
 import { FlashcardSet, Flashcard, StudySession, SessionResult } from '../../types';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -157,7 +158,7 @@ const FlashcardStatsScreen: React.FC<FlashcardStatsScreenProps> = ({ setId, onBa
             <h3 className="text-sm font-medium text-content-muted uppercase tracking-wider mb-4">
               {language === 'pl' ? 'Fiszki w zestawie' : 'Cards in set'}
             </h3>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto scrollbar-hide">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-base-300">
@@ -172,8 +173,15 @@ const FlashcardStatsScreen: React.FC<FlashcardStatsScreenProps> = ({ setId, onBa
                   {cards.map(card => {
                     const stats = cardStats[card.id] || { correct: 0, incorrect: 0, lastPracticed: null };
                     return (
-                      <tr key={card.id} className="border-b border-base-300/50 hover:bg-base-300/20 transition-colors">
-                        <td className="py-3 px-4 font-medium" dangerouslySetInnerHTML={{ __html: card.term }} />
+                      <tr key={card.id} className="border-b border-base-300/50 hover:bg-base-300/20 transition-colors group">
+                        <td className="py-3 px-4 font-medium">
+                          <div className="flex items-center gap-2">
+                            <span dangerouslySetInnerHTML={{ __html: card.term }} />
+                            <div className="transition-opacity opacity-70 group-hover:opacity-100">
+                              <TTSButtons text={card.term} />
+                            </div>
+                          </div>
+                        </td>
                         <td className="py-3 px-4 text-content-muted" dangerouslySetInnerHTML={{ __html: card.definition }} />
                         <td className="py-3 px-4 text-center text-green-400 font-mono">{stats.correct}</td>
                         <td className="py-3 px-4 text-center text-red-400 font-mono">{stats.incorrect}</td>

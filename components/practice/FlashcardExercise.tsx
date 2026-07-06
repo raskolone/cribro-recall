@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { Word } from '../../types';
 import Button from '../ui/Button';
+import TTSButtons from '../flashcards/TTSButtons';
 
 import { useVocabulary } from '../../context/VocabularyContext';
 
@@ -106,8 +107,9 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
           style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
         >
           {/* Front of card */}
-          <div className="absolute w-full h-full flex items-center justify-center p-6 backface-hidden bg-base-200/40 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl">
-            <h3 className="text-4xl font-bold text-primary">{currentWord?.word}</h3>
+          <div className="absolute w-full h-full flex flex-col gap-4 items-center justify-center p-6 backface-hidden bg-base-200/40 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl relative">
+            <h3 className="text-4xl font-bold text-primary text-center">{currentWord?.word}</h3>
+            {currentWord?.word && <div className="absolute top-4 right-4"><TTSButtons text={currentWord.word} /></div>}
           </div>
           {/* Back of card */}
           <div className="absolute w-full h-full p-6 backface-hidden bg-primary/40 backdrop-blur-xl border border-white/20 text-white rounded-xl shadow-2xl flex flex-col justify-center text-center" style={{ transform: 'rotateY(180deg)' }}>
