@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import gsap from 'gsap';
+import ContextMenu from '../ui/ContextMenu';
+import { getAudioPronunciation } from '../../services/geminiService';
 
 interface PuzzleExerciseProps {
   sentence: string;
@@ -31,6 +33,16 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
   const [isCompleted, setIsCompleted] = useState(false);
   const [errorTileId, setErrorTileId] = useState<string | null>(null);
   const [correctFlashingTileId, setCorrectFlashingTileId] = useState<string | null>(null);
+  
+  const playAudio = async (text: string) => {
+    try {
+      const audioData = await getAudioPronunciation(text, 'en');
+      const audio = new Audio(`data:audio/mp3;base64,${audioData}`);
+      audio.play();
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const containerRef = useRef<HTMLDivElement>(null);
   const answerAreaRef = useRef<HTMLDivElement>(null);
@@ -77,14 +89,53 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
     
     if (sentence.startsWith(nextExpectedString)) {
       setCorrectFlashingTileId(tile.id);
-      setTimeout(() => {
-        setCorrectFlashingTileId(null);
-        setTiles(prev => prev.map(t => t.id === tile.id ? { ...t, isCorrect: true } : t));
-        const newSelected = [...selectedTiles, { ...tile }];
-        setSelectedTiles(newSelected);
-        onAnswerChange(newSelected.map(t => t.text).join(' '));
-        setErrorTileId(null);
-      }, 400); // Wait for the green flash/shake animation
+      
+      // GSAP magnet effect
+      const tileEl = document.getElementById(tile.id);
+      const answerArea = answerAreaRef.current;
+      
+      if (tileEl && answerArea) {
+        // Create a dummy element to find where it would go
+        const dummy = document.createElement('div');
+        dummy.className = tileEl.className;
+        dummy.style.visibility = 'hidden';
+        dummy.innerText = tile.text;
+        answerArea.appendChild(dummy);
+        
+        const dummyRect = dummy.getBoundingClientRect();
+        const tileRect = tileEl.getBoundingClientRect();
+        
+        answerArea.removeChild(dummy);
+        
+        const dx = dummyRect.left - tileRect.left;
+        const dy = dummyRect.top - tileRect.top;
+        
+        gsap.to(tileEl, {
+          x: dx,
+          y: dy,
+          scale: 1,
+          duration: 0.5,
+          ease: 'power3.inOut',
+          onComplete: () => {
+            gsap.set(tileEl, { clearProps: 'all' });
+            setCorrectFlashingTileId(null);
+            setTiles(prev => prev.map(t => t.id === tile.id ? { ...t, isCorrect: true } : t));
+            const newSelected = [...selectedTiles, { ...tile }];
+            setSelectedTiles(newSelected);
+            onAnswerChange(newSelected.map(t => t.text).join(' '));
+            setErrorTileId(null);
+          }
+        });
+      } else {
+        setTimeout(() => {
+          setCorrectFlashingTileId(null);
+          setTiles(prev => prev.map(t => t.id === tile.id ? { ...t, isCorrect: true } : t));
+          const newSelected = [...selectedTiles, { ...tile }];
+          setSelectedTiles(newSelected);
+          onAnswerChange(newSelected.map(t => t.text).join(' '));
+          setErrorTileId(null);
+        }, 400);
+      }
     } else {
       setErrorTileId(tile.id);
       setTimeout(() => setErrorTileId(null), 500);
@@ -161,8 +212,15 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
             const isFlashingCorrect = correctFlashingTileId === tile.id;
             
             return (
+              <ContextMenu
+                items={[
+                  { label: 'Odsłuchaj (Wymowa)', onClick: () => playAudio(tile.text) },
+                  { label: 'Pokaż podpowiedź', onClick: () => alert('Fragment: ' + tile.text) }
+                ]}
+              >
               <motion.button
-                layoutId={tile.id}
+                id={tile.id}
+                
                 key={tile.id}
                 type="button"
                 onClick={() => handleTileClick(tile)}
@@ -187,6 +245,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
               >
                 {tile.text}
               </motion.button>
+              </ContextMenu>
             );
           })}
         </AnimatePresence>

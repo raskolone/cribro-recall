@@ -11,6 +11,7 @@ import { getVocabularySetsForStudent } from '../../services/lessonRecord';
 import Card from '../ui/Card';
 import PuzzleExercise from './PuzzleExercise';
 import Button from '../ui/Button';
+import ConfirmModal from '../ui/ConfirmModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
@@ -75,6 +76,22 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [customEvalPrompt, setCustomEvalPrompt] = useState<string>(() => {
     return localStorage.getItem('ai_custom_eval_prompt') || DEFAULT_EVALUATION_PROMPT;
   });
+
+  const [confirmModalState, setConfirmModalState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+  
+  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmModalState({ isOpen: true, title, message, onConfirm });
+  };
+  
+  const closeConfirm = () => {
+    setConfirmModalState(prev => ({ ...prev, isOpen: false }));
+  };
+
 
   useEffect(() => {
     if (user?.level) {
@@ -1088,9 +1105,15 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   onClick={() => {
                     const unansweredCount = exercises.length - studentAnswers.filter(ans => ans?.trim()).length;
                     if (unansweredCount > 0) {
-                      if (!window.confirm(language === 'pl' ? `Masz ${unansweredCount} nieodpowiedzianych pytań. Czy na pewno chcesz zakończyć i ocenić?` : `You have ${unansweredCount} unanswered questions. Are you sure you want to submit?`)) {
-                        return;
-                      }
+                      showConfirm(
+                        language === 'pl' ? 'Zakończ i oceń' : 'Submit and evaluate',
+                        language === 'pl' ? `Masz ${unansweredCount} nieodpowiedzianych pytań. Czy na pewno chcesz zakończyć i ocenić?` : `You have ${unansweredCount} unanswered questions. Are you sure you want to submit?`,
+                        () => {
+                          closeConfirm();
+                          handleEvaluate();
+                        }
+                      );
+                      return;
                     }
                     handleEvaluate();
                   }}
@@ -1242,6 +1265,15 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
           </div>
         </div>
       )}
+      <ConfirmModal
+        isOpen={confirmModalState.isOpen}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        onConfirm={confirmModalState.onConfirm}
+        onCancel={closeConfirm}
+        confirmText={language === 'pl' ? 'Potwierdź' : 'Confirm'}
+        cancelText={language === 'pl' ? 'Anuluj' : 'Cancel'}
+      />
     </div>
   );
 };

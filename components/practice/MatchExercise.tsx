@@ -3,6 +3,8 @@ import { Word } from '../../types';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 import confetti from 'canvas-confetti';
+import ContextMenu from '../ui/ContextMenu';
+import { getAudioPronunciation } from '../../services/geminiService';
 
 interface MatchExerciseProps {
   words: Word[];
@@ -42,6 +44,16 @@ const MatchExercise: React.FC<MatchExerciseProps> = ({ words, onExit, onComplete
   const [startTime, setStartTime] = useState<number>(Date.now());
   const [timeElapsed, setTimeElapsed] = useState<number>(0);
   const [wrongAttempts, setWrongAttempts] = useState<Set<string>>(new Set());
+  
+  const playAudio = async (text: string) => {
+    try {
+      const audioData = await getAudioPronunciation(text, 'en');
+      const audio = new Audio(`data:audio/mp3;base64,${audioData}`);
+      audio.play();
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Initialize game
   useEffect(() => {
@@ -153,8 +165,14 @@ const MatchExercise: React.FC<MatchExerciseProps> = ({ words, onExit, onComplete
           }
 
           return (
-            <div
+            <ContextMenu
               key={card.id}
+              items={[
+                { label: 'Odsłuchaj (Wymowa)', onClick: () => playAudio(card.text) }
+              ]}
+            >
+            <div
+              key={card.id + '-inner'}
               onClick={() => handleCardClick(card)}
               className={`
                 h-32 p-4 rounded-xl cursor-pointer transition-all duration-200 flex items-center justify-center text-center
@@ -167,6 +185,7 @@ const MatchExercise: React.FC<MatchExerciseProps> = ({ words, onExit, onComplete
                 {card.text}
               </span>
             </div>
+            </ContextMenu>
           );
         })}
       </div>

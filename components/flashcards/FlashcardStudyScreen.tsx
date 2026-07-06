@@ -8,6 +8,7 @@ import Button from '../ui/Button';
 import { Flashcard, FlashcardSet } from '../../types';
 import PronunciationMic from '../ui/PronunciationMic';
 import TTSButtons from './TTSButtons';
+import ConfirmModal from '../ui/ConfirmModal';
 
 interface FlashcardStudyScreenProps {
   setId: string;
@@ -25,6 +26,22 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMode, setSelectedMode] = useState<StudyMode>(initialMode || null);
+
+  const [confirmModalState, setConfirmModalState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmModalState({ isOpen: true, title, message, onConfirm });
+  };
+
+  const closeConfirm = () => {
+    setConfirmModalState(prev => ({ ...prev, isOpen: false }));
+  };
+
 
   useEffect(() => {
     const currentSet = sets.find(s => s.id === setId);
@@ -150,35 +167,50 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
     );
   }
 
+  const renderModal = () => (
+    <ConfirmModal
+      isOpen={confirmModalState.isOpen}
+      title={confirmModalState.title}
+      message={confirmModalState.message}
+      onConfirm={confirmModalState.onConfirm}
+      onCancel={closeConfirm}
+      confirmText={t('flashcards.quit') || 'Zakończ'}
+      cancelText={t('common.cancel') || 'Anuluj'}
+    />
+  );
+
   if (selectedMode === 'intro') {
-    return <IntroMode cards={cards} onBack={() => setSelectedMode(null)} t={t} />;
+    return <>{renderModal()}<IntroMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} onBack={() => setSelectedMode(null)} t={t} /></>;
   }
 
   if (selectedMode === 'quiz') {
-    return <QuizMode cards={cards} setId={setId} onBack={() => setSelectedMode(null)} saveSession={saveSession} t={t} />;
+    return <>{renderModal()}<QuizMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={() => setSelectedMode(null)} saveSession={saveSession} t={t} /></>;
   }
 
   if (selectedMode === 'writing') {
-    return <WritingMode cards={cards} setId={setId} onBack={() => setSelectedMode(null)} saveSession={saveSession} t={t} />;
+    return <>{renderModal()}<WritingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={() => setSelectedMode(null)} saveSession={saveSession} t={t} /></>;
   }
 
   if (selectedMode === 'matching') {
-    return <MatchingMode cards={cards} setId={setId} onBack={() => setSelectedMode(null)} saveSession={saveSession} t={t} />;
+    return <>{renderModal()}<MatchingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={() => setSelectedMode(null)} saveSession={saveSession} t={t} /></>;
   }
 
   return (
-    <FlashcardsMode 
-      cards={cards} 
-      setId={setId} 
-      onBack={() => setSelectedMode(null)} 
-      saveSession={saveSession}
-      t={t}
-    />
+    <>
+      {renderModal()}
+      <FlashcardsMode showConfirm={showConfirm} closeConfirm={closeConfirm} 
+        cards={cards} 
+        setId={setId} 
+        onBack={() => setSelectedMode(null)} 
+        saveSession={saveSession}
+        t={t}
+      />
+    </>
   );
 };
 
 // --- Flashcards Mode Component ---
-const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: any) => {
+const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm }: any) => {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const cardContainerRef = useRef<HTMLDivElement>(null);
@@ -359,7 +391,11 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <button onClick={() => { if (window.confirm(t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?')) onBack(); }} className="text-content-muted hover:text-white flex items-center gap-2">
+        <button onClick={() => { showConfirm(
+            t('flashcards.confirmQuitTitle') || 'Zakończ', 
+            t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?', 
+            () => { closeConfirm(); onBack(); }
+          ); }} className="text-content-muted hover:text-white flex items-center gap-2">
           &larr; {t('flashcards.quit')}
         </button>
         <div className="font-mono text-sm">
@@ -459,7 +495,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t }: 
 };
 
 // --- Quiz Mode Component ---
-const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t }: any) => {
+const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm }: any) => {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [options, setOptions] = useState<string[]>([]);
@@ -551,7 +587,11 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t }: any) =
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <button onClick={() => { if (window.confirm(t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?')) onBack(); }} className="text-content-muted hover:text-white flex items-center gap-2">
+        <button onClick={() => { showConfirm(
+            t('flashcards.confirmQuitTitle') || 'Zakończ', 
+            t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?', 
+            () => { closeConfirm(); onBack(); }
+          ); }} className="text-content-muted hover:text-white flex items-center gap-2">
           &larr; {t('flashcards.quit')}
         </button>
         <div className="font-mono text-sm">
@@ -643,7 +683,7 @@ const stripHtml = (html: string) => {
   return tmp.textContent || tmp.innerText || '';
 };
 
-const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t }: any) => {
+const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm }: any) => {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [input, setInput] = useState('');
@@ -726,7 +766,11 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t }: any
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <button onClick={() => { if (window.confirm(t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?')) onBack(); }} className="text-content-muted hover:text-white flex items-center gap-2">
+        <button onClick={() => { showConfirm(
+            t('flashcards.confirmQuitTitle') || 'Zakończ', 
+            t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?', 
+            () => { closeConfirm(); onBack(); }
+          ); }} className="text-content-muted hover:text-white flex items-center gap-2">
           &larr; {t('flashcards.quit')}
         </button>
         <div className="font-mono text-sm">
@@ -797,7 +841,7 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t }: any
 };
 
 // --- Matching Mode Component ---
-const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t }: any) => {
+const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm }: any) => {
   const [items, setItems] = useState<{ id: string; text: string; type: 'term' | 'definition'; flashcardId: string; isMatched: boolean }[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [wrongPair, setWrongPair] = useState<[string, string] | null>(null);
@@ -904,7 +948,11 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t }: an
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <button onClick={() => { if (window.confirm(t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?')) onBack(); }} className="text-content-muted hover:text-white flex items-center gap-2">
+        <button onClick={() => { showConfirm(
+            t('flashcards.confirmQuitTitle') || 'Zakończ', 
+            t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?', 
+            () => { closeConfirm(); onBack(); }
+          ); }} className="text-content-muted hover:text-white flex items-center gap-2">
           &larr; {t('flashcards.quit')}
         </button>
         <div className="font-mono text-xl font-bold">
@@ -943,7 +991,7 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t }: an
 };
 
 // --- Intro Mode Component ---
-const IntroMode = ({ cards, onBack, t }: any) => {
+const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm }: any) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -968,7 +1016,11 @@ const IntroMode = ({ cards, onBack, t }: any) => {
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <button onClick={() => { if (window.confirm(t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?')) onBack(); }} className="text-content-muted hover:text-white flex items-center gap-2">
+        <button onClick={() => { showConfirm(
+            t('flashcards.confirmQuitTitle') || 'Zakończ', 
+            t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?', 
+            () => { closeConfirm(); onBack(); }
+          ); }} className="text-content-muted hover:text-white flex items-center gap-2">
           &larr; {t('flashcards.quit')}
         </button>
         <div className="font-mono text-sm">

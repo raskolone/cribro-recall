@@ -4,7 +4,8 @@ import { db } from '../../firebase';
 import { User, LessonRecord, StudentTest, TestQuestion } from '../../types';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
-import { generateTest } from '../../services/geminiService';
+import { generateTest, modifyTest } from '../../services/geminiService';
+import { MessageSquare } from 'lucide-react';
 
 interface AdminTestGeneratorProps {
   user: User;
@@ -13,6 +14,28 @@ interface AdminTestGeneratorProps {
 const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
   const [lessons, setLessons] = useState<LessonRecord[]>([]);
   const [selectedLessons, setSelectedLessons] = useState<string[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [feedback, setFeedback] = useState<string>('');
+  const [isModifying, setIsModifying] = useState<boolean>(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+    }
+  };
+
+  const getBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1]);
+      };
+      reader.onerror = error => reject(error);
+    });
+  };
+
   const [sourceMode, setSourceMode] = useState<'lessons' | 'custom'>('lessons');
   const [customMaterial, setCustomMaterial] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<string[]>(['multiple_choice', 'fill_in_blank', 'translation']);
@@ -66,7 +89,18 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
       
       const profile = `Imię: ${user.firstName || ''}, Opis: ${user.description || ''}`;
       
-      const questions = await generateTest(user.level || 'B1', testTitle, scope, profile, lessonContext);
+      let fileData = null;
+      if (file) {
+        const base64Data = await getBase64(file);
+        let mimeType = 'text/plain';
+        if (file.name.endsWith('.pdf')) mimeType = 'application/pdf';
+        else if (file.name.endsWith('.md')) mimeType = 'text/markdown';
+        else if (file.name.endsWith('.docx')) mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        
+        fileData = { data: base64Data, mimeType };
+      }
+
+      const questions = await generateTest(user.level || 'B1', testTitle, scope, profile, lessonContext, ['multiple_choice', 'fill_in_blank', 'translation'], fileData);
       
       // Ensure IDs
       const withIds = questions.map(q => ({ ...q, id: Math.random().toString(36).substring(2, 9) }));
@@ -76,6 +110,28 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
       console.error(err);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleModifyTest = async () => {
+    if (!generatedQuestions || !feedback) return;
+    setIsModifying(true);
+    try {
+      const selectedLessonRecords = lessons.filter(l => selectedLessons.includes(l.id));
+      const lessonContext = selectedLessonRecords.map((lr, idx) => 
+        `Lesson ${lr.date}: Topic: ${lr.topic}. Summary: ${lr.lessonSummary || ''}. Words: ${lr.vocabularyText || ''}`
+      ).join('\n\n');
+      const profile = `Imię: ${user.firstName || ''}, Opis: ${user.description || ''}`;
+      
+      const newQuestions = await modifyTest(generatedQuestions, feedback, user.level || 'B1', profile, lessonContext);
+      const withIds = newQuestions.map(q => ({ ...q, id: Math.random().toString(36).substring(2, 9) }));
+      setGeneratedQuestions(withIds);
+      setFeedback('');
+    } catch (err) {
+      alert("Błąd podczas modyfikacji testu");
+      console.error(err);
+    } finally {
+      setIsModifying(false);
     }
   };
 
@@ -146,6 +202,17 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
             </div>
             
             <div>
+              <label className="block text-sm font-bold text-content-muted mb-1">Dodatkowe materiały (PDF, DOCX, Markdown)</label>
+              <input
+                type="file"
+                accept=".pdf,.docx,.md"
+                onChange={handleFileChange}
+                className="w-full bg-base-100 border border-base-300 rounded-lg p-2 outline-none focus:border-primary/50 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+              />
+              {file && <div className="text-xs text-primary mt-1">Wybrano plik: {file.name}</div>}
+            </div>
+
+            <div>
               <label className="block text-sm font-bold text-content-muted mb-2">Wybierz lekcje jako kontekst ({selectedLessons.length})</label>
               <div className="h-48 overflow-y-auto space-y-2 border border-white/5 rounded-lg p-2 bg-black/20">
                 {lessons.map(l => (
@@ -193,6 +260,24 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
                 ))}
               </div>
               
+              <div className="pt-4 border-t border-white/10 mb-6">
+                <label className="block text-sm font-bold text-content-muted mb-1 flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-primary" />
+                  Asystent AI - Uwagi do testu
+                </label>
+                <div className="flex gap-2">
+                  <textarea
+                    value={feedback}
+                    onChange={e => setFeedback(e.target.value)}
+                    className="flex-1 bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm h-12"
+                    placeholder="Napisz do AI co chciałbyś poprawić (np. 'zrób trudniejsze zadania na tłumaczenie')"
+                  />
+                  <Button onClick={handleModifyTest} isLoading={isModifying} disabled={!feedback} variant="secondary" className="whitespace-nowrap">
+                    Popraw Test
+                  </Button>
+                </div>
+              </div>
+
               <div className="pt-4 border-t border-white/10">
                 <label className="block text-sm font-bold text-content-muted mb-1">Data Wykonania (Do kiedy)</label>
                 <input

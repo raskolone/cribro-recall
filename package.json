@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.28.0",
+    "@gsap/react": "^2.1.2",
     "canvas-confetti": "^1.9.4",
     "express": "^5.2.1",
     "firebase": "^12.12.0",

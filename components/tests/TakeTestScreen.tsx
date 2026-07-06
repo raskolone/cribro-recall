@@ -4,6 +4,7 @@ import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { StudentTest } from '../../types';
 import Card from '../ui/Card';
+import ConfirmModal from '../ui/ConfirmModal';
 import Button from '../ui/Button';
 
 interface TakeTestScreenProps {
@@ -14,6 +15,21 @@ interface TakeTestScreenProps {
 const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
   const { user } = useAuth();
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [confirmModalState, setConfirmModalState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmModalState({ isOpen: true, title, message, onConfirm });
+  };
+
+  const closeConfirm = () => {
+    setConfirmModalState(prev => ({ ...prev, isOpen: false }));
+  };
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -141,6 +157,15 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
           Zakończ Test
         </Button>
       </div>
+      <ConfirmModal
+        isOpen={confirmModalState.isOpen}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        onConfirm={confirmModalState.onConfirm}
+        onCancel={closeConfirm}
+        confirmText="Zakończ"
+        cancelText="Anuluj"
+      />
     </div>
   );
 };
