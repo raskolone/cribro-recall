@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import gsap from 'gsap';
+import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import ContextMenu from '../ui/ContextMenu';
 import { getAudioPronunciation } from '../../services/geminiService';
 
@@ -32,8 +31,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
   const [selectedTiles, setSelectedTiles] = useState<TileData[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
   const [errorTileId, setErrorTileId] = useState<string | null>(null);
-  const [correctFlashingTileId, setCorrectFlashingTileId] = useState<string | null>(null);
-  
+    
   const playAudio = async (text: string) => {
     try {
       const audioData = await getAudioPronunciation(text, 'en');
@@ -48,16 +46,80 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
   const answerAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Combine 2-3 words together for all levels to reduce the number of separate elements
-    const words = sentence.trim().split(/\s+/);
-    let chunks: string[] = [];
-    
-    for (let i = 0; i < words.length; ) {
-      const chunkLen = (words[i].length % 2) + 2; // 2 or 3 words
-      const chunk = words.slice(i, i + chunkLen).join(' ');
-      chunks.push(chunk);
-      i += chunkLen;
-    }
+    const semanticChunking = (sentence: string): string[] => {
+      const words = sentence.trim().split(/\s+/);
+      const chunks: string[] = [];
+      let currentChunk: string[] = [];
+      
+      // Słowa, przed którymi najlepiej łamać frazę
+      const breakBefore = new Set([
+        'the', 'a', 'an', 'my', 'your', 'his', 'her', 'our', 'their', 'this', 'that', 'these', 'those',
+        'in', 'on', 'at', 'to', 'for', 'with', 'about', 'by', 'from', 'as', 'into', 'like', 'through', 'after', 'over', 'between', 'out', 'against', 'during', 'without', 'before', 'under', 'around', 'among',
+        'and', 'but', 'or', 'so', 'because', 'although', 'if', 'when', 'while', 'which', 'who', 'where',
+        'i', 'you', 'he', 'she', 'it', 'we', 'they',
+        'is', 'are', 'was', 'were', 'am', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'can', 'could', 'shall', 'should', 'will', 'would', 'may', 'might', 'must'
+      ]);
+
+      // Słowa, po których lepiej nie łamać frazy, tylko dołączyć następne słowo
+      const dontBreakAfter = new Set([
+        'the', 'a', 'an', 'my', 'your', 'his', 'her', 'our', 'their', 'this', 'that', 'these', 'those',
+        'of', 'very', 'not', 'no', 'to', 'in', 'on', 'at'
+      ]);
+
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        const cleanWord = word.replace(/[^a-zA-Z]/g, '').toLowerCase();
+        const nextWord = i < words.length - 1 ? words[i + 1] : null;
+        const cleanNextWord = nextWord ? nextWord.replace(/[^a-zA-Z]/g, '').toLowerCase() : '';
+        
+        currentChunk.push(word);
+        
+        const hasPunctuation = /[.,!?;:]$/.test(word);
+        const shouldBreakBeforeNext = breakBefore.has(cleanNextWord);
+        const shouldNotBreakAfterCurrent = dontBreakAfter.has(cleanWord);
+        
+        let shouldBreak = false;
+        
+        if (hasPunctuation) {
+          shouldBreak = true;
+        } else if (currentChunk.length >= 2 && shouldBreakBeforeNext && !shouldNotBreakAfterCurrent) {
+          shouldBreak = true;
+        } else if (currentChunk.length >= 4) { // Hard limit 4-5 words
+          // Try to wait for a better break point if we are at a "dont break after" word
+          if (!shouldNotBreakAfterCurrent) {
+             shouldBreak = true;
+          } else if (currentChunk.length >= 5) {
+             shouldBreak = true;
+          }
+        }
+        
+        // Specjalne dostrojenie dla prepozycji takich jak "of" – chcemy, by tworzyły zbitki typu "value of"
+        if (cleanNextWord === 'of' && currentChunk.length >= 2) {
+           shouldBreak = false; // "the hidden value" + "of", don't break yet, keep "the hidden value of"
+        } else if (cleanWord === 'of' && currentChunk.length >= 2) {
+           shouldBreak = true; // after "of", break! "the hidden value of" -> BREAK
+        }
+
+        if (shouldBreak) {
+          if (i !== words.length - 1) {
+            chunks.push(currentChunk.join(' '));
+            currentChunk = [];
+          }
+        }
+      }
+      
+      if (currentChunk.length > 0) {
+        if (currentChunk.length <= 1 && chunks.length > 0) {
+          chunks[chunks.length - 1] += ' ' + currentChunk[0];
+        } else {
+          chunks.push(currentChunk.join(' '));
+        }
+      }
+      
+      return chunks;
+    };
+
+    const chunks = semanticChunking(sentence);
     
     const initialTiles = chunks.map((chunk, idx) => ({
       id: `tile-${idx}-${chunk.replace(/[^a-zA-Z0-9]/g, '')}`,
@@ -83,59 +145,16 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
   }, [selectedTiles, sentence]);
 
   const handleTileClick = (tile: TileData) => {
-    if (tile.isCorrect || isCompleted || correctFlashingTileId) return;
+    if (tile.isCorrect || isCompleted) return;
     
     const nextExpectedString = selectedTiles.map(t => t.text).join(' ') + (selectedTiles.length > 0 ? ' ' : '') + tile.text;
     
     if (sentence.startsWith(nextExpectedString)) {
-      setCorrectFlashingTileId(tile.id);
-      
-      // GSAP magnet effect
-      const tileEl = document.getElementById(tile.id);
-      const answerArea = answerAreaRef.current;
-      
-      if (tileEl && answerArea) {
-        // Create a dummy element to find where it would go
-        const dummy = document.createElement('div');
-        dummy.className = tileEl.className;
-        dummy.style.visibility = 'hidden';
-        dummy.innerText = tile.text;
-        answerArea.appendChild(dummy);
-        
-        const dummyRect = dummy.getBoundingClientRect();
-        const tileRect = tileEl.getBoundingClientRect();
-        
-        answerArea.removeChild(dummy);
-        
-        const dx = dummyRect.left - tileRect.left;
-        const dy = dummyRect.top - tileRect.top;
-        
-        gsap.to(tileEl, {
-          x: dx,
-          y: dy,
-          scale: 1,
-          duration: 0.5,
-          ease: 'power3.inOut',
-          onComplete: () => {
-            gsap.set(tileEl, { clearProps: 'all' });
-            setCorrectFlashingTileId(null);
-            setTiles(prev => prev.map(t => t.id === tile.id ? { ...t, isCorrect: true } : t));
-            const newSelected = [...selectedTiles, { ...tile }];
-            setSelectedTiles(newSelected);
-            onAnswerChange(newSelected.map(t => t.text).join(' '));
-            setErrorTileId(null);
-          }
-        });
-      } else {
-        setTimeout(() => {
-          setCorrectFlashingTileId(null);
-          setTiles(prev => prev.map(t => t.id === tile.id ? { ...t, isCorrect: true } : t));
-          const newSelected = [...selectedTiles, { ...tile }];
-          setSelectedTiles(newSelected);
-          onAnswerChange(newSelected.map(t => t.text).join(' '));
-          setErrorTileId(null);
-        }, 400);
-      }
+      setTiles(prev => prev.map(t => t.id === tile.id ? { ...t, isCorrect: true } : t));
+      const newSelected = [...selectedTiles, { ...tile }];
+      setSelectedTiles(newSelected);
+      onAnswerChange(newSelected.map(t => t.text).join(' '));
+      setErrorTileId(null);
     } else {
       setErrorTileId(tile.id);
       setTimeout(() => setErrorTileId(null), 500);
@@ -155,6 +174,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
   };
 
   return (
+    <LayoutGroup>
     <div className="space-y-4 relative" ref={containerRef}>
       {/* Answer Area */}
       <div 
@@ -209,8 +229,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
         <AnimatePresence>
           {tiles.filter(t => !t.isCorrect).map((tile) => {
             const isError = errorTileId === tile.id;
-            const isFlashingCorrect = correctFlashingTileId === tile.id;
-            
+                        
             return (
               <ContextMenu
                 key={'ctx-' + tile.id}
@@ -220,26 +239,21 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
                 ]}
               >
               <motion.button
+                layoutId={tile.id}
                 id={tile.id}
                 type="button"
                 onClick={() => handleTileClick(tile)}
-                disabled={isCompleted || correctFlashingTileId !== null}
+                disabled={isCompleted}
                 animate={
-                  isError ? { x: [-10, 10, -10, 10, 0] } :
-                  isFlashingCorrect ? { y: [-5, 5, -5, 5, 0], scale: 1.05 } : 
-                  { x: 0, y: 0, scale: 1 }
+                  isError ? { x: [-10, 10, -10, 10, 0] } : { x: 0, y: 0, scale: 1 }
                 }
                 transition={
-                  isError ? { duration: 0.4 } : 
-                  isFlashingCorrect ? { duration: 0.4 } :
-                  { type: "spring", stiffness: 400, damping: 25 }
+                  isError ? { duration: 0.4 } : { type: "spring", stiffness: 400, damping: 30 }
                 }
-                className={`px-5 py-2.5 rounded-xl font-bold text-sm md:text-base shadow-sm transition-all duration-300 backdrop-blur-md border
+                className={`px-5 py-2.5 rounded-xl font-bold text-sm md:text-base shadow-sm backdrop-blur-md border z-10
                   ${isError 
-                    ? 'bg-red-500 text-white border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.9)] z-10 scale-105' 
-                    : isFlashingCorrect
-                      ? 'bg-primary text-black border-primary/50 shadow-[0_0_20px_rgba(114,240,180,0.9)] z-10'
-                      : `${tile.colorClass} hover:scale-105 hover:-translate-y-1 hover:shadow-lg cursor-pointer active:scale-95`
+                    ? 'bg-red-500 text-white border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.9)] scale-105' 
+                    : `${tile.colorClass} hover:scale-105 hover:-translate-y-1 hover:shadow-lg cursor-pointer active:scale-95 transition-colors duration-200`
                   }`}
               >
                 {tile.text}
@@ -261,6 +275,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
         </motion.div>
       )}
     </div>
+    </LayoutGroup>
   );
 };
 
