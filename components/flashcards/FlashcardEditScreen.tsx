@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { Flashcard, FlashcardSet } from '../../types';
@@ -73,6 +74,7 @@ const RichTextInput = ({
 };
 
 const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack, onStudy }) => {
+  const { user } = useAuth();
   const { sets, getFlashcards, saveFlashcards, updateSet } = useFlashcards();
   const { t, language } = useLanguage();
   const [set, setSet] = useState<FlashcardSet | null>(null);

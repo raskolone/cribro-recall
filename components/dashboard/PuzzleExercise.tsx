@@ -213,6 +213,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
             
             return (
               <ContextMenu
+                key={'ctx-' + tile.id}
                 items={[
                   { label: 'Odsłuchaj (Wymowa)', onClick: () => playAudio(tile.text) },
                   { label: 'Pokaż podpowiedź', onClick: () => alert('Fragment: ' + tile.text) }
@@ -220,8 +221,6 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
               >
               <motion.button
                 id={tile.id}
-                
-                key={tile.id}
                 type="button"
                 onClick={() => handleTileClick(tile)}
                 disabled={isCompleted || correctFlashingTileId !== null}

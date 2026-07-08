@@ -161,12 +161,12 @@ const MatchExercise: React.FC<MatchExerciseProps> = ({ words, onExit, onComplete
           const isWrong = wrongMatch?.includes(card.id);
 
           if (isMatched) {
-            return <div key={card.id} className="h-32 rounded-xl opacity-0 transition-opacity duration-500" />;
+            return <div key={'ctx-' + card.id} className="h-32 rounded-xl opacity-0 transition-opacity duration-500" />;
           }
 
           return (
             <ContextMenu
-              key={card.id}
+              key={'ctx-' + card.id}
               items={[
                 { label: 'Odsłuchaj (Wymowa)', onClick: () => playAudio(card.text) }
               ]}

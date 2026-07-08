@@ -123,7 +123,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
     firstName: '',
     lastName: '',
     level: '',
-    description: ''
+    description: '',
+    aiPrompt: ''
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
@@ -236,7 +237,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
       firstName: user.firstName || '',
       lastName: user.lastName || '',
       level: user.level || '',
-      description: user.description || ''
+      description: user.description || '',
+      aiPrompt: user.aiPrompt || ''
     });
     fetchUserLogsAndStats(user.id);
   };
@@ -250,7 +252,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
         firstName: profileForm.firstName,
         lastName: profileForm.lastName,
         level: profileForm.level,
-        description: profileForm.description
+        description: profileForm.description,
+        aiPrompt: profileForm.aiPrompt
       }, { merge: true });
       
       const updatedUser = { ...selectedUser, ...profileForm };
@@ -397,7 +400,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
         id: u.id,
         name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
         level: u.level || '',
-        description: u.description || ''
+        description: u.description || '',
+        aiPrompt: u.aiPrompt || ''
       }));
 
       const res = await fetch('/api/gemini/lesson-summary', {
@@ -1041,6 +1045,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => 
                 />
                 <p className="text-xs text-content-muted mt-2">
                   Ten opis będzie wysyłany do sztucznej inteligencji jako dodatkowy kontekst podczas generowania zadań domowych, aby lepiej dopasować je do kursanta.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-content-muted mb-1">Spersonalizowany Prompt dla AI</label>
+                <textarea
+                  value={profileForm.aiPrompt}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, aiPrompt: e.target.value }))}
+                  placeholder="Tutaj wpisz przykładowe zdania, wzornictwo, specyficzne polecenia i żelazne zasady dla tego kursanta..."
+                  rows={4}
+                  className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 resize-y font-mono text-sm"
+                />
+                <p className="text-xs text-content-muted mt-2">
+                  To pole służy do ustawienia żelaznych zasad dla AI. Będzie one absolutnie priorytetowe dla sztucznej inteligencji podczas generowania zdań lub testów.
                 </p>
               </div>
 

@@ -19,6 +19,7 @@ export interface User {
   lastName?: string;
   level?: string;
   description?: string;
+  aiPrompt?: string;
 }
 
 export interface WordSet {
