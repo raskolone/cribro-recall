@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from './Sidebar';
+import ConfirmModal from '../ui/ConfirmModal';
 import VocabularyGenerator from './VocabularyGenerator';
 import WordList from './WordList';
 import ProgressOverview from './ProgressOverview';
@@ -89,6 +90,21 @@ const Dashboard: React.FC = () => {
 
   const [greeting, setGreeting] = useState('');
   const [exerciseResetKey, setExerciseResetKey] = useState(0);
+  
+  const [confirmModalState, setConfirmModalState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmModalState({ isOpen: true, title, message, onConfirm });
+  };
+  
+  const closeConfirm = () => {
+    setConfirmModalState(prev => ({ ...prev, isOpen: false }));
+  };
 
   useEffect(() => {
     let name = user?.firstName;
@@ -201,20 +217,33 @@ const Dashboard: React.FC = () => {
         if (view !== 'dashboard') {
           if (isExerciseActive) {
             const isPl = language === 'pl';
-            if (!window.confirm(isPl ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?')) {
-              return;
-            }
+            showConfirm(
+              isPl ? 'Zakończ sesję' : 'End session',
+              isPl ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?',
+              () => {
+                closeConfirm();
+                setIsExerciseActive(false);
+                setView('dashboard');
+                setPracticeView(null);
+              }
+            );
+            return;
           }
           setIsExerciseActive(false);
           setView('dashboard');
           setPracticeView(null);
         } else if (isExerciseActive) {
           const isPl = language === 'pl';
-          if (!window.confirm(isPl ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?')) {
-            return;
-          }
-          setIsExerciseActive(false);
-          setExerciseResetKey(k => k + 1);
+          showConfirm(
+            isPl ? 'Zakończ sesję' : 'End session',
+            isPl ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?',
+            () => {
+              closeConfirm();
+              setIsExerciseActive(false);
+              setExerciseResetKey(k => k + 1);
+            }
+          );
+          return;
         }
       }
     };
@@ -335,16 +364,24 @@ const Dashboard: React.FC = () => {
         onNavigate={(newView) => {
           if (isExerciseActive) {
             const isPl = language === 'pl';
-            if (!window.confirm(isPl ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?')) {
-              return;
-            }
-            if (newView === view) {
-              setExerciseResetKey(k => k + 1);
-            }
+            showConfirm(
+              isPl ? 'Zakończ sesję' : 'End session',
+              isPl ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?',
+              () => {
+                closeConfirm();
+                if (newView === view) {
+                  setExerciseResetKey(k => k + 1);
+                }
+                setIsExerciseActive(false);
+                setView(newView);
+                setPracticeView(null);
+              }
+            );
+            return;
           }
           setIsExerciseActive(false);
-          setView(newView)
-          setPracticeView(null)
+          setView(newView);
+          setPracticeView(null);
         }} 
         onStartPractice={startPractice}
         isOpen={isSidebarOpen}
@@ -433,6 +470,15 @@ const Dashboard: React.FC = () => {
         </header>
         {renderContent()}
       </main>
+      <ConfirmModal
+        isOpen={confirmModalState.isOpen}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        onConfirm={confirmModalState.onConfirm}
+        onCancel={closeConfirm}
+        confirmText={language === 'pl' ? 'Potwierdź' : 'Confirm'}
+        cancelText={language === 'pl' ? 'Anuluj' : 'Cancel'}
+      />
     </div>
   );
 };

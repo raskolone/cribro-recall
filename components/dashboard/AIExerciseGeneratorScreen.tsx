@@ -490,17 +490,22 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   setTimeLeft(null);
                   return;
                 }
-                if (window.confirm(language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję nauki? Dotychczasowe odpowiedzi zostaną ocenione.' : 'Are you sure you want to end this study session? Your answers will be evaluated.')) {
-                  const hasAnswers = studentAnswers.some(ans => ans?.trim());
-                  if (hasAnswers) {
-                    handleEvaluate();
-                  } else {
-                    setStep('setup');
-                    setExercises([]);
-                    setStudentAnswers([]);
-                    setTimeLeft(null);
+                showConfirm(
+                  language === 'pl' ? 'Zakończ trening' : 'End session',
+                  language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję nauki? Dotychczasowe odpowiedzi zostaną ocenione.' : 'Are you sure you want to end this study session? Your answers will be evaluated.',
+                  () => {
+                    closeConfirm();
+                    const hasAnswers = studentAnswers.some(ans => ans?.trim());
+                    if (hasAnswers) {
+                      handleEvaluate();
+                    } else {
+                      setStep('setup');
+                      setExercises([]);
+                      setStudentAnswers([]);
+                      setTimeLeft(null);
+                    }
                   }
-                }
+                );
               }}
             >
               {language === 'pl' ? 'Zakończ trening' : 'End session'}
