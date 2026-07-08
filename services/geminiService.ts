@@ -59,7 +59,12 @@ export const generateVocabulary = async (language: Language, difficulty: Difficu
       },
     });
 
-    const jsonText = response.text.trim();
+    let jsonText = response.text.trim();
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
+    }
     const parsed = JSON.parse(jsonText);
     return parsed as Omit<Word, 'id' | 'isDifficult' | 'language'>[];
   } catch (error) {
@@ -151,7 +156,12 @@ export const generateAudioVocabulary = async (base64Audio: string, mimeType: str
       },
     });
 
-    const jsonText = response.text.trim();
+    let jsonText = response.text.trim();
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
+    }
     return JSON.parse(jsonText) as AudioVocabulary[];
   } catch (error) {
     console.error("Error generating audio vocabulary:", error);
@@ -200,7 +210,12 @@ export const getAISuggestions = async (difficultWords: Word[]): Promise<AISugges
       },
     });
 
-    const jsonText = response.text.trim();
+    let jsonText = response.text.trim();
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
+    }
     return JSON.parse(jsonText) as AISuggestion;
   } catch (error) {
     console.error("Error getting AI suggestions:", error);
@@ -278,7 +293,12 @@ export const generateTranslationExercises = async (
       },
     });
 
-    const jsonText = response.text.trim();
+    let jsonText = response.text.trim();
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
+    }
     return JSON.parse(jsonText) as TranslationExercise[];
   } catch (error) {
     console.error("Error generating translation exercises:", error);
@@ -346,7 +366,12 @@ Student context: ${studentProfileContext}` : ''}
       },
     });
 
-    const jsonText = response.text.trim();
+    let jsonText = response.text.trim();
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
+    }
     return JSON.parse(jsonText) as TranslationEvaluationResult[];
   } catch (error) {
     console.error("Error evaluating translations:", error);
@@ -425,7 +450,13 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
       },
     });
 
-    return JSON.parse(response.text.trim());
+    let jsonText = response.text.trim();
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
+    }
+    return JSON.parse(jsonText);
   } catch (err) {
     console.error("Test generation failed", err);
     throw new Error("Failed to generate test.");
@@ -468,7 +499,13 @@ Return a JSON array of objects.`;
         responseSchema: schema,
       },
     });
-    return JSON.parse(response.text.trim());
+    let jsonText = response.text.trim();
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
+    }
+    return JSON.parse(jsonText);
   } catch (err) {
     console.error("Error generating flashcards from text:", err);
     throw new Error("Failed to parse vocabulary from text.");
@@ -567,7 +604,12 @@ Zwróć 10 poprawionych zadań jako JSON (tablica obiektów). Zastąp te, które
       },
     });
 
-    const jsonText = response.text.trim();
+    let jsonText = response.text.trim();
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
+    }
     return JSON.parse(jsonText);
   } catch (error) {
     console.error("Error modifying test:", error);

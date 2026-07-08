@@ -393,7 +393,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
         if (user) {
           const score = Math.round(results.reduce((acc, r) => acc + r.score, 0) / results.length);
-          const exercisesDetails = answeredExercises.map((ex, i) => `${ex.polish} -> ${answeredAnswers[i]}`).join(' | ');
+          const exercisesDetails = answeredExercises.map((ex, i) => `${ex.polishSentence} -> ${answeredAnswers[i]}`).join(' | ');
           const logData = {
             exerciseType: 'ai_translation',
             date: new Date().toISOString(),
@@ -414,8 +414,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     } catch (err: any) {
       console.error(err);
       setError(language === 'pl'
-        ? 'Wystąpił błąd podczas oceniania odpowiedzi przez AI. Spróbuj ponownie.'
-        : 'An error occurred while evaluating your answers with AI. Please try again.');
+        ? 'Wystąpił błąd podczas oceniania odpowiedzi przez AI. Spróbuj ponownie. (' + err.message + ')'
+        : 'An error occurred while evaluating your answers with AI. Please try again. (' + err.message + ')');
     } finally {
       setIsEvaluating(false);
     }
