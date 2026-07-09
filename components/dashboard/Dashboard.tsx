@@ -26,6 +26,7 @@ import { useFlashcards } from '../../context/FlashcardContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { ExerciseType, PracticeHistory } from '../../types';
 import Button from '../ui/Button';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
 
@@ -95,6 +96,8 @@ const Dashboard: React.FC = () => {
 
   const [greeting, setGreeting] = useState('');
   const [exerciseResetKey, setExerciseResetKey] = useState(0);
+  const [isProgressCollapsed, setIsProgressCollapsed] = useState(true);
+  const [isStudentViewCollapsed, setIsStudentViewCollapsed] = useState(true);
   
   const [confirmModalState, setConfirmModalState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({
     isOpen: false,
@@ -349,9 +352,11 @@ const Dashboard: React.FC = () => {
       return <StudentTestsScreen onBack={() => setView('dashboard')} />;
     }
     // Default to dashboard view
+    const isTeacher = user?.role === 'admin' || user?.role === 'admin_student';
+
     return (
       <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">
-        {(user?.role === 'admin' || user?.role === 'admin_student') && (
+        {isTeacher && (
           <TeacherQuickAccess 
             onNavigate={(v) => {
               setAdminSelectedUserId(null);
@@ -363,13 +368,44 @@ const Dashboard: React.FC = () => {
             }}
           />
         )}
-        <div className="flex-1">
-          <AIExerciseGeneratorScreen key={exerciseResetKey} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />
-        </div>
         
-        <div className="mt-8 pt-8 border-t border-white/10">
-          <ProgressOverview />
-          {showLearningProgressChart && <LearningProgressChart />}
+        {isTeacher ? (
+          <div className="border border-white/10 rounded-2xl overflow-hidden bg-base-200/20 backdrop-blur-sm mt-4">
+            <button 
+              className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors text-left"
+              onClick={() => setIsStudentViewCollapsed(!isStudentViewCollapsed)}
+            >
+              <h2 className="text-xl font-bold">{language === 'pl' ? 'Widok kursanta' : 'Student View'}</h2>
+              {isStudentViewCollapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
+            </button>
+            {!isStudentViewCollapsed && (
+              <div className="p-6 border-t border-white/10">
+                <AIExerciseGeneratorScreen key={exerciseResetKey} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex-1">
+            <AIExerciseGeneratorScreen key={exerciseResetKey} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />
+          </div>
+        )}
+        
+        <div className="mt-8">
+          <div className="border border-white/10 rounded-2xl overflow-hidden bg-base-200/20 backdrop-blur-sm">
+            <button 
+              className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors text-left"
+              onClick={() => setIsProgressCollapsed(!isProgressCollapsed)}
+            >
+              <h2 className="text-xl font-bold">{language === 'pl' ? 'Postępy w nauce' : 'Learning Progress'}</h2>
+              {isProgressCollapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
+            </button>
+            {!isProgressCollapsed && (
+              <div className="p-6 border-t border-white/10 space-y-6">
+                <ProgressOverview />
+                {showLearningProgressChart && <LearningProgressChart />}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );

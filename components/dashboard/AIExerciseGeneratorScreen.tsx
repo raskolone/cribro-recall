@@ -12,7 +12,7 @@ import Card from '../ui/Card';
 import PuzzleExercise from './PuzzleExercise';
 import Button from '../ui/Button';
 import ConfirmModal from '../ui/ConfirmModal';
-import InlineAILoading from '../ui/InlineAILoading';
+import FullScreenAILoading from '../ui/FullScreenAILoading';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
@@ -469,7 +469,16 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {(isLoading || isGeneratingMore || isEvaluating) && (
+        <FullScreenAILoading 
+          message={
+            isEvaluating 
+              ? (language === 'pl' ? 'Ocenianie odpowiedzi...' : 'Evaluating answers...')
+              : (language === 'pl' ? 'Generowanie zadań...' : 'Generating exercises...')
+          } 
+        />
+      )}
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-base-300 pb-5">
         <div>
@@ -916,11 +925,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                 </div>
               )}
 
-              {isLoading ? (
-                <div className="mt-2 w-full">
-                  <InlineAILoading language={language} />
-                </div>
-              ) : (
+              {isLoading ? null : (
                 <Button
                   onClick={() => handleGenerate(false)}
                   className="w-full py-3 text-base flex items-center justify-center gap-2 mt-2"
@@ -1208,11 +1213,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
               <Button onClick={() => setStep('setup')} variant="secondary">
                 {language === 'pl' ? 'Nowy trening' : 'New session'}
               </Button>
-              {isLoading ? (
-                <div className="w-64">
-                  <InlineAILoading language={language} />
-                </div>
-              ) : (
+              {isLoading ? null : (
                 <Button onClick={() => handleGenerate(false)}>
                   {language === 'pl' ? 'Generuj kolejne zdania' : 'Generate next set'}
                 </Button>
