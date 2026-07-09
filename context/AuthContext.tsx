@@ -22,6 +22,7 @@ interface AuthContextType {
   loginAnonymously: () => Promise<void>;
   logout: () => Promise<void>;
   updateUserStreak: () => Promise<{streakCount: number, showConfetti: boolean}>;
+  connectGoogleDrive: () => Promise<string>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -115,6 +116,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const registerWithEmail = async (email: string, pass: string) => {
     await createUserWithEmailAndPassword(auth, email, pass);
+  };
+
+  const connectGoogleDrive = async (): Promise<string> => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/drive.readonly');
+      // We can use signInWithPopup even if the user is already logged in with Google,
+      // it will prompt them to add the new scopes.
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        return credential.accessToken;
+      }
+      throw new Error('No access token received');
+    } catch (error) {
+      console.error('Failed to connect Google Drive:', error);
+      throw error;
+    }
   };
 
   const loginAnonymously = async () => {
@@ -217,7 +236,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthReady, login, loginWithEmail, registerWithEmail, loginAnonymously, logout, updateUserStreak }}>
+    <AuthContext.Provider value={{ user, isAuthReady, login, loginWithEmail, registerWithEmail, loginAnonymously, logout, updateUserStreak, connectGoogleDrive }}>
       {children}
     </AuthContext.Provider>
   );

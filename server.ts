@@ -30,7 +30,7 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
   
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
 
   const adminApp = getAdminApp();
   const adminAuth = getAuth(adminApp);
@@ -137,6 +137,102 @@ async function startServer() {
 
 
   // Proxy for Gemini API
+  app.post('/api/gemini/import-lessons-batch', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { textContent, pdfBase64, students } = req.body;
+      if (!textContent && !pdfBase64) {
+        return res.status(400).json({ error: 'Missing textContent or pdfBase64' });
+      }
+      
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: 'Gemini API key not configured' });
+      }
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const studentsListStr = students ? students.map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n') : 'Brak bazy kursantów';
+
+      let contents: any[] = [];
+      if (pdfBase64) {
+        contents = [
+          {
+            inlineData: {
+              data: pdfBase64.split(',')[1] || pdfBase64,
+              mimeType: 'application/pdf'
+            }
+          },
+          { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z historią lekcji. Przeanalizuj go.` }
+        ];
+      } else {
+        contents = [
+          { text: `Baza kursantów:\n${studentsListStr}\n\nTreść historii lekcji (Google Docs / Text):\n${textContent}` }
+        ];
+      }
+
+      const sysInstruction = `# Cel
+Na podstawie dostarczonego pliku lub tekstu zawierającego historię lekcji jednego lub wielu kursantów, wyodrębnij wszystkie poszczególne lekcje.
+Jeśli lekcje są podzielone na numery lekcji z odpowiednimi sekcjami, uzupełnij je na tej podstawie.
+Dostosuj do dostępnych możliwości, pomijając nadmiarowe dane lub braki.
+
+# Zanim wygenerujesz
+Zidentyfikuj kursanta (studentId) dla KAŻDEJ lekcji na podstawie podanej bazy kursantów. 
+Każda lekcja musi mieć swój osobny wpis.
+
+# Wygeneruj wynik w formacie JSON
+Zwróć wynik jako JSON z tablicą obiektów o polu "lessons". Każdy obiekt lekcji musi zawierać:
+- date (string, data lekcji w formacie YYYY-MM-DD. Jeśli brak, wygeneruj orientacyjną (np dzisiejszą) lub zostaw puste)
+- studentId (string, ID wybranego kursanta)
+- lessonTopic (string, max 50 znaków)
+- revisionNotes (string)
+- vocabularyText (string)
+- studentSpeaking (string)
+- thingsToImprove (string)
+- suggestedFollowUp (string)
+`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: contents,
+        config: {
+          systemInstruction: sysInstruction,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              lessons: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    date: { type: Type.STRING },
+                    studentId: { type: Type.STRING },
+                    lessonTopic: { type: Type.STRING },
+                    revisionNotes: { type: Type.STRING },
+                    vocabularyText: { type: Type.STRING },
+                    studentSpeaking: { type: Type.STRING },
+                    thingsToImprove: { type: Type.STRING },
+                    suggestedFollowUp: { type: Type.STRING },
+                  },
+                  required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
+                }
+              }
+            },
+            required: ["lessons"]
+          }
+        }
+      });
+
+      const responseText = response.text;
+      if (!responseText) throw new Error("No response from Gemini");
+      
+      const json = JSON.parse(responseText);
+      res.json(json);
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post('/api/gemini/lesson-summary', requireFirebaseAdmin, async (req, res) => {
     try {
       const { notes, students } = req.body;

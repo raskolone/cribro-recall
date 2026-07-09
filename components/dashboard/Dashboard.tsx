@@ -354,9 +354,26 @@ const Dashboard: React.FC = () => {
     // Default to dashboard view
     const isTeacher = user?.role === 'admin' || user?.role === 'admin_student';
 
+    if (user?.role === 'admin') {
+      return (
+        <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">
+          <TeacherQuickAccess 
+            onNavigate={(v) => {
+              setAdminSelectedUserId(null);
+              setView(v as View);
+            }}
+            onSelectStudent={(s) => {
+              setAdminSelectedUserId(s.id);
+              setView('admin');
+            }}
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">
-        {isTeacher && (
+        {user?.role === 'admin_student' && (
           <TeacherQuickAccess 
             onNavigate={(v) => {
               setAdminSelectedUserId(null);

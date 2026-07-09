@@ -3,6 +3,7 @@ import { collection, getDocs, doc, deleteDoc, query, orderBy, setDoc, writeBatch
 import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
 import { User, PracticeLog, FlashcardSet, LessonRecord } from '../../types';
 import { useFlashcards } from '../../context/FlashcardContext';
+import { useAuth } from '../../context/AuthContext';
 import { importVocabularyFromLessons } from '../../services/vocabularyService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
@@ -16,6 +17,7 @@ interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: an
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId }) => {
   const { sets: adminSets, getFlashcards } = useFlashcards();
+  const { connectGoogleDrive } = useAuth();
   const [users, setUsers] = useState<UserWithId[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserWithId | null>(null);
 
@@ -69,6 +71,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   
   // Meeting Notes AI State
   const [rawMeetingNotes, setRawMeetingNotes] = useState('');
+  const [showDriveModal, setShowDriveModal] = useState(false);
+  const [driveFiles, setDriveFiles] = useState<any[]>([]);
+  const [driveLoading, setDriveLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [viewingRecord, setViewingRecord] = useState<LessonRecord | null>(null);
   const [isSavingLessonRecord, setIsSavingLessonRecord] = useState(false);
@@ -396,6 +401,130 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       setChangePasswordError(`Error changing password: ${error.message}`);
     } finally {
       setIsChangingPassword(false);
+    }
+  };
+
+  
+  const fetchDriveFiles = async () => {
+    try {
+      setDriveLoading(true);
+      setShowDriveModal(true);
+      const token = await connectGoogleDrive();
+      const res = await fetch('https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.document" or mimeType="application/pdf"&fields=files(id,name,mimeType)', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setDriveFiles(data.files || []);
+    } catch (err) {
+      console.error(err);
+      alert('Nie udało się pobrać plików z dysku Google.');
+    } finally {
+      setDriveLoading(false);
+    }
+  };
+
+  const processDriveFile = async (file: any) => {
+    try {
+      setIsGenerating(true);
+      setShowDriveModal(false);
+      setShowAIModal(true);
+      const token = await connectGoogleDrive();
+      let textContent = '';
+      let pdfBase64 = '';
+
+      if (file.mimeType === 'application/pdf') {
+        const res = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const blob = await res.blob();
+        const reader = new FileReader();
+        pdfBase64 = await new Promise<string>((resolve) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        const res = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}/export?mimeType=text/plain`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        textContent = await res.text();
+      }
+
+      await handleBatchImport(textContent, pdfBase64);
+    } catch (err) {
+      console.error(err);
+      alert('Błąd przetwarzania pliku z dysku');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    try {
+      setIsGenerating(true);
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      await handleBatchImport('', base64);
+    } catch (err) {
+      console.error(err);
+      alert('Błąd wgrywania PDF');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleBatchImport = async (textContent: string, pdfBase64: string) => {
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/gemini/import-lessons-batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          textContent,
+          pdfBase64,
+          students: users.map(u => ({ id: u.id, name: u.firstName || u.username, level: u.level, description: u.studentDescription }))
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      // result.lessons is an array of lessons
+      if (result.lessons && result.lessons.length > 0) {
+         let importedCount = 0;
+         for (const lesson of result.lessons) {
+           if (lesson.studentId) {
+             const newRecord: LessonRecord = {
+               id: crypto.randomUUID(),
+               studentId: lesson.studentId,
+               date: lesson.date || new Date().toISOString().split('T')[0],
+               topic: lesson.lessonTopic,
+               revisionNotes: lesson.revisionNotes,
+               vocabularyText: lesson.vocabularyText,
+               studentSpeaking: lesson.studentSpeaking,
+               thingsToImprove: lesson.thingsToImprove,
+               suggestedFollowUp: lesson.suggestedFollowUp,
+             };
+             await setDoc(doc(db, `users/${lesson.studentId}/lessonRecords`, newRecord.id), newRecord);
+             importedCount++;
+           }
+         }
+         alert(`Zaimportowano ${importedCount} lekcji pomyślnie!`);
+         if (selectedUser?.id) { fetchUserLogsAndStats(selectedUser.id); }
+         setShowAIModal(false);
+      } else {
+         alert('Nie znaleziono lekcji w dokumencie.');
+      }
+    } catch (error: any) {
+      console.error(error);
+      alert('Błąd importu: ' + error.message);
     }
   };
 
@@ -747,101 +876,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
                 <div><span className="font-bold text-white">Exercises:</span> {practiceLogs.length}</div>
               </div>
             </div>
-            <div className="relative">
-              {showAssignModal ? (
-                <div className="absolute right-0 top-0 bg-base-100 border border-base-300 rounded-lg p-4 shadow-xl z-10 w-80">
-                  <h4 className="font-bold mb-3">Select Set to Assign</h4>
-                  <select 
-                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded p-2 mb-4 text-sm"
-                    value={selectedSetIdToAssign}
-                    onChange={(e) => {
-                      setSelectedSetIdToAssign(e.target.value);
-                      if (isLessonVocabulary) {
-                        const set = adminSets.find(s => s.id === e.target.value);
-                        if (set) setLessonTopic(set.title);
-                      }
-                    }}
-                  >
-                    <option value="" disabled>-- Select a word list --</option>
-                    {adminSets.map(set => (
-                      <option key={set.id} value={set.id}>
-                        {set.title} ({set.cardCount} cards)
-                      </option>
-                    ))}
-                  </select>
-                  
-                  <div className="flex items-center gap-2 mb-3">
-                    <input 
-                      type="checkbox" 
-                      id="isLesson" 
-                      checked={isLessonVocabulary}
-                      onChange={(e) => {
-                        setIsLessonVocabulary(e.target.checked);
-                        if (e.target.checked && selectedSetIdToAssign) {
-                          const set = adminSets.find(s => s.id === selectedSetIdToAssign);
-                          if (set) setLessonTopic(set.title);
-                        }
-                      }}
-                      className="rounded border-base-300 text-primary focus:ring-primary/50 bg-base-200"
-                    />
-                    <label htmlFor="isLesson" className="text-sm cursor-pointer select-none">Assign as Lesson Vocabulary</label>
-                  </div>
-
-                  {isLessonVocabulary && (
-                    <div className="space-y-3 bg-base-200/50 p-3 rounded-lg border border-white/5 mb-4">
-                      <div>
-                        <label className="block text-xs font-bold text-content-muted mb-1">Lesson Date</label>
-                        <input 
-                          type="date" 
-                          value={lessonDate}
-                          onChange={(e) => setLessonDate(e.target.value)}
-                          className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded p-1.5 outline-none focus:border-primary/50 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-content-muted mb-1">Topic</label>
-                        <input 
-                          type="text" 
-                          value={lessonTopic}
-                          onChange={(e) => setLessonTopic(e.target.value)}
-                          placeholder="e.g. Travel vocabulary"
-                          className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded p-1.5 outline-none focus:border-primary/50 text-sm"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end gap-2">
-                    <Button variant="secondary" onClick={() => setShowAssignModal(false)} size="sm">
-                      Cancel
-                    </Button>
-                    <Button 
-                      onClick={executeAssignWordSet} 
-                      isLoading={isAssigningSet} 
-                      size="sm"
-                      disabled={!selectedSetIdToAssign || (isLessonVocabulary && (!lessonDate || !lessonTopic))}
-                    >
-                      Assign
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  <Button onClick={() => setShowAssignModal(true)} isLoading={isAssigningSet}>
-                    Assign Word Set
-                  </Button>
-                  <Button variant="secondary" onClick={() => setShowChangePasswordModal(true)}>
-                    Change Password
-                  </Button>
-                  <Button variant="secondary" className="text-red-500 hover:bg-red-500/10" onClick={() => setUserToDelete(selectedUser.id)}>
-                    Delete Account
-                  </Button>
-                </div>
-              )}
-            </div>
           </div>
-
-          
+          </Card>
           {activeTab ? (
             <div className="mb-6 flex items-center gap-4">
               <button 
@@ -858,10 +894,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
                 {activeTab === 'history' && 'Historia'}
                 {activeTab === 'profile' && 'Profil kursanta'}
                 {activeTab === 'tests' && 'Testy'}
+                {activeTab === 'vocabulary' && 'Słownictwo'}
+                {activeTab === 'contact' && 'Kontakt'}
               </h2>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
               <button onClick={() => handleTabChange('stats')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
@@ -885,6 +923,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                 </div>
                 <h3 className="font-bold text-lg">Testy</h3>
+              </button>
+              <button onClick={() => handleTabChange('vocabulary')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
+                </div>
+                <h3 className="font-bold text-lg">Słownictwo</h3>
+              </button>
+              <button onClick={() => handleTabChange('contact')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                </div>
+                <h3 className="font-bold text-lg">Kontakt</h3>
               </button>
             </div>
           )}
@@ -1047,7 +1097,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
 
               <div>
                 <label className="block text-sm font-bold text-content-muted mb-1">Opis kursanta (wykorzystywany przez AI)</label>
-                <textarea
+                
+            <div className="flex gap-3 mb-4">
+              <Button onClick={fetchDriveFiles} variant="secondary" className="flex-1 flex justify-center items-center gap-2">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 15.02 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                Google Drive
+              </Button>
+              <div className="flex-1 relative">
+                <input type="file" accept=".pdf" onChange={handlePdfUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <Button variant="secondary" className="w-full pointer-events-none">Załaduj plik PDF</Button>
+              </div>
+            </div>
+
+            <textarea
                   value={profileForm.description}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Zainteresowania, słabe strony, cele nauki..."
@@ -1080,9 +1142,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
               </div>
             </div>
           )}
-        </Card>
-        </>
-      )}
+          </>
+        )}
 
       {/* Delete User Modal */}
       {userToDelete && (
@@ -1107,6 +1168,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
               </Button>
             </div>
           </Card>
+        </div>
+      )}
+
+      
+      {/* Google Drive Files Modal */}
+      {showDriveModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
+          <div className="bg-base-100 p-6 rounded-xl w-full max-w-2xl border border-white/10 shadow-2xl relative my-auto">
+            <h3 className="text-xl font-bold mb-4">Wybierz plik z Google Drive</h3>
+            {driveLoading ? (
+              <div className="text-center p-8 text-content-muted">Ładowanie plików...</div>
+            ) : (
+              <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                {driveFiles.map(file => (
+                  <div key={file.id} onClick={() => processDriveFile(file)} className="p-3 bg-base-200/50 hover:bg-base-200 rounded-lg cursor-pointer flex justify-between items-center border border-white/5 transition-colors">
+                    <span className="font-medium text-sm text-white truncate max-w-[80%]">{file.name}</span>
+                    <span className="text-xs text-content-muted">{file.mimeType.includes('pdf') ? 'PDF' : 'DOC'}</span>
+                  </div>
+                ))}
+                {driveFiles.length === 0 && <div className="text-center text-content-muted">Brak odpowiednich plików.</div>}
+              </div>
+            )}
+            <div className="mt-6 flex justify-end">
+              <Button variant="ghost" onClick={() => setShowDriveModal(false)}>Anuluj</Button>
+            </div>
+          </div>
         </div>
       )}
 
