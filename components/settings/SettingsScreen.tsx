@@ -1,3 +1,5 @@
+import { auth } from '../../firebase';
+import { useAuth } from '../../context/AuthContext';
 
 import React, { useState } from 'react';
 import Card from '../ui/Card';
@@ -13,6 +15,9 @@ const SettingsScreen: React.FC = () => {
     const { frequency, setFrequency, deleteAllWords, words } = useVocabulary();
     const { showLearningProgressChart, setShowLearningProgressChart } = useSettings();
     const { language } = useLanguage();
+    const { linkGoogleAccount, user } = useAuth();
+    const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
+    const [linkError, setLinkError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -49,6 +54,40 @@ const SettingsScreen: React.FC = () => {
             <h1 className="text-2xl font-extrabold tracking-tight mb-6">{language === 'pl' ? 'Ustawienia' : 'Settings'}</h1>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <Card>
+                    <h2 className="text-xl font-bold mb-4">{language === 'pl' ? 'Konto i Integracje' : 'Account & Integrations'}</h2>
+                    <div className="space-y-4">
+                        <div>
+                            <p className="text-sm text-content-muted mb-2">
+                                {language === 'pl' ? 'Powiąż swoje konto z Google, aby móc logować się za jego pomocą i korzystać z Google Drive.' : 'Link your account with Google to log in via Google and use Google Drive.'}
+                            </p>
+                            {auth.currentUser?.providerData?.some((p: any) => p.providerId === 'google.com') ? (
+                                <div className="text-green-500 font-bold text-sm">✓ {language === 'pl' ? 'Konto połączone z Google' : 'Account linked to Google'}</div>
+                            ) : (
+                                <Button 
+                                    onClick={async () => {
+                                        setIsLinkingGoogle(true);
+                                        setLinkError(null);
+                                        try {
+                                            await linkGoogleAccount();
+                                        } catch (err: any) {
+                                            setLinkError(err.message || 'Error linking account');
+                                        } finally {
+                                            setIsLinkingGoogle(false);
+                                        }
+                                    }}
+                                    isLoading={isLinkingGoogle}
+                                    variant="secondary"
+                                >
+                                    {language === 'pl' ? 'Połącz z Google' : 'Link with Google'}
+                                </Button>
+                            )}
+                            {linkError && <p className="text-red-500 text-sm mt-2">{linkError}</p>}
+                        </div>
+                    </div>
+                </Card>
+
                 <Card>
                     <h2 className="text-xl font-bold mb-4">Revision Program</h2>
                     <div className="space-y-4">

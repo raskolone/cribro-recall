@@ -9,7 +9,8 @@ import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInAnonymously
+  signInAnonymously,
+  linkWithPopup
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
@@ -23,6 +24,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateUserStreak: () => Promise<{streakCount: number, showConfetti: boolean}>;
   connectGoogleDrive: () => Promise<string>;
+  linkGoogleAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -116,6 +118,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const registerWithEmail = async (email: string, pass: string) => {
     await createUserWithEmailAndPassword(auth, email, pass);
+  };
+
+  
+  const linkGoogleAccount = async () => {
+    try {
+      if (!auth.currentUser) throw new Error('No user logged in');
+      const provider = new GoogleAuthProvider();
+      // Add drive scope just in case they link now, so they have it
+      provider.addScope('https://www.googleapis.com/auth/drive.readonly');
+      await linkWithPopup(auth.currentUser, provider);
+    } catch (error) {
+      console.error('Failed to link Google account:', error);
+      throw error;
+    }
   };
 
   const connectGoogleDrive = async (): Promise<string> => {
@@ -236,7 +252,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthReady, login, loginWithEmail, registerWithEmail, loginAnonymously, logout, updateUserStreak, connectGoogleDrive }}>
+    <AuthContext.Provider value={{ user, isAuthReady, login, loginWithEmail, registerWithEmail, loginAnonymously, logout, updateUserStreak, connectGoogleDrive, linkGoogleAccount }}>
       {children}
     </AuthContext.Provider>
   );
