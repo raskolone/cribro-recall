@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { VocabularyProvider } from './context/VocabularyContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { FlashcardProvider } from './context/FlashcardContext';
+import { SettingsProvider } from './context/SettingsContext';
 import AuthScreen from './components/auth/AuthScreen';
 import Dashboard from './components/dashboard/Dashboard';
 import LandingPage from './components/landing/LandingPage';
@@ -36,9 +37,11 @@ const AppContent: React.FC = () => {
       <div className="relative z-10 w-full min-h-screen pointer-events-auto flex flex-col">
         {user ? (
           <VocabularyProvider>
+            <SettingsProvider>
             <FlashcardProvider>
               <Dashboard />
             </FlashcardProvider>
+            </SettingsProvider>
           </VocabularyProvider>
         ) : showAuth ? (
           <AuthScreen onBack={() => setShowAuth(false)} />

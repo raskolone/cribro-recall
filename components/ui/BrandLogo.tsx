@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const BrandLogo: React.FC<{ className?: string; showTagline?: boolean }> = ({ className = "text-xl", showTagline = false }) => {
+export const BrandLogo: React.FC<{ className?: string; showTagline?: boolean; isCollapsed?: boolean }> = ({ className = "text-xl", showTagline = false, isCollapsed = false }) => {
   return (
     <div className={`flex items-center gap-[0.5em] ${className}`}>
       <div className="relative flex-shrink-0 h-[2.5em] w-[2.5em] flex items-center justify-center">
@@ -15,7 +15,7 @@ export const BrandLogo: React.FC<{ className?: string; showTagline?: boolean }> 
           <circle cx="67.6" cy="67.6" r="6.5" fill="currentColor" />
         </svg>
       </div>
-      <div className="flex flex-col justify-center leading-none mt-[0.1em]">
+      {!isCollapsed && <div className="flex flex-col justify-center leading-none mt-[0.1em]">
         <span className="text-[1.1em] font-sans font-medium tracking-[0.05em] text-white">CRIBRO</span>
         <span className="text-[1.1em] font-sans font-black tracking-tight text-primary mt-[-0.1em]">ENGLISH</span>
         {showTagline && (
@@ -23,7 +23,7 @@ export const BrandLogo: React.FC<{ className?: string; showTagline?: boolean }> 
             less noise. more language.
           </span>
         )}
-      </div>
+      </div>}
     </div>
   );
 };

@@ -616,3 +616,109 @@ Zwróć 10 poprawionych zadań jako JSON (tablica obiektów). Zastąp te, które
     throw new Error("Failed to modify test.");
   }
 };
+
+
+export const getUserWeaknesses = async (userId: string): Promise<string> => {
+  try {
+    const weaknessesRef = collection(db, `users/${userId}/weaknesses`);
+    const q = query(weaknessesRef, orderBy('frequency', 'desc'), limit(5));
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+      return "Brak zidentyfikowanych błędów.";
+    }
+
+    const weaknesses = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return `Błąd: ${data.name || doc.id} - ${data.description || 'Brak opisu'}`;
+    });
+
+    return weaknesses.join('\n');
+  } catch (error) {
+    console.error("Error fetching user weaknesses:", error);
+    return "Brak zidentyfikowanych błędów.";
+  }
+};
+
+export const generateDynamicExercise = async (
+  userId: string,
+  exerciseType: 'quiz' | 'flashcards' | 'match' | 'fill_in_blank',
+  topicOrVocabulary: string,
+  level: string
+): Promise<any> => {
+  const weaknessesList = await getUserWeaknesses(userId);
+
+  const prompt = `Jesteś zaawansowanym asystentem lektora języka angielskiego (Cribro Recall). Twoim zadaniem jest wygenerowanie zestawu interaktywnych ćwiczeń na podstawie dostarczonego tematu lub słownictwa.
+
+[START KONTEKST UCZNIA - PRIORYTET]
+Uczeń często popełnia następujące błędy:
+${weaknessesList || "Brak zidentyfikowanych błędów."}
+Tworząc ćwiczenia, MUSISZ przemycić w nich konstrukcje, które zmuszą ucznia do poprawnego użycia powyższych zagadnień (np. jeśli uczeń myli much/many, dodaj zdania z tymi słowami jako luki do uzupełnienia lub opcje w quizie).
+[KONIEC KONTEKST UCZNIA]
+
+Wymagania:
+Język docelowy: Angielski
+Język instrukcji/tłumaczeń: Polski
+Poziom trudności: ${level}
+Typ ćwiczenia: ${exerciseType}
+Temat/Słownictwo: ${topicOrVocabulary}
+
+Zwróć wynik WYŁĄCZNIE jako obiekt JSON o następującej strukturze, w zależności od typu ćwiczenia:
+
+Dla "quiz":
+{
+  "type": "quiz",
+  "title": "Tytuł",
+  "questions": [
+    { "question": "Pytanie", "options": ["A", "B", "C", "D"], "correctAnswer": "A", "explanation": "Wyjaśnienie" }
+  ]
+}
+
+Dla "flashcards":
+{
+  "type": "flashcards",
+  "title": "Tytuł",
+  "cards": [
+    { "front": "Pojęcie", "back": "Tłumaczenie/Definicja", "example": "Przykład użycia" }
+  ]
+}
+
+Dla "match":
+{
+  "type": "match",
+  "title": "Tytuł",
+  "pairs": [
+    { "left": "Pojęcie", "right": "Dopasowanie" }
+  ]
+}
+
+Dla "fill_in_blank":
+{
+  "type": "fill_in_blank",
+  "title": "Tytuł",
+  "sentences": [
+    { "text": "Zdanie z [LUKA]", "answer": "odpowiedź", "hint": "Wskazówka" }
+  ]
+}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    let jsonText = response.text?.trim() || "{}";
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
+    }
+    return JSON.parse(jsonText);
+  } catch (error) {
+    console.error("Error generating dynamic exercise:", error);
+    throw new Error("Failed to generate exercise from AI.");
+  }
+};

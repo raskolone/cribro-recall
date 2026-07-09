@@ -14,6 +14,9 @@ import FlashcardEditScreen from '../flashcards/FlashcardEditScreen';
 import FlashcardStudyScreen from '../flashcards/FlashcardStudyScreen';
 import FlashcardStatsScreen from '../flashcards/FlashcardStatsScreen';
 import AdminPanel from '../admin/AdminPanel';
+import TeacherQuickAccess from './TeacherQuickAccess';
+import LearningProgressChart from './LearningProgressChart';
+import { useSettings } from '../../context/SettingsContext';
 import AIExerciseGeneratorScreen from './AIExerciseGeneratorScreen';
 import LessonHistoryScreen from './LessonHistoryScreen';
 import StudentTestsScreen from '../tests/StudentTestsScreen';
@@ -80,7 +83,9 @@ const Dashboard: React.FC = () => {
   const { sets } = useFlashcards();
   const { difficultWords, dueWords, frequency, lastPractice, lastRevisionDate } = useVocabulary();
   const { language } = useLanguage();
+  const { showLearningProgressChart } = useSettings();
   const [view, setView] = useState<View>('dashboard');
+  const [adminSelectedUserId, setAdminSelectedUserId] = useState<string | null>(null);
   const [practiceView, setPracticeView] = useState<PracticeView>(null);
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -331,7 +336,7 @@ const Dashboard: React.FC = () => {
       return <FlashcardPresentationScreen setId={activeSetId} onBack={() => setView('flashcard-sets')} />;
     }
     if (view.startsWith('admin') && (user?.role === 'admin' || user?.role === 'admin_student')) {
-      return <AdminPanel initialTab={view === 'admin' ? null : view.replace('admin-', '')} onViewChange={setView} />;
+      return <AdminPanel initialTab={view === 'admin' ? null : view.replace('admin-', '')} onViewChange={setView} initialSelectedUserId={adminSelectedUserId} />;
     }
     if (view === 'ai-generator') {
       return <AIExerciseGeneratorScreen key={`ai-gen-${exerciseResetKey}`} initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />;
@@ -346,12 +351,25 @@ const Dashboard: React.FC = () => {
     // Default to dashboard view
     return (
       <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">
+        {(user?.role === 'admin' || user?.role === 'admin_student') && (
+          <TeacherQuickAccess 
+            onNavigate={(v) => {
+              setAdminSelectedUserId(null);
+              setView(v as View);
+            }}
+            onSelectStudent={(s) => {
+              setAdminSelectedUserId(s.id);
+              setView('admin');
+            }}
+          />
+        )}
         <div className="flex-1">
           <AIExerciseGeneratorScreen key={exerciseResetKey} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />
         </div>
         
         <div className="mt-8 pt-8 border-t border-white/10">
           <ProgressOverview />
+          {showLearningProgressChart && <LearningProgressChart />}
         </div>
       </div>
     );

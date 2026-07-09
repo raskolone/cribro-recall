@@ -5,13 +5,14 @@ import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
 import { collection, getDocs, query, orderBy, limit, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { generateTranslationExercises, evaluateTranslations } from '../../services/geminiService';
+import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses } from '../../services/geminiService';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog } from '../../types';
 import { getVocabularySetsForStudent } from '../../services/lessonRecord';
 import Card from '../ui/Card';
 import PuzzleExercise from './PuzzleExercise';
 import Button from '../ui/Button';
 import ConfirmModal from '../ui/ConfirmModal';
+import InlineAILoading from '../ui/InlineAILoading';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
@@ -33,16 +34,9 @@ import {
   Timer
 } from 'lucide-react';
 
-const DEFAULT_GENERATION_PROMPT = `Jesteś wirtualnym nauczycielem języka angielskiego. Twoim absolutnym priorytetem jest personalizacja UX - wygenerowane zdania muszą być maksymalnie dopasowane do profilu kursanta (jeśli został dostarczony).
-Wygeneruj dokładnie [NUM_SENTENCES] unikalnych zdań po polsku do przetłumaczenia na język angielski, na wybranym poziomie CEFR.
-Pobierz dostarczony zestaw słówek z historii lekcji i na ich podstawie zbuduj zdania. Nawiązuj do tematu lekcji, jeśli to możliwe.
-Wykorzystaj informacje z profilu kursanta (np. hobby, wiek, praca), aby zdania były dla niego angażujące i osobiście interesujące.
-Zapewnij również krótką wskazówkę (po polsku) dla każdego zdania, ułatwiającą tłumaczenie.`;
+const DEFAULT_GENERATION_PROMPT = `Jesteś wirtualnym nauczycielem języka angielskiego. Twoim absolutnym priorytetem jest personalizacja UX - wygenerowane zdania muszą być maksymalnie dopasowane do ucznia.\n\n[START KONTEKST UCZNIA]\n\nProfil (hobby, praca, wiek): \${userProfile || "Brak danych"}\n\nNajczęstsze błędy: \${weaknessesList || "Brak zidentyfikowanych błędów"}\n[KONIEC KONTEKST UCZNIA]\n\nWygeneruj dokładnie [NUM_SENTENCES] unikalnych zdań po polsku do przetłumaczenia na język angielski, na wybranym poziomie CEFR.\n\nZASADY TWORZENIA:\n\nPobierz dostarczony zestaw słówek z historii lekcji i zbuduj na ich podstawie zdania. Nawiązuj do tematu lekcji.\n\nWykorzystaj Profil kursanta, aby zdania były angażujące i osobiście interesujące.\n\nPRIORYTET: Skonstruuj zdania w taki sposób, aby WYMUSIĆ na uczniu użycie gramatyki/słownictwa z listy "Najczęstsze błędy" (jeśli występuje).\n\nZapewnij krótką wskazówkę (po polsku) dla każdego zdania, ułatwiającą tłumaczenie.`;
 
-const DEFAULT_EVALUATION_PROMPT = `Przeanalizuj i oceń tłumaczenie angielskie wykonane przez ucznia dla każdego zdania po polsku.
-Zwróć uwagę na poprawność gramatyczną, słownictwo, idiomy i naturalność wypowiedzi.
-Wskaż mocne strony, alternatywne poprawne opcje i precyzyjnie wyjaśnij ewentualne błędy po polsku.
-Dla każdego zdania określ procentowy wynik poprawności (score) od 0 do 100.`;
+const DEFAULT_EVALUATION_PROMPT = `Przeanalizuj i oceń tłumaczenie angielskie wykonane przez ucznia dla każdego zdania po polsku. Zwróć uwagę na poprawność gramatyczną, słownictwo, idiomy i naturalność wypowiedzi.\n\n[START KONTEKST BŁĘDÓW]\nMiej szczególną uwagę na te historyczne błędy ucznia: \${weaknessesList || "Brak danych"}. Jeśli uczeń ponownie popełnił błąd z tej listy, zaznacz to w swoim feedbacku, przypominając mu o tym problemie.\n[KONIEC KONTEKST BŁĘDÓW]\n\nWskaż mocne strony, alternatywne poprawne opcje i precyzyjnie wyjaśnij ewentualne błędy po polsku.\nDla każdego zdania określ procentowy wynik poprawności (score) od 0 do 100.`;
 
 import { ExerciseType } from '../../types';
 
@@ -335,7 +329,20 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
       // Call Gemini API service function
       const studentProfileContext = `Kluczowy profil kursanta: ${user?.firstName ? `Imię kursanta: ${user.firstName}. ` : ''}${user?.description ? `Cały wpis z profilu kursanta (zainteresowania, cele, przykładowe zdania): ${user.description}` : 'Brak dodatkowych danych profilu.'}${user?.aiPrompt ? `\nSpersonalizowany Prompt (ŻELAZNA ZASADA DLA AI - uczeń musi widzieć przykłady w tym stylu): ${user.aiPrompt}` : ''}`;
-      const generated = await generateTranslationExercises(level, wordsToUse, customGenPrompt, lessonContextString, studentProfileContext, practiceMode === 'time' ? 10 : numSentences, pastExercisesContext);
+      
+      let userProfileStr = "Brak danych";
+      let weaknessesListStr = "Brak zidentyfikowanych błędów";
+      
+      if (user) {
+        userProfileStr = user.description || "Brak danych";
+        weaknessesListStr = await getUserWeaknesses(user.id);
+      }
+      
+      const resolvedGenPrompt = customGenPrompt
+        .replace(/\$\{userProfile(?: \|\| "[^"]+")?\}/g, userProfileStr)
+        .replace(/\$\{weaknessesList(?: \|\| "[^"]+")?\}/g, weaknessesListStr);
+
+      const generated = await generateTranslationExercises(level, wordsToUse, resolvedGenPrompt, lessonContextString, studentProfileContext, practiceMode === 'time' ? 10 : numSentences, pastExercisesContext);
       
       if (generated && generated.length > 0) {
         if (isAppending) {
@@ -386,7 +393,16 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       }
       
       const evalStudentContext = `${user?.firstName ? `Zwracaj się do ucznia po imieniu (${user.firstName}), odmieniając je naturalnie we wszystkich przypadkach w języku polskim zgodnie z regułami języka polskiego.` : ''}`;
-      const results = await evaluateTranslations(answeredExercises, answeredAnswers, customEvalPrompt, evalStudentContext);
+      
+      let weaknessesListStr = "Brak zidentyfikowanych błędów";
+      if (user) {
+        weaknessesListStr = await getUserWeaknesses(user.id);
+      }
+
+      const resolvedEvalPrompt = customEvalPrompt
+        .replace(/\$\{weaknessesList(?: \|\| "[^"]+")?\}/g, weaknessesListStr);
+        
+      const results = await evaluateTranslations(answeredExercises, answeredAnswers, resolvedEvalPrompt, evalStudentContext);
       if (results && results.length > 0) {
         setEvaluationResults(results);
         setStep('results');
@@ -458,7 +474,9 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-base-300 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
-            ✨ {language === 'pl' ? 'Tłumacz z AI' : 'AI Translation Lab'}
+            ✨ {(user?.role === 'admin' || user?.role === 'admin_student') 
+              ? (language === 'pl' ? 'Widok kursanta' : 'Student View')
+              : (language === 'pl' ? 'Tłumacz z AI' : 'AI Translation Lab')}
           </h1>
           <p className="text-content-muted text-sm mt-1">
             {language === 'pl' 
@@ -898,14 +916,19 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                 </div>
               )}
 
-              <Button
-                onClick={() => handleGenerate(false)}
-                isLoading={isLoading}
-                className="w-full py-3 text-base flex items-center justify-center gap-2 mt-2"
-              >
-                <Sparkles className="w-5 h-5 animate-pulse" />
-                {language === 'pl' ? 'Generuj zdania przez AI' : 'Generate sentences with AI'}
-              </Button>
+              {isLoading ? (
+                <div className="mt-2 w-full">
+                  <InlineAILoading language={language} />
+                </div>
+              ) : (
+                <Button
+                  onClick={() => handleGenerate(false)}
+                  className="w-full py-3 text-base flex items-center justify-center gap-2 mt-2"
+                >
+                  <Sparkles className="w-5 h-5 animate-pulse" />
+                  {language === 'pl' ? 'Generuj zdania przez AI' : 'Generate sentences with AI'}
+                </Button>
+              )}
             </div>
             </div>
           </Card>
@@ -1185,9 +1208,15 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
               <Button onClick={() => setStep('setup')} variant="secondary">
                 {language === 'pl' ? 'Nowy trening' : 'New session'}
               </Button>
-              <Button onClick={() => handleGenerate(false)} isLoading={isLoading}>
-                {language === 'pl' ? 'Generuj kolejne zdania' : 'Generate next set'}
-              </Button>
+              {isLoading ? (
+                <div className="w-64">
+                  <InlineAILoading language={language} />
+                </div>
+              ) : (
+                <Button onClick={() => handleGenerate(false)}>
+                  {language === 'pl' ? 'Generuj kolejne zdania' : 'Generate next set'}
+                </Button>
+              )}
             </div>
           </Card>
 

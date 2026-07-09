@@ -12,12 +12,23 @@ interface UserWithId extends User {
   id: string;
 }
 
-interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: any) => void; }
+interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: any) => void; initialSelectedUserId?: string | null; }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId }) => {
   const { sets: adminSets, getFlashcards } = useFlashcards();
   const [users, setUsers] = useState<UserWithId[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserWithId | null>(null);
+
+  useEffect(() => {
+    if (users.length > 0 && initialSelectedUserId && !selectedUser) {
+      const user = users.find(u => u.id === initialSelectedUserId);
+      if (user) {
+        setSelectedUser(user);
+        fetchUserLogsAndStats(user.id);
+      }
+    }
+  }, [users, initialSelectedUserId]);
+
   const [practiceLogs, setPracticeLogs] = useState<PracticeLog[]>([]);
   const [lessonRecords, setLessonRecords] = useState<LessonRecord[]>([]);
   const [userStats, setUserStats] = useState<{ totalWords: number; difficultWords: number; masteryCount: number } | null>(null);

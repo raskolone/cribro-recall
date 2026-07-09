@@ -4,11 +4,15 @@ import Card from '../ui/Card';
 import Select from '../ui/Select';
 import Button from '../ui/Button';
 import { useVocabulary } from '../../context/VocabularyContext';
+import { useSettings } from '../../context/SettingsContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { FREQUENCIES } from '../../constants';
 import { RevisionFrequency } from '../../types';
 
 const SettingsScreen: React.FC = () => {
     const { frequency, setFrequency, deleteAllWords, words } = useVocabulary();
+    const { showLearningProgressChart, setShowLearningProgressChart } = useSettings();
+    const { language } = useLanguage();
     const [isDeleting, setIsDeleting] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -42,7 +46,7 @@ const SettingsScreen: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl font-extrabold tracking-tight mb-6">Settings</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight mb-6">{language === 'pl' ? 'Ustawienia' : 'Settings'}</h1>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
