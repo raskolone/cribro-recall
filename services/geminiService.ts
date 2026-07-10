@@ -53,7 +53,7 @@ export const generateVocabulary = async (language: Language, difficulty: Difficu
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -286,7 +286,7 @@ export const generateTranslationExercises = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: finalPrompt,
       config: {
         systemInstruction: "Jesteś inteligentnym asystentem edukacyjnym ZEIAN. Twoim najważniejszym celem jest: 1. Bezwzględne dopasowanie poziomu (jeśli A1, A2 lub A2/B1 to zdania proste, krótkie; jeśli poziomy pośrednie jak B1/B2 to trudność zbilansowana). 2. Precyzyjne zrozumienie kontekstu ucznia (np. jeśli produkuje części do samolotów, nie twórz zdań, w których lata samolotami, nie twórz sztucznych kontekstów). 3. Nieustanne weryfikowanie historii lekcji i poprzednich zdań jako bazy referencyjnej trudności. Używaj historii, by nie tworzyć zdań bardziej skomplikowanych niż te już przerobione oraz do unikania powtórek w najnowszych 3 sesjach.",
@@ -443,7 +443,7 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro", // Fallback to 1.5 pro since 3.1 pro doesn't exist yet in the SDK
+      model: "gemini-2.5-flash", // Fallback to 1.5 pro since 3.1 pro doesn't exist yet in the SDK
       contents: contents,
       config: {
         systemInstruction: "You are an expert language teacher. Generate customized tests based on the student's lesson history, profile, and level. Ensure questions are practical and match the exact material covered.",
@@ -522,7 +522,7 @@ Only return the sentence, nothing else.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
     });
     return response.text.trim();
@@ -598,7 +598,7 @@ Zwróć 10 poprawionych zadań jako JSON (tablica obiektów). Zastąp te, które
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
