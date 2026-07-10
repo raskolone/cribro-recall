@@ -400,7 +400,8 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
       setShowDriveModal(true);
       setDriveError(null);
       const token = await connectGoogleWorkspace();
-      const res = await fetch('https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.document" or mimeType="application/pdf" or mimeType="text/plain"&fields=files(id,name,mimeType)', {
+      const query = encodeURIComponent("mimeType='application/vnd.google-apps.document' or mimeType='application/pdf' or mimeType='text/plain'");
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,mimeType)`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();

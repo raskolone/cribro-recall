@@ -422,7 +422,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       setShowDriveModal(true);
       setDriveError(null);
       const token = await connectGoogleDrive();
-      const res = await fetch('https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.document" or mimeType="application/pdf"&fields=files(id,name,mimeType)', {
+      const query = encodeURIComponent("mimeType='application/vnd.google-apps.document' or mimeType='application/pdf'");
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,mimeType)`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
