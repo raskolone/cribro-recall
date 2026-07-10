@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from 'react';
+const fs = require('fs');
+let code = fs.readFileSync('components/ui/FullScreenAILoading.tsx', 'utf-8');
+
+const replacement = `import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 
 interface FullScreenAILoadingProps {
@@ -58,4 +61,7 @@ const FullScreenAILoading: React.FC<FullScreenAILoadingProps> = ({ message }) =>
   );
 };
 
-export default FullScreenAILoading;
+export default FullScreenAILoading;`;
+
+fs.writeFileSync('components/ui/FullScreenAILoading.tsx', replacement);
+console.log("Updated FullScreenAILoading.tsx");
