@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 
 interface FullScreenAILoadingProps {
@@ -25,8 +26,8 @@ const FullScreenAILoading: React.FC<FullScreenAILoadingProps> = ({ message }) =>
     return () => clearInterval(interval);
   }, []);
 
-  return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/40 backdrop-blur-lg">
+  const content = (
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/40 backdrop-blur-lg">
       <div className="relative flex items-center justify-center">
         <motion.div
           animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
@@ -56,6 +57,8 @@ const FullScreenAILoading: React.FC<FullScreenAILoadingProps> = ({ message }) =>
       </motion.div>
     </div>
   );
+
+  return createPortal(content, document.body);
 };
 
 export default FullScreenAILoading;
