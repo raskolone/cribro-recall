@@ -13,9 +13,9 @@ interface UserWithId extends User {
   id: string;
 }
 
-interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: any) => void; initialSelectedUserId?: string | null; }
+interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: any) => void; initialSelectedUserId?: string | null; onUserSelect?: (userId: string | null) => void; }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId, onUserSelect }) => {
   const { sets: adminSets, getFlashcards } = useFlashcards();
   const { connectGoogleDrive } = useAuth();
   const [users, setUsers] = useState<UserWithId[]>([]);
@@ -133,8 +133,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    if (onViewChange) onViewChange(`admin-${tab}`);
   };
+  useEffect(() => {
+    if (selectedUser) {
+      setProfileForm({
+        firstName: selectedUser.firstName || '',
+        lastName: selectedUser.lastName || '',
+        level: selectedUser.level || '',
+        description: selectedUser.description || '',
+        aiPrompt: selectedUser.aiPrompt || ''
+      });
+    }
+  }, [selectedUser]);
+
   const [profileForm, setProfileForm] = useState({
     firstName: '',
     lastName: '',
@@ -416,8 +427,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       });
       const data = await res.json();
       setDriveFiles(data.files || []);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      if (err.code !== 'auth/popup-closed-by-user' && !err.message?.includes('popup')) {
+        console.error(err);
+      }
       if (err.code === 'auth/popup-closed-by-user' || err.message?.includes('popup')) {
         setDriveError('Aby zalogować się do Google Drive, otwórz aplikację w nowej karcie (przycisk w prawym górnym rogu) lub zezwól na wyskakujące okienka.');
       } else {
@@ -455,9 +468,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       }
 
       await handleBatchImport(textContent, pdfBase64);
-    } catch (err) {
-      console.error(err);
-      alert('Błąd przetwarzania pliku: ' + (err.message || 'Nieznany błąd'));
+    } catch (err: any) {
+      if (err.code !== 'auth/popup-closed-by-user' && !err.message?.includes('popup')) {
+        console.error(err);
+      }
+      if (err.code === 'auth/popup-closed-by-user' || err.message?.includes('popup')) {
+        alert('Aby zalogować się do Google Drive, otwórz aplikację w nowej karcie (przycisk w prawym górnym rogu) lub zezwól na wyskakujące okienka.');
+      } else {
+        alert('Błąd przetwarzania pliku: ' + (err.message || 'Nieznany błąd'));
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -833,6 +852,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
             <button 
               onClick={() => {
                 setSelectedUser(null);
+                if (onUserSelect) onUserSelect(null);
                 setPracticeLogs([]);
                 setLessonRecords([]);
               }}
@@ -844,51 +864,48 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
               Wróć do listy kursantów
             </button>
           </div>
-          <Card className="space-y-6">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h2 className="text-2xl font-bold">
-                {selectedUser.firstName || selectedUser.lastName ? `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() : selectedUser.username}
-              </h2>
-              <p className="text-content-muted">
-                {selectedUser.email} 
-                {selectedUser.level && <span className="ml-3 px-2 py-0.5 bg-primary/20 text-primary rounded text-xs uppercase font-bold">{selectedUser.level}</span>}
-              </p>
-              <div className="mt-4">
-                <span className="text-sm font-bold text-white block mb-2">Uprawnienia:</span>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => handleRoleChange('user')}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'user' ? 'bg-primary text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
-                  >
-                    Kursant (User)
-                  </button>
-                  <button
-                    onClick={() => handleRoleChange('admin')}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'admin' ? 'bg-red-500 text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
-                  >
-                    Admin
-                  </button>
-                  <button
-                    onClick={() => handleRoleChange('admin_student')}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'admin_student' ? 'bg-purple-500 text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
-                  >
-                    Admin + Kursant
-                  </button>
+          <Card className="bg-base-200/50 mb-6">
+            <div className="flex items-center gap-6">
+              <div className="w-24 h-24 rounded-full bg-base-300 flex items-center justify-center font-bold text-3xl text-primary flex-shrink-0 relative group overflow-hidden border border-white/10">
+                {selectedUser.photoURL ? (
+                  <img src={selectedUser.photoURL} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  selectedUser.firstName ? selectedUser.firstName[0].toUpperCase() : selectedUser.username[0].toUpperCase()
+                )}
+                <div onClick={() => {
+                  const newUrl = prompt('Podaj URL do nowego awatara:', selectedUser.photoURL || '');
+                  if (newUrl !== null) {
+                    const userRef = doc(db, 'users', selectedUser.id);
+                    updateDoc(userRef, { photoURL: newUrl }).then(() => {
+                      const updated = { ...selectedUser, photoURL: newUrl };
+                      setSelectedUser(updated);
+                      setUsers(users.map(u => u.id === updated.id ? updated : u));
+                    }).catch(err => alert('Błąd: ' + err.message));
+                  }
+                }} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                  <span className="text-xs text-white">Zmień awatar</span>
                 </div>
               </div>
-              <div className="mt-2 text-sm text-content-muted flex flex-wrap gap-x-4 gap-y-2">
-                <div><span className="font-bold text-white">Logins:</span> {selectedUser.loginCount || 0}</div>
-                <div><span className="font-bold text-white">Last Login:</span> {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString() : 'Never'}</div>
-                <div><span className="font-bold text-white">Exercises:</span> {practiceLogs.length}</div>
+              <div>
+                <h2 className="text-2xl font-bold">
+                  {selectedUser.firstName || selectedUser.lastName ? `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() : selectedUser.username}
+                </h2>
+                <p className="text-content-muted mt-1">
+                  {selectedUser.email} 
+                  {selectedUser.level && <span className="ml-3 px-2 py-0.5 bg-primary/20 text-primary rounded text-xs uppercase font-bold">{selectedUser.level}</span>}
+                </p>
+                <div className="mt-3 text-sm text-content-muted flex flex-wrap gap-x-6 gap-y-2">
+                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-400"></div><span className="font-bold text-white">Rola:</span> {selectedUser.role === 'admin' ? 'Admin' : selectedUser.role === 'admin_student' ? 'Admin + Kursant' : 'Kursant'}</div>
+                  <div><span className="font-bold text-white">Logowania:</span> {selectedUser.loginCount || 0}</div>
+                  <div><span className="font-bold text-white">Ostatnio:</span> {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString() : 'Nigdy'}</div>
+                </div>
               </div>
             </div>
-          </div>
           </Card>
           {activeTab ? (
             <div className="mb-6 flex items-center gap-4">
               <button 
-                onClick={() => { setActiveTab(null); if (onViewChange) onViewChange('admin'); }}
+                onClick={() => { setActiveTab(null); }}
                 className="flex items-center gap-2 text-content-muted hover:text-white transition-colors bg-base-200/50 px-4 py-2 rounded-xl border border-white/5 hover:border-primary/50"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -906,7 +923,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
               </h2>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+              <button onClick={() => handleTabChange('profile')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                </div>
+                <h3 className="font-bold text-lg">Profil kursanta</h3>
+              </button>
               <button onClick={() => handleTabChange('stats')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
@@ -919,12 +942,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
                 </div>
                 <h3 className="font-bold text-lg">Historia</h3>
               </button>
-              <button onClick={() => handleTabChange('profile')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                </div>
-                <h3 className="font-bold text-lg">Profil kursanta</h3>
-              </button>
               <button onClick={() => handleTabChange('tests')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
@@ -936,12 +953,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
                 </div>
                 <h3 className="font-bold text-lg">Słownictwo</h3>
-              </button>
-              <button onClick={() => handleTabChange('contact')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                </div>
-                <h3 className="font-bold text-lg">Kontakt</h3>
               </button>
             </div>
           )}
@@ -1095,8 +1106,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
                   <option value="">Wybierz poziom...</option>
                   <option value="A1">A1</option>
                   <option value="A2">A2</option>
+                  <option value="A2/B1">A2/B1</option>
                   <option value="B1">B1</option>
+                  <option value="B1/B2">B1/B2</option>
                   <option value="B2">B2</option>
+                  <option value="B2/C1">B2/C1</option>
                   <option value="C1">C1</option>
                   <option value="C2">C2</option>
                 </select>
@@ -1136,6 +1150,91 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
                   Zapisz profil
                 </Button>
               </div>
+              
+              <div className="mt-8 pt-6 border-t border-white/10">
+                  <h3 className="text-lg font-bold mb-4">Ustawienia konta</h3>
+                  
+                  <div className="space-y-6">
+                    <div>
+                      <span className="text-sm font-bold text-content-muted block mb-2">Uprawnienia:</span>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => handleRoleChange('user')}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'user' ? 'bg-primary text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
+                        >
+                          Kursant (User)
+                        </button>
+                        <button
+                          onClick={() => handleRoleChange('admin')}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'admin' ? 'bg-red-500 text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
+                        >
+                          Admin
+                        </button>
+                        <button
+                          onClick={() => handleRoleChange('admin_student')}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'admin_student' ? 'bg-purple-500 text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
+                        >
+                          Admin + Kursant
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <span className="text-sm font-bold text-content-muted block mb-2">Zarządzanie kontem:</span>
+                      <div className="flex flex-wrap gap-2">
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          onClick={() => {
+                            const newName = prompt('Podaj nową nazwę (username):', selectedUser.username);
+                            if (newName && newName !== selectedUser.username) {
+                              const userRef = doc(db, 'users', selectedUser.id);
+                              updateDoc(userRef, { username: newName }).then(() => {
+                                const updated = { ...selectedUser, username: newName };
+                                setSelectedUser(updated);
+                                setUsers(users.map(u => u.id === updated.id ? updated : u));
+                                alert('Zmieniono nazwę.');
+                              }).catch(err => alert('Błąd: ' + err.message));
+                            }
+                          }}
+                        >
+                          Zmień nazwę konta
+                        </Button>
+                        <Button 
+                          variant="secondary" 
+                          size="sm"
+                          className={selectedUser.isSuspended ? "bg-green-500/20 text-green-500 hover:bg-green-500/30 border-transparent" : "bg-orange-500/20 text-orange-500 hover:bg-orange-500/30 border-transparent"}
+                          onClick={() => {
+                            const newSuspended = !selectedUser.isSuspended;
+                            const userRef = doc(db, 'users', selectedUser.id);
+                            updateDoc(userRef, { isSuspended: newSuspended }).then(() => {
+                              const updated = { ...selectedUser, isSuspended: newSuspended };
+                              setSelectedUser(updated);
+                              setUsers(users.map(u => u.id === updated.id ? updated : u));
+                            }).catch(err => alert('Błąd: ' + err.message));
+                          }}
+                        >
+                          {selectedUser.isSuspended ? 'Odwieś konto' : 'Zawieś konto'}
+                        </Button>
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          className="bg-red-500/20 text-red-500 hover:bg-red-500/30 border-transparent"
+                          onClick={() => {
+                            if (confirm('Czy na pewno chcesz usunąć to konto? Tej operacji nie można cofnąć.')) {
+                              deleteDoc(doc(db, 'users', selectedUser.id)).then(() => {
+                                setUsers(users.filter(u => u.id !== selectedUser.id));
+                                setSelectedUser(null);
+                              }).catch(err => alert('Błąd: ' + err.message));
+                            }
+                          }}
+                        >
+                          Skasuj konto
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
             </div>
           )}
           </>

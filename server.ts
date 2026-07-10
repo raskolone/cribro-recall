@@ -213,7 +213,7 @@ Zwróć wynik jako JSON z tablicą obiektów o polu "lessons". Każdy obiekt lek
                     thingsToImprove: { type: Type.STRING },
                     suggestedFollowUp: { type: Type.STRING },
                   },
-                  required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
+                  required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText"]
                 }
               }
             },

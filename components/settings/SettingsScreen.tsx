@@ -60,7 +60,7 @@ const SettingsScreen: React.FC = () => {
                     <div className="space-y-4">
                         <div>
                             <p className="text-sm text-content-muted mb-2">
-                                {language === 'pl' ? 'Powiąż swoje konto z Google, aby móc logować się za jego pomocą i korzystać z Google Drive.' : 'Link your account with Google to log in via Google and use Google Drive.'}
+                                {language === 'pl' ? 'Powiąż swoje konto z Google, aby móc logować się za jego pomocą i importować słówka z Google Drive i Google Docs.' : 'Link your account with Google to log in via Google and import words from Google Drive and Google Docs.'}
                             </p>
                             {auth.currentUser?.providerData?.some((p: any) => p.providerId === 'google.com') ? (
                                 <div className="text-green-500 font-bold text-sm">✓ {language === 'pl' ? 'Konto połączone z Google' : 'Account linked to Google'}</div>

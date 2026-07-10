@@ -116,6 +116,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   }, [step, onExerciseStateChange]);
   const [vocabularySets, setVocabularySets] = useState<VocabularySet[]>([]);
   const [isLessonsExpanded, setIsLessonsExpanded] = useState<boolean>(false);
+  const [isCustomSetsExpanded, setIsCustomSetsExpanded] = useState<boolean>(false);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -362,8 +363,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       console.error(err);
       if (!isAppending) {
         setError(language === 'pl' 
-           ? 'Wystąpił błąd podczas generowania ćwiczeń przez AI. Upewnij się, że Twój klucz API w Settings > Secrets jest poprawny.' 
-           : 'Failed to generate exercises from AI. Please check your API key in Settings > Secrets.');
+           ? `Wystąpił błąd AI: ${err.message || 'Nieznany błąd'}` 
+           : `AI Error: ${err.message || 'Unknown error'}`);
       }
     } finally {
       if (isAppending) setIsGeneratingMore(false);
@@ -666,7 +667,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                     onChange={(e) => setLevel(e.target.value)}
                     className="bg-base-200/40 backdrop-blur-md border border-white/10 text-sm font-bold text-primary rounded-lg p-2 outline-none focus:border-primary/50 cursor-pointer"
                   >
-                    {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((lvl) => (
+                    {['A1', 'A2', 'A2/B1', 'B1', 'B1/B2', 'B2', 'B2/C1', 'C1', 'C2'].map((lvl) => (
                       <option key={lvl} value={lvl}>{lvl}</option>
                     ))}
                   </select>
@@ -684,59 +685,24 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                 <label className="block text-sm font-bold text-content-muted mb-2">
                   {language === 'pl' ? 'Baza słownictwa' : 'Vocabulary base'}
                 </label>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-3 p-3 bg-base-200/40 backdrop-blur-md rounded-lg border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.1)] cursor-pointer hover:border-white/10 transition-colors">
-                    <input 
-                      type="radio" 
-                      name="vocabSource" 
-                      checked={selectedSetId === 'all'} 
-                      onChange={() => setSelectedSetId('all')}
-                      className="text-primary focus:ring-primary/50 bg-base-300 border-base-300"
-                    />
-                    <div className="text-sm">
-                      <div className="font-bold">{language === 'pl' ? 'Wszystkie moje przypisane zestawy' : 'All my assigned word sets'}</div>
-                      <div className="text-xs text-content-muted">{language === 'pl' ? `Wplecie słówka z Twoich ${availableSets.length} zestawów` : `Integrates terms from your ${availableSets.length} sets`}</div>
-                    </div>
-                  </label>
-
-                  {availableSets.map(set => {
-                    const isNewSet = set.title.toLowerCase().includes('nowy zestaw');
-                    const displayTitle = isNewSet && set.lessonTopic 
-                      ? (language === 'pl' ? `Słownictwo z: ${set.lessonTopic}` : `Vocabulary from: ${set.lessonTopic}`)
-                      : set.title;
-                      
-                    return (
-                      <label key={set.id} className="flex items-center gap-3 p-3 bg-base-200/40 backdrop-blur-md rounded-lg border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.1)] cursor-pointer hover:border-white/10 transition-colors">
-                        <input 
-                          type="radio" 
-                          name="vocabSource" 
-                          checked={selectedSetId === set.id} 
-                          onChange={() => setSelectedSetId(set.id)}
-                          className="text-primary focus:ring-primary/50 bg-base-300 border-base-300"
-                        />
-                        <div className="text-sm">
-                          <div className="font-bold">{displayTitle}</div>
-                          {!isNewSet && set.lessonTopic && <div className="text-xs text-amber-500 italic">Topic: {set.lessonTopic}</div>}
-                        </div>
-                      </label>
-                    );
-                  })}
-
+                <div className="space-y-4">
+                  {/* Vocabulary from lessons (Moved to top) */}
                   {vocabularySets.length > 0 && (
-                    <div className="border border-white/10 shadow-lg rounded-lg overflow-hidden bg-base-200/40 backdrop-blur-md">
+                    <div className="border border-white/20 shadow-lg rounded-xl overflow-hidden bg-base-200/60 backdrop-blur-md">
                       <button
-                        className="w-full flex items-center justify-between p-3 font-bold text-sm hover:bg-base-300/50 transition-colors"
+                        className={`w-full flex items-center justify-between p-4 font-bold text-base transition-colors ${selectedSetId.startsWith('vocab-') ? 'bg-primary/5 text-primary' : 'hover:bg-base-300/60'}`}
                         onClick={() => setIsLessonsExpanded(!isLessonsExpanded)}
                       >
-                        <div className="flex items-center gap-2">
-                          <span>📚</span>
+                        <div className="flex items-center gap-3 text-primary">
+                          <span className="text-xl">📚</span>
                           {language === 'pl' ? 'Słownictwo z moich lekcji' : 'Vocabulary from my lessons'}
                         </div>
                         <motion.div
                           animate={{ rotate: isLessonsExpanded ? 180 : 0 }}
                           transition={{ duration: 0.3 }}
+                          className="text-primary"
                         >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
                         </motion.div>
                       </button>
                       <AnimatePresence>
@@ -748,19 +714,19 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                             transition={{ duration: 0.3 }}
                             className="overflow-hidden"
                           >
-                            <div className="p-2 flex flex-col gap-2 border-t border-base-300 bg-base-200">
+                            <div className="p-3 flex flex-col gap-2 border-t border-white/10 bg-base-200/50">
                               {vocabularySets.map(set => (
-                                <label key={`vocab-${set.id}`} className="flex items-center gap-3 p-3 bg-base-100 rounded-lg border border-base-300 cursor-pointer hover:border-white/10 transition-colors">
+                                <label key={`vocab-${set.id}`} className={`flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer shadow-sm ${selectedSetId === `vocab-${set.id}` ? 'bg-primary/10 border-primary/50 ring-1 ring-primary/50' : 'bg-base-100/80 border-white/5 hover:border-primary/30'}`}>
                                   <input 
                                     type="radio" 
                                     name="vocabSource" 
                                     checked={selectedSetId === `vocab-${set.id}`} 
                                     onChange={() => setSelectedSetId(`vocab-${set.id}`)}
-                                    className="text-primary focus:ring-primary/50 bg-base-300 border-base-300"
+                                    className="w-5 h-5 text-primary focus:ring-primary/50 bg-base-300 border-base-300"
                                   />
                                   <div className="text-sm">
-                                    <div className="font-bold">{language === 'pl' ? 'Lekcja: ' : 'Lesson: '}{set.topic}</div>
-                                    <div className="text-xs text-amber-500 italic">
+                                    <div className="font-bold text-base">{language === 'pl' ? 'Lekcja: ' : 'Lesson: '}{set.topic}</div>
+                                    <div className="text-xs text-amber-500 italic mt-1">
                                       {language === 'pl' ? 'Z dnia: ' : 'Date: '}{new Date(set.date).toLocaleDateString()} &bull; {set.itemCount} {language === 'pl' ? 'słów' : 'words'}
                                     </div>
                                   </div>
@@ -773,19 +739,78 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                     </div>
                   )}
 
-                  <label className="flex items-center gap-3 p-3 bg-base-200/40 backdrop-blur-md rounded-lg border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.1)] cursor-pointer hover:border-white/10 transition-colors">
-                    <input 
-                      type="radio" 
-                      name="vocabSource" 
-                      checked={selectedSetId === 'general'} 
-                      onChange={() => setSelectedSetId('general')}
-                      className="text-primary focus:ring-primary/50 bg-base-300 border-base-300"
-                    />
-                    <div className="text-sm">
-                      <div className="font-bold">{language === 'pl' ? 'Dowolne słownictwo ogólne' : 'General English vocabulary'}</div>
-                      <div className="text-xs text-content-muted">{language === 'pl' ? 'AI dobierze optymalne słówka dla wybranego poziomu' : 'AI chooses best vocabulary suited for target level'}</div>
-                    </div>
-                  </label>
+                  <div className="space-y-3">
+                    <label className={`flex items-center gap-4 p-5 rounded-xl border transition-all cursor-pointer shadow-sm ${selectedSetId === 'all' ? 'bg-primary/10 border-primary/50 ring-1 ring-primary/50' : 'bg-base-200/60 backdrop-blur-md border-white/10 hover:border-primary/30'}`}>
+                      <input 
+                        type="radio" 
+                        name="vocabSource" 
+                        checked={selectedSetId === 'all'} 
+                        onChange={() => setSelectedSetId('all')}
+                        className="w-5 h-5 text-primary focus:ring-primary/50 bg-base-300 border-base-300"
+                      />
+                      <div>
+                        <div className="font-bold text-base">{language === 'pl' ? 'Wszystkie moje przypisane zestawy' : 'All my assigned word sets'}</div>
+                        <div className="text-sm text-content-muted mt-0.5">{language === 'pl' ? `Wplecie słówka z Twoich ${availableSets.length} zestawów` : `Integrates terms from your ${availableSets.length} sets`}</div>
+                      </div>
+                    </label>
+
+                    {availableSets.length > 0 && (
+                      <div className="border border-white/10 shadow-lg rounded-xl overflow-hidden bg-base-200/40 backdrop-blur-md">
+                        <button
+                          type="button"
+                          className={`w-full flex items-center justify-between p-4 font-bold text-base transition-colors ${(selectedSetId !== 'all' && selectedSetId !== 'general' && !selectedSetId.startsWith('vocab-')) ? 'bg-primary/5 text-primary' : 'hover:bg-base-300/50'}`}
+                          onClick={() => setIsCustomSetsExpanded(!isCustomSetsExpanded)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">✏️</span>
+                            {language === 'pl' ? 'Własne zestawy' : 'Custom sets'}
+                          </div>
+                          <motion.div
+                            animate={{ rotate: isCustomSetsExpanded ? 180 : 0 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                          </motion.div>
+                        </button>
+                        <AnimatePresence>
+                          {isCustomSetsExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.3 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="p-3 flex flex-col gap-2 border-t border-white/10 bg-base-200/30">
+                                {availableSets.map(set => {
+                                  const isNewSet = set.title.toLowerCase().includes('nowy zestaw');
+                                  const displayTitle = isNewSet && set.lessonTopic 
+                                    ? (language === 'pl' ? `Słownictwo z: ${set.lessonTopic}` : `Vocabulary from: ${set.lessonTopic}`)
+                                    : set.title;
+                                  
+                                  return (
+                                    <label key={set.id} className={`flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer shadow-sm ${selectedSetId === set.id ? 'bg-primary/10 border-primary/50 ring-1 ring-primary/50' : 'bg-base-100/60 border-white/5 hover:border-primary/30'}`}>
+                                      <input 
+                                        type="radio" 
+                                        name="vocabSource" 
+                                        checked={selectedSetId === set.id} 
+                                        onChange={() => setSelectedSetId(set.id)}
+                                        className="w-5 h-5 text-primary focus:ring-primary/50 bg-base-300 border-base-300"
+                                      />
+                                      <div>
+                                        <div className="font-bold text-base">{displayTitle}</div>
+                                        {!isNewSet && set.lessonTopic && <div className="text-sm text-amber-500 italic mt-0.5">Topic: {set.lessonTopic}</div>}
+                                      </div>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

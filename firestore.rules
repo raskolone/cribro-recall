@@ -225,6 +225,12 @@ service cloud.firestore {
         allow update: if isOwner(userId) || isAdmin();
         allow delete: if isAdmin();
       }
+      match /weaknesses/{weaknessId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isAdmin();
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+      }
     }
 
     match /vocabulary/{vocabId} {

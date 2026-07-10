@@ -24,6 +24,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateUserStreak: () => Promise<{streakCount: number, showConfetti: boolean}>;
   connectGoogleDrive: () => Promise<string>;
+  connectGoogleWorkspace: () => Promise<string>;
   linkGoogleAccount: () => Promise<void>;
 }
 
@@ -127,6 +128,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const provider = new GoogleAuthProvider();
       // Add drive scope just in case they link now, so they have it
       provider.addScope('https://www.googleapis.com/auth/drive.readonly');
+      provider.addScope('https://www.googleapis.com/auth/documents.readonly');
       await linkWithPopup(auth.currentUser, provider);
     } catch (error) {
       console.error('Failed to link Google account:', error);
@@ -146,8 +148,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return credential.accessToken;
       }
       throw new Error('No access token received');
-    } catch (error) {
-      console.error('Failed to connect Google Drive:', error);
+    } catch (error: any) {
+      if (error.code !== 'auth/popup-closed-by-user') {
+        console.error('Failed to connect Google Drive:', error);
+      }
+      throw error;
+    }
+  };
+
+  const connectGoogleWorkspace = async (): Promise<string> => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/drive.readonly');
+      provider.addScope('https://www.googleapis.com/auth/documents.readonly');
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      
+      if (credential?.accessToken) {
+        localStorage.setItem('google_workspace_access_token', credential.accessToken);
+        return credential.accessToken;
+      }
+      throw new Error('No access token received');
+    } catch (error: any) {
+      if (error.code !== 'auth/popup-closed-by-user') {
+        console.error('Failed to connect Google Workspace:', error);
+      }
       throw error;
     }
   };
@@ -252,7 +277,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthReady, login, loginWithEmail, registerWithEmail, loginAnonymously, logout, updateUserStreak, connectGoogleDrive, linkGoogleAccount }}>
+    <AuthContext.Provider value={{ user, isAuthReady, login, loginWithEmail, registerWithEmail, loginAnonymously, logout, updateUserStreak, connectGoogleDrive, connectGoogleWorkspace, linkGoogleAccount }}>
       {children}
     </AuthContext.Provider>
   );

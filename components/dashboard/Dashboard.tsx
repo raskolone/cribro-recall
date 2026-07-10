@@ -14,7 +14,6 @@ import FlashcardEditScreen from '../flashcards/FlashcardEditScreen';
 import FlashcardStudyScreen from '../flashcards/FlashcardStudyScreen';
 import FlashcardStatsScreen from '../flashcards/FlashcardStatsScreen';
 import AdminPanel from '../admin/AdminPanel';
-import TeacherQuickAccess from './TeacherQuickAccess';
 import LearningProgressChart from './LearningProgressChart';
 import { useSettings } from '../../context/SettingsContext';
 import AIExerciseGeneratorScreen from './AIExerciseGeneratorScreen';
@@ -339,7 +338,7 @@ const Dashboard: React.FC = () => {
       return <FlashcardPresentationScreen setId={activeSetId} onBack={() => setView('flashcard-sets')} />;
     }
     if (view.startsWith('admin') && (user?.role === 'admin' || user?.role === 'admin_student')) {
-      return <AdminPanel initialTab={view === 'admin' ? null : view.replace('admin-', '')} onViewChange={setView} initialSelectedUserId={adminSelectedUserId} />;
+      return <AdminPanel initialTab={view === 'admin' ? null : view.replace('admin-', '')} onViewChange={setView} initialSelectedUserId={adminSelectedUserId} onUserSelect={setAdminSelectedUserId} />;
     }
     if (view === 'ai-generator') {
       return <AIExerciseGeneratorScreen key={`ai-gen-${exerciseResetKey}`} initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />;
@@ -354,51 +353,38 @@ const Dashboard: React.FC = () => {
     // Default to dashboard view
     const isTeacher = user?.role === 'admin' || user?.role === 'admin_student';
 
-    if (user?.role === 'admin') {
-      return (
-        <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">
-          <TeacherQuickAccess 
-            onNavigate={(v) => {
-              setAdminSelectedUserId(null);
-              setView(v as View);
-            }}
-            onSelectStudent={(s) => {
-              setAdminSelectedUserId(s.id);
-              setView('admin');
-            }}
-          />
-        </div>
-      );
-    }
+
 
     return (
       <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">
-        {user?.role === 'admin_student' && (
-          <TeacherQuickAccess 
-            onNavigate={(v) => {
-              setAdminSelectedUserId(null);
-              setView(v as View);
-            }}
-            onSelectStudent={(s) => {
-              setAdminSelectedUserId(s.id);
-              setView('admin');
-            }}
-          />
-        )}
+
         
         {isTeacher ? (
-          <div className="border border-white/10 rounded-2xl overflow-hidden bg-base-200/20 backdrop-blur-sm mt-4">
-            <button 
-              className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors text-left"
-              onClick={() => setIsStudentViewCollapsed(!isStudentViewCollapsed)}
-            >
-              <h2 className="text-xl font-bold">{language === 'pl' ? 'Widok kursanta' : 'Student View'}</h2>
-              {isStudentViewCollapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
-            </button>
-            {!isStudentViewCollapsed && (
-              <div className="p-6 border-t border-white/10">
-                <AIExerciseGeneratorScreen key={exerciseResetKey} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />
+          <div className="space-y-6">
+            <AdminPanel initialTab={null} onViewChange={setView} initialSelectedUserId={adminSelectedUserId} onUserSelect={setAdminSelectedUserId} />
+            
+            {user?.role === 'admin_student' && (
+              <>
+                <div className="flex items-center gap-4 my-10 pt-4">
+                  <div className="h-px bg-white/10 flex-1"></div>
+                  <div className="text-content-muted text-sm font-bold uppercase tracking-wider">{language === 'pl' ? 'Twoja strefa nauki' : 'Your Learning Zone'}</div>
+                  <div className="h-px bg-white/10 flex-1"></div>
+                </div>
+                <div className="border border-white/10 rounded-2xl overflow-hidden bg-base-200/20 backdrop-blur-sm mt-8">
+                <button 
+                  className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors text-left"
+                  onClick={() => setIsStudentViewCollapsed(!isStudentViewCollapsed)}
+                >
+                  <h2 className="text-xl font-bold">{language === 'pl' ? 'Widok kursanta' : 'Student View'}</h2>
+                  {isStudentViewCollapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
+                </button>
+                {!isStudentViewCollapsed && (
+                  <div className="p-6 border-t border-white/10">
+                    <AIExerciseGeneratorScreen key={exerciseResetKey} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />
+                  </div>
+                )}
               </div>
+              </>
             )}
           </div>
         ) : (
@@ -407,23 +393,25 @@ const Dashboard: React.FC = () => {
           </div>
         )}
         
-        <div className="mt-8">
-          <div className="border border-white/10 rounded-2xl overflow-hidden bg-base-200/20 backdrop-blur-sm">
-            <button 
-              className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors text-left"
-              onClick={() => setIsProgressCollapsed(!isProgressCollapsed)}
-            >
-              <h2 className="text-xl font-bold">{language === 'pl' ? 'Postępy w nauce' : 'Learning Progress'}</h2>
-              {isProgressCollapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
-            </button>
-            {!isProgressCollapsed && (
-              <div className="p-6 border-t border-white/10 space-y-6">
-                <ProgressOverview />
-                {showLearningProgressChart && <LearningProgressChart />}
-              </div>
-            )}
+        {user?.role !== 'admin' && (
+          <div className="mt-8">
+            <div className="border border-white/10 rounded-2xl overflow-hidden bg-base-200/20 backdrop-blur-sm">
+              <button 
+                className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors text-left"
+                onClick={() => setIsProgressCollapsed(!isProgressCollapsed)}
+              >
+                <h2 className="text-xl font-bold">{language === 'pl' ? 'Postępy w nauce' : 'Learning Progress'}</h2>
+                {isProgressCollapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
+              </button>
+              {!isProgressCollapsed && (
+                <div className="p-6 border-t border-white/10 space-y-6">
+                  <ProgressOverview />
+                  {showLearningProgressChart && <LearningProgressChart />}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };

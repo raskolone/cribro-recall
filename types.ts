@@ -20,6 +20,7 @@ export interface User {
   level?: string;
   description?: string;
   aiPrompt?: string;
+  isSuspended?: boolean;
 }
 
 export interface WordSet {

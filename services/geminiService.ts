@@ -267,7 +267,7 @@ export const generateTranslationExercises = async (
   const basePrompt = `Generate a list of ${numSentences} unique sentences in Polish for a student to translate into English.
   
   CRITICAL LEVEL REQUIREMENT: The exercises MUST be strictly adequate for the selected CEFR level: ${level}. 
-  If the level is A1 or A2, the sentences MUST be simple, short, and use basic grammar so the student does not get discouraged. Do NOT overcomplicate sentences for lower levels.
+  If the level is A1, A2, or A2/B1, the sentences MUST be simple, short, and use basic grammar so the student does not get discouraged. If it's an intermediate level like B1/B2, balance the difficulty accordingly. Do NOT overcomplicate sentences for lower levels.
   
   ${words.length > 0 ? `The sentences should incorporate or test the following English vocabulary/concepts: ${words.join(', ')}.` : ''}
   
@@ -289,7 +289,7 @@ export const generateTranslationExercises = async (
       model: "gemini-2.5-flash",
       contents: finalPrompt,
       config: {
-        systemInstruction: "Jesteś inteligentnym asystentem edukacyjnym ZEIAN. Twoim najważniejszym celem jest: 1. Bezwzględne dopasowanie poziomu (jeśli A1/A2 to zdania proste, krótkie). 2. Precyzyjne zrozumienie kontekstu ucznia (np. jeśli produkuje części do samolotów, nie twórz zdań, w których lata samolotami, nie twórz sztucznych kontekstów). 3. Nieustanne weryfikowanie historii lekcji i poprzednich zdań jako bazy referencyjnej trudności. Używaj historii, by nie tworzyć zdań bardziej skomplikowanych niż te już przerobione oraz do unikania powtórek w najnowszych 3 sesjach.",
+        systemInstruction: "Jesteś inteligentnym asystentem edukacyjnym ZEIAN. Twoim najważniejszym celem jest: 1. Bezwzględne dopasowanie poziomu (jeśli A1, A2 lub A2/B1 to zdania proste, krótkie; jeśli poziomy pośrednie jak B1/B2 to trudność zbilansowana). 2. Precyzyjne zrozumienie kontekstu ucznia (np. jeśli produkuje części do samolotów, nie twórz zdań, w których lata samolotami, nie twórz sztucznych kontekstów). 3. Nieustanne weryfikowanie historii lekcji i poprzednich zdań jako bazy referencyjnej trudności. Używaj historii, by nie tworzyć zdań bardziej skomplikowanych niż te już przerobione oraz do unikania powtórek w najnowszych 3 sesjach.",
         responseMimeType: "application/json",
         responseSchema: translationExerciseSchema,
       },
@@ -302,9 +302,9 @@ export const generateTranslationExercises = async (
       jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
     }
     return JSON.parse(jsonText) as TranslationExercise[];
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating translation exercises:", error);
-    throw new Error("Failed to generate translation exercises from AI.");
+    throw new Error(error.message || "Failed to generate translation exercises from AI.");
   }
 };
 

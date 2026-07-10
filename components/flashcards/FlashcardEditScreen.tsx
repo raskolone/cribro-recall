@@ -75,7 +75,7 @@ const RichTextInput = ({
 };
 
 const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack, onStudy }) => {
-  const { user, connectGoogleDrive } = useAuth();
+  const { user, connectGoogleWorkspace } = useAuth();
   const [isFormattingWithAI, setIsFormattingWithAI] = useState(false);
   const [driveLoading, setDriveLoading] = useState(false);
   const [driveError, setDriveError] = useState<string | null>(null);
@@ -399,14 +399,16 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
       setDriveLoading(true);
       setShowDriveModal(true);
       setDriveError(null);
-      const token = await connectGoogleDrive();
+      const token = await connectGoogleWorkspace();
       const res = await fetch('https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.document" or mimeType="application/pdf" or mimeType="text/plain"&fields=files(id,name,mimeType)', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       setDriveFiles(data.files || []);
     } catch (err: any) {
-      console.error(err);
+      if (err.code !== 'auth/popup-closed-by-user' && !err.message?.includes('popup')) {
+        console.error(err);
+      }
       if (err.code === 'auth/popup-closed-by-user' || err.message?.includes('popup')) {
         setDriveError('Aby zalogować się do Google Drive, otwórz aplikację w nowej karcie (przycisk w prawym górnym rogu) lub zezwól na wyskakujące okienka.');
       } else {
@@ -420,7 +422,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
   const processDriveFile = async (file: any) => {
     try {
       setDriveLoading(true);
-      const token = await connectGoogleDrive();
+      const token = await connectGoogleWorkspace();
       let textContent = '';
       if (file.mimeType === 'application/pdf') {
         alert('PDF not supported here yet. Please use Docs or Text files.');
@@ -439,8 +441,14 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
       setImportText(prev => prev + (prev ? '\n' : '') + textContent);
       setShowDriveModal(false);
     } catch (err: any) {
-      console.error(err);
-      alert('Błąd przetwarzania pliku: ' + (err.message || 'Nieznany błąd'));
+      if (err.code !== 'auth/popup-closed-by-user' && !err.message?.includes('popup')) {
+        console.error(err);
+      }
+      if (err.code === 'auth/popup-closed-by-user' || err.message?.includes('popup')) {
+        alert('Aby zalogować się do Google Drive, otwórz aplikację w nowej karcie (przycisk w prawym górnym rogu) lub zezwól na wyskakujące okienka.');
+      } else {
+        alert('Błąd przetwarzania pliku: ' + (err.message || 'Nieznany błąd'));
+      }
     } finally {
       setDriveLoading(false);
     }
