@@ -169,7 +169,8 @@ Nie wymyślaj rzeczy, które nie istnieją w profilu ani w lekcjach.
    - multiple_choice (wielokrotnego wyboru),
    - fill_in_blank (krótkie zadania na wpisywanie brakujących elementów),
    - translation (tłumaczenie zdań z języka polskiego na angielski na podstawie omawianych tematów).
-5. Zdania mają być autentyczne, brzmieć naturalnie, tak aby kursant widział ich praktyczne zastosowanie w swoim życiu. Unikaj dziwnych, nierealnych sytuacji.
+5. WAŻNE: W polu "prompt" KAŻDEGO wygenerowanego zadania MUSI znajdować się ZAWSZE wyraźne polecenie dla kursanta informujące go, co należy wykonać (np. "Wybierz prawidłową opcję, aby uzupełnić zdanie:", "Przetłumacz poniższe zdanie na język angielski:", "Wpisz brakujące słowo:"). Dopiero po poleceniu umieść właściwą treść zadania.
+6. Zdania mają być autentyczne, brzmieć naturalnie, tak aby kursant widział ich praktyczne zastosowanie w swoim życiu. Unikaj dziwnych, nierealnych sytuacji.
 
 Tytuł testu: ${testTitle}
 Zakres materiału: ${scope}
