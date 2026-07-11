@@ -1,3 +1,46 @@
+export const extractJSON = (text: string): string => {
+  if (!text) return "{}";
+  
+  // Try to find markdown code blocks first
+  const jsonBlockRegex = /```(?:json)?s*([sS]*?)s*```/i;
+  const match = text.match(jsonBlockRegex);
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+  
+  // If no markdown block, try to find the first '{' or '[' and last '}' or ']'
+  const firstBrace = text.indexOf('{');
+  const firstBracket = text.indexOf('[');
+  const lastBrace = text.lastIndexOf('}');
+  const lastBracket = text.lastIndexOf(']');
+  
+  let startIndex = -1;
+  let endIndex = -1;
+  
+  if (firstBrace !== -1 && firstBracket !== -1) {
+    startIndex = Math.min(firstBrace, firstBracket);
+  } else if (firstBrace !== -1) {
+    startIndex = firstBrace;
+  } else if (firstBracket !== -1) {
+    startIndex = firstBracket;
+  }
+  
+  if (lastBrace !== -1 && lastBracket !== -1) {
+    endIndex = Math.max(lastBrace, lastBracket);
+  } else if (lastBrace !== -1) {
+    endIndex = lastBrace;
+  } else if (lastBracket !== -1) {
+    endIndex = lastBracket;
+  }
+  
+  if (startIndex !== -1 && endIndex !== -1 && endIndex >= startIndex) {
+    return text.substring(startIndex, endIndex + 1);
+  }
+  
+  // Fallback to trimming
+  return text.trim();
+};
+
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -61,12 +104,7 @@ export const generateVocabulary = async (language: Language, difficulty: Difficu
       },
     });
 
-    let jsonText = response.text.trim();
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
-    } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
-    }
+    let jsonText = extractJSON(response.text || "");
     const parsed = JSON.parse(jsonText);
     return parsed as Omit<Word, 'id' | 'isDifficult' | 'language'>[];
   } catch (error) {
@@ -158,12 +196,7 @@ export const generateAudioVocabulary = async (base64Audio: string, mimeType: str
       },
     });
 
-    let jsonText = response.text.trim();
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
-    } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
-    }
+    let jsonText = extractJSON(response.text || "");
     return JSON.parse(jsonText) as AudioVocabulary[];
   } catch (error) {
     console.error("Error generating audio vocabulary:", error);
@@ -212,12 +245,7 @@ export const getAISuggestions = async (difficultWords: Word[]): Promise<AISugges
       },
     });
 
-    let jsonText = response.text.trim();
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
-    } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
-    }
+    let jsonText = extractJSON(response.text || "");
     return JSON.parse(jsonText) as AISuggestion;
   } catch (error) {
     console.error("Error getting AI suggestions:", error);
@@ -308,20 +336,24 @@ export const generateTranslationExercises = async (
         });
       } catch (e2: any) {
         console.warn("gemini-3.1-flash-lite failed, falling back to gemini-3.1-flash-lite-preview", e2);
-        response = await ai.models.generateContent({
-          model: "gemini-3.1-flash-lite-preview",
-          contents: finalPrompt,
-          config,
-        });
+        try {
+          response = await ai.models.generateContent({
+            model: "gemini-3.1-flash-lite-preview",
+            contents: finalPrompt,
+            config,
+          });
+        } catch (e3: any) {
+          console.warn("gemini-3.1-flash-lite-preview failed, falling back to gemini-2.5-flash", e3);
+          response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: finalPrompt,
+            config,
+          });
+        }
       }
     }
 
-    let jsonText = response.text.trim();
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
-    } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
-    }
+    let jsonText = extractJSON(response.text || "");
     return JSON.parse(jsonText) as TranslationExercise[];
   } catch (error: any) {
     console.error("Error generating translation exercises:", error);
@@ -389,12 +421,7 @@ Student context: ${studentProfileContext}` : ''}
       },
     });
 
-    let jsonText = response.text.trim();
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
-    } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
-    }
+    let jsonText = extractJSON(response.text || "");
     return JSON.parse(jsonText) as TranslationEvaluationResult[];
   } catch (error) {
     console.error("Error evaluating translations:", error);
@@ -473,12 +500,7 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
       },
     });
 
-    let jsonText = response.text.trim();
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
-    } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
-    }
+    let jsonText = extractJSON(response.text || "");
     return JSON.parse(jsonText);
   } catch (err) {
     console.error("Test generation failed", err);
@@ -522,12 +544,7 @@ Return a JSON array of objects.`;
         responseSchema: schema,
       },
     });
-    let jsonText = response.text.trim();
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
-    } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
-    }
+    let jsonText = extractJSON(response.text || "");
     return JSON.parse(jsonText);
   } catch (err) {
     console.error("Error generating flashcards from text:", err);
@@ -627,12 +644,7 @@ Zwróć 10 poprawionych zadań jako JSON (tablica obiektów). Zastąp te, które
       },
     });
 
-    let jsonText = response.text.trim();
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
-    } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
-    }
+    let jsonText = extractJSON(response.text || "");
     return JSON.parse(jsonText);
   } catch (error) {
     console.error("Error modifying test:", error);
@@ -642,6 +654,9 @@ Zwróć 10 poprawionych zadań jako JSON (tablica obiektów). Zastąp te, które
 
 
 export const getUserWeaknesses = async (userId: string): Promise<string> => {
+  if (!userId || userId === 'demo-id') {
+    return "Brak zidentyfikowanych błędów.";
+  }
   try {
     const weaknessesRef = collection(db, `users/${userId}/weaknesses`);
     const q = query(weaknessesRef, orderBy('frequency', 'desc'), limit(5));
@@ -657,8 +672,12 @@ export const getUserWeaknesses = async (userId: string): Promise<string> => {
     });
 
     return weaknesses.join('\n');
-  } catch (error) {
-    console.error("Error fetching user weaknesses:", error);
+  } catch (error: any) {
+    if (error?.code === 'permission-denied') {
+      console.warn("Permission denied fetching weaknesses:", error.message);
+    } else {
+      console.error("Error fetching user weaknesses:", error);
+    }
     return "Brak zidentyfikowanych błędów.";
   }
 };
@@ -733,12 +752,7 @@ Dla "fill_in_blank":
       },
     });
 
-    let jsonText = response.text?.trim() || "{}";
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/^```json/, '').replace(/```$/, '').trim();
-    } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```/, '').replace(/```$/, '').trim();
-    }
+    let jsonText = extractJSON(response.text || "");
     return JSON.parse(jsonText);
   } catch (error) {
     console.error("Error generating dynamic exercise:", error);

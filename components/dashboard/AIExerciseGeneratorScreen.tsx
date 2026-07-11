@@ -282,7 +282,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       if (user) {
         try {
           const practiceLogsRef = collection(db, `users/${user.id}/practiceLogs`);
-          const qPL = query(practiceLogsRef, orderBy('date', 'desc'), limit(10));
+          const qPL = query(practiceLogsRef, orderBy('date', 'desc'), limit(3));
           const plSnapshot = await getDocs(qPL);
           const plList = plSnapshot.docs.map(doc => doc.data() as PracticeLog);
           
