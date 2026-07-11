@@ -152,7 +152,7 @@ app.use((err: any, req: any, res: any, next: any) => {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
       
-      const { GoogleGenAI, Type, Schema } = require('@google/genai');
+      
       const ai = new GoogleGenAI({ apiKey });
       
       let contents = [];
@@ -225,19 +225,33 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
         }
       };
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: contents,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: schema,
-          temperature: 0.4
-        }
-      });
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: 'gemini-3.5-flash',
+          contents: contents,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: schema,
+            temperature: 0.4
+          }
+        });
+      } catch (err) {
+        console.warn("gemini-3.5-flash failed in test generator, falling back to gemini-3.1-flash-lite", err);
+        response = await ai.models.generateContent({
+          model: 'gemini-3.1-flash-lite',
+          contents: contents,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: schema,
+            temperature: 0.4
+          }
+        });
+      }
       
       let parsed = [];
       try {
-        parsed = JSON.parse(response.text() || '[]');
+        parsed = JSON.parse(response.text || '[]');
       } catch (e) {
         return res.status(500).json({ error: 'Failed to parse AI response' });
       }
@@ -345,7 +359,7 @@ Bądź dokładny. Wykorzystaj całą dostępną treść, nie pomijaj lekcji.`;
       let response;
       try {
         response = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
+          model: 'gemini-1.5-flash',
           contents: contents,
           config: {
             systemInstruction: sysInstruction,
@@ -376,7 +390,7 @@ Bądź dokładny. Wykorzystaj całą dostępną treść, nie pomijaj lekcji.`;
           }
         });
       } catch (err) {
-        console.warn("gemini-3.5-flash failed, falling back to gemini-1.5-flash", err);
+        console.warn("gemini-1.5-flash failed, falling back to gemini-1.5-flash", err);
         response = await ai.models.generateContent({
           model: 'gemini-1.5-flash',
           contents: contents,
@@ -513,7 +527,7 @@ Zwróć wynik jako JSON z poniższymi polami:
       let response;
       try {
         response = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
+          model: 'gemini-1.5-flash',
           contents: promptContext,
           config: {
             systemInstruction: sysInstruction,
@@ -534,7 +548,7 @@ Zwróć wynik jako JSON z poniższymi polami:
           }
         });
       } catch(err) {
-        console.warn("gemini-3.5-flash failed, falling back to gemini-1.5-flash", err);
+        console.warn("gemini-1.5-flash failed, falling back to gemini-1.5-flash", err);
         response = await ai.models.generateContent({
           model: 'gemini-1.5-flash',
           contents: promptContext,

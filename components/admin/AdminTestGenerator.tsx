@@ -101,7 +101,9 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
     try {
       const q = query(collection(db, `users/${user.id}/lessonRecords`), orderBy('date', 'desc'));
       const snap = await getDocs(q);
-      setLessons(snap.docs.map(d => ({ id: d.id, ...d.data() } as LessonRecord)));
+      const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as LessonRecord));
+      fetched.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setLessons(fetched);
     } catch (err) {
       console.error(err);
     }
@@ -119,7 +121,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
   };
 
   const handleGenerate = async () => {
-    if (!testTitle || !scope) return alert("Podaj tytuł i zakres materiału");
+    if (!testTitle) return alert("Podaj tytuł testu");
     setIsGenerating(true);
     
     try {
@@ -233,7 +235,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
             </div>
             
             <div>
-              <label className="block text-sm font-bold text-content-muted mb-1">Zakres Materiału (Instrukcje dla AI)</label>
+              <label className="block text-sm font-bold text-content-muted mb-1">Zakres Materiału / Instrukcje (Opcjonalne)</label>
               <textarea
                 value={scope}
                 onChange={e => setScope(e.target.value)}
@@ -267,7 +269,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
 
             <div>
               <label className="block text-sm font-bold text-content-muted mb-2">Wybierz lekcje jako kontekst ({selectedLessons.length})</label>
-              <div className="h-48 overflow-y-auto space-y-2 border border-white/5 rounded-lg p-2 bg-black/20">
+              <div className="h-80 overflow-y-auto space-y-2 border border-white/5 rounded-lg p-2 bg-black/20">
                 {lessons.map(l => (
                   <label key={l.id} className="flex items-start gap-3 p-2 hover:bg-base-300/50 rounded cursor-pointer">
                     <input 
@@ -278,7 +280,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
                     />
                     <div>
                       <div className="font-bold text-sm">{l.date} - {l.topic}</div>
-                      <div className="text-xs text-content-muted line-clamp-1">{l.vocabularyText}</div>
+                      <div className="text-xs text-content-muted line-clamp-2">{l.vocabularyText}</div>
                     </div>
                   </label>
                 ))}
@@ -286,7 +288,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
               </div>
             </div>
 
-            <Button onClick={handleGenerate} isLoading={isGenerating} className="w-full" disabled={!testTitle || !scope}>
+            <Button onClick={handleGenerate} isLoading={isGenerating} className="w-full" disabled={!testTitle}>
               Generuj Test za pomocą AI
             </Button>
           </div>

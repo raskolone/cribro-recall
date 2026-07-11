@@ -1,3 +1,4 @@
+import { auth } from '../firebase';
 export const extractJSON = (text: string): string => {
   if (!text) return "{}";
   
@@ -483,7 +484,7 @@ export const generateTest = async (
   fileData?: { data: string; mimeType: string } | null,
   driveFile?: { id: string, mimeType: string, token: string }
 ): Promise<any[]> => {
-  const { auth } = require('../firebase');
+  
   const user = auth.currentUser;
   const token = user ? await user.getIdToken() : '';
   
