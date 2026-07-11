@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, deleteDoc, query, orderBy, setDoc, writeBatch, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, deleteDoc, query, orderBy, setDoc, writeBatch, updateDoc, addDoc } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
 import { User, PracticeLog, FlashcardSet, LessonRecord } from '../../types';
 import { useFlashcards } from '../../context/FlashcardContext';
@@ -76,10 +76,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   
   // AI Modal State
   const [showAIModal, setShowAIModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkNotes, setBulkNotes] = useState('');
   
   // Meeting Notes AI State
   const [rawMeetingNotes, setRawMeetingNotes] = useState('');
   const [showDriveModal, setShowDriveModal] = useState(false);
+  const [driveModalMode, setDriveModalMode] = useState<'single'|'bulk'>('single');
   const [driveFiles, setDriveFiles] = useState<any[]>([]);
   const [driveLoading, setDriveLoading] = useState(false);
   const [driveError, setDriveError] = useState<string | null>(null);
@@ -426,7 +429,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   };
 
   
-  const fetchDriveFiles = async () => {
+  const fetchDriveFiles = async (mode: 'single'|'bulk' = 'single') => {
+    setDriveModalMode(mode);
     try {
       setDriveLoading(true);
       setShowDriveModal(true);
@@ -513,10 +517,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   const processDriveFile = async (file: any) => {
     try {
       setShowDriveModal(false);
-      setShowAIModal(true);
-      const token = await connectGoogleDrive();
-      
-      await generateSingleSummary({ driveFile: { id: file.id, mimeType: file.mimeType, token } });
+      if (driveModalMode === 'bulk') {
+        setShowBulkModal(true);
+        const token = await connectGoogleDrive();
+        await generateBulkSummary({ driveFile: { id: file.id, mimeType: file.mimeType, token } });
+      } else {
+        setShowAIModal(true);
+        const token = await connectGoogleDrive();
+        await generateSingleSummary({ driveFile: { id: file.id, mimeType: file.mimeType, token } });
+      }
     } catch (err: any) {
       if (err.code !== 'auth/popup-closed-by-user' && !err.message?.includes('popup')) {
         console.error(err);
@@ -529,7 +538,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     }
   };
 
-  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>, mode: 'single'|'bulk' = 'single') => {
     if (!e.target.files || !e.target.files[0]) return;
     try {
       const file = e.target.files[0];
@@ -538,7 +547,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         reader.onloadend = () => resolve(reader.result as string);
         reader.readAsDataURL(file);
       });
-      await generateSingleSummary({ pdfBase64: base64 });
+      if (mode === 'bulk') {
+        await generateBulkSummary({ pdfBase64: base64 });
+      } else {
+        await generateSingleSummary({ pdfBase64: base64 });
+      }
     } catch (err) {
       console.error(err);
       alert('Błąd wgrywania PDF');
@@ -609,6 +622,99 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       console.error(error);
       alert('Błąd importu: ' + error.message);
     }
+  };
+
+    const generateBulkSummary = async (payload: { notes?: string, pdfBase64?: string, driveFile?: { id: string, mimeType: string, token: string } }) => {
+    setIsGenerating(true);
+    try {
+      const user = auth.currentUser;
+      const token = user ? await user.getIdToken() : '';
+
+      const allStudents = users.map(u => ({
+        id: u.id,
+        name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+        level: u.level || '',
+        description: u.description || '',
+        aiPrompt: u.aiPrompt || ''
+      }));
+
+      const res = await fetch('/api/gemini/import-lessons-batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          textContent: payload.notes,
+          pdfBase64: payload.pdfBase64,
+          driveFile: payload.driveFile,
+          students: allStudents
+        })
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        try {
+            const errData = JSON.parse(errText);
+            throw new Error(errData.error || 'Wystąpił błąd podczas generowania podsumowania');
+        } catch(e) {
+            throw new Error(`Błąd serwera (${res.status}): Otrzymano nieprawidłową odpowiedź.`);
+        }
+      }
+
+      const generatedData = await res.json();
+      const lessons = generatedData.lessons || [];
+      
+      if (lessons.length === 0) {
+        alert('Nie znaleziono żadnych lekcji.');
+        return;
+      }
+      
+      let savedCount = 0;
+      for (const lesson of lessons) {
+        if (!lesson.studentId) continue;
+        const studentRef = doc(db, 'users', lesson.studentId);
+        const recordsCol = collection(studentRef, 'lessonRecords');
+        await addDoc(recordsCol, {
+          studentId: lesson.studentId,
+          date: lesson.date || new Date().toISOString().split('T')[0],
+          topic: lesson.lessonTopic || 'Lekcja',
+          vocabularyText: lesson.vocabularyText || '',
+          lessonSummary: lesson.revisionNotes || '',
+          studentSpeaking: lesson.studentSpeaking || '',
+          thingsToImprove: lesson.thingsToImprove || '',
+          suggestedFollowUp: lesson.suggestedFollowUp || '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+        savedCount++;
+      }
+
+      setShowAIModal(false);
+      setRawMeetingNotes('');
+      alert(`Pomyślnie zaimportowano ${savedCount} lekcji!`);
+      // Reload records if we are viewing the same student
+      if (selectedUser) {
+        const userRecordsCol = collection(db, `users/${selectedUser.id}/lessonRecords`);
+        const q = query(userRecordsCol, orderBy('date', 'desc'));
+        const querySnapshot = await getDocs(q);
+        const records: LessonRecord[] = [];
+        querySnapshot.forEach(docSnap => {
+          records.push({ id: docSnap.id, ...docSnap.data() } as LessonRecord);
+        });
+        setLessonRecords(records);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert('Błąd API: ' + err.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleBulkGenerateFromNotes = async () => {
+    if (!rawMeetingNotes.trim()) return;
+    await generateBulkSummary({ notes: rawMeetingNotes });
   };
 
   const handleGenerateFromNotes = async () => {
@@ -997,6 +1103,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
                     <Button size="sm" variant="secondary" onClick={() => setShowAIModal(true)}>
                       ✨ AI Lesson Summary
                     </Button>
+                    <Button size="sm" variant="secondary" onClick={() => setShowBulkModal(true)}>
+                      📦 Bulk Import (AI)
+                    </Button>
                     <Button size="sm" onClick={() => openLessonRecordModal('edit')}>Dodaj wpis</Button>
                   </div>
                 </div>
@@ -1275,7 +1384,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       
       {/* Google Drive Files Modal */}
       {showDriveModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 md:p-6 overflow-y-auto">
           <div className="bg-base-100 p-6 rounded-xl w-full max-w-2xl border border-white/10 shadow-2xl relative my-auto">
             <h3 className="text-xl font-bold mb-4">Wybierz plik z Google Drive</h3>
             
@@ -1317,12 +1426,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
             </p>
             
             <div className="flex gap-3 mb-4">
-              <Button onClick={fetchDriveFiles} variant="secondary" className="flex-1 flex justify-center items-center gap-2">
+              <Button onClick={() => fetchDriveFiles('single')} variant="secondary" className="flex-1 flex justify-center items-center gap-2">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 15.02 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
                 Google Drive
               </Button>
               <div className="flex-1 relative">
-                <input type="file" accept=".pdf" onChange={handlePdfUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <input type="file" accept=".pdf" onChange={(e) => handlePdfUpload(e, 'single')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                 <Button variant="secondary" className="w-full pointer-events-none">Załaduj plik PDF</Button>
               </div>
             </div>
@@ -1336,6 +1445,47 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
               <Button variant="ghost" onClick={() => setShowAIModal(false)}>Anuluj</Button>
               <Button onClick={handleGenerateFromNotes} isLoading={isGenerating} disabled={!rawMeetingNotes.trim()}>
                 Generuj wpis z lekcji
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      
+      {/* Bulk Import Modal */}
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
+          <div className="bg-base-100 p-6 rounded-xl w-full max-w-4xl border border-white/10 shadow-2xl relative my-auto">
+            <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
+               <span className="text-primary">📦</span> Bulk Import (Wiele lekcji)
+            </h3>
+            <p className="text-base text-content-muted mb-4">
+               Wklej treść historii lekcji z dokuemntu lub załącz plik, aby AI podzieliło go na osobne wpisy i przypisało do kursantów.
+            </p>
+            
+            <div className="flex gap-3 mb-4">
+              <Button onClick={() => fetchDriveFiles('bulk')} variant="secondary" className="flex-1 flex justify-center items-center gap-2">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 15.02 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                Google Drive
+              </Button>
+              <div className="flex-1 relative">
+                <input type="file" accept=".pdf" onChange={(e) => handlePdfUpload(e, 'bulk')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <Button variant="secondary" className="w-full pointer-events-none">Załaduj plik PDF</Button>
+              </div>
+            </div>
+            <textarea
+              value={bulkNotes}
+              onChange={e => setBulkNotes(e.target.value)}
+              className="w-full bg-base-200 border border-white/10 rounded-lg p-4 text-white h-[50vh] mb-4 font-mono text-sm leading-relaxed"
+              placeholder="Wklej tutaj historię lekcji z Google Docs / plain text..."
+            />
+            <div className="flex justify-end gap-3">
+              <Button variant="ghost" onClick={() => setShowBulkModal(false)}>Anuluj</Button>
+              <Button onClick={() => {
+                if (!bulkNotes.trim()) return;
+                generateBulkSummary({ notes: bulkNotes });
+              }} isLoading={isGenerating} disabled={!bulkNotes.trim()}>
+                Generuj wpisy
               </Button>
             </div>
           </div>

@@ -174,60 +174,73 @@ app.use((err: any, req: any, res: any, next: any) => {
         if (driveFile.mimeType === 'application/pdf') {
             const arrayBuffer = await res.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
-            contents = [
-              {
-                inlineData: {
-                  data: buffer.toString('base64'),
-                  mimeType: 'application/pdf'
-                }
-              },
-              { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z historią lekcji. Przeanalizuj go.` }
-            ];
+            contents = [{
+              role: 'user',
+              parts: [
+                {
+                  inlineData: {
+                    data: buffer.toString('base64'),
+                    mimeType: 'application/pdf'
+                  }
+                },
+                { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z historią lekcji. Przeanalizuj go.` }
+              ]
+            }];
         } else {
             const text = await res.text();
-            contents = [
-              { text: `Baza kursantów:\n${studentsListStr}\n\nTreść historii lekcji (Google Docs / Text):\n${text}` }
-            ];
+            contents = [{
+              role: 'user',
+              parts: [
+                { text: `Baza kursantów:\n${studentsListStr}\n\nTreść historii lekcji (Google Docs / Text):\n${text}` }
+              ]
+            }];
         }
       } else if (pdfBase64) {
-        contents = [
-          {
-            inlineData: {
-              data: pdfBase64.split(',')[1] || pdfBase64,
-              mimeType: 'application/pdf'
-            }
-          },
-          { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z historią lekcji. Przeanalizuj go.` }
-        ];
+        contents = [{
+          role: 'user',
+          parts: [
+            {
+              inlineData: {
+                data: pdfBase64.split(',')[1] || pdfBase64,
+                mimeType: 'application/pdf'
+              }
+            },
+            { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z historią lekcji. Przeanalizuj go.` }
+          ]
+        }];
       } else {
-        contents = [
-          { text: `Baza kursantów:\n${studentsListStr}\n\nTreść historii lekcji (Google Docs / Text):\n${textContent}` }
-        ];
+        contents = [{
+          role: 'user',
+          parts: [
+            { text: `Baza kursantów:\n${studentsListStr}\n\nTreść historii lekcji (Google Docs / Text):\n${textContent}` }
+          ]
+        }];
       }
 
       const sysInstruction = `# Cel
-Na podstawie dostarczonego pliku lub tekstu zawierającego historię lekcji jednego lub wielu kursantów, wyodrębnij wszystkie poszczególne lekcje.
-Jeśli lekcje są podzielone na numery lekcji z odpowiednimi sekcjami, uzupełnij je na tej podstawie.
-Dostosuj do dostępnych możliwości, pomijając nadmiarowe dane lub braki.
+Na podstawie dostarczonego pliku PDF lub tekstu zawierającego historię lekcji jednego lub wielu kursantów, DOKŁADNIE wyodrębnij wszystkie poszczególne lekcje.
+Plik może zawierać wiele lekcji ułożonych chronologicznie lub według numerów. Twoim zadaniem jest znalezienie KAŻDEJ lekcji i wyciągnięcie z niej maksimum informacji.
 
 # Zanim wygenerujesz
-Zidentyfikuj kursanta (studentId) dla KAŻDEJ lekcji na podstawie podanej bazy kursantów. 
-Każda lekcja musi mieć swój osobny wpis.
+1. Zidentyfikuj kursanta (studentId) dla KAŻDEJ lekcji na podstawie podanej bazy kursantów (imienia, nazwiska lub opisu widocznego w pliku). 
+2. Podziel dokument na logiczne bloki odpowiadające pojedynczym lekcjom.
+3. Przeanalizuj inteligentnie każdą lekcję i przypisz jej fragmenty do odpowiednich kategorii w systemie.
 
 # Wygeneruj wynik w formacie JSON
-Zwróć wynik jako JSON z tablicą obiektów o polu "lessons". Każdy obiekt lekcji musi zawierać:
-- date (string, data lekcji w formacie YYYY-MM-DD. Jeśli brak, wygeneruj orientacyjną (np dzisiejszą) lub zostaw puste)
-- studentId (string, ID wybranego kursanta)
-- lessonTopic (string, max 50 znaków)
-- revisionNotes (string)
-- vocabularyText (string)
-- studentSpeaking (string)
-- thingsToImprove (string)
-- suggestedFollowUp (string)
-`;
+Zwróć wynik jako JSON z tablicą obiektów o polu "lessons". Każdy obiekt lekcji musi zawierać szczegółowe dane:
+- date (string): Data lekcji w formacie YYYY-MM-DD. Poszukaj daty w tekście (np. "12 marca", "12.03.2024"). Jeśli absolutnie brak, wygeneruj dzisiejszą.
+- studentId (string): ID wybranego kursanta dopasowanego z bazy.
+- lessonTopic (string): Krótki temat lekcji (max 50 znaków), wywnioskowany z treści.
+- revisionNotes (string): Główne notatki, zagadnienia gramatyczne i tematy poruszane na lekcji.
+- vocabularyText (string): Wyodrębnione nowe słówka, zwroty i ich tłumaczenia (najlepiej w formie 'angielski - polski').
+- studentSpeaking (string): O czym mówił kursant, jakich argumentów używał, jego opinie (np. 'Mówił o swoich wakacjach w Hiszpanii...').
+- thingsToImprove (string): Błędy gramatyczne, wymowa, rzeczy do poprawy na przyszłość.
+- suggestedFollowUp (string): Zadanie domowe, sugestie co zrobić na następnej lekcji.
+
+Bądź dokładny. Wykorzystaj całą dostępną treść, nie pomijaj lekcji.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash',
         contents: contents,
         config: {
           systemInstruction: sysInstruction,
@@ -298,15 +311,18 @@ Zwróć wynik jako JSON z tablicą obiektów o polu "lessons". Każdy obiekt lek
         if (driveFile.mimeType === 'application/pdf') {
             const arrayBuffer = await fetchRes.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
-            promptContext = [
-              {
-                inlineData: {
-                  data: buffer.toString('base64'),
-                  mimeType: 'application/pdf'
-                }
-              },
-              { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z notatkami z lekcji. Przeanalizuj go.` }
-            ];
+            promptContext = [{
+              role: 'user',
+              parts: [
+                {
+                  inlineData: {
+                    data: buffer.toString('base64'),
+                    mimeType: 'application/pdf'
+                  }
+                },
+                { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z notatkami z lekcji. Przeanalizuj go.` }
+              ]
+            }];
         } else {
             const text = await fetchRes.text();
             promptContext = [
@@ -314,15 +330,18 @@ Zwróć wynik jako JSON z tablicą obiektów o polu "lessons". Każdy obiekt lek
             ];
         }
       } else if (pdfBase64) {
-        promptContext = [
-          {
-            inlineData: {
-              data: pdfBase64.split(',')[1] || pdfBase64,
-              mimeType: 'application/pdf'
-            }
-          },
-          { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z notatkami z lekcji. Przeanalizuj go.` }
-        ];
+        promptContext = [{
+          role: 'user',
+          parts: [
+            {
+              inlineData: {
+                data: pdfBase64.split(',')[1] || pdfBase64,
+                mimeType: 'application/pdf'
+              }
+            },
+            { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z notatkami z lekcji. Przeanalizuj go.` }
+          ]
+        }];
       } else {
         promptContext = [
           { text: `Baza kursantów:\n${studentsListStr}\n\nTranskrypcja/Notatki ze spotkania:\n${notes}` }
@@ -353,7 +372,7 @@ Zwróć wynik jako JSON z poniższymi polami:
 `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash',
         contents: promptContext,
         config: {
           systemInstruction: sysInstruction,
