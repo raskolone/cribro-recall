@@ -239,37 +239,73 @@ Zwróć wynik jako JSON z tablicą obiektów o polu "lessons". Każdy obiekt lek
 
 Bądź dokładny. Wykorzystaj całą dostępną treść, nie pomijaj lekcji.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: contents,
-        config: {
-          systemInstruction: sysInstruction,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              lessons: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    date: { type: Type.STRING },
-                    studentId: { type: Type.STRING },
-                    lessonTopic: { type: Type.STRING },
-                    revisionNotes: { type: Type.STRING },
-                    vocabularyText: { type: Type.STRING },
-                    studentSpeaking: { type: Type.STRING },
-                    thingsToImprove: { type: Type.STRING },
-                    suggestedFollowUp: { type: Type.STRING },
-                  },
-                  required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText"]
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: 'gemini-3.5-flash',
+          contents: contents,
+          config: {
+            systemInstruction: sysInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                lessons: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      date: { type: Type.STRING },
+                      studentId: { type: Type.STRING },
+                      lessonTopic: { type: Type.STRING },
+                      revisionNotes: { type: Type.STRING },
+                      vocabularyText: { type: Type.STRING },
+                      studentSpeaking: { type: Type.STRING },
+                      thingsToImprove: { type: Type.STRING },
+                      suggestedFollowUp: { type: Type.STRING },
+                    },
+                    required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText"]
+                  }
                 }
-              }
-            },
-            required: ["lessons"]
+              },
+              required: ["lessons"]
+            }
           }
-        }
-      });
+        });
+      } catch (err) {
+        console.warn("gemini-3.5-flash failed, falling back to gemini-1.5-flash", err);
+        response = await ai.models.generateContent({
+          model: 'gemini-1.5-flash',
+          contents: contents,
+          config: {
+            systemInstruction: sysInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                lessons: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      date: { type: Type.STRING },
+                      studentId: { type: Type.STRING },
+                      lessonTopic: { type: Type.STRING },
+                      revisionNotes: { type: Type.STRING },
+                      vocabularyText: { type: Type.STRING },
+                      studentSpeaking: { type: Type.STRING },
+                      thingsToImprove: { type: Type.STRING },
+                      suggestedFollowUp: { type: Type.STRING },
+                    },
+                    required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText"]
+                  }
+                }
+              },
+              required: ["lessons"]
+            }
+          }
+        });
+      }
 
       const responseText = response.text;
       if (!responseText) throw new Error("No response from Gemini");
@@ -371,27 +407,53 @@ Zwróć wynik jako JSON z poniższymi polami:
 - suggestedFollowUp (string, Ustalenia i najlepsze tematy na kolejną lekcję, po polsku)
 `;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: promptContext,
-        config: {
-          systemInstruction: sysInstruction,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              studentId: { type: Type.STRING },
-              lessonTopic: { type: Type.STRING },
-              revisionNotes: { type: Type.STRING },
-              vocabularyText: { type: Type.STRING },
-              studentSpeaking: { type: Type.STRING },
-              thingsToImprove: { type: Type.STRING },
-              suggestedFollowUp: { type: Type.STRING },
-            },
-            required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: 'gemini-3.5-flash',
+          contents: promptContext,
+          config: {
+            systemInstruction: sysInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                studentId: { type: Type.STRING },
+                lessonTopic: { type: Type.STRING },
+                revisionNotes: { type: Type.STRING },
+                vocabularyText: { type: Type.STRING },
+                studentSpeaking: { type: Type.STRING },
+                thingsToImprove: { type: Type.STRING },
+                suggestedFollowUp: { type: Type.STRING },
+              },
+              required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
+            }
           }
-        }
-      });
+        });
+      } catch(err) {
+        console.warn("gemini-3.5-flash failed, falling back to gemini-1.5-flash", err);
+        response = await ai.models.generateContent({
+          model: 'gemini-1.5-flash',
+          contents: promptContext,
+          config: {
+            systemInstruction: sysInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                studentId: { type: Type.STRING },
+                lessonTopic: { type: Type.STRING },
+                revisionNotes: { type: Type.STRING },
+                vocabularyText: { type: Type.STRING },
+                studentSpeaking: { type: Type.STRING },
+                thingsToImprove: { type: Type.STRING },
+                suggestedFollowUp: { type: Type.STRING },
+              },
+              required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
+            }
+          }
+        });
+      }
 
       const text = response.text;
       if (!text) throw new Error("No response from Gemini");

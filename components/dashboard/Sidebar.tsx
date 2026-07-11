@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ExerciseType } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { LogOut } from 'lucide-react';
 
 interface SidebarProps {
   currentView: string;
@@ -56,7 +57,7 @@ const NavLink: React.FC<{
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPractice, isOpen, onClose, isDesktopCollapsed = false, onToggleCollapse }) => {
   const [practiceOpen, setPracticeOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { language } = useLanguage();
   const [isAdminExpanded, setIsAdminExpanded] = useState(currentView.startsWith('admin'));
 
@@ -132,6 +133,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
             <NavLink icon={<Settings size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('settings')} isActive={currentView === 'settings'}>
               {language === 'pl' ? 'Ustawienia' : 'Settings'}
             </NavLink>
+            <button onClick={() => logout()} className={`w-full flex items-center ${isDesktopCollapsed ? 'justify-center px-0' : 'px-4'} py-2.5 text-sm font-medium rounded-xl transition-all duration-200 text-red-400 hover:bg-red-500/10`}>
+              <div className={`flex items-center justify-center ${isDesktopCollapsed ? '' : 'mr-3'}`}>
+                <LogOut size={20} />
+              </div>
+              {!isDesktopCollapsed && <span>{language === 'pl' ? 'Wyloguj się' : 'Logout'}</span>}
+            </button>
           </div>
           
 

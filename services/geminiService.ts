@@ -327,23 +327,23 @@ export const generateTranslationExercises = async (
         config,
       });
     } catch (e1: any) {
-      console.warn("gemini-3.5-flash failed, falling back to gemini-3.1-flash-lite", e1);
+      console.warn("gemini-3.5-flash failed, falling back to gemini-1.5-flash", e1);
       try {
         response = await ai.models.generateContent({
-          model: "gemini-3.1-flash-lite",
+          model: "gemini-1.5-flash",
           contents: finalPrompt,
           config,
         });
       } catch (e2: any) {
-        console.warn("gemini-3.1-flash-lite failed, falling back to gemini-3.1-flash-lite-preview", e2);
+        console.warn("gemini-1.5-flash failed, falling back to gemini-1.5-flash", e2);
         try {
           response = await ai.models.generateContent({
-            model: "gemini-3.1-flash-lite-preview",
+            model: "gemini-1.5-flash",
             contents: finalPrompt,
             config,
           });
         } catch (e3: any) {
-          console.warn("gemini-3.1-flash-lite-preview failed, falling back to gemini-3.5-flash", e3);
+          console.warn("gemini-1.5-flash failed, falling back to gemini-3.5-flash", e3);
           response = await ai.models.generateContent({
             model: "gemini-3.5-flash",
             contents: finalPrompt,
@@ -446,15 +446,15 @@ Jeśli tłumaczenie kursanta jest w 100% poprawne, zignoruj powyższe cztery zas
           config,
         });
       } catch (e2: any) {
-        console.warn("gemini-3.5-flash failed again, falling back to gemini-3.5-flash-preview", e2);
+        console.warn("gemini-3.5-flash failed again, falling back to gemini-1.5-flash", e2);
         try {
           response = await ai.models.generateContent({
-            model: "gemini-3.5-flash-preview",
+            model: "gemini-1.5-flash",
             contents: finalPrompt,
             config,
           });
         } catch (e3: any) {
-           console.warn("gemini-3.5-flash-preview failed, falling back to gemini-3.5-flash", e3);
+           console.warn("gemini-1.5-flash failed, falling back to gemini-3.5-flash", e3);
            response = await ai.models.generateContent({
             model: "gemini-3.5-flash",
             contents: finalPrompt,

@@ -77,6 +77,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   // AI Modal State
   const [showAIModal, setShowAIModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showBulkPreviewModal, setShowBulkPreviewModal] = useState(false);
+  const [bulkPreviewLessons, setBulkPreviewLessons] = useState<any[]>([]);
+  const [expandedBulkIndex, setExpandedBulkIndex] = useState<number | null>(null);
   const [bulkNotes, setBulkNotes] = useState('');
   
   // Meeting Notes AI State
@@ -670,8 +673,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         return;
       }
       
+      setBulkPreviewLessons(lessons);
+      setShowBulkPreviewModal(true);
+      setShowBulkModal(false);
+    } catch (err: any) {
+      console.error(err);
+      alert('Błąd API: ' + err.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleBulkGenerateFromNotes = async () => {
+    if (!rawMeetingNotes.trim()) return;
+    await generateBulkSummary({ notes: rawMeetingNotes });
+  };
+
+  
+  const handleSaveBulkLessons = async () => {
+    setIsGenerating(true);
+    try {
       let savedCount = 0;
-      for (const lesson of lessons) {
+      for (const lesson of bulkPreviewLessons) {
         if (!lesson.studentId) continue;
         const studentRef = doc(db, 'users', lesson.studentId);
         const recordsCol = collection(studentRef, 'lessonRecords');
@@ -689,11 +712,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         });
         savedCount++;
       }
-
-      setShowAIModal(false);
+      setShowBulkPreviewModal(false);
+      setBulkNotes('');
       setRawMeetingNotes('');
       alert(`Pomyślnie zaimportowano ${savedCount} lekcji!`);
-      // Reload records if we are viewing the same student
       if (selectedUser) {
         const userRecordsCol = collection(db, `users/${selectedUser.id}/lessonRecords`);
         const q = query(userRecordsCol, orderBy('date', 'desc'));
@@ -706,15 +728,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       }
     } catch (err: any) {
       console.error(err);
-      alert('Błąd API: ' + err.message);
+      alert('Błąd podczas zapisywania: ' + err.message);
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const handleBulkGenerateFromNotes = async () => {
-    if (!rawMeetingNotes.trim()) return;
-    await generateBulkSummary({ notes: rawMeetingNotes });
   };
 
   const handleGenerateFromNotes = async () => {
@@ -1110,29 +1127,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
                   </div>
                 </div>
                 {lessonRecords.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     {lessonRecords.map((record, index) => (
                       <Card 
                         key={record.id} 
-                        className="relative group cursor-pointer hover:border-primary/50 transition-colors bg-base-200/50"
+                        className="relative group cursor-pointer hover:border-primary/50 transition-colors bg-base-200/50 p-4"
                         onClick={() => openLessonRecordModal('view', record)}
                       >
                         <button 
                           onClick={(e) => { e.stopPropagation(); openLessonRecordModal('edit', record); }}
-                          className="absolute top-3 right-3 p-2 bg-base-100 rounded-lg text-content-muted hover:text-primary hover:bg-base-200 transition-colors opacity-0 group-hover:opacity-100"
+                          className="absolute top-1/2 -translate-y-1/2 right-4 p-2 bg-base-100 rounded-lg text-content-muted hover:text-primary hover:bg-base-200 transition-colors opacity-0 group-hover:opacity-100"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                           </svg>
                         </button>
-                        <div className="flex justify-between items-start mb-3 pr-8">
-                          <div className="font-mono text-xs uppercase tracking-wider text-primary mb-1">
-                            Lekcja {lessonRecords.length - index}
+                        <div className="flex items-center gap-4 pr-12">
+                          <div className="w-12 h-12 flex-shrink-0 bg-primary/10 text-primary font-mono font-bold rounded-lg flex items-center justify-center">
+                            #{lessonRecords.length - index}
                           </div>
-                          <span className="text-xs font-mono text-content-muted">{record.date}</span>
+                          <div className="flex-1 min-w-0">
+                             <h4 className="font-bold text-lg line-clamp-1">{record.topic}</h4>
+                             <span className="text-sm font-mono text-content-muted">{record.date}</span>
+                          </div>
                         </div>
-                        <h4 className="font-bold mb-2 line-clamp-1 pr-8">{record.topic}</h4>
-                        <div className="text-sm text-content-muted line-clamp-2">{record.lessonSummary || (record as any).summary}</div>
                       </Card>
                     ))}
                   </div>
@@ -1486,6 +1504,90 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
                 generateBulkSummary({ notes: bulkNotes });
               }} isLoading={isGenerating} disabled={!bulkNotes.trim()}>
                 Generuj wpisy
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      
+      {/* Bulk Preview Modal */}
+      {showBulkPreviewModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
+          <div className="bg-base-100 p-6 rounded-xl w-full max-w-4xl border border-white/10 shadow-2xl relative my-auto">
+            <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
+               <span className="text-primary">✨</span> Podgląd zaimportowanych lekcji
+            </h3>
+            <p className="text-base text-content-muted mb-6">
+               Sprawdź zaimportowane lekcje. Możesz rozwinąć każdą z nich, aby zobaczyć szczegóły.
+            </p>
+            
+            <div className="space-y-4 max-h-[50vh] overflow-y-auto mb-6 pr-2">
+              {bulkPreviewLessons.map((lesson, idx) => {
+                const student = users.find(u => u.id === lesson.studentId);
+                const isExpanded = expandedBulkIndex === idx;
+                return (
+                  <Card key={idx} className="bg-base-200/50 hover:bg-base-200 transition-colors border border-white/5 cursor-pointer p-0 overflow-hidden" onClick={() => setExpandedBulkIndex(isExpanded ? null : idx)}>
+                    <div className="p-4 flex items-center justify-between">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                           <span className="font-mono text-xs text-primary px-2 py-0.5 rounded bg-primary/10">{lesson.date}</span>
+                           <h4 className="font-bold text-lg">{lesson.lessonTopic || 'Brak tematu'}</h4>
+                        </div>
+                        <div className="text-sm text-content-muted flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                          {student ? `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.username : 'Nieznany kursant'}
+                        </div>
+                      </div>
+                      <div className="text-content-muted">
+                         <svg className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                         </svg>
+                      </div>
+                    </div>
+                    {isExpanded && (
+                      <div className="p-4 pt-0 border-t border-white/5 bg-base-200/30 text-sm space-y-4 mt-2">
+                        {lesson.revisionNotes && (
+                          <div>
+                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">Notatki</div>
+                            <div className="text-white whitespace-pre-wrap">{lesson.revisionNotes}</div>
+                          </div>
+                        )}
+                        {lesson.vocabularyText && (
+                          <div>
+                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">Słówka</div>
+                            <div className="text-white font-mono whitespace-pre-wrap">{lesson.vocabularyText}</div>
+                          </div>
+                        )}
+                        {lesson.studentSpeaking && (
+                          <div>
+                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">O czym mówił kursant</div>
+                            <div className="text-white whitespace-pre-wrap">{lesson.studentSpeaking}</div>
+                          </div>
+                        )}
+                        {lesson.thingsToImprove && (
+                          <div>
+                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">Do poprawy</div>
+                            <div className="text-white whitespace-pre-wrap">{lesson.thingsToImprove}</div>
+                          </div>
+                        )}
+                        {lesson.suggestedFollowUp && (
+                          <div>
+                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">Zadanie / Następna lekcja</div>
+                            <div className="text-white whitespace-pre-wrap">{lesson.suggestedFollowUp}</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button variant="ghost" onClick={() => setShowBulkPreviewModal(false)}>Anuluj</Button>
+              <Button onClick={handleSaveBulkLessons} isLoading={isGenerating}>
+                Zapisz wszystkie ({bulkPreviewLessons.length})
               </Button>
             </div>
           </div>

@@ -16,6 +16,7 @@ const LessonHistoryScreen: React.FC = () => {
   const { language } = useLanguage();
 const [lessons, setLessons] = useState<LessonRecord[]>([]);
   const [practiceLogs, setPracticeLogs] = useState<PracticeLog[]>([]);
+  const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'lessons' | 'sessions'>('lessons');
   const [selectedLesson, setSelectedLesson] = useState<LessonRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -197,37 +198,96 @@ return (
              </p>
            </div>
         ) : (
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-           {lessons.map(lesson => (
+           <div className="grid grid-cols-1 gap-4">
+           {lessons.map((lesson, index) => {
+             const isExpanded = expandedLessonId === lesson.id;
+             const lessonNumber = lessons.length - index;
+             return (
              <Card 
                key={lesson.id} 
-               onClick={() => setSelectedLesson(lesson)}
-               className="p-5 cursor-pointer hover:border-primary/50 transition-all hover:-translate-y-1 hover:shadow-lg group"
+               onClick={() => setExpandedLessonId(isExpanded ? null : lesson.id)}
+               className="p-0 cursor-pointer hover:border-primary/50 transition-colors bg-base-200/50 group overflow-hidden"
              >
-               <div className="flex items-center gap-2 text-xs font-mono text-content-muted mb-2">
-                 <Calendar className="w-3.5 h-3.5" />
-                 {new Date(lesson.date).toLocaleDateString()}
+               <div className="p-4 flex items-center justify-between">
+                 <div className="flex items-center gap-4 pr-4">
+                   <button 
+                     onClick={(e) => { e.stopPropagation(); setSelectedLesson(lesson); }}
+                     className="w-12 h-12 flex-shrink-0 bg-primary/10 text-primary font-mono font-bold rounded-lg flex items-center justify-center hover:bg-primary hover:text-black transition-colors tooltip"
+                     title={language === 'pl' ? "Otwórz pełny widok" : "Open full view"}
+                   >
+                     #{lessonNumber}
+                   </button>
+                   <div className="flex-1 min-w-0">
+                     <h3 className="font-bold text-white text-lg line-clamp-1 group-hover:text-primary transition-colors">
+                       {lesson.topic}
+                     </h3>
+                     <div className="flex items-center gap-2 text-xs font-mono text-content-muted mt-1">
+                       <Calendar className="w-3.5 h-3.5" />
+                       {new Date(lesson.date).toLocaleDateString()}
+                     </div>
+                   </div>
+                 </div>
+                 <div className="flex items-center gap-4 text-content-muted">
+                    <div className="hidden sm:flex gap-2 flex-wrap">
+                      {lesson.lessonSummary && (
+                        <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-primary/10 text-primary">
+                          <Sparkles className="w-3 h-3" />
+                          {language === 'pl' ? 'Podsumowanie' : 'Summary'}
+                        </span>
+                      )}
+                      {lesson.vocabularyText && (
+                        <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-amber-500/10 text-amber-500">
+                          <Tag className="w-3 h-3" />
+                          {language === 'pl' ? 'Słówka' : 'Vocab'}
+                        </span>
+                      )}
+                    </div>
+                    <svg className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                 </div>
                </div>
-               <h3 className="font-bold text-white text-lg mb-3 line-clamp-2 group-hover:text-primary transition-colors">
-                 {lesson.topic}
-               </h3>
                
-               <div className="flex gap-2 flex-wrap mt-auto pt-4 border-t border-white/5">
-                  {lesson.lessonSummary && (
-                    <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-primary/10 text-primary">
-                      <Sparkles className="w-3 h-3" />
-                      {language === 'pl' ? 'Podsumowanie' : 'Summary'}
-                    </span>
-                  )}
-                  {lesson.vocabularyText && (
-                    <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-amber-500/10 text-amber-500">
-                      <Tag className="w-3 h-3" />
-                      {language === 'pl' ? 'Słówka' : 'Vocab'}
-                    </span>
-                  )}
-               </div>
+               {isExpanded && (
+                 <div className="p-4 pt-0 border-t border-white/5 bg-base-200/30 text-sm space-y-4 mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    {lesson.lessonSummary && (
+                      <div>
+                        <div className="font-bold text-content-muted mb-1 text-xs uppercase flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" /> {language === 'pl' ? 'Notatki' : 'Notes'}
+                        </div>
+                        <div className="text-white whitespace-pre-wrap"><Markdown>{lesson.lessonSummary}</Markdown></div>
+                      </div>
+                    )}
+                    {lesson.vocabularyText && (
+                      <div>
+                        <div className="font-bold text-content-muted mb-1 text-xs uppercase flex items-center gap-1">
+                          <Tag className="w-3 h-3" /> {language === 'pl' ? 'Słówka' : 'Vocabulary'}
+                        </div>
+                        <div className="text-white font-mono whitespace-pre-wrap">{lesson.vocabularyText}</div>
+                      </div>
+                    )}
+                    {lesson.studentSpeaking && (
+                      <div>
+                         <div className="font-bold text-content-muted mb-1 text-xs uppercase">{language === 'pl' ? 'O czym mówił kursant' : 'Student Speaking'}</div>
+                         <div className="text-white whitespace-pre-wrap"><Markdown>{lesson.studentSpeaking}</Markdown></div>
+                      </div>
+                    )}
+                    {lesson.thingsToImprove && (
+                      <div>
+                         <div className="font-bold text-content-muted mb-1 text-xs uppercase">{language === 'pl' ? 'Do poprawy' : 'Things to improve'}</div>
+                         <div className="text-white whitespace-pre-wrap"><Markdown>{lesson.thingsToImprove}</Markdown></div>
+                      </div>
+                    )}
+                    {lesson.suggestedFollowUp && (
+                      <div>
+                         <div className="font-bold text-content-muted mb-1 text-xs uppercase">{language === 'pl' ? 'Zadanie / Następna lekcja' : 'Follow up'}</div>
+                         <div className="text-white whitespace-pre-wrap"><Markdown>{lesson.suggestedFollowUp}</Markdown></div>
+                      </div>
+                    )}
+                 </div>
+               )}
              </Card>
-))}
+           )})}
          </div>
         )
       ) : (
