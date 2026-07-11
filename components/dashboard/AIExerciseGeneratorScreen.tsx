@@ -12,7 +12,6 @@ import Card from '../ui/Card';
 import PuzzleExercise from './PuzzleExercise';
 import Button from '../ui/Button';
 import ConfirmModal from '../ui/ConfirmModal';
-import FullScreenAILoading from '../ui/FullScreenAILoading';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
@@ -45,6 +44,46 @@ interface AIExerciseGeneratorScreenProps {
   onStartPractice?: (exercise: ExerciseType) => void;
   onExerciseStateChange?: (isActive: boolean) => void;
 }
+
+const AILoadingButton = ({ isLoading, onClick, children, className, disabled, loadingText, variant = 'primary' }: any) => {
+  const baseStyles = 'relative overflow-hidden inline-flex items-center justify-center font-bold font-sans rounded focus:outline-none transition-all duration-200 ease-out disabled:opacity-50 disabled:cursor-not-allowed';
+  
+  // Custom styling for loading vs default state
+  const isPrimary = variant === 'primary';
+  const defaultStyles = isPrimary
+    ? 'bg-primary text-base-100 hover:brightness-110 hover:-translate-y-[1px] hover:shadow-[0_0_20px_rgba(114,240,180,0.4)]'
+    : 'bg-transparent border-[1.5px] border-white/20 text-content hover:border-primary/60 hover:text-primary hover:bg-primary/10 hover:-translate-y-[1px]';
+    
+  const loadingStyles = 'bg-primary/20 text-primary cursor-wait border border-primary/50 shadow-[0_0_15px_rgba(114,240,180,0.2)]';
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={isLoading || disabled}
+      className={`${baseStyles} ${isLoading ? loadingStyles : defaultStyles} ${className || ''}`}
+    >
+      {isLoading && (
+        <motion.div
+          className="absolute left-0 top-0 bottom-0 bg-primary/20"
+          initial={{ width: "0%" }}
+          animate={{ width: "100%" }}
+          transition={{ duration: 15, ease: "circOut" }} 
+        />
+      )}
+      {isLoading && (
+        <motion.div
+          animate={{ opacity: [0.3, 0.6, 0.3] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute inset-0 bg-primary/10"
+        />
+      )}
+      <div className="relative z-10 flex items-center justify-center gap-2">
+        {isLoading && <Sparkles className="w-5 h-5 animate-spin" />}
+        {isLoading ? loadingText : children}
+      </div>
+    </button>
+  );
+};
 
 const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ initialSetId = null, onStartPractice, onExerciseStateChange }) => {
   const { language } = useLanguage();
@@ -470,18 +509,27 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     : 0;
 
   return (
-    <div className="space-y-6 relative">
-      {(isLoading || isGeneratingMore || isEvaluating) && (
-        <FullScreenAILoading 
-          message={
-            isEvaluating 
-              ? (language === 'pl' ? 'Ocenianie odpowiedzi...' : 'Evaluating answers...')
-              : (language === 'pl' ? 'Generowanie zadań...' : 'Generating exercises...')
-          } 
-        />
-      )}
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-base-300 pb-5">
+    <div className="relative">
+      {/* Pulsar effect for the whole screen area */}
+      <AnimatePresence>
+        {(isLoading || isEvaluating || isGeneratingMore) && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute -inset-4 md:-inset-6 rounded-3xl border border-primary/30 shadow-[0_0_30px_rgba(114,240,180,0.15)] pointer-events-none z-0"
+          >
+            <motion.div
+              animate={{ opacity: [0.3, 0.8, 0.3], boxShadow: ["0 0 20px rgba(114,240,180,0.2)", "0 0 40px rgba(114,240,180,0.6)", "0 0 20px rgba(114,240,180,0.2)"] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute inset-0 rounded-3xl border border-primary/60"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <div className="space-y-6 relative z-10">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-base-300 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
             ✨ {(user?.role === 'admin' || user?.role === 'admin_student') 
@@ -950,15 +998,15 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                 </div>
               )}
 
-              {isLoading ? null : (
-                <Button
-                  onClick={() => handleGenerate(false)}
-                  className="w-full py-3 text-base flex items-center justify-center gap-2 mt-2"
-                >
-                  <Sparkles className="w-5 h-5 animate-pulse" />
-                  {language === 'pl' ? 'Generuj zdania przez AI' : 'Generate sentences with AI'}
-                </Button>
-              )}
+              <AILoadingButton
+                isLoading={isLoading}
+                onClick={() => handleGenerate(false)}
+                className="w-full py-3 text-base mt-2"
+                loadingText={language === 'pl' ? 'Generowanie zadań...' : 'Generating exercises...'}
+              >
+                <Sparkles className="w-5 h-5 animate-pulse" />
+                {language === 'pl' ? 'Generuj zdania przez AI' : 'Generate sentences with AI'}
+              </AILoadingButton>
             </div>
             </div>
           </Card>
@@ -1159,7 +1207,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
               </Button>
               
               {practiceMode === 'fixed' && activeSentenceIndex === exercises.length - 1 ? (
-                <Button
+                <AILoadingButton
                   onClick={() => {
                     const unansweredCount = exercises.length - studentAnswers.filter(ans => ans?.trim()).length;
                     if (unansweredCount > 0) {
@@ -1176,23 +1224,25 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                     handleEvaluate();
                   }}
                   isLoading={isEvaluating}
-                  className="bg-primary hover:bg-primary/95 text-black font-extrabold"
+                  loadingText={language === 'pl' ? 'Ocenianie odpowiedzi...' : 'Evaluating answers...'}
+                  className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
                 >
                   {language === 'pl' ? 'Sprawdź i oceń odpowiedzi' : 'Submit & evaluate answers'}
-                </Button>
+                </AILoadingButton>
               ) : (
-                <Button
+                <AILoadingButton
                   onClick={handleNext}
                   disabled={isGeneratingMore}
                   isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
-                  className={
+                  loadingText={language === 'pl' ? 'Generowanie...' : 'Generating...'}
+                  className={`px-6 py-3 ${
                     exerciseFormat === 'puzzle' && studentAnswers[activeSentenceIndex]?.trim() === exercises[activeSentenceIndex]?.englishTranslation?.trim().split(/\s+/).join(' ') 
                       ? "animate-pulse bg-primary text-black border border-primary/50 shadow-[0_0_15px_rgba(114,240,180,0.5)]"
                       : ""
-                  }
+                  }`}
                 >
                   {language === 'pl' ? 'Następne' : 'Next'}
-                </Button>
+                </AILoadingButton>
               )}
             </div>
           </Card>
@@ -1238,11 +1288,14 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
               <Button onClick={() => setStep('setup')} variant="secondary">
                 {language === 'pl' ? 'Nowy trening' : 'New session'}
               </Button>
-              {isLoading ? null : (
-                <Button onClick={() => handleGenerate(false)}>
-                  {language === 'pl' ? 'Generuj kolejne zdania' : 'Generate next set'}
-                </Button>
-              )}
+              <AILoadingButton 
+                isLoading={isLoading} 
+                onClick={() => handleGenerate(false)}
+                loadingText={language === 'pl' ? 'Generowanie zadań...' : 'Generating exercises...'}
+                className="px-6 py-3"
+              >
+                {language === 'pl' ? 'Generuj kolejne zdania' : 'Generate next set'}
+              </AILoadingButton>
             </div>
           </Card>
 
@@ -1334,6 +1387,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         confirmText={language === 'pl' ? 'Potwierdź' : 'Confirm'}
         cancelText={language === 'pl' ? 'Anuluj' : 'Cancel'}
       />
+      </div>
     </div>
   );
 };
