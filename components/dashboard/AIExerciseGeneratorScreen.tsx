@@ -30,8 +30,19 @@ import {
   Play,
   Clock,
   Hash,
-  Timer
+  Timer,
+  Volume2,
+  Loader2
 } from 'lucide-react';
+
+
+const ACCENTS = ['en-US', 'en-GB', 'en-AU', 'en-SCT'];
+const ACCENT_FLAGS: Record<string, string> = {
+  'en-US': '🇺🇸',
+  'en-GB': '🇬🇧',
+  'en-AU': '🇦🇺',
+  'en-SCT': '🏴󠁧󠁢󠁳󠁣󠁴󠁿'
+};
 
 const DEFAULT_GENERATION_PROMPT = `Jesteś wirtualnym nauczycielem języka angielskiego. Twoim absolutnym priorytetem jest personalizacja UX - wygenerowane zdania muszą być maksymalnie dopasowane do ucznia.\n\n[START KONTEKST UCZNIA]\n\nProfil (hobby, praca, wiek): \${userProfile || "Brak danych"}\n\nNajczęstsze błędy: \${weaknessesList || "Brak zidentyfikowanych błędów"}\n[KONIEC KONTEKST UCZNIA]\n\nWygeneruj dokładnie [NUM_SENTENCES] unikalnych zdań po polsku do przetłumaczenia na język angielski, na wybranym poziomie CEFR.\n\nZASADY TWORZENIA:\n\nPobierz dostarczony zestaw słówek z historii lekcji i zbuduj na ich podstawie zdania. Nawiązuj do tematu lekcji.\n\nWykorzystaj Profil kursanta, aby zdania były angażujące i osobiście interesujące.\n\nPRIORYTET: Skonstruuj zdania w taki sposób, aby WYMUSIĆ na uczniu użycie gramatyki/słownictwa z listy "Najczęstsze błędy" (jeśli występuje).\n\nZapewnij krótką wskazówkę (po polsku) dla każdego zdania, ułatwiającą tłumaczenie.`;
 
@@ -145,6 +156,28 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   
   // UI states
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
+  const [playingAudioIndex, setPlayingAudioIndex] = useState<number | null>(null);
+
+  const handlePlaySentenceAudio = async (text: string, lang: string, index: number) => {
+    if (playingAudioIndex === index) return;
+    setPlayingAudioIndex(index);
+    try {
+      const res = await fetch(`/api/tts?text=${encodeURIComponent(text)}&lang=${lang}`);
+      if (!res.ok) throw new Error('Audio failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => {
+        setPlayingAudioIndex(null);
+        URL.revokeObjectURL(url);
+      };
+      await audio.play();
+    } catch (err) {
+      console.error(err);
+      setPlayingAudioIndex(null);
+    }
+  };
+
   const [activeSentenceIndex, setActiveSentenceIndex] = useState<number>(0);
   const [step, setStep] = useState<'setup' | 'practice' | 'results'>('setup');
 
@@ -1354,7 +1387,22 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                       </div>
 
                       <div>
-                        <div className="text-xs text-content-muted font-bold mb-1 uppercase tracking-wider">{language === 'pl' ? 'Rekomendowane przez AI' : 'Suggested translation'}</div>
+                        <div className="text-xs text-content-muted font-bold mb-1 uppercase tracking-wider flex items-center justify-between">
+                          <span>{language === 'pl' ? 'Rekomendowane przez AI' : 'Suggested translation'}</span>
+                          <button
+                            onClick={() => handlePlaySentenceAudio(res.correctTranslation, ACCENTS[idx % ACCENTS.length], idx)}
+                            disabled={playingAudioIndex === idx}
+                            className="flex items-center gap-1.5 px-2 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded transition-colors"
+                            title="Posłuchaj wymowy"
+                          >
+                            <span className="text-[10px]">{ACCENT_FLAGS[ACCENTS[idx % ACCENTS.length]]}</span>
+                            {playingAudioIndex === idx ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Volume2 className="w-3 h-3" />
+                            )}
+                          </button>
+                        </div>
                         <div className="text-sm p-2.5 bg-primary/[0.02] border border-primary/10 text-primary-light rounded-lg font-medium">
                           {res.correctTranslation}
                         </div>

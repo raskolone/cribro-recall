@@ -271,9 +271,9 @@ Zwróć wynik jako JSON z tablicą obiektów o polu "lessons". Każdy obiekt lek
 
   app.post('/api/gemini/lesson-summary', requireFirebaseAdmin, async (req, res) => {
     try {
-      const { notes, students } = req.body;
-      if (!notes) {
-        return res.status(400).json({ error: 'Missing notes' });
+      const { notes, pdfBase64, driveFile, students } = req.body;
+      if (!notes && !pdfBase64 && !driveFile) {
+        return res.status(400).json({ error: 'Missing notes, pdfBase64 or driveFile' });
       }
       
       const apiKey = process.env.GEMINI_API_KEY;
@@ -285,7 +285,49 @@ Zwróć wynik jako JSON z tablicą obiektów o polu "lessons". Każdy obiekt lek
       
       const studentsListStr = students ? students.map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n') : 'Brak bazy kursantów';
 
-      const promptContext = `Baza kursantów:\n${studentsListStr}\n\nTranskrypcja/Notatki ze spotkania:\n${notes}`;
+      let promptContext: any[] = [];
+      
+      if (driveFile) {
+        const url = driveFile.mimeType === 'application/pdf' 
+          ? `https://www.googleapis.com/drive/v3/files/${driveFile.id}?alt=media`
+          : `https://www.googleapis.com/drive/v3/files/${driveFile.id}/export?mimeType=text/plain`;
+          
+        const fetchRes = await fetch(url, { headers: { Authorization: `Bearer ${driveFile.token}` } });
+        if (!fetchRes.ok) throw new Error("Failed to fetch from Google Drive: " + await fetchRes.text());
+        
+        if (driveFile.mimeType === 'application/pdf') {
+            const arrayBuffer = await fetchRes.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            promptContext = [
+              {
+                inlineData: {
+                  data: buffer.toString('base64'),
+                  mimeType: 'application/pdf'
+                }
+              },
+              { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z notatkami z lekcji. Przeanalizuj go.` }
+            ];
+        } else {
+            const text = await fetchRes.text();
+            promptContext = [
+              { text: `Baza kursantów:\n${studentsListStr}\n\nTranskrypcja/Notatki ze spotkania (Google Docs / Text):\n${text}` }
+            ];
+        }
+      } else if (pdfBase64) {
+        promptContext = [
+          {
+            inlineData: {
+              data: pdfBase64.split(',')[1] || pdfBase64,
+              mimeType: 'application/pdf'
+            }
+          },
+          { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z notatkami z lekcji. Przeanalizuj go.` }
+        ];
+      } else {
+        promptContext = [
+          { text: `Baza kursantów:\n${studentsListStr}\n\nTranskrypcja/Notatki ze spotkania:\n${notes}` }
+        ];
+      }
 
       const sysInstruction = `# Cel
 Na podstawie AI meeting notes przygotuj podsumowanie lekcji języka angielskiego dla kursanta.
@@ -361,10 +403,20 @@ Zwróć wynik jako JSON z poniższymi polami:
       if (elevenLabsKey) {
         // Voice selection based on language
         let voiceId = 'cgSgspJ2msm6clMCkdW9'; // Default to Jessica (US)
+        
+        const usVoices = ['EXAVITQu4vr4xnSDxMaL', 'cgSgspJ2msm6clMCkdW9', '21m00Tcm4TlvDq8ikWAM'];
+        const gbVoices = ['Xb7hH8MSUJpSbSDYk0k2', 'CYw3kZ02Hs0563khs1Fj', 'JBFqnCBsd6RMkjVDRZzb'];
+        const auVoices = ['IKne3meq5aSn9XLyUdCD', 'ZQe5CZNOzWyzPSCn5a3c'];
+        const sctVoices = ['D38z5RcWu1voky8WS1ja', 'N2lVS1w4EtoT3dr4eOWO'];
+
         if (lang === 'en-GB') {
-          voiceId = 'Xb7hH8MSUJpSbSDYk0k2'; // Alice (GB)
+          voiceId = gbVoices[Math.floor(Math.random() * gbVoices.length)];
+        } else if (lang === 'en-AU') {
+          voiceId = auVoices[Math.floor(Math.random() * auVoices.length)];
+        } else if (lang === 'en-SCT') {
+          voiceId = sctVoices[Math.floor(Math.random() * sctVoices.length)];
         } else if (lang === 'en-US') {
-          voiceId = 'EXAVITQu4vr4xnSDxMaL'; // Sarah (US)
+          voiceId = usVoices[Math.floor(Math.random() * usVoices.length)];
         }
 
         const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
