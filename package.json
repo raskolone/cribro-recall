@@ -11,7 +11,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "^1.28.0",
+    "@google/genai": "^2.11.0",
     "@gsap/react": "^2.1.2",
     "canvas-confetti": "^1.9.4",
     "express": "^5.2.1",
