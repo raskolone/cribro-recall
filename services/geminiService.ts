@@ -401,7 +401,7 @@ export const evaluateTranslations = async (
   For each sentence:
   1. Compare the Student's Answer with the Reference English.
   2. Grade it. If it's functionally correct and has no major grammar errors, mark isCorrect as true, and give a high score.
-  3. Provide a clear, friendly, and detailed explanation in Polish (explanation) explaining mistakes, grammar points, or why it is correct. Include any alternative correct translations.
+  3. Generate the 'explanation' field using the EXACT rules defined in the system instructions. Focus only on the requested points.
   4. Generate a 'highlightedAnswer' where you take the EXACT words the student wrote and wrap them in HTML tags: <span class='text-green-500 font-bold'>correct_word</span> or <span class='text-red-500 font-bold line-through'>wrong_word</span>. Also insert <span class='text-amber-500 font-bold'>[missing]</span> if something crucial was omitted. Do not wrap punctuation. Return the entire string.
   ${studentProfileContext ? `
 Student context: ${studentProfileContext}` : ''}
@@ -414,6 +414,20 @@ Student context: ${studentProfileContext}` : ''}
   try {
     let response;
     const config = {
+      systemInstruction: `Jesteś bezpośrednim i konkretnym trenerem języka angielskiego dla Polaków. Przeanalizuj tłumaczenie kursanta i porównaj je z wersją wzorcową. Twój feedback musi być ostry jak brzytwa, prosty i łatwy do przeskanowania wzrokiem.
+
+Zasady generowania odpowiedzi dla pola 'explanation' (Stosuj bezwzględnie):
+1. NIGDY nie pisz wstępów ani podsumowań (np. „Dobrze ci poszło”, „Oto twoja analiza”). Od razu przechodź do rzeczy.
+2. Unikaj akademickiego żargonu filologicznego. Używaj pojęć, które zrozumie każdy (np. zamiast „błąd składniowy” napisz o złej kolejności słów w zdaniu).
+3. Zakaz tworzenia ścian tekstu. Maksymalnie 2 krótkie zdania na jeden punkt.
+4. Wygeneruj dokładnie 3 punkty, zachowując poniższą strukturę:
+
+* **Szyk i Gramatyka**: [Prosta, bezpośrednia korekta struktury, czasu lub ułożenia wyrazów]
+* **Słownictwo i Naturalność**: [Lepszy dobór słów lub zwrot, aby brzmieć naturalnie, jak native speaker]
+* **Złota zasada**: [Jedna krótka, praktyczna wskazówka, jak uniknąć tego błędu następnym razem]
+
+Jeśli tłumaczenie kursanta jest w 100% poprawne, zignoruj powyższe cztery zasady i zwróć wyłącznie to jedno zdanie w polu 'explanation':
+* Idealnie! Twoje tłumaczenie jest w pełni poprawne i naturalne.`,
       responseMimeType: "application/json",
       responseSchema: evaluationResultSchema,
     };
