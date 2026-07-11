@@ -96,7 +96,7 @@ export const generateVocabulary = async (language: Language, difficulty: Difficu
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -104,7 +104,7 @@ export const generateVocabulary = async (language: Language, difficulty: Difficu
       },
     });
 
-    let jsonText = extractJSON(response.text || "");
+    let jsonText = extractJSON(response?.text || "");
     const parsed = JSON.parse(jsonText);
     return parsed as Omit<Word, 'id' | 'isDifficult' | 'language'>[];
   } catch (error) {
@@ -116,7 +116,7 @@ export const generateVocabulary = async (language: Language, difficulty: Difficu
 export const getAudioPronunciation = async (text: string, voice: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: [{ parts: [{ text: text }] }],
       config: {
         responseModalities: [Modality.AUDIO],
@@ -180,7 +180,7 @@ export const generateAudioVocabulary = async (base64Audio: string, mimeType: str
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: [
         {
           role: 'user',
@@ -196,7 +196,7 @@ export const generateAudioVocabulary = async (base64Audio: string, mimeType: str
       },
     });
 
-    let jsonText = extractJSON(response.text || "");
+    let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText) as AudioVocabulary[];
   } catch (error) {
     console.error("Error generating audio vocabulary:", error);
@@ -209,7 +209,7 @@ export const generateAudioTranscript = async (base64Audio: string, mimeType: str
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: [
         {
           role: 'user',
@@ -221,7 +221,7 @@ export const generateAudioTranscript = async (base64Audio: string, mimeType: str
       ],
     });
 
-    return response.text.trim();
+    return response?.text.trim();
   } catch (error) {
     console.error("Error generating audio transcript:", error);
     throw new Error("Failed to generate audio transcript from AI.");
@@ -237,7 +237,7 @@ export const getAISuggestions = async (difficultWords: Word[]): Promise<AISugges
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -245,7 +245,7 @@ export const getAISuggestions = async (difficultWords: Word[]): Promise<AISugges
       },
     });
 
-    let jsonText = extractJSON(response.text || "");
+    let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText) as AISuggestion;
   } catch (error) {
     console.error("Error getting AI suggestions:", error);
@@ -343,9 +343,9 @@ export const generateTranslationExercises = async (
             config,
           });
         } catch (e3: any) {
-          console.warn("gemini-3.1-flash-lite-preview failed, falling back to gemini-2.5-flash", e3);
+          console.warn("gemini-3.1-flash-lite-preview failed, falling back to gemini-3.5-flash", e3);
           response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3.5-flash",
             contents: finalPrompt,
             config,
           });
@@ -353,7 +353,7 @@ export const generateTranslationExercises = async (
       }
     }
 
-    let jsonText = extractJSON(response.text || "");
+    let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText) as TranslationExercise[];
   } catch (error: any) {
     console.error("Error generating translation exercises:", error);
@@ -374,10 +374,10 @@ export const generateHomework = async (topic: string, summary: string, words: st
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
     });
-    return response.text.trim();
+    return response?.text.trim();
   } catch (error) {
     console.error("Error generating homework:", error);
     throw new Error("Failed to generate homework from AI.");
@@ -412,16 +412,45 @@ Student context: ${studentProfileContext}` : ''}
   const finalPrompt = customEvaluationPrompt ? `${customEvaluationPrompt}\n\nContext:\n${basePrompt}` : basePrompt;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: finalPrompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: evaluationResultSchema,
-      },
-    });
+    let response;
+    const config = {
+      responseMimeType: "application/json",
+      responseSchema: evaluationResultSchema,
+    };
+    try {
+      response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: finalPrompt,
+        config,
+      });
+    } catch (e1: any) {
+      console.warn("gemini-3.5-flash failed, falling back to gemini-3.5-flash", e1);
+      try {
+        response = await ai.models.generateContent({
+          model: "gemini-3.5-flash",
+          contents: finalPrompt,
+          config,
+        });
+      } catch (e2: any) {
+        console.warn("gemini-3.5-flash failed again, falling back to gemini-3.5-flash-preview", e2);
+        try {
+          response = await ai.models.generateContent({
+            model: "gemini-3.5-flash-preview",
+            contents: finalPrompt,
+            config,
+          });
+        } catch (e3: any) {
+           console.warn("gemini-3.5-flash-preview failed, falling back to gemini-3.5-flash", e3);
+           response = await ai.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: finalPrompt,
+            config,
+          });
+        }
+      }
+    }
 
-    let jsonText = extractJSON(response.text || "");
+    let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText) as TranslationEvaluationResult[];
   } catch (error) {
     console.error("Error evaluating translations:", error);
@@ -491,7 +520,7 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash", // Fallback to 1.5 pro since 3.1 pro doesn't exist yet in the SDK
+      model: "gemini-3.5-flash", // Fallback to 1.5 pro since 3.1 pro doesn't exist yet in the SDK
       contents: contents,
       config: {
         systemInstruction: "You are an expert language teacher. Generate customized tests based on the student's lesson history, profile, and level. Ensure questions are practical and match the exact material covered.",
@@ -500,7 +529,7 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
       },
     });
 
-    let jsonText = extractJSON(response.text || "");
+    let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText);
   } catch (err) {
     console.error("Test generation failed", err);
@@ -537,14 +566,14 @@ Return a JSON array of objects.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
         responseSchema: schema,
       },
     });
-    let jsonText = extractJSON(response.text || "");
+    let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText);
   } catch (err) {
     console.error("Error generating flashcards from text:", err);
@@ -563,7 +592,7 @@ Only return the sentence, nothing else.`;
       model: "gemini-3.5-flash",
       contents: prompt,
     });
-    return response.text.trim();
+    return response?.text.trim();
   } catch (err) {
     console.error("Error generating context sentence:", err);
     return "";
@@ -575,7 +604,7 @@ export const generateImageForTerm = async (term: string, context?: string): Prom
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: { parts: [{ text: prompt }] },
       config: {
         imageConfig: {
@@ -636,7 +665,7 @@ Zwróć 10 poprawionych zadań jako JSON (tablica obiektów). Zastąp te, które
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -644,7 +673,7 @@ Zwróć 10 poprawionych zadań jako JSON (tablica obiektów). Zastąp te, które
       },
     });
 
-    let jsonText = extractJSON(response.text || "");
+    let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText);
   } catch (error) {
     console.error("Error modifying test:", error);
@@ -745,14 +774,14 @@ Dla "fill_in_blank":
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
       },
     });
 
-    let jsonText = extractJSON(response.text || "");
+    let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText);
   } catch (error) {
     console.error("Error generating dynamic exercise:", error);
@@ -781,7 +810,7 @@ ${text}`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -789,7 +818,7 @@ ${text}`;
       }
     });
 
-    const textResult = response.text;
+    const textResult = response?.text;
     if (!textResult) throw new Error("No response");
     
     return JSON.parse(textResult);
