@@ -129,7 +129,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Add drive scope just in case they link now, so they have it
       provider.addScope('https://www.googleapis.com/auth/drive.readonly');
       provider.addScope('https://www.googleapis.com/auth/documents.readonly');
-      await linkWithPopup(auth.currentUser, provider);
+      const result = await linkWithPopup(auth.currentUser, provider);
+      if (result.user && result.user.photoURL) {
+        const userDocRef = doc(db, 'users', result.user.uid);
+        await updateDoc(userDocRef, { photoURL: result.user.photoURL });
+        setUser(prev => prev ? { ...prev, photoURL: result.user.photoURL } : null);
+      }
     } catch (error) {
       console.error('Failed to link Google account:', error);
       throw error;

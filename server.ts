@@ -146,6 +146,109 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 
   // Proxy for Gemini API
+  app.post('/api/gemini/generate-test', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { level, testTitle, scope, studentProfile, lessonContext, selectedTypes, fileData, driveFile } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
+      
+      const { GoogleGenAI, Type, Schema } = require('@google/genai');
+      const ai = new GoogleGenAI({ apiKey });
+      
+      let contents = [];
+      const prompt = `Jesteś asystentem edukacyjnym, generatorem testów opartym o model **Gemini 3.1 Pro Preview**.
+Twoim zadaniem jest przygotowanie testu dla kursanta na podstawie jego dotychczasowych lekcji oraz dostarczonych materiałów.
+
+# ZASADY ŻELAZNE:
+1. Przeanalizuj dokładnie profil kursanta:
+${studentProfile}
+Nie wymyślaj rzeczy, które nie istnieją w profilu ani w lekcjach. 
+2. Test musi być ściśle dostosowany do poziomu kursanta: ${level}.
+3. Wykorzystaj elementy, które faktycznie pojawiały się w trakcie nauki (słownictwo z lekcji: ${lessonContext}). Test ma bazować na podobnych strukturach, aby kursant się nie pogubił.
+4. Wygeneruj DOKŁADNIE 10 różnych zadań, w formatach:
+   - multiple_choice (wielokrotnego wyboru),
+   - fill_in_blank (krótkie zadania na wpisywanie brakujących elementów),
+   - translation (tłumaczenie zdań z języka polskiego na angielski na podstawie omawianych tematów).
+5. Zdania mają być autentyczne, brzmieć naturalnie, tak aby kursant widział ich praktyczne zastosowanie w swoim życiu. Unikaj dziwnych, nierealnych sytuacji.
+
+Tytuł testu: ${testTitle}
+Zakres materiału: ${scope}
+  
+Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
+
+      if (driveFile) {
+        const url = driveFile.mimeType === 'application/pdf' 
+          ? `https://www.googleapis.com/drive/v3/files/${driveFile.id}?alt=media`
+          : `https://www.googleapis.com/drive/v3/files/${driveFile.id}/export?mimeType=text/plain`;
+          
+        const fetchRes = await fetch(url, { headers: { Authorization: `Bearer ${driveFile.token}` } });
+        if (!fetchRes.ok) throw new Error("Failed to fetch from Google Drive: " + await fetchRes.text());
+        
+        if (driveFile.mimeType === 'application/pdf') {
+            const arrayBuffer = await fetchRes.arrayBuffer();
+            contents = [
+              { text: prompt },
+              { inlineData: { mimeType: 'application/pdf', data: Buffer.from(arrayBuffer).toString('base64') } }
+            ];
+        } else {
+            const textContent = await fetchRes.text();
+            contents = [
+              { text: prompt + "\n\n[MATERIAŁ DODATKOWY Z GOOGLE DRIVE]:\n" + textContent }
+            ];
+        }
+      } else if (fileData) {
+        contents = [
+          { text: prompt },
+          { inlineData: { mimeType: fileData.mimeType, data: fileData.data } }
+        ];
+      } else {
+        contents = [{ text: prompt }];
+      }
+
+      const schema = {
+        type: Type.ARRAY,
+        description: "Array of test questions",
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            type: { type: Type.STRING, enum: ["multiple_choice", "fill_in_blank", "translation"], description: "Type of the question" },
+            prompt: { type: Type.STRING, description: "The question or the sentence to translate/fill" },
+            options: { 
+              type: Type.ARRAY, 
+              items: { type: Type.STRING },
+              description: "Options for multiple_choice. Leave empty for other types."
+            },
+            correctAnswer: { type: Type.STRING, description: "The correct answer (exact string). For translation, the correct English translation." },
+            hint: { type: Type.STRING, description: "Optional hint in Polish." }
+          },
+          required: ["type", "prompt", "correctAnswer"]
+        }
+      };
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-pro',
+        contents: contents,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: schema,
+          temperature: 0.4
+        }
+      });
+      
+      let parsed = [];
+      try {
+        parsed = JSON.parse(response.text() || '[]');
+      } catch (e) {
+        return res.status(500).json({ error: 'Failed to parse AI response' });
+      }
+      
+      return res.json({ questions: parsed });
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post('/api/gemini/import-lessons-batch', requireFirebaseAdmin, async (req, res) => {
     try {
       const { textContent, pdfBase64, driveFile, students } = req.body;

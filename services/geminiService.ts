@@ -480,75 +480,43 @@ export const generateTest = async (
   studentProfile: string,
   lessonContext: string,
   selectedTypes: string[] = ['multiple_choice', 'fill_in_blank', 'translation'],
-  fileData?: { data: string; mimeType: string } | null
+  fileData?: { data: string; mimeType: string } | null,
+  driveFile?: { id: string, mimeType: string, token: string }
 ): Promise<any[]> => {
-  const prompt = `Jesteś asystentem edukacyjnym, generatorem testów opartym o model **Gemini 3.1 Pro Preview**.
-Twoim zadaniem jest przygotowanie testu dla kursanta na podstawie jego dotychczasowych lekcji oraz dostarczonych materiałów.
-
-# ZASADY ŻELAZNE:
-1. Przeanalizuj dokładnie profil kursanta:
-${studentProfile}
-Nie wymyślaj rzeczy, które nie istnieją w profilu ani w lekcjach. 
-2. Test musi być ściśle dostosowany do poziomu kursanta: ${level}.
-3. Wykorzystaj elementy, które faktycznie pojawiały się w trakcie nauki (słownictwo z lekcji: ${lessonContext}). Test ma bazować na podobnych strukturach, aby kursant się nie pogubił.
-4. Wygeneruj DOKŁADNIE 10 różnych zadań, w formatach:
-   - multiple_choice (wielokrotnego wyboru),
-   - fill_in_blank (krótkie zadania na wpisywanie brakujących elementów),
-   - translation (tłumaczenie zdań z języka polskiego na angielski na podstawie omawianych tematów).
-5. Zdania mają być autentyczne, brzmieć naturalnie, tak aby kursant widział ich praktyczne zastosowanie w swoim życiu. Unikaj dziwnych, nierealnych sytuacji.
-
-Tytuł testu: ${testTitle}
-Zakres materiału: ${scope}
+  const { auth } = require('../firebase');
+  const user = auth.currentUser;
+  const token = user ? await user.getIdToken() : '';
   
-Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
-
-  const schema = {
-    type: Type.ARRAY,
-    description: "Array of test questions",
-    items: {
-      type: Type.OBJECT,
-      properties: {
-        type: { type: Type.STRING, enum: ["multiple_choice", "fill_in_blank", "translation"], description: "Type of the question" },
-        prompt: { type: Type.STRING, description: "The question or the sentence to translate/fill" },
-        options: { 
-          type: Type.ARRAY, 
-          items: { type: Type.STRING },
-          description: "Options for multiple_choice. Leave empty for other types."
-        },
-        correctAnswer: { type: Type.STRING, description: "The correct answer (exact string). For translation, the correct English translation." },
-        hint: { type: Type.STRING, description: "Optional hint in Polish." }
-      },
-      required: ["type", "prompt", "correctAnswer"]
+  const res = await fetch('/api/gemini/generate-test', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      level,
+      testTitle,
+      scope,
+      studentProfile,
+      lessonContext,
+      selectedTypes,
+      fileData,
+      driveFile
+    })
+  });
+  
+  if (!res.ok) {
+    const errText = await res.text();
+    try {
+        const errData = JSON.parse(errText);
+        throw new Error(errData.error || 'Failed to generate test');
+    } catch(e) {
+        throw new Error(`Server error (${res.status}): Invalid response.`);
     }
-  };
-
-  try {
-    const contents: any[] = [prompt];
-    if (fileData) {
-      contents.push({
-        inlineData: {
-          data: fileData.data,
-          mimeType: fileData.mimeType
-        }
-      });
-    }
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash", // Fallback to 1.5 pro since 3.1 pro doesn't exist yet in the SDK
-      contents: contents,
-      config: {
-        systemInstruction: "You are an expert language teacher. Generate customized tests based on the student's lesson history, profile, and level. Ensure questions are practical and match the exact material covered.",
-        responseMimeType: "application/json",
-        responseSchema: schema,
-      },
-    });
-
-    let jsonText = extractJSON(response?.text || "");
-    return JSON.parse(jsonText);
-  } catch (err) {
-    console.error("Test generation failed", err);
-    throw new Error("Failed to generate test.");
   }
+  
+  const data = await res.json();
+  return data.questions || [];
 };
 
 

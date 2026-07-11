@@ -1410,15 +1410,22 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                     </div>
 
                     {/* Explanations & corrections */}
-                    <div className="bg-base-200/50 p-4 rounded-xl border border-white/5 space-y-2 mt-2">
-                      <div className="text-xs text-primary font-bold flex items-center gap-1.5 uppercase tracking-wider">
-                        <Lightbulb className="w-3.5 h-3.5 shrink-0" />
-                        {language === 'pl' ? 'Wskazówki i wyjaśnienie AI' : 'AI Analysis & feedback'}
-                      </div>
-                      <p className="text-xs leading-relaxed text-content-muted whitespace-pre-wrap">
+                    <details className="bg-base-200/50 p-4 rounded-xl border border-white/5 space-y-2 mt-2 group">
+                      <summary className="text-sm text-yellow-300 font-bold flex items-center gap-2 uppercase tracking-wider cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                        <span className="relative flex h-3 w-3 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                        </span>
+                        <Lightbulb className="w-4 h-4 shrink-0" />
+                        {language === 'pl' ? 'Sprawdź Feedback' : 'Check Feedback'}
+                        <svg className="w-4 h-4 ml-auto transition-transform group-open:rotate-180 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </summary>
+                      <p className="text-sm leading-relaxed text-yellow-100 whitespace-pre-wrap pt-3 border-t border-white/10 mt-3">
                         {res.explanation}
                       </p>
-                    </div>
+                    </details>
                   </div>
                 </div>
               </Card>
