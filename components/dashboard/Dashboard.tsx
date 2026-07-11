@@ -97,13 +97,54 @@ const Dashboard: React.FC = () => {
   const [isProgressCollapsed, setIsProgressCollapsed] = useState(true);
   const [isStudentViewCollapsed, setIsStudentViewCollapsed] = useState(true);
   
-  const [confirmModalState, setConfirmModalState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: () => {}
-  });
+  const [confirmModalState, setConfirmModalState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
+  useEffect(() => {
+    window.history.replaceState({ view, activeSetId, practiceView, adminSelectedUserId }, '');
+
+    const handlePopState = (event) => {
+      if (event.state) {
+        setView(event.state.view || 'dashboard');
+        if (event.state.activeSetId !== undefined) setActiveSetId(event.state.activeSetId);
+        if (event.state.practiceView !== undefined) setPracticeView(event.state.practiceView);
+        if (event.state.adminSelectedUserId !== undefined) setAdminSelectedUserId(event.state.adminSelectedUserId);
+      } else {
+        setView('dashboard');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const changeView = (newView: View, stateUpdates?: { activeSetId?: string | null, practiceView?: PracticeView, adminSelectedUserId?: string | null }) => {
+    setView(newView);
+    let nextActiveSetId = activeSetId;
+    let nextPracticeView = practiceView;
+    let nextAdminSelectedUserId = adminSelectedUserId;
+
+    if (stateUpdates) {
+      if (stateUpdates.activeSetId !== undefined) {
+        setActiveSetId(stateUpdates.activeSetId);
+        nextActiveSetId = stateUpdates.activeSetId;
+      }
+      if (stateUpdates.practiceView !== undefined) {
+        setPracticeView(stateUpdates.practiceView);
+        nextPracticeView = stateUpdates.practiceView;
+      }
+      if (stateUpdates.adminSelectedUserId !== undefined) {
+        setAdminSelectedUserId(stateUpdates.adminSelectedUserId);
+        nextAdminSelectedUserId = stateUpdates.adminSelectedUserId;
+      }
+    }
+
+    window.history.pushState({ 
+      view: newView, 
+      activeSetId: nextActiveSetId, 
+      practiceView: nextPracticeView, 
+      adminSelectedUserId: nextAdminSelectedUserId 
+    }, '');
+  };
   const showConfirm = (title: string, message: string, onConfirm: () => void) => {
     setConfirmModalState({ isOpen: true, title, message, onConfirm });
   };
@@ -225,15 +266,13 @@ const Dashboard: React.FC = () => {
               () => {
                 closeConfirm();
                 setIsExerciseActive(false);
-                setView('dashboard');
-                setPracticeView(null);
+                changeView('dashboard', { activeSetId: null, practiceView: null, adminSelectedUserId: null });
               }
             );
             return;
           }
           setIsExerciseActive(false);
-          setView('dashboard');
-          setPracticeView(null);
+          changeView('dashboard', { activeSetId: null, practiceView: null, adminSelectedUserId: null });
         } else if (isExerciseActive) {
           const isPl = language === 'pl';
           showConfirm(
@@ -269,7 +308,7 @@ const Dashboard: React.FC = () => {
   }, [difficultWords.length, frequency, lastRevisionDate]);
 
   const startPractice = (exercise: ExerciseType, isRevisionMode = false, isSpacedRepetitionMode = false) => {
-    setView('practice');
+    changeView('practice');
     setPracticeView({ type: 'exercise', exercise, isRevisionMode, isSpacedRepetitionMode });
   };
 
@@ -280,15 +319,15 @@ const Dashboard: React.FC = () => {
           exerciseType={practiceView.exercise} 
           isRevisionMode={practiceView.isRevisionMode} 
           isSpacedRepetitionMode={practiceView.isSpacedRepetitionMode}
-          onExit={() => setView('dashboard')} 
+          onExit={() => changeView('dashboard', { activeSetId: null, practiceView: null, adminSelectedUserId: null })} 
         />;
       }
       return <PracticeSetSelector 
         onSelectSet={(setId) => {
           setActiveSetId(setId);
-          setView('flashcard-study');
+          changeView('flashcard-study');
         }}
-        onCancel={() => setView('dashboard')}
+        onCancel={() => changeView('dashboard', { activeSetId: null, practiceView: null, adminSelectedUserId: null })}
       />;
     }
     if (view === 'settings') {
@@ -296,14 +335,14 @@ const Dashboard: React.FC = () => {
     }
     if (view === 'flashcard-sets') {
       return <FlashcardSetsScreen 
-        onStudySet={(setId) => { setActiveSetId(setId); setView('flashcard-study'); setPracticeView(null); }}
-        onEditSet={(setId) => { setActiveSetId(setId); setView('flashcard-edit'); }}
-        onStatsSet={(setId) => { setActiveSetId(setId); setView('flashcard-stats'); }}
-        onPresentSet={(setId) => { setActiveSetId(setId); setView('presentation'); }}
+        onStudySet={(setId) => changeView('flashcard-study', { activeSetId: setId, practiceView: null })}
+        onEditSet={(setId) => changeView('flashcard-edit', { activeSetId: setId })}
+        onStatsSet={(setId) => changeView('flashcard-stats', { activeSetId: setId })}
+        onPresentSet={(setId) => changeView('presentation', { activeSetId: setId })}
       />;
     }
     if (view === 'flashcard-edit' && activeSetId) {
-      return <FlashcardEditScreen setId={activeSetId} onBack={() => setView('flashcard-sets')} onStudy={(setId) => { setActiveSetId(setId); setView('flashcard-study'); setPracticeView(null); }} />;
+      return <FlashcardEditScreen setId={activeSetId} onBack={() => changeView('flashcard-sets', { activeSetId: null })} onStudy={(setId) => changeView('flashcard-study', { activeSetId: setId, practiceView: null })} />;
     }
     if (view === 'flashcard-study' && activeSetId) {
       const modeMapping: Record<string, 'intro' | 'flashcards' | 'quiz' | 'writing' | 'matching'> = {
@@ -318,22 +357,22 @@ const Dashboard: React.FC = () => {
       return <FlashcardStudyScreen 
         setId={activeSetId} 
         initialMode={initialMode} 
-        onBack={() => { setView('flashcard-sets'); setPracticeView(null); }} 
+        onBack={() => changeView('flashcard-sets', { activeSetId: null, practiceView: null })} 
         onStartAIPractice={() => {
-          setView('ai-generator');
+          changeView('ai-generator');
           // In the future we might want to pass the activeSetId to the AI generator
           // But for now it just navigates there
         }}
       />;
     }
     if (view === 'flashcard-stats' && activeSetId) {
-      return <FlashcardStatsScreen setId={activeSetId} onBack={() => setView('flashcard-sets')} />;
+      return <FlashcardStatsScreen setId={activeSetId} onBack={() => changeView('flashcard-sets', { activeSetId: null })} />;
     }
     if (view === 'presentation' && activeSetId) {
-      return <FlashcardPresentationScreen setId={activeSetId} onBack={() => setView('flashcard-sets')} />;
+      return <FlashcardPresentationScreen setId={activeSetId} onBack={() => changeView('flashcard-sets', { activeSetId: null })} />;
     }
     if (view.startsWith('admin') && (user?.role === 'admin' || user?.role === 'admin_student')) {
-      return <AdminPanel initialTab={view === 'admin' ? null : view.replace('admin-', '')} onViewChange={setView} initialSelectedUserId={adminSelectedUserId} onUserSelect={setAdminSelectedUserId} />;
+      return <AdminPanel initialTab={view === 'admin' ? null : view.replace('admin-', '')} onViewChange={changeView} initialSelectedUserId={adminSelectedUserId} onUserSelect={(id) => changeView(view, { adminSelectedUserId: id })} />;
     }
     if (view === 'ai-generator') {
       return <AIExerciseGeneratorScreen key={`ai-gen-${exerciseResetKey}`} initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />;
@@ -343,7 +382,7 @@ const Dashboard: React.FC = () => {
     }
 
     if (view === 'tests') {
-      return <StudentTestsScreen onBack={() => setView('dashboard')} />;
+      return <StudentTestsScreen onBack={() => changeView('dashboard', { activeSetId: null, practiceView: null, adminSelectedUserId: null })} />;
     }
     // Default to dashboard view
     const isTeacher = user?.role === 'admin' || user?.role === 'admin_student';
@@ -356,7 +395,7 @@ const Dashboard: React.FC = () => {
         
         {isTeacher ? (
           <div className="space-y-6">
-            <AdminPanel initialTab={null} onViewChange={setView} initialSelectedUserId={adminSelectedUserId} onUserSelect={setAdminSelectedUserId} />
+            <AdminPanel initialTab={null} onViewChange={changeView} initialSelectedUserId={adminSelectedUserId} onUserSelect={(id) => changeView(view, { adminSelectedUserId: id })} />
             
             {user?.role === 'admin_student' && (
               <>
@@ -427,15 +466,13 @@ const Dashboard: React.FC = () => {
                   setExerciseResetKey(k => k + 1);
                 }
                 setIsExerciseActive(false);
-                setView(newView);
-                setPracticeView(null);
+                changeView(newView, { practiceView: null });
               }
             );
             return;
           }
           setIsExerciseActive(false);
-          setView(newView);
-          setPracticeView(null);
+          changeView(newView, { practiceView: null });
         }} 
         onStartPractice={startPractice}
         isOpen={isSidebarOpen}

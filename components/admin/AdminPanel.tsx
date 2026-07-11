@@ -22,11 +22,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   const [selectedUser, setSelectedUser] = useState<UserWithId | null>(null);
 
   useEffect(() => {
-    if (users.length > 0 && initialSelectedUserId && !selectedUser) {
-      const user = users.find(u => u.id === initialSelectedUserId);
-      if (user) {
-        setSelectedUser(user);
-        fetchUserLogsAndStats(user.id);
+    if (users.length > 0) {
+      if (initialSelectedUserId) {
+        if (!selectedUser || selectedUser.id !== initialSelectedUserId) {
+          const user = users.find(u => u.id === initialSelectedUserId);
+          if (user) {
+            setSelectedUser(user);
+            fetchUserLogsAndStats(user.id);
+          }
+        }
+      } else {
+        setSelectedUser(null);
+        setPracticeLogs([]);
+        setLessonRecords([]);
       }
     }
   }, [users, initialSelectedUserId]);
@@ -133,6 +141,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
+    if (onViewChange) onViewChange(tab ? `admin-${tab}` : 'admin');
   };
   useEffect(() => {
     if (selectedUser) {
@@ -259,6 +268,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   };
 
   const handleSelectUser = (user: UserWithId) => {
+    if (onUserSelect) onUserSelect(user.id);
     setSelectedUser(user);
     setProfileForm({
       firstName: user.firstName || '',
@@ -448,27 +458,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       setShowDriveModal(false);
       setShowAIModal(true);
       const token = await connectGoogleDrive();
-      let textContent = '';
-      let pdfBase64 = '';
-
-      if (file.mimeType === 'application/pdf') {
-        const res = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const blob = await res.blob();
-        const reader = new FileReader();
-        pdfBase64 = await new Promise<string>((resolve) => {
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(blob);
-        });
-      } else {
-        const res = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}/export?mimeType=text/plain`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        textContent = await res.text();
-      }
-
-      await handleBatchImport(textContent, pdfBase64);
+      
+      await handleBatchImport('', '', { id: file.id, mimeType: file.mimeType, token });
     } catch (err: any) {
       if (err.code !== 'auth/popup-closed-by-user' && !err.message?.includes('popup')) {
         console.error(err);
@@ -502,7 +493,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     }
   };
 
-  const handleBatchImport = async (textContent: string, pdfBase64: string) => {
+  const handleBatchImport = async (textContent: string, pdfBase64: string, driveFile?: { id: string, mimeType: string, token: string }) => {
     try {
       const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/gemini/import-lessons-batch', {
@@ -514,12 +505,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         body: JSON.stringify({
           textContent,
           pdfBase64,
+          driveFile,
           students: users.map(u => ({ id: u.id, name: u.firstName || u.username, level: u.level, description: u.description }))
         })
       });
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
+      let result;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        result = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Server returned non-JSON:', text);
+        if (response.status === 413) {
+           throw new Error('Plik jest zbyt duży (przekroczono limit).');
+        } else if (response.status === 504) {
+           throw new Error('Przekroczono czas oczekiwania na odpowiedź od AI (Gateway Timeout).');
+        } else {
+           throw new Error(`Błąd serwera (${response.status}): Otrzymano nieprawidłową odpowiedź.`);
+        }
+      }
+
+      if (!response.ok) throw new Error(result.error || 'Nieznany błąd API');
 
       // result.lessons is an array of lessons
       if (result.lessons && result.lessons.length > 0) {
@@ -906,7 +913,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
           {activeTab ? (
             <div className="mb-6 flex items-center gap-4">
               <button 
-                onClick={() => { setActiveTab(null); }}
+                onClick={() => { setActiveTab(null); if (onViewChange) onViewChange('admin'); }}
                 className="flex items-center gap-2 text-content-muted hover:text-white transition-colors bg-base-200/50 px-4 py-2 rounded-xl border border-white/5 hover:border-primary/50"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

@@ -31,6 +31,15 @@ async function startServer() {
   const PORT = 3000;
   
   app.use(express.json({ limit: '50mb' }));
+app.use((err: any, req: any, res: any, next: any) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    return res.status(400).json({ error: 'Invalid JSON payload' });
+  }
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Payload too large' });
+  }
+  next(err);
+});
 
   const adminApp = getAdminApp();
   const adminAuth = getAuth(adminApp);
@@ -139,9 +148,9 @@ async function startServer() {
   // Proxy for Gemini API
   app.post('/api/gemini/import-lessons-batch', requireFirebaseAdmin, async (req, res) => {
     try {
-      const { textContent, pdfBase64, students } = req.body;
-      if (!textContent && !pdfBase64) {
-        return res.status(400).json({ error: 'Missing textContent or pdfBase64' });
+      const { textContent, pdfBase64, driveFile, students } = req.body;
+      if (!textContent && !pdfBase64 && !driveFile) {
+        return res.status(400).json({ error: 'Missing textContent, pdfBase64 or driveFile' });
       }
       
       const apiKey = process.env.GEMINI_API_KEY;
@@ -153,7 +162,34 @@ async function startServer() {
       const studentsListStr = students ? students.map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n') : 'Brak bazy kursantów';
 
       let contents: any[] = [];
-      if (pdfBase64) {
+      
+      if (driveFile) {
+        const url = driveFile.mimeType === 'application/pdf' 
+          ? `https://www.googleapis.com/drive/v3/files/${driveFile.id}?alt=media`
+          : `https://www.googleapis.com/drive/v3/files/${driveFile.id}/export?mimeType=text/plain`;
+          
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${driveFile.token}` } });
+        if (!res.ok) throw new Error("Failed to fetch from Google Drive: " + await res.text());
+        
+        if (driveFile.mimeType === 'application/pdf') {
+            const arrayBuffer = await res.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            contents = [
+              {
+                inlineData: {
+                  data: buffer.toString('base64'),
+                  mimeType: 'application/pdf'
+                }
+              },
+              { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z historią lekcji. Przeanalizuj go.` }
+            ];
+        } else {
+            const text = await res.text();
+            contents = [
+              { text: `Baza kursantów:\n${studentsListStr}\n\nTreść historii lekcji (Google Docs / Text):\n${text}` }
+            ];
+        }
+      } else if (pdfBase64) {
         contents = [
           {
             inlineData: {
