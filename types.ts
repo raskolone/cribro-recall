@@ -147,6 +147,7 @@ export interface TranslationEvaluationResult {
   isCorrect: boolean;
   score: number;
   explanation: string;
+  mistakes?: string[];
 }
 
 export interface LessonRecord {

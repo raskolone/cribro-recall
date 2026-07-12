@@ -42,7 +42,7 @@ export const extractJSON = (text: string): string => {
   return text.trim();
 };
 
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../firebase';
 
 import { GoogleGenAI, Type, Modality, HarmCategory, HarmBlockThreshold } from "@google/genai";
@@ -278,9 +278,10 @@ const evaluationResultSchema = {
       highlightedAnswer: { type: Type.STRING, description: "The student's answer with HTML span tags. Wrap correct words in <span class='text-green-500 font-bold'>word</span>, and incorrect words in <span class='text-red-500 font-bold line-through'>word</span>. Add missing required words as <span class='text-amber-500 font-bold'>[missing]</span>." },
       isCorrect: { type: Type.BOOLEAN, description: "Whether the answer is mostly correct or functionally accurate" },
       score: { type: Type.INTEGER, description: "Accuracy score from 0 to 100 based on grammar, choice of words, and meaning" },
-      explanation: { type: Type.STRING, description: "Detailed explanation in Polish highlighting mistakes, grammar rules, and alternative correct translations" }
+      explanation: { type: Type.STRING, description: "Detailed explanation in Polish highlighting mistakes, grammar rules, and alternative correct translations" },
+      mistakes: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of specific grammar or vocabulary topics the student failed at (e.g. 'Present Perfect', 'Articles'). Empty if correct." }
     },
-    required: ['polishSentence', 'correctTranslation', 'studentAnswer', 'highlightedAnswer', 'isCorrect', 'score', 'explanation']
+    required: ['polishSentence', 'correctTranslation', 'studentAnswer', 'highlightedAnswer', 'isCorrect', 'score', 'explanation', 'mistakes']
   }
 };
 
@@ -305,7 +306,7 @@ export const generateTranslationExercises = async (
   
   ${studentProfileContext ? `Here are details about the student's profile (interests, weaknesses, goals, and potentially example sentences they struggle with or practiced):\n${studentProfileContext}\nPlease use these details to deeply personalize the context of the sentences. Full UX personalization is required so that practice is tailor-made for this specific user. If there are example sentences in their profile, study their structure and incorporate similar difficulty/context.` : ''}
   
-  ${pastExercisesContext ? `\nCRITICAL HISTORY CHECK: The student's past practice sessions are listed below:\n${pastExercisesContext}\n\nZASADA ŻELAZNA (IRONCLAD RULE): You MUST analyze this session history and STRICTLY avoid repetition. A sentence or specific context completed by the student in Session 1, Session 2, or Session 3 is STRICTLY FORBIDDEN. Sentences from Session 4 and older MAY be brought back for review and spaced repetition.` : ''}
+  ${pastExercisesContext ? `\nCRITICAL HISTORY CHECK: The student's past practice sessions are listed below:\n${pastExercisesContext}\n\nZASADA ŻELAZNA (IRONCLAD RULE): You MUST analyze this session history and STRICTLY avoid generating IDENTICAL sentences. You are ENCOURAGED to reuse the same grammar topics and vocabulary (especially those the student struggles with), but you MUST present them in completely NEW sentences and different examples.` : ''}
   
   For each sentence, provide the Polish sentence, the correct English translation, and a helpful Polish hint.`;
 
@@ -404,6 +405,7 @@ export const evaluateTranslations = async (
   2. Grade it. If it's functionally correct and has no major grammar errors, mark isCorrect as true, and give a high score.
   3. Generate the 'explanation' field using the EXACT rules defined in the system instructions. Focus only on the requested points.
   4. Generate a 'highlightedAnswer' where you take the EXACT words the student wrote and wrap them in HTML tags: <span class='text-green-500 font-bold'>correct_word</span> or <span class='text-red-500 font-bold line-through'>wrong_word</span>. Also insert <span class='text-amber-500 font-bold'>[missing]</span> if something crucial was omitted. Do not wrap punctuation. Return the entire string.
+  5. For any mistakes made, list the exact grammar or vocabulary topics the student struggled with in the 'mistakes' array (e.g. 'Present Perfect', 'Phrasal Verbs', 'Prepositions'). Leave it empty if there are no mistakes.
   ${studentProfileContext ? `
 Student context: ${studentProfileContext}` : ''}
   
@@ -808,5 +810,25 @@ ${text}`;
   } catch (error) {
     console.error("Flashlight AI Error:", error);
     throw new Error("Failed to format flashcards.");
+  }
+};
+
+export const logMistakesToFirebase = async (userId: string, mistakes: string[]) => {
+  if (!userId || userId === 'demo-id' || !mistakes || mistakes.length === 0) return;
+  try {
+    for (const mistake of mistakes) {
+      if (!mistake || mistake.trim() === '') continue;
+      const cleanName = mistake.trim();
+      const safeId = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+      const mistakeRef = doc(db, `users/${userId}/weaknesses`, safeId);
+      const snap = await getDoc(mistakeRef);
+      if (snap.exists()) {
+        await updateDoc(mistakeRef, { frequency: increment(1) });
+      } else {
+        await setDoc(mistakeRef, { name: cleanName, frequency: 1, description: 'Zidentyfikowane przez AI podczas ćwiczeń.' });
+      }
+    }
+  } catch (error) {
+    console.error("Error logging mistakes:", error);
   }
 };

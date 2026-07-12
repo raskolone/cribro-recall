@@ -5,7 +5,7 @@ import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
 import { collection, getDocs, query, orderBy, limit, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses } from '../../services/geminiService';
+import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, logMistakesToFirebase } from '../../services/geminiService';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog } from '../../types';
 import { getVocabularySetsForStudent } from '../../services/lessonRecord';
 import Card from '../ui/Card';
@@ -493,8 +493,12 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
           };
           try {
             await addDoc(collection(db, `users/${user.id}/practiceLogs`), logData);
+            const allMistakes = results.flatMap(r => r.mistakes || []);
+            if (allMistakes.length > 0) {
+              await logMistakesToFirebase(user.id, allMistakes);
+            }
           } catch (e) {
-            console.warn("Could not save practice log", e);
+            console.warn("Could not save practice log or log mistakes", e);
           }
         }
       } else {
