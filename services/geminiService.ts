@@ -279,9 +279,12 @@ const evaluationResultSchema = {
       isCorrect: { type: Type.BOOLEAN, description: "Whether the answer is mostly correct or functionally accurate" },
       score: { type: Type.INTEGER, description: "Accuracy score from 0 to 100 based on grammar, choice of words, and meaning" },
       explanation: { type: Type.STRING, description: "Detailed explanation in Polish highlighting mistakes, grammar rules, and alternative correct translations" },
+      feedbackSyntax: { type: Type.STRING, description: "Szyk i gramatyka: short, elegant feedback on syntax/grammar. No markdown asterisks." },
+      feedbackVocab: { type: Type.STRING, description: "Słownictwo i naturalność: short, elegant feedback on vocabulary/naturalness. No markdown asterisks." },
+      feedbackRule: { type: Type.STRING, description: "Złota zasada: short golden rule/takeaway. No markdown asterisks." },
       mistakes: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of specific grammar or vocabulary topics the student failed at (e.g. 'Present Perfect', 'Articles'). Empty if correct." }
     },
-    required: ['polishSentence', 'correctTranslation', 'studentAnswer', 'highlightedAnswer', 'isCorrect', 'score', 'explanation', 'mistakes']
+    required: ['polishSentence', 'correctTranslation', 'studentAnswer', 'highlightedAnswer', 'isCorrect', 'score', 'explanation', 'feedbackSyntax', 'feedbackVocab', 'feedbackRule', 'mistakes']
   }
 };
 
@@ -403,7 +406,7 @@ export const evaluateTranslations = async (
   For each sentence:
   1. Compare the Student's Answer with the Reference English.
   2. Grade it. If it's functionally correct and has no major grammar errors, mark isCorrect as true, and give a high score.
-  3. Generate the 'explanation' field using the EXACT rules defined in the system instructions. Focus only on the requested points.
+  3. Generate 'explanation' as a general comment if needed. Provide detailed feedback using 'feedbackSyntax', 'feedbackVocab', and 'feedbackRule' fields. Write elegantly in Polish without markdown format characters like asterisks (**). Be concise and to the point.
   4. Generate a 'highlightedAnswer' where you take the EXACT words the student wrote and wrap them in HTML tags: <span class='text-green-500 font-bold'>correct_word</span> or <span class='text-red-500 font-bold line-through'>wrong_word</span>. Also insert <span class='text-amber-500 font-bold'>[missing]</span> if something crucial was omitted. Do not wrap punctuation. Return the entire string.
   5. For any mistakes made, list the exact grammar or vocabulary topics the student struggled with in the 'mistakes' array (e.g. 'Present Perfect', 'Phrasal Verbs', 'Prepositions'). Leave it empty if there are no mistakes.
   ${studentProfileContext ? `

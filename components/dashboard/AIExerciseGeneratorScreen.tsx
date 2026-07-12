@@ -147,6 +147,10 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [exercises, setExercises] = useState<TranslationExercise[]>([]);
   const [studentAnswers, setStudentAnswers] = useState<string[]>([]);
   const [evaluationResults, setEvaluationResults] = useState<TranslationEvaluationResult[]>([]);
+  const [evaluationStatuses, setEvaluationStatuses] = useState<Record<number, 'evaluating' | 'evaluated'>>({});
+  const [singleEvaluationResults, setSingleEvaluationResults] = useState<Record<number, TranslationEvaluationResult>>({});
+  const [selectedVoiceLang, setSelectedVoiceLang] = useState<string>('en-US');
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [showHints, setShowHints] = useState<boolean[]>([]);
   
   // Loading & error states
@@ -228,7 +232,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     if (timeLeft !== null && timeLeft > 0 && step === 'practice') {
       timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
     } else if (timeLeft === 0 && step === 'practice') {
-      handleEvaluate();
+      handleFinishAll();
     }
     return () => clearTimeout(timer);
   }, [timeLeft, step]);
@@ -445,26 +449,32 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   };
 
   // Submit and grade translations with Gemini
-  const handleEvaluate = async () => {
-    setIsEvaluating(true);
-    setError(null);
-    setTimeLeft(null); // Stop timer
+  
+  const playAudio = async (text: string, lang: string) => {
+    if (!text) return;
+    setIsPlayingAudio(true);
     try {
-      // Only evaluate answered exercises
-      const answeredExercises = [];
-      const answeredAnswers = [];
-      for (let i = 0; i < exercises.length; i++) {
-        if (studentAnswers[i]?.trim()) {
-          answeredExercises.push(exercises[i]);
-          answeredAnswers.push(studentAnswers[i]);
-        }
-      }
-      
-      if (answeredExercises.length === 0) {
-        setStep('results');
-        return;
-      }
-      
+      const res = await fetch(`/api/tts?text=${encodeURIComponent(text)}&lang=${lang}`);
+      if (!res.ok) throw new Error('Audio generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => setIsPlayingAudio(false);
+      audio.play();
+    } catch (error) {
+      console.error('Audio playback error:', error);
+      setIsPlayingAudio(false);
+    }
+  };
+
+  const handleEvaluateSingle = async () => {
+    const currentIdx = activeSentenceIndex;
+    const answer = studentAnswers[currentIdx];
+    if (!answer || !answer.trim()) return;
+    
+    setEvaluationStatuses(prev => ({ ...prev, [currentIdx]: 'evaluating' }));
+    setError(null);
+    try {
       const evalStudentContext = `${user?.firstName ? `Zwracaj się do ucznia po imieniu (${user.firstName}), odmieniając je naturalnie we wszystkich przypadkach w języku polskim zgodnie z regułami języka polskiego.` : ''}`;
       
       let weaknessesListStr = "Brak zidentyfikowanych błędów";
@@ -475,32 +485,12 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       const resolvedEvalPrompt = customEvalPrompt
         .replace(/\$\{weaknessesList(?: \|\| "[^"]+")?\}/g, weaknessesListStr);
         
-      const results = await evaluateTranslations(answeredExercises, answeredAnswers, resolvedEvalPrompt, evalStudentContext);
+      const results = await evaluateTranslations([exercises[currentIdx]], [answer], resolvedEvalPrompt, evalStudentContext);
+      
       if (results && results.length > 0) {
-        setEvaluationResults(results);
-        setStep('results');
-
-        if (user) {
-          const score = Math.round(results.reduce((acc, r) => acc + r.score, 0) / results.length);
-          const exercisesDetails = answeredExercises.map((ex, i) => `${ex.polishSentence} -> ${answeredAnswers[i]}`).join(' | ');
-          const logData = {
-            exerciseType: 'ai_translation',
-            date: new Date().toISOString(),
-            isRevisionMode: false,
-            score: score,
-            totalWords: answeredExercises.length,
-            exercisesData: exercisesDetails
-          };
-          try {
-            await addDoc(collection(db, `users/${user.id}/practiceLogs`), logData);
-            const allMistakes = results.flatMap(r => r.mistakes || []);
-            if (allMistakes.length > 0) {
-              await logMistakesToFirebase(user.id, allMistakes);
-            }
-          } catch (e) {
-            console.warn("Could not save practice log or log mistakes", e);
-          }
-        }
+        const result = results[0];
+        setSingleEvaluationResults(prev => ({ ...prev, [currentIdx]: result }));
+        setEvaluationStatuses(prev => ({ ...prev, [currentIdx]: 'evaluated' }));
       } else {
         throw new Error('AI returned empty evaluation results.');
       }
@@ -509,8 +499,41 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       setError(language === 'pl'
         ? 'Wystąpił błąd podczas oceniania odpowiedzi przez AI. Spróbuj ponownie. (' + err.message + ')'
         : 'An error occurred while evaluating your answers with AI. Please try again. (' + err.message + ')');
-    } finally {
-      setIsEvaluating(false);
+      setEvaluationStatuses(prev => {
+         const updated = { ...prev };
+         delete updated[currentIdx];
+         return updated;
+      });
+    }
+  };
+
+    const handleFinishAll = async () => {
+    // Generate full results
+    const results = exercises.map((_, i) => singleEvaluationResults[i]).filter(Boolean);
+    setEvaluationResults(results);
+    setStep('results');
+    setTimeLeft(null);
+
+    if (user && results.length > 0) {
+      const score = Math.round(results.reduce((acc, r) => acc + r.score, 0) / results.length);
+      const exercisesDetails = results.map((r) => `${r.polishSentence} -> ${r.studentAnswer}`).join(' | ');
+      const logData = {
+        exerciseType: 'ai_translation',
+        date: new Date().toISOString(),
+        isRevisionMode: false,
+        score: score,
+        totalWords: results.length,
+        exercisesData: exercisesDetails
+      };
+      try {
+        await addDoc(collection(db, `users/${user.id}/practiceLogs`), logData);
+        const allMistakes = results.flatMap(r => r.mistakes || []);
+        if (allMistakes.length > 0) {
+          await logMistakesToFirebase(user.id, allMistakes);
+        }
+      } catch (e) {
+        console.warn("Could not save practice log or log mistakes", e);
+      }
     }
   };
 
@@ -610,7 +633,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                     closeConfirm();
                     const hasAnswers = studentAnswers.some(ans => ans?.trim());
                     if (hasAnswers) {
-                      handleEvaluate();
+                      handleFinishAll();
                     } else {
                       setStep('setup');
                       setExercises([]);
@@ -1202,12 +1225,63 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                 </div>
               )}
 
-              {/* Student answer field */}
+                            {/* Student answer field */}
               <div className="space-y-1.5 mt-6 pt-4 border-t border-base-300">
                 <label className="block text-xs font-bold text-content-muted">
                   {language === 'pl' ? 'Twoje tłumaczenie na angielski:' : 'Your translation to English:'}
                 </label>
                 
+                {evaluationStatuses[activeSentenceIndex] === 'evaluated' && singleEvaluationResults[activeSentenceIndex] ? (
+                  <div className="space-y-4">
+                    <div 
+                      className="w-full bg-base-300 border border-base-200 rounded-xl p-4 text-base"
+                      dangerouslySetInnerHTML={{ __html: singleEvaluationResults[activeSentenceIndex].highlightedAnswer || singleEvaluationResults[activeSentenceIndex].studentAnswer }}
+                    />
+                    
+                    <div className={`p-4 rounded-xl border ${singleEvaluationResults[activeSentenceIndex].isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                       <div className="font-bold flex items-center gap-2 mb-4">
+                         {singleEvaluationResults[activeSentenceIndex].isCorrect ? '✅ Poprawnie!' : '❌ Błędy w tłumaczeniu'}
+                       </div>
+                       
+                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-base-100/50 rounded-lg mb-4 border border-white/5">
+                         <div className="font-medium text-primary/90">
+                           {singleEvaluationResults[activeSentenceIndex].correctTranslation}
+                         </div>
+                         <div className="flex items-center gap-2 shrink-0 bg-base-300/50 p-1.5 rounded-md">
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-US')} className={`text-xl hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇺🇸 Amerykański" disabled={isPlayingAudio}>🇺🇸</button>
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-GB')} className={`text-xl hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇬🇧 Brytyjski" disabled={isPlayingAudio}>🇬🇧</button>
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-AU')} className={`text-xl hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇦🇺 Australijski" disabled={isPlayingAudio}>🇦🇺</button>
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-SCT')} className={`text-xl hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🏴󠁧󠁢󠁳󠁣󠁴󠁿 Szkocki" disabled={isPlayingAudio}>🏴󠁧󠁢󠁳󠁣󠁴󠁿</button>
+                         </div>
+                       </div>
+
+                       <div className="space-y-4 mt-2 text-sm">
+                         {singleEvaluationResults[activeSentenceIndex].feedbackSyntax && (
+                           <div>
+                             <span className="font-bold text-content-muted text-xs uppercase tracking-wider">{language === 'pl' ? 'Szyk i gramatyka' : 'Syntax & Grammar'}</span>
+                             <p className="mt-1 opacity-90">{singleEvaluationResults[activeSentenceIndex].feedbackSyntax}</p>
+                           </div>
+                         )}
+                         {singleEvaluationResults[activeSentenceIndex].feedbackVocab && (
+                           <div>
+                             <span className="font-bold text-content-muted text-xs uppercase tracking-wider">{language === 'pl' ? 'Słownictwo i naturalność' : 'Vocabulary & Naturalness'}</span>
+                             <p className="mt-1 opacity-90">{singleEvaluationResults[activeSentenceIndex].feedbackVocab}</p>
+                           </div>
+                         )}
+                         {singleEvaluationResults[activeSentenceIndex].feedbackRule && (
+                           <div className="bg-amber-500/10 p-3 rounded-lg border border-amber-500/20">
+                             <span className="font-bold text-amber-500/90 text-xs uppercase tracking-wider">{language === 'pl' ? 'Złota zasada' : 'Golden Rule'}</span>
+                             <p className="mt-1 opacity-90">{singleEvaluationResults[activeSentenceIndex].feedbackRule}</p>
+                           </div>
+                         )}
+                         {(!singleEvaluationResults[activeSentenceIndex].feedbackSyntax && !singleEvaluationResults[activeSentenceIndex].feedbackVocab) && (
+                           <p className="whitespace-pre-wrap opacity-90">{singleEvaluationResults[activeSentenceIndex].explanation}</p>
+                         )}
+                       </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
                 {exerciseFormat === 'puzzle' ? (
                   <PuzzleExercise 
                     sentence={exercises[activeSentenceIndex].englishTranslation}
@@ -1221,18 +1295,22 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                     onChange={(e) => handleAnswerChange(activeSentenceIndex, e.target.value)}
                     placeholder={language === 'pl' ? 'Wpisz swoje tłumaczenie tutaj...' : 'Type your translation here...'}
                     rows={3}
+                    disabled={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
                     className="w-full bg-base-300 border border-base-200 focus:border-primary/40 focus:ring-1 focus:ring-primary/20 rounded-xl p-4 text-base outline-none transition-all duration-200"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
-                        handleNext();
+                        if (studentAnswers[activeSentenceIndex]?.trim()) {
+                            handleEvaluateSingle();
+                        }
                       }
                     }}
                   />
                 )}
+                </>
+               )}
               </div>
             </div>
-
             {/* Navigation controls */}
             <div className="flex justify-between items-center pt-4">
               <Button
@@ -1243,43 +1321,37 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                 {language === 'pl' ? 'Poprzednie' : 'Previous'}
               </Button>
               
-              {practiceMode === 'fixed' && activeSentenceIndex === exercises.length - 1 ? (
+              {evaluationStatuses[activeSentenceIndex] !== 'evaluated' ? (
                 <AILoadingButton
-                  onClick={() => {
-                    const unansweredCount = exercises.length - studentAnswers.filter(ans => ans?.trim()).length;
-                    if (unansweredCount > 0) {
-                      showConfirm(
-                        language === 'pl' ? 'Zakończ i oceń' : 'Submit and evaluate',
-                        language === 'pl' ? `Masz ${unansweredCount} nieodpowiedzianych pytań. Czy na pewno chcesz zakończyć i ocenić?` : `You have ${unansweredCount} unanswered questions. Are you sure you want to submit?`,
-                        () => {
-                          closeConfirm();
-                          handleEvaluate();
-                        }
-                      );
-                      return;
-                    }
-                    handleEvaluate();
-                  }}
-                  isLoading={isEvaluating}
-                  loadingText={language === 'pl' ? 'Ocenianie odpowiedzi...' : 'Evaluating answers...'}
+                  onClick={handleEvaluateSingle}
+                  disabled={!studentAnswers[activeSentenceIndex]?.trim()}
+                  isLoading={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
+                  loadingText={language === 'pl' ? 'Sprawdzanie...' : 'Checking...'}
                   className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
                 >
-                  {language === 'pl' ? 'Sprawdź i oceń odpowiedzi' : 'Submit & evaluate answers'}
+                  {language === 'pl' ? 'Sprawdź' : 'Check'}
                 </AILoadingButton>
               ) : (
-                <AILoadingButton
-                  onClick={handleNext}
-                  disabled={isGeneratingMore}
-                  isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
-                  loadingText={language === 'pl' ? 'Ładowanie ćwiczenia...' : 'Loading exercise...'}
-                  className={`px-6 py-3 ${
-                    exerciseFormat === 'puzzle' && studentAnswers[activeSentenceIndex]?.trim() === exercises[activeSentenceIndex]?.englishTranslation?.trim().split(/\s+/).join(' ') 
-                      ? "animate-pulse bg-primary text-black border border-primary/50 shadow-[0_0_15px_rgba(114,240,180,0.5)]"
-                      : ""
-                  }`}
-                >
-                  {language === 'pl' ? 'Następne' : 'Next'}
-                </AILoadingButton>
+                <>
+                  {activeSentenceIndex === exercises.length - 1 && practiceMode === 'fixed' ? (
+                    <AILoadingButton
+                      onClick={handleFinishAll}
+                      className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
+                    >
+                      {language === 'pl' ? 'Zakończ i podsumuj' : 'Finish & Summarize'}
+                    </AILoadingButton>
+                  ) : (
+                    <AILoadingButton
+                      onClick={handleNext}
+                      disabled={isGeneratingMore}
+                      isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
+                      loadingText={language === 'pl' ? 'Ładowanie ćwiczenia...' : 'Loading exercise...'}
+                      className="px-6 py-3"
+                    >
+                      {language === 'pl' ? 'Następne' : 'Next'}
+                    </AILoadingButton>
+                  )}
+                </>
               )}
             </div>
           </Card>

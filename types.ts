@@ -147,6 +147,9 @@ export interface TranslationEvaluationResult {
   isCorrect: boolean;
   score: number;
   explanation: string;
+  feedbackSyntax?: string;
+  feedbackVocab?: string;
+  feedbackRule?: string;
   mistakes?: string[];
 }
 
