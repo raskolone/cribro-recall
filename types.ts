@@ -66,6 +66,7 @@ export interface PracticeLog {
   isRevisionMode: boolean;
   score?: number;
   totalWords?: number;
+  testName?: string;
   exercisesData?: string;
 }
 

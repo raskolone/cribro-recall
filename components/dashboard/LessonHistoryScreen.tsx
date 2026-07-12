@@ -93,7 +93,7 @@ const [lessons, setLessons] = useState<LessonRecord[]>([]);
                {new Date(selectedLesson.date).toLocaleDateString()}
              </div>
              <h1 className="text-3xl font-extrabold text-white tracking-tight mb-2">
-               {selectedLesson.topic}
+               {selectedLesson.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
              </h1>
           </div>
 
@@ -219,7 +219,7 @@ return (
                    </button>
                    <div className="flex-1 min-w-0">
                      <h3 className="font-bold text-white text-lg line-clamp-1 group-hover:text-primary transition-colors">
-                       {lesson.topic}
+                       {lesson.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
                      </h3>
                      <div className="flex items-center gap-2 text-xs font-mono text-content-muted mt-1">
                        <Calendar className="w-3.5 h-3.5" />

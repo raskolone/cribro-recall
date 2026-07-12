@@ -32,7 +32,8 @@ import {
   Hash,
   Timer,
   Volume2,
-  Loader2
+  Loader2,
+  Calendar
 } from 'lucide-react';
 
 
@@ -104,6 +105,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   // Settings states
   const [activeTab, setActiveTab] = useState<'ai' | 'other'>('ai');
   const [selectedSetId, setSelectedSetId] = useState<string>('all');
+  const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
   const [level, setLevel] = useState<string>(user?.level || 'B1');
   const [numSentences, setNumSentences] = useState<number>(5);
   const [practiceMode, setPracticeMode] = useState<'fixed' | 'time'>('fixed');
@@ -114,9 +116,12 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const timeLimitRef = useRef<HTMLSpanElement>(null);
 
   const [isGeneratingMore, setIsGeneratingMore] = useState(false);
+  const [additionalInstructions, setAdditionalInstructions] = useState<string>('');
+  const [testName, setTestName] = useState<string>('');
   const [customGenPrompt, setCustomGenPrompt] = useState<string>(() => {
     return localStorage.getItem('ai_custom_gen_prompt') || DEFAULT_GENERATION_PROMPT;
   });
+  const [evaluationStrictness, setEvaluationStrictness] = useState<'normal' | 'strict' | 'loose'>('normal');
   const [customEvalPrompt, setCustomEvalPrompt] = useState<string>(() => {
     return localStorage.getItem('ai_custom_eval_prompt') || DEFAULT_EVALUATION_PROMPT;
   });
@@ -415,7 +420,11 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         weaknessesListStr = await getUserWeaknesses(user.id);
       }
       
-      const resolvedGenPrompt = customGenPrompt
+      let finalGenPrompt = customGenPrompt;
+      if (additionalInstructions.trim().length > 0) {
+        finalGenPrompt += '\n\nDODATKOWE INSTRUKCJE OD NAUCZYCIELA: ' + additionalInstructions;
+      }
+      const resolvedGenPrompt = finalGenPrompt
         .replace(/\$\{userProfile(?: \|\| "[^"]+")?\}/g, userProfileStr)
         .replace(/\$\{weaknessesList(?: \|\| "[^"]+")?\}/g, weaknessesListStr);
 
@@ -482,10 +491,15 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         weaknessesListStr = await getUserWeaknesses(user.id);
       }
 
-      const resolvedEvalPrompt = customEvalPrompt
+      let strictnessPrompt = customEvalPrompt
         .replace(/\$\{weaknessesList(?: \|\| "[^"]+")?\}/g, weaknessesListStr);
         
-      const results = await evaluateTranslations([exercises[currentIdx]], [answer], resolvedEvalPrompt, evalStudentContext);
+      if (evaluationStrictness === 'strict') {
+        strictnessPrompt += '\n\nOCENIAJ BARDZO RYGORYSTYCZNIE. Każdy drobny błąd w pisowni, czasie lub przedimku (a/an/the) oznacza isCorrect: false.';
+      } else if (evaluationStrictness === 'loose') {
+        strictnessPrompt += '\n\nOCENIAJ LUŹNO. Akceptuj drobne błędy i literówki. Zwracaj uwagę na ogólny przekaz.';
+      }
+      const results = await evaluateTranslations([exercises[currentIdx]], [answer], strictnessPrompt, evalStudentContext);
       
       if (results && results.length > 0) {
         const result = results[0];
@@ -519,6 +533,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       const exercisesDetails = results.map((r) => `${r.polishSentence} -> ${r.studentAnswer}`).join(' | ');
       const logData = {
         exerciseType: 'ai_translation',
+        testName: testName || undefined,
         date: new Date().toISOString(),
         isRevisionMode: false,
         score: score,
@@ -603,7 +618,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {(user?.role === 'admin' || user?.role === 'admin_student') && (
+          {true && (
             <Button 
               variant="secondary" 
               size="sm" 
@@ -651,7 +666,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       </div>
 
       {/* Prompts config panel */}
-      {(user?.role === 'admin' || user?.role === 'admin_student') && isConfigOpen && (
+      {isConfigOpen && (
         <Card className="p-5 border-amber-500/30 bg-amber-500/[0.02] space-y-4 animate-fade-in-up">
           <div className="flex justify-between items-center">
             <h3 className="font-bold text-amber-500 flex items-center gap-2 text-sm uppercase tracking-wider">
@@ -710,14 +725,14 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
       {/* STEP 1: SETUP */}
       {step === 'setup' && (
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="max-w-6xl mx-auto space-y-6">
           <div className="bg-primary/10 border border-primary/30 p-6 rounded-2xl text-center shadow-lg">
             <h2 className="text-xl font-bold text-primary mb-2 flex justify-center items-center gap-2">
               <Sparkles className="w-5 h-5" />
-              {language === 'pl' ? 'Wciśnij "Generuj zdania przez AI", żeby rozpocząć nową lekcję!' : 'Click "Generate sentences with AI" to start a new lesson!'}
+              {language === 'pl' ? 'Kreator ćwiczeń' : 'Exercise Creator'}
             </h2>
             <p className="text-sm text-primary/80">
-              {language === 'pl' ? 'Przygotujemy dla Ciebie spersonalizowane ćwiczenia.' : 'We will prepare personalized exercises just for you.'}
+              {language === 'pl' ? 'Przygotuj spersonalizowany test dla ucznia.' : 'Prepare a personalized test for the student.'}
             </p>
           </div>
           
@@ -732,7 +747,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
             >
               <div className="flex items-center justify-center gap-2">
                 <Sparkles className="w-4 h-4" />
-                {language === 'pl' ? 'Tłumaczenie z AI' : 'AI Translation'}
+                {language === 'pl' ? 'Asystent budowania testów' : 'Test Building Assistant'}
               </div>
             </button>
             <button
@@ -745,331 +760,297 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
             >
               <div className="flex items-center justify-center gap-2">
                 <BookOpen className="w-4 h-4" />
-                {language === 'pl' ? 'Pozostałe ćwiczenia (beta)' : 'Other exercises (beta)'}
+                {language === 'pl' ? 'Gotowe szablony ćwiczeń' : 'Ready exercise templates'}
               </div>
             </button>
           </div>
           
           {activeTab === 'ai' ? (
-          <Card className="p-6 md:p-8 space-y-6 border border-white/5 shadow-xl bg-base-200/40 backdrop-blur-xl relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-            <div className="relative z-10">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                  <BookOpen className="w-6 h-6" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold">
-                    {language === 'pl' ? 'Skonfiguruj ćwiczenie' : 'Setup your practice session'}
-                  </h2>
-                  <p className="text-xs text-content-muted">
-                    {language === 'pl' ? 'Wybierz poziom oraz źródło słownictwa' : 'Choose your target level and source vocabulary'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-col items-end">
-                {(user?.role === 'admin' || user?.role === 'admin_student') ? (
-                  <select 
-                    value={level} 
-                    onChange={(e) => setLevel(e.target.value)}
-                    className="bg-base-200/40 backdrop-blur-md border border-white/10 text-sm font-bold text-primary rounded-lg p-2 outline-none focus:border-primary/50 cursor-pointer"
-                  >
-                    {['A1', 'A2', 'A2/B1', 'B1', 'B1/B2', 'B2', 'B2/C1', 'C1', 'C2'].map((lvl) => (
-                      <option key={lvl} value={lvl}>{lvl}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="bg-base-200/40 backdrop-blur-md border border-white/10 text-sm font-bold text-primary rounded-lg p-2 cursor-default">
-                    {level}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {/* Source selection */}
-              <div>
-                <label className="block text-sm font-bold text-content-muted mb-2">
-                  {language === 'pl' ? 'Baza słownictwa' : 'Vocabulary base'}
-                </label>
-                <div className="space-y-4">
-                  {/* Vocabulary from lessons (Moved to top) */}
-                  {vocabularySets.length > 0 && (
-                    <div className="border border-white/20 shadow-lg rounded-xl overflow-hidden bg-base-200/60 backdrop-blur-md">
-                      <button
-                        className={`w-full flex items-center justify-between p-4 font-bold text-base transition-colors ${selectedSetId.startsWith('vocab-') ? 'bg-primary/5 text-primary' : 'hover:bg-base-300/60'}`}
-                        onClick={() => setIsLessonsExpanded(!isLessonsExpanded)}
-                      >
-                        <div className="flex items-center gap-3 text-primary">
-                          <span className="text-xl">📚</span>
-                          {language === 'pl' ? 'Słownictwo z moich lekcji' : 'Vocabulary from my lessons'}
-                        </div>
-                        <motion.div
-                          animate={{ rotate: isLessonsExpanded ? 180 : 0 }}
-                          transition={{ duration: 0.3 }}
-                          className="text-primary"
-                        >
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-                        </motion.div>
-                      </button>
-                      <AnimatePresence>
-                        {isLessonsExpanded && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="overflow-hidden"
-                          >
-                            <div className="p-3 flex flex-col gap-2 border-t border-white/10 bg-base-200/50">
-                              {vocabularySets.map(set => (
-                                <label key={`vocab-${set.id}`} className={`flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer shadow-sm ${selectedSetId === `vocab-${set.id}` ? 'bg-primary/10 border-primary/50 ring-1 ring-primary/50' : 'bg-base-100/80 border-white/5 hover:border-primary/30'}`}>
-                                  <input 
-                                    type="radio" 
-                                    name="vocabSource" 
-                                    checked={selectedSetId === `vocab-${set.id}`} 
-                                    onChange={() => setSelectedSetId(`vocab-${set.id}`)}
-                                    className="w-5 h-5 text-primary focus:ring-primary/50 bg-base-300 border-base-300"
-                                  />
-                                  <div className="text-sm">
-                                    <div className="font-bold text-base">{language === 'pl' ? 'Lekcja: ' : 'Lesson: '}{set.topic}</div>
-                                    <div className="text-xs text-amber-500 italic mt-1">
-                                      {language === 'pl' ? 'Z dnia: ' : 'Date: '}{new Date(set.date).toLocaleDateString()} &bull; {set.itemCount} {language === 'pl' ? 'słów' : 'words'}
-                                    </div>
-                                  </div>
-                                </label>
-                              ))}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              {/* Left Pane: Wygeneruj nowy test */}
+              <Card className="p-6 md:p-8 space-y-6 border border-white/5 shadow-xl bg-base-200/40 backdrop-blur-xl relative overflow-hidden h-full flex flex-col">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+                <div className="relative z-10 space-y-6 flex-1 flex flex-col">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                      <Settings className="w-6 h-6 animate-spin-slow" />
                     </div>
-                  )}
+                    <div>
+                      <h2 className="text-xl font-bold">
+                        {language === 'pl' ? 'Wygeneruj nowy test' : 'Generate new test'}
+                      </h2>
+                      <p className="text-xs text-content-muted">
+                        {language === 'pl' ? 'Skonfiguruj ustawienia testu' : 'Configure test settings'}
+                      </p>
+                    </div>
+                  </div>
 
-                  <div className="space-y-3">
-                    <label className={`flex items-center gap-4 p-5 rounded-xl border transition-all cursor-pointer shadow-sm ${selectedSetId === 'all' ? 'bg-primary/10 border-primary/50 ring-1 ring-primary/50' : 'bg-base-200/60 backdrop-blur-md border-white/10 hover:border-primary/30'}`}>
-                      <input 
-                        type="radio" 
-                        name="vocabSource" 
-                        checked={selectedSetId === 'all'} 
-                        onChange={() => setSelectedSetId('all')}
-                        className="w-5 h-5 text-primary focus:ring-primary/50 bg-base-300 border-base-300"
-                      />
+                  <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1">
+                    {/* Test Name & Date */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <div className="font-bold text-base">{language === 'pl' ? 'Wszystkie moje przypisane zestawy' : 'All my assigned word sets'}</div>
-                        <div className="text-sm text-content-muted mt-0.5">{language === 'pl' ? `Wplecie słówka z Twoich ${availableSets.length} zestawów` : `Integrates terms from your ${availableSets.length} sets`}</div>
+                        <label className="block text-sm font-bold text-content-muted mb-2">
+                          {language === 'pl' ? 'Nazwa testu' : 'Test Name'}
+                        </label>
+                        <input
+                          type="text"
+                          value={testName}
+                          onChange={(e) => setTestName(e.target.value)}
+                          placeholder={language === 'pl' ? 'Np. Powtórka z czasów' : 'E.g. Tenses Review'}
+                          className="w-full bg-base-300 border border-white/10 rounded-xl p-3 text-sm focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none"
+                        />
                       </div>
-                    </label>
+                      <div>
+                        <label className="block text-sm font-bold text-content-muted mb-2">
+                          {language === 'pl' ? 'Data testu' : 'Test Date'}
+                        </label>
+                        <div className="w-full bg-base-300/50 border border-white/5 rounded-xl p-3 text-sm text-content-muted cursor-not-allowed">
+                          {new Date().toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
 
-                    {availableSets.length > 0 && (
-                      <div className="border border-white/10 shadow-lg rounded-xl overflow-hidden bg-base-200/40 backdrop-blur-md">
-                        <button
-                          type="button"
-                          className={`w-full flex items-center justify-between p-4 font-bold text-base transition-colors ${(selectedSetId !== 'all' && selectedSetId !== 'general' && !selectedSetId.startsWith('vocab-')) ? 'bg-primary/5 text-primary' : 'hover:bg-base-300/50'}`}
-                          onClick={() => setIsCustomSetsExpanded(!isCustomSetsExpanded)}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-xl">✏️</span>
-                            {language === 'pl' ? 'Własne zestawy' : 'Custom sets'}
-                          </div>
-                          <motion.div
-                            animate={{ rotate: isCustomSetsExpanded ? 180 : 0 }}
-                            transition={{ duration: 0.3 }}
-                          >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-                          </motion.div>
-                        </button>
-                        <AnimatePresence>
-                          {isCustomSetsExpanded && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.3 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="p-3 flex flex-col gap-2 border-t border-white/10 bg-base-200/30">
-                                {availableSets.map(set => {
-                                  const isNewSet = set.title.toLowerCase().includes('nowy zestaw');
-                                  const displayTitle = isNewSet && set.lessonTopic 
-                                    ? (language === 'pl' ? `Słownictwo z: ${set.lessonTopic}` : `Vocabulary from: ${set.lessonTopic}`)
-                                    : set.title;
-                                  
-                                  return (
-                                    <label key={set.id} className={`flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer shadow-sm ${selectedSetId === set.id ? 'bg-primary/10 border-primary/50 ring-1 ring-primary/50' : 'bg-base-100/60 border-white/5 hover:border-primary/30'}`}>
-                                      <input 
-                                        type="radio" 
-                                        name="vocabSource" 
-                                        checked={selectedSetId === set.id} 
-                                        onChange={() => setSelectedSetId(set.id)}
-                                        className="w-5 h-5 text-primary focus:ring-primary/50 bg-base-300 border-base-300"
-                                      />
-                                      <div>
-                                        <div className="font-bold text-base">{displayTitle}</div>
-                                        {!isNewSet && set.lessonTopic && <div className="text-sm text-amber-500 italic mt-0.5">Topic: {set.lessonTopic}</div>}
-                                      </div>
-                                    </label>
-                                  );
-                                })}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                    {/* Level */}
+                    <div>
+                      <label className="block text-sm font-bold text-content-muted mb-2">
+                        {language === 'pl' ? 'Poziom trudności' : 'Difficulty Level'}
+                      </label>
+                      <select 
+                        value={level} 
+                        onChange={(e) => setLevel(e.target.value)}
+                        className="w-full bg-base-300 border border-white/10 text-sm font-bold text-primary rounded-xl p-3 outline-none focus:border-primary/50 cursor-pointer"
+                      >
+                        {['A1', 'A2', 'A2/B1', 'B1', 'B1/B2', 'B2', 'B2/C1', 'C1', 'C2'].map((lvl) => (
+                          <option key={lvl} value={lvl}>{lvl}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Selected Lessons Summary */}
+                    {selectedLessonIds.length > 0 ? (
+                      <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+                        <h3 className="text-sm font-bold text-primary mb-2 flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4" />
+                          {language === 'pl' ? 'Wybrany zakres materiału (Lekcje):' : 'Selected material scope:'}
+                        </h3>
+                        <ul className="space-y-1">
+                          {selectedLessonIds.map(id => {
+                            const set = vocabularySets.find(s => s.id === id);
+                            if (!set) return null;
+                            return (
+                              <li key={id} className="text-sm text-white/90 flex items-start gap-2">
+                                <span className="text-primary mt-1">•</span>
+                                {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    ) : (
+                      <div className="bg-base-300/50 border border-white/5 rounded-xl p-4 text-center text-sm text-content-muted italic">
+                        {language === 'pl' ? 'Wybierz lekcje z prawego panelu jako zakres.' : 'Select lessons from the right panel.'}
                       </div>
                     )}
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            <div className="flex flex-col gap-4">
-              <div>
-                <label className="block text-sm font-bold text-content-muted mb-2">
-                  {language === 'pl' ? 'Tryb nauki' : 'Practice Mode'}
-                </label>
-                <div className="flex rounded-lg overflow-hidden border border-base-300">
-                  <button
-                    onClick={() => setPracticeMode('fixed')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition-colors ${practiceMode === 'fixed' ? 'bg-primary text-black' : 'bg-base-200 text-content-muted hover:bg-base-300'}`}
-                  >
-                    <Hash className="w-4 h-4" />
-                    {language === 'pl' ? 'Ilość zdań' : 'Fixed Amount'}
-                  </button>
-                  <button
-                    onClick={() => setPracticeMode('time')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition-colors ${practiceMode === 'time' ? 'bg-primary text-black' : 'bg-base-200 text-content-muted hover:bg-base-300'}`}
-                  >
-                    <Timer className="w-4 h-4" />
-                    {language === 'pl' ? 'Na czas' : 'Time Challenge'}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-content-muted mb-2">
-                  {language === 'pl' ? 'Format ćwiczenia' : 'Exercise Format'}
-                </label>
-                <div className="flex rounded-lg overflow-hidden border border-base-300">
-                  <button
-                    type="button"
-                    onClick={() => setExerciseFormat('typing')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition-colors ${exerciseFormat === 'typing' ? 'bg-primary text-black' : 'bg-base-200 text-content-muted hover:bg-base-300'}`}
-                  >
-                    <BookOpen className="w-4 h-4" />
-                    {language === 'pl' ? 'Wpisywanie' : 'Typing'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setExerciseFormat('puzzle')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition-colors ${exerciseFormat === 'puzzle' ? 'bg-primary text-black' : 'bg-base-200 text-content-muted hover:bg-base-300'}`}
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    {language === 'pl' ? 'Układanka' : 'Puzzle'}
-                  </button>
-                </div>
-              </div>
-
-              {practiceMode === 'fixed' ? (
-                <div>
-                  <label className="flex items-center justify-between text-sm font-bold text-content-muted mb-2">
-                    <span>{language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}</span>
-                    <span ref={numSentencesRef} className="text-primary font-bold bg-primary/10 border border-primary/20 shadow-[0_0_15px_rgba(114,240,180,0.15)] px-3 py-1 rounded-xl text-lg font-mono min-w-[3rem] text-center inline-block">{numSentences}</span>
-                  </label>
-                  <div className="relative pt-2 pb-8 mt-2">
-                    {/* Custom track */}
-                    <div className="absolute top-1/2 left-0 right-0 h-1.5 bg-base-300/50 rounded-full -translate-y-1/2" />
-                    <div 
-                      className="absolute top-1/2 left-0 h-1.5 bg-primary rounded-full -translate-y-1/2 pointer-events-none transition-all duration-150" 
-                      style={{ width: `${(numSentences - 1) / 24 * 100}%` }}
-                    />
-                    
-                    {/* Invisible native range input */}
-                    <input 
-                      type="range" 
-                      min="1" 
-                      max="25" 
-                      value={numSentences} 
-                      onChange={(e) => setNumSentences(parseInt(e.target.value) || 1)}
-                      className="w-full h-6 appearance-none cursor-pointer absolute top-1/2 -translate-y-1/2 opacity-0 z-20 m-0"
-                    />
-                    
-                    {/* Custom thumb */}
-                    <div 
-                      className="w-4 h-4 bg-primary rounded-full absolute top-1/2 -translate-y-1/2 z-10 shadow-[0_0_10px_rgba(114,240,180,0.5)] pointer-events-none transition-all duration-150"
-                      style={{ left: `calc(${(numSentences - 1) / 24 * 100}% - 8px)` }}
-                    >
-                      <div className="absolute inset-0.5 bg-base-100 rounded-full"></div>
-                      <div className="absolute inset-1.5 bg-primary rounded-full"></div>
+                    {/* Additional Instructions */}
+                    <div>
+                      <label className="block text-sm font-bold text-content-muted mb-2">
+                        {language === 'pl' ? 'Instrukcje dodatkowe dla AI' : 'Additional Instructions for AI'}
+                      </label>
+                      <textarea
+                        value={additionalInstructions}
+                        onChange={(e) => setAdditionalInstructions(e.target.value)}
+                        placeholder={language === 'pl' ? 'Wpisz dodatkowe instrukcje...' : 'Enter additional instructions...'}
+                        className="w-full h-24 bg-base-300 border border-white/10 rounded-xl p-3 text-sm focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none resize-none"
+                      />
                     </div>
-
-                    <div className="absolute top-8 left-0 right-0 flex justify-between px-1 pointer-events-none">
-                      {[1, 5, 10, 15, 20, 25].map(tick => (
-                        <div key={tick} className="flex flex-col items-center absolute" style={{ left: `${(tick - 1) / 24 * 100}%`, transform: 'translateX(-50%)' }}>
-                          <div className={`w-0.5 h-1.5 rounded-full mb-1 ${numSentences >= tick ? 'bg-primary' : 'bg-base-300'}`}></div>
-                          <span className={`text-[10px] font-mono ${numSentences >= tick ? 'text-primary/80' : 'text-content-muted'}`}>{tick}</span>
+                    
+                    {/* Additional Settings wrapper to keep it compact */}
+                    <details className="bg-base-300/30 border border-white/5 rounded-xl p-4 group">
+                      <summary className="text-sm font-bold text-content-muted cursor-pointer flex items-center justify-between outline-none list-none [&::-webkit-details-marker]:hidden">
+                        <span className="flex items-center gap-2">
+                          <Settings className="w-4 h-4" />
+                          {language === 'pl' ? 'Zaawansowane parametry' : 'Advanced parameters'}
+                        </span>
+                        <ChevronDown className="w-4 h-4 group-open:rotate-180 transition-transform" />
+                      </summary>
+                      <div className="pt-4 space-y-4 border-t border-white/5 mt-4">
+                        {/* Format */}
+                        <div>
+                          <label className="block text-xs font-bold text-content-muted mb-2">
+                            {language === 'pl' ? 'Rodzaj ćwiczeń' : 'Exercise Type'}
+                          </label>
+                          <div className="flex rounded-lg overflow-hidden border border-base-300 bg-base-300/30">
+                            <button
+                              type="button"
+                              onClick={() => setExerciseFormat('typing')}
+                              className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs font-bold transition-colors ${exerciseFormat === 'typing' ? 'bg-primary text-black shadow-md' : 'text-content-muted hover:bg-base-300/50'}`}
+                            >
+                              <span>{language === 'pl' ? 'Tłumaczenia' : 'Translations'}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setExerciseFormat('puzzle')}
+                              className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs font-bold transition-colors ${exerciseFormat === 'puzzle' ? 'bg-primary text-black shadow-md' : 'text-content-muted hover:bg-base-300/50'}`}
+                            >
+                              <span>{language === 'pl' ? 'Układanka' : 'Puzzle'}</span>
+                            </button>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <label className="flex items-center justify-between text-sm font-bold text-content-muted mb-2">
-                    <span>{language === 'pl' ? 'Czas ćwiczenia (minuty)' : 'Practice time (minutes)'}</span>
-                    <span ref={timeLimitRef} className="text-primary font-bold bg-primary/10 border border-primary/20 shadow-[0_0_15px_rgba(114,240,180,0.15)] px-3 py-1 rounded-xl text-lg font-mono min-w-[4rem] text-center inline-block">{timeLimit} min</span>
-                  </label>
-                  <div className="relative pt-2 pb-8 mt-2">
-                    {/* Custom track */}
-                    <div className="absolute top-1/2 left-0 right-0 h-1.5 bg-base-300/50 rounded-full -translate-y-1/2" />
-                    <div 
-                      className="absolute top-1/2 left-0 h-1.5 bg-primary rounded-full -translate-y-1/2 pointer-events-none transition-all duration-150" 
-                      style={{ width: `${(timeLimit - 1) / 24 * 100}%` }}
-                    />
-                    
-                    {/* Invisible native range input */}
-                    <input 
-                      type="range" 
-                      min="1" 
-                      max="25" 
-                      value={timeLimit} 
-                      onChange={(e) => setTimeLimit(parseInt(e.target.value) || 1)}
-                      className="w-full h-6 appearance-none cursor-pointer absolute top-1/2 -translate-y-1/2 opacity-0 z-20 m-0"
-                    />
-                    
-                    {/* Custom thumb */}
-                    <div 
-                      className="w-4 h-4 bg-primary rounded-full absolute top-1/2 -translate-y-1/2 z-10 shadow-[0_0_10px_rgba(114,240,180,0.5)] pointer-events-none transition-all duration-150"
-                      style={{ left: `calc(${(timeLimit - 1) / 24 * 100}% - 8px)` }}
-                    >
-                      <div className="absolute inset-0.5 bg-base-100 rounded-full"></div>
-                      <div className="absolute inset-1.5 bg-primary rounded-full"></div>
-                    </div>
 
-                    <div className="absolute top-8 left-0 right-0 flex justify-between px-1 pointer-events-none">
-                      {[1, 5, 10, 15, 20, 25].map(tick => (
-                        <div key={tick} className="flex flex-col items-center absolute" style={{ left: `${(tick - 1) / 24 * 100}%`, transform: 'translateX(-50%)' }}>
-                          <div className={`w-0.5 h-1.5 rounded-full mb-1 ${timeLimit >= tick ? 'bg-primary' : 'bg-base-300'}`}></div>
-                          <span className={`text-[10px] font-mono ${timeLimit >= tick ? 'text-primary/80' : 'text-content-muted'}`}>{tick}</span>
+                        {/* Strictness */}
+                        <div>
+                          <label className="block text-xs font-bold text-content-muted mb-2">
+                            {language === 'pl' ? 'Dokładność sprawdzania' : 'Evaluation Strictness'}
+                          </label>
+                          <div className="flex rounded-lg overflow-hidden border border-base-300 bg-base-300/30">
+                            <button
+                              type="button"
+                              onClick={() => setEvaluationStrictness('loose')}
+                              className={`flex-1 py-2 text-[10px] font-bold transition-colors ${evaluationStrictness === 'loose' ? 'bg-primary text-black shadow-md' : 'text-content-muted hover:bg-base-300/50'}`}
+                            >
+                              {language === 'pl' ? 'Luźna' : 'Loose'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEvaluationStrictness('normal')}
+                              className={`flex-1 py-2 text-[10px] font-bold transition-colors ${evaluationStrictness === 'normal' ? 'bg-primary text-black shadow-md' : 'text-content-muted hover:bg-base-300/50'}`}
+                            >
+                              {language === 'pl' ? 'Normalna' : 'Normal'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEvaluationStrictness('strict')}
+                              className={`flex-1 py-2 text-[10px] font-bold transition-colors ${evaluationStrictness === 'strict' ? 'bg-primary text-black shadow-md' : 'text-content-muted hover:bg-base-300/50'}`}
+                            >
+                              {language === 'pl' ? 'Rygorystyczna' : 'Strict'}
+                            </button>
+                          </div>
                         </div>
-                      ))}
+
+                        {/* Sliders */}
+                        <div className="space-y-4">
+                          <label className="flex items-center justify-between text-xs font-bold text-content-muted">
+                            <span>{language === 'pl' ? 'Liczba zdań' : 'Number of sentences'}</span>
+                            <span className="text-primary font-bold">{numSentences}</span>
+                          </label>
+                          <input type="range" min="1" max="25" value={numSentences} onChange={(e) => setNumSentences(parseInt(e.target.value) || 1)} className="w-full" />
+                          
+                          <label className="flex items-center justify-between text-xs font-bold text-content-muted">
+                            <span>{language === 'pl' ? 'Czas (minuty)' : 'Time (minutes)'}</span>
+                            <span className="text-primary font-bold">{timeLimit}</span>
+                          </label>
+                          <input type="range" min="1" max="25" value={timeLimit} onChange={(e) => setTimeLimit(parseInt(e.target.value) || 1)} className="w-full" />
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+                  
+                  <div className="pt-4 mt-auto">
+                    <AILoadingButton 
+                      onClick={() => handleGenerate(false)} 
+                      isLoading={isLoading}
+                      loadingText={language === 'pl' ? 'AI przygotowuje test...' : 'AI is preparing the test...'}
+                      className="w-full py-4 text-lg font-black bg-primary text-black hover:bg-primary/90 shadow-[0_0_30px_rgba(114,240,180,0.3)] transition-all hover:scale-[1.02]"
+                    >
+                      <Sparkles className="w-5 h-5" />
+                      {language === 'pl' ? 'Wygeneruj Test z AI' : 'Generate AI Test'}
+                    </AILoadingButton>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Right Pane: Historia lekcji */}
+              <Card className="p-0 border border-white/5 shadow-xl bg-base-200/60 backdrop-blur-xl relative overflow-hidden h-full flex flex-col">
+                <div className="p-6 md:p-8 border-b border-white/5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                      <BookOpen className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold">
+                        {language === 'pl' ? 'Zakres materiału (Lekcje)' : 'Material scope (Lessons)'}
+                      </h2>
+                      <p className="text-xs text-content-muted">
+                        {language === 'pl' ? 'Zaznacz checkbox, aby dodać lekcję do testu' : 'Check the box to add lesson to the test'}
+                      </p>
                     </div>
                   </div>
                 </div>
-              )}
 
-              <AILoadingButton
-                isLoading={isLoading}
-                onClick={() => handleGenerate(false)}
-                className="w-full py-3 text-base mt-2"
-                loadingText={language === 'pl' ? 'Ładowanie ćwiczenia...' : 'Loading exercise...'}
-              >
-                <Sparkles className="w-5 h-5 animate-pulse" />
-                {language === 'pl' ? 'Generuj zdania przez AI' : 'Generate sentences with AI'}
-              </AILoadingButton>
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar" style={{ maxHeight: '600px' }}>
+                  {vocabularySets.length > 0 ? (
+                    vocabularySets.map((set, index) => {
+                      const isSelected = selectedLessonIds.includes(set.id);
+                      const lessonNumber = vocabularySets.length - index;
+                      return (
+                        <Card 
+                          key={set.id} 
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedLessonIds(prev => prev.filter(id => id !== set.id));
+                            } else {
+                              setSelectedLessonIds(prev => [...prev, set.id]);
+                              setSelectedSetId('general');
+                            }
+                          }}
+                          className={`p-0 cursor-pointer transition-colors group overflow-hidden border ${isSelected ? 'bg-primary/10 border-primary/50 ring-1 ring-primary/30' : 'bg-base-200/50 hover:border-primary/50'}`}
+                        >
+                          <div className="p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-4 pr-4">
+                              <button 
+                                type="button"
+                                className="w-12 h-12 flex-shrink-0 bg-primary/10 text-primary font-mono font-bold rounded-lg flex items-center justify-center group-hover:bg-primary group-hover:text-black transition-colors"
+                              >
+                                #{lessonNumber}
+                              </button>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-bold text-white text-lg line-clamp-1 group-hover:text-primary transition-colors">
+                                  {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
+                                </h3>
+                                <div className="flex items-center gap-2 text-xs font-mono text-content-muted mt-1">
+                                  <Calendar className="w-3.5 h-3.5" />
+                                  {new Date(set.date).toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center">
+                              <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${isSelected ? 'border-primary bg-primary text-black' : 'border-content-muted/30 bg-base-300'}`}>
+                                {isSelected && <CheckCircle className="w-4 h-4" />}
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center text-content-muted p-8">
+                      {language === 'pl' ? 'Brak dostępnych lekcji' : 'No lessons available'}
+                    </div>
+                  )}
+                  
+                  {/* Other sources */}
+                  <div className="pt-4 border-t border-white/5 mt-4 space-y-3">
+                     <label className="block text-sm font-bold text-content-muted">
+                        {language === 'pl' ? 'Inne opcje (Zastępuje lekcje)' : 'Other options'}
+                      </label>
+                      <label className={`flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer shadow-sm ${selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'bg-primary/10 border-primary/50 ring-1 ring-primary/50' : 'bg-base-200/60 backdrop-blur-md border-white/10 hover:border-primary/30'}`}>
+                        <input 
+                          type="radio" 
+                          name="vocabSource" 
+                          checked={selectedSetId === 'all' && selectedLessonIds.length === 0} 
+                          onChange={() => { setSelectedSetId('all'); setSelectedLessonIds([]); }}
+                          className="w-5 h-5 text-primary focus:ring-primary/50 bg-base-300 border-base-300"
+                        />
+                        <div>
+                          <div className="font-bold text-base">{language === 'pl' ? 'Wszystkie moje przypisane zestawy' : 'All my assigned word sets'}</div>
+                          <div className="text-sm text-content-muted mt-0.5">{language === 'pl' ? `Wplecie słówka z Twoich ${availableSets.length} zestawów` : `Integrates terms from your ${availableSets.length} sets`}</div>
+                        </div>
+                      </label>
+                  </div>
+                </div>
+              </Card>
             </div>
-            </div>
-          </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card 
@@ -1084,7 +1065,6 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   {language === 'pl' ? 'Zapoznaj się powoli z nowym materiałem, bez sprawdzania i wyników.' : 'Familiarize yourself gently with new material, without testing or scoring.'}
                 </p>
               </Card>
-
               <Card 
                 className="cursor-pointer hover:border-primary transition-colors group"
                 onClick={() => onStartPractice?.('flashcards')}
@@ -1097,7 +1077,6 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   {language === 'pl' ? 'Przeglądaj pojęcia i definicje. Odwracaj karty, aby sprawdzić swoją wiedzę.' : 'Review terms and definitions. Flip cards to test your knowledge.'}
                 </p>
               </Card>
-
               <Card 
                 className="cursor-pointer hover:border-primary transition-colors group"
                 onClick={() => onStartPractice?.('quiz')}
@@ -1107,41 +1086,13 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   Quiz
                 </h3>
                 <p className="text-content-muted text-sm">
-                  {language === 'pl' ? 'Wybierz poprawną odpowiedź z 4 dostępnych opcji.' : 'Choose the correct answer from 4 available options.'}
-                </p>
-              </Card>
-
-              <Card 
-                className="cursor-pointer hover:border-primary transition-colors group"
-                onClick={() => onStartPractice?.('fill-in-the-blank')}
-              >
-                <div className="text-4xl mb-4">⌨️</div>
-                <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
-                  {language === 'pl' ? 'Pisanie' : 'Writing'}
-                </h3>
-                <p className="text-content-muted text-sm">
-                  {language === 'pl' ? 'Wpisz poprawną definicję z klawiatury.' : 'Type the correct definition from your keyboard.'}
-                </p>
-              </Card>
-
-              <Card 
-                className="cursor-pointer hover:border-primary transition-colors group"
-                onClick={() => onStartPractice?.('match')}
-              >
-                <div className="text-4xl mb-4">🧩</div>
-                <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
-                  {language === 'pl' ? 'Dopasowywanie' : 'Matching'}
-                </h3>
-                <p className="text-content-muted text-sm">
-                  {language === 'pl' ? 'Połącz pojęcia z definicjami na czas.' : 'Match terms with definitions against the clock.'}
+                  {language === 'pl' ? 'Szybki test wielokrotnego wyboru. Sprawdź, ile pamiętasz.' : 'Quick multiple choice test. See how much you remember.'}
                 </p>
               </Card>
             </div>
           )}
         </div>
       )}
-
-      {/* STEP 2: PRACTICE ACTIVE */}
       {step === 'practice' && exercises.length > 0 && (
         <div className="max-w-3xl mx-auto space-y-6">
           {/* Progress header */}
@@ -1465,19 +1416,24 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                       <div>
                         <div className="text-xs text-content-muted font-bold mb-1 uppercase tracking-wider flex items-center justify-between">
                           <span>{language === 'pl' ? 'Rekomendowane przez AI' : 'Suggested translation'}</span>
-                          <button
-                            onClick={() => handlePlaySentenceAudio(res.correctTranslation, ACCENTS[idx % ACCENTS.length], idx)}
-                            disabled={playingAudioIndex === idx}
-                            className="flex items-center gap-1.5 px-2 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded transition-colors"
-                            title="Posłuchaj wymowy"
-                          >
-                            <span className="text-[10px]">{ACCENT_FLAGS[ACCENTS[idx % ACCENTS.length]]}</span>
-                            {playingAudioIndex === idx ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <Volume2 className="w-3 h-3" />
-                            )}
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-content-muted mr-1">{language === 'pl' ? 'Odsłuchaj:' : 'Listen:'}</span>
+                            {ACCENTS.map(accent => (
+                              <button
+                                key={accent}
+                                onClick={() => handlePlaySentenceAudio(res.correctTranslation, accent as any, idx)}
+                                disabled={playingAudioIndex === idx}
+                                className="flex items-center justify-center w-6 h-6 bg-base-300/50 hover:bg-primary/20 text-primary rounded transition-colors"
+                                title={`Posłuchaj (${accent})`}
+                              >
+                                {playingAudioIndex === idx ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <span className="text-[12px]">{ACCENT_FLAGS[accent]}</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                         <div className="text-sm p-2.5 bg-primary/[0.02] border border-primary/10 text-primary-light rounded-lg font-medium">
                           {res.correctTranslation}
@@ -1498,9 +1454,34 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </summary>
-                      <p className="text-sm leading-relaxed text-yellow-100 whitespace-pre-wrap pt-3 border-t border-white/10 mt-3">
-                        {res.explanation}
-                      </p>
+                      <div className="pt-3 border-t border-white/10 mt-3 space-y-4">
+                        {(res.feedbackSyntax || res.feedbackVocab || res.feedbackRule) ? (
+                          <div className="space-y-3">
+                            {res.feedbackSyntax && (
+                              <div>
+                                <div className="text-xs font-bold text-yellow-500 uppercase tracking-wider mb-1">{language === 'pl' ? 'Szyk i gramatyka' : 'Syntax & Grammar'}</div>
+                                <div className="text-sm text-yellow-100/90">{res.feedbackSyntax}</div>
+                              </div>
+                            )}
+                            {res.feedbackVocab && (
+                              <div>
+                                <div className="text-xs font-bold text-yellow-500 uppercase tracking-wider mb-1">{language === 'pl' ? 'Słownictwo i naturalność' : 'Vocabulary & Naturalness'}</div>
+                                <div className="text-sm text-yellow-100/90">{res.feedbackVocab}</div>
+                              </div>
+                            )}
+                            {res.feedbackRule && (
+                              <div>
+                                <div className="text-xs font-bold text-yellow-400 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" />{language === 'pl' ? 'Złota zasada' : 'Golden Rule'}</div>
+                                <div className="text-sm text-yellow-50 font-medium">{res.feedbackRule}</div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm leading-relaxed text-yellow-100 whitespace-pre-wrap">
+                            {res.explanation}
+                          </p>
+                        )}
+                      </div>
                     </details>
                   </div>
                 </div>
