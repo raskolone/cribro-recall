@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { auth } from '../../firebase';
 import Sidebar from './Sidebar';
 import ConfirmModal from '../ui/ConfirmModal';
 import VocabularyGenerator from './VocabularyGenerator';
@@ -31,6 +32,54 @@ import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScre
 
 type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests';
 type PracticeView = { type: 'exercise'; exercise: ExerciseType; isRevisionMode?: boolean; isSpacedRepetitionMode?: boolean } | null;
+
+
+const GoogleLinkBanner = () => {
+    const { user, linkGoogleAccount } = useAuth();
+    const { language } = useLanguage();
+    const [isLinking, setIsLinking] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isDismissed, setIsDismissed] = useState(false);
+
+    const isLinked = auth.currentUser?.providerData?.some((p: any) => p.providerId === 'google.com');
+
+    // Show if loginCount === 1 and not linked and not dismissed
+    if (user && user.loginCount === 1 && !isLinked && !isDismissed) {
+        return (
+            <div className="bg-primary/10 border border-primary text-content p-4 rounded-xl mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                    <h3 className="font-bold text-lg mb-1">{language === 'pl' ? 'Witamy po raz pierwszy!' : 'Welcome!'}</h3>
+                    <p className="text-sm opacity-90 mb-2">{language === 'pl' ? 'Połącz swoje konto z Google, aby w przyszłości logować się jednym kliknięciem.' : 'Link your account with Google to log in with one click in the future.'}</p>
+                    {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+                </div>
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                    <Button variant="ghost" className="text-sm" onClick={() => setIsDismissed(true)}>
+                        {language === 'pl' ? 'Pomiń' : 'Dismiss'}
+                    </Button>
+                    <Button 
+                        variant="primary" 
+                        isLoading={isLinking}
+                        className="whitespace-nowrap"
+                        onClick={async () => {
+                            setIsLinking(true);
+                            setError(null);
+                            try {
+                                await linkGoogleAccount();
+                            } catch (err: any) {
+                                setError(err.message || 'Error linking account');
+                            } finally {
+                                setIsLinking(false);
+                            }
+                        }}
+                    >
+                        {language === 'pl' ? 'Połącz z Google' : 'Link with Google'}
+                    </Button>
+                </div>
+            </div>
+        )
+    }
+    return null;
+}
 
 const PracticeSetSelector = ({ onSelectSet, onCancel }: { onSelectSet: (id: string) => void, onCancel: () => void }) => {
   const { sets } = useFlashcards();
@@ -391,6 +440,7 @@ const Dashboard: React.FC = () => {
 
     return (
       <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">
+        <GoogleLinkBanner />
 
         
         {isTeacher ? (
