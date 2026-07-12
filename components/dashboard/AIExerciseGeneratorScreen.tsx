@@ -103,7 +103,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const { user } = useAuth();
 
   // Settings states
-  const [activeTab, setActiveTab] = useState<'ai' | 'other'>('ai');
+  const [activeTab, setActiveTab] = useState<'ai' | 'other'>(typeof window !== 'undefined' && window.innerWidth < 1024 ? 'other' : 'ai');
   const [selectedSetId, setSelectedSetId] = useState<string>('all');
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
   const [level, setLevel] = useState<string>(user?.level || 'B1');
@@ -1014,9 +1014,22 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center">
-                              <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${isSelected ? 'border-primary bg-primary text-black' : 'border-content-muted/30 bg-base-300'}`}>
-                                {isSelected && <CheckCircle className="w-4 h-4" />}
+                            <div className="flex items-center ml-4">
+                              <div className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
+                                isSelected 
+                                  ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
+                                  : 'bg-base-300 text-content-muted group-hover:bg-base-300/80 group-hover:text-white'
+                              }`}>
+                                {isSelected ? (
+                                  <>
+                                    <CheckCircle className="w-4 h-4" />
+                                    {language === 'pl' ? 'Wybrane' : 'Selected'}
+                                  </>
+                                ) : (
+                                  <>
+                                    {language === 'pl' ? 'Wybierz' : 'Select'}
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1034,17 +1047,35 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                      <label className="block text-sm font-bold text-content-muted">
                         {language === 'pl' ? 'Inne opcje (Zastępuje lekcje)' : 'Other options'}
                       </label>
-                      <label className={`flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer shadow-sm ${selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'bg-primary/10 border-primary/50 ring-1 ring-primary/50' : 'bg-base-200/60 backdrop-blur-md border-white/10 hover:border-primary/30'}`}>
+                      <label className={`group flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer shadow-sm ${selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'bg-primary/10 border-primary/50 ring-1 ring-primary/50' : 'bg-base-200/60 backdrop-blur-md border-white/10 hover:border-primary/30'}`}>
                         <input 
                           type="radio" 
                           name="vocabSource" 
                           checked={selectedSetId === 'all' && selectedLessonIds.length === 0} 
                           onChange={() => { setSelectedSetId('all'); setSelectedLessonIds([]); }}
-                          className="w-5 h-5 text-primary focus:ring-primary/50 bg-base-300 border-base-300"
+                          className="sr-only"
                         />
                         <div>
                           <div className="font-bold text-base">{language === 'pl' ? 'Wszystkie moje przypisane zestawy' : 'All my assigned word sets'}</div>
                           <div className="text-sm text-content-muted mt-0.5">{language === 'pl' ? `Wplecie słówka z Twoich ${availableSets.length} zestawów` : `Integrates terms from your ${availableSets.length} sets`}</div>
+                        </div>
+                        <div className="flex items-center ml-4">
+                          <div className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
+                            selectedSetId === 'all' && selectedLessonIds.length === 0 
+                              ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
+                              : 'bg-base-300 text-content-muted group-hover:bg-base-300/80 group-hover:text-white'
+                          }`}>
+                            {selectedSetId === 'all' && selectedLessonIds.length === 0 ? (
+                              <>
+                                <CheckCircle className="w-4 h-4" />
+                                {language === 'pl' ? 'Wybrane' : 'Selected'}
+                              </>
+                            ) : (
+                              <>
+                                {language === 'pl' ? 'Wybierz' : 'Select'}
+                              </>
+                            )}
+                          </div>
                         </div>
                       </label>
                   </div>

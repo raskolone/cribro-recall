@@ -185,7 +185,7 @@ export interface VocabularySet {
 }
 
 
-export type TestQuestionType = 'multiple_choice' | 'fill_in_blank' | 'translation';
+export type TestQuestionType = 'multiple_choice' | 'fill_in_blank' | 'translation' | 'matching' | 'writing';
 
 export interface TestQuestion {
   id: string;
@@ -207,5 +207,8 @@ export interface StudentTest {
   questions: TestQuestion[];
   score?: number;
   maxScore?: number;
-  studentAnswers?: Record<string, string>; // Map of questionId to student's answer
+  attemptsLimit?: number;
+  attemptsUsed?: number;
+  studentAnswers?: Record<string, string>;
+  aiFeedback?: string; // Map of questionId to student's answer
 }

@@ -18,6 +18,10 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
   const [file, setFile] = useState<File | null>(null);
   const [feedback, setFeedback] = useState<string>('');
   const [isModifying, setIsModifying] = useState<boolean>(false);
+  const [tasksCount, setTasksCount] = useState<number>(10);
+  const [attemptsLimit, setAttemptsLimit] = useState<number>(1);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(['multiple_choice', 'fill_in_blank', 'translation', 'matching', 'writing']);
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -80,7 +84,6 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
     setShowDriveModal(false);
     setFile(null); // Clear local file if drive file selected
   };
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(['multiple_choice', 'fill_in_blank', 'translation']);
   
   const [testTitle, setTestTitle] = useState('');
   const [scope, setScope] = useState('');
@@ -123,6 +126,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
 
   const handleGenerate = async () => {
     if (!testTitle) return alert("Podaj tytuł testu");
+    if (selectedTypes.length === 0) return alert("Wybierz przynajmniej jeden typ zadań");
     setIsGenerating(true);
     
     try {
@@ -131,7 +135,11 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
         `Lesson ${lr.date}: Topic: ${lr.topic}. Summary: ${lr.lessonSummary || ''}. Words: ${lr.vocabularyText || ''}`
       ).join('\n\n');
       
-      const profile = `Imię: ${user.firstName || ''}, Opis: ${user.description || ''}`;
+      const allLessonsContext = lessons.map((lr, idx) => 
+        `Lesson ${lr.date}: Topic: ${lr.topic}. Summary: ${lr.lessonSummary || ''}. Words: ${lr.vocabularyText || ''}`
+      ).join('\n\n');
+      
+      const profile = `Imię: ${user.firstName || ''}, Zainteresowania/Opis: ${user.description || ''}`;
       
       let fileData = null;
       if (file) {
@@ -144,7 +152,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
         fileData = { data: base64Data, mimeType };
       }
 
-      const questions = await generateTest(user.level || 'B1', testTitle, scope, profile, lessonContext, ['multiple_choice', 'fill_in_blank', 'translation'], fileData, driveFile ? { id: driveFile.id, mimeType: driveFile.mimeType, token: driveFile.token } : undefined);
+      const questions = await generateTest(user.level || 'B1', testTitle, scope, profile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, fileData, driveFile ? { id: driveFile.id, mimeType: driveFile.mimeType, token: driveFile.token } : undefined);
       
       // Ensure IDs
       const withIds = questions.map(q => ({ ...q, id: Math.random().toString(36).substring(2, 9) }));
@@ -193,6 +201,8 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
         status: 'pending',
         questions: generatedQuestions,
         maxScore: generatedQuestions.length,
+        attemptsLimit,
+        attemptsUsed: 0,
       };
       
       await addDoc(collection(db, `users/${user.id}/tests`), newTest);
@@ -393,7 +403,81 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
               )}
             </div>
 
-            <Button onClick={handleGenerate} isLoading={isGenerating} className="w-full" disabled={!testTitle}>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-content-muted mb-2">Ilość zadań do testu: {tasksCount}</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="20"
+                  value={tasksCount}
+                  onChange={e => setTasksCount(parseInt(e.target.value))}
+                  className="w-full accent-primary"
+                />
+                <div className="flex justify-between text-xs text-content-muted mt-1">
+                  <span>1</span>
+                  <span>20</span>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-content-muted mb-2">Limit podejść</label>
+                <select
+                  value={attemptsLimit}
+                  onChange={e => setAttemptsLimit(parseInt(e.target.value))}
+                  className="w-full bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-white"
+                >
+                  <option value="1">1 podejście</option>
+                  <option value="2">2 podejścia</option>
+                  <option value="3">3 podejścia</option>
+                  <option value="5">5 podejść</option>
+                  <option value="999">Bez limitu</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-content-muted mb-3">Typy zadań do wygenerowania</label>
+              <div className="flex flex-wrap gap-3">
+                {[
+                  { id: 'multiple_choice', label: 'Wielokrotny wybór' },
+                  { id: 'fill_in_blank', label: 'Wpisywanie luk' },
+                  { id: 'translation', label: 'Tłumaczenia' },
+                  { id: 'matching', label: 'Łączenie w pary' },
+                  { id: 'writing', label: 'Writing (otwarte)' },
+                ].map(type => {
+                  const isSelected = selectedTypes.includes(type.id);
+                  return (
+                  <label 
+                    key={type.id} 
+                    className={`flex items-center gap-2 cursor-pointer px-5 py-3 rounded-xl border transition-all duration-300 font-bold text-sm select-none ${
+                      isSelected 
+                        ? 'bg-primary/10 border-primary text-primary shadow-[0_0_15px_rgba(114,240,180,0.15)] ring-1 ring-primary/50' 
+                        : 'bg-base-200/60 backdrop-blur-md border-white/10 text-content-muted hover:border-primary/30 hover:text-white'
+                    }`}
+                  >
+                    <input 
+                      type="checkbox" 
+                      className="sr-only"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedTypes(prev => [...prev, type.id]);
+                        } else {
+                          setSelectedTypes(prev => prev.filter(t => t !== type.id));
+                        }
+                      }}
+                    />
+                    {isSelected && <CheckCircle className="w-4 h-4" />}
+                    {type.label}
+                  </label>
+                )})}
+              </div>
+            </div>
+
+            <Button onClick={handleGenerate} isLoading={isGenerating} className="w-full" disabled={!testTitle || selectedTypes.length === 0}>
+
               Generuj Test za pomocą AI
             </Button>
           </div>
@@ -405,17 +489,59 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
               <h3 className="font-bold text-lg mb-4 text-primary">Podgląd Wygenerowanego Testu ({generatedQuestions.length} pytań)</h3>
               <div className="space-y-4 max-h-96 overflow-y-auto mb-4 pr-2">
                 {generatedQuestions.map((q, i) => (
-                  <div key={q.id} className="bg-base-200/50 p-3 rounded-lg border border-white/5 text-sm">
-                    <div className="font-bold text-content-muted mb-1">
-                      {i+1}. [{q.type === 'multiple_choice' ? 'ABCD' : q.type === 'fill_in_blank' ? 'Luki' : 'Tłumaczenie'}]
+                  <div key={q.id} className="bg-base-200 p-4 rounded-lg border border-white/5 text-sm">
+                    <div className="font-bold text-content-muted mb-3 flex items-center justify-between">
+                      <span>{i+1}. [{q.type === 'multiple_choice' ? 'Wielokrotny wybór' : q.type === 'fill_in_blank' ? 'Luki' : q.type === 'matching' ? 'Łączenie w pary' : q.type === 'writing' ? 'Writing' : 'Tłumaczenie'}]</span>
+                      <span className="text-xs font-mono bg-base-300 px-2 py-0.5 rounded">ID: {q.id}</span>
                     </div>
-                    <div className="mb-2 font-medium">{q.prompt}</div>
+                    <div className="mb-4 font-medium text-base">{q.prompt}</div>
+                    
+                    {/* Interactive-looking mockups */}
                     {q.type === 'multiple_choice' && q.options && (
-                      <ul className="list-disc pl-5 mb-2 text-content-muted">
-                        {q.options.map((opt, j) => <li key={j} className={opt === q.correctAnswer ? "text-primary" : ""}>{opt}</li>)}
-                      </ul>
+                      <div className="space-y-2 mb-4">
+                        {q.options.map((opt, j) => (
+                          <label key={j} className={`flex items-center gap-3 p-3 rounded-lg border ${opt === q.correctAnswer ? "border-primary bg-primary/5" : "border-white/10 bg-base-100"}`}>
+                            <input type="radio" disabled checked={opt === q.correctAnswer} className="accent-primary" />
+                            <span className={opt === q.correctAnswer ? "text-primary font-medium" : "text-white"}>{opt}</span>
+                          </label>
+                        ))}
+                      </div>
                     )}
-                    <div className="text-primary font-bold">Odp: {q.correctAnswer}</div>
+                    
+                    {q.type === 'fill_in_blank' && (
+                      <div className="mb-4">
+                        <input type="text" disabled placeholder="Uczeń wpisze tekst..." className="w-full bg-base-100 border border-white/10 rounded-lg p-3 text-white outline-none" />
+                      </div>
+                    )}
+
+                    {q.type === 'translation' && (
+                      <div className="mb-4">
+                        <input type="text" disabled placeholder="Tłumaczenie..." className="w-full bg-base-100 border border-white/10 rounded-lg p-3 text-white outline-none" />
+                      </div>
+                    )}
+
+                    {q.type === 'matching' && q.options && (
+                      <div className="mb-4 grid grid-cols-2 gap-4">
+                        {q.options.map((opt, j) => {
+                           const parts = opt.split('=');
+                           return (
+                             <div key={j} className="col-span-2 sm:col-span-1 p-3 bg-base-100 rounded-lg border border-white/10 flex justify-between">
+                               <span>{parts[0]?.trim() || opt}</span>
+                               <span className="text-content-muted">↔</span>
+                               <span className="text-primary">{parts[1]?.trim() || ''}</span>
+                             </div>
+                           )
+                        })}
+                      </div>
+                    )}
+
+                    {q.type === 'writing' && (
+                      <div className="mb-4">
+                        <textarea disabled placeholder="Pole do pisania dla ucznia (czysty tekst, bez wklejania)..." className="w-full bg-base-100 border border-white/10 rounded-lg p-3 text-white outline-none h-32 resize-none" />
+                      </div>
+                    )}
+
+                    {q.type !== 'writing' && <div className="text-primary font-bold text-xs uppercase tracking-wide">Prawidłowa odpowiedź: <span className="text-white font-normal bg-base-300 px-2 py-1 rounded ml-1">{q.correctAnswer}</span></div>}
                   </div>
                 ))}
               </div>

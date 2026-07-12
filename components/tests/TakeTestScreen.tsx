@@ -3,6 +3,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { StudentTest } from '../../types';
+import { gradeTest } from '../../services/geminiService';
 import Card from '../ui/Card';
 import ConfirmModal from '../ui/ConfirmModal';
 import Button from '../ui/Button';
@@ -32,13 +33,13 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [gradingResult, setGradingResult] = useState<{score: number, feedback: string} | null>(null);
 
   const handleAnswerChange = (questionId: string, answer: string) => {
     setAnswers(prev => ({ ...prev, [questionId]: answer }));
   };
 
   const handleSubmit = async () => {
-    // Validate all answered? Let's assume yes or warn
     const unanswered = test.questions.filter(q => !answers[q.id]?.trim());
     if (unanswered.length > 0) {
       if (!window.confirm(`Masz ${unanswered.length} nieodpowiedzianych pytań. Czy na pewno chcesz zakończyć test?`)) {
@@ -48,36 +49,27 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
 
     setIsSubmitting(true);
     
-    // Auto-grade multiple choice and exact matches (we can do basic auto-grading, or AI grading, let's do basic for now)
-    let score = 0;
-    test.questions.forEach(q => {
-      const studentAns = (answers[q.id] || '').trim().toLowerCase();
-      const correctAns = (q.correctAnswer || '').trim().toLowerCase();
-      
-      if (q.type === 'multiple_choice' && studentAns === correctAns) {
-        score += 1;
-      } else if (q.type === 'fill_in_blank' && studentAns === correctAns) {
-        score += 1; // Or levenshtein distance? exact for now
-      } else if (q.type === 'translation') {
-        // AI or teacher grading needed, let's just mark exact match for now
-        if (studentAns === correctAns) score += 1;
-      }
-    });
-
     try {
-      if (user?.id && test.id) {
-        const testRef = doc(db, `users/${user.id}/tests`, test.id);
-        await updateDoc(testRef, {
-          status: 'graded',
-          score,
-          studentAnswers: answers,
-          completedAt: new Date().toISOString()
-        });
-        setSubmitted(true);
-      }
+      if (!user?.id || !test.id) throw new Error("Not authenticated");
+      
+      const gradeResult = await gradeTest(test.title, test.questions, answers);
+      
+      const newAttemptsUsed = (test.attemptsUsed || 0) + 1;
+      
+      const testRef = doc(db, `users/${user.id}/tests`, test.id);
+      await updateDoc(testRef, {
+        status: 'graded',
+        studentAnswers: answers,
+        score: gradeResult.score,
+        aiFeedback: gradeResult.feedback,
+        attemptsUsed: newAttemptsUsed,
+        completedAt: new Date().toISOString()
+      });
+      setGradingResult(gradeResult);
+      setSubmitted(true);
     } catch (err) {
       console.error(err);
-      alert("Wystąpił błąd podczas zapisywania testu.");
+      alert("Wystąpił błąd podczas zapisywania odpowiedzi lub weryfikacji AI.");
     } finally {
       setIsSubmitting(false);
     }
@@ -143,6 +135,43 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
                       onChange={e => handleAnswerChange(q.id, e.target.value)}
                       placeholder={q.type === 'translation' ? "Przetłumacz na angielski..." : "Wpisz brakujący fragment..."}
                       className="w-full bg-base-100 border border-base-300 rounded-lg p-3 outline-none focus:border-primary/50"
+                    />
+                  </div>
+                )}
+                
+                {q.type === 'matching' && q.options && (
+                  <div className="space-y-3">
+                    <div className="text-sm text-content-muted mb-2">Przepisz połączone pary (oddzielone znakiem równości =):</div>
+                    <div className="grid grid-cols-2 gap-4 mb-2 opacity-70">
+                        {q.options.map((opt, j) => {
+                            const p = opt.split('=');
+                            return (
+                                <div key={j} className="p-2 border border-white/10 rounded bg-base-100 text-sm">
+                                    {p[0]?.trim()} / {p[1]?.trim()}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <textarea
+                      value={answers[q.id] || ''}
+                      onChange={e => handleAnswerChange(q.id, e.target.value)}
+                      placeholder="Wpisz połączone pary, np:\njabłko = apple\npies = dog"
+                      className="w-full bg-base-100 border border-base-300 rounded-lg p-3 outline-none focus:border-primary/50 h-32 resize-y font-mono text-sm"
+                    />
+                  </div>
+                )}
+
+                {q.type === 'writing' && (
+                  <div>
+                    <div className="text-sm text-content-muted mb-2 font-bold text-primary">Uwaga: Funkcja wklejania jest zablokowana w tym zadaniu.</div>
+                    <textarea
+                      value={answers[q.id] || ''}
+                      onChange={e => handleAnswerChange(q.id, e.target.value)}
+                      onPaste={(e) => e.preventDefault()}
+                      onCopy={(e) => e.preventDefault()}
+                      onCut={(e) => e.preventDefault()}
+                      placeholder="Zacznij pisać tutaj..."
+                      className="w-full bg-base-100 border border-base-300 rounded-lg p-3 outline-none focus:border-primary/50 min-h-[200px] resize-y"
                     />
                   </div>
                 )}

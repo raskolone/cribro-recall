@@ -148,7 +148,7 @@ app.use((err: any, req: any, res: any, next: any) => {
   // Proxy for Gemini API
   app.post('/api/gemini/generate-test', requireFirebaseAdmin, async (req, res) => {
     try {
-      const { level, testTitle, scope, studentProfile, lessonContext, selectedTypes, fileData, driveFile } = req.body;
+      const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, fileData, driveFile } = req.body;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
       
@@ -156,21 +156,29 @@ app.use((err: any, req: any, res: any, next: any) => {
       const ai = new GoogleGenAI({ apiKey });
       
       let contents = [];
-      const prompt = `Jesteś asystentem edukacyjnym, generatorem testów opartym o model **Gemini 3.1 Pro Preview**.
-Twoim zadaniem jest przygotowanie testu dla kursanta na podstawie jego dotychczasowych lekcji oraz dostarczonych materiałów.
+      const prompt = `Jesteś asystentem edukacyjnym, generatorem testów opartym o zaawansowany model.
+Twoim zadaniem jest przygotowanie wysoce spersonalizowanego testu dla kursanta, analizując jego historię lekcji.
 
 # ZASADY ŻELAZNE:
 1. Przeanalizuj dokładnie profil kursanta:
 ${studentProfile}
-Nie wymyślaj rzeczy, które nie istnieją w profilu ani w lekcjach. 
+Oraz CAŁĄ historię jego lekcji, aby skroić test jak najbardziej personalnie (zainteresowania, typowe błędy, słownictwo):
+${allLessonsContext}
+
 2. Test musi być ściśle dostosowany do poziomu kursanta: ${level}.
-3. Wykorzystaj elementy, które faktycznie pojawiały się w trakcie nauki (słownictwo z lekcji: ${lessonContext}). Test ma bazować na podobnych strukturach, aby kursant się nie pogubił.
-4. Wygeneruj DOKŁADNIE 10 różnych zadań, w formatach:
+3. Oprzyj merytorykę zadań GŁÓWNIE na wybranych lekcjach stanowiących kontekst bieżącego materiału:
+${lessonContext}
+4. Wygeneruj DOKŁADNIE ${tasksCount || 10} zadań.
+5. Użyj TYLKO następujących typów zadań wybranych przez nauczyciela: ${selectedTypes ? selectedTypes.join(', ') : 'multiple_choice, fill_in_blank, translation'}.
+   Dozwolone typy: 
    - multiple_choice (wielokrotnego wyboru),
-   - fill_in_blank (krótkie zadania na wpisywanie brakujących elementów),
-   - translation (tłumaczenie zdań z języka polskiego na angielski na podstawie omawianych tematów).
-5. WAŻNE: W polu "prompt" KAŻDEGO wygenerowanego zadania MUSI znajdować się ZAWSZE wyraźne polecenie dla kursanta informujące go, co należy wykonać (np. "Wybierz prawidłową opcję, aby uzupełnić zdanie:", "Przetłumacz poniższe zdanie na język angielski:", "Wpisz brakujące słowo:"). Dopiero po poleceniu umieść właściwą treść zadania.
-6. Zdania mają być autentyczne, brzmieć naturalnie, tak aby kursant widział ich praktyczne zastosowanie w swoim życiu. Unikaj dziwnych, nierealnych sytuacji.
+   - fill_in_blank (wpisywanie brakujących elementów),
+   - translation (tłumaczenie z polskiego na angielski),
+   - matching (łączenie w pary - w opcjach podaj pary do złączenia oddzielone znakiem =, a w correctAnswer napisz np. 'połączone'),
+   - writing (zadanie polegające na dłuższej wypowiedzi pisemnej na podstawie zagadnień, bez correctAnswer, uczeń pisze własny tekst).
+6. WAŻNE: W polu "prompt" KAŻDEGO zadania ZAWSZE zamieść wyraźne polecenie dla kursanta (np. "Wybierz prawidłową opcję:", "Napisz krótką historię o swoich ostatnich wakacjach używając czasu Past Simple:").
+7. Jeśli jednym z wybranych typów jest "writing", upewnij się, że jedno z zadań ma type "writing" i wymaga napisania dłuższego tekstu opartego na zagadnieniach z wybranych lekcji.
+8. Zdania mają być autentyczne i naturalne, by kursant widział ich praktyczne zastosowanie.
 
 Tytuł testu: ${testTitle}
 Zakres materiału: ${scope}
@@ -212,7 +220,7 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
         items: {
           type: Type.OBJECT,
           properties: {
-            type: { type: Type.STRING, enum: ["multiple_choice", "fill_in_blank", "translation"], description: "Type of the question" },
+            type: { type: Type.STRING, enum: ["multiple_choice", "fill_in_blank", "translation", "matching", "writing"], description: "Type of the question" },
             prompt: { type: Type.STRING, description: "The question or the sentence to translate/fill" },
             options: { 
               type: Type.ARRAY, 
@@ -586,6 +594,58 @@ Zwróć wynik jako JSON z poniższymi polami:
   // Proxy for Gemini API if we ever want to move Gemini to server-side
   // Right now, keeping what's there on Vite fallback for now.
 
+
+  
+  app.post('/api/gemini/grade-test', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { testTitle, questions, studentAnswers } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
+      
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const prompt = `Jesteś nauczycielem języka angielskiego. Sprawdź odpowiedzi ucznia w teście o tytule "${testTitle}".
+Oto pytania i odpowiedzi ucznia:
+${questions.map((q: any, index: number) => {
+  return `
+Zadanie ${index + 1}. [${q.type}]
+Polecenie/Treść: ${q.prompt}
+Odpowiedź ucznia: ${studentAnswers[q.id] || "Brak odpowiedzi"}
+Poprawna odpowiedź (dla zadań zamkniętych): ${q.correctAnswer || "Zadanie otwarte/writing"}`;
+}).join('\n')}
+
+Twoim zadaniem jest ocenić ten test i dostarczyć konstruktywny, motywujący feedback dla kursanta w języku polskim.
+Przeanalizuj każdą odpowiedź ucznia. Zwróć szczególną uwagę na zadania typu "writing" - wskaż błędy, ale też pochwal za dobre użycie struktur.
+Na koniec przyznaj łączną ocenę (np. w procentach lub punktach).
+
+Zwróć JSON z polami:
+- score (liczba, przyznane punkty całkowite)
+- feedback (string, Twój szczegółowy feedback dla ucznia, z wylistowanymi błędami i poradami)
+`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              score: { type: Type.NUMBER },
+              feedback: { type: Type.STRING }
+            },
+            required: ["score", "feedback"]
+          }
+        }
+      });
+      
+      if (!response.text) throw new Error("No response");
+      res.json(JSON.parse(response.text));
+    } catch (err: any) {
+      console.error(err);
+      res.status(500).json({ error: err.message });
+    }
+  });
 
   // Text-to-Speech API
   app.get("/api/tts", async (req, res) => {

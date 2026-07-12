@@ -481,6 +481,9 @@ export const generateTest = async (
   scope: string,
   studentProfile: string,
   lessonContext: string,
+  allLessonsContext: string,
+  tasksCount: number,
+  attemptsLimit: number,
   selectedTypes: string[] = ['multiple_choice', 'fill_in_blank', 'translation'],
   fileData?: { data: string; mimeType: string } | null,
   driveFile?: { id: string, mimeType: string, token: string }
@@ -501,6 +504,9 @@ export const generateTest = async (
       scope,
       studentProfile,
       lessonContext,
+      allLessonsContext,
+      tasksCount,
+      attemptsLimit,
       selectedTypes,
       fileData,
       driveFile
@@ -830,4 +836,37 @@ export const logMistakesToFirebase = async (userId: string, mistakes: string[]) 
   } catch (error) {
     console.error("Error logging mistakes:", error);
   }
+};
+
+export const gradeTest = async (
+  testTitle: string,
+  questions: any[],
+  studentAnswers: Record<string, string>
+): Promise<{score: number, feedback: string}> => {
+  const user = auth.currentUser;
+  const token = user ? await user.getIdToken() : '';
+  
+  const res = await fetch('/api/gemini/grade-test', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      testTitle,
+      questions,
+      studentAnswers
+    })
+  });
+  
+  if (!res.ok) {
+    const errText = await res.text();
+    try {
+        const errData = JSON.parse(errText);
+        throw new Error(errData.error || 'Failed to grade test');
+    } catch(e) {
+        throw new Error(`Server error (${res.status}): Invalid response.`);
+    }
+  }
+  return await res.json();
 };

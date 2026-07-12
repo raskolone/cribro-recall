@@ -21,6 +21,7 @@
     "jose": "^6.2.3",
     "lucide-react": "^1.8.0",
     "motion": "^12.38.0",
+    "puppeteer": "^25.3.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",

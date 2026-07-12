@@ -26,7 +26,7 @@ import { useFlashcards } from '../../context/FlashcardContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { ExerciseType, PracticeHistory } from '../../types';
 import Button from '../ui/Button';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, LayoutDashboard, Library, ClipboardList, Settings, User, BookOpen } from 'lucide-react';
 
 import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
 
@@ -530,7 +530,7 @@ const Dashboard: React.FC = () => {
         isDesktopCollapsed={isDesktopCollapsed}
         onToggleCollapse={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
       />
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto pb-24 md:pb-8">
         <header className="relative z-50 flex justify-between items-center mb-6 p-4 rounded-2xl bg-base-200/40 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]">
           <div className="flex items-center gap-3">
             <button 
@@ -556,6 +556,99 @@ const Dashboard: React.FC = () => {
         </header>
         {renderContent()}
       </main>
+      {/* Mobile Bottom Navigation */}
+      {!(user?.role === 'admin' || user?.role === 'admin_student') && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-base-200/90 backdrop-blur-xl border-t border-white/10 px-4 py-2 flex justify-between items-center z-50 shadow-[0_-8px_32px_rgba(0,0,0,0.4)] pb-safe">
+          <button 
+            onClick={() => {
+               if (isExerciseActive) {
+                  showConfirm(
+                    language === 'pl' ? 'Zakończ sesję' : 'End session',
+                    language === 'pl' ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?',
+                    () => {
+                      closeConfirm();
+                      setExerciseResetKey(k => k + 1);
+                      setIsExerciseActive(false);
+                      changeView('dashboard', { practiceView: null });
+                    }
+                  );
+               } else {
+                 changeView('dashboard', { practiceView: null });
+               }
+            }}
+            className={`flex flex-col items-center p-2 rounded-xl transition-all ${view === 'dashboard' ? 'text-primary' : 'text-content-muted hover:text-white'}`}
+          >
+            <LayoutDashboard size={24} />
+            <span className="text-[10px] mt-1 font-medium">{language === 'pl' ? 'Start' : 'Home'}</span>
+          </button>
+          
+          <button 
+            onClick={() => {
+               if (isExerciseActive) {
+                  showConfirm(
+                    language === 'pl' ? 'Zakończ sesję' : 'End session',
+                    language === 'pl' ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?',
+                    () => {
+                      closeConfirm();
+                      setIsExerciseActive(false);
+                      changeView('flashcard-sets', { practiceView: null });
+                    }
+                  );
+               } else {
+                 changeView('flashcard-sets', { practiceView: null });
+               }
+            }}
+            className={`flex flex-col items-center p-2 rounded-xl transition-all ${view === 'flashcard-sets' ? 'text-primary' : 'text-content-muted hover:text-white'}`}
+          >
+            <Library size={24} />
+            <span className="text-[10px] mt-1 font-medium">{language === 'pl' ? 'Fiszki' : 'Cards'}</span>
+          </button>
+
+          <button 
+            onClick={() => {
+               if (isExerciseActive) {
+                  showConfirm(
+                    language === 'pl' ? 'Zakończ sesję' : 'End session',
+                    language === 'pl' ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?',
+                    () => {
+                      closeConfirm();
+                      setIsExerciseActive(false);
+                      changeView('tests', { practiceView: null });
+                    }
+                  );
+               } else {
+                 changeView('tests', { practiceView: null });
+               }
+            }}
+            className={`flex flex-col items-center p-2 rounded-xl transition-all ${view === 'tests' ? 'text-primary' : 'text-content-muted hover:text-white'}`}
+          >
+            <ClipboardList size={24} />
+            <span className="text-[10px] mt-1 font-medium">{language === 'pl' ? 'Testy' : 'Tests'}</span>
+          </button>
+          
+          <button 
+            onClick={() => {
+               if (isExerciseActive) {
+                  showConfirm(
+                    language === 'pl' ? 'Zakończ sesję' : 'End session',
+                    language === 'pl' ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?',
+                    () => {
+                      closeConfirm();
+                      setIsExerciseActive(false);
+                      changeView('settings', { practiceView: null });
+                    }
+                  );
+               } else {
+                 changeView('settings', { practiceView: null });
+               }
+            }}
+            className={`flex flex-col items-center p-2 rounded-xl transition-all ${view === 'settings' ? 'text-primary' : 'text-content-muted hover:text-white'}`}
+          >
+            <Settings size={24} />
+            <span className="text-[10px] mt-1 font-medium">{language === 'pl' ? 'Menu' : 'Menu'}</span>
+          </button>
+        </div>
+      )}
       <ConfirmModal
         isOpen={confirmModalState.isOpen}
         title={confirmModalState.title}

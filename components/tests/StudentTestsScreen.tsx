@@ -61,15 +61,30 @@ const StudentTestsScreen: React.FC<StudentTestsScreenProps> = ({ onBack }) => {
               </div>
               
               <div className="flex-shrink-0 text-center">
-                {test.status === 'pending' ? (
-                  <Button onClick={() => setActiveTest(test)} className="bg-primary text-black hover:bg-primary/90 font-bold w-full md:w-auto">
-                    Rozpocznij Test
-                  </Button>
+                {(test.status === 'pending' || (test.attemptsLimit && (test.attemptsUsed || 0) < test.attemptsLimit)) ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Button onClick={() => setActiveTest(test)} className="bg-primary text-black hover:bg-primary/90 font-bold w-full md:w-auto">
+                      {test.status === 'pending' ? 'Rozpocznij Test' : 'Spróbuj ponownie'}
+                    </Button>
+                    {test.attemptsLimit && test.attemptsLimit < 999 && (
+                      <span className="text-xs text-content-muted">
+                        Wykorzystane podejścia: {test.attemptsUsed || 0}/{test.attemptsLimit}
+                      </span>
+                    )}
+                    {test.status !== 'pending' && test.score !== undefined && (
+                      <span className="text-xs text-primary">Ostatni wynik: {test.score}/{test.maxScore} pkt</span>
+                    )}
+                  </div>
                 ) : (
                   <div className="bg-base-300/50 px-4 py-2 rounded-lg border border-white/5">
                     <div className="font-bold text-sm mb-1 text-primary">Zakończony</div>
                     {test.score !== undefined && (
                       <div className="text-xl font-bold">{test.score}/{test.maxScore} <span className="text-xs text-content-muted">pkt</span></div>
+                    )}
+                    {test.attemptsLimit && test.attemptsLimit < 999 && (
+                      <span className="text-xs text-content-muted mt-1 block">
+                        Wykorzystane podejścia: {test.attemptsUsed || 0}/{test.attemptsLimit}
+                      </span>
                     )}
                   </div>
                 )}
