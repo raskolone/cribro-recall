@@ -60,7 +60,7 @@ Provide up to 5 autocomplete suggestions or related terms in ${sourceLangName} t
 Return ONLY a JSON array of strings. No markdown formatting, no explanations.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
           temperature: 0.3,
@@ -83,7 +83,7 @@ Provide a clear, concise translation or definition for the term "${req.term}" fr
 Return ONLY the translated term or short definition as a plain string. No quotes, no explanations.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
           temperature: 0.1,
