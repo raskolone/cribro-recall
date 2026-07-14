@@ -4,7 +4,7 @@ import { createServer as createViteServer } from "vite";
 import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 // Wait, I need VITE_FIREBASE_CONFIG for the project ID.
 // Wait, process.env is available here but VITE_ variables are loaded by Vite.
@@ -237,7 +237,7 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
       let response;
       try {
         response = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
+          model: 'gemini-1.5-flash',
           contents: contents,
           config: {
             responseMimeType: 'application/json',
@@ -246,9 +246,9 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
           }
         });
       } catch (err) {
-        console.warn("gemini-3.5-flash failed in test generator, falling back to gemini-3.1-flash-lite", err);
+        console.warn("gemini-1.5-flash failed in test generator, falling back to gemini-1.5-flash", err);
         response = await ai.models.generateContent({
-          model: 'gemini-3.1-flash-lite',
+          model: 'gemini-1.5-flash',
           contents: contents,
           config: {
             responseMimeType: 'application/json',
@@ -624,7 +624,7 @@ Zwróć JSON z polami:
 `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
+        model: 'gemini-1.5-flash',
         contents: prompt,
         config: {
           responseMimeType: 'application/json',

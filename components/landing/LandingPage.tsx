@@ -11,9 +11,8 @@ interface LandingPageProps {
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [isDemoLoading, setIsDemoLoading] = useState(false);
   const { language, setLanguage, t } = useLanguage();
-  const { login, loginAnonymously } = useAuth();
+  const { login } = useAuth();
 
   useEffect(() => {
     setIsVisible(true);
@@ -26,17 +25,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
       if (error?.code !== 'auth/popup-closed-by-user' && error?.code !== 'auth/cancelled-popup-request') {
         console.error("Google login failed:", error);
       }
-    }
-  };
-
-  const handleDemoClick = async () => {
-    setIsDemoLoading(true);
-    try {
-      await loginAnonymously();
-    } catch (error) {
-      console.error("Demo login failed:", error);
-    } finally {
-      setIsDemoLoading(false);
     }
   };
 
@@ -117,13 +105,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
           <div className="bg-base-200/80 backdrop-blur-xl border border-white/5 rounded-[32px] p-8 sm:p-12 shadow-[0_30px_60px_rgba(0,0,0,0.4)] relative">
             <div className="flex justify-between items-center mb-10">
               <h2 className="text-2xl font-bold text-white">Start here</h2>
-              <button 
-                onClick={handleDemoClick}
-                disabled={isDemoLoading}
-                className="text-[10px] uppercase font-mono tracking-widest font-bold px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20"
-              >
-                {isDemoLoading ? 'LOADING...' : 'DEMO'}
-              </button>
             </div>
 
             <div className="space-y-6">

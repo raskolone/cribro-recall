@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, deleteDoc, query, orderBy, setDoc, writeBatch, updateDoc, addDoc, where } from 'firebase/firestore';
+import { collection, getDocs, doc, deleteDoc, query, orderBy, setDoc, writeBatch, updateDoc, addDoc } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
 import { User, PracticeLog, FlashcardSet, LessonRecord } from '../../types';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
-import { useFirebaseAdminApi } from '../../hooks/useFirebaseAdminApi';
 import { importVocabularyFromLessons } from '../../services/vocabularyService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
@@ -19,229 +18,7 @@ interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: an
 const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId, onUserSelect }) => {
   const { sets: adminSets, getFlashcards } = useFlashcards();
   const { connectGoogleDrive } = useAuth();
-  const { createUser, deleteUser } = useFirebaseAdminApi();
-  
-
-  const fetchUsers = async () => {
-    try {
-      const q = query(collection(db, 'users'));
-      const snapshot = await getDocs(q);
-      const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as UserWithId)
-        .filter(u => u.username !== 'Demo User' && u.username !== 'Demo User (Offline)');
-      usersList.sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      });
-      setUsers(usersList);
-      setIsLoading(false);
-    } catch (e) {
-      console.error(e);
-      setIsLoading(false);
-    }
-  };
-
-  const fetchUserLogsAndStats = async (userId: string) => {
-    try {
-      // Fetch Lesson Records
-      const lessonsQ = query(collection(db, `users/${userId}/lessonRecords`));
-      const lessonsSnapshot = await getDocs(lessonsQ);
-      const lessonsList = lessonsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonRecord));
-      lessonsList.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
-      setLessonRecords(lessonsList);
-
-      // Fetch Practice Logs
-      const logsQ = query(collection(db, `users/${userId}/practiceLogs`));
-      const logsSnapshot = await getDocs(logsQ);
-      const logsList = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PracticeLog));
-      logsList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setPracticeLogs(logsList);
-
-      // Fetch User's Flashcard Sets
-      try {
-        const setsQ = query(collection(db, 'sets'), where('userId', '==', userId));
-        const setsSnapshot = await getDocs(setsQ);
-        const setsList = setsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FlashcardSet));
-        setsList.sort((a, b) => new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt).getTime() - new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt).getTime());
-        setUserSets(setsList);
-      } catch(e) { console.error("Error fetching sets", e); }
-
-      // Setup a basic stats aggregate based on practice logs
-      // A more complex aggregation could happen server side, but this is simple enough for now.
-      setUserStats({
-        totalWords: 120, // Example mock if no real stats collection exists
-        difficultWords: 15,
-        masteryCount: 85
-      });
-    } catch (e: any) {
-      console.error('Error fetching logs and stats:', e);
-    }
-  };
-
-  const handleSelectUser = (user: UserWithId) => {
-    setSelectedUser(user);
-    fetchUserLogsAndStats(user.id);
-  };
-
-  const handleSaveProfile = async () => {
-    if (!selectedUser) return;
-    setIsSavingProfile(true);
-    try {
-      const userRef = doc(db, 'users', selectedUser.id);
-      await updateDoc(userRef, {
-        firstName: profileForm.firstName,
-        lastName: profileForm.lastName,
-        level: profileForm.level,
-        description: profileForm.description,
-        aiPrompt: profileForm.aiPrompt
-      });
-      const updatedUser = { ...selectedUser, ...profileForm };
-      setSelectedUser(updatedUser);
-      setUsers(users.map(u => u.id === selectedUser.id ? updatedUser : u));
-      alert('Zapisano profil pomyślnie!');
-    } catch (e: any) {
-      alert('Błąd podczas zapisywania: ' + e.message);
-    } finally {
-      setIsSavingProfile(false);
-    }
-  };
-
-  const handleDeleteUser = async (uid: string) => {
-    try {
-      await deleteUser(uid);
-      await deleteDoc(doc(db, 'users', uid));
-      setUsers(users.filter(u => u.id !== uid));
-      if (selectedUser?.id === uid) setSelectedUser(null);
-    } catch (e: any) {
-      alert('Błąd podczas usuwania użytkownika: ' + e.message);
-    }
-  };
-  const processDriveFile = async (file: any) => {};
-  const fetchDriveFiles = async (mode?: string) => {};
-  const handlePdfUpload = async (e: any, mode?: string) => {};
-  const handleGenerateFromNotes = async () => {};
-  const generateBulkSummary = async (logs: any) => {};
-  const handleSaveBulkLessons = async () => {};
-  const handleAssignSet = async () => {
-    if (!selectedSetIdToAssign || !selectedUser) {
-      alert("Wybierz zestaw z listy.");
-      return;
-    }
-    const setToAssign = adminSets.find(s => s.id === selectedSetIdToAssign);
-    if (!setToAssign) return;
-
-    setIsAssigningSet(true);
-    try {
-      // Create new set copy
-      const newSetId = `set-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const newSetData = {
-        ...setToAssign,
-        id: newSetId,
-        userId: selectedUser.id,
-        isPublic: false,
-        assignedByTeacher: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      
-      const batch = writeBatch(db);
-      batch.set(doc(db, `sets/${newSetId}`), newSetData);
-
-      // Copy flashcards
-      const cardsSnap = await getDocs(collection(db, `sets/${setToAssign.id}/flashcards`));
-      cardsSnap.docs.forEach(cardDoc => {
-        const newCardId = `card-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        batch.set(doc(db, `sets/${newSetId}/flashcards/${newCardId}`), {
-          ...cardDoc.data(),
-          id: newCardId,
-          createdAt: new Date().toISOString()
-        });
-      });
-
-      await batch.commit();
-      setShowAssignModal(false);
-      setSelectedSetIdToAssign('');
-      fetchUserLogsAndStats(selectedUser.id);
-      alert('Zestaw został przypisany!');
-    } catch (e: any) {
-      alert('Błąd podczas przypisywania zestawu: ' + e.message);
-    } finally {
-      setIsAssigningSet(false);
-    }
-  };
-  const handleSaveLessonRecord = async () => {
-    if (!lessonFormStudentId) {
-      alert("Wybierz kursanta.");
-      return;
-    }
-    setIsSavingLessonRecord(true);
-    try {
-      const recordData = {
-        studentId: lessonFormStudentId,
-        date: lessonFormDate,
-        topic: lessonFormTopic,
-        vocabularyText: lessonFormWords,
-        lessonSummary: lessonFormSummary,
-        studentSpeaking: lessonFormStudentSpeaking,
-        thingsToImprove: lessonFormThingsToImprove,
-        suggestedFollowUp: lessonFormSuggestedFollowUp,
-        updatedAt: new Date().toISOString()
-      };
-
-      if (editingRecordId) {
-        await updateDoc(doc(db, `users/${lessonFormStudentId}/lessonRecords`, editingRecordId), recordData);
-      } else {
-        await addDoc(collection(db, `users/${lessonFormStudentId}/lessonRecords`), {
-          ...recordData,
-          createdAt: new Date().toISOString()
-        });
-      }
-      
-      closeLessonRecordModal();
-      if (selectedUser?.id === lessonFormStudentId) {
-        fetchUserLogsAndStats(lessonFormStudentId);
-      }
-      alert('Zapisano wpis z lekcji.');
-    } catch (e: any) {
-      alert('Błąd podczas zapisywania lekcji: ' + e.message);
-    } finally {
-      setIsSavingLessonRecord(false);
-    }
-  };
-  const handleChangePassword = async (e: any) => { e.preventDefault(); };
-  
-  const normalizeUsername = (u: string) => u.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '.').toLowerCase();
-
-  const handleCreateStudent = async () => {
-    setIsCreatingStudent(true);
-    setCreateStudentError('');
-    try {
-      const email = normalizeUsername(newStudentUsername) + '@student.cribro.app';
-      const password = isAutoGeneratePassword ? Math.random().toString(36).slice(-8) : passwordInput;
-      
-      const userRecord = await createUser(email, password, 'user');
-      
-      const newUserDoc = {
-        email,
-        username: newStudentUsername,
-        role: 'user',
-        createdAt: new Date().toISOString(),
-        loginCount: 0,
-        streakCount: 0
-      };
-      
-      await setDoc(doc(db, 'users', userRecord.uid), newUserDoc);
-      
-      setNewStudentPassword(password);
-      fetchUsers();
-    } catch (e: any) {
-      setCreateStudentError(e.message);
-    } finally {
-      setIsCreatingStudent(false);
-    }
-  };
-
-const [users, setUsers] = useState<UserWithId[]>([]);
+  const [users, setUsers] = useState<UserWithId[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserWithId | null>(null);
 
   useEffect(() => {
@@ -264,7 +41,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
   const [practiceLogs, setPracticeLogs] = useState<PracticeLog[]>([]);
   const [lessonRecords, setLessonRecords] = useState<LessonRecord[]>([]);
-  const [userSets, setUserSets] = useState<FlashcardSet[]>([]);
   const [userStats, setUserStats] = useState<{ totalWords: number; difficultWords: number; masteryCount: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigningSet, setIsAssigningSet] = useState(false);
@@ -414,8 +190,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     };
     
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
   
   const handleRoleChange = async (newRole: 'admin' | 'user' | 'admin_student') => {
     if (!selectedUser) return;
@@ -438,15 +212,75 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
       {activeTab === null ? (
         <div className="space-y-6">
-          <div className="flex justify-end gap-2 mb-6">
-            <button onClick={() => setShowAIModal(true)} className="px-4 py-2 bg-base-200/50 text-primary border border-primary/50 rounded-lg text-sm font-bold hover:bg-primary/10 transition-colors">
-              ✨ AI Lesson Generator
-            </button>
-            <button onClick={() => setShowCreateStudentModal(true)} className="px-4 py-2 bg-primary text-black rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors">
-              + Dodaj kursanta
-            </button>
-          </div>
-          
+          <Card className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-base-200/50">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto flex-1">
+              <input
+                type="text"
+                placeholder="Szukaj po imieniu, nazwisku, emailu..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full sm:max-w-md bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
+              />
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="w-full sm:w-48 bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
+              >
+                <option value="all">Wszystkie role</option>
+                <option value="user">Kursant</option>
+                <option value="admin">Admin</option>
+                <option value="admin_student">Admin + Kursant</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+              <div className="text-sm font-mono text-content-muted">Total: {users.filter(u => {
+                const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.email} ${u.username}`.toLowerCase();
+                const matchesSearch = searchStr.includes(searchQuery.toLowerCase());
+                const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+                return matchesSearch && matchesRole;
+              }).length}</div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => setShowAIModal(true)} variant="secondary" className="border-primary/50 text-primary hover:bg-primary/10">
+                  ✨ AI Lesson Generator
+                </Button>
+                <Button size="sm" onClick={() => setShowCreateStudentModal(true)}>+ Add Student</Button>
+              </div>
+            </div>
+          </Card>
+
+          {(searchQuery.trim() !== '' || roleFilter !== 'all') ? (
+            <div className="grid grid-cols-1 gap-3">
+              {users.filter(u => {
+                const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.email} ${u.username}`.toLowerCase();
+                const matchesSearch = searchStr.includes(searchQuery.toLowerCase());
+                const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+                return matchesSearch && matchesRole;
+              }).map(u => (
+                <div
+                  key={u.id}
+                  onClick={() => { handleSelectUser(u); setActiveTab('profile'); }}
+                  className="bg-base-200 border border-white/5 p-4 rounded-xl cursor-pointer hover:border-primary/30 hover:bg-base-200/80 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+                >
+                  <div>
+                    <div className="font-bold text-lg group-hover:text-primary transition-colors">
+                      {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
+                    </div>
+                    <div className="text-sm text-content-muted">{u.email}</div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-red-500/10 text-red-500' : u.role === 'admin_student' ? 'bg-purple-500/10 text-purple-500' : 'bg-primary/10 text-primary'}`}>
+                      {u.role === 'admin_student' ? 'Admin + Kursant' : u.role === 'admin' ? 'Admin' : 'Kursant'}
+                    </span>
+                    <div className="text-content-muted group-hover:text-white transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
               <button onClick={() => handleTabChange('profile')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
@@ -479,6 +313,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <h3 className="font-bold text-lg">Słownictwo</h3>
               </button>
             </div>
+          )}
         </div>
       ) : (
         <div className="space-y-6">
@@ -559,7 +394,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             </div>
           ) : (
             <div>
-              <div className="mb-4 flex items-center gap-6">
+              <div className="mb-4">
                 <button
                   onClick={() => {
                     setSelectedUser(null);
@@ -573,22 +408,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
                   Wróć do listy kursantów
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedUser(null);
-                    setActiveTab(null);
-                    if (onUserSelect) onUserSelect(null);
-                    if (onViewChange) onViewChange('admin');
-                    setPracticeLogs([]);
-                    setLessonRecords([]);
-                  }}
-                  className="text-sm font-bold text-content-muted hover:text-white flex items-center gap-2 transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  Wróć do menu głównego
                 </button>
               </div>
 
@@ -760,41 +579,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <AdminTestGenerator user={selectedUser} />
           )}
 
-          {activeTab === 'vocabulary' && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xl font-bold">Zestawy Słówek Kursanta</h3>
-                <Button onClick={() => setShowAssignModal(true)}>
-                  Przypisz Zestaw
-                </Button>
-              </div>
-
-              {userSets.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {userSets.map(set => (
-                    <Card key={set.id} className="p-4 bg-base-200/50 hover:border-primary/50 transition-colors cursor-pointer">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-bold text-lg">{set.title}</h4>
-                        {set.assignedByTeacher && (
-                          <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded font-bold uppercase tracking-wider">Od Nauczyciela</span>
-                        )}
-                      </div>
-                      <p className="text-sm text-content-muted mb-4">{set.description || 'Brak opisu'}</p>
-                      <div className="flex items-center gap-4 text-xs font-mono text-content-muted">
-                        <span>Fiszki: {set.cardCount}</span>
-                        <span>{new Date(set.createdAt?.seconds ? set.createdAt.seconds * 1000 : set.createdAt).toLocaleDateString()}</span>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center p-8 bg-base-200/50 rounded-2xl border border-white/5 text-content-muted">
-                  Brak przypisanych zestawów słówek.
-                </div>
-              )}
-            </div>
-          )}
-
           {activeTab === 'profile' && (
             <div className="max-w-2xl space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -959,46 +743,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 </div>
             </div>
           )}
-        </div>
-      )}
-        </div>
-      )}
-
-      {/* Assign Set Modal */}
-      {showAssignModal && (
-        <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md shadow-2xl border-primary/20">
-            <h3 className="text-xl font-bold mb-4">Przypisz Zestaw Słówek</h3>
-            <p className="mb-4 text-sm text-content-muted">
-              Wybierz zestaw ze swoich (jako Admin) zestawów słówek, który zostanie skopiowany i przypisany do {selectedUser?.firstName || selectedUser?.username}.
-            </p>
-            
-            <select
-              value={selectedSetIdToAssign}
-              onChange={(e) => setSelectedSetIdToAssign(e.target.value)}
-              className="w-full bg-base-200/40 border border-white/10 rounded-lg p-3 text-white mb-6 outline-none focus:border-primary/50"
-            >
-              <option value="">-- Wybierz zestaw --</option>
-              {adminSets.map(s => (
-                <option key={s.id} value={s.id}>{s.title} ({s.cardCount} fiszek)</option>
-              ))}
-            </select>
-            
-            <div className="flex justify-end gap-3">
-              <Button onClick={() => setShowAssignModal(false)} variant="secondary">
-                Anuluj
-              </Button>
-              <Button 
-                onClick={handleAssignSet} 
-                isLoading={isAssigningSet}
-                disabled={!selectedSetIdToAssign}
-              >
-                Przypisz Zestaw
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
 
       {/* Delete User Modal */}
       {userToDelete && (
@@ -1394,6 +1138,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         </div>
       )}
 
+                </div>
+        </div>
+      )}
 {/* Change Password Modal */}
       {showChangePasswordModal && (
         <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1526,7 +1273,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg text-center space-y-2 relative">
                   <div className="text-green-500 font-bold mb-2">Student Created Successfully!</div>
                   <div className="text-sm text-content-muted">Email (Login):</div>
-                  <div className="font-mono text-lg">{`${normalizeUsername(newStudentUsername)}@student.cribro.app`}</div>
+                  <div className="font-mono text-lg">{`${normalizeUsername(newStudentUsername)}@student.vocabboost.com`}</div>
                   <div className="text-sm text-content-muted mt-2">Password:</div>
                   <div className="font-mono text-lg font-bold tracking-widest bg-base-100 p-2 rounded inline-flex items-center gap-2 border border-base-300">
                     {newStudentPassword}

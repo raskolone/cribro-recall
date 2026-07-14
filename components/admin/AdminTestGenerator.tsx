@@ -6,7 +6,7 @@ import Button from '../ui/Button';
 import Card from '../ui/Card';
 import { generateTest, modifyTest } from '../../services/geminiService';
 import { useAuth } from '../../context/AuthContext';
-import { MessageSquare, BookOpen, Calendar, ChevronRight, CheckCircle, X } from 'lucide-react';
+import { MessageSquare, BookOpen, Calendar, ChevronRight, CheckCircle, X, ChevronUp, ChevronDown, Edit2 } from 'lucide-react';
 
 interface AdminTestGeneratorProps {
   user: User;
@@ -91,6 +91,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedQuestions, setGeneratedQuestions] = useState<TestQuestion[] | null>(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   
   const [isSaving, setIsSaving] = useState(false);
   const [tests, setTests] = useState<StudentTest[]>([]);
@@ -103,7 +104,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
   const fetchLessons = async () => {
     if (!user.id) return;
     try {
-      const q = query(collection(db, `users/${user.id}/lessonRecords`), orderBy('date', 'desc'));
+      const q = query(collection(db, `users/${user.id}/lessonRecords`));
       const snap = await getDocs(q);
       const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as LessonRecord));
       fetched.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -116,9 +117,11 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
   const fetchTests = async () => {
     if (!user.id) return;
     try {
-      const q = query(collection(db, `users/${user.id}/tests`), orderBy('createdAt', 'desc'));
+      const q = query(collection(db, `users/${user.id}/tests`));
       const snap = await getDocs(q);
-      setTests(snap.docs.map(d => ({ id: d.id, ...d.data() } as StudentTest)));
+      const testsFetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as StudentTest));
+      testsFetched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setTests(testsFetched);
     } catch (err) {
       console.error(err);
     }
@@ -157,6 +160,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
       // Ensure IDs
       const withIds = questions.map(q => ({ ...q, id: Math.random().toString(36).substring(2, 9) }));
       setGeneratedQuestions(withIds);
+      setIsPreviewModalOpen(true);
     } catch (err) {
       alert("Błąd generowania testu");
       console.error(err);
@@ -207,6 +211,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
       
       await addDoc(collection(db, `users/${user.id}/tests`), newTest);
       setGeneratedQuestions(null);
+      setIsPreviewModalOpen(false);
       setTestTitle('');
       setScope('');
       setDueDate('');
@@ -219,6 +224,28 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const moveQuestion = (index: number, direction: 'up' | 'down') => {
+    if (!generatedQuestions) return;
+    const newQuestions = [...generatedQuestions];
+    if (direction === 'up' && index > 0) {
+      const temp = newQuestions[index];
+      newQuestions[index] = newQuestions[index - 1];
+      newQuestions[index - 1] = temp;
+    } else if (direction === 'down' && index < newQuestions.length - 1) {
+      const temp = newQuestions[index];
+      newQuestions[index] = newQuestions[index + 1];
+      newQuestions[index + 1] = temp;
+    }
+    setGeneratedQuestions(newQuestions);
+  };
+
+  const updateQuestionPrompt = (index: number, newPrompt: string) => {
+    if (!generatedQuestions) return;
+    const newQuestions = [...generatedQuestions];
+    newQuestions[index].prompt = newPrompt;
+    setGeneratedQuestions(newQuestions);
   };
 
   const toggleLesson = (id: string) => {
@@ -309,6 +336,136 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
                   </Button>
                   <Button onClick={() => setIsLessonModalOpen(false)} className="bg-primary text-black hover:bg-primary/90">
                     Zatwierdź Wybór
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+      
+      {/* Test Preview & Edit Modal */}
+      {isPreviewModalOpen && generatedQuestions && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-6 overflow-y-auto">
+          <div className="w-full max-w-5xl my-auto">
+            <Card className="p-0 border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] bg-base-100">
+              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-base-200/30 sticky top-0 z-10 backdrop-blur-md">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                    <Edit2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">Podgląd i Edycja Testu</h3>
+                    <p className="text-sm text-content-muted/80">Liczba pytań: {generatedQuestions.length}</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsPreviewModalOpen(false)} className="text-content-muted hover:text-white transition-colors">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto flex-1 space-y-6">
+                {generatedQuestions.map((q, i) => (
+                  <div key={q.id} className="bg-base-200 p-4 rounded-xl border border-white/5 flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-primary text-lg w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">{i + 1}</span>
+                        <span className="text-sm font-bold text-content-muted">
+                          [{q.type === 'multiple_choice' ? 'Wielokrotny wybór' : q.type === 'fill_in_blank' ? 'Luki' : q.type === 'matching' ? 'Łączenie w pary' : q.type === 'writing' ? 'Writing' : 'Tłumaczenie'}]
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => moveQuestion(i, 'up')} disabled={i === 0} className="p-1.5 rounded bg-base-300 text-content hover:bg-white/10 disabled:opacity-30">
+                          <ChevronUp className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => moveQuestion(i, 'down')} disabled={i === generatedQuestions.length - 1} className="p-1.5 rounded bg-base-300 text-content hover:bg-white/10 disabled:opacity-30">
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-bold text-content-muted mb-1 uppercase tracking-wider">Treść Pytania</label>
+                      <textarea
+                        value={q.prompt}
+                        onChange={(e) => updateQuestionPrompt(i, e.target.value)}
+                        className="w-full bg-base-100 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-primary/50 resize-y min-h-[60px]"
+                      />
+                    </div>
+                    
+                    {q.type === 'multiple_choice' && q.options && (
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-content-muted uppercase tracking-wider">Opcje odpowiedzi (tylko odczyt)</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {q.options.map((opt, j) => (
+                            <div key={j} className={`p-2 rounded-lg border text-sm ${opt === q.correctAnswer ? "border-primary bg-primary/5 text-primary" : "border-white/10 bg-base-100 text-content-muted"}`}>
+                              {opt}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {q.type === 'matching' && q.options && (
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-content-muted uppercase tracking-wider">Pary (tylko odczyt)</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {q.options.map((opt, j) => {
+                             const parts = opt.split('=');
+                             return (
+                               <div key={j} className="p-2 text-sm bg-base-100 rounded-lg border border-white/10 flex justify-between text-content-muted">
+                                 <span>{parts[0]?.trim() || opt}</span>
+                                 <span>↔</span>
+                                 <span className="text-primary">{parts[1]?.trim() || ''}</span>
+                               </div>
+                             )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {q.type !== 'writing' && (
+                      <div className="flex items-center gap-2 mt-2">
+                         <span className="text-xs font-bold uppercase text-primary tracking-wider">Prawidłowa:</span>
+                         <span className="text-sm font-medium bg-base-300 px-3 py-1 rounded-md">{q.correctAnswer}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="p-6 border-t border-white/5 bg-base-200/50 space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-content-muted mb-2 flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-primary" />
+                    Asystent AI - poproś o automatyczne poprawki
+                  </label>
+                  <div className="flex gap-2">
+                    <textarea
+                      value={feedback}
+                      onChange={e => setFeedback(e.target.value)}
+                      className="flex-1 bg-base-100 border border-white/10 rounded-xl p-3 outline-none focus:border-primary/50 text-sm h-12"
+                      placeholder="Napisz do AI co poprawić (np. 'zrób łatwiejsze słownictwo w pytaniu 3')"
+                    />
+                    <Button onClick={handleModifyTest} isLoading={isModifying} disabled={!feedback} variant="secondary" className="whitespace-nowrap px-6">
+                      Popraw Test AI
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row gap-4 items-end">
+                  <div className="flex-1 w-full">
+                    <label className="block text-sm font-bold text-content-muted mb-2">Data Wykonania (Do kiedy)</label>
+                    <input
+                      type="date"
+                      value={dueDate}
+                      onChange={e => setDueDate(e.target.value)}
+                      className="w-full bg-base-100 border border-white/10 rounded-xl p-3 outline-none focus:border-primary/50"
+                      style={{ colorScheme: 'dark' }}
+                    />
+                  </div>
+                  <Button onClick={handleSaveTest} isLoading={isSaving} className="bg-primary text-black hover:bg-primary/90 px-8 py-3 w-full sm:w-auto text-base">
+                    Przypisz Test
                   </Button>
                 </div>
               </div>
@@ -485,97 +642,12 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
 
         <div className="space-y-6">
           {generatedQuestions && (
-            <Card className="p-6 bg-primary/5 border border-primary/20">
-              <h3 className="font-bold text-lg mb-4 text-primary">Podgląd Wygenerowanego Testu ({generatedQuestions.length} pytań)</h3>
-              <div className="space-y-4 max-h-96 overflow-y-auto mb-4 pr-2">
-                {generatedQuestions.map((q, i) => (
-                  <div key={q.id} className="bg-base-200 p-4 rounded-lg border border-white/5 text-sm">
-                    <div className="font-bold text-content-muted mb-3 flex items-center justify-between">
-                      <span>{i+1}. [{q.type === 'multiple_choice' ? 'Wielokrotny wybór' : q.type === 'fill_in_blank' ? 'Luki' : q.type === 'matching' ? 'Łączenie w pary' : q.type === 'writing' ? 'Writing' : 'Tłumaczenie'}]</span>
-                      <span className="text-xs font-mono bg-base-300 px-2 py-0.5 rounded">ID: {q.id}</span>
-                    </div>
-                    <div className="mb-4 font-medium text-base">{q.prompt}</div>
-                    
-                    {/* Interactive-looking mockups */}
-                    {q.type === 'multiple_choice' && q.options && (
-                      <div className="space-y-2 mb-4">
-                        {q.options.map((opt, j) => (
-                          <label key={j} className={`flex items-center gap-3 p-3 rounded-lg border ${opt === q.correctAnswer ? "border-primary bg-primary/5" : "border-white/10 bg-base-100"}`}>
-                            <input type="radio" disabled checked={opt === q.correctAnswer} className="accent-primary" />
-                            <span className={opt === q.correctAnswer ? "text-primary font-medium" : "text-white"}>{opt}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {q.type === 'fill_in_blank' && (
-                      <div className="mb-4">
-                        <input type="text" disabled placeholder="Uczeń wpisze tekst..." className="w-full bg-base-100 border border-white/10 rounded-lg p-3 text-white outline-none" />
-                      </div>
-                    )}
-
-                    {q.type === 'translation' && (
-                      <div className="mb-4">
-                        <input type="text" disabled placeholder="Tłumaczenie..." className="w-full bg-base-100 border border-white/10 rounded-lg p-3 text-white outline-none" />
-                      </div>
-                    )}
-
-                    {q.type === 'matching' && q.options && (
-                      <div className="mb-4 grid grid-cols-2 gap-4">
-                        {q.options.map((opt, j) => {
-                           const parts = opt.split('=');
-                           return (
-                             <div key={j} className="col-span-2 sm:col-span-1 p-3 bg-base-100 rounded-lg border border-white/10 flex justify-between">
-                               <span>{parts[0]?.trim() || opt}</span>
-                               <span className="text-content-muted">↔</span>
-                               <span className="text-primary">{parts[1]?.trim() || ''}</span>
-                             </div>
-                           )
-                        })}
-                      </div>
-                    )}
-
-                    {q.type === 'writing' && (
-                      <div className="mb-4">
-                        <textarea disabled placeholder="Pole do pisania dla ucznia (czysty tekst, bez wklejania)..." className="w-full bg-base-100 border border-white/10 rounded-lg p-3 text-white outline-none h-32 resize-none" />
-                      </div>
-                    )}
-
-                    {q.type !== 'writing' && <div className="text-primary font-bold text-xs uppercase tracking-wide">Prawidłowa odpowiedź: <span className="text-white font-normal bg-base-300 px-2 py-1 rounded ml-1">{q.correctAnswer}</span></div>}
-                  </div>
-                ))}
-              </div>
-              
-              <div className="pt-4 border-t border-white/10 mb-6">
-                <label className="block text-sm font-bold text-content-muted mb-1 flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-primary" />
-                  Asystent AI - Uwagi do testu
-                </label>
-                <div className="flex gap-2">
-                  <textarea
-                    value={feedback}
-                    onChange={e => setFeedback(e.target.value)}
-                    className="flex-1 bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm h-12"
-                    placeholder="Napisz do AI co chciałbyś poprawić (np. 'zrób trudniejsze zadania na tłumaczenie')"
-                  />
-                  <Button onClick={handleModifyTest} isLoading={isModifying} disabled={!feedback} variant="secondary" className="whitespace-nowrap">
-                    Popraw Test
-                  </Button>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-white/10">
-                <label className="block text-sm font-bold text-content-muted mb-1">Data Wykonania (Do kiedy)</label>
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={e => setDueDate(e.target.value)}
-                  className="w-full bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 mb-4"
-                />
-                <Button onClick={handleSaveTest} isLoading={isSaving} className="w-full bg-primary text-black hover:bg-primary/90">
-                  Przypisz test kursantowi
-                </Button>
-              </div>
+            <Card className="p-6 bg-primary/5 border border-primary/20 flex flex-col items-center justify-center space-y-4">
+              <h3 className="font-bold text-lg text-primary text-center">Test wygenerowany pomyślnie! ({generatedQuestions.length} pytań)</h3>
+              <p className="text-content-muted text-sm text-center">Możesz teraz przejrzeć i edytować pytania przed przypisaniem testu kursantowi.</p>
+              <Button onClick={() => setIsPreviewModalOpen(true)} className="bg-primary text-black hover:bg-primary/90 w-full sm:w-auto">
+                Podgląd i edycja testu
+              </Button>
             </Card>
           )}
 
