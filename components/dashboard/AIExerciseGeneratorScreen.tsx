@@ -738,7 +738,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
             >
               <div className="flex items-center justify-center gap-2">
                 <Sparkles className="w-5 h-5" />
-                {language === 'pl' ? 'Tłumaczenie z AI' : 'AI Translation'}
+                {language === 'pl' ? 'Tłumaczenie zdań' : 'Sentence Translation'}
               </div>
             </button>
             <button
@@ -751,135 +751,182 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
             >
               <div className="flex items-center justify-center gap-2">
                 <BookOpen className="w-5 h-5" />
-                {language === 'pl' ? 'Pozostałe ćwiczenia' : 'Other exercises'}
+                {language === 'pl' ? 'Inne ćwiczenia' : 'Other exercises'}
               </div>
             </button>
           </div>
 
           {activeTab === 'ai' ? (
-            <div className="space-y-6">
-              <div className="text-center space-y-4 mb-10">
-                <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20 shadow-[0_0_30px_rgba(114,240,180,0.2)]">
-                   <Sparkles className="w-10 h-10 text-primary" />
-                </div>
+            <div className="space-y-8 animate-fade-in-up">
+              <div className="text-center space-y-4 mb-8">
                 <h2 className="text-3xl font-extrabold tracking-tight">
                   {language === 'pl' ? 'Tłumaczenie Zdań z AI' : 'AI Sentence Translation'}
                 </h2>
                 <p className="text-lg text-content-muted max-w-2xl mx-auto">
                   {language === 'pl' 
-                    ? 'Wybierz materiał, z którego chcesz ćwiczyć, a sztuczna inteligencja wygeneruje dla Ciebie spersonalizowane zdania do przetłumaczenia.' 
-                    : 'Select the material you want to practice, and AI will generate personalized sentences for you to translate.'}
+                    ? 'Wybierz lekcję lub temat, a sztuczna inteligencja wygeneruje dla Ciebie spersonalizowane zdania do przetłumaczenia.' 
+                    : 'Select a lesson or topic, and AI will generate personalized sentences for you to translate.'}
                 </p>
               </div>
 
-              <Card className="p-8 border border-white/10 shadow-2xl bg-base-200/50 backdrop-blur-xl">
-                <h3 className="text-xl font-bold mb-6 flex items-center gap-3">
-                  <BookOpen className="w-6 h-6 text-primary" />
-                  {language === 'pl' ? 'Z czego chcesz dzisiaj ćwiczyć?' : 'What do you want to practice today?'}
-                </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                  <label className={`cursor-pointer group flex items-start gap-4 p-5 rounded-2xl border transition-all ${selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'bg-primary/10 border-primary shadow-[0_0_20px_rgba(114,240,180,0.15)] ring-1 ring-primary/50' : 'bg-base-300/50 border-white/5 hover:border-primary/30 hover:bg-base-300'}`}>
-                    <input 
-                      type="radio" 
-                      name="materialSource" 
-                      checked={selectedSetId === 'all' && selectedLessonIds.length === 0}
-                      onChange={() => { setSelectedSetId('all'); setSelectedLessonIds([]); }}
-                      className="mt-1 w-5 h-5 text-primary focus:ring-primary/50 bg-base-300 border-base-300"
-                    />
-                    <div>
-                      <div className="font-bold text-lg mb-1 group-hover:text-primary transition-colors">
-                        {language === 'pl' ? 'Wszystkie moje słówka' : 'All my vocabulary'}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Źródło słownictwa (Lekcje) */}
+                <Card className="p-0 border border-white/5 shadow-xl bg-base-200/40 backdrop-blur-xl relative overflow-hidden flex flex-col h-full">
+                  <div className="p-6 border-b border-white/5 bg-base-200/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                        <BookOpen className="w-5 h-5" />
                       </div>
-                      <div className="text-sm text-content-muted">
-                        {language === 'pl' ? 'AI dobierze słówka z całej Twojej historii nauki.' : 'AI will select words from your entire learning history.'}
+                      <div>
+                        <h3 className="text-lg font-bold">
+                          {language === 'pl' ? 'Lekcje' : 'Lessons'}
+                        </h3>
                       </div>
-                    </div>
-                  </label>
-
-                  <label className={`cursor-pointer group flex items-start gap-4 p-5 rounded-2xl border transition-all ${selectedSetId === 'general' && selectedLessonIds.length === 0 ? 'bg-primary/10 border-primary shadow-[0_0_20px_rgba(114,240,180,0.15)] ring-1 ring-primary/50' : 'bg-base-300/50 border-white/5 hover:border-primary/30 hover:bg-base-300'}`}>
-                    <input 
-                      type="radio" 
-                      name="materialSource" 
-                      checked={selectedSetId === 'general' && selectedLessonIds.length === 0}
-                      onChange={() => { setSelectedSetId('general'); setSelectedLessonIds([]); }}
-                      className="mt-1 w-5 h-5 text-primary focus:ring-primary/50 bg-base-300 border-base-300"
-                    />
-                    <div>
-                      <div className="font-bold text-lg mb-1 group-hover:text-primary transition-colors">
-                        {language === 'pl' ? 'Rozmówki ogólne' : 'General conversation'}
-                      </div>
-                      <div className="text-sm text-content-muted">
-                        {language === 'pl' ? 'Praktyczne zdania z życia codziennego dopasowane do Twojego poziomu.' : 'Practical everyday sentences matched to your level.'}
-                      </div>
-                    </div>
-                  </label>
-                </div>
-
-                {vocabularySets.length > 0 && (
-                  <div className="mb-8">
-                    <h4 className="text-sm font-bold text-content-muted uppercase tracking-wider mb-4">
-                      {language === 'pl' ? 'Albo wybierz konkretne lekcje:' : 'Or choose specific lessons:'}
-                    </h4>
-                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                      {vocabularySets.map((set, index) => {
-                        const isSelected = selectedLessonIds.includes(set.id);
-                        const lessonNumber = vocabularySets.length - index;
-                        return (
-                          <button
-                            key={set.id}
-                            onClick={() => {
-                              if (isSelected) {
-                                setSelectedLessonIds(prev => prev.filter(id => id !== set.id));
-                              } else {
-                                setSelectedLessonIds(prev => [...prev, set.id]);
-                                setSelectedSetId('lessons');
-                              }
-                            }}
-                            className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
-                              isSelected 
-                                ? 'bg-primary/10 border-primary/50 ring-1 ring-primary/30' 
-                                : 'bg-base-300/40 border-white/5 hover:border-primary/30 hover:bg-base-300/80'
-                            }`}
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-mono font-bold text-sm ${isSelected ? 'bg-primary text-black' : 'bg-base-100 text-content-muted'}`}>
-                                #{lessonNumber}
-                              </div>
-                              <div className="text-left">
-                                <div className={`font-bold ${isSelected ? 'text-white' : 'text-content-muted'}`}>
-                                  {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
-                                </div>
-                                <div className="text-xs text-primary/70 mt-1">
-                                  {new Date(set.date).toLocaleDateString()}
-                                </div>
-                              </div>
-                            </div>
-                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? 'border-primary bg-primary text-black' : 'border-white/20'}`}>
-                              {isSelected && <CheckCircle className="w-4 h-4" />}
-                            </div>
-                          </button>
-                        );
-                      })}
                     </div>
                   </div>
-                )}
+                  
+                  <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar max-h-[300px]">
+                    {vocabularySets.length > 0 ? vocabularySets.map((set, index) => {
+                      const isSelected = selectedLessonIds.includes(set.id);
+                      const lessonNumber = vocabularySets.length - index;
+                      return (
+                        <button
+                          key={set.id}
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedLessonIds(prev => prev.filter(id => id !== set.id));
+                            } else {
+                              setSelectedLessonIds(prev => [...prev, set.id]);
+                              setSelectedSetId('lessons');
+                            }
+                          }}
+                          className={`w-full text-left p-4 rounded-xl border transition-all cursor-pointer shadow-sm ${
+                            isSelected 
+                              ? 'bg-primary/20 border-primary shadow-[0_0_15px_rgba(114,240,180,0.15)] ring-1 ring-primary/50' 
+                              : 'bg-base-100/30 border-white/5 hover:border-primary/30 hover:bg-base-300/50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-bold text-[15px] flex items-center gap-2">
+                                <span className={`font-mono text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider font-bold ${isSelected ? 'bg-primary text-black' : 'bg-white/10 text-content-muted'}`}>
+                                  {language === 'pl' ? 'Lekcja' : 'Lesson'} {lessonNumber}
+                                </span>
+                                <span className={isSelected ? 'text-white' : 'text-content-muted group-hover:text-white transition-colors line-clamp-1'}>
+                                  {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
+                                </span>
+                              </div>
+                            </div>
+                            <div className={`flex-shrink-0 ml-3 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? 'border-primary bg-primary text-black' : 'border-content-muted/30'}`}>
+                              {isSelected && <CheckCircle className="w-3 h-3" />}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    }) : (
+                       <div className="text-center text-content-muted p-8 text-sm">
+                         {language === 'pl' ? 'Brak dostępnych lekcji' : 'No lessons available'}
+                       </div>
+                    )}
+                  </div>
+                </Card>
 
-                <div className="pt-6 border-t border-white/10">
-                  <AILoadingButton 
-                    onClick={() => handleGenerate(false)} 
-                    isLoading={isLoading}
-                    loadingText={language === 'pl' ? 'AI przygotowuje ćwiczenie...' : 'AI is preparing the exercise...'}
-                    className="w-full py-5 text-xl font-black bg-primary text-black hover:bg-primary/90 shadow-[0_0_40px_rgba(114,240,180,0.3)] transition-all hover:scale-[1.02] rounded-2xl"
-                  >
-                    <Sparkles className="w-6 h-6 mr-2" />
-                    {language === 'pl' ? 'Generuj ćwiczenie' : 'Generate exercise'}
-                  </AILoadingButton>
-                </div>
-              </Card>
+                {/* Losowe słowa / Inne tematy */}
+                <Card className="p-0 border border-white/5 shadow-xl bg-base-200/40 backdrop-blur-xl relative overflow-hidden flex flex-col h-full">
+                  <div className="p-6 border-b border-white/5 bg-base-200/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                        <Sparkles className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold">
+                          {language === 'pl' ? 'Inne opcje' : 'Other options'}
+                        </h3>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 p-4 space-y-3">
+                    <button
+                      onClick={() => { setSelectedSetId('all'); setSelectedLessonIds([]); setTestName(''); }}
+                      className={`w-full text-left p-4 rounded-xl border transition-all cursor-pointer shadow-sm ${
+                        selectedSetId === 'all' && selectedLessonIds.length === 0
+                          ? 'bg-primary/20 border-primary shadow-[0_0_15px_rgba(114,240,180,0.15)] ring-1 ring-primary/50' 
+                          : 'bg-base-100/30 border-white/5 hover:border-primary/30 hover:bg-base-300/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className={`font-bold text-[15px] ${selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'text-white' : 'text-content-muted'}`}>
+                            {language === 'pl' ? 'Wszystkie moje słówka (Mix)' : 'All my vocabulary (Mix)'}
+                          </div>
+                        </div>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'border-primary bg-primary text-black' : 'border-content-muted/30'}`}>
+                          {selectedSetId === 'all' && selectedLessonIds.length === 0 && <CheckCircle className="w-3 h-3" />}
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => { setSelectedSetId('random'); setSelectedLessonIds([]); setTestName(''); }}
+                      className={`w-full text-left p-4 rounded-xl border transition-all cursor-pointer shadow-sm ${
+                        selectedSetId === 'random' && selectedLessonIds.length === 0
+                          ? 'bg-primary/20 border-primary shadow-[0_0_15px_rgba(114,240,180,0.15)] ring-1 ring-primary/50' 
+                          : 'bg-base-100/30 border-white/5 hover:border-primary/30 hover:bg-base-300/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className={`font-bold text-[15px] ${selectedSetId === 'random' && selectedLessonIds.length === 0 ? 'text-white' : 'text-content-muted'}`}>
+                            {language === 'pl' ? 'Losowe zdania' : 'Random sentences'}
+                          </div>
+                        </div>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedSetId === 'random' && selectedLessonIds.length === 0 ? 'border-primary bg-primary text-black' : 'border-content-muted/30'}`}>
+                          {selectedSetId === 'random' && selectedLessonIds.length === 0 && <CheckCircle className="w-3 h-3" />}
+                        </div>
+                      </div>
+                    </button>
+                    
+                    <div className="pt-4 mt-2 border-t border-white/5">
+                      <label className="block text-xs font-bold text-content-muted uppercase tracking-wider mb-3">
+                        {language === 'pl' ? 'Konkretny temat (opcjonalnie)' : 'Specific topic (optional)'}
+                      </label>
+                      <input
+                        type="text"
+                        value={testName}
+                        onChange={(e) => {
+                           setTestName(e.target.value);
+                           if (e.target.value.trim() !== '') {
+                              setSelectedSetId('custom_topic');
+                              setSelectedLessonIds([]);
+                           } else if (selectedSetId === 'custom_topic') {
+                              setSelectedSetId('all');
+                           }
+                        }}
+                        placeholder={language === 'pl' ? 'np. Podróże, Praca, Historia...' : 'e.g. Travel, Work, History...'}
+                        className={`w-full bg-base-300/30 border rounded-xl p-3.5 text-sm focus:outline-none transition-colors ${
+                          selectedSetId === 'custom_topic' ? 'border-primary/50 ring-1 ring-primary/30 text-white' : 'border-white/10 text-content-muted focus:border-primary/30'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              <div className="pt-6">
+                <AILoadingButton 
+                  onClick={() => handleGenerate(false)} 
+                  isLoading={isLoading}
+                  loadingText={language === 'pl' ? 'AI przygotowuje zdania...' : 'AI is preparing sentences...'}
+                  className="w-full py-5 text-xl font-black bg-primary text-black hover:bg-primary/90 shadow-[0_0_40px_rgba(114,240,180,0.3)] transition-all hover:scale-[1.02] rounded-2xl"
+                >
+                  <Sparkles className="w-6 h-6 mr-2" />
+                  {language === 'pl' ? 'Generuj ćwiczenie' : 'Generate exercise'}
+                </AILoadingButton>
+              </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 animate-fade-in-up">
               <Card 
                 className="cursor-pointer border-white/5 hover:border-primary/50 transition-all hover:-translate-y-1 bg-base-200/50 backdrop-blur-xl group"
                 onClick={() => onStartPractice?.('intro')}
