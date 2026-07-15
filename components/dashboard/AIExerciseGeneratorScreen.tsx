@@ -54,6 +54,36 @@ const DEFAULT_EVALUATION_PROMPT = `Przeanalizuj i oceń tłumaczenie angielskie 
 
 import { ExerciseType } from '../../types';
 
+let audioCtx: AudioContext | null = null;
+const playTickSound = () => {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.05);
+    
+    gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.05);
+  } catch (e) {
+    // Ignore audio errors
+  }
+};
+
+
 interface AIExerciseGeneratorScreenProps {
   initialSetId?: string | null;
   onStartPractice?: (exercise: ExerciseType) => void;
@@ -205,7 +235,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
   useEffect(() => {
     if (numSentencesRef.current) {
-      const targetScale = 0.7 + (numSentences / 50) * 0.8;
+      const targetScale = 0.7 + (numSentences / 20) * 0.8;
       gsap.fromTo(numSentencesRef.current, 
         { scale: targetScale * 1.5, color: '#ffffff' }, 
         { scale: targetScale, color: '#72f0b4', duration: 0.5, ease: 'back.out(2)' }
@@ -215,7 +245,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
   useEffect(() => {
     if (timeLimitRef.current) {
-      const targetScale = 0.7 + (timeLimit / 15) * 0.8;
+      const targetScale = 0.7 + (timeLimit / 20) * 0.8;
       gsap.fromTo(timeLimitRef.current, 
         { scale: targetScale * 1.5, color: '#ffffff' }, 
         { scale: targetScale, color: '#72f0b4', duration: 0.5, ease: 'back.out(2)' }
@@ -705,7 +735,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                 value={customGenPrompt}
                 onChange={(e) => setCustomGenPrompt(e.target.value)}
                 rows={5}
-                className="w-full bg-base-300 border border-base-200 rounded-lg p-2.5 text-xs font-mono outline-none focus:border-primary/50"
+                className="w-full bg-black/30 border border-white/5 shadow-inner rounded-lg p-2.5 text-xs font-mono outline-none focus:border-primary/50"
               />
             </div>
             <div className="space-y-1.5">
@@ -714,7 +744,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                 value={customEvalPrompt}
                 onChange={(e) => setCustomEvalPrompt(e.target.value)}
                 rows={5}
-                className="w-full bg-base-300 border border-base-200 rounded-lg p-2.5 text-xs font-mono outline-none focus:border-primary/50"
+                className="w-full bg-black/30 border border-white/5 shadow-inner rounded-lg p-2.5 text-xs font-mono outline-none focus:border-primary/50"
               />
             </div>
           </div>
@@ -819,7 +849,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                                       setSelectedLessonIds(prev => [...prev, set.id]);
                                     }
                                   }}
-                                  className="w-4 h-4 text-primary focus:ring-primary rounded border-white/20 bg-base-300"
+                                  className="w-4 h-4 text-primary focus:ring-primary rounded border-white/20 bg-black/30"
                                 />
                                 <div className="flex flex-col">
                                   <span className={isSelected ? 'text-white font-medium' : 'text-content-muted'}>
@@ -879,7 +909,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   <label className="block text-sm font-bold text-content-muted uppercase tracking-wider mb-4">
                     {language === 'pl' ? 'Sposób rozwiązywania' : 'Solving method'}
                   </label>
-                  <div className="flex bg-base-300/50 p-1.5 rounded-xl border border-primary/10">
+                  <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 shadow-inner">
                     <button
                       onClick={() => setExerciseFormat('typing')}
                       className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
@@ -909,7 +939,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   <label className="block text-sm font-bold text-content-muted uppercase tracking-wider mb-4">
                     {language === 'pl' ? 'Tryb nauki' : 'Practice mode'}
                   </label>
-                  <div className="flex bg-base-300/50 p-1.5 rounded-xl border border-primary/10">
+                  <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 shadow-inner">
                     <button
                       onClick={() => setPracticeMode('fixed')}
                       className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
@@ -949,15 +979,18 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                       <input
                         type="range"
                         min="1"
-                        max="50"
+                        max="20"
                         step="1"
                         value={numSentences}
-                        onChange={(e) => setNumSentences(parseInt(e.target.value))}
+                        onChange={(e) => {
+                          setNumSentences(parseInt(e.target.value));
+                          playTickSound();
+                        }}
                         className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                       <div className="flex justify-between text-xs text-content-muted mt-3 font-mono">
                         <span>1</span>
-                        <span>50</span>
+                        <span>20</span>
                       </div>
                     </div>
                   </div>
@@ -977,15 +1010,18 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                       <input
                         type="range"
                         min="1"
-                        max="15"
+                        max="20"
                         step="1"
                         value={timeLimit}
-                        onChange={(e) => setTimeLimit(parseInt(e.target.value))}
+                        onChange={(e) => {
+                          setTimeLimit(parseInt(e.target.value));
+                          playTickSound();
+                        }}
                         className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                       <div className="flex justify-between text-xs text-content-muted mt-3 font-mono">
                         <span>1 min</span>
-                        <span>15 min</span>
+                        <span>20 min</span>
                       </div>
                     </div>
                   </div>
@@ -1084,7 +1120,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
               </div>
             )}
             {practiceMode === 'fixed' && (
-              <div className="flex gap-1 h-2 bg-base-300 rounded-full w-48 overflow-hidden">
+              <div className="flex gap-1 h-2 bg-black/30 rounded-full w-48 overflow-hidden">
               {exercises.map((_, idx) => (
                 <div 
                   key={idx}
@@ -1162,7 +1198,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                 {evaluationStatuses[activeSentenceIndex] === 'evaluated' && singleEvaluationResults[activeSentenceIndex] ? (
                   <div className="space-y-4">
                     <div 
-                      className="w-full bg-base-300 border border-base-200 rounded-xl p-4 text-base"
+                      className="w-full bg-black/30 border border-white/5 shadow-inner rounded-xl p-4 text-base"
                       dangerouslySetInnerHTML={{ __html: singleEvaluationResults[activeSentenceIndex].highlightedAnswer || singleEvaluationResults[activeSentenceIndex].studentAnswer }}
                     />
                     
@@ -1175,7 +1211,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                          <div className="font-medium text-primary/90">
                            {singleEvaluationResults[activeSentenceIndex].correctTranslation}
                          </div>
-                         <div className="flex items-center gap-2 shrink-0 bg-base-300/50 p-1.5 rounded-md">
+                         <div className="flex items-center gap-2 shrink-0 bg-black/30 p-1.5 rounded-md">
                            <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-US')} className={`text-xl hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇺🇸 Amerykański" disabled={isPlayingAudio}>🇺🇸</button>
                            <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-GB')} className={`text-xl hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇬🇧 Brytyjski" disabled={isPlayingAudio}>🇬🇧</button>
                            <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-AU')} className={`text-xl hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇦🇺 Australijski" disabled={isPlayingAudio}>🇦🇺</button>
@@ -1224,7 +1260,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                     placeholder={language === 'pl' ? 'Wpisz swoje tłumaczenie tutaj...' : 'Type your translation here...'}
                     rows={3}
                     disabled={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
-                    className="w-full bg-base-300 border border-base-200 focus:border-primary/40 focus:ring-1 focus:ring-primary/20 rounded-xl p-4 text-base outline-none transition-all duration-200"
+                    className="w-full bg-black/30 border border-white/5 shadow-inner focus:border-primary/40 focus:ring-1 focus:ring-primary/20 rounded-xl p-4 text-base outline-none transition-all duration-200"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -1352,7 +1388,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
               }`}>
                 <div className="space-y-4">
                   <div className="flex justify-between items-start gap-4">
-                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-base-300 rounded text-xs font-mono text-content-muted">
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-black/30 rounded text-xs font-mono text-content-muted">
                       Zdanie {idx + 1}
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -1400,7 +1436,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                                 key={accent}
                                 onClick={() => handlePlaySentenceAudio(res.correctTranslation, accent as any, idx)}
                                 disabled={playingAudioIndex === idx}
-                                className="flex items-center justify-center w-6 h-6 bg-base-300/50 hover:bg-primary/20 text-primary rounded transition-colors"
+                                className="flex items-center justify-center w-6 h-6 bg-black/30 hover:bg-primary/20 text-primary rounded transition-colors"
                                 title={`Posłuchaj (${accent})`}
                               >
                                 {playingAudioIndex === idx ? (

@@ -393,27 +393,44 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(initialTab || null);
   const tabContentRef = useRef<HTMLDivElement>(null);
   const userListRef = useRef<HTMLDivElement>(null);
+  const profileContainerRef = useRef<HTMLDivElement>(null);
+  const mainMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (tabContentRef.current) {
+    if (tabContentRef.current && selectedUser) {
       gsap.fromTo(tabContentRef.current, 
         { opacity: 0, y: 15 },
-        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }
+        { opacity: 1, y: 0, duration: 0.3, ease: "power2.out", clearProps: "all" }
       );
     }
-  }, [activeTab]);
+  }, [activeTab, selectedUser]);
 
   useEffect(() => {
     if (userListRef.current && !selectedUser) {
-      const elements = userListRef.current.children;
-      Array.from(elements).forEach((el, index) => {
-        gsap.fromTo(el,
-          { opacity: 0, x: index % 2 === 0 ? -100 : 100 },
-          { opacity: 1, x: 0, duration: 0.6, ease: "power3.out", delay: index * 0.05, clearProps: "all" }
-        );
-      });
+      gsap.fromTo(userListRef.current.children,
+        { opacity: 0, x: -30 },
+        { opacity: 1, x: 0, duration: 0.4, ease: "power2.out", stagger: 0.05, clearProps: "all" }
+      );
     }
-  }, [selectedUser, searchQuery, roleFilter, users]);
+  }, [activeTab, selectedUser, searchQuery, roleFilter, users]);
+
+  useEffect(() => {
+    if (profileContainerRef.current && selectedUser) {
+      gsap.fromTo(profileContainerRef.current,
+        { opacity: 0, scale: 0.98, y: 10 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.4, ease: "power2.out", clearProps: "all" }
+      );
+    }
+  }, [selectedUser]);
+
+  useEffect(() => {
+    if (mainMenuRef.current && activeTab === null) {
+      gsap.fromTo(mainMenuRef.current.children,
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.3, ease: "power2.out", stagger: 0.05, clearProps: "all" }
+      );
+    }
+  }, [activeTab]);
 
 
   useEffect(() => {
@@ -615,7 +632,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
             </div>
           ) : (
-            <div>
+            <div ref={profileContainerRef}>
               <div className="mb-4 flex items-center gap-6">
                 <button
                   onClick={() => {
@@ -698,7 +715,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   {activeTab === 'contact' && 'Kontakt'}
                 </h2>
               </div>
-{activeTab === 'stats' && (
+<div ref={tabContentRef}>
+          {activeTab === 'stats' && (
             <div className="space-y-6">
               {userStats ? (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
@@ -1023,6 +1041,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 </div>
             </div>
           )}
+        </div>
         </div>
       )}
         </div>
