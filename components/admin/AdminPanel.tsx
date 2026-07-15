@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
+import { motion, AnimatePresence } from 'motion/react';
 import { collection, getDocs, doc, deleteDoc, query, orderBy, setDoc, writeBatch, updateDoc, addDoc, where } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
 import { User, PracticeLog, FlashcardSet, LessonRecord } from '../../types';
@@ -526,15 +527,20 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 </div>
               </Card>
 
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-3 overflow-hidden">
+                <AnimatePresence>
                 {users.filter(u => {
                   const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.email} ${u.username}`.toLowerCase();
                   const matchesSearch = searchStr.includes(searchQuery.toLowerCase());
                   const matchesRole = roleFilter === 'all' || u.role === roleFilter;
                   return matchesSearch && matchesRole;
-                }).map(u => (
-                  <div
+                }).map((u, index) => (
+                  <motion.div
                     key={u.id}
+                    initial={{ opacity: 0, x: index % 2 === 0 ? -100 : 100 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: index % 2 === 0 ? -100 : 100 }}
+                    transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: index * 0.05 }}
                     onClick={() => handleSelectUser(u)}
                     className="bg-base-200 border border-white/5 p-4 rounded-xl cursor-pointer hover:border-primary/30 hover:bg-base-200/80 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
                   >
@@ -554,8 +560,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         </svg>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
+                </AnimatePresence>
               </div>
             </div>
           ) : (
