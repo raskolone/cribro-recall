@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import gsap from 'gsap';
 import { ExerciseType } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -58,6 +59,16 @@ const NavLink: React.FC<{
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPractice, isOpen, onClose, isDesktopCollapsed = false, onToggleCollapse }) => {
   const [practiceOpen, setPracticeOpen] = useState(false);
   const { user, logout } = useAuth();
+  const navRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (navRef.current) {
+      gsap.fromTo(navRef.current.children, 
+        { opacity: 0, x: -20 },
+        { opacity: 1, x: 0, duration: 0.4, stagger: 0.05, ease: 'power2.out', clearProps: 'all' }
+      );
+    }
+  }, []);
   const { language } = useLanguage();
   const [isAdminExpanded, setIsAdminExpanded] = useState(currentView.startsWith('admin'));
 

@@ -1,7 +1,8 @@
 import { auth } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import gsap from 'gsap';
 import Card from '../ui/Card';
 import Select from '../ui/Select';
 import Button from '../ui/Button';

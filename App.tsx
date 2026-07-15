@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { VocabularyProvider } from './context/VocabularyContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -35,19 +36,27 @@ const AppContent: React.FC = () => {
       <ConstellationBackground />
       
       <div className="relative z-10 w-full min-h-screen pointer-events-auto flex flex-col">
-        {user ? (
-          <VocabularyProvider>
-            <SettingsProvider>
-            <FlashcardProvider>
-              <Dashboard />
-            </FlashcardProvider>
-            </SettingsProvider>
-          </VocabularyProvider>
-        ) : showAuth ? (
-          <AuthScreen onBack={() => setShowAuth(false)} />
-        ) : (
-          <LandingPage onLoginClick={() => setShowAuth(true)} />
-        )}
+        <AnimatePresence mode="wait">
+          {user ? (
+            <motion.div key="dashboard" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.5, ease: 'easeOut' }} className="w-full flex-1 flex flex-col">
+              <VocabularyProvider>
+                <SettingsProvider>
+                <FlashcardProvider>
+                  <Dashboard />
+                </FlashcardProvider>
+                </SettingsProvider>
+              </VocabularyProvider>
+            </motion.div>
+          ) : showAuth ? (
+            <motion.div key="auth" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.4 }} className="w-full flex-1 flex flex-col">
+              <AuthScreen onBack={() => setShowAuth(false)} />
+            </motion.div>
+          ) : (
+            <motion.div key="landing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }} className="w-full flex-1 flex flex-col">
+              <LandingPage onLoginClick={() => setShowAuth(true)} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

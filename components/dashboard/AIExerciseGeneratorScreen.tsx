@@ -205,18 +205,20 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
   useEffect(() => {
     if (numSentencesRef.current) {
+      const targetScale = 0.7 + (numSentences / 50) * 0.8;
       gsap.fromTo(numSentencesRef.current, 
-        { scale: 1.6, color: '#ffffff' }, 
-        { scale: 1, color: '#72f0b4', duration: 0.5, ease: 'back.out(2)' }
+        { scale: targetScale * 1.5, color: '#ffffff' }, 
+        { scale: targetScale, color: '#72f0b4', duration: 0.5, ease: 'back.out(2)' }
       );
     }
   }, [numSentences]);
 
   useEffect(() => {
     if (timeLimitRef.current) {
+      const targetScale = 0.7 + (timeLimit / 15) * 0.8;
       gsap.fromTo(timeLimitRef.current, 
-        { scale: 1.6, color: '#ffffff' }, 
-        { scale: 1, color: '#72f0b4', duration: 0.5, ease: 'back.out(2)' }
+        { scale: targetScale * 1.5, color: '#ffffff' }, 
+        { scale: targetScale, color: '#72f0b4', duration: 0.5, ease: 'back.out(2)' }
       );
     }
   }, [timeLimit]);

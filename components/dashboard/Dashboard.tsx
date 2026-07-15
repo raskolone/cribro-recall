@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import gsap from 'gsap';
 import { auth } from '../../firebase';
 import Sidebar from './Sidebar';
 import ConfirmModal from '../ui/ConfirmModal';
@@ -273,6 +274,17 @@ const Dashboard: React.FC = () => {
     
     setGreeting(options[Math.floor(Math.random() * options.length)]);
   }, [user?.firstName, language]);
+
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (contentRef.current) {
+      gsap.fromTo(contentRef.current, 
+        { opacity: 0, y: 15 },
+        { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out', clearProps: 'all' }
+      );
+    }
+  }, [view, practiceView, activeSetId, adminSelectedUserId]);
 
   const [checkedSets, setCheckedSets] = useState<string[]>(() => {
     try {
@@ -554,7 +566,9 @@ const Dashboard: React.FC = () => {
           </div>
 
         </header>
-        {renderContent()}
+        <div ref={contentRef} className="w-full h-full">
+          {renderContent()}
+        </div>
       </main>
       {/* Mobile Bottom Navigation */}
       {!(user?.role === 'admin' || user?.role === 'admin_student') && (
