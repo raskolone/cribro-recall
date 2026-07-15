@@ -1,176 +1,126 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { LessonRecord, PracticeLog } from '../../types';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { db } from '../../firebase';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import TTSButtons from '../flashcards/TTSButtons';
-import { Calendar, ChevronLeft, FileText, CheckCircle, Tag, Search, Sparkles, BookOpen, Clock } from 'lucide-react';
+import { Calendar, Tag, Sparkles, X, FileText, Clock, Search, BookOpen, AlertCircle, ArrowLeft } from 'lucide-react';
 import Markdown from 'react-markdown';
+import gsap from 'gsap';
 
 const LessonHistoryScreen: React.FC = () => {
   const { user } = useAuth();
   const { language } = useLanguage();
-const [lessons, setLessons] = useState<LessonRecord[]>([]);
+  const [lessons, setLessons] = useState<LessonRecord[]>([]);
   const [practiceLogs, setPracticeLogs] = useState<PracticeLog[]>([]);
-  const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'lessons' | 'sessions'>('lessons');
   const [selectedLesson, setSelectedLesson] = useState<LessonRecord | null>(null);
+  const [selectedLog, setSelectedLog] = useState<PracticeLog | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (user?.id) {
       setIsLoading(true);
-      Promise.all([
-        getLessonRecordsForStudent(user.id),
-        getDocs(query(collection(db, `users/${user.id}/practiceLogs`), orderBy('date', 'desc')))
-      ])
-        .then(([lessonsData, logsSnapshot]) => {
-          setLessons(lessonsData);
-          const logs = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PracticeLog));
-          setPracticeLogs(logs);
+      
+      const fetchLessons = async () => {
+        const q = query(collection(db, `users/${user.id}/lessonRecords`), orderBy('date', 'desc'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonRecord));
+      };
+
+      const fetchPracticeLogs = async () => {
+        const q = query(collection(db, `users/${user.id}/practiceLogs`), orderBy('date', 'desc'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PracticeLog));
+      };
+
+      Promise.all([fetchLessons(), fetchPracticeLogs()])
+        .then(([fetchedLessons, fetchedLogs]) => {
+          setLessons(fetchedLessons);
+          setPracticeLogs(fetchedLogs);
         })
         .catch(console.error)
         .finally(() => setIsLoading(false));
     }
   }, [user?.id]);
 
-  if (selectedLesson) {
-    // Parse vocabulary
-    const parseVocabularyLine = (line: string) => {
-      let cleanLine = line.replace(/^[\s\*\-\•\d\.]+\s*/, '').trim();
-
-      const separatorMatch = cleanLine.match(/\s+[\-\–\—\:=]\s+/);
-      if (separatorMatch && separatorMatch.index !== undefined) {
-        const word = cleanLine.substring(0, separatorMatch.index).trim();
-        const translation = cleanLine.substring(separatorMatch.index + separatorMatch[0].length).trim();
-        return { word, translation };
-      } else {
-        const fallbackMatch = cleanLine.match(/[:=]/) || cleanLine.match(/[\-\–\—]/);
-        if (fallbackMatch && fallbackMatch.index !== undefined) {
-          const word = cleanLine.substring(0, fallbackMatch.index).trim();
-          const translation = cleanLine.substring(fallbackMatch.index + fallbackMatch[0].length).trim();
-          return { word, translation };
-        }
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (selectedLesson) setSelectedLesson(null);
+        if (selectedLog) setSelectedLog(null);
       }
-
-      return { word: cleanLine, translation: null };
     };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [selectedLesson, selectedLog]);
 
-    let rawLines: string[] = [];
-    if (selectedLesson.vocabularyText) {
-      if (selectedLesson.vocabularyText.includes('\n')) {
-        rawLines = selectedLesson.vocabularyText.split('\n');
-      } else {
-        rawLines = selectedLesson.vocabularyText.split(/[,;]+/);
+  // Modal animations
+  const modalRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if ((selectedLesson || selectedLog) && modalRef.current) {
+      gsap.fromTo(modalRef.current, 
+        { opacity: 0, scale: 0.95, y: 20 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.4, ease: 'back.out(1.5)', clearProps: 'all' }
+      );
+    }
+  }, [selectedLesson, selectedLog]);
+
+  const parseVocabularyLine = (line: string) => {
+    let cleanLine = line.replace(/^[\s\*\-\•\d\.]+\s*/, '').trim();
+    const separatorMatch = cleanLine.match(/\s+[\-\–\—\:=]\s+/);
+    if (separatorMatch && separatorMatch.index !== undefined) {
+      const word = cleanLine.substring(0, separatorMatch.index).trim();
+      const translation = cleanLine.substring(separatorMatch.index + separatorMatch[0].length).trim();
+      return { word, translation };
+    } else {
+      const fallbackMatch = cleanLine.match(/[:=]/) || cleanLine.match(/[\-\–\—]/);
+      if (fallbackMatch && fallbackMatch.index !== undefined) {
+        const word = cleanLine.substring(0, fallbackMatch.index).trim();
+        const translation = cleanLine.substring(fallbackMatch.index + fallbackMatch[0].length).trim();
+        return { word, translation };
       }
     }
+    return { word: cleanLine, translation: null };
+  };
 
-    const vocabList = rawLines.map(i => i.trim()).filter(i => i.length > 0).map(parseVocabularyLine);
+  const getVocabList = (vocabText: string) => {
+    let rawLines: string[] = [];
+    if (vocabText) {
+      if (vocabText.includes('\n')) {
+        rawLines = vocabText.split('\n');
+      } else {
+        rawLines = vocabText.split(/[,;]+/);
+      }
+    }
+    return rawLines.map(i => i.trim()).filter(i => i.length > 0).map(parseVocabularyLine);
+  };
 
-    return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <Button 
-          variant="ghost" 
-          onClick={() => setSelectedLesson(null)}
-          className="flex items-center gap-2 mb-4"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          {language === 'pl' ? 'Wróć do historii' : 'Back to history'}
-        </Button>
-        
-        <Card className="p-8 shadow-xl border-primary/20 space-y-8 bg-base-100/95 backdrop-blur-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
-             <FileText className="w-64 h-64 text-primary" />
-          </div>
-
-          <div className="relative z-10 border-b border-white/10 pb-6">
-             <div className="inline-flex items-center gap-2 text-primary font-mono text-sm mb-3">
-               <Calendar className="w-4 h-4" />
-               {new Date(selectedLesson.date).toLocaleDateString()}
-             </div>
-             <h1 className="text-3xl font-extrabold text-white tracking-tight mb-2">
-               {selectedLesson.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
-             </h1>
-          </div>
-
-          {selectedLesson.lessonSummary && (
-            <div className="relative z-10 space-y-3">
-               <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
-                 <Sparkles className="w-4 h-4 text-primary" />
-                 {language === 'pl' ? 'Podsumowanie Lekcji' : 'Lesson Summary'}
-               </h3>
-               <div className="bg-primary/5 border border-primary/10 rounded-2xl p-6 text-content">
-                  <div className="markdown-body text-sm leading-relaxed prose prose-invert max-w-none">
-                    <Markdown>{selectedLesson.lessonSummary}</Markdown>
-                  </div>
-               </div>
-            </div>
-          )}
-
-          {vocabList.length > 0 && (
-            <div className="relative z-10 space-y-3">
-               <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
-                 <Tag className="w-4 h-4 text-amber-500" />
-                 {language === 'pl' ? 'Słownictwo z lekcji' : 'Lesson Vocabulary'}
-               </h3>
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                 {vocabList.map((item, idx) => (
-                   <div key={idx} className="bg-base-200 border border-white/5 rounded-xl p-4 flex flex-col justify-center shadow-sm hover:border-primary/30 hover:bg-base-200/80 transition-all group relative">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-white text-base group-hover:text-primary transition-colors">{item.word}</span>
-                          {item.translation && (
-                            <span className="text-sm text-content-muted mt-1">{item.translation}</span>
-                          )}
-                        </div>
-                        <div className="transition-opacity opacity-70 group-hover:opacity-100">
-                          <TTSButtons text={item.word} />
-                        </div>
-                      </div>
-                   </div>
-                 ))}
-               </div>
-            </div>
-          )}
-
-          {(!selectedLesson.lessonSummary && vocabList.length === 0) && (
-            <div className="relative z-10 text-center p-8 text-content-muted">
-              {language === 'pl' ? 'Ta lekcja nie ma przypisanego podsumowania ani słownictwa.' : 'This lesson has no summary or vocabulary attached.'}
-            </div>
-          )}
-        </Card>
-      </div>
-    );
-  }
-
-return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-base-300 pb-5">
+  return (
+    <div className="space-y-6 max-w-5xl mx-auto pb-24 relative">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
-             <FileText className="w-8 h-8 text-primary" />
-             {language === 'pl' ? 'Historia i Postępy' : 'History & Progress'}
+          <h1 className="text-3xl font-extrabold tracking-tight">
+            {language === 'pl' ? 'Historia i postępy' : 'History & Progress'}
           </h1>
           <p className="text-content-muted text-sm mt-1">
              {language === 'pl' 
-                ? 'Przeglądaj notatki z lekcji i historię sesji ćwiczeniowych.' 
-                : 'Review lesson notes and practice session history.'}
+                 ? 'Przeglądaj notatki z lekcji i historię sesji ćwiczeniowych.' 
+                 : 'Review lesson notes and practice session history.'}
           </p>
         </div>
         
         <div className="flex bg-base-200 p-1 rounded-lg border border-base-300">
-           <button
+           <button 
              onClick={() => setActiveTab('lessons')}
              className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'lessons' ? 'bg-primary text-black' : 'text-content-muted hover:text-white'}`}
            >
              <FileText className="w-4 h-4" />
              {language === 'pl' ? 'Notatki z lekcji' : 'Lesson Notes'}
            </button>
-           <button
+           <button 
              onClick={() => setActiveTab('sessions')}
              className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'sessions' ? 'bg-primary text-black' : 'text-content-muted hover:text-white'}`}
            >
@@ -193,30 +143,24 @@ return (
              </h2>
              <p className="text-content-muted text-sm">
                {language === 'pl' 
-                  ? 'Nie masz jeszcze przypisanych żadnych kart lekcji.' 
-                  : 'You do not have any lesson records assigned yet.'}
+                   ? 'Nie masz jeszcze przypisanych żadnych kart lekcji.' 
+                   : 'You do not have any lesson records assigned yet.'}
              </p>
            </div>
         ) : (
            <div className="grid grid-cols-1 gap-4">
            {lessons.map((lesson, index) => {
-             const isExpanded = expandedLessonId === lesson.id;
              const lessonNumber = lessons.length - index;
              return (
              <Card 
                key={lesson.id} 
-               onClick={() => setExpandedLessonId(isExpanded ? null : lesson.id)}
-               className="p-0 cursor-pointer hover:border-primary/50 transition-colors bg-base-200/50 group overflow-hidden"
+               onClick={() => setSelectedLesson(lesson)}
+               className="p-4 cursor-pointer hover:border-primary/50 transition-colors bg-base-200/50 group flex items-center justify-between"
              >
-               <div className="p-4 flex items-center justify-between">
                  <div className="flex items-center gap-4 pr-4">
-                   <button 
-                     onClick={(e) => { e.stopPropagation(); setSelectedLesson(lesson); }}
-                     className="w-12 h-12 flex-shrink-0 bg-primary/10 text-primary font-mono font-bold rounded-lg flex items-center justify-center hover:bg-primary hover:text-black transition-colors tooltip"
-                     title={language === 'pl' ? "Otwórz pełny widok" : "Open full view"}
-                   >
+                   <div className="w-12 h-12 flex-shrink-0 bg-primary/10 text-primary font-mono font-bold rounded-lg flex items-center justify-center group-hover:bg-primary group-hover:text-black transition-colors">
                      #{lessonNumber}
-                   </button>
+                   </div>
                    <div className="flex-1 min-w-0">
                      <h3 className="font-bold text-white text-lg line-clamp-1 group-hover:text-primary transition-colors">
                        {lesson.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
@@ -235,57 +179,8 @@ return (
                           {language === 'pl' ? 'Podsumowanie' : 'Summary'}
                         </span>
                       )}
-                      {lesson.vocabularyText && (
-                        <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-amber-500/10 text-amber-500">
-                          <Tag className="w-3 h-3" />
-                          {language === 'pl' ? 'Słówka' : 'Vocab'}
-                        </span>
-                      )}
                     </div>
-                    <svg className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
                  </div>
-               </div>
-               
-               {isExpanded && (
-                 <div className="p-4 pt-0 border-t border-white/5 bg-base-200/30 text-sm space-y-4 mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                    {lesson.lessonSummary && (
-                      <div>
-                        <div className="font-bold text-content-muted mb-1 text-xs uppercase flex items-center gap-1">
-                          <Sparkles className="w-3 h-3" /> {language === 'pl' ? 'Notatki' : 'Notes'}
-                        </div>
-                        <div className="text-white whitespace-pre-wrap"><Markdown>{lesson.lessonSummary}</Markdown></div>
-                      </div>
-                    )}
-                    {lesson.vocabularyText && (
-                      <div>
-                        <div className="font-bold text-content-muted mb-1 text-xs uppercase flex items-center gap-1">
-                          <Tag className="w-3 h-3" /> {language === 'pl' ? 'Słówka' : 'Vocabulary'}
-                        </div>
-                        <div className="text-white font-mono whitespace-pre-wrap">{lesson.vocabularyText}</div>
-                      </div>
-                    )}
-                    {lesson.studentSpeaking && (
-                      <div>
-                         <div className="font-bold text-content-muted mb-1 text-xs uppercase">{language === 'pl' ? 'O czym mówił kursant' : 'Student Speaking'}</div>
-                         <div className="text-white whitespace-pre-wrap"><Markdown>{lesson.studentSpeaking}</Markdown></div>
-                      </div>
-                    )}
-                    {lesson.thingsToImprove && (
-                      <div>
-                         <div className="font-bold text-content-muted mb-1 text-xs uppercase">{language === 'pl' ? 'Do poprawy' : 'Things to improve'}</div>
-                         <div className="text-white whitespace-pre-wrap"><Markdown>{lesson.thingsToImprove}</Markdown></div>
-                      </div>
-                    )}
-                    {lesson.suggestedFollowUp && (
-                      <div>
-                         <div className="font-bold text-content-muted mb-1 text-xs uppercase">{language === 'pl' ? 'Zadanie / Następna lekcja' : 'Follow up'}</div>
-                         <div className="text-white whitespace-pre-wrap"><Markdown>{lesson.suggestedFollowUp}</Markdown></div>
-                      </div>
-                    )}
-                 </div>
-               )}
              </Card>
            )})}
          </div>
@@ -299,19 +194,22 @@ return (
              </h2>
              <p className="text-content-muted text-sm">
                {language === 'pl' 
-                  ? 'Nie masz jeszcze żadnych zapisanych sesji ćwiczeniowych.' 
-                  : 'You do not have any recorded practice sessions yet.'}
+                   ? 'Nie masz jeszcze żadnych zapisanych sesji ćwiczeniowych.' 
+                   : 'You do not have any recorded practice sessions yet.'}
              </p>
            </div>
          ) : (
            <div className="space-y-3">
              {practiceLogs.map(log => (
-               <div key={log.id} className="bg-base-200 p-4 rounded-xl border border-white/5 flex flex-col gap-3">
-                 <div className="flex items-center justify-between">
-                   <div className="flex flex-col gap-1">
+               <div 
+                 key={log.id} 
+                 onClick={() => setSelectedLog(log)}
+                 className="bg-base-200 p-4 rounded-xl border border-white/5 flex items-center justify-between cursor-pointer hover:border-primary/50 hover:bg-base-200/80 transition-colors group"
+               >
+                 <div className="flex flex-col gap-1">
                    <div className="flex items-center gap-2">
-                     <span className="font-bold text-white text-base">
-                       {log.exerciseType === 'ai_translation' ? (language === 'pl' ? 'Trening z AI' : 'AI Translation') :
+                     <span className="font-bold text-white text-base group-hover:text-primary transition-colors">
+                       {log.exerciseType === 'ai_translation' ? (language === 'pl' ? 'Trening z AI' : 'AI Translation') : 
                         log.exerciseType === 'flashcards' ? (language === 'pl' ? 'Fiszki' : 'Flashcards') : 
                         log.exerciseType}
                      </span>
@@ -343,25 +241,182 @@ return (
                      </div>
                    )}
                  </div>
-                 </div>
-               {log.exercisesData && (
-                 <div className="mt-3 text-sm text-content-muted bg-base-300 p-3 rounded border border-base-300/50">
-                   <p className="font-bold mb-1">{language === 'pl' ? 'Przećwiczone zdania:' : 'Practiced sentences:'}</p>
-                   <ul className="list-disc pl-5 space-y-1">
-                     {log.exercisesData.split(' | ').map((ex, idx) => (
-                       <li key={idx} className="italic opacity-80">{ex}</li>
-                     ))}
-                   </ul>
-                 </div>
-               )}
-             </div>
+               </div>
              ))}
            </div>
          )
       )}
+
+      {/* Lesson Details Modal */}
+      {selectedLesson && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedLesson(null)}>
+          <div 
+            ref={modalRef} 
+            className="bg-base-100 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-white/10 shadow-[0_16px_64px_rgba(0,0,0,0.6)]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-20 flex items-center justify-between p-6 bg-base-100/95 backdrop-blur-xl border-b border-white/10">
+              <div>
+                 <div className="inline-flex items-center gap-2 text-primary font-mono text-sm mb-1">
+                   <Calendar className="w-4 h-4" />
+                   {new Date(selectedLesson.date).toLocaleDateString()}
+                 </div>
+                 <h2 className="text-2xl font-extrabold text-white">
+                   {selectedLesson.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
+                 </h2>
+              </div>
+              <button 
+                onClick={() => setSelectedLesson(null)}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-base-200 hover:bg-base-300 text-content-muted hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {selectedLesson.lessonSummary && (
+                <div className="space-y-3">
+                   <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
+                     <Sparkles className="w-4 h-4 text-primary" />
+                     {language === 'pl' ? 'Podsumowanie Lekcji' : 'Lesson Summary'}
+                   </h3>
+                   <div className="bg-primary/5 border border-primary/10 rounded-2xl p-6 text-content">
+                      <div className="markdown-body text-sm leading-relaxed prose prose-invert max-w-none">
+                        <Markdown>{selectedLesson.lessonSummary}</Markdown>
+                      </div>
+                   </div>
+                </div>
+              )}
+
+              {selectedLesson.studentSpeaking && (
+                <div className="space-y-3">
+                   <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
+                     <AlertCircle className="w-4 h-4 text-blue-400" />
+                     {language === 'pl' ? 'O czym mówił kursant' : 'Student Speaking'}
+                   </h3>
+                   <div className="bg-blue-500/5 border border-blue-500/10 rounded-2xl p-6 text-content text-sm whitespace-pre-wrap">
+                      <Markdown>{selectedLesson.studentSpeaking}</Markdown>
+                   </div>
+                </div>
+              )}
+
+              {selectedLesson.thingsToImprove && (
+                <div className="space-y-3">
+                   <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
+                     <AlertCircle className="w-4 h-4 text-red-400" />
+                     {language === 'pl' ? 'Do poprawy (błędy)' : 'Things to improve'}
+                   </h3>
+                   <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-6 text-content text-sm whitespace-pre-wrap">
+                      <Markdown>{selectedLesson.thingsToImprove}</Markdown>
+                   </div>
+                </div>
+              )}
+
+              {selectedLesson.suggestedFollowUp && (
+                <div className="space-y-3">
+                   <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
+                     <Clock className="w-4 h-4 text-amber-400" />
+                     {language === 'pl' ? 'Zadanie / Następna lekcja' : 'Suggested Follow-up'}
+                   </h3>
+                   <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-6 text-content text-sm whitespace-pre-wrap">
+                      <Markdown>{selectedLesson.suggestedFollowUp}</Markdown>
+                   </div>
+                </div>
+              )}
+
+              {selectedLesson.vocabularyText && getVocabList(selectedLesson.vocabularyText).length > 0 && (
+                <div className="space-y-4 pt-4">
+                   <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
+                     <Tag className="w-4 h-4 text-secondary" />
+                     {language === 'pl' ? 'Nowe Słownictwo' : 'New Vocabulary'}
+                     <span className="ml-2 bg-secondary/20 text-secondary px-2 py-0.5 rounded-full text-[10px]">
+                       {getVocabList(selectedLesson.vocabularyText).length} {language === 'pl' ? 'słów' : 'words'}
+                     </span>
+                   </h3>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                     {getVocabList(selectedLesson.vocabularyText).map((item, i) => (
+                       <div key={i} className="flex flex-col p-3 rounded-xl bg-base-200/50 border border-white/5">
+                         <span className="font-bold text-white text-base">{item.word}</span>
+                         {item.translation && (
+                           <span className="text-secondary text-sm font-medium">{item.translation}</span>
+                         )}
+                       </div>
+                     ))}
+                   </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Session Details Modal */}
+      {selectedLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedLog(null)}>
+          <div 
+            ref={modalRef} 
+            className="bg-base-100 rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-white/10 shadow-[0_16px_64px_rgba(0,0,0,0.6)]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-20 flex items-center justify-between p-6 bg-base-100/95 backdrop-blur-xl border-b border-white/10">
+              <div>
+                 <div className="inline-flex items-center gap-2 text-primary font-mono text-sm mb-1">
+                   <Calendar className="w-4 h-4" />
+                   {new Date(selectedLog.date).toLocaleString()}
+                 </div>
+                 <h2 className="text-2xl font-extrabold text-white">
+                   {selectedLog.exerciseType === 'ai_translation' ? (language === 'pl' ? 'Trening z AI' : 'AI Translation') : 
+                    selectedLog.exerciseType === 'flashcards' ? (language === 'pl' ? 'Fiszki' : 'Flashcards') : 
+                    selectedLog.exerciseType}
+                 </h2>
+              </div>
+              <button 
+                onClick={() => setSelectedLog(null)}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-base-200 hover:bg-base-300 text-content-muted hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              <div className="flex flex-wrap gap-4 text-sm font-mono">
+                {selectedLog.totalWords !== undefined && (
+                  <div className="bg-base-200 p-4 rounded-xl flex-1 text-center border border-white/5">
+                    <div className="text-content-muted text-[10px] uppercase mb-1">{language === 'pl' ? 'Słów/Zdań' : 'Items'}</div>
+                    <div className="font-bold text-2xl text-white">{selectedLog.totalWords}</div>
+                  </div>
+                )}
+                {selectedLog.score !== undefined && (
+                  <div className="bg-base-200 p-4 rounded-xl flex-1 text-center border border-white/5">
+                    <div className="text-content-muted text-[10px] uppercase mb-1">{language === 'pl' ? 'Wynik' : 'Score'}</div>
+                    <div className={`font-bold text-2xl ${selectedLog.score >= 80 ? 'text-green-400' : selectedLog.score >= 50 ? 'text-amber-500' : 'text-red-400'}`}>
+                      {selectedLog.score}%
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {selectedLog.exercisesData && (
+                <div className="space-y-3 pt-4">
+                  <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-primary" />
+                    {language === 'pl' ? 'Przećwiczone elementy' : 'Practiced items'}
+                  </h3>
+                  <div className="bg-base-200/50 border border-white/5 rounded-2xl p-4">
+                    <ul className="list-disc pl-5 space-y-2 text-sm text-gray-300">
+                      {selectedLog.exercisesData.split(' | ').map((ex, idx) => (
+                        <li key={idx} className="leading-relaxed">{ex}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-;
 
 export default LessonHistoryScreen;
