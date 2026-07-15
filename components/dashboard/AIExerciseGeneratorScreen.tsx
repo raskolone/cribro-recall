@@ -206,8 +206,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   useEffect(() => {
     if (numSentencesRef.current) {
       gsap.fromTo(numSentencesRef.current, 
-        { scale: 1.5, color: '#72f0b4' }, 
-        { scale: 1, color: '#eae8e3', duration: 0.5, ease: 'power2.out' }
+        { scale: 1.5, color: '#ffffff' }, 
+        { scale: 1, color: '#72f0b4', duration: 0.5, ease: 'power2.out' }
       );
     }
   }, [numSentences]);
@@ -215,8 +215,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   useEffect(() => {
     if (timeLimitRef.current) {
       gsap.fromTo(timeLimitRef.current, 
-        { scale: 1.5, color: '#72f0b4' }, 
-        { scale: 1, color: '#eae8e3', duration: 0.5, ease: 'power2.out' }
+        { scale: 1.5, color: '#ffffff' }, 
+        { scale: 1, color: '#72f0b4', duration: 0.5, ease: 'power2.out' }
       );
     }
   }, [timeLimit]);
@@ -761,21 +761,12 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
           {activeTab === 'ai' ? (
             <div className="space-y-8 animate-fade-in-up">
-              <div className="text-center space-y-4 mb-8">
-                <h2 className="text-3xl font-extrabold tracking-tight">
-                  {language === 'pl' ? 'Tłumaczenie Zdań z AI' : 'AI Sentence Translation'}
-                </h2>
-                <p className="text-lg text-content-muted max-w-2xl mx-auto">
-                  {language === 'pl' 
-                    ? 'Wybierz materiał, a sztuczna inteligencja wygeneruje dla Ciebie spersonalizowane zdania do przetłumaczenia.' 
-                    : 'Select material, and AI will generate personalized sentences for you to translate.'}
-                </p>
-              </div>
+              {/* Removed the description and title as requested */}
 
-              <Card className="p-0 border border-white/5 shadow-xl bg-base-200/40 backdrop-blur-xl relative overflow-hidden flex flex-col">
-                <div className="p-6 border-b border-white/5 bg-base-200/50">
-                  <h3 className="text-xl font-bold flex items-center gap-3">
-                    <BookOpen className="w-6 h-6 text-primary" />
+              <Card className="p-0 border border-primary/20 shadow-[0_0_20px_rgba(114,240,180,0.1)] bg-base-200/40 backdrop-blur-xl relative overflow-hidden flex flex-col">
+                <div className="p-6 border-b border-primary/10 bg-primary/5">
+                  <h3 className="text-xl font-bold flex items-center gap-3 text-primary">
+                    <BookOpen className="w-6 h-6" />
                     {language === 'pl' ? 'Wybierz źródło słownictwa' : 'Select vocabulary source'}
                   </h3>
                 </div>
@@ -784,9 +775,9 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   {/* Główny wybór opcji */}
                   <div className="space-y-3">
                     {/* Opcja 1: Lekcje */}
-                    <div className="border border-white/10 rounded-xl overflow-hidden bg-base-300/30">
+                    <div className="border border-primary/20 rounded-xl overflow-hidden bg-base-200/50">
                       <button 
-                        className={`w-full flex items-center justify-between p-4 transition-colors ${selectedSetId === 'lessons' || selectedLessonIds.length > 0 ? 'bg-primary/10' : 'hover:bg-white/5'}`}
+                        className={`w-full flex items-center justify-between p-4 transition-colors ${selectedSetId === 'lessons' || selectedLessonIds.length > 0 ? 'bg-primary/20' : 'hover:bg-primary/5'}`}
                         onClick={() => {
                           if (selectedSetId !== 'lessons') {
                             setSelectedSetId('lessons');
@@ -800,7 +791,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                         }}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${(selectedSetId === 'lessons' || selectedLessonIds.length > 0) ? 'border-primary bg-primary text-black' : 'border-content-muted'}`}>
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${(selectedSetId === 'lessons' || selectedLessonIds.length > 0) ? 'border-primary bg-primary text-black' : 'border-primary/50'}`}>
                             {(selectedSetId === 'lessons' || selectedLessonIds.length > 0) && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <span className="font-bold text-lg">{language === 'pl' ? 'Moje lekcje' : 'My lessons'}</span>
@@ -810,7 +801,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                       
                       {/* Rozwijana lista lekcji */}
                       {(selectedSetId === 'lessons' || selectedLessonIds.length > 0) && (
-                        <div className="p-4 border-t border-white/5 bg-base-100/30 space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar">
+                        <div className="p-4 border-t border-primary/20 bg-base-100/30 space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar">
                           {vocabularySets.length > 0 ? vocabularySets.map((set, index) => {
                             const isSelected = selectedLessonIds.includes(set.id);
                             const lessonNumber = vocabularySets.length - index;
@@ -847,11 +838,11 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
                     {/* Opcja 2: Wszystkie moje słówka */}
                     <button 
-                      className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'bg-primary/10 border-primary shadow-[0_0_15px_rgba(114,240,180,0.15)] ring-1 ring-primary/50' : 'bg-base-300/30 border-white/10 hover:bg-white/5'}`}
+                      className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'bg-primary/20 border-primary shadow-[0_0_15px_rgba(114,240,180,0.15)] ring-1 ring-primary/50' : 'bg-base-200/50 border-primary/20 hover:bg-primary/5'}`}
                       onClick={() => { setSelectedSetId('all'); setSelectedLessonIds([]); }}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${(selectedSetId === 'all' && selectedLessonIds.length === 0) ? 'border-primary bg-primary text-black' : 'border-content-muted'}`}>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${(selectedSetId === 'all' && selectedLessonIds.length === 0) ? 'border-primary bg-primary text-black' : 'border-primary/50'}`}>
                           {(selectedSetId === 'all' && selectedLessonIds.length === 0) && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                         </div>
                         <span className="font-bold text-lg">{language === 'pl' ? 'Wszystkie moje słówka (Mix)' : 'All my vocabulary (Mix)'}</span>
@@ -860,11 +851,11 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
                     {/* Opcja 3: Losowe zdania */}
                     <button 
-                      className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${selectedSetId === 'random' && selectedLessonIds.length === 0 ? 'bg-primary/10 border-primary shadow-[0_0_15px_rgba(114,240,180,0.15)] ring-1 ring-primary/50' : 'bg-base-300/30 border-white/10 hover:bg-white/5'}`}
+                      className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${selectedSetId === 'random' && selectedLessonIds.length === 0 ? 'bg-primary/20 border-primary shadow-[0_0_15px_rgba(114,240,180,0.15)] ring-1 ring-primary/50' : 'bg-base-200/50 border-primary/20 hover:bg-primary/5'}`}
                       onClick={() => { setSelectedSetId('random'); setSelectedLessonIds([]); }}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${(selectedSetId === 'random' && selectedLessonIds.length === 0) ? 'border-primary bg-primary text-black' : 'border-content-muted'}`}>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${(selectedSetId === 'random' && selectedLessonIds.length === 0) ? 'border-primary bg-primary text-black' : 'border-primary/50'}`}>
                           {(selectedSetId === 'random' && selectedLessonIds.length === 0) && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                         </div>
                         <span className="font-bold text-lg">{language === 'pl' ? 'Losowe zdania' : 'Random sentences'}</span>
@@ -875,9 +866,9 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
               </Card>
 
               {/* Parametry ćwiczenia: Tryb, Suwak itp. */}
-              <Card className="p-6 border border-white/5 shadow-xl bg-base-200/40 backdrop-blur-xl relative overflow-hidden">
-                <h3 className="text-xl font-bold mb-6 flex items-center gap-3">
-                  <Settings className="w-6 h-6 text-primary" />
+              <Card className="p-6 border border-primary/20 shadow-[0_0_20px_rgba(114,240,180,0.1)] bg-base-200/40 backdrop-blur-xl relative overflow-hidden">
+                <h3 className="text-xl font-bold mb-6 flex items-center gap-3 text-primary">
+                  <Settings className="w-6 h-6" />
                   {language === 'pl' ? 'Ustawienia ćwiczenia' : 'Exercise settings'}
                 </h3>
 
@@ -886,12 +877,12 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   <label className="block text-sm font-bold text-content-muted uppercase tracking-wider mb-4">
                     {language === 'pl' ? 'Sposób rozwiązywania' : 'Solving method'}
                   </label>
-                  <div className="flex bg-base-300/50 p-1.5 rounded-xl">
+                  <div className="flex bg-base-300/50 p-1.5 rounded-xl border border-primary/10">
                     <button
                       onClick={() => setExerciseFormat('typing')}
                       className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
                         exerciseFormat === 'typing' 
-                          ? 'bg-white text-black shadow-md' 
+                          ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
                           : 'text-content-muted hover:text-white'
                       }`}
                     >
@@ -902,7 +893,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                       onClick={() => setExerciseFormat('puzzle')}
                       className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
                         exerciseFormat === 'puzzle' 
-                          ? 'bg-white text-black shadow-md' 
+                          ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
                           : 'text-content-muted hover:text-white'
                       }`}
                     >
@@ -916,12 +907,12 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   <label className="block text-sm font-bold text-content-muted uppercase tracking-wider mb-4">
                     {language === 'pl' ? 'Tryb nauki' : 'Practice mode'}
                   </label>
-                  <div className="flex bg-base-300/50 p-1.5 rounded-xl">
+                  <div className="flex bg-base-300/50 p-1.5 rounded-xl border border-primary/10">
                     <button
                       onClick={() => setPracticeMode('fixed')}
                       className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
                         practiceMode === 'fixed' 
-                          ? 'bg-white text-black shadow-md' 
+                          ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
                           : 'text-content-muted hover:text-white'
                       }`}
                     >
@@ -932,7 +923,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                       onClick={() => setPracticeMode('time')}
                       className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
                         practiceMode === 'time' 
-                          ? 'bg-white text-black shadow-md' 
+                          ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
                           : 'text-content-muted hover:text-white'
                       }`}
                     >
@@ -946,23 +937,25 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   <div className="mb-6 relative">
                     <label className="flex items-center justify-between text-sm font-bold text-content-muted uppercase tracking-wider mb-8">
                       <span>{language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}</span>
-                      <div className="absolute right-0 -top-2 bg-primary text-black font-black text-xl px-4 py-1.5 rounded-xl shadow-[0_0_20px_rgba(114,240,180,0.4)] animate-pulse-slow">
-                        <span ref={numSentencesRef}>{numSentences}</span>
+                      <div className="absolute right-0 -top-2">
+                        <span ref={numSentencesRef} className="text-primary text-3xl font-black drop-shadow-[0_0_15px_rgba(114,240,180,0.5)] inline-block min-w-[2rem] text-center">
+                          {numSentences}
+                        </span>
                       </div>
                     </label>
                     <div className="relative pt-4 pb-2 px-2">
                       <input
                         type="range"
-                        min="3"
-                        max="20"
+                        min="1"
+                        max="50"
                         step="1"
                         value={numSentences}
                         onChange={(e) => setNumSentences(parseInt(e.target.value))}
-                        className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+                        className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                       <div className="flex justify-between text-xs text-content-muted mt-3 font-mono">
-                        <span>3</span>
-                        <span>20</span>
+                        <span>1</span>
+                        <span>50</span>
                       </div>
                     </div>
                   </div>
@@ -972,8 +965,10 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   <div className="mb-6 relative">
                     <label className="flex items-center justify-between text-sm font-bold text-content-muted uppercase tracking-wider mb-8">
                       <span>{language === 'pl' ? 'Czas na rozwiązanie (minuty)' : 'Time to solve (minutes)'}</span>
-                      <div className="absolute right-0 -top-2 bg-primary text-black font-black text-xl px-4 py-1.5 rounded-xl shadow-[0_0_20px_rgba(114,240,180,0.4)] animate-pulse-slow">
-                        <span ref={timeLimitRef}>{timeLimit}</span>
+                      <div className="absolute right-0 -top-2">
+                        <span ref={timeLimitRef} className="text-primary text-3xl font-black drop-shadow-[0_0_15px_rgba(114,240,180,0.5)] inline-block min-w-[2rem] text-center">
+                          {timeLimit}
+                        </span>
                       </div>
                     </label>
                     <div className="relative pt-4 pb-2 px-2">
@@ -984,7 +979,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                         step="1"
                         value={timeLimit}
                         onChange={(e) => setTimeLimit(parseInt(e.target.value))}
-                        className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+                        className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                       <div className="flex justify-between text-xs text-content-muted mt-3 font-mono">
                         <span>1 min</span>
@@ -1003,7 +998,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   className="w-full py-5 text-xl font-black bg-primary text-black hover:bg-primary/90 shadow-[0_0_40px_rgba(114,240,180,0.3)] transition-all hover:scale-[1.02] rounded-2xl"
                 >
                   <Sparkles className="w-6 h-6 mr-2" />
-                  {language === 'pl' ? 'Rozpocznij tłumaczenie' : 'Start translation'}
+                  {language === 'pl' ? 'Wygeneruj zadanie' : 'Generate exercise'}
                 </AILoadingButton>
               </div>
             </div>
