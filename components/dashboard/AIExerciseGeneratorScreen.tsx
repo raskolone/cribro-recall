@@ -206,8 +206,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   useEffect(() => {
     if (numSentencesRef.current) {
       gsap.fromTo(numSentencesRef.current, 
-        { scale: 1.5, color: '#ffffff' }, 
-        { scale: 1, color: '#72f0b4', duration: 0.5, ease: 'power2.out' }
+        { scale: 1.6, color: '#ffffff' }, 
+        { scale: 1, color: '#72f0b4', duration: 0.5, ease: 'back.out(2)' }
       );
     }
   }, [numSentences]);
@@ -215,8 +215,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   useEffect(() => {
     if (timeLimitRef.current) {
       gsap.fromTo(timeLimitRef.current, 
-        { scale: 1.5, color: '#ffffff' }, 
-        { scale: 1, color: '#72f0b4', duration: 0.5, ease: 'power2.out' }
+        { scale: 1.6, color: '#ffffff' }, 
+        { scale: 1, color: '#72f0b4', duration: 0.5, ease: 'back.out(2)' }
       );
     }
   }, [timeLimit]);
@@ -877,13 +877,13 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   <label className="block text-sm font-bold text-content-muted uppercase tracking-wider mb-4">
                     {language === 'pl' ? 'Sposób rozwiązywania' : 'Solving method'}
                   </label>
-                  <div className="flex bg-base-300/50 p-1.5 rounded-xl border border-primary/10">
+                  <div className="flex bg-black/20 p-1.5 rounded-xl border border-white/5">
                     <button
                       onClick={() => setExerciseFormat('typing')}
                       className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
                         exerciseFormat === 'typing' 
                           ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                          : 'text-content-muted hover:text-white'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
                       }`}
                     >
                       <Keyboard className="w-4 h-4" />
@@ -894,7 +894,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                       className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
                         exerciseFormat === 'puzzle' 
                           ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                          : 'text-content-muted hover:text-white'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
                       }`}
                     >
                       <Puzzle className="w-4 h-4" />
@@ -907,13 +907,13 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   <label className="block text-sm font-bold text-content-muted uppercase tracking-wider mb-4">
                     {language === 'pl' ? 'Tryb nauki' : 'Practice mode'}
                   </label>
-                  <div className="flex bg-base-300/50 p-1.5 rounded-xl border border-primary/10">
+                  <div className="flex bg-black/20 p-1.5 rounded-xl border border-white/5">
                     <button
                       onClick={() => setPracticeMode('fixed')}
                       className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
                         practiceMode === 'fixed' 
                           ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                          : 'text-content-muted hover:text-white'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
                       }`}
                     >
                       <Target className="w-4 h-4" />
@@ -924,7 +924,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                       className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
                         practiceMode === 'time' 
                           ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                          : 'text-content-muted hover:text-white'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
                       }`}
                     >
                       <Clock className="w-4 h-4" />
@@ -938,7 +938,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                     <label className="flex items-center justify-between text-sm font-bold text-content-muted uppercase tracking-wider mb-8">
                       <span>{language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}</span>
                       <div className="absolute right-0 -top-2">
-                        <span ref={numSentencesRef} className="text-primary text-3xl font-black drop-shadow-[0_0_15px_rgba(114,240,180,0.5)] inline-block min-w-[2rem] text-center">
+                        <span ref={numSentencesRef} className="text-primary text-4xl font-black drop-shadow-[0_0_15px_rgba(114,240,180,0.5)] inline-block min-w-[3rem] text-center">
                           {numSentences}
                         </span>
                       </div>
@@ -951,7 +951,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                         step="1"
                         value={numSentences}
                         onChange={(e) => setNumSentences(parseInt(e.target.value))}
-                        className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="w-full h-2 bg-black/40 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                       <div className="flex justify-between text-xs text-content-muted mt-3 font-mono">
                         <span>1</span>
@@ -966,7 +966,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                     <label className="flex items-center justify-between text-sm font-bold text-content-muted uppercase tracking-wider mb-8">
                       <span>{language === 'pl' ? 'Czas na rozwiązanie (minuty)' : 'Time to solve (minutes)'}</span>
                       <div className="absolute right-0 -top-2">
-                        <span ref={timeLimitRef} className="text-primary text-3xl font-black drop-shadow-[0_0_15px_rgba(114,240,180,0.5)] inline-block min-w-[2rem] text-center">
+                        <span ref={timeLimitRef} className="text-primary text-4xl font-black drop-shadow-[0_0_15px_rgba(114,240,180,0.5)] inline-block min-w-[3rem] text-center">
                           {timeLimit}
                         </span>
                       </div>
@@ -979,7 +979,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                         step="1"
                         value={timeLimit}
                         onChange={(e) => setTimeLimit(parseInt(e.target.value))}
-                        className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="w-full h-2 bg-black/40 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                       <div className="flex justify-between text-xs text-content-muted mt-3 font-mono">
                         <span>1 min</span>
