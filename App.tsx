@@ -1,6 +1,8 @@
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { useRef, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { VocabularyProvider } from './context/VocabularyContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -21,7 +23,27 @@ const App: React.FC = () => {
   );
 };
 
+
+const GSAPViewSwitcher: React.FC<{currentView: string, children: React.ReactNode}> = ({ currentView, children }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (containerRef.current) {
+      const el = containerRef.current.firstElementChild;
+      if (el) {
+        gsap.fromTo(el, 
+          { opacity: 0, y: 30 }, 
+          { opacity: 1, y: 0, duration: 0.5, ease: "power3.out", clearProps: "all" }
+        );
+      }
+    }
+  }, [currentView]);
+
+  return <div ref={containerRef} className="w-full flex-1 flex flex-col">{children}</div>;
+};
+
 const AppContent: React.FC = () => {
+
   const { user, isAuthReady } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
 
@@ -36,9 +58,10 @@ const AppContent: React.FC = () => {
       <ConstellationBackground />
       
       <div className="relative z-10 w-full min-h-screen pointer-events-auto flex flex-col">
-        <AnimatePresence mode="wait">
+        
+        <GSAPViewSwitcher currentView={user ? 'dashboard' : showAuth ? 'auth' : 'landing'}>
           {user ? (
-            <motion.div key="dashboard" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.5, ease: 'easeOut' }} className="w-full flex-1 flex flex-col">
+            <div className="w-full flex-1 flex flex-col">
               <VocabularyProvider>
                 <SettingsProvider>
                 <FlashcardProvider>
@@ -46,17 +69,18 @@ const AppContent: React.FC = () => {
                 </FlashcardProvider>
                 </SettingsProvider>
               </VocabularyProvider>
-            </motion.div>
+            </div>
           ) : showAuth ? (
-            <motion.div key="auth" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.4 }} className="w-full flex-1 flex flex-col">
+            <div className="w-full flex-1 flex flex-col">
               <AuthScreen onBack={() => setShowAuth(false)} />
-            </motion.div>
+            </div>
           ) : (
-            <motion.div key="landing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }} className="w-full flex-1 flex flex-col">
+            <div className="w-full flex-1 flex flex-col">
               <LandingPage onLoginClick={() => setShowAuth(true)} />
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        </GSAPViewSwitcher>
+
       </div>
     </div>
   );

@@ -85,7 +85,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     fetchUserLogsAndStats(user.id);
   };
 
-  const handleSaveProfile = async () => {
+  const handleSaveProfile = async (silent = false) => {
     if (!selectedUser) return;
     setIsSavingProfile(true);
     try {
@@ -100,7 +100,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       const updatedUser = { ...selectedUser, ...profileForm };
       setSelectedUser(updatedUser);
       setUsers(users.map(u => u.id === selectedUser.id ? updatedUser : u));
-      alert('Zapisano profil pomyślnie!');
+      if (!silent) alert('Zapisano profil pomyślnie!');
     } catch (e: any) {
       alert('Błąd podczas zapisywania: ' + e.message);
     } finally {
@@ -273,6 +273,22 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedSetIdToAssign, setSelectedSetIdToAssign] = useState('');
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
+
+  // GSAP animation for modals
+  const useModalGSAP = (isOpen: boolean | string | null | object) => {
+    const overlayRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+      if (isOpen) {
+        if (overlayRef.current) gsap.fromTo(overlayRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power2.out" });
+        if (contentRef.current) gsap.fromTo(contentRef.current, { opacity: 0, scale: 0.95, y: 20 }, { opacity: 1, scale: 1, y: 0, duration: 0.4, ease: "back.out(1.2)" });
+      }
+    }, [isOpen]);
+    return { overlayRef, contentRef };
+  };
+
+
+
   const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
   const [newStudentUsername, setNewStudentUsername] = useState('');
   const [newStudentPassword, setNewStudentPassword] = useState('');
@@ -313,6 +329,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [showDriveModal, setShowDriveModal] = useState(false);
   const [driveModalMode, setDriveModalMode] = useState<'single'|'bulk'>('single');
   const [driveFiles, setDriveFiles] = useState<any[]>([]);
+  const assignModalAnim = useModalGSAP(showAssignModal);
+  const deleteModalAnim = useModalGSAP(userToDelete);
+  const driveModalAnim = useModalGSAP(showDriveModal);
+  const aiModalAnim = useModalGSAP(showAIModal);
+  const bulkModalAnim = useModalGSAP(showBulkModal);
+  const bulkPreviewModalAnim = useModalGSAP(showBulkPreviewModal);
+  const lessonRecordModalAnim = useModalGSAP(showLessonRecordModal);
+  const changePasswordModalAnim = useModalGSAP(showChangePasswordModal);
+  const createStudentModalAnim = useModalGSAP(showCreateStudentModal);
   const [driveLoading, setDriveLoading] = useState(false);
   const [driveError, setDriveError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -366,6 +391,30 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
   // User Profile Edit States
   const [activeTab, setActiveTab] = useState<string | null>(initialTab || null);
+  const tabContentRef = useRef<HTMLDivElement>(null);
+  const userListRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (tabContentRef.current) {
+      gsap.fromTo(tabContentRef.current, 
+        { opacity: 0, y: 15 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }
+      );
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (userListRef.current && !selectedUser) {
+      const elements = userListRef.current.children;
+      Array.from(elements).forEach((el, index) => {
+        gsap.fromTo(el,
+          { opacity: 0, x: index % 2 === 0 ? -100 : 100 },
+          { opacity: 1, x: 0, duration: 0.6, ease: "power3.out", delay: index * 0.05, clearProps: "all" }
+        );
+      });
+    }
+  }, [selectedUser, searchQuery, roleFilter, users]);
+
 
   useEffect(() => {
     setActiveTab(initialTab || null);
@@ -527,20 +576,20 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 </div>
               </Card>
 
-              <div className="grid grid-cols-1 gap-3 overflow-hidden">
-                <AnimatePresence>
+              <div className="grid grid-cols-1 gap-3 overflow-hidden" ref={userListRef}>
+                
                 {users.filter(u => {
                   const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.email} ${u.username}`.toLowerCase();
                   const matchesSearch = searchStr.includes(searchQuery.toLowerCase());
                   const matchesRole = roleFilter === 'all' || u.role === roleFilter;
                   return matchesSearch && matchesRole;
                 }).map((u, index) => (
-                  <motion.div
+                  <div
                     key={u.id}
-                    initial={{ opacity: 0, x: index % 2 === 0 ? -100 : 100 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: index % 2 === 0 ? -100 : 100 }}
-                    transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: index * 0.05 }}
+                    
+                    
+                    
+                    
                     onClick={() => handleSelectUser(u)}
                     className="bg-base-200 border border-white/5 p-4 rounded-xl cursor-pointer hover:border-primary/30 hover:bg-base-200/80 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
                   >
@@ -560,9 +609,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         </svg>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
-                </AnimatePresence>
+                
               </div>
             </div>
           ) : (
@@ -812,7 +861,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     type="text"
                     value={profileForm.firstName}
                     onChange={(e) => setProfileForm(prev => ({ ...prev, firstName: e.target.value }))}
-                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50"
+                    onBlur={() => handleSaveProfile(true)}
+                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 transition-colors"
                   />
                 </div>
                 <div>
@@ -821,7 +871,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     type="text"
                     value={profileForm.lastName}
                     onChange={(e) => setProfileForm(prev => ({ ...prev, lastName: e.target.value }))}
-                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50"
+                    onBlur={() => handleSaveProfile(true)}
+                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 transition-colors"
                   />
                 </div>
               </div>
@@ -830,8 +881,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <label className="block text-sm font-bold text-content-muted mb-1">Poziom zaawansowania</label>
                 <select
                   value={profileForm.level}
-                  onChange={(e) => setProfileForm(prev => ({ ...prev, level: e.target.value }))}
-                  className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 text-white appearance-none cursor-pointer"
+                  onChange={(e) => {
+                    setProfileForm(prev => ({ ...prev, level: e.target.value }));
+                    setTimeout(() => handleSaveProfile(true), 0);
+                  }}
+                  className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 text-white appearance-none cursor-pointer transition-colors"
                 >
                   <option value="">Wybierz poziom...</option>
                   <option value="A1">A1</option>
@@ -852,9 +906,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <textarea
                   value={profileForm.description}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, description: e.target.value }))}
+                  onBlur={() => handleSaveProfile(true)}
                   placeholder="Zainteresowania, słabe strony, cele nauki..."
                   rows={6}
-                  className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 resize-y"
+                  className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 resize-y transition-colors"
                 />
                 <p className="text-xs text-content-muted mt-2">
                   Ten opis będzie wysyłany do sztucznej inteligencji jako dodatkowy kontekst podczas generowania zadań domowych, aby lepiej dopasować je do kursanta.
@@ -866,9 +921,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <textarea
                   value={profileForm.aiPrompt}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, aiPrompt: e.target.value }))}
+                  onBlur={() => handleSaveProfile(true)}
                   placeholder="Tutaj wpisz przykładowe zdania, wzornictwo, specyficzne polecenia i żelazne zasady dla tego kursanta..."
                   rows={4}
-                  className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 resize-y font-mono text-sm"
+                  className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 resize-y font-mono text-sm transition-colors"
                 />
                 <p className="text-xs text-content-muted mt-2">
                   To pole służy do ustawienia żelaznych zasad dla AI. Będzie one absolutnie priorytetowe dla sztucznej inteligencji podczas generowania zdań lub testów.
@@ -876,7 +932,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
 
               <div className="pt-4 border-t border-white/10 flex justify-end">
-                <Button onClick={handleSaveProfile} isLoading={isSavingProfile}>
+                <Button onClick={() => handleSaveProfile()} isLoading={isSavingProfile}>
                   Zapisz profil
                 </Button>
               </div>
@@ -974,8 +1030,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
       {/* Assign Set Modal */}
       {showAssignModal && (
-        <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md shadow-2xl border-primary/20">
+        <div ref={assignModalAnim.overlayRef} className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div ref={assignModalAnim.contentRef} className="w-full max-w-md">
+            <Card className="w-full shadow-2xl border-primary/20">
             <h3 className="text-xl font-bold mb-4">Przypisz Zestaw Słówek</h3>
             <p className="mb-4 text-sm text-content-muted">
               Wybierz zestaw ze swoich (jako Admin) zestawów słówek, który zostanie skopiowany i przypisany do {selectedUser?.firstName || selectedUser?.username}.
@@ -1005,13 +1062,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </Button>
             </div>
           </Card>
+          </div>
         </div>
       )}
 
       {/* Delete User Modal */}
       {userToDelete && (
-        <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md shadow-2xl border-primary/20">
+        <div ref={deleteModalAnim.overlayRef} className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div ref={deleteModalAnim.contentRef} className="w-full max-w-md">
+            <Card className="w-full shadow-2xl border-primary/20">
             <h3 className="text-xl font-bold mb-4">Confirm Deletion</h3>
             <p className="mb-6 opacity-80">
               Are you sure you want to delete this user document? This action cannot be undone.
@@ -1031,14 +1090,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </Button>
             </div>
           </Card>
+          </div>
         </div>
       )}
 
-      
       {/* Google Drive Files Modal */}
       {showDriveModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 md:p-6 overflow-y-auto">
-          <div className="bg-base-100 p-6 rounded-xl w-full max-w-2xl border border-white/10 shadow-2xl relative my-auto">
+        <div ref={driveModalAnim.overlayRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 md:p-6 overflow-y-auto">
+          <div ref={driveModalAnim.contentRef} className="w-full max-w-2xl my-auto">
+            <div className="bg-base-100 p-6 rounded-xl border border-white/10 shadow-2xl relative">
             <h3 className="text-xl font-bold mb-4">Wybierz plik z Google Drive</h3>
             
             {driveError && (
@@ -1064,13 +1124,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               <Button variant="ghost" onClick={() => setShowDriveModal(false)}>Anuluj</Button>
             </div>
           </div>
+          </div>
         </div>
       )}
 
       {/* AI Lesson Summary Modal */}
       {showAIModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
-          <div className="bg-base-100 p-6 rounded-xl w-full max-w-4xl border border-white/10 shadow-2xl relative my-auto">
+        <div ref={aiModalAnim.overlayRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
+          <div ref={aiModalAnim.contentRef} className="w-full max-w-4xl my-auto">
+            <div className="bg-base-100 p-6 rounded-xl border border-white/10 shadow-2xl relative">
             <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
                <span className="text-primary">✨</span> AI Lesson Summary
             </h3>
@@ -1102,13 +1164,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             </div>
           </div>
         </div>
+          </div>
       )}
 
       
       {/* Bulk Import Modal */}
       {showBulkModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
-          <div className="bg-base-100 p-6 rounded-xl w-full max-w-4xl border border-white/10 shadow-2xl relative my-auto">
+        <div ref={bulkModalAnim.overlayRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
+          <div ref={bulkModalAnim.contentRef} className="w-full max-w-4xl my-auto">
+            <div className="bg-base-100 p-6 rounded-xl border border-white/10 shadow-2xl relative">
             <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
                <span className="text-primary">📦</span> Bulk Import (Wiele lekcji)
             </h3>
@@ -1143,13 +1207,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             </div>
           </div>
         </div>
+          </div>
       )}
 
       
       {/* Bulk Preview Modal */}
       {showBulkPreviewModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
-          <div className="bg-base-100 p-6 rounded-xl w-full max-w-4xl border border-white/10 shadow-2xl relative my-auto">
+        <div ref={bulkPreviewModalAnim.overlayRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
+          <div ref={bulkPreviewModalAnim.contentRef} className="w-full max-w-4xl my-auto">
+            <div className="bg-base-100 p-6 rounded-xl border border-white/10 shadow-2xl relative">
             <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
                <span className="text-primary">✨</span> Podgląd zaimportowanych lekcji
             </h3>
@@ -1226,13 +1292,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </Button>
             </div>
           </div>
+          </div>
         </div>
       )}
 
       {/* Add/Edit Lesson Record Modal */}
       {showLessonRecordModal && (
-        <div className="fixed inset-0 bg-base-100/90 backdrop-blur-md z-50 flex items-center justify-center p-4 md:p-6 overflow-y-auto">
-          <div className="w-full max-w-3xl my-auto">
+        <div ref={lessonRecordModalAnim.overlayRef} className="fixed inset-0 bg-base-100/90 backdrop-blur-md z-50 flex items-center justify-center p-4 md:p-6 overflow-y-auto">
+          <div ref={lessonRecordModalAnim.contentRef} className="w-full max-w-3xl my-auto">
             {lessonRecordModalMode === 'edit' ? (
               <Card className="w-full shadow-2xl border-primary/20">
                 <h3 className="text-xl font-bold mb-4">{editingRecordId ? 'Edytuj lekcję' : 'Dodaj nową lekcję'}</h3>
@@ -1404,8 +1471,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
 {/* Change Password Modal */}
       {showChangePasswordModal && (
-        <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md shadow-2xl border-primary/20">
+        <div ref={changePasswordModalAnim.overlayRef} className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div ref={changePasswordModalAnim.contentRef} className="w-full max-w-md">
+            <Card className="w-full shadow-2xl border-primary/20">
             <h3 className="text-xl font-bold mb-4">Change Password</h3>
             <div className="space-y-4 mb-6">
               {changePasswordError && (
@@ -1462,13 +1530,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </Button>
             </div>
           </Card>
+          </div>
         </div>
       )}
 
       {/* Create Student Modal */}
       {showCreateStudentModal && (
-        <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md shadow-2xl border-primary/20">
+        <div ref={createStudentModalAnim.overlayRef} className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div ref={createStudentModalAnim.contentRef} className="w-full max-w-md">
+            <Card className="w-full shadow-2xl border-primary/20">
             <h3 className="text-xl font-bold mb-4">Create New Student</h3>
             
             {!newStudentPassword ? (
@@ -1564,6 +1634,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               )}
             </div>
           </Card>
+        </div>
         </div>
       )}
 
