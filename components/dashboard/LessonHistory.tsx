@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { LessonRecord } from '../../types';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import AISkeletonLoader from '../ui/AISkeletonLoader';
 import { useLanguage } from '../../context/LanguageContext';
 import { generateHomework } from '../../services/geminiService';
 import Markdown from 'react-markdown';
@@ -162,14 +163,23 @@ const LessonHistory: React.FC = () => {
             </div>
 
             {!generatedHomework[lesson.id] && (
-               <Button 
-                 size="sm" 
-                 variant="secondary" 
-                 isLoading={generatingHomeworkFor === lesson.id}
-                 onClick={() => handleGenerateHomework(lesson)}
-               >
-                 {language === 'pl' ? 'Generuj pracę domową (AI)' : 'Generate Homework (AI)'}
-               </Button>
+              generatingHomeworkFor === lesson.id ? (
+                <div className="mt-3">
+                  <AISkeletonLoader 
+                    variant="sentences" 
+                    count={2} 
+                    message={language === 'pl' ? 'AI analizuje treść lekcji i układa zadania...' : 'AI is analyzing the lesson content and compiling homework exercises...'} 
+                  />
+                </div>
+              ) : (
+                <Button 
+                  size="sm" 
+                  variant="secondary" 
+                  onClick={() => handleGenerateHomework(lesson)}
+                >
+                  {language === 'pl' ? 'Generuj pracę domową (AI)' : 'Generate Homework (AI)'}
+                </Button>
+              )
             )}
 
             {generatedHomework[lesson.id] && (

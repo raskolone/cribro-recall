@@ -27,7 +27,8 @@ import {
   User, 
   Menu,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Sparkles
 } from 'lucide-react';
 import BrandLogo from '../ui/BrandLogo';
 
@@ -41,18 +42,18 @@ const NavLink: React.FC<{
   <button
     onClick={onClick}
     title={isCollapsed ? (typeof children === 'string' ? children : undefined) : undefined}
-    className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'px-4'} py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
+    className={`group w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'px-4'} py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ease-out border ${
       isActive
-        ? 'bg-primary text-black shadow-[0_0_15px_rgba(74,222,128,0.3)]'
-        : 'text-content-muted hover:bg-white/5 hover:text-white'
-    }`}
+        ? 'bg-primary text-black border-primary shadow-[0_4px_20px_rgba(114,240,180,0.35)] scale-[1.02]'
+        : 'text-content-muted border-transparent hover:bg-white/5 hover:text-white hover:border-white/10 hover:scale-[1.03] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]'
+    } active:scale-[0.97]`}
   >
     {icon && (
-      <div className={`flex items-center justify-center ${isCollapsed ? '' : 'mr-3'}`}>
+      <div className={`flex items-center justify-center transition-transform duration-300 ${isCollapsed ? '' : 'mr-3'} group-hover:scale-110 group-hover:text-primary ${isActive ? 'scale-110 text-black' : ''}`}>
         {icon}
       </div>
     )}
-    {!isCollapsed && <span>{children}</span>}
+    {!isCollapsed && <span className="transition-all duration-300 group-hover:translate-x-0.5">{children}</span>}
   </button>
 );
 
@@ -127,6 +128,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           <NavLink icon={<LayoutDashboard size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('dashboard')} isActive={currentView === 'dashboard'}>
               {language === 'pl' ? 'Panel główny' : 'Dashboard'}
+          </NavLink>
+
+          <NavLink icon={<Sparkles size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('ai-generator')} isActive={currentView === 'ai-generator'}>
+              {language === 'pl' ? 'Widok kursanta' : 'Student View'}
           </NavLink>
 
           <NavLink icon={<Library size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('flashcard-sets')} isActive={currentView === 'flashcard-sets'}>

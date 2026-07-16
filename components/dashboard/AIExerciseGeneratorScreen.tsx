@@ -36,7 +36,9 @@ import {
   Calendar,
   Keyboard,
   Puzzle,
-  Target
+  Target,
+  Layers,
+  Shuffle
 } from 'lucide-react';
 
 
@@ -55,7 +57,7 @@ const DEFAULT_EVALUATION_PROMPT = `Przeanalizuj i oceń tłumaczenie angielskie 
 import { ExerciseType } from '../../types';
 
 let audioCtx: AudioContext | null = null;
-const playTickSound = () => {
+const playSliderSound = () => {
   try {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -66,11 +68,11 @@ const playTickSound = () => {
     const oscillator = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
     
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.05);
+    oscillator.type = 'triangle';
+    oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
     
-    gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
     
     oscillator.connect(gainNode);
@@ -81,6 +83,136 @@ const playTickSound = () => {
   } catch (e) {
     // Ignore audio errors
   }
+};
+
+
+const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string }> = ({ language, level }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const jengaRef = useRef<HTMLDivElement>(null);
+
+  const steps = language === 'pl' ? [
+    "Układanie klocków gramatyki...",
+    "Budowanie poprawnej składni...",
+    "Dobieranie odpowiedniego słownictwa...",
+    "Sprawdzanie naturalności zdań...",
+    "Opracowywanie unikalnego kontekstu...",
+    "Dopasowywanie do poziomu CEFR...",
+    "Finalizowanie ćwiczenia AI..."
+  ] : [
+    "Stacking grammar blocks...",
+    "Building correct syntax...",
+    "Selecting appropriate vocabulary...",
+    "Checking sentence naturalness...",
+    "Designing unique context...",
+    "Aligning with CEFR level...",
+    "Finalizing AI exercise..."
+  ];
+
+  const [currentStepIdx, setCurrentStepIdx] = useState(0);
+
+  useEffect(() => {
+    const stepInterval = setInterval(() => {
+      setCurrentStepIdx(prev => (prev + 1) % steps.length);
+    }, 2200);
+    return () => clearInterval(stepInterval);
+  }, [steps.length]);
+
+  useEffect(() => {
+    if (!jengaRef.current) return;
+    const blocks = jengaRef.current.querySelectorAll('.jenga-block');
+    
+    const tl = gsap.timeline({ repeat: -1 });
+    
+    // Build phase
+    tl.fromTo(blocks, 
+      { y: -150, opacity: 0, rotation: () => Math.random() * 40 - 20 },
+      { 
+        y: 0, 
+        opacity: 1, 
+        rotation: 0, 
+        duration: 0.4, 
+        stagger: {
+          each: 0.1,
+          from: "start"
+        },
+        ease: "back.out(1.5)"
+      }
+    )
+    // Wait a bit
+    .to({}, { duration: 1.5 })
+    // Fall apart phase
+    .to(blocks, {
+      y: () => Math.random() * 100 + 50,
+      x: () => Math.random() * 100 - 50,
+      rotation: () => Math.random() * 180 - 90,
+      opacity: 0,
+      duration: 0.6,
+      stagger: {
+        each: 0.05,
+        from: "random"
+      },
+      ease: "power2.in"
+    })
+    .to({}, { duration: 0.5 }); // pause before restart
+    
+    return () => {
+      tl.killTweensOf("*");
+      tl.kill();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (textRef.current) {
+      gsap.fromTo(textRef.current,
+        { opacity: 0, y: 15, scale: 0.95 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: "back.out(1.5)" }
+      );
+    }
+  }, [currentStepIdx]);
+
+  return (
+    <div ref={containerRef} className="w-full max-w-2xl mx-auto py-14 px-6 flex flex-col items-center justify-center bg-base-200/40 border border-white/5 backdrop-blur-xl rounded-2xl relative overflow-hidden min-h-[380px] shadow-[0_8px_32px_0_rgba(0,0,0,0.5)]">
+      {/* Background elements */}
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.03] to-transparent pointer-events-none" />
+      
+      {/* Jenga Blocks Animation */}
+      <div ref={jengaRef} className="relative w-48 h-36 flex flex-col justify-end items-center mb-8 gap-[2px]">
+        {[...Array(6)].map((_, rowIndex) => (
+          <div key={`row-${rowIndex}`} className="flex flex-row gap-[2px]">
+            {rowIndex % 2 === 0 ? (
+              [...Array(3)].map((_, colIndex) => (
+                <div 
+                  key={`block-${rowIndex}-${colIndex}`}
+                  className="jenga-block bg-primary/20 border border-primary/40 rounded-sm shadow-[0_0_10px_rgba(114,240,180,0.2)] w-[38px] h-[16px]"
+                />
+              ))
+            ) : (
+               <div 
+                  key={`block-${rowIndex}-0`}
+                  className="jenga-block bg-primary/20 border border-primary/40 rounded-sm shadow-[0_0_10px_rgba(114,240,180,0.2)] w-[118px] h-[16px]"
+                />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Interactive loading step */}
+      <div className="space-y-2 text-center z-10 max-w-md mt-4">
+        <h4 className="text-[11px] font-bold text-primary tracking-widest uppercase font-mono animate-pulse">
+          {language === 'pl' ? 'Generowanie z AI' : 'Generating with AI'}
+        </h4>
+        <div ref={textRef} className="text-base font-bold text-white tracking-tight min-h-[24px]">
+          {steps[currentStepIdx]}
+        </div>
+        <p className="text-xs text-content-muted mt-2">
+          {language === 'pl' 
+            ? 'Budujemy dla Ciebie wysoce spersonalizowaną lekcję. To potrwa tylko chwilę...' 
+            : 'Assembling a custom practice session tailored to your needs. This will only take a moment...'}
+        </p>
+      </div>
+    </div>
+  );
 };
 
 
@@ -232,6 +364,16 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [isLessonsExpanded, setIsLessonsExpanded] = useState<boolean>(false);
   const [isCustomSetsExpanded, setIsCustomSetsExpanded] = useState<boolean>(false);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const practiceCardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (practiceCardRef.current && step === 'practice') {
+      gsap.fromTo(practiceCardRef.current,
+        { opacity: 0, y: 15, scale: 0.98 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: "power2.out" }
+      );
+    }
+  }, [activeSentenceIndex, step]);
 
   useEffect(() => {
     if (numSentencesRef.current) {
@@ -419,7 +561,17 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
       // Extract words from chosen set if applicable
       if (selectedSetId !== 'general') {
-        if (selectedSetId.startsWith('vocab-')) {
+        if (selectedSetId === 'lessons' || selectedLessonIds.length > 0) {
+          const selectedSets = vocabularySets.filter(s => selectedLessonIds.includes(s.id));
+          const allWords: string[] = [];
+          selectedSets.forEach(set => {
+            if (set.vocabularyText) {
+              const items = set.vocabularyText.split(/[\n,;]+/).map(i => i.trim()).filter(i => i.length > 0);
+              allWords.push(...items);
+            }
+          });
+          wordsToUse = Array.from(new Set(allWords)).slice(0, 15);
+        } else if (selectedSetId.startsWith('vocab-')) {
           const matchedVocab = vocabularySets.find(s => `vocab-${s.id}` === selectedSetId);
           if (matchedVocab && matchedVocab.vocabularyText) {
              const items = matchedVocab.vocabularyText.split(/[\n,;]+/).map(i => i.trim()).filter(i => i.length > 0);
@@ -565,7 +717,13 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
     if (user && results.length > 0) {
       const score = Math.round(results.reduce((acc, r) => acc + r.score, 0) / results.length);
-      const exercisesDetails = results.map((r) => `${r.polishSentence} -> ${r.studentAnswer}`).join(' | ');
+      const exercisesDetails = results.map((r) => {
+        if (r.explanation === 'Ułożono poprawnie.') {
+           return `${r.polishSentence} -> ${r.studentAnswer} [UKŁADANKA - Wymagane powtórzenie przez samodzielne Wpisywanie]`;
+        }
+        return `${r.polishSentence} -> ${r.studentAnswer}`;
+      }).join(' | ');
+      
       const logData = {
         exerciseType: 'ai_translation',
         testName: testName || undefined,
@@ -642,9 +800,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-base-300 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
-            ✨ {(user?.role === 'admin' || user?.role === 'admin_student') 
-              ? (language === 'pl' ? 'Widok kursanta' : 'Student View')
-              : (language === 'pl' ? 'Tłumacz z AI' : 'AI Translation Lab')}
+            ✨ {language === 'pl' ? 'Widok kursanta' : 'Student View'}
           </h1>
           <p className="text-content-muted text-sm mt-1">
             {language === 'pl' 
@@ -760,367 +916,448 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
       {/* STEP 1: SETUP */}
       {step === 'setup' && (
-        <div className="max-w-4xl mx-auto space-y-8 mt-4">
-          {/* Main Tabs */}
-          <div className="flex bg-base-200/40 backdrop-blur-xl border border-white/10 p-1.5 rounded-2xl mb-8 shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] gap-1">
-            <button
-              onClick={() => setActiveTab('ai')}
-              className={`flex-1 py-4 px-6 rounded-xl text-base font-bold transition-all duration-500 relative ${
-                activeTab === 'ai' 
-                  ? 'text-primary bg-primary/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] border border-primary/30 backdrop-blur-md animate-pulsar' 
-                  : 'text-content-muted hover:text-white hover:bg-white/5 border border-transparent'
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <Sparkles className="w-5 h-5" />
-                {language === 'pl' ? 'Tłumaczenie zdań' : 'Sentence Translation'}
+        isLoading ? (
+          <AIGenerationLoader language={language} level={level} />
+        ) : (
+          <div className="max-w-2xl mx-auto mt-4 px-4">
+            <Card className="p-0 border border-white/10 bg-base-200/40 backdrop-blur-xl relative overflow-hidden flex flex-col rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.55)]">
+              {/* Integrated Header Tabs inside the unified box */}
+              <div className="flex bg-black/40 border-b border-white/5 p-1.5 gap-1.5">
+                <button
+                  onClick={() => {
+                    setActiveTab('ai');
+                  }}
+                  className={`flex-1 py-3.5 px-4 rounded-2xl text-sm font-bold transition-all duration-300 relative ${
+                    activeTab === 'ai' 
+                      ? 'text-primary bg-primary/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] border border-primary/20 backdrop-blur-md' 
+                      : 'text-content-muted hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    {language === 'pl' ? 'Tłumaczenie zdań' : 'Sentence Translation'}
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('other');
+                  }}
+                  className={`flex-1 py-3.5 px-4 rounded-2xl text-sm font-bold transition-all duration-300 ${
+                    activeTab === 'other' 
+                      ? 'text-white bg-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] border border-white/15 backdrop-blur-md' 
+                      : 'text-content-muted hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <BookOpen className="w-4 h-4" />
+                    {language === 'pl' ? 'Inne ćwiczenia' : 'Other exercises'}
+                  </div>
+                </button>
               </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('other')}
-              className={`flex-1 py-4 px-6 rounded-xl text-base font-bold transition-all duration-500 ${
-                activeTab === 'other' 
-                  ? 'text-white bg-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_0_0_rgba(255,255,255,0.1)] border border-white/20 backdrop-blur-md' 
-                  : 'text-content-muted hover:text-white hover:bg-white/5 border border-transparent'
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <BookOpen className="w-5 h-5" />
-                {language === 'pl' ? 'Inne ćwiczenia' : 'Other exercises'}
-              </div>
-            </button>
-          </div>
 
-          {activeTab === 'ai' ? (
-            <div className="space-y-8 animate-fade-in-up">
-              {/* Removed the description and title as requested */}
-
-              <Card className="p-0 border border-primary/20 shadow-[0_0_20px_rgba(114,240,180,0.1)] bg-base-200/40 backdrop-blur-xl relative overflow-hidden flex flex-col">
-                <div className="p-6 border-b border-primary/10 bg-primary/5">
-                  <h3 className="text-xl font-bold flex items-center gap-3 text-primary">
-                    <BookOpen className="w-6 h-6" />
-                    {language === 'pl' ? 'Wybierz źródło słownictwa' : 'Select vocabulary source'}
-                  </h3>
-                </div>
-                
-                <div className="p-6 space-y-4">
-                  {/* Główny wybór opcji */}
-                  <div className="space-y-3">
-                    {/* Opcja 1: Lekcje */}
-                    <div className="border border-primary/20 rounded-xl overflow-hidden bg-base-200/50">
-                      <button 
-                        className={`w-full flex items-center justify-between p-4 transition-colors ${selectedSetId === 'lessons' || selectedLessonIds.length > 0 ? 'bg-primary/20' : 'hover:bg-primary/5'}`}
-                        onClick={() => {
-                          if (selectedSetId !== 'lessons') {
-                            setSelectedSetId('lessons');
-                            if (vocabularySets.length > 0 && selectedLessonIds.length === 0) {
-                              setSelectedLessonIds([vocabularySets[0].id]);
-                            }
-                          } else {
-                            setSelectedSetId('');
-                            setSelectedLessonIds([]);
-                          }
-                        }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${(selectedSetId === 'lessons' || selectedLessonIds.length > 0) ? 'border-primary bg-primary text-black' : 'border-primary/50'}`}>
-                            {(selectedSetId === 'lessons' || selectedLessonIds.length > 0) && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
-                          </div>
-                          <span className="font-bold text-lg">{language === 'pl' ? 'Moje lekcje' : 'My lessons'}</span>
-                        </div>
-                        <ChevronDown className={`w-5 h-5 transition-transform ${(selectedSetId === 'lessons' || selectedLessonIds.length > 0) ? 'rotate-180' : ''}`} />
-                      </button>
+              {/* Single Box Body content */}
+              <div className="p-6 sm:p-8">
+                {activeTab === 'ai' ? (
+                  <div className="space-y-6 animate-fade-in-up">
+                    {/* Section 1: Wybierz źródło słownictwa */}
+                    <div className="space-y-4">
+                      <h3 className="text-xl font-bold flex items-center gap-2.5 text-white/95 tracking-tight">
+                        <BookOpen className="w-5.5 h-5.5 text-primary" />
+                        {language === 'pl' ? 'Wybierz źródło słownictwa' : 'Select vocabulary source'}
+                      </h3>
                       
-                      {/* Rozwijana lista lekcji */}
-                      {(selectedSetId === 'lessons' || selectedLessonIds.length > 0) && (
-                        <div className="p-4 border-t border-primary/20 bg-base-100/30 space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar">
-                          {vocabularySets.length > 0 ? vocabularySets.map((set, index) => {
-                            const isSelected = selectedLessonIds.includes(set.id);
-                            const lessonNumber = vocabularySets.length - index;
-                            return (
-                              <label key={set.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isSelected ? 'bg-primary/20 border-primary/50' : 'bg-base-200/50 border-white/5 hover:border-primary/30'}`}>
-                                <input 
-                                  type="checkbox" 
-                                  checked={isSelected}
-                                  onChange={() => {
-                                    if (isSelected) {
-                                      setSelectedLessonIds(prev => prev.filter(id => id !== set.id));
-                                    } else {
-                                      setSelectedLessonIds(prev => [...prev, set.id]);
-                                    }
-                                  }}
-                                  className="w-4 h-4 text-primary focus:ring-primary rounded border-white/20 bg-black/30"
-                                />
-                                <div className="flex flex-col">
-                                  <span className={isSelected ? 'text-white font-medium' : 'text-content-muted'}>
-                                    <span className="text-xs font-mono opacity-70 mr-2">L{lessonNumber}</span>
-                                    {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
-                                  </span>
-                                </div>
-                              </label>
-                            );
-                          }) : (
-                            <div className="text-center text-sm text-content-muted p-4">
-                              {language === 'pl' ? 'Brak dostępnych lekcji' : 'No lessons available'}
+                      <div className="space-y-2.5">
+                        {/* Opcja 1: Lekcje */}
+                        <div className={`border rounded-xl overflow-hidden transition-all duration-300 ${
+                          selectedSetId === 'lessons' || selectedLessonIds.length > 0 
+                            ? 'border-primary/30 bg-primary/[0.03] shadow-[0_4px_20px_rgba(114,240,180,0.05)]' 
+                            : 'border-white/5 bg-base-200/20 hover:bg-base-200/40 hover:border-white/10'
+                        }`}>
+                          <button 
+                            className="w-full flex items-center justify-between p-3.5 transition-colors"
+                            onClick={() => {
+                              if (selectedSetId !== 'lessons') {
+                                setSelectedSetId('lessons');
+                                if (vocabularySets.length > 0 && selectedLessonIds.length === 0) {
+                                  setSelectedLessonIds([vocabularySets[0].id]);
+                                }
+                              } else {
+                                setSelectedSetId('');
+                                setSelectedLessonIds([]);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                                (selectedSetId === 'lessons' || selectedLessonIds.length > 0) 
+                                  ? 'border-primary bg-primary text-black' 
+                                  : 'border-white/30'
+                              }`}>
+                                {(selectedSetId === 'lessons' || selectedLessonIds.length > 0) && <div className="w-1.5 h-1.5 bg-black rounded-full" />}
+                              </div>
+                              <BookOpen className="w-4 h-4 text-primary shrink-0" />
+                              <span className="font-semibold text-sm text-white/95">{language === 'pl' ? 'Moje lekcje' : 'My lessons'}</span>
                             </div>
-                          )}
+                            <ChevronDown className={`w-4 h-4 text-content-muted transition-transform duration-300 ${
+                              (selectedSetId === 'lessons' || selectedLessonIds.length > 0) ? 'rotate-180 text-primary' : ''
+                            }`} />
+                          </button>
+                          
+                          {/* Rozwijana lista lekcji z animacją */}
+                          <AnimatePresence initial={false}>
+                            {(selectedSetId === 'lessons' || selectedLessonIds.length > 0) && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.25, ease: 'easeInOut' }}
+                                className="overflow-hidden"
+                              >
+                                <div className="p-3.5 border-t border-white/5 bg-black/15 space-y-2 max-h-[220px] overflow-y-auto custom-scrollbar">
+                                  {vocabularySets.length > 0 ? vocabularySets.map((set, index) => {
+                                    const isSelected = selectedLessonIds.includes(set.id);
+                                    const lessonNumber = vocabularySets.length - index;
+                                    return (
+                                      <motion.label 
+                                        initial={{ opacity: 0, x: -8 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ duration: 0.2, delay: index * 0.03 }}
+                                        key={set.id} 
+                                        className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                                          isSelected 
+                                            ? 'bg-primary/10 border-primary/30 text-white shadow-[0_2px_10px_rgba(114,240,180,0.03)]' 
+                                            : 'bg-base-200/30 border-white/5 hover:border-white/10 hover:bg-base-200/50'
+                                        }`}
+                                      >
+                                        <input 
+                                          type="checkbox" 
+                                          checked={isSelected}
+                                          onChange={() => {
+                                            if (isSelected) {
+                                              setSelectedLessonIds(prev => prev.filter(id => id !== set.id));
+                                            } else {
+                                              setSelectedLessonIds(prev => [...prev, set.id]);
+                                            }
+                                          }}
+                                          className="w-3.5 h-3.5 text-primary focus:ring-primary rounded border-white/20 bg-black/30"
+                                        />
+                                        <div className="flex flex-col">
+                                          <span className="text-xs font-semibold leading-none flex items-center">
+                                            <span className="text-[9px] font-mono bg-white/5 px-1.5 py-0.5 rounded text-primary/80 mr-2 border border-white/5">L{lessonNumber}</span>
+                                            <span className={isSelected ? 'text-white' : 'text-content-muted hover:text-white/90 transition-colors'}>
+                                              {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
+                                            </span>
+                                          </span>
+                                        </div>
+                                      </motion.label>
+                                    );
+                                  }) : (
+                                    <div className="text-center text-xs text-content-muted py-4">
+                                      {language === 'pl' ? 'Brak dostępnych lekcji' : 'No lessons available'}
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        {/* Opcja 2: Wszystkie moje słówka */}
+                        <button 
+                          className={`w-full flex items-center justify-between p-3.5 rounded-xl border transition-all duration-300 ${
+                            selectedSetId === 'all' && selectedLessonIds.length === 0 
+                              ? 'bg-primary/[0.03] border-primary/30 shadow-[0_4px_20px_rgba(114,240,180,0.05)]' 
+                              : 'bg-base-200/20 border-white/5 hover:bg-base-200/40 hover:border-white/10'
+                          }`}
+                          onClick={() => { setSelectedSetId('all'); setSelectedLessonIds([]); }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                              (selectedSetId === 'all' && selectedLessonIds.length === 0) 
+                                ? 'border-primary bg-primary text-black' 
+                                : 'border-white/30'
+                            }`}>
+                              {(selectedSetId === 'all' && selectedLessonIds.length === 0) && <div className="w-1.5 h-1.5 bg-black rounded-full" />}
+                            </div>
+                            <Layers className="w-4 h-4 text-primary shrink-0" />
+                            <span className="font-semibold text-sm text-white/95">{language === 'pl' ? 'Wszystkie moje słówka (Mix)' : 'All my vocabulary (Mix)'}</span>
+                          </div>
+                        </button>
+
+                        {/* Opcja 3: Losowe zdania */}
+                        <button 
+                          className={`w-full flex items-center justify-between p-3.5 rounded-xl border transition-all duration-300 ${
+                            selectedSetId === 'random' && selectedLessonIds.length === 0 
+                              ? 'bg-primary/[0.03] border-primary/30 shadow-[0_4px_20px_rgba(114,240,180,0.05)]' 
+                              : 'bg-base-200/20 border-white/5 hover:bg-base-200/40 hover:border-white/10'
+                          }`}
+                          onClick={() => { setSelectedSetId('random'); setSelectedLessonIds([]); }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                              (selectedSetId === 'random' && selectedLessonIds.length === 0) 
+                                ? 'border-primary bg-primary text-black' 
+                                : 'border-white/30'
+                            }`}>
+                              {(selectedSetId === 'random' && selectedLessonIds.length === 0) && <div className="w-1.5 h-1.5 bg-black rounded-full" />}
+                            </div>
+                            <Shuffle className="w-4 h-4 text-primary shrink-0" />
+                            <span className="font-semibold text-sm text-white/95">{language === 'pl' ? 'Losowe zdania' : 'Random sentences'}</span>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Elegant Divider */}
+                    <div className="border-t border-white/5 my-5" />
+
+                    {/* Section 2: Ustawienia ćwiczenia */}
+                    <div className="space-y-5">
+                      <h3 className="text-xl font-bold flex items-center gap-2.5 text-white/95 tracking-tight">
+                        <Settings className="w-5.5 h-5.5 text-primary" />
+                        {language === 'pl' ? 'Ustawienia ćwiczenia' : 'Exercise settings'}
+                      </h3>
+
+                      {/* Typ tłumaczenia (Klawiatura czy Układanka) */}
+                      <div>
+                        <label className="block text-xs font-bold text-content-muted uppercase tracking-wider mb-2.5">
+                          {language === 'pl' ? 'Sposób rozwiązywania' : 'Solving method'}
+                        </label>
+                        <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 shadow-inner">
+                          <button
+                            onClick={() => setExerciseFormat('typing')}
+                            className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
+                              exerciseFormat === 'typing' 
+                                ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
+                                : 'text-content-muted hover:text-white'
+                            }`}
+                          >
+                            <Keyboard className="w-4 h-4" />
+                            {language === 'pl' ? 'Wpisywanie klawiaturą' : 'Keyboard typing'}
+                          </button>
+                          <button
+                            onClick={() => setExerciseFormat('puzzle')}
+                            className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
+                              exerciseFormat === 'puzzle' 
+                                ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
+                                : 'text-content-muted hover:text-white'
+                            }`}
+                          >
+                            <Puzzle className="w-4 h-4" />
+                            {language === 'pl' ? 'Układanka ze słów' : 'Word puzzle'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Tryb nauki */}
+                      <div>
+                        <label className="block text-xs font-bold text-content-muted uppercase tracking-wider mb-2.5">
+                          {language === 'pl' ? 'Tryb nauki' : 'Practice mode'}
+                        </label>
+                        <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 shadow-inner">
+                          <button
+                            onClick={() => setPracticeMode('fixed')}
+                            className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
+                              practiceMode === 'fixed' 
+                                ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
+                                : 'text-content-muted hover:text-white'
+                            }`}
+                          >
+                            <Target className="w-4 h-4" />
+                            {language === 'pl' ? 'Na ilość zdań' : 'Fixed quantity'}
+                          </button>
+                          <button
+                            onClick={() => setPracticeMode('time')}
+                            className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
+                              practiceMode === 'time' 
+                                ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
+                                : 'text-content-muted hover:text-white'
+                            }`}
+                          >
+                            <Clock className="w-4 h-4" />
+                            {language === 'pl' ? 'Na czas (Wyzwanie)' : 'Time challenge'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {practiceMode === 'fixed' && (
+                        <div className="relative pt-2">
+                          <label className="flex items-center justify-between text-xs font-bold text-content-muted uppercase tracking-wider mb-6">
+                            <span>{language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}</span>
+                            <div className="absolute right-0 -top-1">
+                              <span ref={numSentencesRef} className="text-primary text-2xl font-black drop-shadow-[0_0_12px_rgba(114,240,180,0.4)] inline-block min-w-[2rem] text-center">
+                                {numSentences}
+                              </span>
+                            </div>
+                          </label>
+                          <div className="relative pb-2 px-1">
+                            <input
+                              type="range"
+                              min="1"
+                              max="20"
+                              step="1"
+                              value={numSentences}
+                              onChange={(e) => {
+                                setNumSentences(parseInt(e.target.value));
+                                playSliderSound();
+                              }}
+                              className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            />
+                            <div className="flex justify-between text-[10px] text-content-muted mt-2 font-mono">
+                              <span>1</span>
+                              <span>20</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {practiceMode === 'time' && (
+                        <div className="relative pt-2">
+                          <label className="flex items-center justify-between text-xs font-bold text-content-muted uppercase tracking-wider mb-6">
+                            <span>{language === 'pl' ? 'Czas na rozwiązanie (minuty)' : 'Time to solve (minutes)'}</span>
+                            <div className="absolute right-0 -top-1">
+                              <span ref={timeLimitRef} className="text-primary text-2xl font-black drop-shadow-[0_0_12px_rgba(114,240,180,0.4)] inline-block min-w-[2rem] text-center">
+                                {timeLimit}
+                              </span>
+                            </div>
+                          </label>
+                          <div className="relative pb-2 px-1">
+                            <input
+                              type="range"
+                              min="1"
+                              max="20"
+                              step="1"
+                              value={timeLimit}
+                              onChange={(e) => {
+                                setTimeLimit(parseInt(e.target.value));
+                                playSliderSound();
+                              }}
+                              className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            />
+                            <div className="flex justify-between text-[10px] text-content-muted mt-2 font-mono">
+                              <span>1 min</span>
+                              <span>20 min</span>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Opcja 2: Wszystkie moje słówka */}
-                    <button 
-                      className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'bg-primary/20 border-primary shadow-[0_0_15px_rgba(114,240,180,0.15)] ring-1 ring-primary/50' : 'bg-base-200/50 border-primary/20 hover:bg-primary/5'}`}
-                      onClick={() => { setSelectedSetId('all'); setSelectedLessonIds([]); }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${(selectedSetId === 'all' && selectedLessonIds.length === 0) ? 'border-primary bg-primary text-black' : 'border-primary/50'}`}>
-                          {(selectedSetId === 'all' && selectedLessonIds.length === 0) && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
-                        </div>
-                        <span className="font-bold text-lg">{language === 'pl' ? 'Wszystkie moje słówka (Mix)' : 'All my vocabulary (Mix)'}</span>
-                      </div>
-                    </button>
+                    {/* Elegant Divider */}
+                    <div className="border-t border-white/5 my-5" />
 
-                    {/* Opcja 3: Losowe zdania */}
-                    <button 
-                      className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${selectedSetId === 'random' && selectedLessonIds.length === 0 ? 'bg-primary/20 border-primary shadow-[0_0_15px_rgba(114,240,180,0.15)] ring-1 ring-primary/50' : 'bg-base-200/50 border-primary/20 hover:bg-primary/5'}`}
-                      onClick={() => { setSelectedSetId('random'); setSelectedLessonIds([]); }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${(selectedSetId === 'random' && selectedLessonIds.length === 0) ? 'border-primary bg-primary text-black' : 'border-primary/50'}`}>
-                          {(selectedSetId === 'random' && selectedLessonIds.length === 0) && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
-                        </div>
-                        <span className="font-bold text-lg">{language === 'pl' ? 'Losowe zdania' : 'Random sentences'}</span>
-                      </div>
-                    </button>
+                    {/* Section 3: Generate Button with strong pulsar animation */}
+                    <div className="pt-2 flex justify-center">
+                      <AILoadingButton 
+                        onClick={() => handleGenerate(false)} 
+                        isLoading={isLoading}
+                        loadingText={language === 'pl' ? 'AI przygotowuje ćwiczenie...' : 'AI is preparing the exercise...'}
+                        className="w-full max-w-md py-4 px-6 text-sm md:text-base font-bold bg-primary text-black hover:bg-primary/95 border border-primary/20 rounded-xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] animate-pulsar-strong"
+                      >
+                        <Sparkles className="w-5 h-5 mr-2 animate-pulse" />
+                        {language === 'pl' ? 'Wygeneruj zadanie' : 'Generate exercise'}
+                      </AILoadingButton>
+                    </div>
                   </div>
-                </div>
-              </Card>
-
-              {/* Parametry ćwiczenia: Tryb, Suwak itp. */}
-              <Card className="p-6 border border-primary/20 shadow-[0_0_20px_rgba(114,240,180,0.1)] bg-base-200/40 backdrop-blur-xl relative overflow-hidden">
-                <h3 className="text-xl font-bold mb-6 flex items-center gap-3 text-primary">
-                  <Settings className="w-6 h-6" />
-                  {language === 'pl' ? 'Ustawienia ćwiczenia' : 'Exercise settings'}
-                </h3>
-
-                {/* Typ tłumaczenia (Klawiatura czy Układanka) */}
-                <div className="mb-8">
-                  <label className="block text-sm font-bold text-content-muted uppercase tracking-wider mb-4">
-                    {language === 'pl' ? 'Sposób rozwiązywania' : 'Solving method'}
-                  </label>
-                  <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 shadow-inner">
-                    <button
-                      onClick={() => setExerciseFormat('typing')}
-                      className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
-                        exerciseFormat === 'typing' 
-                          ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                          : 'text-content-muted hover:text-white'
-                      }`}
+                ) : (
+                  /* Other Exercises Tab in the same unified long box layout */
+                  <div className="space-y-4 animate-fade-in-up">
+                    <div 
+                      className="cursor-pointer border border-white/5 hover:border-primary/40 transition-all duration-300 p-4.5 rounded-2xl bg-base-200/20 backdrop-blur-md group flex items-start gap-4"
+                      onClick={() => onStartPractice?.('intro')}
                     >
-                      <Keyboard className="w-4 h-4" />
-                      {language === 'pl' ? 'Wpisywanie klawiaturą' : 'Keyboard typing'}
-                    </button>
-                    <button
-                      onClick={() => setExerciseFormat('puzzle')}
-                      className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
-                        exerciseFormat === 'puzzle' 
-                          ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                          : 'text-content-muted hover:text-white'
-                      }`}
-                    >
-                      <Puzzle className="w-4 h-4" />
-                      {language === 'pl' ? 'Układanka ze słów' : 'Word puzzle'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mb-8">
-                  <label className="block text-sm font-bold text-content-muted uppercase tracking-wider mb-4">
-                    {language === 'pl' ? 'Tryb nauki' : 'Practice mode'}
-                  </label>
-                  <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 shadow-inner">
-                    <button
-                      onClick={() => setPracticeMode('fixed')}
-                      className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
-                        practiceMode === 'fixed' 
-                          ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                          : 'text-content-muted hover:text-white'
-                      }`}
-                    >
-                      <Target className="w-4 h-4" />
-                      {language === 'pl' ? 'Na ilość zdań' : 'Fixed quantity'}
-                    </button>
-                    <button
-                      onClick={() => setPracticeMode('time')}
-                      className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
-                        practiceMode === 'time' 
-                          ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                          : 'text-content-muted hover:text-white'
-                      }`}
-                    >
-                      <Clock className="w-4 h-4" />
-                      {language === 'pl' ? 'Na czas (Wyzwanie)' : 'Time challenge'}
-                    </button>
-                  </div>
-                </div>
-
-                {practiceMode === 'fixed' && (
-                  <div className="mb-6 relative">
-                    <label className="flex items-center justify-between text-sm font-bold text-content-muted uppercase tracking-wider mb-8">
-                      <span>{language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}</span>
-                      <div className="absolute right-0 -top-2">
-                        <span ref={numSentencesRef} className="text-primary text-3xl font-black drop-shadow-[0_0_15px_rgba(114,240,180,0.5)] inline-block min-w-[2rem] text-center">
-                          {numSentences}
-                        </span>
+                      <div className="text-3xl shrink-0 transform group-hover:scale-110 transition-transform">👀</div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors">
+                          {language === 'pl' ? 'Fiszki Intro' : 'Flashcards Intro'}
+                        </h4>
+                        <p className="text-content-muted text-xs mt-1 leading-relaxed">
+                          {language === 'pl' ? 'Zapoznaj się powoli z nowym materiałem, bez sprawdzania i wyników.' : 'Familiarize yourself gently with new material, without testing or scoring.'}
+                        </p>
                       </div>
-                    </label>
-                    <div className="relative pt-4 pb-2 px-2">
-                      <input
-                        type="range"
-                        min="1"
-                        max="20"
-                        step="1"
-                        value={numSentences}
-                        onChange={(e) => {
-                          setNumSentences(parseInt(e.target.value));
-                          playTickSound();
-                        }}
-                        className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      />
-                      <div className="flex justify-between text-xs text-content-muted mt-3 font-mono">
-                        <span>1</span>
-                        <span>20</span>
+                    </div>
+                    
+                    <div 
+                      className="cursor-pointer border border-white/5 hover:border-primary/40 transition-all duration-300 p-4.5 rounded-2xl bg-base-200/20 backdrop-blur-md group flex items-start gap-4"
+                      onClick={() => onStartPractice?.('flashcards')}
+                    >
+                      <div className="text-3xl shrink-0 transform group-hover:scale-110 transition-transform">🗂️</div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors">
+                          {language === 'pl' ? 'Fiszki' : 'Flashcards'}
+                        </h4>
+                        <p className="text-content-muted text-xs mt-1 leading-relaxed">
+                          {language === 'pl' ? 'Przeglądaj pojęcia i definicje. Odwracaj karty, aby sprawdzić swoją wiedzę.' : 'Review terms and definitions. Flip cards to test your knowledge.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div 
+                      className="cursor-pointer border border-white/5 hover:border-primary/40 transition-all duration-300 p-4.5 rounded-2xl bg-base-200/20 backdrop-blur-md group flex items-start gap-4"
+                      onClick={() => onStartPractice?.('quiz')}
+                    >
+                      <div className="text-3xl shrink-0 transform group-hover:scale-110 transition-transform">📝</div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors">
+                          {language === 'pl' ? 'Quiz' : 'Quiz'}
+                        </h4>
+                        <p className="text-content-muted text-xs mt-1 leading-relaxed">
+                          {language === 'pl' ? 'Szybki test wielokrotnego wyboru. Sprawdź, ile pamiętasz.' : 'Quick multiple choice test. See how much you remember.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div 
+                      className="cursor-pointer border border-white/5 hover:border-primary/40 transition-all duration-300 p-4.5 rounded-2xl bg-base-200/20 backdrop-blur-md group flex items-start gap-4"
+                      onClick={() => onStartPractice?.('match')}
+                    >
+                      <div className="text-3xl shrink-0 transform group-hover:scale-110 transition-transform">🧩</div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors">
+                          {language === 'pl' ? 'Dopasowania' : 'Match'}
+                        </h4>
+                        <p className="text-content-muted text-xs mt-1 leading-relaxed">
+                          {language === 'pl' ? 'Połącz słowo z jego definicją lub tłumaczeniem.' : 'Connect a word with its definition or translation.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div 
+                      className="cursor-pointer border border-white/5 hover:border-primary/40 transition-all duration-300 p-4.5 rounded-2xl bg-base-200/20 backdrop-blur-md group flex items-start gap-4"
+                      onClick={() => onStartPractice?.('fill-in-the-blank')}
+                    >
+                      <div className="text-3xl shrink-0 transform group-hover:scale-110 transition-transform">✍️</div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors">
+                          {language === 'pl' ? 'Pisanie (Wypełnianie luk)' : 'Writing (Fill in the blank)'}
+                        </h4>
+                        <p className="text-content-muted text-xs mt-1 leading-relaxed">
+                          {language === 'pl' ? 'Wpisz brakujące słowo w zdaniu z kontekstem. Świetne do nauki pisowni.' : 'Type the missing word in a contextual sentence. Great for spelling.'}
+                        </p>
                       </div>
                     </div>
                   </div>
                 )}
-                
-                {practiceMode === 'time' && (
-                  <div className="mb-6 relative">
-                    <label className="flex items-center justify-between text-sm font-bold text-content-muted uppercase tracking-wider mb-8">
-                      <span>{language === 'pl' ? 'Czas na rozwiązanie (minuty)' : 'Time to solve (minutes)'}</span>
-                      <div className="absolute right-0 -top-2">
-                        <span ref={timeLimitRef} className="text-primary text-3xl font-black drop-shadow-[0_0_15px_rgba(114,240,180,0.5)] inline-block min-w-[2rem] text-center">
-                          {timeLimit}
-                        </span>
-                      </div>
-                    </label>
-                    <div className="relative pt-4 pb-2 px-2">
-                      <input
-                        type="range"
-                        min="1"
-                        max="20"
-                        step="1"
-                        value={timeLimit}
-                        onChange={(e) => {
-                          setTimeLimit(parseInt(e.target.value));
-                          playTickSound();
-                        }}
-                        className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      />
-                      <div className="flex justify-between text-xs text-content-muted mt-3 font-mono">
-                        <span>1 min</span>
-                        <span>20 min</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </Card>
-
-              <div className="pt-4">
-                <AILoadingButton 
-                  onClick={() => handleGenerate(false)} 
-                  isLoading={isLoading}
-                  loadingText={language === 'pl' ? 'AI przygotowuje ćwiczenie...' : 'AI is preparing the exercise...'}
-                  className="w-full py-5 text-xl font-black bg-primary text-black hover:bg-primary/90 shadow-[0_0_40px_rgba(114,240,180,0.3)] transition-all hover:scale-[1.02] rounded-2xl"
-                >
-                  <Sparkles className="w-6 h-6 mr-2" />
-                  {language === 'pl' ? 'Wygeneruj zadanie' : 'Generate exercise'}
-                </AILoadingButton>
               </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 animate-fade-in-up">
-              <Card 
-                className="cursor-pointer border-white/5 hover:border-primary/50 transition-all hover:-translate-y-1 bg-base-200/50 backdrop-blur-xl group"
-                onClick={() => onStartPractice?.('intro')}
-              >
-                <div className="text-5xl mb-6 transform group-hover:scale-110 transition-transform">👀</div>
-                <h3 className="text-2xl font-bold mb-3 group-hover:text-primary transition-colors">
-                  {language === 'pl' ? 'Fiszki Intro' : 'Flashcards Intro'}
-                </h3>
-                <p className="text-content-muted text-base leading-relaxed">
-                  {language === 'pl' ? 'Zapoznaj się powoli z nowym materiałem, bez sprawdzania i wyników.' : 'Familiarize yourself gently with new material, without testing or scoring.'}
-                </p>
-              </Card>
-              <Card 
-                className="cursor-pointer border-white/5 hover:border-primary/50 transition-all hover:-translate-y-1 bg-base-200/50 backdrop-blur-xl group"
-                onClick={() => onStartPractice?.('flashcards')}
-              >
-                <div className="text-5xl mb-6 transform group-hover:scale-110 transition-transform">🗂️</div>
-                <h3 className="text-2xl font-bold mb-3 group-hover:text-primary transition-colors">
-                  {language === 'pl' ? 'Fiszki' : 'Flashcards'}
-                </h3>
-                <p className="text-content-muted text-base leading-relaxed">
-                  {language === 'pl' ? 'Przeglądaj pojęcia i definicje. Odwracaj karty, aby sprawdzić swoją wiedzę.' : 'Review terms and definitions. Flip cards to test your knowledge.'}
-                </p>
-              </Card>
-              <Card 
-                className="cursor-pointer border-white/5 hover:border-primary/50 transition-all hover:-translate-y-1 bg-base-200/50 backdrop-blur-xl group"
-                onClick={() => onStartPractice?.('quiz')}
-              >
-                <div className="text-5xl mb-6 transform group-hover:scale-110 transition-transform">📝</div>
-                <h3 className="text-2xl font-bold mb-3 group-hover:text-primary transition-colors">
-                  {language === 'pl' ? 'Quiz' : 'Quiz'}
-                </h3>
-                <p className="text-content-muted text-base leading-relaxed">
-                  {language === 'pl' ? 'Szybki test wielokrotnego wyboru. Sprawdź, ile pamiętasz.' : 'Quick multiple choice test. See how much you remember.'}
-                </p>
-              </Card>
-              <Card 
-                className="cursor-pointer border-white/5 hover:border-primary/50 transition-all hover:-translate-y-1 bg-base-200/50 backdrop-blur-xl group"
-                onClick={() => onStartPractice?.('match')}
-              >
-                <div className="text-5xl mb-6 transform group-hover:scale-110 transition-transform">🧩</div>
-                <h3 className="text-2xl font-bold mb-3 group-hover:text-primary transition-colors">
-                  {language === 'pl' ? 'Dopasowania' : 'Match'}
-                </h3>
-                <p className="text-content-muted text-base leading-relaxed">
-                  {language === 'pl' ? 'Połącz słowo z jego definicją lub tłumaczeniem.' : 'Connect a word with its definition or translation.'}
-                </p>
-              </Card>
-              <Card 
-                className="cursor-pointer border-white/5 hover:border-primary/50 transition-all hover:-translate-y-1 bg-base-200/50 backdrop-blur-xl group md:col-span-2"
-                onClick={() => onStartPractice?.('fill-in-the-blank')}
-              >
-                <div className="text-5xl mb-6 transform group-hover:scale-110 transition-transform">✍️</div>
-                <h3 className="text-2xl font-bold mb-3 group-hover:text-primary transition-colors">
-                  {language === 'pl' ? 'Pisanie (Wypełnianie luk)' : 'Writing (Fill in the blank)'}
-                </h3>
-                <p className="text-content-muted text-base leading-relaxed">
-                  {language === 'pl' ? 'Wpisz brakujące słowo w zdaniu z kontekstem. Świetne do nauki pisowni.' : 'Type the missing word in a contextual sentence. Great for spelling.'}
-                </p>
-              </Card>
-            </div>
-          )}
-        </div>
+            </Card>
+          </div>
+        )
       )}
       {step === 'practice' && exercises.length > 0 && (
-        <div className="max-w-3xl mx-auto space-y-6">
+        <div className="max-w-2xl mx-auto space-y-4">
           {/* Progress header */}
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-xs">
             <span className="font-mono text-content-muted">
               {language === 'pl' ? 'Postęp:' : 'Progress:'} {activeSentenceIndex + 1} {practiceMode === 'fixed' ? `/ ${exercises.length}` : ''}
             </span>
             {practiceMode === 'time' && timeLeft !== null && (
-              <div className={`font-mono text-lg font-bold flex items-center gap-2 ${timeLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-primary'}`}>
-                <Clock className="w-5 h-5" />
+              <div className={`font-mono text-base font-bold flex items-center gap-1.5 ${timeLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-primary'}`}>
+                <Clock className="w-4 h-4" />
                 {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
               </div>
             )}
             {practiceMode === 'fixed' && (
-              <div className="flex gap-1 h-2 bg-black/30 rounded-full w-48 overflow-hidden">
+              <div className="flex gap-1 h-1.5 bg-black/30 rounded-full w-40 overflow-hidden">
               {exercises.map((_, idx) => (
                 <div 
                   key={idx}
@@ -1140,31 +1377,31 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
             <AnimatePresence>
               {activeSentenceIndex > 0 && activeSentenceIndex % 3 === 0 && studentAnswers[activeSentenceIndex - 1]?.trim() && (
                 <motion.div 
-                  initial={{ opacity: 0, x: 20, y: -20, scale: 0.8 }}
+                  initial={{ opacity: 0, x: 15, y: -15, scale: 0.85 }}
                   animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="absolute -right-4 -top-12 md:-right-12 md:-top-16 z-20"
+                  exit={{ opacity: 0, scale: 0.85 }}
+                  className="absolute -right-2 -top-10 md:-right-8 md:-top-12 z-20"
                 >
-                  <div className="bg-primary text-black px-4 py-2 rounded-2xl rounded-bl-none shadow-lg font-bold text-sm flex items-center gap-2">
-                    <Sparkles className="w-4 h-4" />
+                  <div className="bg-primary text-black px-3.5 py-1.5 rounded-2xl rounded-bl-none shadow-md font-bold text-xs flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" />
                     {language === 'pl' ? 'Świetnie Ci idzie! Oby tak dalej!' : 'Great job! Keep it up!'}
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
-            <Card className="p-6 md:p-8 space-y-6 border border-white/5 shadow-xl relative overflow-hidden">
+            <Card ref={practiceCardRef} className="p-5 md:p-6 space-y-4 border border-white/10 bg-base-200/50 backdrop-blur-xl shadow-lg relative overflow-hidden rounded-2xl">
               {/* Background design accents */}
-              <div className="absolute top-0 right-0 p-8 opacity-[0.02] pointer-events-none select-none">
-                <Sparkles className="w-64 h-64 text-primary" />
+              <div className="absolute top-0 right-0 p-6 opacity-[0.02] pointer-events-none select-none">
+                <Sparkles className="w-48 h-48 text-primary" />
               </div>
 
-            <div className="space-y-4 relative z-10">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 text-primary rounded-full text-xs font-mono font-bold">
+            <div className="space-y-3 relative z-10">
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-mono font-bold">
                 Zdanie {activeSentenceIndex + 1}
               </div>
 
               {/* Polish Sentence */}
-              <div className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-relaxed">
+              <div className="text-base sm:text-lg font-bold text-white tracking-tight leading-relaxed">
                 {exercises[activeSentenceIndex].polishSentence}
               </div>
 
@@ -1182,64 +1419,64 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                       : (language === 'pl' ? 'Pokaż wskazówkę' : 'Show hint')}
                   </button>
                   {showHints[activeSentenceIndex] && (
-                    <div className="mt-2 bg-amber-500/[0.04] border border-amber-500/20 rounded-lg p-3 text-xs text-amber-400 animate-fade-in-up">
+                    <div className="mt-1.5 bg-amber-500/[0.04] border border-amber-500/15 rounded-xl p-3 text-xs text-amber-400 animate-fade-in-up">
                       {exercises[activeSentenceIndex].hint}
                     </div>
                   )}
                 </div>
               )}
 
-                            {/* Student answer field */}
-              <div className="space-y-1.5 mt-6 pt-4 border-t border-base-300">
-                <label className="block text-xs font-bold text-content-muted">
+              {/* Student answer field */}
+              <div className="space-y-1 mt-4 pt-3.5 border-t border-white/5">
+                <label className="block text-xs font-semibold text-content-muted/80 mb-1">
                   {language === 'pl' ? 'Twoje tłumaczenie na angielski:' : 'Your translation to English:'}
                 </label>
                 
                 {evaluationStatuses[activeSentenceIndex] === 'evaluated' && singleEvaluationResults[activeSentenceIndex] ? (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <div 
-                      className="w-full bg-black/30 border border-white/5 shadow-inner rounded-xl p-4 text-base"
+                      className="w-full bg-black/30 border border-white/5 shadow-inner rounded-xl p-3.5 text-sm"
                       dangerouslySetInnerHTML={{ __html: singleEvaluationResults[activeSentenceIndex].highlightedAnswer || singleEvaluationResults[activeSentenceIndex].studentAnswer }}
                     />
                     
-                    <div className={`p-4 rounded-xl border ${singleEvaluationResults[activeSentenceIndex].isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
-                       <div className="font-bold flex items-center gap-2 mb-4">
+                    <div className={`p-3.5 rounded-xl border ${singleEvaluationResults[activeSentenceIndex].isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                       <div className="font-bold flex items-center gap-2 mb-3 text-sm">
                          {singleEvaluationResults[activeSentenceIndex].isCorrect ? '✅ Poprawnie!' : '❌ Błędy w tłumaczeniu'}
                        </div>
                        
-                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-base-100/50 rounded-lg mb-4 border border-white/5">
-                         <div className="font-medium text-primary/90">
+                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 bg-base-100/50 rounded-lg mb-3 border border-white/5">
+                         <div className="font-medium text-primary/90 text-sm">
                            {singleEvaluationResults[activeSentenceIndex].correctTranslation}
                          </div>
-                         <div className="flex items-center gap-2 shrink-0 bg-black/30 p-1.5 rounded-md">
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-US')} className={`text-xl hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇺🇸 Amerykański" disabled={isPlayingAudio}>🇺🇸</button>
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-GB')} className={`text-xl hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇬🇧 Brytyjski" disabled={isPlayingAudio}>🇬🇧</button>
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-AU')} className={`text-xl hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇦🇺 Australijski" disabled={isPlayingAudio}>🇦🇺</button>
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-SCT')} className={`text-xl hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🏴󠁧󠁢󠁳󠁣󠁴󠁿 Szkocki" disabled={isPlayingAudio}>🏴󠁧󠁢󠁳󠁣󠁴󠁿</button>
+                         <div className="flex items-center gap-1.5 shrink-0 bg-black/30 p-1 rounded-md">
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-US')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇺🇸 Amerykański" disabled={isPlayingAudio}>🇺🇸</button>
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-GB')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇬🇧 Brytyjski" disabled={isPlayingAudio}>🇬🇧</button>
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-AU')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇦🇺 Australijski" disabled={isPlayingAudio}>🇦🇺</button>
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-SCT')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🏴󠁧󠁢󠁳󠁣󠁴󠁿 Szkocki" disabled={isPlayingAudio}>🏴󠁧󠁢󠁳󠁣󠁴󠁿</button>
                          </div>
                        </div>
 
-                       <div className="space-y-4 mt-2 text-sm">
+                       <div className="space-y-3 mt-1 text-xs">
                          {singleEvaluationResults[activeSentenceIndex].feedbackSyntax && (
                            <div>
-                             <span className="font-bold text-content-muted text-xs uppercase tracking-wider">{language === 'pl' ? 'Szyk i gramatyka' : 'Syntax & Grammar'}</span>
-                             <p className="mt-1 opacity-90">{singleEvaluationResults[activeSentenceIndex].feedbackSyntax}</p>
+                             <span className="font-bold text-content-muted text-[10px] uppercase tracking-wider">{language === 'pl' ? 'Szyk i gramatyka' : 'Syntax & Grammar'}</span>
+                             <p className="mt-0.5 opacity-90 leading-relaxed">{singleEvaluationResults[activeSentenceIndex].feedbackSyntax}</p>
                            </div>
                          )}
                          {singleEvaluationResults[activeSentenceIndex].feedbackVocab && (
                            <div>
-                             <span className="font-bold text-content-muted text-xs uppercase tracking-wider">{language === 'pl' ? 'Słownictwo i naturalność' : 'Vocabulary & Naturalness'}</span>
-                             <p className="mt-1 opacity-90">{singleEvaluationResults[activeSentenceIndex].feedbackVocab}</p>
+                             <span className="font-bold text-content-muted text-[10px] uppercase tracking-wider">{language === 'pl' ? 'Słownictwo i naturalność' : 'Vocabulary & Naturalness'}</span>
+                             <p className="mt-0.5 opacity-90 leading-relaxed">{singleEvaluationResults[activeSentenceIndex].feedbackVocab}</p>
                            </div>
                          )}
                          {singleEvaluationResults[activeSentenceIndex].feedbackRule && (
-                           <div className="bg-amber-500/10 p-3 rounded-lg border border-amber-500/20">
-                             <span className="font-bold text-amber-500/90 text-xs uppercase tracking-wider">{language === 'pl' ? 'Złota zasada' : 'Golden Rule'}</span>
-                             <p className="mt-1 opacity-90">{singleEvaluationResults[activeSentenceIndex].feedbackRule}</p>
+                           <div className="bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
+                             <span className="font-bold text-amber-500/90 text-[10px] uppercase tracking-wider">{language === 'pl' ? 'Złota zasada' : 'Golden Rule'}</span>
+                             <p className="mt-0.5 opacity-90 leading-relaxed">{singleEvaluationResults[activeSentenceIndex].feedbackRule}</p>
                            </div>
                          )}
                          {(!singleEvaluationResults[activeSentenceIndex].feedbackSyntax && !singleEvaluationResults[activeSentenceIndex].feedbackVocab) && (
-                           <p className="whitespace-pre-wrap opacity-90">{singleEvaluationResults[activeSentenceIndex].explanation}</p>
+                           <p className="whitespace-pre-wrap opacity-90 leading-relaxed text-xs">{singleEvaluationResults[activeSentenceIndex].explanation}</p>
                          )}
                        </div>
                     </div>
@@ -1251,16 +1488,34 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                     sentence={exercises[activeSentenceIndex].englishTranslation}
                     level={level}
                     currentAnswer={studentAnswers[activeSentenceIndex] || ''}
-                    onAnswerChange={(ans) => handleAnswerChange(activeSentenceIndex, ans)}
+                    onAnswerChange={(ans) => {
+                      handleAnswerChange(activeSentenceIndex, ans);
+                      if (ans === exercises[activeSentenceIndex].englishTranslation) {
+                        const result = {
+                          isCorrect: true,
+                          score: 10,
+                          feedbackVocab: '',
+                          feedbackSyntax: '',
+                          explanation: 'Ułożono poprawnie.',
+                          improvedTranslation: ans,
+                          polishSentence: exercises[activeSentenceIndex].polishSentence,
+                          studentAnswer: ans,
+                          correctTranslation: ans,
+                          highlightedAnswer: ans,
+                          mistakes: []
+                        };
+                        setSingleEvaluationResults(prev => ({ ...prev, [activeSentenceIndex]: result }));
+                      }
+                    }}
                   />
                 ) : (
                   <textarea
                     value={studentAnswers[activeSentenceIndex] || ''}
                     onChange={(e) => handleAnswerChange(activeSentenceIndex, e.target.value)}
                     placeholder={language === 'pl' ? 'Wpisz swoje tłumaczenie tutaj...' : 'Type your translation here...'}
-                    rows={3}
+                    rows={2}
                     disabled={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
-                    className="w-full bg-black/30 border border-white/5 shadow-inner focus:border-primary/40 focus:ring-1 focus:ring-primary/20 rounded-xl p-4 text-base outline-none transition-all duration-200"
+                    className="w-full bg-black/30 border border-white/5 shadow-inner focus:border-primary/40 focus:ring-1 focus:ring-primary/20 rounded-xl p-3 text-sm outline-none transition-all duration-200"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -1285,7 +1540,29 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                 {language === 'pl' ? 'Poprzednie' : 'Previous'}
               </Button>
               
-              {evaluationStatuses[activeSentenceIndex] !== 'evaluated' ? (
+              {exerciseFormat === 'puzzle' ? (
+                <>
+                  {activeSentenceIndex === exercises.length - 1 && practiceMode === 'fixed' ? (
+                    <AILoadingButton
+                      onClick={handleFinishAll}
+                      disabled={studentAnswers[activeSentenceIndex] !== exercises[activeSentenceIndex].englishTranslation}
+                      className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
+                    >
+                      {language === 'pl' ? 'Zakończ i podsumuj' : 'Finish & Summarize'}
+                    </AILoadingButton>
+                  ) : (
+                    <AILoadingButton
+                      onClick={handleNext}
+                      disabled={studentAnswers[activeSentenceIndex] !== exercises[activeSentenceIndex].englishTranslation || isGeneratingMore}
+                      isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
+                      loadingText={language === 'pl' ? 'Ładowanie ćwiczenia...' : 'Loading exercise...'}
+                      className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
+                    >
+                      {language === 'pl' ? 'Następne' : 'Next'}
+                    </AILoadingButton>
+                  )}
+                </>
+              ) : evaluationStatuses[activeSentenceIndex] !== 'evaluated' ? (
                 <AILoadingButton
                   onClick={handleEvaluateSingle}
                   disabled={!studentAnswers[activeSentenceIndex]?.trim()}

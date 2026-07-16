@@ -13,6 +13,8 @@ import Dashboard from './components/dashboard/Dashboard';
 import LandingPage from './components/landing/LandingPage';
 import ConstellationBackground from './components/ui/ConstellationBackground';
 
+import ForcePasswordChangeScreen from './components/auth/ForcePasswordChangeScreen';
+
 const App: React.FC = () => {
   return (
     <LanguageProvider>
@@ -59,17 +61,21 @@ const AppContent: React.FC = () => {
       
       <div className="relative z-10 w-full min-h-screen pointer-events-auto flex flex-col">
         
-        <GSAPViewSwitcher currentView={user ? 'dashboard' : showAuth ? 'auth' : 'landing'}>
+        <GSAPViewSwitcher currentView={user ? (user.requirePasswordChange ? 'force-password-change' : 'dashboard') : showAuth ? 'auth' : 'landing'}>
           {user ? (
-            <div className="w-full flex-1 flex flex-col">
-              <VocabularyProvider>
-                <SettingsProvider>
-                <FlashcardProvider>
-                  <Dashboard />
-                </FlashcardProvider>
-                </SettingsProvider>
-              </VocabularyProvider>
-            </div>
+            user.requirePasswordChange ? (
+              <ForcePasswordChangeScreen />
+            ) : (
+              <div className="w-full flex-1 flex flex-col">
+                <VocabularyProvider>
+                  <SettingsProvider>
+                  <FlashcardProvider>
+                    <Dashboard />
+                  </FlashcardProvider>
+                  </SettingsProvider>
+                </VocabularyProvider>
+              </div>
+            )
           ) : showAuth ? (
             <div className="w-full flex-1 flex flex-col">
               <AuthScreen onBack={() => setShowAuth(false)} />

@@ -56,5 +56,19 @@ export function useFirebaseAdminApi() {
     return res.json();
   };
 
-  return { listUsers, createUser, deleteUser, changeUserRole };
+  const changeUserPassword = async (uid: string, password: string) => {
+    const token = await getIdToken();
+    const res = await fetch(`/api/firebase-admin/users/${uid}/password`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ password }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  };
+
+  return { listUsers, createUser, deleteUser, changeUserRole, changeUserPassword };
 }

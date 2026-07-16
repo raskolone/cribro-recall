@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
-import ContextMenu from '../ui/ContextMenu';
+import { motion, AnimatePresence } from 'motion/react';
+import { gsap } from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { getAudioPronunciation } from '../../services/geminiService';
+
+gsap.registerPlugin(useGSAP);
 
 interface PuzzleExerciseProps {
   sentence: string;
@@ -31,6 +34,48 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
   const [selectedTiles, setSelectedTiles] = useState<TileData[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
   const [errorTileId, setErrorTileId] = useState<string | null>(null);
+  
+  const lastClickedRects = useRef<Record<string, DOMRect>>({});
+  const answerTileRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  useGSAP(() => {
+    selectedTiles.forEach((st) => {
+      const el = answerTileRefs.current[st.id];
+      const startRect = lastClickedRects.current[st.id];
+      
+      if (el && startRect && !el.dataset.animated) {
+        el.dataset.animated = 'true';
+        
+        const endRect = el.getBoundingClientRect();
+        
+        const deltaX = startRect.left - endRect.left;
+        const deltaY = startRect.top - endRect.top;
+        
+        gsap.fromTo(
+          el,
+          { 
+            x: deltaX, 
+            y: deltaY, 
+            opacity: 0,
+            scale: 0.8,
+            rotation: (Math.random() - 0.5) * 15 
+          },
+          { 
+            x: 0, 
+            y: 0, 
+            opacity: 1,
+            scale: 1,
+            rotation: 0,
+            duration: 0.6, 
+            ease: 'back.out(1.4)',
+            clearProps: "all"
+          }
+        );
+        
+        delete lastClickedRects.current[st.id];
+      }
+    });
+  }, { dependencies: [selectedTiles] });
     
   const playAudio = async (text: string) => {
     try {
@@ -46,6 +91,13 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
   const answerAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!sentence || typeof sentence !== 'string') {
+      setTiles([]);
+      setSelectedTiles([]);
+      setIsCompleted(false);
+      return;
+    }
+
     const semanticChunking = (sentence: string): string[] => {
       const words = sentence.trim().split(/\s+/);
       const chunks: string[] = [];
@@ -136,6 +188,10 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
   }, [sentence, level]);
 
   useEffect(() => {
+    if (!sentence || typeof sentence !== 'string') {
+      setIsCompleted(false);
+      return;
+    }
     const currentText = selectedTiles.map(t => t.text).join(' ');
     if (currentText === sentence.trim() && selectedTiles.length > 0) {
       setIsCompleted(true);
@@ -144,12 +200,13 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
     }
   }, [selectedTiles, sentence]);
 
-  const handleTileClick = (tile: TileData) => {
+  const handleTileClick = (tile: TileData, e: React.MouseEvent<HTMLButtonElement>) => {
     if (tile.isCorrect || isCompleted) return;
     
     const nextExpectedString = selectedTiles.map(t => t.text).join(' ') + (selectedTiles.length > 0 ? ' ' : '') + tile.text;
     
     if (sentence.startsWith(nextExpectedString)) {
+      lastClickedRects.current[tile.id] = e.currentTarget.getBoundingClientRect();
       setTiles(prev => prev.map(t => t.id === tile.id ? { ...t, isCorrect: true } : t));
       const newSelected = [...selectedTiles, { ...tile }];
       setSelectedTiles(newSelected);
@@ -174,7 +231,6 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
   };
 
   return (
-    <LayoutGroup>
     <div className="space-y-4 relative" ref={containerRef}>
       {/* Answer Area */}
       <div 
@@ -204,11 +260,11 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
         <AnimatePresence>
           {selectedTiles.map((st, idx) => (
             <motion.button
-              layoutId={st.id}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              ref={(el) => {
+                answerTileRefs.current[st.id] = el;
+              }}
+              exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
+              layout
               key={st.id + '-ans'}
               type="button"
               onClick={() => handleRemoveTile(st, idx)}
@@ -231,21 +287,18 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
             const isError = errorTileId === tile.id;
                         
             return (
-              <ContextMenu
-                key={'ctx-' + tile.id}
-                items={[
-                  { label: 'Odsłuchaj (Wymowa)', onClick: () => playAudio(tile.text) },
-                  { label: 'Pokaż podpowiedź', onClick: () => alert('Fragment: ' + tile.text) }
-                ]}
-              >
               <motion.button
-                layoutId={tile.id}
+                key={tile.id}
+                layout
+                initial={{ opacity: 0, scale: 0.8 }}
+                exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
                 id={tile.id}
                 type="button"
-                onClick={() => handleTileClick(tile)}
+                onClick={(e) => handleTileClick(tile, e)}
+                onContextMenu={(e) => { e.preventDefault(); playAudio(tile.text); }}
                 disabled={isCompleted}
                 animate={
-                  isError ? { x: [-10, 10, -10, 10, 0] } : { x: 0, y: 0, scale: 1 }
+                  isError ? { x: [-10, 10, -10, 10, 0], opacity: 1 } : { x: 0, y: 0, scale: 1, opacity: 1 }
                 }
                 transition={
                   isError ? { duration: 0.4 } : { type: "spring", stiffness: 400, damping: 30 }
@@ -258,7 +311,6 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
               >
                 {tile.text}
               </motion.button>
-              </ContextMenu>
             );
           })}
         </AnimatePresence>
@@ -275,7 +327,6 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
         </motion.div>
       )}
     </div>
-    </LayoutGroup>
   );
 };
 

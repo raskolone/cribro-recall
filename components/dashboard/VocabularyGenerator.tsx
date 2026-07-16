@@ -3,12 +3,15 @@ import React, { useState } from 'react';
 import Card from '../ui/Card';
 import Select from '../ui/Select';
 import Button from '../ui/Button';
+import AISkeletonLoader from '../ui/AISkeletonLoader';
 import { Language, Difficulty } from '../../types';
 import { LANGUAGES, DIFFICULTIES } from '../../constants';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { generateVocabulary } from '../../services/geminiService';
+import { useLanguage } from '../../context/LanguageContext';
 
 const VocabularyGenerator: React.FC = () => {
+  const { language: uiLanguage } = useLanguage();
   const [language, setLanguage] = useState<Language>('English');
   const [difficulty, setDifficulty] = useState<Difficulty>('A1-A2');
   const [targetSetId, setTargetSetId] = useState<string>('');
@@ -73,9 +76,19 @@ const VocabularyGenerator: React.FC = () => {
           </div>
         </div>
         {error && <p className="text-red-500 text-sm">{error}</p>}
-        <Button type="submit" isLoading={isLoading} className="w-full">
-          Generate 10 Words
-        </Button>
+        {isLoading ? (
+          <div className="pt-2">
+            <AISkeletonLoader 
+              variant="cards" 
+              count={3} 
+              message={uiLanguage === 'pl' ? 'AI analizuje bazę i układa zestaw 10 słówek...' : 'AI is designing a perfect list of 10 vocabulary words...'} 
+            />
+          </div>
+        ) : (
+          <Button type="submit" className="w-full">
+            Generate 10 Words
+          </Button>
+        )}
       </form>
     </Card>
   );

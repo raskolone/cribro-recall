@@ -27,7 +27,7 @@ import { useFlashcards } from '../../context/FlashcardContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { ExerciseType, PracticeHistory } from '../../types';
 import Button from '../ui/Button';
-import { ChevronDown, ChevronRight, LayoutDashboard, Library, ClipboardList, Settings, User, BookOpen } from 'lucide-react';
+import { ChevronDown, ChevronRight, LayoutDashboard, Library, ClipboardList, Settings, User, BookOpen, Sparkles, BarChart3 } from 'lucide-react';
 
 import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
 
@@ -460,51 +460,54 @@ const Dashboard: React.FC = () => {
             <AdminPanel initialTab={null} onViewChange={changeView} initialSelectedUserId={adminSelectedUserId} onUserSelect={(id) => changeView(view, { adminSelectedUserId: id })} />
             
             {user?.role === 'admin_student' && (
-              <>
-                <div className="flex items-center gap-4 my-10 pt-4">
-                  <div className="h-px bg-white/10 flex-1"></div>
-                  <div className="text-content-muted text-sm font-bold uppercase tracking-wider">{language === 'pl' ? 'Twoja strefa nauki' : 'Your Learning Zone'}</div>
-                  <div className="h-px bg-white/10 flex-1"></div>
-                </div>
-                <div className="border border-white/10 rounded-2xl overflow-hidden bg-base-200/20 backdrop-blur-sm mt-8">
+              <div className="mt-8 border border-white/10 rounded-2xl overflow-hidden bg-base-200/20 backdrop-blur-sm">
                 <button 
                   className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors text-left"
-                  onClick={() => setIsStudentViewCollapsed(!isStudentViewCollapsed)}
+                  onClick={() => setIsProgressCollapsed(!isProgressCollapsed)}
                 >
-                  <h2 className="text-xl font-bold">{language === 'pl' ? 'Widok kursanta' : 'Student View'}</h2>
-                  {isStudentViewCollapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
+                  <h2 className="text-xl font-bold">{language === 'pl' ? 'Postępy w nauce' : 'Learning Progress'}</h2>
+                  {isProgressCollapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
                 </button>
-                {!isStudentViewCollapsed && (
-                  <div className="p-6 border-t border-white/10">
-                    <AIExerciseGeneratorScreen key={exerciseResetKey} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />
+                {!isProgressCollapsed && (
+                  <div className="p-6 border-t border-white/10 space-y-6">
+                    <ProgressOverview />
+                    {showLearningProgressChart && <LearningProgressChart />}
                   </div>
                 )}
               </div>
-              </>
             )}
           </div>
         ) : (
-          <div className="flex-1">
-            <AIExerciseGeneratorScreen key={exerciseResetKey} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />
-          </div>
-        )}
-        
-        {user?.role !== 'admin' && (
-          <div className="mt-8">
-            <div className="border border-white/10 rounded-2xl overflow-hidden bg-base-200/20 backdrop-blur-sm">
+          <div className="flex-1 space-y-6">
+            {/* Welcome message / header for students */}
+            <div className="p-6 border border-white/10 rounded-2xl bg-gradient-to-br from-primary/10 to-base-200/30 backdrop-blur-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+                  {language === 'pl' ? `Cześć, ${user?.firstName || 'Uczniu'}! 👋` : `Hi, ${user?.firstName || 'Student'}! 👋`}
+                </h1>
+                <p className="text-content-muted text-sm mt-1">
+                  {language === 'pl' 
+                    ? 'Witaj w swoim panelu nauki. Sprawdź swoje postępy lub przejdź bezpośrednio do ćwiczeń.'
+                    : 'Welcome to your learning panel. Check your progress or go directly to exercises.'}
+                </p>
+              </div>
+              
               <button 
-                className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors text-left"
-                onClick={() => setIsProgressCollapsed(!isProgressCollapsed)}
+                onClick={() => changeView('ai-generator')} 
+                className="flex items-center gap-2 px-5 py-3 bg-primary text-black font-bold rounded-xl shadow-[0_0_20px_rgba(114,240,180,0.3)] hover:scale-105 active:scale-95 transition-all self-start md:self-auto"
               >
-                <h2 className="text-xl font-bold">{language === 'pl' ? 'Postępy w nauce' : 'Learning Progress'}</h2>
-                {isProgressCollapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
+                <Sparkles size={18} />
+                {language === 'pl' ? 'Uruchom widok kursanta ✨' : 'Launch Student View ✨'}
               </button>
-              {!isProgressCollapsed && (
-                <div className="p-6 border-t border-white/10 space-y-6">
-                  <ProgressOverview />
-                  {showLearningProgressChart && <LearningProgressChart />}
-                </div>
-              )}
+            </div>
+
+            <div className="p-6 border border-white/10 rounded-2xl bg-base-200/20 backdrop-blur-sm space-y-6">
+              <h2 className="text-xl font-bold flex items-center gap-2 border-b border-white/10 pb-3">
+                <BarChart3 className="w-5 h-5 text-primary" />
+                {language === 'pl' ? 'Twoje postępy w nauce' : 'Your Learning Progress'}
+              </h2>
+              <ProgressOverview />
+              {showLearningProgressChart && <LearningProgressChart />}
             </div>
           </div>
         )}

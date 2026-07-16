@@ -3,7 +3,7 @@ export const extractJSON = (text: string): string => {
   if (!text) return "{}";
   
   // Try to find markdown code blocks first
-  const jsonBlockRegex = /```(?:json)?s*([sS]*?)s*```/i;
+  const jsonBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/i;
   const match = text.match(jsonBlockRegex);
   if (match && match[1]) {
     return match[1].trim();
@@ -97,7 +97,7 @@ export const generateVocabulary = async (language: Language, difficulty: Difficu
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -117,7 +117,7 @@ export const generateVocabulary = async (language: Language, difficulty: Difficu
 export const getAudioPronunciation = async (text: string, voice: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: [{ parts: [{ text: text }] }],
       config: {
         responseModalities: [Modality.AUDIO],
@@ -181,7 +181,7 @@ export const generateAudioVocabulary = async (base64Audio: string, mimeType: str
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: [
         {
           role: 'user',
@@ -210,7 +210,7 @@ export const generateAudioTranscript = async (base64Audio: string, mimeType: str
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: [
         {
           role: 'user',
@@ -238,7 +238,7 @@ export const getAISuggestions = async (difficultWords: Word[]): Promise<AISugges
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -309,7 +309,7 @@ export const generateTranslationExercises = async (
   
   ${studentProfileContext ? `Here are details about the student's profile (interests, weaknesses, goals, and potentially example sentences they struggle with or practiced):\n${studentProfileContext}\nPlease use these details to deeply personalize the context of the sentences. Full UX personalization is required so that practice is tailor-made for this specific user. If there are example sentences in their profile, study their structure and incorporate similar difficulty/context.` : ''}
   
-  ${pastExercisesContext ? `\nCRITICAL HISTORY CHECK: The student's past practice sessions are listed below:\n${pastExercisesContext}\n\nZASADA ŻELAZNA (IRONCLAD RULE): You MUST analyze this session history and STRICTLY avoid generating IDENTICAL sentences. You are ENCOURAGED to reuse the same grammar topics and vocabulary (especially those the student struggles with), but you MUST present them in completely NEW sentences and different examples.` : ''}
+  ${pastExercisesContext ? `\nCRITICAL HISTORY CHECK: The student's past practice sessions are listed below:\n${pastExercisesContext}\n\nZASADA ŻELAZNA (IRONCLAD RULE): You MUST analyze this session history. 1) If a sentence is marked as '[UKŁADANKA - Wymagane powtórzenie przez samodzielne Wpisywanie]', it means the student only solved it as a word puzzle. For these specific sentences, you MUST generate very similar sentences (or even use the same ones) so the student can now practice typing them out fully. 2) For other sentences, STRICTLY avoid generating IDENTICAL sentences, but reuse the grammar topics and vocabulary in NEW contexts.` : ''}
   
   For each sentence, provide the Polish sentence, the correct English translation, and a helpful Polish hint.`;
 
@@ -327,30 +327,30 @@ export const generateTranslationExercises = async (
     
     try {
       response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         contents: finalPrompt,
         config,
       });
     } catch (e1: any) {
-      console.warn("gemini-2.5-flash failed, falling back to gemini-2.5-flash", e1);
+      console.warn("gemini-1.5-flash failed, falling back to gemini-1.5-flash", e1);
       try {
         response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-1.5-flash",
           contents: finalPrompt,
           config,
         });
       } catch (e2: any) {
-        console.warn("gemini-2.5-flash failed, falling back to gemini-2.5-flash", e2);
+        console.warn("gemini-1.5-flash failed, falling back to gemini-1.5-flash", e2);
         try {
           response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-1.5-flash",
             contents: finalPrompt,
             config,
           });
         } catch (e3: any) {
-          console.warn("gemini-2.5-flash failed, falling back to gemini-2.5-flash", e3);
+          console.warn("gemini-1.5-flash failed, falling back to gemini-1.5-flash", e3);
           response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-1.5-flash",
             contents: finalPrompt,
             config,
           });
@@ -379,7 +379,7 @@ export const generateHomework = async (topic: string, summary: string, words: st
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: prompt,
     });
     return response?.text.trim();
@@ -435,30 +435,30 @@ Zasady generowania feedbacku (Stosuj bezwzględnie):
     };
     try {
       response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         contents: finalPrompt,
         config,
       });
     } catch (e1: any) {
-      console.warn("gemini-2.5-flash failed, falling back to gemini-2.5-flash", e1);
+      console.warn("gemini-1.5-flash failed, falling back to gemini-1.5-flash", e1);
       try {
         response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-1.5-flash",
           contents: finalPrompt,
           config,
         });
       } catch (e2: any) {
-        console.warn("gemini-2.5-flash failed again, falling back to gemini-2.5-flash", e2);
+        console.warn("gemini-1.5-flash failed again, falling back to gemini-1.5-flash", e2);
         try {
           response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-1.5-flash",
             contents: finalPrompt,
             config,
           });
         } catch (e3: any) {
-           console.warn("gemini-2.5-flash failed, falling back to gemini-2.5-flash", e3);
+           console.warn("gemini-1.5-flash failed, falling back to gemini-1.5-flash", e3);
            response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-1.5-flash",
             contents: finalPrompt,
             config,
           });
@@ -556,7 +556,7 @@ Return a JSON array of objects.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -579,7 +579,7 @@ Only return the sentence, nothing else.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: prompt,
     });
     return response?.text.trim();
@@ -594,7 +594,7 @@ export const generateImageForTerm = async (term: string, context?: string): Prom
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: { parts: [{ text: prompt }] },
       config: {
         imageConfig: {
@@ -655,7 +655,7 @@ Zwróć 10 poprawionych zadań jako JSON (tablica obiektów). Zastąp te, które
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -764,7 +764,7 @@ Dla "fill_in_blank":
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -800,7 +800,7 @@ ${text}`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",

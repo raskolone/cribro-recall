@@ -21,7 +21,7 @@ interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: an
 const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId, onUserSelect }) => {
   const { sets: adminSets, getFlashcards } = useFlashcards();
   const { connectGoogleDrive } = useAuth();
-  const { createUser, deleteUser } = useFirebaseAdminApi();
+  const { createUser, deleteUser, changeUserRole: updateRoleApi, changeUserPassword } = useFirebaseAdminApi();
   
 
   const fetchUsers = async () => {
@@ -210,7 +210,58 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       setIsSavingLessonRecord(false);
     }
   };
-  const handleChangePassword = async (e: any) => { e.preventDefault(); };
+  const generateStrongPassword = () => {
+    const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const lowercase = "abcdefghijklmnopqrstuvwxyz";
+    const numbers = "0123456789";
+    const symbols = "!@#$%^&*()";
+    const all = uppercase + lowercase + numbers + symbols;
+    
+    let password = "";
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += symbols[Math.floor(Math.random() * symbols.length)];
+    
+    for (let i = 4; i < 12; i++) {
+      password += all[Math.floor(Math.random() * all.length)];
+    }
+    
+    return password.split('').sort(() => 0.5 - Math.random()).join('');
+  };
+
+  const handleChangePassword = async (e: any) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!selectedUser) return;
+    if (newPasswordForUser.length < 6) {
+      setChangePasswordError('Hasło musi mieć co najmniej 6 znaków.');
+      return;
+    }
+    
+    setIsChangingPassword(true);
+    setChangePasswordError('');
+    try {
+      // 1. Change password via firebase-admin endpoint
+      await changeUserPassword(selectedUser.id, newPasswordForUser);
+      
+      // 2. Set requirePasswordChange to true in Firestore so the student has to change it on login
+      const userRef = doc(db, 'users', selectedUser.id);
+      await updateDoc(userRef, { requirePasswordChange: true });
+      
+      // 3. Update local state
+      const updated = { ...selectedUser, requirePasswordChange: true };
+      setSelectedUser(updated);
+      setUsers(users.map(u => u.id === updated.id ? updated : u));
+      
+      alert('Hasło zostało pomyślnie zmienione! Uczeń zostanie poproszony o jego zmianę przy kolejnym logowaniu.');
+      setShowChangePasswordModal(false);
+      setNewPasswordForUser('');
+    } catch (err: any) {
+      setChangePasswordError(err.message || 'Wystąpił błąd podczas zmiany hasła.');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
   
   const normalizeUsername = (u: string) => u.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '.').toLowerCase();
 
@@ -229,7 +280,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         role: 'user',
         createdAt: new Date().toISOString(),
         loginCount: 0,
-        streakCount: 0
+        streakCount: 0,
+        requirePasswordChange: true
       };
       
       await setDoc(doc(db, 'users', userRecord.uid), newUserDoc);
@@ -1006,6 +1058,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         </Button>
                         <Button 
                           variant="secondary" 
+                          size="sm" 
+                          onClick={() => {
+                            setNewPasswordForUser('');
+                            setChangePasswordError('');
+                            setShowChangePasswordModal(true);
+                          }}
+                        >
+                          Zmień hasło
+                        </Button>
+                        <Button 
+                          variant="secondary" 
                           size="sm"
                           className={selectedUser.isSuspended ? "bg-green-500/20 text-green-500 hover:bg-green-500/30 border-transparent" : "bg-orange-500/20 text-orange-500 hover:bg-orange-500/30 border-transparent"}
                           onClick={() => {
@@ -1493,7 +1556,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         <div ref={changePasswordModalAnim.overlayRef} className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div ref={changePasswordModalAnim.contentRef} className="w-full max-w-md">
             <Card className="w-full shadow-2xl border-primary/20">
-            <h3 className="text-xl font-bold mb-4">Change Password</h3>
+            <h3 className="text-xl font-bold mb-4">Zmień hasło dla {selectedUser?.firstName || selectedUser?.username}</h3>
             <div className="space-y-4 mb-6">
               {changePasswordError && (
                 <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-sm">
@@ -1501,13 +1564,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 </div>
               )}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-bold text-content-muted">New Password</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-bold text-content-muted">Nowe hasło</label>
                   <button 
-                    onClick={() => setNewPasswordForUser(Math.random().toString(36).slice(-8))}
-                    className="text-xs text-primary hover:text-primary/80"
+                    onClick={() => {
+                      const toughPass = generateStrongPassword();
+                      setNewPasswordForUser(toughPass);
+                    }}
+                    className="text-xs text-primary hover:text-primary/80 font-bold flex items-center gap-1 bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20 hover:bg-primary/20 transition-all"
                   >
-                    Auto-generate
+                    ✨ Generuj silne hasło
                   </button>
                 </div>
                 <div className="relative">
@@ -1515,17 +1581,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     type="text"
                     value={newPasswordForUser}
                     onChange={(e) => setNewPasswordForUser(e.target.value)}
-                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 transition-colors pr-10"
-                    placeholder="Enter new password"
+                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 transition-colors pr-10 font-mono text-center tracking-wider text-lg"
+                    placeholder="Wpisz lub wygeneruj hasło"
                   />
                   {newPasswordForUser && (
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(newPasswordForUser);
-                        alert('Password copied to clipboard!');
+                        alert('Hasło zostało skopiowane do schowka!');
                       }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-content-muted hover:text-primary"
-                      title="Copy to clipboard"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-primary transition-colors"
+                      title="Skopiuj do schowka"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -1538,14 +1604,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             </div>
             <div className="flex justify-end gap-3">
               <Button onClick={() => { setShowChangePasswordModal(false); setChangePasswordError(''); setNewPasswordForUser(''); }} variant="secondary">
-                Cancel
+                Anuluj
               </Button>
               <Button 
                 onClick={handleChangePassword} 
                 isLoading={isChangingPassword}
-                disabled={!newPasswordForUser}
+                disabled={!newPasswordForUser || newPasswordForUser.length < 6}
               >
-                Change Password
+                Zmień hasło
               </Button>
             </div>
           </Card>
