@@ -69,7 +69,7 @@ CRIBRO ENGLISH to nowoczesna, oparta na sztucznej inteligencji platforma do nauk
 
 ## 📁 Project Structure / Struktura projektu
 
-- `/src/components` - Komponenty UI, Dashboard, Landing Page, Tryby ćwiczeń
+- `/src/components` - Komponenty UI, Dashboard, Landing Page, Tryby ćwiczeń 
 - `/src/context` - Konteksty React (Autoryzacja, Tłumaczenia, Języki)
 - `/src/hooks` - Niestandardowe hooki React
 - `/src/services` - Integracje z zewnętrznymi usługami (Firebase)
