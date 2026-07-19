@@ -270,7 +270,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     setIsCreatingStudent(true);
     setCreateStudentError('');
     try {
-      const email = normalizeUsername(newStudentUsername) + '@student.cribro.app';
+      const email = normalizeUsername(newStudentUsername) + '@student.vocabboost.com';
       const password = isAutoGeneratePassword ? Math.random().toString(36).slice(-8) : passwordInput;
       
       const userRecord = await createUser(email, password, 'user');
@@ -649,7 +649,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               <div className="grid grid-cols-1 gap-3 overflow-hidden" ref={userListRef}>
                 
                 {users.filter(u => {
-                  const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.email} ${u.username}`.toLowerCase();
+                  const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.username} ${u.username}`.toLowerCase();
                   const matchesSearch = searchStr.includes(searchQuery.toLowerCase());
                   const matchesRole = roleFilter === 'all' || u.role === roleFilter;
                   return matchesSearch && matchesRole;
@@ -667,7 +667,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       <div className="font-bold text-lg group-hover:text-primary transition-colors">
                         {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
                       </div>
-                      <div className="text-sm text-content-muted">{u.email}</div>
+                      <div className="text-sm text-content-muted">{u.username}</div>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-red-500/10 text-red-500' : u.role === 'admin_student' ? 'bg-purple-500/10 text-purple-500' : 'bg-primary/10 text-primary'}`}>
@@ -746,7 +746,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       {selectedUser.firstName || selectedUser.lastName ? `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() : selectedUser.username}
                     </h2>
                     <p className="text-content-muted mt-1">
-                      {selectedUser.email}
+                      {selectedUser.username}
                       {selectedUser.level && <span className="ml-3 px-2 py-0.5 bg-primary/20 text-primary rounded text-xs uppercase font-bold">{selectedUser.level}</span>}
                     </p>
                     <div className="mt-3 text-sm text-content-muted flex flex-wrap gap-x-6 gap-y-2">
@@ -1689,7 +1689,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg text-center space-y-2 relative">
                   <div className="text-green-500 font-bold mb-2">Student Created Successfully!</div>
                   <div className="text-sm text-content-muted">Email (Login):</div>
-                  <div className="font-mono text-lg">{`${normalizeUsername(newStudentUsername)}@student.cribro.app`}</div>
+                  <div className="font-mono text-lg">{normalizeUsername(newStudentUsername)}</div>
                   <div className="text-sm text-content-muted mt-2">Password:</div>
                   <div className="font-mono text-lg font-bold tracking-widest bg-base-100 p-2 rounded inline-flex items-center gap-2 border border-base-300">
                     {newStudentPassword}

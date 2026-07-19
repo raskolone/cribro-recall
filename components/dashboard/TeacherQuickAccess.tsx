@@ -38,7 +38,7 @@ const TeacherQuickAccess: React.FC<TeacherQuickAccessProps> = ({ onNavigate, onS
   }, []);
 
   const filteredUsers = users.filter(u => {
-    const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.email} ${u.username}`.toLowerCase();
+    const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.username} ${u.username}`.toLowerCase();
     return searchStr.includes(searchQuery.toLowerCase());
   });
 
@@ -104,7 +104,7 @@ const TeacherQuickAccess: React.FC<TeacherQuickAccessProps> = ({ onNavigate, onS
                   <div className="font-bold truncate text-sm">
                     {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
                   </div>
-                  <div className="text-xs text-content-muted truncate">{u.email}</div>
+                  <div className="text-xs text-content-muted truncate">{u.username}</div>
                 </div>
               </div>
             ))}

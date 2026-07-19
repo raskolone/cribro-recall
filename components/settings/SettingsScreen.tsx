@@ -67,7 +67,7 @@ const SettingsScreen: React.FC = () => {
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-white">{user?.username}</h2>
-                            <p className="text-sm text-content-muted">{user?.email}</p>
+                            <p className="text-sm text-content-muted">{user?.username}</p>
                             <div className="mt-1 flex items-center gap-2">
                                 <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-base-300 text-content-muted">Role: {user?.role}</span>
                                 {user?.level && <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-primary/20 text-primary">Level: {user.level}</span>}
