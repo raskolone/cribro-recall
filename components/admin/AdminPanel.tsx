@@ -82,22 +82,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
 
   const handleSelectUser = (user: UserWithId) => {
     setSelectedUser(user);
+    if (onUserSelect) onUserSelect(user.id);
     fetchUserLogsAndStats(user.id);
   };
 
-  const handleSaveProfile = async (silent = false) => {
+  const handleSaveProfile = async (silent = false, formState = profileForm) => {
     if (!selectedUser) return;
     setIsSavingProfile(true);
     try {
       const userRef = doc(db, 'users', selectedUser.id);
       await updateDoc(userRef, {
-        firstName: profileForm.firstName,
-        lastName: profileForm.lastName,
-        level: profileForm.level,
-        description: profileForm.description,
-        aiPrompt: profileForm.aiPrompt
+        firstName: formState.firstName,
+        lastName: formState.lastName,
+        level: formState.level,
+        description: formState.description,
+        aiPrompt: formState.aiPrompt
       });
-      const updatedUser = { ...selectedUser, ...profileForm };
+      const updatedUser = { ...selectedUser, ...formState };
       setSelectedUser(updatedUser);
       setUsers(users.map(u => u.id === selectedUser.id ? updatedUser : u));
       if (!silent) alert('Zapisano profil pomyślnie!');
@@ -931,7 +932,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     type="text"
                     value={profileForm.firstName}
                     onChange={(e) => setProfileForm(prev => ({ ...prev, firstName: e.target.value }))}
-                    onBlur={() => handleSaveProfile(true)}
+                    
                     className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 transition-colors"
                   />
                 </div>
@@ -941,7 +942,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     type="text"
                     value={profileForm.lastName}
                     onChange={(e) => setProfileForm(prev => ({ ...prev, lastName: e.target.value }))}
-                    onBlur={() => handleSaveProfile(true)}
+                    
                     className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 transition-colors"
                   />
                 </div>
@@ -953,7 +954,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   value={profileForm.level}
                   onChange={(e) => {
                     setProfileForm(prev => ({ ...prev, level: e.target.value }));
-                    setTimeout(() => handleSaveProfile(true), 0);
                   }}
                   className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 text-white appearance-none cursor-pointer transition-colors"
                 >
@@ -976,7 +976,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <textarea
                   value={profileForm.description}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, description: e.target.value }))}
-                  onBlur={() => handleSaveProfile(true)}
+                  
                   placeholder="Zainteresowania, słabe strony, cele nauki..."
                   rows={6}
                   className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 resize-y transition-colors"
@@ -991,7 +991,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <textarea
                   value={profileForm.aiPrompt}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, aiPrompt: e.target.value }))}
-                  onBlur={() => handleSaveProfile(true)}
+                  
                   placeholder="Tutaj wpisz przykładowe zdania, wzornictwo, specyficzne polecenia i żelazne zasady dla tego kursanta..."
                   rows={4}
                   className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 resize-y font-mono text-sm transition-colors"
