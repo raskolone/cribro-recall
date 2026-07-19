@@ -71,6 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
     }
   }, []);
   const { language } = useLanguage();
+  const isTeacher = user?.role === 'admin' || user?.role === 'admin_student';
   const [isAdminExpanded, setIsAdminExpanded] = useState(currentView.startsWith('admin'));
 
   React.useEffect(() => {
@@ -130,9 +131,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               {language === 'pl' ? 'Panel główny' : 'Dashboard'}
           </NavLink>
 
-          <NavLink icon={<Sparkles size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('ai-generator')} isActive={currentView === 'ai-generator'}>
-              {language === 'pl' ? 'Widok kursanta' : 'Student View'}
-          </NavLink>
+          {isTeacher && (
+            <NavLink icon={<Sparkles size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('ai-generator')} isActive={currentView === 'ai-generator'}>
+                {language === 'pl' ? 'Widok kursanta' : 'Student View'}
+            </NavLink>
+          )}
 
           <NavLink icon={<Library size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('flashcard-sets')} isActive={currentView === 'flashcard-sets'}>
               {language === 'pl' ? 'Słownictwo' : 'My Word Lists'}

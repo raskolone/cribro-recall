@@ -445,10 +445,12 @@ const Dashboard: React.FC = () => {
     if (view === 'tests') {
       return <StudentTestsScreen onBack={() => changeView('dashboard', { activeSetId: null, practiceView: null, adminSelectedUserId: null })} />;
     }
-    // Default to dashboard view
+        // Default to dashboard view
     const isTeacher = user?.role === 'admin' || user?.role === 'admin_student';
 
-
+    if (!isTeacher && view === 'dashboard') {
+      return <AIExerciseGeneratorScreen key={`ai-gen-${exerciseResetKey}`} initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />;
+    }
 
     return (
       <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">

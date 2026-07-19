@@ -97,7 +97,7 @@ export const generateVocabulary = async (language: Language, difficulty: Difficu
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -117,7 +117,7 @@ export const generateVocabulary = async (language: Language, difficulty: Difficu
 export const getAudioPronunciation = async (text: string, voice: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: [{ parts: [{ text: text }] }],
       config: {
         responseModalities: [Modality.AUDIO],
@@ -181,7 +181,7 @@ export const generateAudioVocabulary = async (base64Audio: string, mimeType: str
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: [
         {
           role: 'user',
@@ -210,7 +210,7 @@ export const generateAudioTranscript = async (base64Audio: string, mimeType: str
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: [
         {
           role: 'user',
@@ -238,7 +238,7 @@ export const getAISuggestions = async (difficultWords: Word[]): Promise<AISugges
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -297,67 +297,52 @@ export const generateTranslationExercises = async (
   numSentences: number = 5,
   pastExercisesContext?: string
 ): Promise<TranslationExercise[]> => {
-  const basePrompt = `Generate a list of ${numSentences} unique sentences in Polish for a student to translate into English.
-  
-  CRITICAL LEVEL REQUIREMENT: The exercises MUST be strictly adequate for the selected CEFR level: ${level}. 
-  If the level is A1, A2, or A2/B1, the sentences MUST be simple, short, and use basic grammar so the student does not get discouraged. If it's an intermediate level like B1/B2, balance the difficulty accordingly. Do NOT overcomplicate sentences for lower levels.
-  
-  ${words.length > 0 ? `The sentences should incorporate or test the following English vocabulary/concepts: ${words.join(', ')}.` : ''}
-  
-  ${lessonContext ? `Here are some summaries of the student's recent lessons. 
-  CRITICAL: Analyze the entire lesson entry, especially any example sentences the student practiced during the lesson. You MUST absolutely take these examples and structures into account when generating new sentences:\n${lessonContext}` : ''}
-  
-  ${studentProfileContext ? `Here are details about the student's profile (interests, weaknesses, goals, and potentially example sentences they struggle with or practiced):\n${studentProfileContext}\nPlease use these details to deeply personalize the context of the sentences. Full UX personalization is required so that practice is tailor-made for this specific user. If there are example sentences in their profile, study their structure and incorporate similar difficulty/context.` : ''}
-  
-  ${pastExercisesContext ? `\nCRITICAL HISTORY CHECK: The student's past practice sessions are listed below:\n${pastExercisesContext}\n\nZASADA ŻELAZNA (IRONCLAD RULE): You MUST analyze this session history. 1) If a sentence is marked as '[UKŁADANKA - Wymagane powtórzenie przez samodzielne Wpisywanie]', it means the student only solved it as a word puzzle. For these specific sentences, you MUST generate very similar sentences (or even use the same ones) so the student can now practice typing them out fully. 2) For other sentences, STRICTLY avoid generating IDENTICAL sentences, but reuse the grammar topics and vocabulary in NEW contexts.` : ''}
-  
-  For each sentence, provide the Polish sentence, the correct English translation, and a helpful Polish hint.`;
+  // Ograniczamy nadmiarowe dane kontekstowe dla modelu, aby przyspieszyć generowanie.
+  // Zbyt duże prompt'y wydłużają czas odpowiedzi.
+  const shortLesson = lessonContext ? `
+Lesson context: ${lessonContext.substring(0, 500)}` : '';
+  const shortProfile = studentProfileContext ? `
+Student profile: ${studentProfileContext.substring(0, 300)}` : '';
+  const shortPast = pastExercisesContext ? `
+Past exercises to avoid repeats: ${pastExercisesContext.substring(0, 500)}` : '';
 
-  // Ensure any [NUM_SENTENCES] placeholder in customPrompt is replaced
-  const processedCustomPrompt = customPrompt ? customPrompt.replace(/\[NUM_SENTENCES\]/g, numSentences.toString()) : '';
-  const finalPrompt = processedCustomPrompt ? `${processedCustomPrompt}\n\nContext and Constraints:\n${basePrompt}` : basePrompt;
+  const basePrompt = `Generate exactly ${numSentences} unique Polish-English translation exercises for a student at CEFR level ${level}.
+Make them short, practical, and strictly appropriate for ${level}.
+${words.length > 0 ? 'Use these words if possible: ' + words.join(', ') : ''}${shortLesson}${shortProfile}${shortPast}
+
+Return JSON array of objects with:
+- polishSentence (string)
+- englishTranslation (string)
+- hint (string, in Polish)`;
+
+  const finalPrompt = customPrompt ? `${customPrompt}
+
+Constraints:
+${basePrompt}` : basePrompt;
 
   try {
     let response;
     const config = {
-      systemInstruction: "Jesteś inteligentnym asystentem edukacyjnym ZEIAN. Twoim najważniejszym celem jest: 1. Bezwzględne dopasowanie poziomu (jeśli A1, A2 lub A2/B1 to zdania proste, krótkie; jeśli poziomy pośrednie jak B1/B2 to trudność zbilansowana). 2. Precyzyjne zrozumienie kontekstu ucznia (np. jeśli produkuje części do samolotów, nie twórz zdań, w których lata samolotami, nie twórz sztucznych kontekstów). 3. Nieustanne weryfikowanie historii lekcji i poprzednich zdań jako bazy referencyjnej trudności. Używaj historii, by nie tworzyć zdań bardziej skomplikowanych niż te już przerobione oraz do unikania powtórek w najnowszych 3 sesjach.",
+      systemInstruction: "You are an AI language tutor. Generate short, level-appropriate translation sentences. Be fast and concise. Always return valid JSON array.",
       responseMimeType: "application/json",
       responseSchema: translationExerciseSchema,
     };
     
     try {
       response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         contents: finalPrompt,
         config,
       });
     } catch (e1: any) {
-      console.warn("gemini-1.5-flash failed, falling back to gemini-1.5-flash", e1);
-      try {
-        response = await ai.models.generateContent({
-          model: "gemini-1.5-flash",
-          contents: finalPrompt,
-          config,
-        });
-      } catch (e2: any) {
-        console.warn("gemini-1.5-flash failed, falling back to gemini-1.5-flash", e2);
-        try {
-          response = await ai.models.generateContent({
-            model: "gemini-1.5-flash",
-            contents: finalPrompt,
-            config,
-          });
-        } catch (e3: any) {
-          console.warn("gemini-1.5-flash failed, falling back to gemini-1.5-flash", e3);
-          response = await ai.models.generateContent({
-            model: "gemini-1.5-flash",
-            contents: finalPrompt,
-            config,
-          });
-        }
-      }
+      console.warn("gemini-2.5-flash failed, retrying with gemini-1.5-flash (lite fallback)...", e1);
+      response = await ai.models.generateContent({
+        model: "gemini-1.5-flash",
+        contents: finalPrompt,
+        config,
+      });
     }
-
+    
     let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText) as TranslationExercise[];
   } catch (error: any) {
@@ -379,7 +364,7 @@ export const generateHomework = async (topic: string, summary: string, words: st
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
     });
     return response?.text.trim();
@@ -435,35 +420,17 @@ Zasady generowania feedbacku (Stosuj bezwzględnie):
     };
     try {
       response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         contents: finalPrompt,
         config,
       });
     } catch (e1: any) {
-      console.warn("gemini-1.5-flash failed, falling back to gemini-1.5-flash", e1);
-      try {
-        response = await ai.models.generateContent({
-          model: "gemini-1.5-flash",
-          contents: finalPrompt,
-          config,
-        });
-      } catch (e2: any) {
-        console.warn("gemini-1.5-flash failed again, falling back to gemini-1.5-flash", e2);
-        try {
-          response = await ai.models.generateContent({
-            model: "gemini-1.5-flash",
-            contents: finalPrompt,
-            config,
-          });
-        } catch (e3: any) {
-           console.warn("gemini-1.5-flash failed, falling back to gemini-1.5-flash", e3);
-           response = await ai.models.generateContent({
-            model: "gemini-1.5-flash",
-            contents: finalPrompt,
-            config,
-          });
-        }
-      }
+      console.warn("gemini-2.5-flash eval failed on first attempt, retrying with gemini-1.5-flash...", e1);
+      response = await ai.models.generateContent({
+        model: "gemini-1.5-flash",
+        contents: finalPrompt,
+        config,
+      });
     }
 
     let jsonText = extractJSON(response?.text || "");
@@ -556,7 +523,7 @@ Return a JSON array of objects.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -579,7 +546,7 @@ Only return the sentence, nothing else.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
     });
     return response?.text.trim();
@@ -594,7 +561,7 @@ export const generateImageForTerm = async (term: string, context?: string): Prom
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: { parts: [{ text: prompt }] },
       config: {
         imageConfig: {
@@ -655,7 +622,7 @@ Zwróć 10 poprawionych zadań jako JSON (tablica obiektów). Zastąp te, które
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -764,7 +731,7 @@ Dla "fill_in_blank":
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -800,7 +767,7 @@ ${text}`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",

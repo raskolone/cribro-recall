@@ -257,14 +257,12 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
           <span className="text-content-muted text-sm italic absolute left-4 pointer-events-none">Ułóż zdanie z kafelków...</span>
         )}
         
-        <AnimatePresence>
+        <>
           {selectedTiles.map((st, idx) => (
-            <motion.button
+            <button
               ref={(el) => {
                 answerTileRefs.current[st.id] = el;
               }}
-              exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
-              layout
               key={st.id + '-ans'}
               type="button"
               onClick={() => handleRemoveTile(st, idx)}
@@ -275,34 +273,26 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
               }`}
             >
               {st.text}
-            </motion.button>
+            </button>
           ))}
-        </AnimatePresence>
+        </>
       </div>
 
       {/* Available Tiles */}
       <div className="flex flex-wrap gap-3 justify-center p-4 min-h-[120px]">
-        <AnimatePresence>
+        <>
           {tiles.filter(t => !t.isCorrect).map((tile) => {
             const isError = errorTileId === tile.id;
                         
             return (
-              <motion.button
+              <button
                 key={tile.id}
-                layout
-                initial={{ opacity: 0, scale: 0.8 }}
-                exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
                 id={tile.id}
                 type="button"
                 onClick={(e) => handleTileClick(tile, e)}
                 onContextMenu={(e) => { e.preventDefault(); playAudio(tile.text); }}
                 disabled={isCompleted}
-                animate={
-                  isError ? { x: [-10, 10, -10, 10, 0], opacity: 1 } : { x: 0, y: 0, scale: 1, opacity: 1 }
-                }
-                transition={
-                  isError ? { duration: 0.4 } : { type: "spring", stiffness: 400, damping: 30 }
-                }
+                
                 className={`px-5 py-2.5 rounded-xl font-bold text-sm md:text-base shadow-sm backdrop-blur-md border z-10
                   ${isError 
                     ? 'bg-red-500 text-white border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.9)] scale-105' 
@@ -310,10 +300,10 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
                   }`}
               >
                 {tile.text}
-              </motion.button>
+              </button>
             );
           })}
-        </AnimatePresence>
+        </>
       </div>
       
       {isCompleted && (
