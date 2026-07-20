@@ -63,8 +63,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
   const navRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (navRef.current) {
-      gsap.fromTo(navRef.current.children, 
+    if (navRef.current && navRef.current.children && navRef.current.children.length > 0) {
+      gsap.fromTo(gsap.utils.toArray(navRef.current.children), 
         { opacity: 0, x: -20 },
         { opacity: 1, x: 0, duration: 0.4, stagger: 0.05, ease: 'power2.out', clearProps: 'all' }
       );

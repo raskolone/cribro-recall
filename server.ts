@@ -122,7 +122,7 @@ app.use((err: any, req: any, res: any, next: any) => {
     }
   });
 
-  app.patch('/api/firebase-admin/users/:uid/password', requireFirebaseAdmin, async (req, res) => {
+  app.post('/api/firebase-admin/users/:uid/password', requireFirebaseAdmin, async (req, res) => {
     try {
       const uid = req.params.uid as string;
       const { password } = req.body;
@@ -133,7 +133,7 @@ app.use((err: any, req: any, res: any, next: any) => {
     }
   });
 
-  app.patch('/api/firebase-admin/users/:uid/role', requireFirebaseAdmin, async (req, res) => {
+  app.post('/api/firebase-admin/users/:uid/role', requireFirebaseAdmin, async (req, res) => {
     try {
       const uid = req.params.uid as string;
       const { role } = req.body;

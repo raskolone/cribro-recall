@@ -45,7 +45,7 @@ export function useFirebaseAdminApi() {
   const changeUserRole = async (uid: string, role: string) => {
     const token = await getIdToken();
     const res = await fetch(`/api/firebase-admin/users/${uid}/role`, {
-      method: 'PATCH',
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -59,7 +59,7 @@ export function useFirebaseAdminApi() {
   const changeUserPassword = async (uid: string, password: string) => {
     const token = await getIdToken();
     const res = await fetch(`/api/firebase-admin/users/${uid}/password`, {
-      method: 'PATCH',
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',

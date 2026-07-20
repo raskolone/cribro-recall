@@ -40,8 +40,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (containerRef.current) {
-      gsap.fromTo(containerRef.current.children, 
+    if (containerRef.current && containerRef.current.children.length > 0) {
+      gsap.fromTo(gsap.utils.toArray(containerRef.current.children), 
         { opacity: 0, y: 30 },
         { opacity: 1, y: 0, duration: 0.8, stagger: 0.15, ease: 'power3.out', clearProps: 'all' }
       );

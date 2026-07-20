@@ -39,7 +39,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-    const handlePreviewSet = async (setId: string) => {
+  const handlePreviewSet = async (setId: string) => {
     setPreviewSetId(setId);
     setIsLoadingPreview(true);
     try {
@@ -55,8 +55,8 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (containerRef.current) {
-      gsap.fromTo(containerRef.current.children, 
+    if (containerRef.current.children.length > 0) {
+      gsap.fromTo(gsap.utils.toArray(containerRef.current.children), 
         { opacity: 0, y: 30 },
         { opacity: 1, y: 0, duration: 0.5, stagger: 0.05, ease: 'power2.out', clearProps: 'all' }
       );

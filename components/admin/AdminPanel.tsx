@@ -468,8 +468,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   }, [activeTab, selectedUser]);
 
   useEffect(() => {
-    if (userListRef.current && !selectedUser) {
-      gsap.fromTo(userListRef.current.children,
+    if (userListRef.current && userListRef.current.children.length > 0 && !selectedUser) {
+      gsap.fromTo(gsap.utils.toArray(userListRef.current.children),
         { opacity: 0, x: -30 },
         { opacity: 1, x: 0, duration: 0.4, ease: "power2.out", stagger: 0.05, clearProps: "all" }
       );
@@ -486,8 +486,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   }, [selectedUser]);
 
   useEffect(() => {
-    if (mainMenuRef.current && activeTab === null) {
-      gsap.fromTo(mainMenuRef.current.children,
+    if (mainMenuRef.current && mainMenuRef.current.children.length > 0 && activeTab === null) {
+      gsap.fromTo(gsap.utils.toArray(mainMenuRef.current.children),
         { opacity: 0, y: 20 },
         { opacity: 1, y: 0, duration: 0.3, ease: "power2.out", stagger: 0.05, clearProps: "all" }
       );

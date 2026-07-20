@@ -87,178 +87,16 @@ const playSliderSound = () => {
 
 
 const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string }> = ({ language, level }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const textRef = useRef<HTMLDivElement>(null);
-  const jengaRef = useRef<HTMLDivElement>(null);
-
-  const steps = language === 'pl' ? [
-    "Układanie klocków gramatyki...",
-    "Budowanie poprawnej składni...",
-    "Dobieranie odpowiedniego słownictwa...",
-    "Sprawdzanie naturalności zdań...",
-    "Opracowywanie unikalnego kontekstu...",
-    "Dopasowywanie do poziomu CEFR...",
-    "Finalizowanie ćwiczenia AI..."
-  ] : [
-    "Stacking grammar blocks...",
-    "Building correct syntax...",
-    "Selecting appropriate vocabulary...",
-    "Checking sentence naturalness...",
-    "Designing unique context...",
-    "Aligning with CEFR level...",
-    "Finalizing AI exercise..."
-  ];
-
-  const [currentStepIdx, setCurrentStepIdx] = useState(0);
-
-  useEffect(() => {
-    const stepInterval = setInterval(() => {
-      setCurrentStepIdx(prev => (prev + 1) % steps.length);
-    }, 2200);
-    return () => clearInterval(stepInterval);
-  }, [steps.length]);
-
-  useEffect(() => {
-    if (!jengaRef.current) return;
-    const blocks = jengaRef.current.querySelectorAll('.jenga-block');
-    
-    const tl = gsap.timeline({ repeat: -1 });
-    
-    // Build phase
-    tl.fromTo(blocks, 
-      { y: -150, opacity: 0, rotation: () => Math.random() * 40 - 20 },
-      { 
-        y: 0, 
-        opacity: 1, 
-        rotation: 0, 
-        duration: 0.4, 
-        stagger: {
-          each: 0.1,
-          from: "start"
-        },
-        ease: "back.out(1.5)"
-      }
-    )
-    // Wait a bit
-    .to({}, { duration: 1.5 })
-    // Fall apart phase
-    .to(blocks, {
-      y: () => Math.random() * 100 + 50,
-      x: () => Math.random() * 100 - 50,
-      rotation: () => Math.random() * 180 - 90,
-      opacity: 0,
-      duration: 0.6,
-      stagger: {
-        each: 0.05,
-        from: "random"
-      },
-      ease: "power2.in"
-    })
-    .to({}, { duration: 0.5 }); // pause before restart
-    
-    return () => {
-      tl.killTweensOf("*");
-      tl.kill();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (textRef.current) {
-      gsap.fromTo(textRef.current,
-        { opacity: 0, y: 15, scale: 0.95 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: "back.out(1.5)" }
-      );
-    }
-  }, [currentStepIdx]);
-
   return (
-    <div ref={containerRef} className="w-full max-w-2xl mx-auto py-14 px-6 flex flex-col items-center justify-center bg-base-200/40 border border-white/5 backdrop-blur-xl rounded-2xl relative overflow-hidden min-h-[380px] shadow-[0_8px_32px_0_rgba(0,0,0,0.5)]">
-      {/* Background elements */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.03] to-transparent pointer-events-none" />
-      
-      {/* Jenga Blocks Animation */}
-      <div ref={jengaRef} className="relative w-48 h-36 flex flex-col justify-end items-center mb-8 gap-[2px]">
-        {[...Array(6)].map((_, rowIndex) => (
-          <div key={`row-${rowIndex}`} className="flex flex-row gap-[2px]">
-            {rowIndex % 2 === 0 ? (
-              [...Array(3)].map((_, colIndex) => (
-                <div 
-                  key={`block-${rowIndex}-${colIndex}`}
-                  className="jenga-block bg-primary/20 border border-primary/40 rounded-sm shadow-[0_0_10px_rgba(114,240,180,0.2)] w-[38px] h-[16px]"
-                />
-              ))
-            ) : (
-               <div 
-                  key={`block-${rowIndex}-0`}
-                  className="jenga-block bg-primary/20 border border-primary/40 rounded-sm shadow-[0_0_10px_rgba(114,240,180,0.2)] w-[118px] h-[16px]"
-                />
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Interactive loading step */}
-      <div className="space-y-2 text-center z-10 max-w-md mt-4">
-        <h4 className="text-[11px] font-bold text-primary tracking-widest uppercase font-mono animate-pulse">
-          {language === 'pl' ? 'Generowanie z AI' : 'Generating with AI'}
-        </h4>
-        <div ref={textRef} className="text-base font-bold text-white tracking-tight min-h-[24px]">
-          {steps[currentStepIdx]}
-        </div>
-        <p className="text-xs text-content-muted mt-2">
-          {language === 'pl' 
-            ? 'Budujemy dla Ciebie wysoce spersonalizowaną lekcję. To potrwa tylko chwilę...' 
-            : 'Assembling a custom practice session tailored to your needs. This will only take a moment...'}
-        </p>
-      </div>
+    <div className="flex flex-col items-center justify-center p-12 text-center h-full min-h-[400px]">
+      <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-6"></div>
+      <h3 className="text-2xl font-display font-bold text-white mb-2">
+        {language === 'pl' ? 'Generowanie ćwiczenia...' : 'Generating exercise...'}
+      </h3>
+      <p className="text-content-muted">
+        {language === 'pl' ? 'AI analizuje Twój profil i przygotowuje zadania' : 'AI is analyzing your profile and preparing tasks'}
+      </p>
     </div>
-  );
-};
-
-
-interface AIExerciseGeneratorScreenProps {
-  initialSetId?: string | null;
-  onStartPractice?: (exercise: ExerciseType) => void;
-  onExerciseStateChange?: (isActive: boolean) => void;
-}
-
-const AILoadingButton = ({ isLoading, onClick, children, className, disabled, loadingText, variant = 'primary' }: any) => {
-  const baseStyles = 'relative overflow-hidden inline-flex items-center justify-center font-bold font-sans rounded focus:outline-none transition-all duration-200 ease-out disabled:opacity-50 disabled:cursor-not-allowed';
-  
-  // Custom styling for loading vs default state
-  const isPrimary = variant === 'primary';
-  const defaultStyles = isPrimary
-    ? 'bg-primary text-base-100 hover:brightness-110 hover:-translate-y-[1px] hover:shadow-[0_0_20px_rgba(114,240,180,0.4)]'
-    : 'bg-transparent border-[1.5px] border-white/20 text-content hover:border-primary/60 hover:text-primary hover:bg-primary/10 hover:-translate-y-[1px]';
-    
-  const loadingStyles = 'bg-[#00FF66] text-black cursor-wait shadow-[0_0_30px_rgba(0,255,102,0.8)] animate-pulse scale-[1.02] transition-transform duration-300';
-
-  return (
-    <button
-      onClick={onClick}
-      disabled={isLoading || disabled}
-      className={`${baseStyles} ${isLoading ? loadingStyles : defaultStyles} ${className || ''}`}
-    >
-      {isLoading && (
-        <motion.div
-          className="absolute left-0 top-0 bottom-0 bg-black/10"
-          initial={{ width: "0%" }}
-          animate={{ width: "100%" }}
-          transition={{ duration: 15, ease: "circOut" }} 
-        />
-      )}
-      {isLoading && (
-        <motion.div
-          animate={{ opacity: [0.1, 0.3, 0.1] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 bg-black/20"
-        />
-      )}
-      <div className="relative z-10 flex items-center justify-center gap-2">
-        {isLoading && <Sparkles className="w-5 h-5 animate-spin" />}
-        {isLoading ? loadingText : children}
-      </div>
-    </button>
   );
 };
 
@@ -422,11 +260,11 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
   
   useEffect(() => {
-    if (step === 'results' && evaluationResults.length > 0 && resultsRef.current) {
+    if (step === 'results' && evaluationResults.length > 0 && resultsRef.current && resultsRef.current.children.length > 0) {
       const tl = gsap.timeline();
       
       // Initial state
-      gsap.set(resultsRef.current.children, { y: 50, opacity: 0 });
+      gsap.set(gsap.utils.toArray(resultsRef.current.children), { y: 50, opacity: 0 });
       const scoreBoard = resultsRef.current.querySelector('.score-board');
       const scoreText = resultsRef.current.querySelector('.score-text');
       const icon = resultsRef.current.querySelector('.score-icon');
@@ -436,7 +274,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       if (icon) gsap.set(icon, { scale: 0, rotation: 180 });
       
       // Animation sequence
-      tl.to(resultsRef.current.children, {
+      tl.to(gsap.utils.toArray(resultsRef.current.children), {
         y: 0,
         opacity: 1,
         duration: 0.5,
