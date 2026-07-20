@@ -1,46 +1,4 @@
 import { auth } from '../firebase';
-export const extractJSON = (text: string): string => {
-  if (!text) return "{}";
-  
-  // Try to find markdown code blocks first
-  const jsonBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/i;
-  const match = text.match(jsonBlockRegex);
-  if (match && match[1]) {
-    return match[1].trim();
-  }
-  
-  // If no markdown block, try to find the first '{' or '[' and last '}' or ']'
-  const firstBrace = text.indexOf('{');
-  const firstBracket = text.indexOf('[');
-  const lastBrace = text.lastIndexOf('}');
-  const lastBracket = text.lastIndexOf(']');
-  
-  let startIndex = -1;
-  let endIndex = -1;
-  
-  if (firstBrace !== -1 && firstBracket !== -1) {
-    startIndex = Math.min(firstBrace, firstBracket);
-  } else if (firstBrace !== -1) {
-    startIndex = firstBrace;
-  } else if (firstBracket !== -1) {
-    startIndex = firstBracket;
-  }
-  
-  if (lastBrace !== -1 && lastBracket !== -1) {
-    endIndex = Math.max(lastBrace, lastBracket);
-  } else if (lastBrace !== -1) {
-    endIndex = lastBrace;
-  } else if (lastBracket !== -1) {
-    endIndex = lastBracket;
-  }
-  
-  if (startIndex !== -1 && endIndex !== -1 && endIndex >= startIndex) {
-    return text.substring(startIndex, endIndex + 1);
-  }
-  
-  // Fallback to trimming
-  return text.trim();
-};
 
 import { collection, getDocs, query, orderBy, limit, doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -48,11 +6,94 @@ import { db } from '../firebase';
 import { GoogleGenAI, Type, Modality, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { Language, Difficulty, Word, AISuggestion, AudioVocabulary, TranslationExercise, TranslationEvaluationResult } from '../types';
 
+
+export const extractJSON = (text: string): string => {
+  if (!text) return "{}";
+  
+  const jsonBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/i;
+  const match = text.match(jsonBlockRegex);
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+  
+  const firstBrace = text.indexOf('{');
+  const firstBracket = text.indexOf('[');
+  
+  let startIdx = -1;
+  if (firstBrace !== -1 && firstBracket !== -1) {
+    startIdx = Math.min(firstBrace, firstBracket);
+  } else if (firstBrace !== -1) {
+    startIdx = firstBrace;
+  } else if (firstBracket !== -1) {
+    startIdx = firstBracket;
+  }
+  
+  if (startIdx !== -1) {
+    const endBrace = text.lastIndexOf('}');
+    const endBracket = text.lastIndexOf(']');
+    
+    let endIdx = -1;
+    if (endBrace !== -1 && endBracket !== -1) {
+      endIdx = Math.max(endBrace, endBracket);
+    } else if (endBrace !== -1) {
+      endIdx = endBrace;
+    } else if (endBracket !== -1) {
+      endIdx = endBracket;
+    }
+    
+    if (endIdx !== -1 && endIdx > startIdx) {
+      return text.substring(startIdx, endIdx + 1);
+    }
+  }
+  
+  return text.trim();
+};
+
+
+if (!process.env.API_KEY) {
+  throw new Error("API_KEY environment variable is not set");
+}
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+const generateContentWithFallback = async (params: any) => {
+  const models = ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+  let lastError;
+  for (const model of models) {
+    try {
+      console.log(`Attempting generation with ${model}...`);
+      const response = await ai.models.generateContent({
+        ...params,
+        model,
+      });
+      return response;
+    } catch (e: any) {
+      console.warn(`Model ${model} failed:`, e?.status || e?.message);
+      lastError = e;
+      if (e?.status === 400 && e?.message?.includes("not found")) {
+         // Model doesn't exist, try next
+         continue;
+      }
+      if (e?.status === 503 || e?.status === 429) {
+         // High demand or rate limit, try next
+         continue;
+      }
+      // For other errors, it might be a prompt issue, but let's try next anyway for robustness
+    }
+  }
+  throw lastError;
+};
+
+
+
+
+
+
+
 if (!process.env.API_KEY) {
   throw new Error("API_KEY environment variable is not set");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
 
 const vocabularySchema = {
   type: Type.ARRAY,
@@ -95,14 +136,10 @@ const suggestionSchema = {
 export const generateVocabulary = async (language: Language, difficulty: Difficulty): Promise<Omit<Word, 'id' | 'isDifficult' | 'language'>[]> => {
   const prompt = `Generate a list of 10 unique ${language} vocabulary words for the ${difficulty} CEFR level. For each word, provide: the word itself, its IPA transcription, a simple definition in English, and an example sentence. Do not repeat words.`;
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
+    const response = await generateContentWithFallback({ contents: prompt, config: {
         responseMimeType: "application/json",
         responseSchema: vocabularySchema,
-      },
-    });
+      } });
     let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText);
   } catch (error: any) {
@@ -170,21 +207,7 @@ Return JSON array of objects with:
       responseSchema: translationExerciseSchema,
     };
     
-    let response;
-    try {
-      response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: finalPrompt,
-        config,
-      });
-    } catch (e1: any) {
-      console.warn("gemini-3.5-flash failed, retrying with gemini-3.5-flash...", e1);
-      response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: finalPrompt,
-        config,
-      });
-    }
+    const response = await generateContentWithFallback({ contents: finalPrompt, config });
     let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText) as TranslationExercise[];
   } catch (error: any) {
@@ -212,20 +235,7 @@ ${exercises.map((ex, i) => `${i + 1}. Polish: "${ex.polishSentence}" | Expected:
       responseMimeType: "application/json",
       responseSchema: evaluationResultSchema,
     };
-    let response;
-    try {
-      response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
-        config,
-      });
-    } catch (e1) {
-      response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
-        config,
-      });
-    }
+    const response = await generateContentWithFallback({ contents: prompt, config });
     let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText) as TranslationEvaluationResult[];
   } catch (error: any) {
@@ -315,14 +325,10 @@ Return a JSON array of objects.`;
   };
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
+    const response = await generateContentWithFallback({ contents: prompt, config: {
         responseMimeType: "application/json",
         responseSchema: schema,
-      },
-    });
+      } });
     let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText);
   } catch (err) {
@@ -338,10 +344,7 @@ Language: ${termLang}
 Only return the sentence, nothing else.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-    });
+    const response = await generateContentWithFallback({ contents: prompt });
     return response?.text.trim();
   } catch (err) {
     console.error("Error generating context sentence:", err);
@@ -354,7 +357,7 @@ export const generateImageForTerm = async (term: string, context?: string): Prom
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.1-flash-lite",
       contents: { parts: [{ text: prompt }] },
       config: {
         imageConfig: {
@@ -414,14 +417,10 @@ Zwróć 10 poprawionych zadań jako JSON (tablica obiektów). Zastąp te, które
   };
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
+    const response = await generateContentWithFallback({ contents: prompt, config: {
         responseMimeType: "application/json",
         responseSchema: schema,
-      },
-    });
+      } });
 
     let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText);
@@ -523,13 +522,9 @@ Dla "fill_in_blank":
 }`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
+    const response = await generateContentWithFallback({ contents: prompt, config: {
         responseMimeType: "application/json",
-      },
-    });
+      } });
 
     let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText);
@@ -559,10 +554,7 @@ ${text}`;
   };
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
+    const response = await generateContentWithFallback({ contents: prompt, config: {
         responseMimeType: "application/json",
         responseSchema: schema,
       }
@@ -640,10 +632,7 @@ export const generateHomework = async (topic: string, summary: string, words: st
   Praca domowa powinna być krótka, angażująca i utrwalać przerobiony materiał. Zaproponuj 3-5 zdań do przetłumaczenia na angielski, kilka pytań otwartych do odpowiedzi pisemnej po angielsku lub krótkie ćwiczenie (np. "uzupełnij luki") polegające na użyciu słownictwa z lekcji. Zwróć wynik w formacie Markdown. Pisz bezpośrednio do ucznia w przyjaznym tonie po polsku.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-    });
+    const response = await generateContentWithFallback({ contents: prompt });
     return response?.text || "";
   } catch (error) {
     console.error("Error generating homework:", error);
@@ -663,8 +652,7 @@ export const getAudioPronunciation = async (text: string, language: string): Pro
               prebuiltVoiceConfig: { voiceName: language === 'en' ? 'Puck' : 'Kore' },
             },
         },
-      },
-    });
+      } });
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     return base64Audio || '';
   } catch (err) {
