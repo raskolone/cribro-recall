@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import gsap from 'gsap';
-import { auth } from '../../firebase';
+import { auth, db } from '../../firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import Sidebar from './Sidebar';
 import ConfirmModal from '../ui/ConfirmModal';
 import VocabularyGenerator from './VocabularyGenerator';
@@ -19,12 +20,14 @@ import AdminPanel from '../admin/AdminPanel';
 import LearningProgressChart from './LearningProgressChart';
 import { useSettings } from '../../context/SettingsContext';
 import AIExerciseGeneratorScreen from './AIExerciseGeneratorScreen';
+import { OnboardingTour } from './OnboardingTour';
 import LessonHistoryScreen from './LessonHistoryScreen';
 import StudentTestsScreen from '../tests/StudentTestsScreen';
 import { useAuth } from '../../context/AuthContext';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useLanguage } from '../../context/LanguageContext';
+import OnboardingOverlay from './OnboardingOverlay';
 import { ExerciseType, PracticeHistory } from '../../types';
 import Button from '../ui/Button';
 import { ChevronDown, ChevronRight, LayoutDashboard, Library, ClipboardList, Settings, User, BookOpen, Sparkles, BarChart3 } from 'lucide-react';
@@ -139,6 +142,23 @@ const Dashboard: React.FC = () => {
   const [practiceView, setPracticeView] = useState<PracticeView>(null);
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  
+  useEffect(() => {
+    if (user && !user.onboardingCompleted) {
+      setShowOnboarding(true);
+    }
+  }, [user?.onboardingCompleted]);
+  
+  const handleCompleteOnboarding = async () => {
+    setShowOnboarding(false);
+    if (user?.id) {
+      try {
+        await updateDoc(doc(db, 'users', user.id), { onboardingCompleted: true });
+      } catch(e) { console.error(e); }
+    }
+  };
+
   const [isExerciseActive, setIsExerciseActive] = useState(false);
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(true);
 
@@ -432,7 +452,7 @@ const Dashboard: React.FC = () => {
     if (view === 'presentation' && activeSetId) {
       return <FlashcardPresentationScreen setId={activeSetId} onBack={() => changeView('flashcard-sets', { activeSetId: null })} />;
     }
-    if (view.startsWith('admin') && (user?.role === 'admin' || user?.role === 'admin_student')) {
+    if (view.startsWith('admin') && (user?.role === 'admin' || user?.role === 'teacher')) {
       return <AdminPanel initialTab={view === 'admin' ? null : view.replace('admin-', '')} onViewChange={changeView} initialSelectedUserId={adminSelectedUserId} onUserSelect={(id) => changeView(view, { adminSelectedUserId: id })} />;
     }
     if (view === 'ai-generator') {
@@ -446,7 +466,7 @@ const Dashboard: React.FC = () => {
       return <StudentTestsScreen onBack={() => changeView('dashboard', { activeSetId: null, practiceView: null, adminSelectedUserId: null })} />;
     }
         // Default to dashboard view
-    const isTeacher = user?.role === 'admin' || user?.role === 'admin_student';
+    const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
 
     if (!isTeacher && view === 'dashboard') {
       return <AIExerciseGeneratorScreen key={`ai-gen-${exerciseResetKey}`} initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />;
@@ -454,6 +474,8 @@ const Dashboard: React.FC = () => {
 
     return (
       <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">
+        {showOnboarding && <OnboardingOverlay onComplete={handleCompleteOnboarding} language={language} />}
+
         <GoogleLinkBanner />
 
         
@@ -461,7 +483,7 @@ const Dashboard: React.FC = () => {
           <div className="space-y-6">
             <AdminPanel initialTab={null} onViewChange={changeView} initialSelectedUserId={adminSelectedUserId} onUserSelect={(id) => changeView(view, { adminSelectedUserId: id })} />
             
-            {user?.role === 'admin_student' && (
+            {user?.role === 'teacher' && (
               <div className="mt-8 border border-white/10 rounded-2xl overflow-hidden bg-base-200/20 backdrop-blur-sm">
                 <button 
                   className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors text-left"
@@ -576,7 +598,7 @@ const Dashboard: React.FC = () => {
         </div>
       </main>
       {/* Mobile Bottom Navigation */}
-      {!(user?.role === 'admin' || user?.role === 'admin_student') && (
+      {!(user?.role === 'admin' || user?.role === 'teacher') && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-base-200/90 backdrop-blur-xl border-t border-white/10 px-4 py-2 flex justify-between items-center z-50 shadow-[0_-8px_32px_rgba(0,0,0,0.4)] pb-safe">
           <button 
             onClick={() => {

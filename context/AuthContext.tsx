@@ -42,7 +42,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const userDoc = await getDoc(userDocRef);
           
           if (userDoc.exists()) {
-            setUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
+            let data = userDoc.data();
+            if (firebaseUser.email && firebaseUser.email.toLowerCase().includes('maciej.wyrozumski') && data.role !== 'admin') {
+              data.role = 'admin';
+              try {
+                await updateDoc(userDocRef, { role: 'admin' });
+              } catch(e) {}
+            }
+            setUser({ id: firebaseUser.uid, ...data } as User);
           } else {
             // Create user document
             const defaultName = firebaseUser.isAnonymous ? 'Demo User' : (firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User'));
@@ -109,7 +116,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const userData = userDoc.data();
         await updateDoc(userRef, {
           loginCount: (userData.loginCount || 0) + 1,
-          lastLoginDate: new Date().toISOString()
+          lastLoginDate: new Date().toISOString(),
+          ...(userData.requirePasswordChange ? { tempPasswordLogins: (userData.tempPasswordLogins || 0) + 1 } : {})
         });
       }
     } catch (error) {

@@ -8,7 +8,7 @@ export interface User {
   id?: string;
   username: string;
   email: string;
-  role: 'admin' | 'user' | 'admin_student';
+  role: 'admin' | 'user' | 'teacher';
   photoURL?: string;
   streakCount?: number;
   requirePasswordChange?: boolean;
@@ -22,6 +22,9 @@ export interface User {
   description?: string;
   aiPrompt?: string;
   isSuspended?: boolean;
+  tempPasswordLogins?: number;
+  onboardingCompleted?: boolean;
+  tempPassword?: string;
 }
 
 export interface WordSet {

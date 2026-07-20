@@ -194,7 +194,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
         >
           {language === 'pl' ? 'Opis' : 'Stats'}
         </Button>
-        {(user?.role === 'admin' || user?.role === 'admin_student') && onPresentSet && (
+        {(user?.role === 'admin' || user?.role === 'teacher') && onPresentSet && (
           <Button 
             variant="secondary"
             className="flex-[1_1_auto] shadow-[0_0_15px_rgba(201,168,108,0.2)] bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 border-orange-500/30"

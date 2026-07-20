@@ -94,7 +94,6 @@ const suggestionSchema = {
 
 export const generateVocabulary = async (language: Language, difficulty: Difficulty): Promise<Omit<Word, 'id' | 'isDifficult' | 'language'>[]> => {
   const prompt = `Generate a list of 10 unique ${language} vocabulary words for the ${difficulty} CEFR level. For each word, provide: the word itself, its IPA transcription, a simple definition in English, and an example sentence. Do not repeat words.`;
-  
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
@@ -104,153 +103,11 @@ export const generateVocabulary = async (language: Language, difficulty: Difficu
         responseSchema: vocabularySchema,
       },
     });
-
     let jsonText = extractJSON(response?.text || "");
-    const parsed = JSON.parse(jsonText);
-    return parsed as Omit<Word, 'id' | 'isDifficult' | 'language'>[];
-  } catch (error) {
+    return JSON.parse(jsonText);
+  } catch (error: any) {
     console.error("Error generating vocabulary:", error);
-    throw new Error("Failed to generate vocabulary from AI.");
-  }
-};
-
-export const getAudioPronunciation = async (text: string, voice: string): Promise<string> => {
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: [{ parts: [{ text: text }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: voice },
-          },
-        },
-        safetySettings: [
-          {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-          },
-        ]
-      },
-    });
-
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!base64Audio) {
-      console.error("Missing audio data in response API:", JSON.stringify(response, null, 2));
-      throw new Error("No audio data received from API.");
-    }
-    return base64Audio;
-  } catch (error) {
-    console.error("Error getting audio pronunciation:", error);
-    throw new Error(`Failed to get audio pronunciation. Details: ${error instanceof Error ? error.message : String(error)}`);
-  }
-};
-
-const audioVocabSchema = {
-  type: Type.ARRAY,
-  items: {
-    type: Type.OBJECT,
-    properties: {
-      targetWord: { type: Type.STRING, description: "The extracted vocabulary word in the target language (usually English)." },
-      translation: { type: Type.STRING, description: "Translation of the word into the learner's language." },
-      contextSentence: { type: Type.STRING, description: "An example sentence using the word, preferably based on the audio context." }
-    },
-    required: ['targetWord', 'translation', 'contextSentence']
-  }
-};
-
-export const generateAudioVocabulary = async (base64Audio: string, mimeType: string, language: string): Promise<AudioVocabulary[]> => {
-  const prompt = `Listen to the provided audio material. Extract the key vocabulary words or phrases introduced in the target language (English).
-  For each word, provide:
-  1. targetWord: The word in English.
-  2. translation: The translation in ${language}.
-  3. contextSentence: An example sentence using this word, referencing the context of the audio if possible.`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { inlineData: { data: base64Audio, mimeType: mimeType } },
-            { text: prompt }
-          ]
-        }
-      ],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: audioVocabSchema,
-      },
-    });
-
-    let jsonText = extractJSON(response?.text || "");
-    return JSON.parse(jsonText) as AudioVocabulary[];
-  } catch (error) {
-    console.error("Error generating audio vocabulary:", error);
-    throw new Error("Failed to generate audio vocabulary from AI.");
-  }
-};
-
-export const generateAudioTranscript = async (base64Audio: string, mimeType: string, language: string): Promise<string> => {
-  const prompt = `Listen to the provided audio material. Generate a precise, literal, word-for-word transcript of the entire recording. Do not summarize, do not skip words, and do not add any extra conversational filler text or commentary. Return only the raw transcript text formatting it nicely with newlines where appropriate. The language of the user requesting this is ${language}.`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { inlineData: { data: base64Audio, mimeType: mimeType } },
-            { text: prompt }
-          ]
-        }
-      ],
-    });
-
-    return response?.text.trim();
-  } catch (error) {
-    console.error("Error generating audio transcript:", error);
-    throw new Error("Failed to generate audio transcript from AI.");
-  }
-};
-
-export const getAISuggestions = async (difficultWords: Word[]): Promise<AISuggestion> => {
-  const wordList = difficultWords.map(w => w.word).join(', ');
-  const prompt = `I'm struggling with these vocabulary words: ${wordList}. 
-  1. Write a short, engaging paragraph that correctly uses at least three of these words in a natural context.
-  2. For each word in the list, provide one relevant synonym and one relevant antonym.
-  `;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: suggestionSchema
-      },
-    });
-
-    let jsonText = extractJSON(response?.text || "");
-    return JSON.parse(jsonText) as AISuggestion;
-  } catch (error) {
-    console.error("Error getting AI suggestions:", error);
-    throw new Error("Failed to get AI suggestions.");
+    throw new Error(error.message || "Failed to generate vocabulary.");
   }
 };
 
@@ -275,16 +132,10 @@ const evaluationResultSchema = {
       polishSentence: { type: Type.STRING },
       correctTranslation: { type: Type.STRING },
       studentAnswer: { type: Type.STRING },
-      highlightedAnswer: { type: Type.STRING, description: "The student's answer with HTML span tags. Wrap correct words in <span class='text-green-500 font-bold'>word</span>, and incorrect words in <span class='text-red-500 font-bold line-through'>word</span>. Add missing required words as <span class='text-amber-500 font-bold'>[missing]</span>." },
-      isCorrect: { type: Type.BOOLEAN, description: "Whether the answer is mostly correct or functionally accurate" },
-      score: { type: Type.INTEGER, description: "Accuracy score from 0 to 100 based on grammar, choice of words, and meaning" },
-      explanation: { type: Type.STRING, description: "Detailed explanation in Polish highlighting mistakes, grammar rules, and alternative correct translations" },
-      feedbackSyntax: { type: Type.STRING, description: "Szyk i gramatyka: short, elegant feedback on syntax/grammar. No markdown asterisks." },
-      feedbackVocab: { type: Type.STRING, description: "Słownictwo i naturalność: short, elegant feedback on vocabulary/naturalness. No markdown asterisks." },
-      feedbackRule: { type: Type.STRING, description: "Złota zasada: short golden rule/takeaway. No markdown asterisks." },
-      mistakes: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of specific grammar or vocabulary topics the student failed at (e.g. 'Present Perfect', 'Articles'). Empty if correct." }
+      isCorrect: { type: Type.BOOLEAN, description: "Whether the translation is completely correct and natural." },
+      feedback: { type: Type.STRING, description: "Feedback in Polish explaining errors or giving praise." }
     },
-    required: ['polishSentence', 'correctTranslation', 'studentAnswer', 'highlightedAnswer', 'isCorrect', 'score', 'explanation', 'feedbackSyntax', 'feedbackVocab', 'feedbackRule', 'mistakes']
+    required: ['polishSentence', 'correctTranslation', 'studentAnswer', 'isCorrect', 'feedback']
   }
 };
 
@@ -297,14 +148,9 @@ export const generateTranslationExercises = async (
   numSentences: number = 5,
   pastExercisesContext?: string
 ): Promise<TranslationExercise[]> => {
-  // Ograniczamy nadmiarowe dane kontekstowe dla modelu, aby przyspieszyć generowanie.
-  // Zbyt duże prompt'y wydłużają czas odpowiedzi.
-  const shortLesson = lessonContext ? `
-Lesson context: ${lessonContext.substring(0, 500)}` : '';
-  const shortProfile = studentProfileContext ? `
-Student profile: ${studentProfileContext.substring(0, 300)}` : '';
-  const shortPast = pastExercisesContext ? `
-Past exercises to avoid repeats: ${pastExercisesContext.substring(0, 500)}` : '';
+  const shortLesson = lessonContext ? `Lesson context: ${lessonContext.substring(0, 500)}` : '';
+  const shortProfile = studentProfileContext ? `Student profile: ${studentProfileContext.substring(0, 300)}` : '';
+  const shortPast = pastExercisesContext ? `Past exercises to avoid repeats: ${pastExercisesContext.substring(0, 500)}` : '';
 
   const basePrompt = `Generate exactly ${numSentences} unique Polish-English translation exercises for a student at CEFR level ${level}.
 Make them short, practical, and strictly appropriate for ${level}.
@@ -315,19 +161,16 @@ Return JSON array of objects with:
 - englishTranslation (string)
 - hint (string, in Polish)`;
 
-  const finalPrompt = customPrompt ? `${customPrompt}
-
-Constraints:
-${basePrompt}` : basePrompt;
+  const finalPrompt = customPrompt ? `${customPrompt}\n\nConstraints:\n${basePrompt}` : basePrompt;
 
   try {
-    let response;
     const config = {
       systemInstruction: "You are an AI language tutor. Generate short, level-appropriate translation sentences. Be fast and concise. Always return valid JSON array.",
       responseMimeType: "application/json",
       responseSchema: translationExerciseSchema,
     };
     
+    let response;
     try {
       response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
@@ -335,14 +178,13 @@ ${basePrompt}` : basePrompt;
         config,
       });
     } catch (e1: any) {
-      console.warn("gemini-3.5-flash failed, retrying with gemini-3.5-flash (lite fallback)...", e1);
+      console.warn("gemini-3.5-flash failed, retrying with gemini-3.5-flash...", e1);
       response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
         contents: finalPrompt,
         config,
       });
     }
-    
     let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText) as TranslationExercise[];
   } catch (error: any) {
@@ -351,91 +193,42 @@ ${basePrompt}` : basePrompt;
   }
 };
 
-export const generateHomework = async (topic: string, summary: string, words: string): Promise<string> => {
-  const prompt = `Jako doświadczony nauczyciel języka angielskiego, wygeneruj spersonalizowaną pracę domową dla ucznia na podstawie odbytej lekcji.
-  Temat lekcji: ${topic}
-  Podsumowanie lekcji: ${summary}
-  Przerobione słownictwo: ${words}
-  
-  Praca domowa powinna być krótka, angażująca i utrwalać przerobiony materiał. Zaproponuj 3-5 zdań do przetłumaczenia na angielski, 
-  kilka pytań otwartych do odpowiedzi pisemnej po angielsku lub krótkie ćwiczenie (np. "uzupełnij luki") polegające na użyciu słownictwa z lekcji. 
-  
-  Zwróć wynik formacie Markdown (użyj nagłówków np. ### Zadanie 1, list punktowanych itp.), aby tekst był czytelny i przejrzysty dla ucznia. Pisz bezpośrednio do ucznia w przyjaznym tonie po polsku.`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-    });
-    return response?.text.trim();
-  } catch (error) {
-    console.error("Error generating homework:", error);
-    throw new Error("Failed to generate homework from AI.");
-  }
-};
-
 export const evaluateTranslations = async (
   exercises: TranslationExercise[],
   studentAnswers: string[],
-  customEvaluationPrompt?: string,
-  studentProfileContext?: string
+  strictnessPrompt: string,
+  evalStudentContext: string
 ): Promise<TranslationEvaluationResult[]> => {
-  const formattedPairs = exercises.map((ex, idx) => {
-    return `Sentence ${idx + 1}:
-    Polish: ${ex.polishSentence}
-    Reference English: ${ex.englishTranslation}
-    Student's Answer: ${studentAnswers[idx] || '(no answer)'}`;
-  }).join('\n\n');
+  const prompt = `Evaluate the following student translations from Polish to English.
+${evalStudentContext}
+${strictnessPrompt}
 
-  const basePrompt = `Review the student's English translations of the Polish sentences.
-  For each sentence:
-  1. Compare the Student's Answer with the Reference English.
-  2. Grade it. If it's functionally correct and has no major grammar errors, mark isCorrect as true, and give a high score.
-  3. Generate 'explanation' as a general comment if needed. Provide detailed feedback using 'feedbackSyntax', 'feedbackVocab', and 'feedbackRule' fields. Write elegantly in Polish without markdown format characters like asterisks (**). Be concise and to the point.
-  4. Generate a 'highlightedAnswer' where you take the EXACT words the student wrote and wrap them in HTML tags: <span class='text-green-500 font-bold'>correct_word</span> or <span class='text-red-500 font-bold line-through'>wrong_word</span>. Also insert <span class='text-amber-500 font-bold'>[missing]</span> if something crucial was omitted. Do not wrap punctuation. Return the entire string.
-  5. For any mistakes made, list the exact grammar or vocabulary topics the student struggled with in the 'mistakes' array (e.g. 'Present Perfect', 'Phrasal Verbs', 'Prepositions'). Leave it empty if there are no mistakes.
-  ${studentProfileContext ? `
-Student context: ${studentProfileContext}` : ''}
-  
-  Student's Work:
-  ${formattedPairs}`;
-
-  const finalPrompt = customEvaluationPrompt ? `${customEvaluationPrompt}\n\nContext:\n${basePrompt}` : basePrompt;
+Exercises:
+${exercises.map((ex, i) => `${i + 1}. Polish: "${ex.polishSentence}" | Expected: "${ex.englishTranslation}" | Student Answer: "${studentAnswers[i]}"`).join('\n')}`;
 
   try {
-    let response;
     const config = {
-      systemInstruction: `Jesteś bezpośrednim i konkretnym trenerem języka angielskiego dla Polaków. Przeanalizuj tłumaczenie kursanta i porównaj je z wersją wzorcową. 
-
-Zasady generowania feedbacku (Stosuj bezwzględnie):
-1. Podziel swój feedback na mikrokategorie: 'feedbackSyntax', 'feedbackVocab' oraz 'feedbackRule' w zwracanym JSONie. Używaj tylko tych 3 kategorii. W pole 'explanation' nic nie wpisuj (poza wyjątkami opisanymi niżej).
-2. Szyk i gramatyka (feedbackSyntax): krótki i elegancki komentarz o błędach gramatycznych lub pochwała.
-3. Słownictwo i naturalność (feedbackVocab): czy użyto naturalnych słów, jak by to powiedział native speaker.
-4. Złota zasada (feedbackRule): jedna, najważniejsza, krótka wskazówka do zapamiętania.
-5. Kategoryczny ZAKAZ używania znaków formatowania Markdown typu gwiazdki (**) pogrubiające tekst. 
-6. Pisz czytelnie, krótko i na temat. Odbiorcą nie są programiści, tylko osoby uczące się.
-7. Jeśli tłumaczenie kursanta jest w 100% poprawne, zwróć wyłącznie krótką pochwałę w polu 'explanation', a pozostałe 3 pola feedbacku mogą być puste.`,
+      systemInstruction: "You are an AI language tutor evaluating translations. Always return a valid JSON array.",
       responseMimeType: "application/json",
       responseSchema: evaluationResultSchema,
     };
+    let response;
     try {
       response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
-        contents: finalPrompt,
+        contents: prompt,
         config,
       });
-    } catch (e1: any) {
-      console.warn("gemini-3.5-flash eval failed on first attempt, retrying with gemini-3.5-flash...", e1);
+    } catch (e1) {
       response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
-        contents: finalPrompt,
+        contents: prompt,
         config,
       });
     }
-
     let jsonText = extractJSON(response?.text || "");
     return JSON.parse(jsonText) as TranslationEvaluationResult[];
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error evaluating translations:", error);
     throw new Error("Failed to evaluate translations with AI.");
   }
@@ -836,4 +629,46 @@ export const gradeTest = async (
     }
   }
   return await res.json();
+};
+
+export const generateHomework = async (topic: string, summary: string, words: string): Promise<string> => {
+  const prompt = `Jako doświadczony nauczyciel języka angielskiego, wygeneruj spersonalizowaną pracę domową dla ucznia na podstawie odbytej lekcji.
+  Temat lekcji: ${topic}
+  Podsumowanie lekcji: ${summary}
+  Przerobione słownictwo: ${words}
+  
+  Praca domowa powinna być krótka, angażująca i utrwalać przerobiony materiał. Zaproponuj 3-5 zdań do przetłumaczenia na angielski, kilka pytań otwartych do odpowiedzi pisemnej po angielsku lub krótkie ćwiczenie (np. "uzupełnij luki") polegające na użyciu słownictwa z lekcji. Zwróć wynik w formacie Markdown. Pisz bezpośrednio do ucznia w przyjaznym tonie po polsku.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: prompt,
+    });
+    return response?.text || "";
+  } catch (error) {
+    console.error("Error generating homework:", error);
+    throw new Error("Failed to generate homework.");
+  }
+};
+
+export const getAudioPronunciation = async (text: string, language: string): Promise<string> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3.1-flash-tts-preview",
+      contents: [{ parts: [{ text: text }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: language === 'en' ? 'Puck' : 'Kore' },
+            },
+        },
+      },
+    });
+    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    return base64Audio || '';
+  } catch (err) {
+    console.error('Error generating audio:', err);
+    return '';
+  }
 };

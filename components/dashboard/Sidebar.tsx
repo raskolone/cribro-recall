@@ -33,13 +33,14 @@ import {
 import BrandLogo from '../ui/BrandLogo';
 
 const NavLink: React.FC<{
+  id?: string;
   onClick: () => void;
   isActive: boolean;
   icon?: React.ReactNode;
   isCollapsed?: boolean;
   children: React.ReactNode;
-}> = ({ onClick, isActive, icon, isCollapsed, children }) => (
-  <button
+}> = ({ id, onClick, isActive, icon, isCollapsed, children }) => (
+  <button id={id}
     onClick={onClick}
     title={isCollapsed ? (typeof children === 'string' ? children : undefined) : undefined}
     className={`group w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'px-4'} py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ease-out border ${
@@ -71,7 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
     }
   }, []);
   const { language } = useLanguage();
-  const isTeacher = user?.role === 'admin' || user?.role === 'admin_student';
+  const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
   const [isAdminExpanded, setIsAdminExpanded] = useState(currentView.startsWith('admin'));
 
   React.useEffect(() => {
@@ -127,7 +128,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           </div>
         </div>
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
-          <NavLink icon={<LayoutDashboard size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('dashboard')} isActive={currentView === 'dashboard'}>
+          <NavLink id="tour-generator" icon={<LayoutDashboard size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('dashboard')} isActive={currentView === 'dashboard'}>
               {language === 'pl' ? 'Panel główny' : 'Dashboard'}
           </NavLink>
 
@@ -137,11 +138,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
             </NavLink>
           )}
 
-          <NavLink icon={<Library size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('flashcard-sets')} isActive={currentView === 'flashcard-sets'}>
+          <NavLink id="tour-flashcards" icon={<Library size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('flashcard-sets')} isActive={currentView === 'flashcard-sets'}>
               {language === 'pl' ? 'Słownictwo' : 'My Word Lists'}
           </NavLink>
 
-          <NavLink icon={<History size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('lesson-history')} isActive={currentView === 'lesson-history'}>
+          <NavLink id="tour-history" icon={<History size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('lesson-history')} isActive={currentView === 'lesson-history'}>
               {language === 'pl' ? 'Historia lekcji' : 'Lesson History'}
           </NavLink>
           <NavLink icon={<ClipboardList size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('tests')} isActive={currentView === 'tests'}>

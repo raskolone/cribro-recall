@@ -61,9 +61,9 @@ const AppContent: React.FC = () => {
       
       <div className="relative z-10 w-full min-h-screen pointer-events-auto flex flex-col">
         
-        <GSAPViewSwitcher currentView={user ? (user.requirePasswordChange ? 'force-password-change' : 'dashboard') : showAuth ? 'auth' : 'landing'}>
+        <GSAPViewSwitcher currentView={user ? ((user.requirePasswordChange && (user.tempPasswordLogins || 0) > 3) ? 'force-password-change' : 'dashboard') : showAuth ? 'auth' : 'landing'}>
           {user ? (
-            user.requirePasswordChange ? (
+            (user.requirePasswordChange && (user.tempPasswordLogins || 0) > 3) ? (
               <ForcePasswordChangeScreen />
             ) : (
               <div className="w-full flex-1 flex flex-col">

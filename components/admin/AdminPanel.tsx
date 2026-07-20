@@ -22,6 +22,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   const { sets: adminSets, getFlashcards } = useFlashcards();
   const { connectGoogleDrive } = useAuth();
   const { createUser, deleteUser, changeUserRole: updateRoleApi, changeUserPassword } = useFirebaseAdminApi();
+  const { user: currentUser } = useAuth();
   
 
   const fetchUsers = async () => {
@@ -464,8 +465,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   // User Profile Edit States
   const [activeTab, setActiveTab] = useState<string | null>(initialTab || null);
   const tabContentRef = useRef<HTMLDivElement>(null);
-  const userListRef = useRef<HTMLDivElement>(null);
+  
   const profileContainerRef = useRef<HTMLDivElement>(null);
+  const listContainerRef = useRef<HTMLDivElement>(null);
   const mainMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -477,14 +479,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     }
   }, [activeTab, selectedUser]);
 
-  useEffect(() => {
-    if (userListRef.current && userListRef.current.children.length > 0 && !selectedUser) {
-      gsap.fromTo(gsap.utils.toArray(userListRef.current.children),
-        { opacity: 0, x: -30 },
-        { opacity: 1, x: 0, duration: 0.4, ease: "power2.out", stagger: 0.05, clearProps: "all" }
-      );
-    }
-  }, [activeTab, selectedUser, searchQuery, roleFilter, users]);
+  
+
+  
 
   useEffect(() => {
     if (profileContainerRef.current && selectedUser) {
@@ -557,7 +554,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
   
-  const handleRoleChange = async (newRole: 'admin' | 'user' | 'admin_student') => {
+  const handleRoleChange = async (newRole: 'admin' | 'user' | 'teacher') => {
     if (!selectedUser) return;
     try {
       const userRef = doc(db, 'users', selectedUser.id);
@@ -660,12 +657,12 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <option value="all">Wszystkie role</option>
                     <option value="user">Kursant</option>
                     <option value="admin">Admin</option>
-                    <option value="admin_student">Admin + Kursant</option>
+                    <option value="teacher">Nauczyciel</option>
                   </select>
                 </div>
               </Card>
 
-              <div className="grid grid-cols-1 gap-3 overflow-hidden" ref={userListRef}>
+              <div className="grid grid-cols-1 gap-3 overflow-hidden" >
                 
                 {users.filter(u => {
                   const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.username} ${u.username}`.toLowerCase();
@@ -689,8 +686,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       <div className="text-sm text-content-muted">{u.username}</div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-red-500/10 text-red-500' : u.role === 'admin_student' ? 'bg-purple-500/10 text-purple-500' : 'bg-primary/10 text-primary'}`}>
-                        {u.role === 'admin_student' ? 'Admin + Kursant' : u.role === 'admin' ? 'Admin' : 'Kursant'}
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-red-500/10 text-red-500' : u.role === 'teacher' ? 'bg-purple-500/10 text-purple-500' : 'bg-primary/10 text-primary'}`}>
+                        {u.role === 'teacher' ? 'Nauczyciel' : u.role === 'admin' ? 'Admin' : 'Kursant'}
                       </span>
                       <div className="text-content-muted group-hover:text-white transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -769,7 +766,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       {selectedUser.level && <span className="ml-3 px-2 py-0.5 bg-primary/20 text-primary rounded text-xs uppercase font-bold">{selectedUser.level}</span>}
                     </p>
                     <div className="mt-3 text-sm text-content-muted flex flex-wrap gap-x-6 gap-y-2">
-                      <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-400"></div><span className="font-bold text-white">Rola:</span> {selectedUser.role === 'admin' ? 'Admin' : selectedUser.role === 'admin_student' ? 'Admin + Kursant' : 'Kursant'}</div>
+                      <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-400"></div><span className="font-bold text-white">Rola:</span> {selectedUser.role === 'admin' ? 'Admin' : selectedUser.role === 'teacher' ? 'Nauczyciel' : 'Kursant'}</div>
                       <div><span className="font-bold text-white">Logowania:</span> {selectedUser.loginCount || 0}</div>
                       <div><span className="font-bold text-white">Ostatnio:</span> {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString() : 'Nigdy'}</div>
                     </div>
@@ -1026,7 +1023,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 </Button>
               </div>
               
-              <div className="mt-8 pt-6 border-t border-white/10">
+              {currentUser?.role === 'admin' && (
+<div className="mt-8 pt-6 border-t border-white/10">
                   <h3 className="text-lg font-bold mb-4">Ustawienia konta</h3>
                   
                   <div className="space-y-6">
@@ -1046,10 +1044,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                           Admin
                         </button>
                         <button
-                          onClick={() => handleRoleChange('admin_student')}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'admin_student' ? 'bg-purple-500 text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
+                          onClick={() => handleRoleChange('teacher')}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'teacher' ? 'bg-purple-500 text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
                         >
-                          Admin + Kursant
+                          Nauczyciel
                         </button>
                       </div>
                     </div>
@@ -1101,6 +1099,25 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                           </Button>
                         )}
 
+                        
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className={selectedUser.onboardingCompleted ? "bg-primary/20 text-primary border-transparent" : "bg-base-300 text-content-muted"}
+                          onClick={() => {
+                            const newStatus = !selectedUser.onboardingCompleted;
+                            const userRef = doc(db, 'users', selectedUser.id);
+                            updateDoc(userRef, { onboardingCompleted: newStatus }).then(() => {
+                              const updated = { ...selectedUser, onboardingCompleted: newStatus };
+                              setSelectedUser(updated);
+                              setUsers(users.map(u => u.id === updated.id ? updated : u));
+                              showToast(newStatus ? 'Onboarding oznaczony jako ukończony.' : 'Onboarding zresetowany (pojawi się ponownie).');
+                            }).catch(err => alert('Błąd: ' + err.message));
+                          }}
+                        >
+                          {selectedUser.onboardingCompleted ? '✅ Onboarding: Zrobiony' : '⬛ Onboarding: Brak'}
+                        </Button>
+
                         <Button 
                           variant="secondary" 
                           size="sm"
@@ -1136,6 +1153,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     </div>
                   </div>
                 </div>
+              )}
             </div>
           )}
         </div>
