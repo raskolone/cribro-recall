@@ -243,7 +243,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     setChangePasswordError('');
     try {
       // 1. Change password via firebase-admin endpoint
-      await changeUserPassword(selectedUser.id, newPasswordForUser);
+      try {
+        await changeUserPassword(selectedUser.id, newPasswordForUser);
+      } catch (apiErr: any) {
+        let msg = apiErr.message;
+        try {
+          const parsed = JSON.parse(apiErr.message);
+          if (parsed.error) msg = parsed.error;
+        } catch (e) {}
+        throw new Error("API Error: " + msg);
+      }
       
       // 2. Set requirePasswordChange to true in Firestore so the student has to change it on login
       const userRef = doc(db, 'users', selectedUser.id);
@@ -254,7 +263,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       setSelectedUser(updated);
       setUsers(users.map(u => u.id === updated.id ? updated : u));
       
-      alert('Hasło zostało pomyślnie zmienione! Uczeń zostanie poproszony o jego zmianę przy kolejnym logowaniu.');
+      // Removed alert to prevent iframe block
       setShowChangePasswordModal(false);
       setNewPasswordForUser('');
     } catch (err: any) {
@@ -1586,9 +1595,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   />
                   {newPasswordForUser && (
                     <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(newPasswordForUser);
-                        alert('Hasło zostało skopiowane do schowka!');
+                      onClick={async () => {
+                        try {
+                           await navigator.clipboard.writeText(newPasswordForUser);
+                           setChangePasswordError('');
+                        } catch (e) {
+                           setChangePasswordError('Nie udało się skopiować hasła.');
+                        }
                       }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-primary transition-colors"
                       title="Skopiuj do schowka"
@@ -1694,9 +1707,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   <div className="font-mono text-lg font-bold tracking-widest bg-base-100 p-2 rounded inline-flex items-center gap-2 border border-base-300">
                     {newStudentPassword}
                     <button 
-                      onClick={() => {
-                        navigator.clipboard.writeText(newStudentPassword);
-                        alert('Password copied to clipboard!');
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(newStudentPassword);
+                        } catch(e) {}
                       }}
                       className="text-xs text-primary hover:underline px-2 py-1 rounded bg-primary/10 ml-2"
                     >

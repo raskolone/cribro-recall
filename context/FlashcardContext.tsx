@@ -279,6 +279,22 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
         batch.set(resultRef, result);
       });
       
+      // Also add to practiceLogs so it appears in LessonHistoryScreen
+      const logId = `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const logRef = doc(db, `users/${userId}/practiceLogs/${logId}`);
+      
+      // Determine exercise type
+      let exType = sessionData.mode || 'flashcards';
+      
+      batch.set(logRef, {
+        exerciseType: exType,
+        date: new Date().toISOString(),
+        isRevisionMode: false,
+        score: sessionData.scorePercent || 0,
+        totalWords: sessionData.totalCards || 0,
+        testName: sessionData.setId || 'Flashcard Set'
+      });
+      
       await batch.commit();
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'sessions');
