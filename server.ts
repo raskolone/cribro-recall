@@ -237,7 +237,7 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
       let response;
       try {
         response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.5-flash',
           contents: contents,
           config: {
             responseMimeType: 'application/json',
@@ -246,9 +246,9 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
           }
         });
       } catch (err) {
-        console.warn("gemini-2.5-flash failed in test generator, falling back to gemini-2.5-flash", err);
+        console.warn("gemini-3.5-flash failed in test generator, falling back to gemini-3.5-flash", err);
         response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.5-flash',
           contents: contents,
           config: {
             responseMimeType: 'application/json',
@@ -368,7 +368,7 @@ Bądź dokładny. Wykorzystaj całą dostępną treść, nie pomijaj lekcji.`;
       let response;
       try {
         response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.5-flash',
           contents: contents,
           config: {
             systemInstruction: sysInstruction,
@@ -399,9 +399,9 @@ Bądź dokładny. Wykorzystaj całą dostępną treść, nie pomijaj lekcji.`;
           }
         });
       } catch (err) {
-        console.warn("gemini-2.5-flash failed, falling back to gemini-2.5-flash", err);
+        console.warn("gemini-3.5-flash failed, falling back to gemini-3.5-flash", err);
         response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.5-flash',
           contents: contents,
           config: {
             systemInstruction: sysInstruction,
@@ -536,7 +536,7 @@ Zwróć wynik jako JSON z poniższymi polami:
       let response;
       try {
         response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.5-flash',
           contents: promptContext,
           config: {
             systemInstruction: sysInstruction,
@@ -557,9 +557,9 @@ Zwróć wynik jako JSON z poniższymi polami:
           }
         });
       } catch(err) {
-        console.warn("gemini-2.5-flash failed, falling back to gemini-2.5-flash", err);
+        console.warn("gemini-3.5-flash failed, falling back to gemini-3.5-flash", err);
         response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.5-flash',
           contents: promptContext,
           config: {
             systemInstruction: sysInstruction,
@@ -624,7 +624,7 @@ Zwróć JSON z polami:
 `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash',
         contents: prompt,
         config: {
           responseMimeType: 'application/json',

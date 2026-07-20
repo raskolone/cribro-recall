@@ -97,7 +97,7 @@ export const generateVocabulary = async (language: Language, difficulty: Difficu
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -117,7 +117,7 @@ export const generateVocabulary = async (language: Language, difficulty: Difficu
 export const getAudioPronunciation = async (text: string, voice: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: [{ parts: [{ text: text }] }],
       config: {
         responseModalities: [Modality.AUDIO],
@@ -181,7 +181,7 @@ export const generateAudioVocabulary = async (base64Audio: string, mimeType: str
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: [
         {
           role: 'user',
@@ -210,7 +210,7 @@ export const generateAudioTranscript = async (base64Audio: string, mimeType: str
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: [
         {
           role: 'user',
@@ -238,7 +238,7 @@ export const getAISuggestions = async (difficultWords: Word[]): Promise<AISugges
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -330,14 +330,14 @@ ${basePrompt}` : basePrompt;
     
     try {
       response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.5-flash",
         contents: finalPrompt,
         config,
       });
     } catch (e1: any) {
-      console.warn("gemini-2.5-flash failed, retrying with gemini-1.5-flash (lite fallback)...", e1);
+      console.warn("gemini-3.5-flash failed, retrying with gemini-3.5-flash (lite fallback)...", e1);
       response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3.5-flash",
         contents: finalPrompt,
         config,
       });
@@ -364,7 +364,7 @@ export const generateHomework = async (topic: string, summary: string, words: st
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
     });
     return response?.text.trim();
@@ -420,14 +420,14 @@ Zasady generowania feedbacku (Stosuj bezwzględnie):
     };
     try {
       response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.5-flash",
         contents: finalPrompt,
         config,
       });
     } catch (e1: any) {
-      console.warn("gemini-2.5-flash eval failed on first attempt, retrying with gemini-1.5-flash...", e1);
+      console.warn("gemini-3.5-flash eval failed on first attempt, retrying with gemini-3.5-flash...", e1);
       response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3.5-flash",
         contents: finalPrompt,
         config,
       });
@@ -523,7 +523,7 @@ Return a JSON array of objects.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -546,7 +546,7 @@ Only return the sentence, nothing else.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
     });
     return response?.text.trim();
@@ -561,7 +561,7 @@ export const generateImageForTerm = async (term: string, context?: string): Prom
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: { parts: [{ text: prompt }] },
       config: {
         imageConfig: {
@@ -622,7 +622,7 @@ Zwróć 10 poprawionych zadań jako JSON (tablica obiektów). Zastąp te, które
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -731,7 +731,7 @@ Dla "fill_in_blank":
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -767,7 +767,7 @@ ${text}`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
