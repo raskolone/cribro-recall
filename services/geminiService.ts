@@ -56,28 +56,30 @@ if (!process.env.API_KEY) {
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const generateContentWithFallback = async (params: any) => {
-  const models = ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+  const models = ["gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-flash-latest", "gemini-2.0-flash-lite-001"];
   let lastError;
   for (const model of models) {
     try {
       console.log(`Attempting generation with ${model}...`);
-      const response = await ai.models.generateContent({
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Request timed out after 15 seconds")), 15000);
+      });
+      
+      const apiCall = ai.models.generateContent({
         ...params,
         model,
       });
-      return response;
+
+      const response = await Promise.race([apiCall, timeoutPromise]);
+      return response as any;
     } catch (e: any) {
       console.warn(`Model ${model} failed:`, e?.status || e?.message);
       lastError = e;
-      if (e?.status === 400 && e?.message?.includes("not found")) {
-         // Model doesn't exist, try next
-         continue;
-      }
-      if (e?.status === 503 || e?.status === 429) {
-         // High demand or rate limit, try next
-         continue;
-      }
-      // For other errors, it might be a prompt issue, but let's try next anyway for robustness
+      if (e?.message?.includes("timed out")) continue;
+      if (e?.status === 404 || e?.status === 503 || e?.status === 429) continue;
+      if (e?.status === 400 && e?.message?.includes("not found")) continue;
+      if (e?.status === 400) throw e;
     }
   }
   throw lastError;
@@ -200,20 +202,30 @@ Return JSON array of objects with:
 
   const finalPrompt = customPrompt ? `${customPrompt}\n\nConstraints:\n${basePrompt}` : basePrompt;
 
-  try {
-    const config = {
-      systemInstruction: "You are an AI language tutor. Generate short, level-appropriate translation sentences. Be fast and concise. Always return valid JSON array.",
-      responseMimeType: "application/json",
-      responseSchema: translationExerciseSchema,
-    };
-    
-    const response = await generateContentWithFallback({ contents: finalPrompt, config });
-    let jsonText = extractJSON(response?.text || "");
-    return JSON.parse(jsonText) as TranslationExercise[];
-  } catch (error: any) {
-    console.error("Error generating translation exercises:", error);
-    throw new Error(error.message || "Failed to generate translation exercises from AI.");
+  const MAX_RETRIES = 3;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const config = {
+        systemInstruction: "You are an AI language tutor. Generate short, level-appropriate translation sentences. Be fast and concise. Always return valid JSON array.",
+        responseMimeType: "application/json",
+        responseSchema: translationExerciseSchema,
+      };
+      
+      const response = await generateContentWithFallback({ contents: finalPrompt, config });
+      let jsonText = extractJSON(response?.text || "");
+      const parsed = JSON.parse(jsonText) as TranslationExercise[];
+      if (parsed && parsed.length > 0) {
+        return parsed;
+      }
+      console.warn(`Attempt ${attempt}: Received empty exercises, retrying...`);
+    } catch (error: any) {
+      console.error(`Error generating translation exercises on attempt ${attempt}:`, error);
+      if (attempt === MAX_RETRIES) {
+        throw new Error(error.message || "Failed to generate translation exercises from AI.");
+      }
+    }
   }
+  return [];
 };
 
 export const evaluateTranslations = async (
@@ -229,19 +241,29 @@ ${strictnessPrompt}
 Exercises:
 ${exercises.map((ex, i) => `${i + 1}. Polish: "${ex.polishSentence}" | Expected: "${ex.englishTranslation}" | Student Answer: "${studentAnswers[i]}"`).join('\n')}`;
 
-  try {
-    const config = {
-      systemInstruction: "You are an AI language tutor evaluating translations. Always return a valid JSON array.",
-      responseMimeType: "application/json",
-      responseSchema: evaluationResultSchema,
-    };
-    const response = await generateContentWithFallback({ contents: prompt, config });
-    let jsonText = extractJSON(response?.text || "");
-    return JSON.parse(jsonText) as TranslationEvaluationResult[];
-  } catch (error: any) {
-    console.error("Error evaluating translations:", error);
-    throw new Error("Failed to evaluate translations with AI.");
+  const MAX_RETRIES = 3;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const config = {
+        systemInstruction: "You are an AI language tutor evaluating translations. Always return a valid JSON array.",
+        responseMimeType: "application/json",
+        responseSchema: evaluationResultSchema,
+      };
+      const response = await generateContentWithFallback({ contents: prompt, config });
+      let jsonText = extractJSON(response?.text || "");
+      const parsed = JSON.parse(jsonText) as TranslationEvaluationResult[];
+      if (parsed && parsed.length > 0) {
+        return parsed;
+      }
+      console.warn(`Attempt ${attempt}: Received empty evaluation, retrying...`);
+    } catch (error: any) {
+      console.error(`Error evaluating translations on attempt ${attempt}:`, error);
+      if (attempt === MAX_RETRIES) {
+        throw new Error("Failed to evaluate translations with AI.");
+      }
+    }
   }
+  return [];
 };
 
 

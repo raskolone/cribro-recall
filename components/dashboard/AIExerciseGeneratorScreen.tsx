@@ -3,7 +3,7 @@ import gsap from 'gsap';
 import { useLanguage } from '../../context/LanguageContext';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
-import { collection, getDocs, query, orderBy, limit, addDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, addDoc, where, documentId } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, logMistakesToFirebase } from '../../services/geminiService';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog } from '../../types';
@@ -38,7 +38,7 @@ import {
   Puzzle,
   Target,
   Layers,
-  Shuffle
+  Shuffle, X
 } from 'lucide-react';
 
 
@@ -86,7 +86,7 @@ const playSliderSound = () => {
 };
 
 
-const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string }> = ({ language, level }) => {
+const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?: string }> = ({ language, level, logs }) => {
   return (
     <div className="flex flex-col items-center justify-center p-12 text-center h-full min-h-[400px]">
       <div className="relative w-16 h-24 mb-8 flex flex-col justify-end gap-1">
@@ -110,9 +110,30 @@ const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string }> = (
       <h3 className="text-2xl font-display font-bold text-white mb-2">
         {language === 'pl' ? 'Generowanie ćwiczenia...' : 'Generating exercise...'}
       </h3>
-      <p className="text-content-muted">
+      <p className="text-content-muted mb-8">
         {language === 'pl' ? 'Budowanie idealnych zdań dla Ciebie...' : 'Building perfect sentences for you...'}
       </p>
+      
+      {/* Aesthetic terminal-like log viewer during generation */}
+      {logs && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-lg bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 text-left shadow-2xl relative overflow-hidden"
+        >
+          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/10">
+            <div className="flex gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>
+            </div>
+            <span className="text-[10px] uppercase font-mono tracking-widest text-white/40 ml-2">System Processing</span>
+          </div>
+          <div className="text-xs font-mono text-primary/70 whitespace-pre-wrap max-h-[120px] overflow-y-auto custom-scrollbar flex flex-col-reverse">
+             {logs}
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 };
@@ -222,6 +243,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [debugLogs, setDebugLogs] = useState<string>('');
+  const addLog = (msg: string) => { console.log(msg); setDebugLogs(prev => prev + "\n" + msg); };
   
   // UI states
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
@@ -386,6 +409,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
   // Generate exercises using Gemini
   const handleGenerate = async (isAppending = false) => {
+    addLog('Starting handleGenerate');
     if (isAppending) {
       setIsGeneratingMore(true);
     } else {
@@ -418,9 +442,25 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         fetchPromises.push((async () => {
           try {
             const lessonRecordsRef = collection(db, `users/${user.id}/lessonRecords`);
-            const qLR = query(lessonRecordsRef, orderBy('date', 'desc'), limit(3));
-            const lrSnapshot = await getDocs(qLR);
-            const lrList = lrSnapshot.docs.map(doc => doc.data() as LessonRecord);
+            let lrList: LessonRecord[] = [];
+            
+            // If user selected specific lessons, load those lessons' context
+            if ((selectedSetId === 'lessons' || selectedLessonIds.length > 0) && vocabularySets.length > 0) {
+               const selectedSets = vocabularySets.filter(s => selectedLessonIds.includes(s.id));
+               const targetRecordIds = selectedSets.map(s => s.lessonRecordId).filter(Boolean);
+               if (targetRecordIds.length > 0) {
+                  const qLR = query(lessonRecordsRef, where(documentId(), 'in', targetRecordIds.slice(0, 10)));
+                  const lrSnapshot = await getDocs(qLR);
+                  lrList = lrSnapshot.docs.map(doc => doc.data() as LessonRecord);
+               }
+            }
+            
+            // If no specific lessons picked or found, fallback to latest 3
+            if (lrList.length === 0) {
+               const qLR = query(lessonRecordsRef, orderBy('date', 'desc'), limit(3));
+               const lrSnapshot = await getDocs(qLR);
+               lrList = lrSnapshot.docs.map(doc => doc.data() as LessonRecord);
+            }
             
             if (lrList.length > 0) {
               lessonContextString = lrList.map((lr, idx) => {
@@ -513,7 +553,9 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         })());
       }
 
+      addLog('Waiting for fetchPromises');
       await Promise.all(fetchPromises);
+      addLog('fetchPromises resolved');
 
       // Call Gemini API service function
       const studentProfileContext = `Kluczowy profil kursanta: ${user?.firstName ? `Imię kursanta: ${user.firstName}. ` : ''}${user?.description ? `Cały wpis z profilu kursanta (zainteresowania, cele, przykładowe zdania): ${user.description}` : 'Brak dodatkowych danych profilu.'}${user?.aiPrompt ? `\nSpersonalizowany Prompt (ŻELAZNA ZASADA DLA AI - uczeń musi widzieć przykłady w tym stylu): ${user.aiPrompt}` : ''}`;
@@ -528,8 +570,10 @@ let finalGenPrompt = customGenPrompt;
         .replace(/\$\{userProfile(?: \|\| "[^"]+")?\}/g, userProfileStr)
         .replace(/\$\{weaknessesList(?: \|\| "[^"]+")?\}/g, weaknessesListStr);
 
+      addLog('Calling generateTranslationExercises');
       const generated = await generateTranslationExercises(level, wordsToUse, resolvedGenPrompt, lessonContextString, studentProfileContext, practiceMode === 'time' ? 10 : numSentences, pastExercisesContext);
       
+      addLog('generateTranslationExercises returned ' + (generated ? generated.length : 'null'));
       if (generated && generated.length > 0) {
         if (isAppending) {
            setExercises(prev => [...prev, ...generated]);
@@ -872,17 +916,39 @@ let finalGenPrompt = customGenPrompt;
         </Card>
       )}
 
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-          <div className="text-sm">{error}</div>
-        </div>
-      )}
+      {/* Enhanced Error & Loading Logs */}
+      <AnimatePresence>
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="mb-6 bg-gradient-to-r from-red-500/20 to-red-900/20 border border-red-500/30 backdrop-blur-md text-red-100 p-4 rounded-2xl shadow-[0_8px_30px_rgba(239,68,68,0.15)] flex flex-col gap-3 relative overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-red-500/50" />
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-red-500/20 rounded-xl shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-400" />
+              </div>
+              <div className="flex-1 mt-1">
+                <h4 className="font-bold text-red-300 text-sm mb-1">{language === 'pl' ? 'Ups, coś poszło nie tak' : 'Oops, something went wrong'}</h4>
+                <div className="text-sm text-red-200/90 leading-relaxed">{error}</div>
+              </div>
+              <button 
+                onClick={() => setError(null)}
+                className="p-1 hover:bg-white/10 rounded-lg transition-colors shrink-0"
+              >
+                <X className="w-5 h-5 text-red-400/70" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* STEP 1: SETUP */}
       {step === 'setup' && (
         isLoading ? (
-          <AIGenerationLoader language={language} level={level} />
+          <AIGenerationLoader language={language} level={level} logs={debugLogs} />
         ) : (
           <div className="max-w-2xl mx-auto mt-4 px-4">
             <Card className="p-0 border border-white/10 bg-base-200/40 backdrop-blur-xl relative overflow-hidden flex flex-col rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.55)]">
