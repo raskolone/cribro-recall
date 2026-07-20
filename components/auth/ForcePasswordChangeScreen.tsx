@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { updatePassword } from 'firebase/auth';
 import { auth, db } from '../../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteField } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
@@ -31,7 +31,7 @@ const ForcePasswordChangeScreen: React.FC = () => {
       await updatePassword(auth.currentUser, newPassword);
       
       if (user?.id) {
-        await updateDoc(doc(db, 'users', user.id), { requirePasswordChange: false });
+        await updateDoc(doc(db, 'users', user.id), { requirePasswordChange: false, tempPassword: deleteField() });
         window.location.reload();
       }
     } catch (err: any) {
@@ -52,7 +52,7 @@ const ForcePasswordChangeScreen: React.FC = () => {
     try {
       await linkGoogleAccount();
       if (user?.id) {
-        await updateDoc(doc(db, 'users', user.id), { requirePasswordChange: false });
+        await updateDoc(doc(db, 'users', user.id), { requirePasswordChange: false, tempPassword: deleteField() });
         window.location.reload();
       }
     } catch (err: any) {

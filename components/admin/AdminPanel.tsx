@@ -256,16 +256,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       
       // 2. Set requirePasswordChange to true in Firestore so the student has to change it on login
       const userRef = doc(db, 'users', selectedUser.id);
-      await updateDoc(userRef, { requirePasswordChange: true });
+      await updateDoc(userRef, { requirePasswordChange: true, tempPassword: newPasswordForUser });
       
       // 3. Update local state
-      const updated = { ...selectedUser, requirePasswordChange: true };
+      const updated = { ...selectedUser, requirePasswordChange: true, tempPassword: newPasswordForUser };
       setSelectedUser(updated);
       setUsers(users.map(u => u.id === updated.id ? updated : u));
       
       // Removed alert to prevent iframe block
       setShowChangePasswordModal(false);
       setNewPasswordForUser('');
+      showToast('Hasło zostało zmienione.');
     } catch (err: any) {
       setChangePasswordError(err.message || 'Wystąpił błąd podczas zmiany hasła.');
     } finally {
@@ -291,7 +292,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         createdAt: new Date().toISOString(),
         loginCount: 0,
         streakCount: 0,
-        requirePasswordChange: true
+        requirePasswordChange: true,
+        tempPassword: password
       };
       
       await setDoc(doc(db, 'users', userRecord.uid), newUserDoc);
@@ -360,6 +362,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [createStudentError, setCreateStudentError] = useState('');
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [newPasswordForUser, setNewPasswordForUser] = useState('');
+  const [toastMessage, setToastMessage] = useState<{text: string, id: number} | null>(null);
+  const showToast = (text: string) => {
+    const id = Date.now();
+    setToastMessage({text, id});
+    setTimeout(() => {
+      setToastMessage(prev => prev?.id === id ? null : prev);
+    }, 3000);
+  };
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [changePasswordError, setChangePasswordError] = useState('');
   const [isLessonVocabulary, setIsLessonVocabulary] = useState(false);
@@ -1058,16 +1068,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                 const updated = { ...selectedUser, username: newName };
                                 setSelectedUser(updated);
                                 setUsers(users.map(u => u.id === updated.id ? updated : u));
-                                alert('Zmieniono nazwę.');
+                                showToast('Zmiana nazwy konta została zapisana.');
                               }).catch(err => alert('Błąd: ' + err.message));
                             }
                           }}
                         >
                           Zmień nazwę konta
                         </Button>
+                        
                         <Button 
                           variant="secondary" 
-                          size="sm" 
+                          size="sm"
                           onClick={() => {
                             setNewPasswordForUser('');
                             setChangePasswordError('');
@@ -1076,6 +1087,20 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         >
                           Zmień hasło
                         </Button>
+                        {selectedUser?.tempPassword && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="bg-primary/10 text-primary border-transparent hover:bg-primary/20"
+                            onClick={() => {
+                              navigator.clipboard.writeText(selectedUser.tempPassword || '');
+                              showToast('Hasło zostało skopiowane.');
+                            }}
+                          >
+                            📋 Skopiuj aktualne hasło
+                          </Button>
+                        )}
+
                         <Button 
                           variant="secondary" 
                           size="sm"
@@ -1737,6 +1762,21 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         </div>
       )}
 
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 50, x: '-50%' }}
+            className="fixed bottom-6 left-1/2 z-[100] px-6 py-3 rounded-xl bg-base-300 border border-white/10 shadow-2xl flex items-center gap-3"
+          >
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-white font-bold">{toastMessage.text}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
