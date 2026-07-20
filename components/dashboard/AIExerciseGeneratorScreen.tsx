@@ -3,7 +3,7 @@ import gsap from 'gsap';
 import { useLanguage } from '../../context/LanguageContext';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
-import { collection, getDocs, query, orderBy, limit, addDoc, where, documentId } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, addDoc, where, documentId, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, logMistakesToFirebase } from '../../services/geminiService';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog } from '../../types';
@@ -316,6 +316,11 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
   useEffect(() => {
     if (user?.id) {
+      // Clear new vocabulary flag
+      if (user.hasNewVocabulary) {
+         updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
+      }
+      
       getVocabularySetsForStudent(user.id)
         .then(setVocabularySets)
         .catch(console.error);

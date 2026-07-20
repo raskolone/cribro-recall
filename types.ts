@@ -19,6 +19,7 @@ export interface User {
   firstName?: string;
   lastName?: string;
   level?: string;
+  hasNewVocabulary?: boolean;
   description?: string;
   aiPrompt?: string;
   isSuspended?: boolean;

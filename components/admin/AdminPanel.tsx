@@ -1,3 +1,5 @@
+import { createLessonRecordWithVocabularySet } from '../../services/lessonRecord';
+import { countVocabularyItems, buildVocabularySetTitle } from '../../utils/vocabulary';
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { motion, AnimatePresence } from 'motion/react';
@@ -180,24 +182,53 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     }
     setIsSavingLessonRecord(true);
     try {
-      const recordData = {
-        studentId: lessonFormStudentId,
-        date: lessonFormDate,
-        topic: lessonFormTopic,
-        vocabularyText: lessonFormWords,
-        lessonSummary: lessonFormSummary,
-        studentSpeaking: lessonFormStudentSpeaking,
-        thingsToImprove: lessonFormThingsToImprove,
-        suggestedFollowUp: lessonFormSuggestedFollowUp,
-        updatedAt: new Date().toISOString()
-      };
-
       if (editingRecordId) {
+        const recordData = {
+          studentId: lessonFormStudentId,
+          date: lessonFormDate,
+          topic: lessonFormTopic,
+          vocabularyText: lessonFormWords,
+          lessonSummary: lessonFormSummary,
+          studentSpeaking: lessonFormStudentSpeaking,
+          thingsToImprove: lessonFormThingsToImprove,
+          suggestedFollowUp: lessonFormSuggestedFollowUp,
+          updatedAt: new Date().toISOString()
+        };
+        
+        // Fetch the existing record to see if it has a vocabularySetId
+        const recordDoc = await getDocs(query(collection(db, `users/${lessonFormStudentId}/lessonRecords`), where("__name__", "==", editingRecordId)));
+        let vocabSetId = "";
+        if (!recordDoc.empty) {
+           vocabSetId = recordDoc.docs[0].data().vocabularySetId;
+        }
+
         await updateDoc(doc(db, `users/${lessonFormStudentId}/lessonRecords`, editingRecordId), recordData);
+        
+        if (vocabSetId) {
+           await updateDoc(doc(db, `users/${lessonFormStudentId}/vocabularySets`, vocabSetId), {
+              date: lessonFormDate,
+              topic: lessonFormTopic,
+              title: buildVocabularySetTitle(lessonFormDate, lessonFormTopic),
+              vocabularyText: lessonFormWords,
+              itemCount: countVocabularyItems(lessonFormWords),
+              updatedAt: new Date().toISOString()
+           });
+        }
       } else {
-        await addDoc(collection(db, `users/${lessonFormStudentId}/lessonRecords`), {
-          ...recordData,
-          createdAt: new Date().toISOString()
+        await createLessonRecordWithVocabularySet({
+          studentId: lessonFormStudentId,
+          date: lessonFormDate,
+          topic: lessonFormTopic,
+          vocabularyText: lessonFormWords,
+          lessonSummary: lessonFormSummary,
+          studentSpeaking: lessonFormStudentSpeaking,
+          thingsToImprove: lessonFormThingsToImprove,
+          suggestedFollowUp: lessonFormSuggestedFollowUp
+        });
+        
+        // Optionally update the user document to set hasNewVocabulary=true
+        await updateDoc(doc(db, 'users', lessonFormStudentId), {
+           hasNewVocabulary: true
         });
       }
       
