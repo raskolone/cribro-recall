@@ -141,12 +141,12 @@ service cloud.firestore {
 
     function isValidPracticeLog(data) {
       return hasRequiredFields(['exerciseType', 'date', 'isRevisionMode']) &&
-             hasOnlyAllowedFields(['exerciseType', 'date', 'isRevisionMode', 'score', 'totalWords', 'exercisesData']) &&
+             hasOnlyAllowedFields(['exerciseType', 'date', 'isRevisionMode', 'score', 'totalWords', 'exercisesData', 'testName']) &&
              validStringLength('exerciseType', 1, 50) &&
              isValidDateString(data.date) &&
              data.isRevisionMode is bool &&
              (!( 'score' in data ) || data.score is number) &&
-             (!( 'totalWords' in data ) || data.totalWords is number) && (!( 'exercisesData' in data ) || data.exercisesData is string);
+             (!( 'totalWords' in data ) || data.totalWords is number) && (!( 'exercisesData' in data ) || data.exercisesData is string) && (!( 'testName' in data ) || data.testName is string);
     }
 
     function isValidLessonRecord(data) {

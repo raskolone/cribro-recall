@@ -728,8 +728,59 @@ let finalGenPrompt = customGenPrompt;
   };
 
     const handleFinishAll = async () => {
+    setIsGeneratingMore(true);
+    let currentEvalResults = { ...singleEvaluationResults };
+    
+    // Find sentences that need evaluation
+    const unevaluatedIndices = [];
+    for (let i = 0; i < exercises.length; i++) {
+      if (studentAnswers[i]?.trim() && !currentEvalResults[i]) {
+        unevaluatedIndices.push(i);
+      }
+    }
+
+    if (unevaluatedIndices.length > 0) {
+      try {
+        const evalStudentContext = `${user?.firstName ? `Zwracaj się do ucznia po imieniu (${user.firstName}), odmieniając je naturalnie we wszystkich przypadkach w języku polskim zgodnie z regułami języka polskiego.` : ''}`;
+        let weaknessesListStr = "Brak zidentyfikowanych błędów";
+        if (user) {
+          weaknessesListStr = await getUserWeaknesses(user.id);
+        }
+        let strictnessPrompt = customEvalPrompt.replace(/\$\{weaknessesList(?: \|\| "[^"]+")?\}/g, weaknessesListStr);
+        if (evaluationStrictness === 'strict') {
+          strictnessPrompt += '\n\nOCENIAJ BARDZO RYGORYSTYCZNIE. Każdy drobny błąd w pisowni, czasie lub przedimku (a/an/the) oznacza isCorrect: false.';
+        } else if (evaluationStrictness === 'loose') {
+          strictnessPrompt += '\n\nOCENIAJ LUŹNO. Akceptuj drobne błędy i literówki. Zwracaj uwagę na ogólny przekaz.';
+        }
+
+        const exercisesToEval = unevaluatedIndices.map(i => exercises[i]);
+        const answersToEval = unevaluatedIndices.map(i => studentAnswers[i]);
+        const batchResults = await evaluateTranslations(exercisesToEval, answersToEval, strictnessPrompt, evalStudentContext);
+
+        if (batchResults && batchResults.length === unevaluatedIndices.length) {
+          batchResults.forEach((res, idx) => {
+            currentEvalResults[unevaluatedIndices[idx]] = res;
+          });
+          setSingleEvaluationResults(currentEvalResults);
+          
+          let newStatuses = {};
+          unevaluatedIndices.forEach(idx => {
+            newStatuses[idx] = 'evaluated';
+          });
+          setEvaluationStatuses(prev => ({ ...prev, ...newStatuses }));
+        }
+      } catch (err) {
+        console.error("Batch evaluation failed", err);
+        setError(language === 'pl' ? "Błąd podczas masowej oceny: " + err.message : "Error during batch evaluation: " + err.message);
+        setIsGeneratingMore(false);
+        return;
+      }
+    }
+
+    setIsGeneratingMore(false);
+
     // Generate full results
-    const results = exercises.map((_, i) => singleEvaluationResults[i]).filter(Boolean);
+    const results = exercises.map((_, i) => currentEvalResults[i]).filter(Boolean);
     setEvaluationResults(results);
     setStep('results');
     setTimeLeft(null);
@@ -743,15 +794,16 @@ let finalGenPrompt = customGenPrompt;
         return `${r.polishSentence} -> ${r.studentAnswer}`;
       }).join(' | ');
       
-      const logData = {
+      const logData: any = {
         exerciseType: 'ai_translation',
-        testName: testName || undefined,
         date: new Date().toISOString(),
         isRevisionMode: false,
         score: score,
         totalWords: results.length,
         exercisesData: exercisesDetails
       };
+      if (testName) logData.testName = testName;
+      
       try {
         await addDoc(collection(db, `users/${user.id}/practiceLogs`), logData);
         const allMistakes = results.flatMap(r => r.mistakes || []);
@@ -1582,15 +1634,39 @@ let finalGenPrompt = customGenPrompt;
                   )}
                 </>
               ) : evaluationStatuses[activeSentenceIndex] !== 'evaluated' ? (
-                <AILoadingButton
-                  onClick={handleEvaluateSingle}
-                  disabled={!studentAnswers[activeSentenceIndex]?.trim()}
-                  isLoading={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
-                  loadingText={language === 'pl' ? 'Sprawdzanie...' : 'Checking...'}
-                  className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
-                >
-                  {language === 'pl' ? 'Sprawdź' : 'Check'}
-                </AILoadingButton>
+                <div className="flex gap-2">
+                  <AILoadingButton
+                    onClick={handleEvaluateSingle}
+                    disabled={!studentAnswers[activeSentenceIndex]?.trim()}
+                    isLoading={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
+                    loadingText={language === 'pl' ? 'Sprawdzanie...' : 'Checking...'}
+                    className="px-6 py-3 bg-base-300 hover:bg-base-300/80 text-white font-bold"
+                  >
+                    {language === 'pl' ? 'Sprawdź aktualne' : 'Check current'}
+                  </AILoadingButton>
+
+                  {activeSentenceIndex === exercises.length - 1 && practiceMode === 'fixed' ? (
+                    <AILoadingButton
+                      onClick={handleFinishAll}
+                      disabled={!studentAnswers[activeSentenceIndex]?.trim() || isGeneratingMore}
+                      isLoading={isGeneratingMore}
+                      loadingText={language === 'pl' ? 'Ocenianie...' : 'Evaluating...'}
+                      className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
+                    >
+                      {language === 'pl' ? 'Zakończ i podsumuj' : 'Finish & Summarize'}
+                    </AILoadingButton>
+                  ) : (
+                    <AILoadingButton
+                      onClick={handleNext}
+                      disabled={!studentAnswers[activeSentenceIndex]?.trim() || isGeneratingMore}
+                      isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
+                      loadingText={language === 'pl' ? 'Ładowanie...' : 'Loading...'}
+                      className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
+                    >
+                      {language === 'pl' ? 'Następne' : 'Next'}
+                    </AILoadingButton>
+                  )}
+                </div>
               ) : (
                 <>
                   {activeSentenceIndex === exercises.length - 1 && practiceMode === 'fixed' ? (
@@ -1606,7 +1682,7 @@ let finalGenPrompt = customGenPrompt;
                       disabled={isGeneratingMore}
                       isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
                       loadingText={language === 'pl' ? 'Ładowanie ćwiczenia...' : 'Loading exercise...'}
-                      className="px-6 py-3"
+                      className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
                     >
                       {language === 'pl' ? 'Następne' : 'Next'}
                     </AILoadingButton>
