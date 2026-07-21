@@ -75,7 +75,7 @@ app.use((err: any, req: any, res: any, next: any) => {
   }
 
   // Admin API Endpoints
-  app.get('/api/firebase-admin/users', requireFirebaseAdmin, async (req, res) => {
+  app.get('/api/admin-users/users', requireFirebaseAdmin, async (req, res) => {
     try {
       const listUsersResult = await adminAuth.listUsers(1000);
       res.json(listUsersResult.users);
@@ -84,7 +84,7 @@ app.use((err: any, req: any, res: any, next: any) => {
     }
   });
 
-  app.post('/api/firebase-admin/users', requireFirebaseAdmin, async (req, res) => {
+  app.post('/api/admin-users/users', requireFirebaseAdmin, async (req, res) => {
     try {
       const { email, password, role } = req.body;
       let userRecord;
@@ -112,7 +112,7 @@ app.use((err: any, req: any, res: any, next: any) => {
     }
   });
 
-  app.delete('/api/firebase-admin/users/:uid', requireFirebaseAdmin, async (req, res) => {
+  app.delete('/api/admin-users/users/:uid', requireFirebaseAdmin, async (req, res) => {
     try {
       const uid = req.params.uid as string;
       await adminAuth.deleteUser(uid);
@@ -122,7 +122,7 @@ app.use((err: any, req: any, res: any, next: any) => {
     }
   });
 
-  app.post('/api/firebase-admin/users/:uid/password', requireFirebaseAdmin, async (req, res) => {
+  app.post('/api/admin-users/users/:uid/password', requireFirebaseAdmin, async (req, res) => {
     try {
       const uid = req.params.uid as string;
       const { password } = req.body;
@@ -133,7 +133,7 @@ app.use((err: any, req: any, res: any, next: any) => {
     }
   });
 
-  app.post('/api/firebase-admin/users/:uid/role', requireFirebaseAdmin, async (req, res) => {
+  app.post('/api/admin-users/users/:uid/role', requireFirebaseAdmin, async (req, res) => {
     try {
       const uid = req.params.uid as string;
       const { role } = req.body;

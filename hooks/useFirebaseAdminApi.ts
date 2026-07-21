@@ -11,7 +11,7 @@ export function useFirebaseAdminApi() {
 
   const listUsers = async () => {
     const token = await getIdToken();
-    const res = await fetch('/api/firebase-admin/users', {
+    const res = await fetch('/api/admin-users/users', {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error(await res.text());
@@ -20,7 +20,7 @@ export function useFirebaseAdminApi() {
 
   const createUser = async (email: string, password: string, role: string) => {
     const token = await getIdToken();
-    const res = await fetch('/api/firebase-admin/users', {
+    const res = await fetch('/api/admin-users/users', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -34,7 +34,7 @@ export function useFirebaseAdminApi() {
 
   const deleteUser = async (uid: string) => {
     const token = await getIdToken();
-    const res = await fetch(`/api/firebase-admin/users/${uid}`, {
+    const res = await fetch(`/api/admin-users/users/${uid}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -44,7 +44,7 @@ export function useFirebaseAdminApi() {
 
   const changeUserRole = async (uid: string, role: string) => {
     const token = await getIdToken();
-    const res = await fetch(`/api/firebase-admin/users/${uid}/role`, {
+    const res = await fetch(`/api/admin-users/users/${uid}/role`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -58,7 +58,7 @@ export function useFirebaseAdminApi() {
 
   const changeUserPassword = async (uid: string, password: string) => {
     const token = await getIdToken();
-    const res = await fetch(`/api/firebase-admin/users/${uid}/password`, {
+    const res = await fetch(`/api/admin-users/users/${uid}/password`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
