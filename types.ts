@@ -187,6 +187,7 @@ export interface VocabularySet {
   source: "lesson_record";
   createdAt: string;
   updatedAt: string;
+  used?: boolean;
 }
 
 

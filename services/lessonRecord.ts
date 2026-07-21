@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { doc, setDoc, collection, getDocs, query, orderBy, where, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, collection, getDocs, query, orderBy, where, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { LessonRecord, VocabularySet } from '../types';
 import { buildVocabularySetTitle, countVocabularyItems } from '../utils/vocabulary';
 
@@ -34,7 +34,7 @@ export async function createLessonRecordWithVocabularySet(input: {
     updatedAt: now,
   };
 
-  // 2. Create VocabularySet object
+  // 2. Create VocabularySet object with used: false
   const vocabularySet: VocabularySet = {
     id: vocabularySetId,
     studentId: input.studentId,
@@ -48,6 +48,7 @@ export async function createLessonRecordWithVocabularySet(input: {
     source: 'lesson_record',
     createdAt: now,
     updatedAt: now,
+    used: false,
   };
 
   // 3. Save both to Firestore
@@ -125,4 +126,16 @@ export async function getVocabularySetsForStudent(studentId: string): Promise<Vo
   sets.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   
   return sets;
+}
+
+export async function markVocabularySetAsUsed(studentId: string, setId: string): Promise<void> {
+  if (!setId || setId.startsWith('generated-')) {
+    return;
+  }
+  try {
+    const setRef = doc(db, `users/${studentId}/vocabularySets/${setId}`);
+    await updateDoc(setRef, { used: true });
+  } catch (err) {
+    console.error("Failed to mark vocabulary set as used:", err);
+  }
 }

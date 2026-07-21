@@ -246,9 +246,9 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
           }
         });
       } catch (err) {
-        console.warn("gemini-3.5-flash failed in test generator, falling back to gemini-3.5-flash", err);
+        console.warn("gemini-3.5-flash failed in test generator, falling back to gemini-3.1-flash-lite", err);
         response = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
+          model: 'gemini-3.1-flash-lite',
           contents: contents,
           config: {
             responseMimeType: 'application/json',
@@ -399,9 +399,9 @@ Bądź dokładny. Wykorzystaj całą dostępną treść, nie pomijaj lekcji.`;
           }
         });
       } catch (err) {
-        console.warn("gemini-3.5-flash failed, falling back to gemini-3.5-flash", err);
+        console.warn("gemini-3.5-flash failed, falling back to gemini-3.1-flash-lite", err);
         response = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
+          model: 'gemini-3.1-flash-lite',
           contents: contents,
           config: {
             systemInstruction: sysInstruction,
@@ -487,9 +487,10 @@ Bądź dokładny. Wykorzystaj całą dostępną treść, nie pomijaj lekcji.`;
             }];
         } else {
             const text = await fetchRes.text();
-            promptContext = [
-              { text: `Baza kursantów:\n${studentsListStr}\n\nTranskrypcja/Notatki ze spotkania (Google Docs / Text):\n${text}` }
-            ];
+            promptContext = [{
+              role: 'user',
+              parts: [{ text: `Baza kursantów:\n${studentsListStr}\n\nTranskrypcja/Notatki ze spotkania (Google Docs / Text):\n${text}` }]
+            }];
         }
       } else if (pdfBase64) {
         promptContext = [{
@@ -505,9 +506,10 @@ Bądź dokładny. Wykorzystaj całą dostępną treść, nie pomijaj lekcji.`;
           ]
         }];
       } else {
-        promptContext = [
-          { text: `Baza kursantów:\n${studentsListStr}\n\nTranskrypcja/Notatki ze spotkania:\n${notes}` }
-        ];
+        promptContext = [{
+          role: 'user',
+          parts: [{ text: `Baza kursantów:\n${studentsListStr}\n\nTranskrypcja/Notatki ze spotkania:\n${notes}` }]
+        }];
       }
 
       const sysInstruction = `# Cel
@@ -557,9 +559,9 @@ Zwróć wynik jako JSON z poniższymi polami:
           }
         });
       } catch(err) {
-        console.warn("gemini-3.5-flash failed, falling back to gemini-3.5-flash", err);
+        console.warn("gemini-3.5-flash failed, falling back to gemini-3.1-flash-lite", err);
         response = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
+          model: 'gemini-3.1-flash-lite',
           contents: promptContext,
           config: {
             systemInstruction: sysInstruction,

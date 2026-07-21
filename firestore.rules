@@ -221,7 +221,7 @@ service cloud.firestore {
       match /vocabularySets/{setId} {
         allow read: if isOwner(userId) || isAdmin();
         allow create: if isAdmin() && isValidVocabularySet(request.resource.data);
-        allow update: if isAdmin() && isValidVocabularySet(request.resource.data);
+        allow update: if (isAdmin() && isValidVocabularySet(request.resource.data)) || (isOwner(userId) && request.resource.data.used is bool && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used']));
         allow delete: if isAdmin();
       }
 

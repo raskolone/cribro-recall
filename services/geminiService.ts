@@ -56,7 +56,7 @@ if (!process.env.API_KEY) {
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const generateContentWithFallback = async (params: any) => {
-  const models = ["gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-flash-latest", "gemini-2.0-flash-lite-001"];
+  const models = ["gemini-3.5-flash", "gemini-3.1-flash-lite"];
   let lastError;
   for (const model of models) {
     try {
