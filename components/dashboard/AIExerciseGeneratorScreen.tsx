@@ -65,21 +65,31 @@ const playSliderSound = () => {
     if (audioCtx.state === 'suspended') {
       audioCtx.resume();
     }
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
+    const now = audioCtx.currentTime;
     
-    oscillator.type = 'triangle';
-    oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
-    
-    gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-    
-    oscillator.start();
-    oscillator.stop(audioCtx.currentTime + 0.05);
+    // Wooden block knock / click synthesis
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+
+    osc.type = 'sine';
+    // Frequency drop for wooden click timbre
+    osc.frequency.setValueAtTime(850, now);
+    osc.frequency.exponentialRampToValueAtTime(360, now + 0.025);
+
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(650, now);
+    filter.Q.setValueAtTime(3.8, now);
+
+    gain.gain.setValueAtTime(0.45, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.04);
   } catch (e) {
     // Ignore audio errors
   }
@@ -1104,9 +1114,9 @@ let finalGenPrompt = customGenPrompt;
                 </motion.div>
               )}
             </AnimatePresence>
-            <Card className="p-0 border border-white/10 bg-base-200/40 backdrop-blur-xl relative overflow-hidden flex flex-col rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.55)]">
+            <Card className="p-0 border border-white/10 bg-gradient-to-b from-base-200/90 to-base-200/60 backdrop-blur-2xl relative overflow-hidden flex flex-col rounded-3xl shadow-[0_16px_50px_rgba(0,0,0,0.4)]">
               {/* Integrated Header Tabs inside the unified box */}
-              <div className="flex bg-black/40 border-b border-white/5 p-1.5 gap-1.5">
+              <div className="flex bg-white/[0.04] border-b border-white/10 p-1.5 gap-1.5">
                 <button
                   onClick={() => {
                     setActiveTab('ai');
@@ -1408,138 +1418,167 @@ let finalGenPrompt = customGenPrompt;
                     <div className="border-t border-white/5 my-5" />
 
                     {/* Section 2: Ustawienia ćwiczenia */}
-                    <div className="space-y-5">
+                    <div className="space-y-6">
                       <h3 className="text-xl font-bold flex items-center gap-2.5 text-white/95 tracking-tight">
                         <Settings className="w-5.5 h-5.5 text-primary" />
                         {language === 'pl' ? 'Ustawienia ćwiczenia' : 'Exercise settings'}
                       </h3>
 
-                      {/* Typ tłumaczenia (Klawiatura czy Układanka) */}
-                      <div>
-                        <label className="block text-xs font-bold text-content-muted uppercase tracking-wider mb-2.5">
-                          {language === 'pl' ? 'Sposób rozwiązywania' : 'Solving method'}
-                        </label>
-                                                <div className="flex flex-col bg-black/40 p-1.5 rounded-xl border border-white/5 shadow-inner gap-1.5">
-                          <div className="text-center text-[11px] font-bold text-primary mb-1 mt-1 uppercase tracking-wide">
-                            {language === 'pl' ? 'Zrób najpierw rozgrzewkę: Układanka słów.' : 'Do a warmup first: Word puzzle.'}
+                      <div className="space-y-5">
+                        {/* 1. SEKCJA ROZGRZEWKI */}
+                        <div className="p-5 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-base-200/50 to-base-200/30 backdrop-blur-md relative overflow-hidden shadow-[0_4px_25px_rgba(245,158,11,0.12)] space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black uppercase tracking-wider text-amber-300 bg-amber-500/20 px-3 py-1 rounded-full border border-amber-500/30 flex items-center gap-1.5">
+                              <Puzzle className="w-3.5 h-3.5" />
+                              {language === 'pl' ? 'Rozgrzewka' : 'Warmup'}
+                            </span>
+                            {exerciseFormat === 'puzzle' && (
+                              <span className="text-xs font-bold text-amber-400 flex items-center gap-1">
+                                <CheckCircle className="w-4 h-4" /> {language === 'pl' ? 'Wybrane' : 'Selected'}
+                              </span>
+                            )}
                           </div>
+                          
+                          <p className="text-xs md:text-sm text-amber-200/90 font-medium leading-relaxed">
+                            {language === 'pl' 
+                              ? 'Zrób najpierw rozgrzewkę przed prawdziwym wyzwaniem.'
+                              : 'Do a warmup first before the real challenge.'}
+                          </p>
+
                           <button
+                            type="button"
                             onClick={() => setExerciseFormat('puzzle')}
-                            className={`w-full py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
-                              exerciseFormat === 'puzzle' 
-                                 ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                                 : 'text-content-muted hover:text-white hover:bg-white/5'
+                            className={`w-full py-3.5 px-5 rounded-xl text-sm font-extrabold transition-all duration-300 flex items-center justify-center gap-2.5 ${
+                              exerciseFormat === 'puzzle'
+                                ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 text-black shadow-[0_0_25px_rgba(251,191,36,0.4)] scale-[1.01]'
+                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 hover:border-amber-400 animate-pulse'
                             }`}
                           >
-                            <Puzzle className="w-4 h-4" />
-                            {language === 'pl' ? 'Układanka ze słów' : 'Word puzzle'}
+                            <Puzzle className="w-4.5 h-4.5 shrink-0" />
+                            <span>{language === 'pl' ? 'Układanka ze słów' : 'Word puzzle'}</span>
                           </button>
+                        </div>
+
+                        {/* 2. SEKCJA WYZWANIA (Prawdziwe wyzwanie) */}
+                        <div className="p-5 rounded-2xl border border-white/10 bg-base-200/50 backdrop-blur-md space-y-4">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black uppercase tracking-wider text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20 flex items-center gap-1.5">
+                              <Keyboard className="w-3.5 h-3.5" />
+                              {language === 'pl' ? 'Prawdziwe wyzwanie' : 'Real challenge'}
+                            </span>
+                            {exerciseFormat === 'typing' && (
+                              <span className="text-xs font-bold text-primary flex items-center gap-1">
+                                <CheckCircle className="w-4 h-4" /> {language === 'pl' ? 'Wybrane' : 'Selected'}
+                              </span>
+                            )}
+                          </div>
+
                           <button
+                            type="button"
                             onClick={() => setExerciseFormat('typing')}
-                            className={`w-full py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
-                              exerciseFormat === 'typing' 
-                                 ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                                 : 'text-content-muted hover:text-white hover:bg-white/5'
+                            className={`w-full py-3.5 px-5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2.5 ${
+                              exerciseFormat === 'typing'
+                                ? 'bg-primary text-black font-extrabold shadow-[0_0_20px_rgba(114,240,180,0.3)]'
+                                : 'bg-white/5 text-content-muted border border-white/10 hover:bg-white/10 hover:text-white'
                             }`}
                           >
-                            <Keyboard className="w-4 h-4" />
-                            {language === 'pl' ? 'Wpisywanie klawiaturą' : 'Keyboard typing'}
+                            <Keyboard className="w-4.5 h-4.5 shrink-0" />
+                            <span>{language === 'pl' ? 'Prawdziwe wyzwanie (Wpisywanie klawiaturą)' : 'Real challenge (Keyboard typing)'}</span>
                           </button>
-                        </div>
-                      </div>
 
-                      {/* Tryb nauki */}
-                      <div>
-                        <label className="block text-xs font-bold text-content-muted uppercase tracking-wider mb-2.5">
-                          {language === 'pl' ? 'Tryb nauki' : 'Practice mode'}
-                        </label>
-                                                <div className="flex flex-col bg-black/40 p-1.5 rounded-xl border border-white/5 shadow-inner gap-1.5">
-                          <button
-                            onClick={() => setPracticeMode('fixed')}
-                            className={`w-full py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
-                              practiceMode === 'fixed' 
-                                 ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                                 : 'text-content-muted hover:text-white hover:bg-white/5'
-                            }`}
-                          >
-                            <Target className="w-4 h-4" />
-                            {language === 'pl' ? 'Na ilość zdań' : 'Fixed quantity'}
-                          </button>
-                          <button
-                            onClick={() => setPracticeMode('time')}
-                            className={`w-full py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
-                              practiceMode === 'time' 
-                                 ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                                 : 'text-content-muted hover:text-white hover:bg-white/5'
-                            }`}
-                          >
-                            <Clock className="w-4 h-4" />
-                            {language === 'pl' ? 'Na czas (Wyzwanie)' : 'Time challenge'}
-                          </button>
-                        </div>
-                      </div>
+                          {/* Tryb nauki dla wyzwania */}
+                          <div className="pt-3 border-t border-white/5 space-y-3">
+                            <label className="block text-xs font-bold text-content-muted uppercase tracking-wider">
+                              {language === 'pl' ? 'Tryb nauki' : 'Practice mode'}
+                            </label>
 
-                      {practiceMode === 'fixed' && (
-                        <div className="relative pt-2">
-                          <label className="flex items-center justify-between text-xs font-bold text-content-muted uppercase tracking-wider mb-6">
-                            <span>{language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}</span>
-                            <div className="absolute right-0 -top-1">
-                              <span ref={numSentencesRef} className="text-primary text-2xl font-black drop-shadow-[0_0_12px_rgba(114,240,180,0.4)] inline-block min-w-[2rem] text-center">
-                                {numSentences}
-                              </span>
+                            <div className="grid grid-cols-2 gap-2 bg-white/[0.03] p-1.5 rounded-xl border border-white/10">
+                              <button
+                                type="button"
+                                onClick={() => setPracticeMode('fixed')}
+                                className={`py-2.5 px-3 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
+                                  practiceMode === 'fixed'
+                                    ? 'bg-primary text-black shadow-[0_0_12px_rgba(114,240,180,0.3)]'
+                                    : 'text-content-muted hover:text-white hover:bg-white/5'
+                                }`}
+                              >
+                                <Target className="w-3.5 h-3.5" />
+                                {language === 'pl' ? 'Na ilość zdań' : 'Fixed quantity'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setPracticeMode('time')}
+                                className={`py-2.5 px-3 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
+                                  practiceMode === 'time'
+                                    ? 'bg-primary text-black shadow-[0_0_12px_rgba(114,240,180,0.3)]'
+                                    : 'text-content-muted hover:text-white hover:bg-white/5'
+                                }`}
+                              >
+                                <Clock className="w-3.5 h-3.5" />
+                                {language === 'pl' ? 'Na czas (Wyzwanie)' : 'Time challenge'}
+                              </button>
                             </div>
-                          </label>
-                          <div className="relative pb-2 px-1">
-                            <input
-                              type="range"
-                              min="1"
-                              max="20"
-                              step="1"
-                              value={numSentences}
-                              onChange={(e) => {
-                                setNumSentences(parseInt(e.target.value));
-                                playSliderSound();
-                              }}
-                              className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-                            />
-                            <div className="flex justify-between text-[10px] text-content-muted mt-2 font-mono">
-                              <span>1</span>
-                              <span>20</span>
-                            </div>
+
+                            {practiceMode === 'fixed' && (
+                              <div className="relative pt-2">
+                                <label className="flex items-center justify-between text-xs font-bold text-content-muted uppercase tracking-wider mb-4">
+                                  <span>{language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}</span>
+                                  <span ref={numSentencesRef} className="text-primary text-2xl font-black drop-shadow-[0_0_12px_rgba(114,240,180,0.4)] inline-block min-w-[2rem] text-right">
+                                    {numSentences}
+                                  </span>
+                                </label>
+                                <div className="relative pb-1 px-1">
+                                  <input
+                                    type="range"
+                                    min="1"
+                                    max="20"
+                                    step="1"
+                                    value={numSentences}
+                                    onChange={(e) => {
+                                      setNumSentences(parseInt(e.target.value));
+                                      playSliderSound();
+                                    }}
+                                    className="w-full h-2.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                  />
+                                  <div className="flex justify-between text-[10px] text-content-muted mt-1.5 font-mono">
+                                    <span>1</span>
+                                    <span>20</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {practiceMode === 'time' && (
+                              <div className="relative pt-2">
+                                <label className="flex items-center justify-between text-xs font-bold text-content-muted uppercase tracking-wider mb-4">
+                                  <span>{language === 'pl' ? 'Czas na rozwiązanie (minuty)' : 'Time to solve (minutes)'}</span>
+                                  <span ref={timeLimitRef} className="text-primary text-2xl font-black drop-shadow-[0_0_12px_rgba(114,240,180,0.4)] inline-block min-w-[2rem] text-right">
+                                    {timeLimit}
+                                  </span>
+                                </label>
+                                <div className="relative pb-1 px-1">
+                                  <input
+                                    type="range"
+                                    min="1"
+                                    max="20"
+                                    step="1"
+                                    value={timeLimit}
+                                    onChange={(e) => {
+                                      setTimeLimit(parseInt(e.target.value));
+                                      playSliderSound();
+                                    }}
+                                    className="w-full h-2.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                  />
+                                  <div className="flex justify-between text-[10px] text-content-muted mt-1.5 font-mono">
+                                    <span>1 min</span>
+                                    <span>20 min</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
-                      )}
-                      
-                      {practiceMode === 'time' && (
-                        <div className="relative pt-2">
-                          <label className="flex items-center justify-between text-xs font-bold text-content-muted uppercase tracking-wider mb-6">
-                            <span>{language === 'pl' ? 'Czas na rozwiązanie (minuty)' : 'Time to solve (minutes)'}</span>
-                            <div className="absolute right-0 -top-1">
-                              <span ref={timeLimitRef} className="text-primary text-2xl font-black drop-shadow-[0_0_12px_rgba(114,240,180,0.4)] inline-block min-w-[2rem] text-center">
-                                {timeLimit}
-                              </span>
-                            </div>
-                          </label>
-                          <div className="relative pb-2 px-1">
-                            <input
-                              type="range"
-                              min="1"
-                              max="20"
-                              step="1"
-                              value={timeLimit}
-                              onChange={(e) => {
-                                setTimeLimit(parseInt(e.target.value));
-                                playSliderSound();
-                              }}
-                              className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-                            />
-                            <div className="flex justify-between text-[10px] text-content-muted mt-2 font-mono">
-                              <span>1 min</span>
-                              <span>20 min</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      </div>
                     </div>
 
                     {/* Elegant Divider */}
