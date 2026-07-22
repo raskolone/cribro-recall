@@ -15,6 +15,7 @@ import Button from '../ui/Button';
 import AdminTestGenerator from './AdminTestGenerator';
 import TeacherDashboardActivity from './TeacherDashboardActivity';
 import TeacherDashboardStats from './TeacherDashboardStats';
+import TeacherSpecialTaskModal from './TeacherSpecialTaskModal';
 
 interface UserWithId extends User {
   id: string;
@@ -72,6 +73,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         setsList.sort((a, b) => new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt).getTime() - new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt).getTime());
         setUserSets(setsList);
       } catch(e) { console.error("Error fetching sets", e); }
+
+      try {
+        const tasksQ = query(collection(db, 'specialTasks'), where('studentId', '==', userId));
+        const tasksSnapshot = await getDocs(tasksQ);
+        const tasksList = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        tasksList.sort((a, b) => new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt).getTime() - new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt).getTime());
+        setSpecialTasks(tasksList);
+      } catch(e) { console.error("Error fetching special tasks", e); }
+
 
       // Setup a basic stats aggregate based on practice logs
       // A more complex aggregation could happen server side, but this is simple enough for now.
@@ -244,7 +254,42 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       setIsGenerating(false);
     }
   };
-  const handleSaveBulkLessons = async () => {};
+  const handleSaveBulkLessons = async () => {
+    setIsGenerating(true);
+    try {
+      let savedCount = 0;
+      for (const lesson of bulkPreviewLessons) {
+        if (!lesson.studentId) continue;
+        await createLessonRecordWithVocabularySet({
+          studentId: lesson.studentId,
+          date: lesson.date || new Date().toISOString().split('T')[0],
+          topic: lesson.lessonTopic || 'Podsumowanie lekcji',
+          vocabularyText: lesson.vocabularyText || '',
+          lessonSummary: lesson.revisionNotes || '',
+          studentSpeaking: lesson.studentSpeaking || '',
+          thingsToImprove: lesson.thingsToImprove || '',
+          suggestedFollowUp: lesson.suggestedFollowUp || ''
+        });
+        
+        await updateDoc(doc(db, 'users', lesson.studentId), {
+           hasNewVocabulary: true
+        });
+        savedCount++;
+      }
+      
+      alert(`Zapisano ${savedCount} wpisów z lekcji.`);
+      setShowBulkPreviewModal(false);
+      setBulkPreviewLessons([]);
+      
+      if (selectedUser) {
+        fetchUserLogsAndStats(selectedUser.id);
+      }
+    } catch (e) {
+      alert('Błąd podczas zapisywania lekcji: ' + e.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
   const handleAssignSet = async () => {
     if (!selectedSetIdToAssign || !selectedUser) {
       alert("Wybierz zestaw z listy.");
@@ -480,10 +525,12 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [practiceLogs, setPracticeLogs] = useState<PracticeLog[]>([]);
   const [lessonRecords, setLessonRecords] = useState<LessonRecord[]>([]);
   const [userSets, setUserSets] = useState<FlashcardSet[]>([]);
+  const [specialTasks, setSpecialTasks] = useState<any[]>([]);
   const [userStats, setUserStats] = useState<{ totalWords: number; difficultWords: number; masteryCount: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigningSet, setIsAssigningSet] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showSpecialTaskModal, setShowSpecialTaskModal] = useState(false);
   const [selectedSetIdToAssign, setSelectedSetIdToAssign] = useState('');
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
@@ -733,35 +780,35 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </div>
           
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-              <button onClick={() => handleTabChange('profile')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
+              <button onClick={() => handleTabChange('profile')} className="flex flex-col items-center justify-center p-8 rounded-2xl liquid-glass-tile group">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                 </div>
                 <h3 className="font-bold text-lg">Profile kursantów</h3>
               </button>
-              <button onClick={() => handleTabChange('stats')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
+              <button onClick={() => handleTabChange('stats')} className="flex flex-col items-center justify-center p-8 rounded-2xl liquid-glass-tile group">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                 </div>
                 <h3 className="font-bold text-lg">Statystyki</h3>
               </button>
-              <button onClick={() => handleTabChange('history')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
+              <button onClick={() => handleTabChange('history')} className="flex flex-col items-center justify-center p-8 rounded-2xl liquid-glass-tile group">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </div>
-                <h3 className="font-bold text-lg">Historia</h3>
+                <h3 className="font-bold text-lg">Historia lekcji</h3>
               </button>
-              <button onClick={() => handleTabChange('tests')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
+              <button onClick={() => handleTabChange('tests')} className="flex flex-col items-center justify-center p-8 rounded-2xl liquid-glass-tile group">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                 </div>
                 <h3 className="font-bold text-lg">Testy</h3>
               </button>
-              <button onClick={() => handleTabChange('vocabulary')} className="flex flex-col items-center justify-center p-8 bg-base-200/50 rounded-2xl border border-white/5 hover:border-primary/50 hover:bg-base-200 transition-all duration-300 group">
+              <button onClick={() => handleTabChange('vocabulary')} className="flex flex-col items-center justify-center p-8 rounded-2xl liquid-glass-tile group">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
                 </div>
-                <h3 className="font-bold text-lg">Słownictwo</h3>
+                <h3 className="font-bold text-lg">Słownictwo i zadania</h3>
               </button>
             </div>
 
@@ -830,7 +877,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     
                     
                     onClick={() => handleSelectUser(u)}
-                    className="bg-base-200 border border-white/5 p-4 rounded-xl cursor-pointer hover:border-primary/30 hover:bg-base-200/80 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+                    className="liquid-glass-hover bg-base-200/40 border border-white/5 p-4 rounded-xl cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
                   >
                     <div>
                       <div className="font-bold text-lg group-hover:text-primary transition-colors">
@@ -930,9 +977,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   {[
                     { id: 'profile', label: 'Profil kursanta' },
                     { id: 'stats', label: 'Statystyki' },
-                    { id: 'history', label: 'Historia' },
+                    { id: 'history', label: 'Historia lekcji' },
                     { id: 'tests', label: 'Testy' },
-                    { id: 'vocabulary', label: 'Słownictwo' }
+                    { id: 'vocabulary', label: 'Słownictwo i zadania' }
                   ].map(tab => (
                     <button
                       key={tab.id}
@@ -952,16 +999,26 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               <div className="mb-6 flex items-center gap-4">
                 <h2 className="text-xl font-bold text-primary">
                   {activeTab === 'stats' && 'Statystyki'}
-                  {activeTab === 'history' && 'Historia'}
+                  {activeTab === 'history' && 'Historia lekcji'}
                   {activeTab === 'profile' && 'Profil kursanta'}
                   {activeTab === 'tests' && 'Testy'}
-                  {activeTab === 'vocabulary' && 'Słownictwo'}
+                  {activeTab === 'vocabulary' && 'Słownictwo i zadania'}
                   {activeTab === 'contact' && 'Kontakt'}
                 </h2>
               </div>
 <div ref={tabContentRef}>
           {activeTab === 'stats' && (
             <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
+                  <div className="text-sm text-content-muted mb-2 font-mono uppercase">Ilość Logowań</div>
+                  <div className="text-4xl font-display font-bold text-white">{selectedUser.loginCount || 0}</div>
+                </div>
+                <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
+                  <div className="text-sm text-content-muted mb-2 font-mono uppercase">Ostatnie Logowanie</div>
+                  <div className="text-2xl font-display font-bold text-primary">{selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString() : 'Nigdy'}</div>
+                </div>
+              </div>
               {userStats ? (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                   <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
@@ -1004,7 +1061,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     {lessonRecords.map((record, index) => (
                       <Card 
                         key={record.id} 
-                        className="relative group cursor-pointer hover:border-primary/50 transition-colors bg-base-200/50 p-4"
+                        className="relative group cursor-pointer p-4 rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5"
                         onClick={() => openLessonRecordModal('view', record)}
                       >
                         <button 
@@ -1052,7 +1109,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                             : null
                           
                           return (
-                          <tr key={log.id} className="hover:bg-white/5 transition-colors">
+                          <tr key={log.id} className="cursor-pointer liquid-glass-hover">
                             <td className="p-3 whitespace-nowrap">{new Date(log.date).toLocaleString()}</td>
                             <td className="p-3 capitalize">{log.exerciseType}</td>
                             <td className="p-3 line-clamp-1">{/* No setName in practice log */}</td>
@@ -1082,16 +1139,47 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           {activeTab === 'vocabulary' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
-                <h3 className="text-xl font-bold">Zestawy Słówek Kursanta</h3>
-                <Button onClick={() => setShowAssignModal(true)}>
-                  Przypisz Zestaw
-                </Button>
+                <h3 className="text-xl font-bold">Zestawy słówek i zadania specjalne</h3>
+                <div className="flex gap-2">
+                  <Button variant="secondary" onClick={() => setShowSpecialTaskModal(true)}>
+                    ✨ Zadanie specjalne (AI)
+                  </Button>
+                  <Button onClick={() => setShowAssignModal(true)}>
+                    Przypisz Zestaw
+                  </Button>
+                </div>
               </div>
+
+              
+              {specialTasks.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="font-bold text-lg mb-3">Zadania specjalne</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {specialTasks.map(task => (
+                      <Card key={task.id} className="p-4 cursor-pointer rounded-xl liquid-glass-hover bg-primary/5 border border-primary/20">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-bold text-lg">{task.title}</h4>
+                          <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded font-bold uppercase tracking-wider">
+                            Zadanie specjalne
+                          </span>
+                        </div>
+                        <p className="text-sm text-content-muted mb-4">Ilość zdań: {task.sentences?.length || 0}</p>
+                        <div className="flex items-center justify-between text-xs font-mono text-content-muted">
+                          <span className={task.status === 'completed' ? 'text-primary' : 'text-amber-500'}>
+                            {task.status === 'completed' ? 'Ukończone' : 'Oczekujące'}
+                          </span>
+                          <span>{new Date(task.createdAt?.seconds ? task.createdAt.seconds * 1000 : task.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {userSets.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {userSets.map(set => (
-                    <Card key={set.id} className="p-4 bg-base-200/50 hover:border-primary/50 transition-colors cursor-pointer">
+                    <Card key={set.id} className="p-4 cursor-pointer rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5">
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="font-bold text-lg">{set.title}</h4>
                         {set.assignedByTeacher && (
@@ -1335,6 +1423,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         </div>
       )}
         </div>
+      )}
+
+      {showSpecialTaskModal && selectedUser && (
+        <TeacherSpecialTaskModal
+          user={selectedUser}
+          onClose={() => setShowSpecialTaskModal(false)}
+          onTaskCreated={() => {
+            fetchUserLogsAndStats(selectedUser.id);
+          }}
+        />
       )}
 
       {/* Assign Set Modal */}

@@ -202,6 +202,15 @@ export interface TestQuestion {
   hint?: string;
 }
 
+export interface SpecialTask {
+  id?: string;
+  studentId: string;
+  title: string;
+  createdAt: string;
+  status: 'pending' | 'completed';
+  sentences: TranslationExercise[];
+}
+
 export interface StudentTest {
   id?: string;
   studentId: string;

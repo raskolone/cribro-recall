@@ -245,6 +245,13 @@ service cloud.firestore {
       }
     }
 
+    match /specialTasks/{taskId} {
+      allow read: if request.auth != null && (resource.data.studentId == request.auth.uid || isAdmin());
+      allow create: if request.auth != null && (request.resource.data.studentId == request.auth.uid || isAdmin());
+      allow update: if request.auth != null && (resource.data.studentId == request.auth.uid || isAdmin());
+      allow delete: if request.auth != null && isAdmin();
+    }
+
     match /vocabulary/{vocabId} {
       allow read: if request.auth != null && (resource.data.studentId == request.auth.uid || isAdmin());
       // For create/update, we validate studentId is set to the user or it's an admin

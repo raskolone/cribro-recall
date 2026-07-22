@@ -110,11 +110,44 @@ h1, h2, h3 {
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 30px 10px rgba(114, 240, 180, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 25px 8px rgba(114, 240, 180, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.25);
     border-color: rgba(114, 240, 180, 0.95);
     transform: scale(1.025);
   }
 }
 .animate-pulsar-strong {
   animation: pulsar-strong 2s infinite ease-in-out;
+}
+
+/* Liquid Glass Effects */
+.liquid-glass-tile {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+
+.liquid-glass-tile:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(114, 240, 180, 0.4) !important;
+  box-shadow: 0 10px 40px 0 rgba(114, 240, 180, 0.25), inset 0 0 20px rgba(255, 255, 255, 0.08) !important;
+  transform: translateY(-4px) scale(1.03) !important;
+}
+
+.liquid-glass-hover {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+
+.liquid-glass-hover:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(114, 240, 180, 0.3) !important;
+  box-shadow: 0 8px 24px 0 rgba(114, 240, 180, 0.15), inset 0 0 15px rgba(255, 255, 255, 0.05) !important;
+  transform: translateY(-2px) scale(1.015) !important;
+}
+
+tr.liquid-glass-hover:hover {
+  transform: none !important;
+  box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.05) !important;
 }

@@ -53,7 +53,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
           ) : (
             <div className="space-y-4">
               {recentLogins.map(u => (
-                <div key={u.id} className="flex items-center justify-between bg-base-200 p-4 rounded-xl border border-white/5">
+                <div key={u.id} className="flex items-center justify-between bg-base-200/40 p-4 rounded-xl border border-white/5 liquid-glass-hover">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-base-300 flex items-center justify-center font-bold text-primary flex-shrink-0">
                       {u.photoURL ? (

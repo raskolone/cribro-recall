@@ -63,10 +63,9 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
 
   // Process logs for the selected user
   const userPerformanceData = userLogs.map(log => {
-    const results = log.results || {};
-    const total = Object.keys(results).length;
-    const correct = Object.values(results).filter(r => r).length;
-    const errors = total - correct;
+    const total = log.totalWords || 0;
+    const correct = log.score || 0;
+    const errors = total - correct > 0 ? total - correct : 0;
     return {
       date: new Date(log.date).toLocaleDateString(),
       poprawne: correct,
@@ -118,7 +117,7 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
 
           {!selectedUserId ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="bg-base-200 p-4 rounded-xl border border-white/5">
+              <div className="p-4 rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5">
                 <h4 className="font-bold text-center mb-4">Top 10: Najczęstsze logowania</h4>
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -132,7 +131,7 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
                   </ResponsiveContainer>
                 </div>
               </div>
-              <div className="bg-base-200 p-4 rounded-xl border border-white/5">
+              <div className="p-4 rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5">
                 <h4 className="font-bold text-center mb-4">Poziomy zaawansowania</h4>
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -157,7 +156,7 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
               </div>
             </div>
           ) : (
-            <div className="bg-base-200 p-6 rounded-xl border border-white/5">
+            <div className="p-6 rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5">
               <h4 className="font-bold text-lg mb-6">
                 Postępy w ćwiczeniach (Ostatnie sesje): {selectedUser?.firstName || selectedUser?.username}
               </h4>

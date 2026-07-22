@@ -279,6 +279,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     }
   }, [step, onExerciseStateChange]);
   const [vocabularySets, setVocabularySets] = useState<VocabularySet[]>([]);
+  const [specialTasks, setSpecialTasks] = useState<any[]>([]);
   const [isLessonsExpanded, setIsLessonsExpanded] = useState<boolean>(false);
   const [isCustomSetsExpanded, setIsCustomSetsExpanded] = useState<boolean>(false);
   const [previewedSetId, setPreviewedSetId] = useState<string | null>(null);
@@ -317,11 +318,23 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
 
   useEffect(() => {
+    
     if (user?.id) {
       getVocabularySetsForStudent(user.id)
         .then(setVocabularySets)
         .catch(console.error);
+
+      // fetch special tasks
+      import('firebase/firestore').then(({ collection, getDocs, query, where, orderBy }) => {
+        const tasksQ = query(collection(db, 'specialTasks'), where('studentId', '==', user.id));
+        getDocs(tasksQ).then(snap => {
+          const tasks = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+          tasks.sort((a, b) => new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt).getTime() - new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt).getTime());
+          setSpecialTasks(tasks.filter(t => t.status === 'pending')); // only pending tasks
+        });
+      });
     }
+
   }, [user?.id]);
 
   // Filter out sets assigned to the student (assignedByTeacher or belongs to user)
@@ -424,6 +437,29 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
   // Generate exercises using Gemini
   const handleGenerate = async (isAppending = false) => {
+    if (selectedSetId?.startsWith('special-task-')) {
+      const taskId = selectedSetId.replace('special-task-', '');
+      const task = specialTasks.find(t => t.id === taskId);
+      if (task) {
+        if (isAppending) {
+           setIsGeneratingMore(false);
+           return; // special tasks have fixed number of sentences, don't generate more
+        }
+        setIsLoading(true);
+        setError('');
+        try {
+           setExercises(task.sentences);
+           setStudentAnswers(new Array(task.sentences.length).fill(''));
+           setShowHints(new Array(task.sentences.length).fill(false));
+           setStep('practice');
+        } catch(e) {
+           setError('Błąd ładowania zadania specjalnego');
+        } finally {
+           setIsLoading(false);
+        }
+        return;
+      }
+    }
     addLog('Starting handleGenerate');
     
     // Mark any selected vocabulary sets as used
@@ -693,6 +729,15 @@ let finalGenPrompt = customGenPrompt;
   };
 
     const handleFinishAll = async () => {
+    if (exerciseFormat === 'puzzle') {
+      setExerciseFormat('typing');
+      setStep('setup');
+      setExercises([]);
+      setStudentAnswers([]);
+      setTimeLeft(null);
+      return;
+    }
+
     setIsGeneratingMore(true);
     let currentEvalResults = { ...singleEvaluationResults };
     
@@ -774,6 +819,14 @@ let finalGenPrompt = customGenPrompt;
         const allMistakes = results.flatMap(r => r.mistakes || []);
         if (allMistakes.length > 0) {
           await logMistakesToFirebase(user.id, allMistakes);
+        }
+
+        // mark special task as completed
+        if (selectedSetId?.startsWith('special-task-')) {
+           const taskId = selectedSetId.replace('special-task-', '');
+           import('firebase/firestore').then(({ doc, updateDoc }) => {
+              updateDoc(doc(db, 'specialTasks', taskId), { status: 'completed' });
+           });
         }
       } catch (e) {
         console.warn("Could not save practice log or log mistakes", e);
@@ -1098,6 +1151,46 @@ let finalGenPrompt = customGenPrompt;
                       </h3>
                       
                       <div className="space-y-4">
+                        {/* Zadania specjalne */}
+                        {specialTasks.length > 0 && specialTasks.map(task => (
+                          <div key={task.id} className={`border-2 rounded-2xl overflow-hidden liquid-glass-tile transition-all duration-300 ${
+                            selectedSetId === 'special-task-' + task.id
+                              ? 'border-primary/50 bg-primary/[0.08] shadow-[0_8px_30px_rgba(114,240,180,0.2)]'
+                              : 'border-primary/20 bg-base-200/40 hover:bg-base-200/60 hover:border-primary/30'
+                          }`}>
+                            <button
+                              className="w-full flex items-center justify-between p-5 transition-colors"
+                              onClick={() => {
+                                if (selectedSetId !== 'special-task-' + task.id) {
+                                  setSelectedSetId('special-task-' + task.id);
+                                  setSelectedLessonIds([]);
+                                } else {
+                                  setSelectedSetId('');
+                                }
+                              }}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                                  selectedSetId === 'special-task-' + task.id
+                                    ? 'border-primary bg-primary text-black'
+                                    : 'border-primary/50'
+                                }`}>
+                                  {selectedSetId === 'special-task-' + task.id && <div className="w-2 h-2 bg-black rounded-full" />}
+                                </div>
+                                <div className="p-2.5 bg-primary/20 rounded-xl shrink-0 animate-pulse shadow-[0_0_15px_rgba(114,240,180,0.3)]">
+                                  <Sparkles className="w-6 h-6 text-primary" />
+                                </div>
+                                <div className="text-left">
+                                  <span className="font-bold text-lg text-white block">
+                                    {language === 'pl' ? 'Zadanie specjalne' : 'Special Task'}
+                                  </span>
+                                  <span className="text-xs text-primary font-mono block">Od Nauczyciela • {task.sentences?.length} zdań</span>
+                                </div>
+                              </div>
+                            </button>
+                          </div>
+                        ))}
+
                         {/* Opcja 1: Lekcje (Prominent) */}
                         <div className={`border-2 rounded-2xl overflow-hidden transition-all duration-300 ${
                           selectedSetId === 'lessons' || selectedLessonIds.length > 0 
@@ -1326,28 +1419,31 @@ let finalGenPrompt = customGenPrompt;
                         <label className="block text-xs font-bold text-content-muted uppercase tracking-wider mb-2.5">
                           {language === 'pl' ? 'Sposób rozwiązywania' : 'Solving method'}
                         </label>
-                        <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 shadow-inner">
-                          <button
-                            onClick={() => setExerciseFormat('typing')}
-                            className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
-                              exerciseFormat === 'typing' 
-                                ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                                : 'text-content-muted hover:text-white'
-                            }`}
-                          >
-                            <Keyboard className="w-4 h-4" />
-                            {language === 'pl' ? 'Wpisywanie klawiaturą' : 'Keyboard typing'}
-                          </button>
+                                                <div className="flex flex-col bg-black/40 p-1.5 rounded-xl border border-white/5 shadow-inner gap-1.5">
+                          <div className="text-center text-[11px] font-bold text-primary mb-1 mt-1 uppercase tracking-wide">
+                            {language === 'pl' ? 'Zrób najpierw rozgrzewkę: Układanka słów.' : 'Do a warmup first: Word puzzle.'}
+                          </div>
                           <button
                             onClick={() => setExerciseFormat('puzzle')}
-                            className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
+                            className={`w-full py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
                               exerciseFormat === 'puzzle' 
-                                ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                                : 'text-content-muted hover:text-white'
+                                 ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
+                                 : 'text-content-muted hover:text-white hover:bg-white/5'
                             }`}
                           >
                             <Puzzle className="w-4 h-4" />
                             {language === 'pl' ? 'Układanka ze słów' : 'Word puzzle'}
+                          </button>
+                          <button
+                            onClick={() => setExerciseFormat('typing')}
+                            className={`w-full py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
+                              exerciseFormat === 'typing' 
+                                 ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
+                                 : 'text-content-muted hover:text-white hover:bg-white/5'
+                            }`}
+                          >
+                            <Keyboard className="w-4 h-4" />
+                            {language === 'pl' ? 'Wpisywanie klawiaturą' : 'Keyboard typing'}
                           </button>
                         </div>
                       </div>
@@ -1357,13 +1453,13 @@ let finalGenPrompt = customGenPrompt;
                         <label className="block text-xs font-bold text-content-muted uppercase tracking-wider mb-2.5">
                           {language === 'pl' ? 'Tryb nauki' : 'Practice mode'}
                         </label>
-                        <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 shadow-inner">
+                                                <div className="flex flex-col bg-black/40 p-1.5 rounded-xl border border-white/5 shadow-inner gap-1.5">
                           <button
                             onClick={() => setPracticeMode('fixed')}
-                            className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
+                            className={`w-full py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
                               practiceMode === 'fixed' 
-                                ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                                : 'text-content-muted hover:text-white'
+                                 ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
+                                 : 'text-content-muted hover:text-white hover:bg-white/5'
                             }`}
                           >
                             <Target className="w-4 h-4" />
@@ -1371,10 +1467,10 @@ let finalGenPrompt = customGenPrompt;
                           </button>
                           <button
                             onClick={() => setPracticeMode('time')}
-                            className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
+                            className={`w-full py-2.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
                               practiceMode === 'time' 
-                                ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
-                                : 'text-content-muted hover:text-white'
+                                 ? 'bg-primary text-black shadow-[0_0_15px_rgba(114,240,180,0.3)]' 
+                                 : 'text-content-muted hover:text-white hover:bg-white/5'
                             }`}
                           >
                             <Clock className="w-4 h-4" />
@@ -1751,7 +1847,7 @@ let finalGenPrompt = customGenPrompt;
                       disabled={studentAnswers[activeSentenceIndex] !== exercises[activeSentenceIndex].englishTranslation}
                       className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
                     >
-                      {language === 'pl' ? 'Zakończ i podsumuj' : 'Finish & Summarize'}
+                      {language === 'pl' ? 'Zakończ rozgrzewkę' : 'Finish warmup'}
                     </AILoadingButton>
                   ) : (
                     <AILoadingButton
