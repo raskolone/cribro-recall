@@ -6,6 +6,106 @@ import { getAudioPronunciation } from '../../services/geminiService';
 
 gsap.registerPlugin(useGSAP);
 
+const CuteMascot = ({ state }: { state: 'idle' | 'happy' | 'error' | 'thinking' }) => {
+  return (
+    <div className="absolute -top-12 right-0 md:-right-16 w-24 h-24 pointer-events-none z-0 opacity-80 md:opacity-100 hidden sm:block">
+      <motion.div
+        animate={{ 
+          y: state === 'happy' ? [0, -15, 0] : state === 'error' ? [0, 5, -5, 0] : [0, -4, 0],
+          rotate: state === 'happy' ? [0, -15, 15, 0] : state === 'error' ? [0, -10, 10, 0] : [0, 2, -2, 0],
+          scale: state === 'happy' ? [1, 1.1, 1] : 1
+        }}
+        transition={{
+          repeat: state === 'idle' || state === 'thinking' ? Infinity : 0,
+          duration: state === 'happy' ? 0.6 : state === 'error' ? 0.4 : 3,
+          ease: "easeInOut"
+        }}
+        className="w-full h-full"
+      >
+        <svg viewBox="0 0 120 120" className="w-full h-full drop-shadow-[0_10px_20px_rgba(52,211,153,0.3)]">
+          {/* Main Body - Liquid Blob */}
+          <motion.path 
+            d="M 60,10 C 90,10 110,30 110,60 C 110,90 85,110 60,110 C 35,110 10,90 10,60 C 10,30 30,10 60,10 Z"
+            fill="url(#bodyGradient)"
+            animate={{
+              d: state === 'idle' || state === 'thinking' 
+                ? [
+                    "M 60,10 C 90,10 110,30 110,60 C 110,90 85,110 60,110 C 35,110 10,90 10,60 C 10,30 30,10 60,10 Z",
+                    "M 60,15 C 85,10 115,35 105,65 C 95,95 85,105 60,110 C 30,115 15,90 15,60 C 15,25 35,15 60,15 Z",
+                    "M 60,10 C 90,10 110,30 110,60 C 110,90 85,110 60,110 C 35,110 10,90 10,60 C 10,30 30,10 60,10 Z"
+                  ]
+                : "M 60,10 C 90,10 110,30 110,60 C 110,90 85,110 60,110 C 35,110 10,90 10,60 C 10,30 30,10 60,10 Z"
+            }}
+            transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+          />
+          <defs>
+            <linearGradient id="bodyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#34d399" />
+              <stop offset="100%" stopColor="#0ea5e9" />
+            </linearGradient>
+            <radialGradient id="eyeGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+              <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
+          {/* Eyes */}
+          <g transform="translate(0, -5)">
+            {/* Left Eye */}
+            <circle cx="45" cy="55" r="7" fill="#0f172a" />
+            <circle cx="47" cy="53" r="2.5" fill="white" />
+            
+            {/* Right Eye */}
+            <circle cx="75" cy="55" r="7" fill="#0f172a" />
+            <circle cx="77" cy="53" r="2.5" fill="white" />
+
+            {/* Happy Eyes Overlay */}
+            <motion.g 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: state === 'happy' ? 1 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <path d="M 38 55 Q 45 45 52 55" fill="none" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
+              <path d="M 68 55 Q 75 45 82 55" fill="none" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
+            </motion.g>
+
+            {/* Error Eyes Overlay */}
+            <motion.g 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: state === 'error' ? 1 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <path d="M 40 50 L 50 60 M 50 50 L 40 60" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
+              <path d="M 70 50 L 80 60 M 80 50 L 70 60" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
+            </motion.g>
+          </g>
+
+          {/* Mouth */}
+          <motion.path 
+            d={
+              state === 'happy' ? "M 45 70 Q 60 85 75 70" :
+              state === 'error' ? "M 50 75 Q 60 65 70 75" :
+              state === 'thinking' ? "M 55 70 Q 60 70 65 70" :
+              "M 50 70 Q 60 75 70 70"
+            } 
+            fill="none" 
+            stroke="#0f172a" 
+            strokeWidth="3.5" 
+            strokeLinecap="round" 
+            animate={{
+              d: state === 'happy' ? "M 45 70 Q 60 85 75 70" :
+                 state === 'error' ? "M 50 75 Q 60 65 70 75" :
+                 state === 'thinking' ? "M 55 70 Q 60 70 65 70" :
+                 "M 50 70 Q 60 75 70 70"
+            }}
+            transition={{ duration: 0.3 }}
+          />
+        </svg>
+      </motion.div>
+    </div>
+  );
+};
+
 interface PuzzleExerciseProps {
   sentence: string;
   level: string;
@@ -34,6 +134,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
   const [selectedTiles, setSelectedTiles] = useState<TileData[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
   const [errorTileId, setErrorTileId] = useState<string | null>(null);
+  const [mascotState, setMascotState] = useState<'idle' | 'happy' | 'error' | 'thinking'>('idle');
   
   const lastClickedRects = useRef<Record<string, DOMRect>>({});
   const answerTileRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -51,26 +152,43 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
         const deltaX = startRect.left - endRect.left;
         const deltaY = startRect.top - endRect.top;
         
-        gsap.fromTo(
-          el,
-          { 
-            x: deltaX, 
-            y: deltaY, 
-            opacity: 0,
-            scale: 0.8,
-            rotation: (Math.random() - 0.5) * 15 
-          },
-          { 
-            x: 0, 
-            y: 0, 
-            opacity: 1,
-            scale: 1,
-            rotation: 0,
-            duration: 0.6, 
-            ease: 'back.out(1.4)',
-            clearProps: "all"
+        gsap.set(el, {
+          x: deltaX,
+          y: deltaY,
+          opacity: 1,
+          scale: 1,
+          transformOrigin: "center center"
+        });
+
+        const duration = 0.55;
+
+        // X movement with a smooth in-out for the arc
+        gsap.to(el, {
+          x: 0,
+          duration: duration,
+          ease: "power2.inOut"
+        });
+
+        // Y movement with a slight overshoot for a natural settle
+        gsap.to(el, {
+          y: 0,
+          duration: duration,
+          ease: "back.out(1.2)",
+          onComplete: () => {
+            gsap.set(el, { clearProps: "all" });
           }
-        );
+        });
+
+        // The "Genie" squish effect - warp dimensions during flight
+        gsap.to(el, {
+          scaleX: 0.7,
+          scaleY: 1.2,
+          rotation: deltaX > 0 ? -8 : 8,
+          duration: duration * 0.45,
+          yoyo: true,
+          repeat: 1,
+          ease: "power1.inOut"
+        });
         
         delete lastClickedRects.current[st.id];
       }
@@ -103,19 +221,21 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
       const chunks: string[] = [];
       let currentChunk: string[] = [];
       
-      // Słowa, przed którymi najlepiej łamać frazę
-      const breakBefore = new Set([
+      const dontBreakAfter = new Set([
+        'the', 'a', 'an', 'my', 'your', 'his', 'her', 'our', 'their', 'this', 'that', 'these', 'those',
+        'of', 'very', 'not', 'no', 'to', 'in', 'on', 'at', 'with', 'about', 'by', 'from', 'as', 'into', 'like', 'for'
+      ]);
+
+      const phrasalVerbParticles = new Set([
+        'up', 'down', 'out', 'in', 'on', 'off', 'over', 'away', 'back', 'through', 'along', 'forward'
+      ]);
+      
+      const phraseStarters = new Set([
         'the', 'a', 'an', 'my', 'your', 'his', 'her', 'our', 'their', 'this', 'that', 'these', 'those',
         'in', 'on', 'at', 'to', 'for', 'with', 'about', 'by', 'from', 'as', 'into', 'like', 'through', 'after', 'over', 'between', 'out', 'against', 'during', 'without', 'before', 'under', 'around', 'among',
         'and', 'but', 'or', 'so', 'because', 'although', 'if', 'when', 'while', 'which', 'who', 'where',
         'i', 'you', 'he', 'she', 'it', 'we', 'they',
         'is', 'are', 'was', 'were', 'am', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'can', 'could', 'shall', 'should', 'will', 'would', 'may', 'might', 'must'
-      ]);
-
-      // Słowa, po których lepiej nie łamać frazy, tylko dołączyć następne słowo
-      const dontBreakAfter = new Set([
-        'the', 'a', 'an', 'my', 'your', 'his', 'her', 'our', 'their', 'this', 'that', 'these', 'those',
-        'of', 'very', 'not', 'no', 'to', 'in', 'on', 'at'
       ]);
 
       for (let i = 0; i < words.length; i++) {
@@ -127,29 +247,23 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
         currentChunk.push(word);
         
         const hasPunctuation = /[.,!?;:]$/.test(word);
-        const shouldBreakBeforeNext = breakBefore.has(cleanNextWord);
-        const shouldNotBreakAfterCurrent = dontBreakAfter.has(cleanWord);
         
         let shouldBreak = false;
         
         if (hasPunctuation) {
           shouldBreak = true;
-        } else if (currentChunk.length >= 2 && shouldBreakBeforeNext && !shouldNotBreakAfterCurrent) {
+        } else if (phrasalVerbParticles.has(cleanNextWord)) {
+          // Keep phrasal verbs together
+          shouldBreak = false;
+        } else if (dontBreakAfter.has(cleanWord)) {
+          // Don't break after articles/prepositions
+          shouldBreak = false;
+        } else if (phraseStarters.has(cleanNextWord)) {
+          // Break before new phrases, prepositions, pronouns, verbs
           shouldBreak = true;
-        } else if (currentChunk.length >= 4) { // Hard limit 4-5 words
-          // Try to wait for a better break point if we are at a "dont break after" word
-          if (!shouldNotBreakAfterCurrent) {
-             shouldBreak = true;
-          } else if (currentChunk.length >= 5) {
-             shouldBreak = true;
-          }
-        }
-        
-        // Specjalne dostrojenie dla prepozycji takich jak "of" – chcemy, by tworzyły zbitki typu "value of"
-        if (cleanNextWord === 'of' && currentChunk.length >= 2) {
-           shouldBreak = false; // "the hidden value" + "of", don't break yet, keep "the hidden value of"
-        } else if (cleanWord === 'of' && currentChunk.length >= 2) {
-           shouldBreak = true; // after "of", break! "the hidden value of" -> BREAK
+        } else if (currentChunk.length >= 2) {
+          // Break every 2-3 words otherwise to keep fragments small
+          shouldBreak = true;
         }
 
         if (shouldBreak) {
@@ -162,9 +276,9 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
       
       if (currentChunk.length > 0) {
         if (currentChunk.length <= 1 && chunks.length > 0) {
-          chunks[chunks.length - 1] += ' ' + currentChunk[0];
+           chunks[chunks.length - 1] += ' ' + currentChunk[0];
         } else {
-          chunks.push(currentChunk.join(' '));
+           chunks.push(currentChunk.join(' '));
         }
       }
       
@@ -212,9 +326,13 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
       setSelectedTiles(newSelected);
       onAnswerChange(newSelected.map(t => t.text).join(' '));
       setErrorTileId(null);
+      setMascotState('happy');
+      setTimeout(() => setMascotState(prev => prev === 'happy' ? 'idle' : prev), 800);
     } else {
       setErrorTileId(tile.id);
+      setMascotState('error');
       setTimeout(() => setErrorTileId(null), 500);
+      setTimeout(() => setMascotState(prev => prev === 'error' ? 'idle' : prev), 800);
     }
   };
 
@@ -231,7 +349,9 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
   };
 
   return (
-    <div className="space-y-4 relative" ref={containerRef}>
+    <div className="space-y-4 relative max-w-4xl mx-auto mt-4" ref={containerRef}>
+      <CuteMascot state={mascotState} />
+      
       {/* Answer Area */}
       <div 
         ref={answerAreaRef}
