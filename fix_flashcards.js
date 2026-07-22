@@ -1,11 +1,4 @@
-import fs from 'fs';
-
-let file = 'components/flashcards/FlashcardSetsScreen.tsx';
-let content = fs.readFileSync(file, 'utf-8');
-
-// I will just use regex to remove from the first `const handlePreviewSet` 
-// down to the first `if (containerRef.current.children.length > 0) {`
-content = content.replace(/  const handlePreviewSet = async \([^]*?(?=const handlePreviewSet = async \()/, '');
-
-fs.writeFileSync(file, content);
-console.log("Fixed FlashcardSetsScreen");
+const fs = require('fs');
+let code = fs.readFileSync('components/flashcards/FlashcardStudyScreen.tsx', 'utf8');
+code = code.replace(/if\(currentCard.audioUrl\)\{const audio = new Audio\(currentCard.audioUrl\);audio.play\(\);\}\s+audio\.play\(\);/g, 'if(currentCard.audioUrl){const audio = new Audio(currentCard.audioUrl);audio.play();}');
+fs.writeFileSync('components/flashcards/FlashcardStudyScreen.tsx', code);

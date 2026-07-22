@@ -48,6 +48,7 @@ const MatchExercise: React.FC<MatchExerciseProps> = ({ words, onExit, onComplete
   const playAudio = async (text: string) => {
     try {
       const audioData = await getAudioPronunciation(text, 'en');
+      if (!audioData) return;
       const audio = new Audio(`data:audio/mp3;base64,${audioData}`);
       audio.play();
     } catch (e) {

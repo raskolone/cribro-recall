@@ -499,6 +499,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       const res = await fetch(`/api/tts?text=${encodeURIComponent(text)}&lang=${lang}`);
       if (!res.ok) throw new Error('Audio failed');
       const blob = await res.blob();
+      if (blob.size === 0) throw new Error('Empty audio blob');
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       audio.onended = () => {
@@ -918,6 +919,7 @@ let finalGenPrompt = customGenPrompt;
       const res = await fetch(`/api/tts?text=${encodeURIComponent(text)}&lang=${lang}`);
       if (!res.ok) throw new Error('Audio generation failed');
       const blob = await res.blob();
+      if (blob.size === 0) throw new Error('Empty audio blob');
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       audio.onended = () => setIsPlayingAudio(false);

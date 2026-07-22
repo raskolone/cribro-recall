@@ -613,8 +613,7 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
             <button 
               onClick={(e) => {
                 e.stopPropagation();
-                const audio = new Audio(currentCard.audioUrl!);
-                audio.play();
+                if(currentCard.audioUrl){const audio = new Audio(currentCard.audioUrl);audio.play();}
               }}
               className="w-10 h-10 flex items-center justify-center rounded-full bg-base-300 text-primary hover:bg-base-100 border border-base-300 transition-colors"
               title="Play audio"
@@ -792,8 +791,7 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
             <button 
               onClick={(e) => {
                 e.stopPropagation();
-                const audio = new Audio(currentCard.audioUrl!);
-                audio.play();
+                if(currentCard.audioUrl){const audio = new Audio(currentCard.audioUrl);audio.play();}
               }}
               className="w-10 h-10 flex items-center justify-center rounded-full bg-base-300 text-primary hover:bg-base-100 border border-base-300 transition-colors"
               title="Play audio"
@@ -1047,8 +1045,7 @@ const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm }: any) => {
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    const audio = new Audio(currentCard.audioUrl!);
-                    audio.play();
+                    if(currentCard.audioUrl){const audio = new Audio(currentCard.audioUrl);audio.play();}
                   }}
                   className="w-10 h-10 flex items-center justify-center rounded-full bg-base-300 text-secondary hover:bg-base-100 border border-base-300 transition-colors"
                   title="Play audio"
@@ -1067,8 +1064,7 @@ const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm }: any) => {
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    const audio = new Audio(currentCard.audioUrl!);
-                    audio.play();
+                    if(currentCard.audioUrl){const audio = new Audio(currentCard.audioUrl);audio.play();}
                   }}
                   className="w-10 h-10 flex items-center justify-center rounded-full bg-base-100 text-secondary hover:bg-base-300 border border-base-300 transition-colors"
                   title="Play audio"

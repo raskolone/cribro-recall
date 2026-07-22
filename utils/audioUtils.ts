@@ -32,6 +32,7 @@ let audioContext: AudioContext | null = null;
 let currentSource: AudioBufferSourceNode | null = null;
 
 export const playAudio = async (base64Audio: string) => {
+  if (!base64Audio) return;
   if (!audioContext) {
     audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
   }
