@@ -13,6 +13,8 @@ import { importVocabularyFromLessons } from '../../services/vocabularyService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import AdminTestGenerator from './AdminTestGenerator';
+import TeacherDashboardActivity from './TeacherDashboardActivity';
+import TeacherDashboardStats from './TeacherDashboardStats';
 
 interface UserWithId extends User {
   id: string;
@@ -762,6 +764,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <h3 className="font-bold text-lg">Słownictwo</h3>
               </button>
             </div>
+
+            <div className="space-y-6 mt-10">
+              <TeacherDashboardActivity users={users} />
+              <TeacherDashboardStats users={users} />
+            </div>
         </div>
       ) : (
         <div className="space-y-6">
@@ -917,6 +924,28 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       <div><span className="font-bold text-white">Ostatnio:</span> {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString() : 'Nigdy'}</div>
                     </div>
                   </div>
+                </div>
+
+                <div className="mt-6 pt-6 border-t border-white/5 flex gap-2 overflow-x-auto hide-scrollbar">
+                  {[
+                    { id: 'profile', label: 'Profil kursanta' },
+                    { id: 'stats', label: 'Statystyki' },
+                    { id: 'history', label: 'Historia' },
+                    { id: 'tests', label: 'Testy' },
+                    { id: 'vocabulary', label: 'Słownictwo' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => handleTabChange(tab.id)}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all ${
+                        activeTab === tab.id 
+                          ? 'bg-primary text-black shadow-md' 
+                          : 'text-content-muted hover:text-white hover:bg-base-300 bg-base-200/50'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
               </Card>
 
