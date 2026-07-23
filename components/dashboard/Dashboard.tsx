@@ -18,6 +18,7 @@ import FlashcardEditScreen from '../flashcards/FlashcardEditScreen';
 import FlashcardStudyScreen from '../flashcards/FlashcardStudyScreen';
 import FlashcardStatsScreen from '../flashcards/FlashcardStatsScreen';
 import AdminPanel from '../admin/AdminPanel';
+import AdminDebuggingScreen from '../admin/AdminDebuggingScreen';
 import LearningProgressChart from './LearningProgressChart';
 import { useSettings } from '../../context/SettingsContext';
 import AIExerciseGeneratorScreen from './AIExerciseGeneratorScreen';
@@ -35,7 +36,7 @@ import { ChevronDown, ChevronRight, LayoutDashboard, Library, ClipboardList, Set
 
 import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
 
-type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests';
+type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests';
 type PracticeView = { type: 'exercise'; exercise: ExerciseType; isRevisionMode?: boolean; isSpacedRepetitionMode?: boolean } | null;
 
 
@@ -666,6 +667,9 @@ const Dashboard: React.FC = () => {
     }
     if (view === 'presentation' && activeSetId) {
       return <FlashcardPresentationScreen setId={activeSetId} onBack={() => changeView('flashcard-sets', { activeSetId: null })} />;
+    }
+    if (view === 'admin-debugging' && user?.role === 'admin') {
+      return <AdminDebuggingScreen onBack={() => changeView('dashboard')} />;
     }
     if (view.startsWith('admin') && (user?.role === 'admin' || user?.role === 'teacher')) {
       return <AdminPanel initialTab={view === 'admin' ? null : view.replace('admin-', '')} onViewChange={changeView} initialSelectedUserId={adminSelectedUserId} onUserSelect={(id) => changeView(view, { adminSelectedUserId: id })} />;

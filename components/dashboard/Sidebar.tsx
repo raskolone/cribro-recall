@@ -4,7 +4,9 @@ import gsap from 'gsap';
 import { ExerciseType } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { LogOut } from 'lucide-react';
+import { LogOut, Bug } from 'lucide-react';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 interface SidebarProps {
   currentView: string;
@@ -73,7 +75,19 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
   }, []);
   const { language } = useLanguage();
   const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
+  const isAdmin = user?.role === 'admin';
   const [isAdminExpanded, setIsAdminExpanded] = useState(currentView.startsWith('admin'));
+  const [newBugsCount, setNewBugsCount] = useState(0);
+
+  useEffect(() => {
+    if (isAdmin) {
+      const q = query(collection(db, 'bug_reports'), where('status', '==', 'new'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setNewBugsCount(snapshot.size);
+      });
+      return () => unsubscribe();
+    }
+  }, [isAdmin]);
 
   React.useEffect(() => {
     if (currentView.startsWith('admin')) setIsAdminExpanded(true);
@@ -133,6 +147,32 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
             <NavLink icon={<Sparkles size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('ai-generator')} isActive={currentView === 'ai-generator'}>
                 {language === 'pl' ? 'Widok kursanta' : 'Student View'}
             </NavLink>
+          )}
+
+          {isAdmin && (
+            <div className="relative">
+              <NavLink 
+                icon={
+                  <div className="relative">
+                    <Bug size={20} className={newBugsCount > 0 ? "text-red-400" : ""} />
+                    {newBugsCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-black"></span>
+                      </span>
+                    )}
+                  </div>
+                } 
+                isCollapsed={isDesktopCollapsed} 
+                onClick={() => handleNavigate('admin-debugging')} 
+                isActive={currentView === 'admin-debugging'}
+              >
+                  <span className={newBugsCount > 0 ? "text-red-400 font-bold" : ""}>
+                    {language === 'pl' ? 'Zgłoszenia błędów' : 'Debugging'}
+                    {newBugsCount > 0 && ` (${newBugsCount})`}
+                  </span>
+              </NavLink>
+            </div>
           )}
 
           <NavLink id="tour-flashcards" icon={<Library size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('flashcard-sets')} isActive={currentView === 'flashcard-sets'}>

@@ -15,11 +15,15 @@ import ConstellationBackground from './components/ui/ConstellationBackground';
 
 import ForcePasswordChangeScreen from './components/auth/ForcePasswordChangeScreen';
 
+import GlobalErrorBoundary from './components/ui/GlobalErrorBoundary';
+
 const App: React.FC = () => {
   return (
     <LanguageProvider>
       <AuthProvider>
-        <AppContent />
+        <GlobalErrorBoundary>
+          <AppContent />
+        </GlobalErrorBoundary>
       </AuthProvider>
     </LanguageProvider>
   );

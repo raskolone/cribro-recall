@@ -233,3 +233,16 @@ export interface StudentTest {
   studentAnswers?: Record<string, string>;
   aiFeedback?: string; // Map of questionId to student's answer
 }
+
+export interface BugReport {
+  id?: string;
+  userId: string;
+  userEmail: string;
+  userRole: string;
+  userName: string;
+  description: string;
+  errorContext?: string;
+  path?: string;
+  status: 'new' | 'investigating' | 'resolved';
+  createdAt: string;
+}
