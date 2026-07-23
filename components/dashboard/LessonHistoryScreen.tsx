@@ -25,21 +25,32 @@ const LessonHistoryScreen: React.FC = () => {
       setIsLoading(true);
       
       const fetchLessons = async () => {
-        const q = query(collection(db, `users/${user.id}/lessonRecords`), orderBy('date', 'desc'));
+        const q = query(collection(db, `users/${user.id}/lessonRecords`));
         const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonRecord));
+        return data.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonRecord));
       };
 
       const fetchPracticeLogs = async () => {
-        const q = query(collection(db, `users/${user.id}/practiceLogs`), orderBy('date', 'desc'));
+        const q = query(collection(db, `users/${user.id}/practiceLogs`));
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PracticeLog));
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PracticeLog));
+        return data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       };
 
-      Promise.all([fetchLessons(), fetchPracticeLogs()])
-        .then(([fetchedLessons, fetchedLogs]) => {
-          setLessons(fetchedLessons);
-          setPracticeLogs(fetchedLogs);
+      Promise.allSettled([fetchLessons(), fetchPracticeLogs()])
+        .then((results) => {
+          if (results[0].status === 'fulfilled') {
+            setLessons(results[0].value);
+          } else {
+            console.error('Failed to fetch lessons:', results[0].reason);
+          }
+          if (results[1].status === 'fulfilled') {
+            setPracticeLogs(results[1].value);
+          } else {
+            console.error('Failed to fetch practice logs:', results[1].reason);
+          }
         })
         .catch(console.error)
         .finally(() => setIsLoading(false));
