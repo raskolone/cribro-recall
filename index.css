@@ -203,3 +203,17 @@ tr.liquid-glass-hover:hover {
   transform: none !important;
   box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.05) !important;
 }
+
+@keyframes pulsar-soft {
+  0%, 100% {
+    box-shadow: 0 0 10px 0px rgba(114, 240, 180, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    border-color: rgba(114, 240, 180, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 25px 4px rgba(114, 240, 180, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    border-color: rgba(114, 240, 180, 0.5);
+  }
+}
+.animate-pulsar-soft {
+  animation: pulsar-soft 2.5s infinite ease-in-out;
+}

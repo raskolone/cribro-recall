@@ -1,36 +1,15 @@
 const fs = require('fs');
-let code = fs.readFileSync('components/dashboard/AIExerciseGeneratorScreen.tsx', 'utf8');
+const file = 'components/admin/AdminTestGenerator.tsx';
+let content = fs.readFileSync(file, 'utf8');
 
-const bypassLogic = `
-  const handleGenerate = async (isAppending = false) => {
-    if (selectedSetId?.startsWith('special-task-')) {
-      const taskId = selectedSetId.replace('special-task-', '');
-      const task = specialTasks.find(t => t.id === taskId);
-      if (task) {
-        if (isAppending) {
-           setIsGeneratingMore(false);
-           return; // special tasks have fixed number of sentences, don't generate more
-        }
-        setIsLoading(true);
-        setError('');
-        try {
-           setExercises(task.sentences);
-           setStudentAnswers(new Array(task.sentences.length).fill(''));
-           setShowHints(new Array(task.sentences.length).fill(false));
-           setStep('practice');
-        } catch(e) {
-           setError('Błąd ładowania zadania specjalnego');
-        } finally {
-           setIsLoading(false);
-        }
-        return;
-      }
-    }
-`;
-code = code.replace(
-  /const handleGenerate = async \(isAppending = false\) => \{/g,
-  bypassLogic.trim()
+content = content.replace(
+  /const handleGenerate = async \(\) => {\n    if \(selectedTypes\.includes\('writing'\)\) {\n      const topic = window\.prompt\("Wybrałeś zadanie Writing. Podaj temat lub instrukcje dla writingu:"\);\n      if \(\!topic\) return alert\("Temat writingu jest wymagany, aby wygenerować test z tym typem zadania."\);\n      setScope\(prev => prev \+ "\\n\\n\[TEMAT WRITINGU\]: " \+ topic\);\n    }/,
+  `const handleGenerate = async () => {\n    let currentScope = scope;\n    if (selectedTypes.includes('writing')) {\n      const topic = window.prompt("Wybrałeś zadanie Writing. Podaj temat lub instrukcje dla writingu:");\n      if (!topic) return alert("Temat writingu jest wymagany, aby wygenerować test z tym typem zadania.");\n      currentScope = scope + "\\n\\n[TEMAT WRITINGU]: " + topic;\n      setScope(currentScope);\n    }`
 );
 
-fs.writeFileSync('components/dashboard/AIExerciseGeneratorScreen.tsx', code);
-console.log('patched handleGenerate');
+content = content.replace(
+  /const questions = await generateTest\(user\.level \|\| 'B1', testTitle, scope, profile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, fileData, driveFile \? \{ id: driveFile\.id, mimeType: driveFile\.mimeType, token: driveFile\.token \} : undefined\);/,
+  "const questions = await generateTest(user.level || 'B1', testTitle, currentScope, profile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, fileData, driveFile ? { id: driveFile.id, mimeType: driveFile.mimeType, token: driveFile.token } : undefined);"
+);
+
+fs.writeFileSync(file, content);

@@ -20,7 +20,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
   const [isModifying, setIsModifying] = useState<boolean>(false);
   const [tasksCount, setTasksCount] = useState<number>(10);
   const [attemptsLimit, setAttemptsLimit] = useState<number>(1);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(['multiple_choice', 'fill_in_blank', 'translation', 'matching', 'writing']);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(['multiple_choice', 'fill_in_blank', 'translation', 'matching', 'writing', 'find_mistake']);
 
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,6 +87,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
   
   const [testTitle, setTestTitle] = useState('');
   const [scope, setScope] = useState('');
+  const [instructions, setInstructions] = useState('');
   const [dueDate, setDueDate] = useState('');
   
   const [isGenerating, setIsGenerating] = useState(false);
@@ -128,6 +129,13 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
   };
 
   const handleGenerate = async () => {
+    let currentScope = scope;
+    if (selectedTypes.includes('writing')) {
+      const topic = window.prompt("Wybrałeś zadanie Writing. Podaj temat lub instrukcje dla writingu:");
+      if (!topic) return alert("Temat writingu jest wymagany, aby wygenerować test z tym typem zadania.");
+      currentScope = scope + "\n\n[TEMAT WRITINGU]: " + topic;
+      setScope(currentScope);
+    }
     if (!testTitle) return alert("Podaj tytuł testu");
     if (selectedTypes.length === 0) return alert("Wybierz przynajmniej jeden typ zadań");
     setIsGenerating(true);
@@ -155,7 +163,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
         fileData = { data: base64Data, mimeType };
       }
 
-      const questions = await generateTest(user.level || 'B1', testTitle, scope, profile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, fileData, driveFile ? { id: driveFile.id, mimeType: driveFile.mimeType, token: driveFile.token } : undefined);
+      const questions = await generateTest(user.level || 'B1', testTitle, currentScope, profile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, fileData, driveFile ? { id: driveFile.id, mimeType: driveFile.mimeType, token: driveFile.token } : undefined);
       
       // Ensure IDs
       const withIds = questions.map(q => ({ ...q, id: Math.random().toString(36).substring(2, 9) }));
@@ -200,6 +208,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
         studentId: user.id,
         title: testTitle,
         scope,
+        instructions,
         dueDate,
         createdAt: new Date().toISOString(),
         status: 'pending',
@@ -214,6 +223,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
       setIsPreviewModalOpen(false);
       setTestTitle('');
       setScope('');
+      setInstructions('');
       setDueDate('');
       setSelectedLessons([]);
       fetchTests();
@@ -374,7 +384,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
                       <div className="flex-1 space-y-6 w-full overflow-hidden">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div className="text-sm font-bold text-content-muted uppercase tracking-wider">
-                            {q.type === 'multiple_choice' ? 'Wielokrotny wybór' : q.type === 'fill_in_blank' ? 'Luki' : q.type === 'matching' ? 'Łączenie w pary' : q.type === 'writing' ? 'Writing' : 'Tłumaczenie'}
+                            {q.type === 'multiple_choice' ? 'Wielokrotny wybór' : q.type === 'fill_in_blank' ? 'Luki' : q.type === 'matching' ? 'Łączenie w pary' : q.type === 'writing' ? 'Writing' : q.type === 'find_mistake' ? 'Poprawne zdanie' : 'Tłumaczenie'}
                           </div>
                           <div className="flex items-center gap-2">
                             <button onClick={() => moveQuestion(i, 'up')} disabled={i === 0} className="p-2 rounded-lg bg-base-300 text-content hover:bg-white/10 disabled:opacity-30 transition-colors">
@@ -395,7 +405,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
                           />
                         </div>
                         
-                        {q.type === 'multiple_choice' && q.options && (
+                        {(q.type === 'multiple_choice' || q.type === 'find_mistake') && q.options && (
                           <div className="space-y-3">
                             <label className="block text-xs font-bold text-content-muted uppercase tracking-wider">Opcje odpowiedzi (tylko odczyt)</label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -505,6 +515,20 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
             
             <div>
               <label className="block text-sm font-bold text-content-muted mb-1">Źródła materiału do testu</label>
+              </div>
+            
+            <div>
+              <label className="block text-sm font-bold text-content-muted mb-1">Instrukcje dla kursanta (opcjonalne)</label>
+              <textarea
+                value={instructions}
+                onChange={e => setInstructions(e.target.value)}
+                className="w-full bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 min-h-[80px]"
+                placeholder="np. Czas na wykonanie testu to 60 minut..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-content-muted mb-1">Źródła materiału do testu</label>
               <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3">
                 <div className="relative overflow-hidden w-full sm:w-auto">
                   <input
@@ -606,6 +630,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
                   { id: 'translation', label: 'Tłumaczenia' },
                   { id: 'matching', label: 'Łączenie w pary' },
                   { id: 'writing', label: 'Writing (otwarte)' },
+                  { id: 'find_mistake', label: 'Wybór poprawnego zdania' },
                 ].map(type => {
                   const isSelected = selectedTypes.includes(type.id);
                   return (

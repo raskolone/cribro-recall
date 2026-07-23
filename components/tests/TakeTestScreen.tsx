@@ -97,6 +97,11 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
       <div className="bg-primary/10 text-primary p-4 rounded-lg border border-primary/20 text-sm mb-6">
         <strong>Zakres:</strong> {test.scope}
       </div>
+      {test.instructions && (
+        <div className="bg-primary/5 text-primary border border-primary/20 p-4 rounded-xl mb-8 whitespace-pre-wrap">
+          <strong>Instrukcje:</strong><br/>{test.instructions}
+        </div>
+      )}
 
       <div className="space-y-8">
         {test.questions.map((q, idx) => (
@@ -108,13 +113,13 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
               <div className="flex-1 space-y-6 w-full overflow-hidden">
                 <div>
                   <div className="text-sm font-bold text-content-muted mb-2 uppercase tracking-wider">
-                    {q.type === 'multiple_choice' ? 'Wielokrotny wybór' : q.type === 'fill_in_blank' ? 'Luki' : q.type === 'matching' ? 'Łączenie w pary' : q.type === 'writing' ? 'Writing' : 'Tłumaczenie'}
+                    {q.type === 'multiple_choice' ? 'Wielokrotny wybór' : q.type === 'find_mistake' ? 'Wybór poprawnego zdania' : q.type === 'fill_in_blank' ? 'Luki' : q.type === 'matching' ? 'Łączenie w pary' : q.type === 'writing' ? 'Writing' : 'Tłumaczenie'}
                   </div>
                   <div className="font-medium text-xl leading-relaxed">{q.prompt}</div>
                   {q.hint && <div className="mt-3 text-sm text-content-muted/80 italic flex items-center gap-2"><span>💡</span> Wskazówka: {q.hint}</div>}
                 </div>
                 
-                {q.type === 'multiple_choice' && q.options && (
+                {(q.type === 'multiple_choice' || q.type === 'find_mistake') && q.options && (
                   <div className="space-y-3">
                     {q.options.map((opt, oIdx) => (
                       <label key={oIdx} className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${answers[q.id] === opt ? 'bg-primary/10 border-primary shadow-[0_0_15px_rgba(114,240,180,0.15)] text-primary' : 'bg-black/30 backdrop-blur-sm border-white/10 hover:border-primary/50'}`}>
@@ -180,6 +185,9 @@ pies = dog"
                       onCopy={(e) => e.preventDefault()}
                       onCut={(e) => e.preventDefault()}
                       placeholder="Zacznij pisać tutaj..."
+                      autoComplete="off"
+                      autoCorrect="off"
+                      spellCheck="false"
                       className="w-full bg-black/30 backdrop-blur-sm border border-white/10 rounded-xl p-4 text-lg outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all min-h-[200px] resize-y"
                     />
                   </div>

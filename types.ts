@@ -197,7 +197,7 @@ export interface VocabularySet {
 }
 
 
-export type TestQuestionType = 'multiple_choice' | 'fill_in_blank' | 'translation' | 'matching' | 'writing';
+export type TestQuestionType = 'multiple_choice' | 'fill_in_blank' | 'translation' | 'matching' | 'writing' | 'find_mistake';
 
 export interface TestQuestion {
   id: string;
@@ -222,6 +222,7 @@ export interface StudentTest {
   studentId: string;
   title: string;
   scope: string; // Zakres materiału
+  instructions?: string;
   dueDate: string;
   createdAt: string;
   status: 'pending' | 'completed' | 'graded';

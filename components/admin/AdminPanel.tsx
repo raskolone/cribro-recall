@@ -862,7 +862,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 </div>
               </Card>
 
-              <div className="grid grid-cols-1 gap-3 overflow-hidden" >
+              <div className="grid grid-cols-1 gap-4 p-2" >
                 
                 {users.filter(u => {
                   const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.username} ${u.username}`.toLowerCase();
@@ -877,16 +877,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     
                     
                     onClick={() => handleSelectUser(u)}
-                    className="liquid-glass-hover bg-base-200/40 border border-white/5 p-4 rounded-xl cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+                    className="liquid-glass-hover bg-base-200/40 border border-white/5 p-5 md:p-6 rounded-2xl cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
                   >
                     <div>
-                      <div className="font-bold text-lg group-hover:text-primary transition-colors">
+                      <div className="font-bold text-xl mb-1 group-hover:text-primary transition-colors">
                         {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
                       </div>
-                      <div className="text-sm text-content-muted">{u.username}</div>
+                      <div className="text-base text-content-muted">{u.username}</div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-red-500/10 text-red-500' : u.role === 'teacher' ? 'bg-purple-500/10 text-purple-500' : 'bg-primary/10 text-primary'}`}>
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-red-500/10 text-red-500' : u.role === 'teacher' ? 'bg-purple-500/10 text-purple-500' : 'bg-primary/10 text-primary'}`}>
                         {u.role === 'teacher' ? 'Nauczyciel' : u.role === 'admin' ? 'Admin' : 'Kursant'}
                       </span>
                       <div className="text-content-muted group-hover:text-white transition-colors">

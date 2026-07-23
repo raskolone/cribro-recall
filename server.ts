@@ -176,6 +176,7 @@ ${lessonContext}
    - translation (tłumaczenie z polskiego na angielski),
    - matching (łączenie w pary - w opcjach podaj pary do złączenia oddzielone znakiem =, a w correctAnswer napisz np. 'połączone'),
    - writing (zadanie polegające na dłuższej wypowiedzi pisemnej na podstawie zagadnień, bez correctAnswer, uczeń pisze własny tekst).
+   - find_mistake (znalezienie błędu w zdaniu. W polu options wygeneruj dokładnie 4 wersje tego samego zdania, z czego TYLKO JEDNA jest całkowicie poprawna pod względem gramatycznym i leksykalnym, a w polu correctAnswer podaj DOKŁADNIE tekst tej jednej poprawnej wersji).
 6. WAŻNE: W polu "prompt" KAŻDEGO zadania ZAWSZE zamieść wyraźne polecenie dla kursanta (np. "Wybierz prawidłową opcję:", "Napisz krótką historię o swoich ostatnich wakacjach używając czasu Past Simple:").
 7. Jeśli jednym z wybranych typów jest "writing", upewnij się, że jedno z zadań ma type "writing" i wymaga napisania dłuższego tekstu opartego na zagadnieniach z wybranych lekcji.
 8. Zdania mają być autentyczne i naturalne, by kursant widział ich praktyczne zastosowanie.
@@ -220,7 +221,7 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
         items: {
           type: Type.OBJECT,
           properties: {
-            type: { type: Type.STRING, enum: ["multiple_choice", "fill_in_blank", "translation", "matching", "writing"], description: "Type of the question" },
+            type: { type: Type.STRING, enum: ["multiple_choice", "fill_in_blank", "translation", "matching", "writing", "find_mistake"], description: "Type of the question" },
             prompt: { type: Type.STRING, description: "The question or the sentence to translate/fill" },
             options: { 
               type: Type.ARRAY, 
