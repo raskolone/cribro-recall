@@ -45,11 +45,7 @@ const NavLink: React.FC<{
   <button id={id}
     onClick={onClick}
     title={isCollapsed ? (typeof children === 'string' ? children : undefined) : undefined}
-    className={`group w-full flex items-center ${isCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ease-out border ${
-      isActive
-        ? 'liquid-glass-button !rounded-xl scale-[1.02]'
-        : 'text-content-muted border-transparent liquid-glass-hover'
-    } active:scale-[0.97]`}
+    className={`group relative z-10 hover:z-20 w-full flex items-center ${isCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border ${isActive ? 'bg-primary/10 border-primary/20 text-primary shadow-[0_0_15px_rgba(114,240,180,0.15)]' : 'text-content-muted border-transparent hover:bg-white/5 hover:border-white/10 hover:text-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]'} active:scale-[0.98]`}
   >
     {icon && (
       <div className={`flex items-center justify-center transition-transform duration-300 ${isCollapsed ? 'mr-3 md:mr-0' : 'mr-3'} group-hover:scale-110 group-hover:text-primary ${isActive ? 'scale-110 text-primary' : ''}`}>
@@ -192,7 +188,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
             <NavLink icon={<Settings size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('settings')} isActive={currentView === 'settings'}>
               {language === 'pl' ? 'Ustawienia' : 'Settings'}
             </NavLink>
-            <button onClick={() => logout()} className={`group w-full flex items-center ${isDesktopCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-2.5 text-sm font-bold rounded-xl transition-all duration-200 text-red-400 hover:bg-red-500/10`}>
+            <button onClick={() => logout()} className={`group relative z-10 hover:z-20 w-full flex items-center ${isDesktopCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border border-transparent text-red-400 hover:bg-red-500/10 active:scale-[0.98]`}>
               <div className={`flex items-center justify-center transition-transform duration-300 ${isDesktopCollapsed ? 'mr-3 md:mr-0' : 'mr-3'} group-hover:scale-110`}>
                 <LogOut size={20} />
               </div>

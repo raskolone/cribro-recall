@@ -309,7 +309,7 @@ const Dashboard: React.FC = () => {
   };
 
   const [isExerciseActive, setIsExerciseActive] = useState(false);
-  const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(true);
+  const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
 
   const [greeting, setGreeting] = useState('');
   const [slogan, setSlogan] = useState('');
