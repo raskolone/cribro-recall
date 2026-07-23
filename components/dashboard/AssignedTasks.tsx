@@ -62,8 +62,8 @@ const AssignedTasks: React.FC<AssignedTasksProps> = ({ onStudySet }) => {
               key={set.id} 
               className={`p-4 rounded-xl border relative overflow-hidden group transition-colors ${
                 recentAndUnchecked 
-                  ? 'bg-base-200 border-primary/40 shadow-[0_0_15px_rgba(114,240,180,0.1)]' 
-                  : 'bg-base-200/50 border-white/5 hover:border-primary/30'
+                  ? 'liquid-glass-tile border-primary/40 shadow-[0_0_15px_rgba(114,240,180,0.1)]' 
+                  : 'liquid-glass-tile border-white/5 hover:border-primary/30'
               }`}
             >
               {recentAndUnchecked && (

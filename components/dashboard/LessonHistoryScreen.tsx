@@ -112,7 +112,7 @@ const LessonHistoryScreen: React.FC = () => {
           </p>
         </div>
         
-        <div className="flex bg-base-200 p-1 rounded-lg border border-base-300">
+        <div className="flex liquid-glass-tile p-1 rounded-lg border border-base-300">
            <button 
              onClick={() => setActiveTab('lessons')}
              className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'lessons' ? 'bg-primary text-black' : 'text-content-muted hover:text-white'}`}
@@ -136,7 +136,7 @@ const LessonHistoryScreen: React.FC = () => {
          </div>
       ) : activeTab === 'lessons' ? (
          lessons.length === 0 ? (
-           <div className="text-center p-12 bg-base-200/40 backdrop-blur-md border border-white/10 rounded-2xl mx-auto max-w-2xl mt-8 shadow-sm">
+           <div className="text-center p-12 liquid-glass-card rounded-2xl mx-auto max-w-2xl mt-8 shadow-sm">
              <Search className="w-12 h-12 text-content-muted mx-auto mb-4 opacity-50" />
              <h2 className="text-xl font-bold mb-2">
                {language === 'pl' ? 'Brak historii lekcji' : 'No lesson history'}
@@ -155,7 +155,7 @@ const LessonHistoryScreen: React.FC = () => {
              <Card 
                key={lesson.id} 
                onClick={() => setSelectedLesson(lesson)}
-               className="p-4 cursor-pointer hover:border-primary/50 transition-colors bg-base-200/50 group flex items-center justify-between"
+               className="p-4 cursor-pointer hover:border-primary/50 transition-colors liquid-glass-tile group flex items-center justify-between"
              >
                  <div className="flex items-center gap-4 pr-4">
                    <div className="w-12 h-12 flex-shrink-0 bg-primary/10 text-primary font-mono font-bold rounded-lg flex items-center justify-center group-hover:bg-primary group-hover:text-black transition-colors">
@@ -187,7 +187,7 @@ const LessonHistoryScreen: React.FC = () => {
         )
       ) : (
          practiceLogs.length === 0 ? (
-           <div className="text-center p-12 bg-base-200/40 backdrop-blur-md border border-white/10 rounded-2xl mx-auto max-w-2xl mt-8 shadow-sm">
+           <div className="text-center p-12 liquid-glass-card rounded-2xl mx-auto max-w-2xl mt-8 shadow-sm">
              <BookOpen className="w-12 h-12 text-content-muted mx-auto mb-4 opacity-50" />
              <h2 className="text-xl font-bold mb-2">
                {language === 'pl' ? 'Brak historii sesji' : 'No session history'}
@@ -204,7 +204,7 @@ const LessonHistoryScreen: React.FC = () => {
                <div 
                  key={log.id} 
                  onClick={() => setSelectedLog(log)}
-                 className="bg-base-200 p-4 rounded-xl border border-white/5 flex items-center justify-between cursor-pointer hover:border-primary/50 hover:bg-base-200/80 transition-colors group"
+                 className="liquid-glass-tile p-4 rounded-xl border border-white/5 flex items-center justify-between cursor-pointer hover:border-primary/50 hover:liquid-glass-tile/80 transition-colors group"
                >
                  <div className="flex flex-col gap-1">
                    <div className="flex items-center gap-2">
@@ -267,7 +267,7 @@ const LessonHistoryScreen: React.FC = () => {
               </div>
               <button 
                 onClick={() => setSelectedLesson(null)}
-                className="w-10 h-10 flex items-center justify-center rounded-full bg-base-200 hover:bg-base-300 text-content-muted hover:text-white transition-colors"
+                className="w-10 h-10 flex items-center justify-center rounded-full liquid-glass-tile hover:bg-base-300 text-content-muted hover:text-white transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -335,7 +335,7 @@ const LessonHistoryScreen: React.FC = () => {
                    </h3>
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                      {getVocabList(selectedLesson.vocabularyText).map((item, i) => (
-                       <div key={i} className="flex flex-col p-3 rounded-xl bg-base-200/50 border border-white/5">
+                       <div key={i} className="flex flex-col p-3 rounded-xl liquid-glass-tile border border-white/5">
                          <span className="font-bold text-white text-base">{item.word}</span>
                          {item.translation && (
                            <span className="text-secondary text-sm font-medium">{item.translation}</span>
@@ -372,7 +372,7 @@ const LessonHistoryScreen: React.FC = () => {
               </div>
               <button 
                 onClick={() => setSelectedLog(null)}
-                className="w-10 h-10 flex items-center justify-center rounded-full bg-base-200 hover:bg-base-300 text-content-muted hover:text-white transition-colors"
+                className="w-10 h-10 flex items-center justify-center rounded-full liquid-glass-tile hover:bg-base-300 text-content-muted hover:text-white transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -381,13 +381,13 @@ const LessonHistoryScreen: React.FC = () => {
             <div className="p-6 space-y-6">
               <div className="flex flex-wrap gap-4 text-sm font-mono">
                 {selectedLog.totalWords !== undefined && (
-                  <div className="bg-base-200 p-4 rounded-xl flex-1 text-center border border-white/5">
+                  <div className="liquid-glass-tile p-4 rounded-xl flex-1 text-center border border-white/5">
                     <div className="text-content-muted text-[10px] uppercase mb-1">{language === 'pl' ? 'Słów/Zdań' : 'Items'}</div>
                     <div className="font-bold text-2xl text-white">{selectedLog.totalWords}</div>
                   </div>
                 )}
                 {selectedLog.score !== undefined && (
-                  <div className="bg-base-200 p-4 rounded-xl flex-1 text-center border border-white/5">
+                  <div className="liquid-glass-tile p-4 rounded-xl flex-1 text-center border border-white/5">
                     <div className="text-content-muted text-[10px] uppercase mb-1">{language === 'pl' ? 'Wynik' : 'Score'}</div>
                     <div className={`font-bold text-2xl ${selectedLog.score >= 80 ? 'text-green-400' : selectedLog.score >= 50 ? 'text-amber-500' : 'text-red-400'}`}>
                       {selectedLog.score}%
@@ -402,7 +402,7 @@ const LessonHistoryScreen: React.FC = () => {
                     <BookOpen className="w-4 h-4 text-primary" />
                     {language === 'pl' ? 'Przećwiczone elementy' : 'Practiced items'}
                   </h3>
-                  <div className="bg-base-200/50 border border-white/5 rounded-2xl p-4">
+                  <div className="liquid-glass-tile border border-white/5 rounded-2xl p-4">
                     <ul className="list-disc pl-5 space-y-2 text-sm text-gray-300">
                       {selectedLog.exercisesData.split(' | ').map((ex, idx) => (
                         <li key={idx} className="leading-relaxed">{ex}</li>

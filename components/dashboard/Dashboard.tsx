@@ -101,7 +101,7 @@ const PracticeSetSelector = ({ onSelectSet, onCancel }: { onSelectSet: (id: stri
   
   if (sets.length === 0) {
     return (
-      <div className="text-center p-12 bg-base-200/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] mx-auto max-w-2xl mt-12">
+      <div className="text-center p-12 liquid-glass-card shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] mx-auto max-w-2xl mt-12">
         <h2 className="text-2xl font-bold mb-4">No Word Lists found</h2>
         <p className="text-content-muted mb-8">You need to create a Word List before practicing.</p>
         <Button onClick={onCancel}>Back to Dashboard</Button>
@@ -119,7 +119,7 @@ const PracticeSetSelector = ({ onSelectSet, onCancel }: { onSelectSet: (id: stri
         {sets.map(set => (
           <div 
             key={set.id} 
-            className="p-6 bg-base-200/40 hover:bg-base-200/60 backdrop-blur-xl border border-white/10 hover:border-primary/50 cursor-pointer rounded-2xl transition-all shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]"
+            className="liquid-glass-card p-6 cursor-pointer transition-all shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]"
             onClick={() => onSelectSet(set.id)}
           >
             <h3 className="font-bold text-lg mb-2">{set.title}</h3>
@@ -132,10 +132,147 @@ const PracticeSetSelector = ({ onSelectSet, onCancel }: { onSelectSet: (id: stri
   );
 };
 
+
+const AnimatedFlame = () => {
+  const flameGroupRef = useRef<SVGGElement>(null);
+  const outerFlameRef = useRef<SVGPathElement>(null);
+  const innerFlameRef = useRef<SVGPathElement>(null);
+  const coreFlameRef = useRef<SVGPathElement>(null);
+  const particlesRef = useRef<SVGGElement>(null);
+
+  useEffect(() => {
+    if (!flameGroupRef.current) return;
+    
+    let ctx = gsap.context(() => {
+      // Main wind flicker effect
+      gsap.to(flameGroupRef.current, {
+        skewX: "random(-8, 8)",
+        scaleY: "random(0.9, 1.15)",
+        scaleX: "random(0.9, 1.05)",
+        rotation: "random(-5, 5)",
+        duration: 0.15,
+        repeat: -1,
+        yoyo: true,
+        ease: "sine.inOut",
+        repeatRefresh: true,
+        transformOrigin: "center bottom"
+      });
+      
+      // Outer flame path morphing/flicker
+      gsap.to(outerFlameRef.current, {
+        opacity: "random(0.7, 1)",
+        duration: 0.1,
+        repeat: -1,
+        yoyo: true,
+        ease: "power1.inOut",
+        repeatRefresh: true
+      });
+
+      // Inner flame dynamic scaling
+      gsap.to(innerFlameRef.current, {
+        scaleY: "random(0.8, 1.2)",
+        duration: 0.12,
+        repeat: -1,
+        yoyo: true,
+        ease: "power2.inOut",
+        repeatRefresh: true,
+        transformOrigin: "center bottom"
+      });
+      
+      // Core flame glowing
+      gsap.to(coreFlameRef.current, {
+        opacity: "random(0.8, 1)",
+        duration: 0.08,
+        repeat: -1,
+        yoyo: true,
+        ease: "power1.inOut",
+        repeatRefresh: true
+      });
+
+      // Sparks/particles flying up
+      if (particlesRef.current && particlesRef.current.children) {
+        gsap.utils.toArray(particlesRef.current.children).forEach((spark: any, i) => {
+          gsap.set(spark, { opacity: 0, y: 0, x: 0, scale: gsap.utils.random(0.4, 1) });
+          gsap.to(spark, {
+            y: "random(-40, -20)",
+            x: "random(-15, 15)",
+            opacity: 0,
+            scale: 0,
+            duration: gsap.utils.random(0.6, 1.2),
+            delay: gsap.utils.random(0, 1),
+            repeat: -1,
+            ease: "power1.out"
+          });
+          gsap.to(spark, {
+            opacity: 1,
+            duration: 0.2,
+            delay: gsap.utils.random(0, 1),
+            repeat: -1,
+            repeatDelay: gsap.utils.random(0.4, 1) - 0.2,
+            yoyo: true
+          });
+        });
+      }
+
+    }, flameGroupRef);
+    
+    return () => ctx.revert();
+  }, []);
+
+  return (
+    <div className="relative w-6 h-6 flex items-center justify-center">
+      {/* Glow effect behind */}
+      <div className="absolute inset-0 bg-orange-500 blur-[8px] rounded-full opacity-40 animate-pulse"></div>
+      
+      <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible z-10" style={{ filter: 'drop-shadow(0 0 4px rgba(255,100,0,0.8))' }}>
+        <g ref={particlesRef}>
+          <circle cx="50" cy="80" r="3" fill="#ffeb3b" />
+          <circle cx="45" cy="75" r="2" fill="#ff9800" />
+          <circle cx="55" cy="85" r="2.5" fill="#ffc107" />
+        </g>
+        
+        <g ref={flameGroupRef}>
+          {/* Outer Flame */}
+          <path 
+            ref={outerFlameRef}
+            d="M50,90 C50,90 20,70 20,40 C20,10 50,0 50,0 C50,0 80,10 80,40 C80,70 50,90 50,90 Z" 
+            fill="url(#flameGrad1)" 
+          />
+          {/* Inner Flame */}
+          <path 
+            ref={innerFlameRef}
+            d="M50,85 C50,85 30,70 30,45 C30,25 50,15 50,15 C50,15 70,25 70,45 C70,70 50,85 50,85 Z" 
+            fill="url(#flameGrad2)" 
+          />
+          {/* Core Flame */}
+          <path 
+            ref={coreFlameRef}
+            d="M50,80 C50,80 40,70 40,55 C40,40 50,35 50,35 C50,35 60,40 60,55 C60,70 50,80 50,80 Z" 
+            fill="#ffffff" 
+          />
+        </g>
+        
+        <defs>
+          <linearGradient id="flameGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#ff0000" stopOpacity="0.8" />
+            <stop offset="50%" stopColor="#ff5722" />
+            <stop offset="100%" stopColor="#ff9800" />
+          </linearGradient>
+          <linearGradient id="flameGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#ff9800" />
+            <stop offset="60%" stopColor="#ffc107" />
+            <stop offset="100%" stopColor="#ffeb3b" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+  );
+};
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const { sets } = useFlashcards();
-  const { difficultWords, dueWords, frequency, lastPractice, lastRevisionDate } = useVocabulary();
+  const { words, difficultWords, dueWords, frequency, lastPractice, lastRevisionDate } = useVocabulary();
   const { language } = useLanguage();
   const { showLearningProgressChart } = useSettings();
   const [view, setView] = useState<View>('dashboard');
@@ -164,6 +301,7 @@ const Dashboard: React.FC = () => {
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(true);
 
   const [greeting, setGreeting] = useState('');
+  const [slogan, setSlogan] = useState('');
   const [exerciseResetKey, setExerciseResetKey] = useState(0);
   const [isProgressCollapsed, setIsProgressCollapsed] = useState(true);
   const [isStudentViewCollapsed, setIsStudentViewCollapsed] = useState(true);
@@ -294,7 +432,83 @@ const Dashboard: React.FC = () => {
     }
     
     setGreeting(options[Math.floor(Math.random() * options.length)]);
-  }, [user?.firstName, language]);
+
+    
+    let slogans: string[] = [];
+    const easyWordsCount = (words && difficultWords) ? words.length - difficultWords.length : 0;
+    const dueCount = dueWords ? dueWords.length : 0;
+
+    if (language === 'pl') {
+       if (user?.streakCount && user.streakCount > 2) {
+          slogans = [
+            'Niesamowita passa! Masz już ' + user.streakCount + ' dni z rzędu. Oby tak dalej!',
+            'Twój płomień płonie! ' + user.streakCount + ' dni nauki z rzędu. Lecimy dalej?',
+            'Znakomita regularność! Co dzisiaj szlifujemy?'
+          ];
+       } else if (easyWordsCount > 10) {
+          slogans = [
+            'Świetna robota! Opanowałeś już ' + easyWordsCount + ' słówek. Działaj dalej!',
+            'Twoja wiedza rośnie, masz już ' + easyWordsCount + ' znanych słów!',
+            'Udało Ci się już opanować ' + easyWordsCount + ' słówek! Co dzisiaj poćwiczymy?'
+          ];
+       } else if (dueCount > 0) {
+          slogans = [
+            'Czas na powtórkę! Masz ' + dueCount + ' słówek do przejrzenia.',
+            'Nie traćmy czasu, czeka na Ciebie ' + dueCount + ' słówek w powtórkach.',
+            'Systematyczność to klucz, masz dzisiaj ' + dueCount + ' słów do przypomnienia.'
+          ];
+       } else if (user?.loginCount && user.loginCount > 10) {
+          slogans = [
+            'Jesteś tu już stałym bywalcem! Gotowy na kolejne wyzwanie?',
+            'Świetnie Ci idzie, nie zwalniaj tempa!',
+            'Gotowy pobić swoje kolejne rekordy?'
+          ];
+       } else {
+          slogans = [
+            'Co dzisiaj poćwiczymy?',
+            'Kolejny dzień, kolejna szansa na nową wiedzę!',
+            'Pamiętaj, że małe kroki prowadzą do wielkich sukcesów!',
+            'Masz chwilę? Zróbmy szybką powtórkę.'
+          ];
+       }
+    } else {
+       if (user?.streakCount && user.streakCount > 2) {
+          slogans = [
+            'Amazing streak! ' + user.streakCount + ' days in a row. Keep it up!',
+            'Your flame is burning! ' + user.streakCount + ' days of learning. Ready for more?',
+            'Great consistency! What are we practicing today?'
+          ];
+       } else if (easyWordsCount > 10) {
+          slogans = [
+            'Great job! You\'ve mastered ' + easyWordsCount + ' words. Keep going!',
+            'Your vocabulary is growing, you know ' + easyWordsCount + ' words now!',
+            'You\'ve successfully learned ' + easyWordsCount + ' words! What\'s next?'
+          ];
+       } else if (dueCount > 0) {
+          slogans = [
+            'Time for a review! You have ' + dueCount + ' words waiting.',
+            'Let\'s not waste time, ' + dueCount + ' words need your attention.',
+            'Consistency is key, you have ' + dueCount + ' words to review today.'
+          ];
+       } else if (user?.loginCount && user.loginCount > 10) {
+          slogans = [
+            'You are a regular here! Ready for another challenge?',
+            'You\'re doing great, keep up the pace!',
+            'Ready to beat your own records?'
+          ];
+       } else {
+          slogans = [
+            'What are we practicing today?',
+            'Another day, another chance to learn something new!',
+            'Remember, small steps lead to big success!',
+            'Got a minute? Let\'s do a quick review.'
+          ];
+       }
+    }
+    setSlogan(slogans[Math.floor(Math.random() * slogans.length)]);
+
+
+  }, [user?.firstName, language, user?.streakCount, user?.loginCount, words, difficultWords, dueWords]);
 
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -485,7 +699,7 @@ const Dashboard: React.FC = () => {
             <AdminPanel initialTab={null} onViewChange={changeView} initialSelectedUserId={adminSelectedUserId} onUserSelect={(id) => changeView(view, { adminSelectedUserId: id })} />
             
             {user?.role === 'teacher' && (
-              <div className="mt-8 border border-white/10 rounded-2xl overflow-hidden bg-base-200/20 backdrop-blur-sm">
+              <div className="mt-8 liquid-glass-card !p-0 overflow-hidden">
                 <button 
                   className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors text-left"
                   onClick={() => setIsProgressCollapsed(!isProgressCollapsed)}
@@ -515,7 +729,7 @@ const Dashboard: React.FC = () => {
                   onClick={() => changeView('ai-generator')}
                 >
                   <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl animate-pulse" />
-                  <div className="relative border border-primary/40 rounded-2xl bg-gradient-to-r from-primary/10 to-base-200/50 p-4 flex items-center justify-between backdrop-blur-md">
+                  <div className="relative liquid-glass-card !border-primary/40 bg-gradient-to-r from-primary/10 to-base-200/50 p-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="relative">
                         <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
@@ -541,7 +755,7 @@ const Dashboard: React.FC = () => {
               )}
             </AnimatePresence>
 
-            <div className="p-6 border border-white/10 rounded-2xl bg-gradient-to-br from-primary/10 to-base-200/30 backdrop-blur-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="liquid-glass-card p-6 bg-gradient-to-br from-primary/10 to-transparent relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
                 <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
                   {language === 'pl' ? `Cześć, ${user?.firstName || 'Uczniu'}! 👋` : `Hi, ${user?.firstName || 'Student'}! 👋`}
@@ -562,7 +776,7 @@ const Dashboard: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-6 border border-white/10 rounded-2xl bg-base-200/20 backdrop-blur-sm space-y-6">
+            <div className="liquid-glass-card p-6 space-y-6">
               <h2 className="text-xl font-bold flex items-center gap-2 border-b border-white/10 pb-3">
                 <BarChart3 className="w-5 h-5 text-primary" />
                 {language === 'pl' ? 'Twoje postępy w nauce' : 'Your Learning Progress'}
@@ -607,7 +821,7 @@ const Dashboard: React.FC = () => {
         onToggleCollapse={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
       />
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto pb-24 md:pb-8">
-        <header className="relative z-50 flex justify-between items-center mb-6 p-4 rounded-2xl bg-base-200/40 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]">
+        <header className="relative z-50 flex justify-between items-center mb-6 p-4 rounded-2xl liquid-glass-card">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsSidebarOpen(true)}
@@ -618,17 +832,23 @@ const Dashboard: React.FC = () => {
               </svg>
             </button>
 
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-              {greeting}
-            </h1>
-            {user?.streakCount !== undefined && user?.streakCount > 0 && (
-                <div className="flex items-center gap-1.5 ml-2 bg-black/20 px-3 py-1.5 rounded-full border border-base-300 shadow-sm" title="Your current streak">
-                  <span className="text-orange-500 text-lg">🔥</span>
-                  <span className="font-bold text-sm text-white">{user.streakCount}</span>
-                </div>
-            )}
+            <div>
+              <div className="flex items-center flex-wrap gap-2">
+                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+                  {greeting}
+                </h1>
+                {user?.streakCount !== undefined && user?.streakCount > 0 && (
+                  <div className="flex items-center gap-1.5 ml-2 bg-black/20 px-3 py-1.5 rounded-full border border-base-300 shadow-sm" title="Your current streak">
+                    <AnimatedFlame />
+                    <span className="font-bold text-sm text-white">{user.streakCount}</span>
+                  </div>
+                )}
+              </div>
+              {user?.role !== 'admin' && user?.role !== 'teacher' && (
+                <p className="text-sm text-content-muted mt-1 font-medium">{slogan}</p>
+              )}
+            </div>
           </div>
-
         </header>
         <div ref={contentRef} className="w-full h-full">
           {renderContent()}
@@ -636,7 +856,7 @@ const Dashboard: React.FC = () => {
       </main>
       {/* Mobile Bottom Navigation */}
       {!(user?.role === 'admin' || user?.role === 'teacher') && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-base-200/90 backdrop-blur-xl border-t border-white/10 px-4 py-2 flex justify-between items-center z-50 shadow-[0_-8px_32px_rgba(0,0,0,0.4)] pb-safe">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 liquid-glass-panel rounded-none border-0 border-t border-white/10 px-4 py-2 flex justify-between items-center z-50 shadow-[0_-8px_32px_rgba(0,0,0,0.4)] pb-safe">
           <button 
             onClick={() => {
                if (isExerciseActive) {

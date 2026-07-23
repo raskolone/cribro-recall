@@ -99,7 +99,7 @@ const ForcePasswordChangeScreen: React.FC = () => {
               <input
                 type="password"
                 placeholder="Nowe hasło (min. 6 znaków)"
-                className="w-full bg-base-100 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-content-muted focus:outline-none focus:border-primary/50 transition-colors"
+                className="w-full bg-black/30 backdrop-blur-md border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-content-muted focus:outline-none focus:border-primary/50 transition-colors"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
@@ -111,7 +111,7 @@ const ForcePasswordChangeScreen: React.FC = () => {
               <input
                 type="password"
                 placeholder="Potwierdź nowe hasło"
-                className="w-full bg-base-100 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-content-muted focus:outline-none focus:border-primary/50 transition-colors"
+                className="w-full bg-black/30 backdrop-blur-md border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-content-muted focus:outline-none focus:border-primary/50 transition-colors"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />

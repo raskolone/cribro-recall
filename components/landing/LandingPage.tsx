@@ -30,7 +30,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
   };
 
   const FeatureCard = ({ icon: Icon, title, description }: { icon: any, title: string, description: string }) => (
-    <div className="bg-base-200/50 backdrop-blur-sm border border-white/5 p-6 rounded-2xl hover:border-primary/30 hover:-translate-y-1 transition-all duration-300 group">
+    <div className="liquid-glass-card p-6 group">
       <Icon className="w-6 h-6 text-primary mb-4 group-hover:scale-110 transition-transform duration-300" />
       <h3 className="text-white font-bold text-lg mb-1">{title}</h3>
       <p className="text-content-muted text-xs font-mono uppercase tracking-widest">{description}</p>
@@ -74,7 +74,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
         {/* Left Column - Content */}
         <div className={`flex-1 transition-all duration-1000 transform space-y-8 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           {/* Logo Icon */}
-          <div className="w-16 h-16 rounded-2xl bg-base-200 border border-primary/20 flex items-center justify-center mb-8 shadow-[0_0_30px_rgba(114,240,180,0.1)]">
+          <div className="w-16 h-16 rounded-2xl liquid-glass-card flex items-center justify-center mb-8 !rounded-2xl">
             <div className="relative">
               <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M28 10 A 15 15 0 1 0 28 30" stroke="#72f0b4" strokeWidth="3" strokeLinecap="round" />
@@ -114,7 +114,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
 
         {/* Right Column - Login Panel */}
         <div className={`w-full lg:w-[480px] transition-all duration-1000 delay-300 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-          <div className="bg-base-200/80 backdrop-blur-xl border border-white/5 rounded-[32px] p-8 sm:p-12 shadow-[0_30px_60px_rgba(0,0,0,0.4)] relative">
+          <div className="liquid-glass-panel rounded-[32px] p-8 sm:p-12 relative">
             <div className="flex justify-between items-center mb-10">
               <h2 className="text-2xl font-bold text-white">Start here</h2>
             </div>

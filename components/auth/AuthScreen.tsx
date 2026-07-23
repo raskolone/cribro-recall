@@ -99,7 +99,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
               type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 bg-base-100 dark:bg-dark-base-100 border border-base-300 dark:border-dark-base-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+              className="w-full px-4 py-2 bg-black/30 backdrop-blur-md border border-white/10 text-white placeholder-content-muted rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
               placeholder="np. janek123"
               required
             />
@@ -110,7 +110,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 bg-base-100 dark:bg-dark-base-100 border border-base-300 dark:border-dark-base-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+              className="w-full px-4 py-2 bg-black/30 backdrop-blur-md border border-white/10 text-white placeholder-content-muted rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
               placeholder="••••••••"
               required
               minLength={6}

@@ -1,126 +1,7 @@
-@import "tailwindcss";
+const fs = require('fs');
+let code = fs.readFileSync('index.css', 'utf8');
 
-@theme {
-  --color-primary: #72f0b4;
-  --color-secondary: #7a8da6;
-  --color-base-100: #0a0e1a;
-  --color-base-200: #141b2a;
-  --color-base-300: rgba(255, 255, 255, 0.08);
-  --color-content: #eae8e3;
-  --color-content-muted: #7a8da6;
-  --color-dark-base-100: #0a0e1a;
-  --color-dark-base-200: #141b2a;
-  --color-dark-base-300: rgba(255, 255, 255, 0.08);
-  --color-dark-content: #eae8e3;
-
-  --font-sans: "DM Sans", sans-serif;
-  --font-display: "Cormorant Garamond", serif;
-  --font-mono: "DM Mono", monospace;
-
-  --animate-shake: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-  --animate-fade-in-up: fadeInUp 0.65s ease-out forwards;
-  --animate-pulsar: pulsar 3s infinite;
-  --animate-pulse-delicate: pulseDelicate 2.5s infinite ease-in-out;
-
-  @keyframes shake {
-    10%, 90% { transform: translate3d(-1px, 0, 0) }
-    20%, 80% { transform: translate3d(2px, 0, 0) }
-    30%, 50%, 70% { transform: translate3d(-4px, 0, 0) }
-    40%, 60% { transform: translate3d(4px, 0, 0) }
-  }
-  @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(24px) }
-    to { opacity: 1; transform: translateY(0) }
-  }
-  @keyframes pulsar {
-    0%, 100% {
-      box-shadow: 0 0 0 0 rgba(114, 240, 180, 0.2);
-      border-color: rgba(114, 240, 180, 0.3);
-    }
-    50% {
-      box-shadow: 0 0 16px 4px rgba(114, 240, 180, 0.5);
-      border-color: rgba(114, 240, 180, 0.7);
-    }
-  }
-  @keyframes pulseDelicate {
-    0%, 100% {
-      transform: scale(1);
-      text-shadow: 0 0 0px rgba(114, 240, 180, 0);
-    }
-    50% {
-      transform: scale(1.02);
-      text-shadow: 0 0 8px rgba(114, 240, 180, 0.6);
-    }
-  }
-}
-
-/* Hide scrollbar for Chrome, Safari and Opera */
-.scrollbar-hide::-webkit-scrollbar {
-    display: none;
-}
-/* Hide scrollbar for IE, Edge and Firefox */
-.scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
-}
-
-:root { font-family: 'DM Sans', sans-serif; }
-body {
-  background: radial-gradient(circle at 50% -20%, #172a46 0%, #09101c 70%), #09101c;
-  background-attachment: fixed;
-  color: #eae8e3;
-  line-height: 1.6;
-  letter-spacing: 0.02em;
-}
-
-h1, h2, h3 {
-  font-family: 'Cormorant Garamond', serif;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.tag-green {
-  background: rgba(114, 240, 180, 0.12); /* base-primary 12% */
-  border: 1px solid rgba(114, 240, 180, 0.3);
-  color: #72f0b4;
-  padding: 3px 9px;
-  border-radius: 2px;
-  font-family: 'DM Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.perspective-1000 {
-  perspective: 1000px;
-}
-.transform-style-3d {
-  transform-style: preserve-3d;
-}
-.backface-hidden {
-  backface-visibility: hidden;
-}
-.rotate-y-180 {
-  transform: rotateY(180deg);
-}
-
-@keyframes pulsar-strong {
-  0%, 100% {
-    box-shadow: 0 0 6px 1px rgba(114, 240, 180, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    border-color: rgba(114, 240, 180, 0.4);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 25px 8px rgba(114, 240, 180, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.25);
-    border-color: rgba(114, 240, 180, 0.95);
-    transform: scale(1.025);
-  }
-}
-.animate-pulsar-strong {
-  animation: pulsar-strong 2s infinite ease-in-out;
-}
-
-/* Liquid Glass Effects */
+const replacement = `/* Liquid Glass Effects */
 .liquid-glass-panel {
   background: linear-gradient(135deg, rgba(25, 25, 25, 0.4) 0%, rgba(25, 25, 25, 0.3) 100%),
               linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0.02) 100%);
@@ -201,5 +82,9 @@ h1, h2, h3 {
 
 tr.liquid-glass-hover:hover {
   transform: none !important;
-  box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.05) !important;
-}
+  box-shadow: inset 1.5px 1.5px 0 0 rgba(255, 255, 255, 0.15) !important;
+}`;
+
+code = code.replace(/\/\* Liquid Glass Effects \*\/[\s\S]*?(?=tr\.liquid-glass-hover:hover {[\s\S]*?})/, replacement.replace(/tr\.liquid-glass-hover:hover {[\s\S]*?}/, ''));
+
+fs.writeFileSync('index.css', code);

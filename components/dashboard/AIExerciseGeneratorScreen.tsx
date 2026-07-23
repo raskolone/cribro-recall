@@ -1243,7 +1243,7 @@ let finalGenPrompt = customGenPrompt;
                 value={customGenPrompt}
                 onChange={(e) => setCustomGenPrompt(e.target.value)}
                 rows={5}
-                className="w-full bg-black/30 border border-white/5 shadow-inner rounded-lg p-2.5 text-xs font-mono outline-none focus:border-primary/50"
+                className="w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner rounded-lg p-2.5 text-xs font-mono outline-none focus:border-primary/50"
               />
             </div>
             <div className="space-y-1.5">
@@ -1252,7 +1252,7 @@ let finalGenPrompt = customGenPrompt;
                 value={customEvalPrompt}
                 onChange={(e) => setCustomEvalPrompt(e.target.value)}
                 rows={5}
-                className="w-full bg-black/30 border border-white/5 shadow-inner rounded-lg p-2.5 text-xs font-mono outline-none focus:border-primary/50"
+                className="w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner rounded-lg p-2.5 text-xs font-mono outline-none focus:border-primary/50"
               />
             </div>
           </div>
@@ -1764,7 +1764,7 @@ let finalGenPrompt = customGenPrompt;
                   /* Other Exercises Tab in the same unified long box layout */
                   <div className="space-y-4 animate-fade-in-up">
                     <div 
-                      className="cursor-pointer border border-white/5 hover:border-primary/40 transition-all duration-300 p-4.5 rounded-2xl bg-base-200/20 backdrop-blur-md group flex items-start gap-4"
+                      className="cursor-pointer liquid-glass-tile p-4.5 group flex items-start gap-4"
                       onClick={() => handleStartOtherPractice('intro')}
                     >
                       <div className="text-3xl shrink-0 transform group-hover:scale-110 transition-transform">👀</div>
@@ -1779,7 +1779,7 @@ let finalGenPrompt = customGenPrompt;
                     </div>
                     
                     <div 
-                      className="cursor-pointer border border-white/5 hover:border-primary/40 transition-all duration-300 p-4.5 rounded-2xl bg-base-200/20 backdrop-blur-md group flex items-start gap-4"
+                      className="cursor-pointer liquid-glass-tile p-4.5 group flex items-start gap-4"
                       onClick={() => handleStartOtherPractice('flashcards')}
                     >
                       <div className="text-3xl shrink-0 transform group-hover:scale-110 transition-transform">🗂️</div>
@@ -1794,7 +1794,7 @@ let finalGenPrompt = customGenPrompt;
                     </div>
 
                     <div 
-                      className="cursor-pointer border border-white/5 hover:border-primary/40 transition-all duration-300 p-4.5 rounded-2xl bg-base-200/20 backdrop-blur-md group flex items-start gap-4"
+                      className="cursor-pointer liquid-glass-tile p-4.5 group flex items-start gap-4"
                       onClick={() => handleStartOtherPractice('quiz')}
                     >
                       <div className="text-3xl shrink-0 transform group-hover:scale-110 transition-transform">📝</div>
@@ -1809,7 +1809,7 @@ let finalGenPrompt = customGenPrompt;
                     </div>
 
                     <div 
-                      className="cursor-pointer border border-white/5 hover:border-primary/40 transition-all duration-300 p-4.5 rounded-2xl bg-base-200/20 backdrop-blur-md group flex items-start gap-4"
+                      className="cursor-pointer liquid-glass-tile p-4.5 group flex items-start gap-4"
                       onClick={() => handleStartOtherPractice('match')}
                     >
                       <div className="text-3xl shrink-0 transform group-hover:scale-110 transition-transform">🧩</div>
@@ -1824,7 +1824,7 @@ let finalGenPrompt = customGenPrompt;
                     </div>
 
                     <div 
-                      className="cursor-pointer border border-white/5 hover:border-primary/40 transition-all duration-300 p-4.5 rounded-2xl bg-base-200/20 backdrop-blur-md group flex items-start gap-4"
+                      className="cursor-pointer liquid-glass-tile p-4.5 group flex items-start gap-4"
                       onClick={() => handleStartOtherPractice('fill-in-the-blank')}
                     >
                       <div className="text-3xl shrink-0 transform group-hover:scale-110 transition-transform">✍️</div>
@@ -1890,7 +1890,7 @@ let finalGenPrompt = customGenPrompt;
                 </motion.div>
               )}
             </AnimatePresence>
-            <Card ref={practiceCardRef} className="p-5 md:p-6 space-y-4 border border-white/10 bg-base-200/50 backdrop-blur-xl shadow-lg relative overflow-hidden rounded-2xl">
+            <Card ref={practiceCardRef} className="liquid-glass-card p-5 md:p-6 space-y-4 relative overflow-hidden">
               {/* Background design accents */}
               <div className="absolute top-0 right-0 p-6 opacity-[0.02] pointer-events-none select-none">
                 <Sparkles className="w-48 h-48 text-primary" />
@@ -1936,7 +1936,7 @@ let finalGenPrompt = customGenPrompt;
                 {evaluationStatuses[activeSentenceIndex] === 'evaluated' && singleEvaluationResults[activeSentenceIndex] ? (
                   <div className="space-y-3">
                     <div 
-                      className="w-full bg-black/30 border border-white/5 shadow-inner rounded-xl p-3.5 text-sm"
+                      className="w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner rounded-xl p-3.5 text-sm"
                       dangerouslySetInnerHTML={{ __html: singleEvaluationResults[activeSentenceIndex].highlightedAnswer || singleEvaluationResults[activeSentenceIndex].studentAnswer }}
                     />
                     
@@ -1945,7 +1945,7 @@ let finalGenPrompt = customGenPrompt;
                          {singleEvaluationResults[activeSentenceIndex].isCorrect ? '✅ Poprawnie!' : '❌ Błędy w tłumaczeniu'}
                        </div>
                        
-                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 bg-base-100/50 rounded-lg mb-3 border border-white/5">
+                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 liquid-glass-tile rounded-lg mb-3 border border-white/5">
                          <div className="font-medium text-primary/90 text-sm">
                            {singleEvaluationResults[activeSentenceIndex].correctTranslation}
                          </div>
@@ -2016,7 +2016,7 @@ let finalGenPrompt = customGenPrompt;
                     placeholder={language === 'pl' ? 'Wpisz swoje tłumaczenie tutaj...' : 'Type your translation here...'}
                     rows={2}
                     disabled={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
-                    className="w-full bg-black/30 border border-white/5 shadow-inner focus:border-primary/40 focus:ring-1 focus:ring-primary/20 rounded-xl p-3 text-sm outline-none transition-all duration-200"
+                    className="w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner focus:border-primary/40 focus:ring-1 focus:ring-primary/20 rounded-xl p-3 text-sm outline-none transition-all duration-200"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -2307,7 +2307,7 @@ let finalGenPrompt = customGenPrompt;
                     </div>
 
                     {/* Explanations & corrections */}
-                    <details className="bg-base-200/50 p-4 rounded-xl border border-white/5 space-y-2 mt-2 group">
+                    <details className="liquid-glass-tile p-4 rounded-xl border border-white/5 space-y-2 mt-2 group">
                       <summary className="text-sm text-yellow-300 font-bold flex items-center gap-2 uppercase tracking-wider cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
                         <span className="relative flex h-3 w-3 shrink-0">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>

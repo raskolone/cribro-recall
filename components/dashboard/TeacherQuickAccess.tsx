@@ -50,25 +50,25 @@ const TeacherQuickAccess: React.FC<TeacherQuickAccessProps> = ({ onNavigate, onS
       </div>
       
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card onClick={() => onNavigate('admin-stats')} className="cursor-pointer hover:border-primary/50 flex flex-col items-center justify-center p-6 gap-3 transition-colors bg-base-200/50">
+        <Card onClick={() => onNavigate('admin-stats')} className="cursor-pointer hover:border-primary/50 flex flex-col items-center justify-center p-6 gap-3 transition-colors liquid-glass-tile">
           <BarChart2 className="w-8 h-8 text-primary" />
           <span className="font-bold text-sm md:text-base">Statystyki</span>
         </Card>
-        <Card onClick={() => onNavigate('admin-history')} className="cursor-pointer hover:border-primary/50 flex flex-col items-center justify-center p-6 gap-3 transition-colors bg-base-200/50">
+        <Card onClick={() => onNavigate('admin-history')} className="cursor-pointer hover:border-primary/50 flex flex-col items-center justify-center p-6 gap-3 transition-colors liquid-glass-tile">
           <History className="w-8 h-8 text-primary" />
           <span className="font-bold text-sm md:text-base">Historia</span>
         </Card>
-        <Card onClick={() => onNavigate('admin-profile')} className="cursor-pointer hover:border-primary/50 flex flex-col items-center justify-center p-6 gap-3 transition-colors bg-base-200/50">
+        <Card onClick={() => onNavigate('admin-profile')} className="cursor-pointer hover:border-primary/50 flex flex-col items-center justify-center p-6 gap-3 transition-colors liquid-glass-tile">
           <UserIcon className="w-8 h-8 text-primary" />
           <span className="font-bold text-sm md:text-base">Profil kursanta</span>
         </Card>
-        <Card onClick={() => onNavigate('admin-tests')} className="cursor-pointer hover:border-primary/50 flex flex-col items-center justify-center p-6 gap-3 transition-colors bg-base-200/50">
+        <Card onClick={() => onNavigate('admin-tests')} className="cursor-pointer hover:border-primary/50 flex flex-col items-center justify-center p-6 gap-3 transition-colors liquid-glass-tile">
           <ClipboardList className="w-8 h-8 text-primary" />
           <span className="font-bold text-sm md:text-base">Testy</span>
         </Card>
       </div>
 
-      <Card className="bg-base-200/50 p-4">
+      <Card className="liquid-glass-tile p-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
           <h3 className="font-bold">Wybierz kursanta</h3>
           <div className="relative w-full sm:w-64">

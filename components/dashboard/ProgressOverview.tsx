@@ -76,15 +76,15 @@ const ProgressOverview: React.FC = () => {
       {isExpanded && (
         <div className="mt-6 animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 mb-6">
-            <div className="bg-base-200/50 p-3 md:p-4 rounded-xl border border-white/5">
+            <div className="liquid-glass-tile p-3 md:p-4 rounded-xl border border-white/5">
               <div className="text-xs sm:text-sm font-sans text-content-muted uppercase mb-1">Total Words</div>
               <div className="text-2xl sm:text-4xl font-bold text-primary">{stats.totalWords}</div>
             </div>
-            <div className="bg-base-200/50 p-3 md:p-4 rounded-xl border border-white/5">
+            <div className="liquid-glass-tile p-3 md:p-4 rounded-xl border border-white/5">
               <div className="text-xs sm:text-sm font-sans text-content-muted uppercase mb-1">Difficult Words</div>
               <div className="text-2xl sm:text-4xl font-bold text-secondary">{stats.difficultCount}</div>
             </div>
-            <div className="bg-base-200/50 p-3 md:p-4 rounded-xl border border-white/5 col-span-2 lg:col-span-1 flex flex-row items-center justify-between lg:flex-col lg:items-start lg:justify-start">
+            <div className="liquid-glass-tile p-3 md:p-4 rounded-xl border border-white/5 col-span-2 lg:col-span-1 flex flex-row items-center justify-between lg:flex-col lg:items-start lg:justify-start">
               <div className="text-xs sm:text-sm font-sans text-content-muted uppercase mb-0 lg:mb-1">Last Practice</div>
               <div className="text-right lg:text-left">
                 <div className="text-base sm:text-xl font-bold text-content mt-0 lg:mt-2">

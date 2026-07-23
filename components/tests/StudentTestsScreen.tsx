@@ -50,7 +50,7 @@ const StudentTestsScreen: React.FC<StudentTestsScreenProps> = ({ onBack }) => {
       ) : (
         <div className="space-y-4">
           {tests.map(test => (
-            <Card key={test.id} className="p-6 bg-base-200/40 backdrop-blur-md border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+            <Card key={test.id} className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
               <div>
                 <h3 className="font-bold text-xl">{test.title}</h3>
                 <p className="text-sm text-content-muted mt-1">{test.scope}</p>

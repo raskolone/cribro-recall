@@ -45,12 +45,12 @@ const NavLink: React.FC<{
     title={isCollapsed ? (typeof children === 'string' ? children : undefined) : undefined}
     className={`group w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'px-4'} py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ease-out border ${
       isActive
-        ? 'bg-primary text-black border-primary shadow-[0_4px_20px_rgba(114,240,180,0.35)] scale-[1.02]'
-        : 'text-content-muted border-transparent hover:bg-white/5 hover:text-white hover:border-white/10 hover:scale-[1.03] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]'
+        ? 'liquid-glass-button !rounded-xl scale-[1.02]'
+        : 'text-content-muted border-transparent liquid-glass-hover'
     } active:scale-[0.97]`}
   >
     {icon && (
-      <div className={`flex items-center justify-center transition-transform duration-300 ${isCollapsed ? '' : 'mr-3'} group-hover:scale-110 group-hover:text-primary ${isActive ? 'scale-110 text-black' : ''}`}>
+      <div className={`flex items-center justify-center transition-transform duration-300 ${isCollapsed ? '' : 'mr-3'} group-hover:scale-110 group-hover:text-primary ${isActive ? 'scale-110 text-primary' : ''}`}>
         {icon}
       </div>
     )}
@@ -100,12 +100,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
       )}
       
       <aside 
-        className={`fixed inset-y-0 left-0 z-50 bg-base-100/40 backdrop-blur-xl border-r border-white/10 shadow-[8px_0_32px_rgba(0,0,0,0.5)] flex flex-col transform transition-all duration-300 ease-in-out md:relative flex-shrink-0 ${
+        className={`fixed inset-y-0 left-0 z-50 liquid-glass-panel !rounded-none !border-0 !border-r !border-white/10 flex flex-col transform transition-all duration-300 ease-in-out md:relative flex-shrink-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         } ${isDesktopCollapsed ? 'w-20' : 'w-64'}`}
-        style={{
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05), 8px 0 32px rgba(0,0,0,0.5)",
-        }}
       >
         <div className={`p-4 md:p-6 flex items-center ${isDesktopCollapsed ? 'justify-center' : 'justify-between'} border-b border-base-300 mb-6`}>
           {!isDesktopCollapsed && <BrandLogo className="text-xl" showTagline={false} isCollapsed={false} />}
