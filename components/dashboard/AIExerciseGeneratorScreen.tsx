@@ -87,6 +87,7 @@ GRADING RUBRIC (Total Score: 100%):
 Zwróć dodatkową uwagę na te błędy kursanta, jeśli wystąpią: \${weaknessesList || "Brak zidentyfikowanych błędów"}`;
 
 import { ExerciseType } from '../../types';
+import i18n from "i18next";
 
 let audioCtx: AudioContext | null = null;
 const playSliderSound = () => {
@@ -1432,8 +1433,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                 >
                   <span>{language === 'pl' ? 'Pozostałe ćwiczenia' : 'Other exercises'}</span>
                   <span className="px-1.5 py-0.5 text-[10px] font-mono tracking-wider bg-white/10 text-gray-300 rounded uppercase">
-                    BETA
-                  </span>
+                    
+                                                                  {i18n.t("BETA")}
+                                                                </span>
                 </button>
               </div>
 
@@ -1938,7 +1940,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
             <div className="space-y-3 relative z-10 flex flex-col items-center text-center">
               <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-mono font-bold mx-auto">
-                Zdanie {activeSentenceIndex + 1}
+                
+                                                      {i18n.t("Zdanie")} {activeSentenceIndex + 1}
               </div>
 
               {/* Polish Sentence */}
@@ -1992,7 +1995,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                ? 'bg-amber-500/20 border-amber-500/30 text-amber-300' 
                                : 'bg-red-500/20 border-red-500/30 text-red-300'
                          }`}>
-                           Wynik: {singleEvaluationResults[activeSentenceIndex].score}%
+                           
+                                                                                     {i18n.t("Wynik:")} {singleEvaluationResults[activeSentenceIndex].score}%
                          </span>
                        </div>
                        
@@ -2018,10 +2022,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                            {singleEvaluationResults[activeSentenceIndex].correctTranslation}
                          </div>
                          <div className="flex items-center justify-center gap-1.5 shrink-0 bg-black/30 p-1 rounded-md">
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-US')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇺🇸 Amerykański" disabled={isPlayingAudio}>🇺🇸</button>
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-GB')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇬🇧 Brytyjski" disabled={isPlayingAudio}>🇬🇧</button>
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-AU')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇦🇺 Australijski" disabled={isPlayingAudio}>🇦🇺</button>
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-SCT')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🏴󠁧󠁢󠁳󠁣󠁴󠁿 Szkocki" disabled={isPlayingAudio}>🏴󠁧󠁢󠁳󠁣󠁴󠁿</button>
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-US')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("🇺🇸 Amerykański")} disabled={isPlayingAudio}>🇺🇸</button>
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-GB')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("🇬🇧 Brytyjski")} disabled={isPlayingAudio}>🇬🇧</button>
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-AU')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("🇦🇺 Australijski")} disabled={isPlayingAudio}>🇦🇺</button>
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-SCT')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("🏴󠁧󠁢󠁳󠁣󠁴󠁿 Szkocki")} disabled={isPlayingAudio}>🏴󠁧󠁢󠁳󠁣󠁴󠁿</button>
                          </div>
                        </div>
 
@@ -2310,7 +2314,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                 <div className="space-y-4">
                   <div className="flex justify-between items-start gap-4">
                     <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-black/30 rounded text-xs font-mono text-content-muted">
-                      Zdanie {idx + 1}
+                      
+                                                      {i18n.t("Zdanie")} {idx + 1}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className={`text-sm font-bold font-mono ${

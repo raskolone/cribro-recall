@@ -7,6 +7,7 @@ import { gradeTest } from '../../services/geminiService';
 import Card from '../ui/Card';
 import ConfirmModal from '../ui/ConfirmModal';
 import Button from '../ui/Button';
+import i18n from "i18next";
 
 interface TakeTestScreenProps {
   test: StudentTest;
@@ -78,9 +79,9 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
   if (submitted) {
     return (
       <div className="max-w-2xl mx-auto text-center space-y-6 pt-12">
-        <h2 className="text-3xl font-bold text-primary">Test Zakończony!</h2>
-        <p className="text-content-muted">Twoje odpowiedzi zostały zapisane. Oczekuj na pełne sprawdzenie przez nauczyciela.</p>
-        <Button onClick={onBack}>Wróć do listy testów</Button>
+        <h2 className="text-3xl font-bold text-primary">{i18n.t("Test Zakończony!")}</h2>
+        <p className="text-content-muted">{i18n.t("Twoje odpowiedzi zostały zapisane. Oczekuj na pełne sprawdzenie przez nauczyciela.")}</p>
+        <Button onClick={onBack}>{i18n.t("Wróć do listy testów")}</Button>
       </div>
     );
   }
@@ -89,17 +90,18 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
     <div className="max-w-3xl mx-auto space-y-6 pb-12">
       <div className="flex items-center justify-between mb-8">
         <button onClick={onBack} className="text-content-muted hover:text-white flex items-center gap-2">
-          &larr; Wróć
-        </button>
+          
+                            {i18n.t("&larr; Wróć")}
+                          </button>
         <h1 className="text-2xl font-bold">{test.title}</h1>
       </div>
 
       <div className="bg-primary/10 text-primary p-4 rounded-lg border border-primary/20 text-sm mb-6">
-        <strong>Zakres:</strong> {test.scope}
+        <strong>{i18n.t("Zakres:")}</strong> {test.scope}
       </div>
       {test.instructions && (
         <div className="bg-primary/5 text-primary border border-primary/20 p-4 rounded-xl mb-8 whitespace-pre-wrap">
-          <strong>Instrukcje:</strong><br/>{test.instructions}
+          <strong>{i18n.t("Instrukcje:")}</strong><br/>{test.instructions}
         </div>
       )}
 
@@ -119,7 +121,7 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
                     <div className="font-bold text-primary text-lg mb-2">{q.instruction}</div>
                   )}
                   <div className="font-medium text-xl leading-relaxed">{q.prompt}</div>
-                  {q.hint && <div className="mt-3 text-sm text-content-muted/80 italic flex items-center gap-2"><span>💡</span> Wskazówka: {q.hint}</div>}
+                  {q.hint && <div className="mt-3 text-sm text-content-muted/80 italic flex items-center gap-2"><span>💡</span>  {i18n.t("Wskazówka:")} {q.hint}</div>}
                 </div>
                 
                 {(q.type === 'multiple_choice' || q.type === 'find_mistake') && q.options && (
@@ -154,7 +156,7 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
                 
                 {q.type === 'matching' && q.options && (
                   <div className="space-y-4">
-                    <div className="text-sm text-content-muted">Przepisz połączone pary (oddzielone znakiem równości =):</div>
+                    <div className="text-sm text-content-muted">{i18n.t("Przepisz połączone pary (oddzielone znakiem równości =):")}</div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 opacity-80">
                         {q.options.map((opt, j) => {
                             const p = opt.split('=');
@@ -170,9 +172,7 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
                     <textarea
                       value={answers[q.id] || ''}
                       onChange={e => handleAnswerChange(q.id, e.target.value)}
-                      placeholder="Wpisz połączone pary, np:
-jabłko = apple
-pies = dog"
+                      placeholder={i18n.t("Wpisz połączone pary, np: jabłko = apple pies = dog")}
                       className="w-full bg-black/30 backdrop-blur-sm border border-white/10 rounded-xl p-4 text-base outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all h-32 resize-y font-mono"
                     />
                   </div>
@@ -180,14 +180,14 @@ pies = dog"
 
                 {q.type === 'writing' && (
                   <div>
-                    <div className="text-sm text-content-muted mb-2 font-bold text-primary">Uwaga: Funkcja wklejania jest zablokowana w tym zadaniu.</div>
+                    <div className="text-sm text-content-muted mb-2 font-bold text-primary">{i18n.t("Uwaga: Funkcja wklejania jest zablokowana w tym zadaniu.")}</div>
                     <textarea
                       value={answers[q.id] || ''}
                       onChange={e => handleAnswerChange(q.id, e.target.value)}
                       onPaste={(e) => e.preventDefault()}
                       onCopy={(e) => e.preventDefault()}
                       onCut={(e) => e.preventDefault()}
-                      placeholder="Zacznij pisać tutaj..."
+                      placeholder={i18n.t("Zacznij pisać tutaj...")}
                       autoComplete="off"
                       autoCorrect="off"
                       spellCheck="false"
@@ -203,8 +203,9 @@ pies = dog"
 
       <div className="pt-8 flex justify-end">
         <Button onClick={handleSubmit} isLoading={isSubmitting} className="bg-primary text-black hover:bg-primary/90 font-bold px-8 py-3 text-lg">
-          Zakończ Test
-        </Button>
+          
+                            {i18n.t("Zakończ Test")}
+                          </Button>
       </div>
       <ConfirmModal
         isOpen={confirmModalState.isOpen}

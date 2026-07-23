@@ -5,6 +5,7 @@ import Typewriter from './Typewriter';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { LogIn, Mail, Sparkles, Brain, Ear, Activity } from 'lucide-react';
+import i18n from "i18next";
 
 interface LandingPageProps {
   onLoginClick: () => void;
@@ -57,15 +58,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
             onClick={() => setLanguage('pl')} 
             className={`hover:text-primary transition-colors ${language === 'pl' ? 'text-primary font-bold' : 'text-content-muted'}`}
           >
-            PL
-          </button>
+            
+                                  {i18n.t("PL")}
+                                </button>
           <span className="text-white/20">|</span>
           <button 
             onClick={() => setLanguage('en')} 
             className={`hover:text-primary transition-colors ${language === 'en' ? 'text-primary font-bold' : 'text-content-muted'}`}
           >
-            EN
-          </button>
+            
+                                  {i18n.t("EN")}
+                                </button>
         </div>
       </nav>
 
@@ -86,15 +89,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
 
           <div className="space-y-[-0.2em]">
             <h1 className="text-7xl lg:text-[110px] font-display font-black leading-none tracking-tight text-white drop-shadow-sm">
-              CRIBRO
-            </h1>
+              
+                                        {i18n.t("CRIBRO")}
+                                      </h1>
             <h1 className="text-7xl lg:text-[110px] font-display font-black leading-none tracking-tight text-primary drop-shadow-[0_0_20px_rgba(114,240,180,0.2)]">
-              ENGLISH
-            </h1>
+              
+                                        {i18n.t("ENGLISH")}
+                                      </h1>
           </div>
           
           <div className="text-xl md:text-2xl font-mono text-primary mb-8 h-8 flex items-center gap-2">
-            <span>Your personal</span>
+            <span>{i18n.t("Your personal")}</span>
             <Typewriter words={['language coach.', 'vocabulary builder.', 'native speaker.', 'study assistant.']} />
           </div>
 
@@ -105,10 +110,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 max-w-xl">
-            <FeatureCard icon={Sparkles} title="AI Generation" description={language === 'pl' ? 'SPERSONALIZOWANE SŁOWA' : 'PERSONALIZED WORDS'} />
-            <FeatureCard icon={Brain} title="Smart Sync" description={language === 'pl' ? 'SYSTEM POWTÓREK' : 'SPACED REPETITION'} />
-            <FeatureCard icon={Activity} title="Interactive" description={language === 'pl' ? '4 TRYBY NAUKI' : '4 PRACTICE MODES'} />
-            <FeatureCard icon={Ear} title="Audio" description={language === 'pl' ? 'NATYWNA WYMOWA' : 'NATIVE PRONUNCIATION'} />
+            <FeatureCard icon={Sparkles} title={i18n.t("AI Generation")} description={language === 'pl' ? 'SPERSONALIZOWANE SŁOWA' : 'PERSONALIZED WORDS'} />
+            <FeatureCard icon={Brain} title={i18n.t("Smart Sync")} description={language === 'pl' ? 'SYSTEM POWTÓREK' : 'SPACED REPETITION'} />
+            <FeatureCard icon={Activity} title={i18n.t("Interactive")} description={language === 'pl' ? '4 TRYBY NAUKI' : '4 PRACTICE MODES'} />
+            <FeatureCard icon={Ear} title={i18n.t("Audio")} description={language === 'pl' ? 'NATYWNA WYMOWA' : 'NATIVE PRONUNCIATION'} />
           </div>
         </div>
 
@@ -116,7 +121,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
         <div className={`w-full lg:w-[480px] transition-all duration-1000 delay-300 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <div className="liquid-glass-panel rounded-[32px] p-8 sm:p-12 relative">
             <div className="flex justify-between items-center mb-10">
-              <h2 className="text-2xl font-bold text-white">Start here</h2>
+              <h2 className="text-2xl font-bold text-white">{i18n.t("Start here")}</h2>
             </div>
 
             <div className="space-y-6">
@@ -130,12 +135,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                   <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
                   <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 15.02 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                 </svg>
-                <span>Login with Google</span>
+                <span>{i18n.t("Login with Google")}</span>
               </button>
 
               <div className="relative flex items-center py-2">
                 <div className="flex-grow border-t border-white/5"></div>
-                <span className="flex-shrink-0 mx-4 text-[10px] font-mono text-content-muted uppercase tracking-widest">or email / username</span>
+                <span className="flex-shrink-0 mx-4 text-[10px] font-mono text-content-muted uppercase tracking-widest">{i18n.t("or email / username")}</span>
                 <div className="flex-grow border-t border-white/5"></div>
               </div>
 
@@ -144,7 +149,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                 className="w-full bg-black/40 hover:bg-black/60 border border-white/5 text-white font-medium py-4 px-6 rounded-2xl flex items-center justify-center gap-3 transition-colors"
               >
                 <Mail className="w-5 h-5 text-content-muted" />
-                <span>Sign in with Email / Username</span>
+                <span>{i18n.t("Sign in with Email / Username")}</span>
               </button>
 
               <div className="pt-4 text-center">
@@ -152,8 +157,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                   onClick={onLoginClick}
                   className="text-xs text-content-muted hover:text-white transition-colors"
                 >
-                  No account? Register here
-                </button>
+                  
+                                                    {i18n.t("No account? Register here")}
+                                                  </button>
               </div>
             </div>
           </div>

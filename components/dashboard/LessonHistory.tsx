@@ -9,6 +9,7 @@ import AISkeletonLoader from '../ui/AISkeletonLoader';
 import { useLanguage } from '../../context/LanguageContext';
 import { generateHomework } from '../../services/geminiService';
 import Markdown from 'react-markdown';
+import i18n from "i18next";
 
 const LessonHistory: React.FC = () => {
   const { user } = useAuth();
@@ -100,7 +101,8 @@ const LessonHistory: React.FC = () => {
                </div>
             )}
             <div className="font-mono text-xs uppercase tracking-wider text-primary mb-1">
-              Lekcja {lessons.length - index}
+              
+                                  {i18n.t("Lekcja")} {lessons.length - index}
             </div>
             <div className="flex justify-between items-start mb-4">
               <h4 className="font-bold text-white pr-12 text-lg">{lesson.topic}</h4>
@@ -112,8 +114,9 @@ const LessonHistory: React.FC = () => {
                 <div className="rounded-xl overflow-hidden border border-white/5 bg-[#242424]">
                   <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200 text-sm">
                     <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                    Kursant — o czym mówił
-                  </div>
+                    
+                                                    {i18n.t("Kursant — o czym mówił")}
+                                                  </div>
                   <div className="p-3 text-sm text-gray-300 whitespace-pre-wrap">{lesson.studentSpeaking}</div>
                 </div>
               )}
@@ -122,8 +125,9 @@ const LessonHistory: React.FC = () => {
                 <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a1616]">
                   <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200 text-sm">
                     <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                    Things to Improve
-                  </div>
+                    
+                                                    {i18n.t("Things to Improve")}
+                                                  </div>
                   <div className="p-3 text-sm text-gray-300 whitespace-pre-wrap">{lesson.thingsToImprove}</div>
                 </div>
               )}
@@ -132,8 +136,9 @@ const LessonHistory: React.FC = () => {
                 <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a2816]">
                   <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200 text-sm">
                     <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
-                    Suggested follow-up
-                  </div>
+                    
+                                                    {i18n.t("Suggested follow-up")}
+                                                  </div>
                   <div className="p-3 text-sm text-gray-300 whitespace-pre-wrap">{lesson.suggestedFollowUp}</div>
                 </div>
               )}
@@ -142,18 +147,19 @@ const LessonHistory: React.FC = () => {
                 <div className="rounded-xl overflow-hidden border border-white/5 bg-base-200/50 mt-4">
                   <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-sm">
                     <span className="w-2 h-2 rounded-full bg-primary"></span>
-                    Podstawowe informacje
-                  </div>
+                    
+                                                    {i18n.t("Podstawowe informacje")}
+                                                  </div>
                   <div className="p-3 space-y-3">
                     {lesson.lessonSummary && (
                       <div>
-                        <div className="text-xs font-bold text-content-muted uppercase mb-1">Podsumowanie</div>
+                        <div className="text-xs font-bold text-content-muted uppercase mb-1">{i18n.t("Podsumowanie")}</div>
                         <div className="text-sm text-gray-300 whitespace-pre-wrap">{lesson.lessonSummary}</div>
                       </div>
                     )}
                     {lesson.vocabularyText && (
                       <div>
-                        <div className="text-xs font-bold text-content-muted uppercase mb-1">Słownictwo</div>
+                        <div className="text-xs font-bold text-content-muted uppercase mb-1">{i18n.t("Słownictwo")}</div>
                         <div className="text-sm font-mono text-gray-300 whitespace-pre-wrap bg-black/20 p-2 rounded-lg">{lesson.vocabularyText}</div>
                       </div>
                     )}

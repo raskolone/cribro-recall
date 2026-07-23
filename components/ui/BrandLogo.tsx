@@ -1,4 +1,5 @@
 import React from 'react';
+import i18n from "i18next";
 
 export const BrandLogo: React.FC<{ className?: string; showTagline?: boolean; isCollapsed?: boolean }> = ({ className = "text-xl", showTagline = false, isCollapsed = false }) => {
   return (
@@ -16,12 +17,13 @@ export const BrandLogo: React.FC<{ className?: string; showTagline?: boolean; is
         </svg>
       </div>
       {!isCollapsed && <div className="flex flex-col justify-center leading-none mt-[0.1em]">
-        <span className="text-[1.1em] font-sans font-medium tracking-[0.05em] text-white">CRIBRO</span>
-        <span className="text-[1.1em] font-sans font-black tracking-tight text-primary mt-[-0.1em]">ENGLISH</span>
+        <span className="text-[1.1em] font-sans font-medium tracking-[0.05em] text-white">{i18n.t("CRIBRO")}</span>
+        <span className="text-[1.1em] font-sans font-black tracking-tight text-primary mt-[-0.1em]">{i18n.t("ENGLISH")}</span>
         {showTagline && (
           <span className="text-[0.45em] font-sans tracking-widest text-[#a0a0a0] mt-[0.3em] uppercase">
-            less noise. more language.
-          </span>
+            
+                                  {i18n.t("less noise. more language.")}
+                                </span>
         )}
       </div>}
     </div>

@@ -3,6 +3,7 @@ import { useVocabulary } from '../../context/VocabularyContext';
 import { Language, Word } from '../../types';
 import { LANGUAGES } from '../../constants';
 import Card from '../ui/Card';
+import i18n from "i18next";
 
 interface WordSetEditorProps {
   setId: string;
@@ -33,7 +34,7 @@ const WordEditItem: React.FC<{
       </div>
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400">Word</label>
+          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400">{i18n.t("Word")}</label>
           <input
             value={word.word}
             onChange={(e) => onUpdate(word.id, { word: e.target.value })}
@@ -41,7 +42,7 @@ const WordEditItem: React.FC<{
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400">Translation / Definition</label>
+          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400">{i18n.t("Translation / Definition")}</label>
           <input
             value={word.definition}
             onChange={(e) => onUpdate(word.id, { definition: e.target.value })}
@@ -49,7 +50,7 @@ const WordEditItem: React.FC<{
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400">Pronunciation (IPA)</label>
+          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400">{i18n.t("Pronunciation (IPA)")}</label>
           <input
             value={word.ipa}
             onChange={(e) => onUpdate(word.id, { ipa: e.target.value })}
@@ -57,7 +58,7 @@ const WordEditItem: React.FC<{
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400">Example Sentence</label>
+          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400">{i18n.t("Example Sentence")}</label>
           <input
             value={word.example}
             onChange={(e) => onUpdate(word.id, { example: e.target.value })}
@@ -122,14 +123,14 @@ const WordSetEditor: React.FC<WordSetEditorProps> = ({ setId, onBack }) => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
         </button>
-        <h1 className="text-2xl font-bold">Edit Word Set</h1>
+        <h1 className="text-2xl font-bold">{i18n.t("Edit Word Set")}</h1>
       </div>
 
       <Card>
-        <h2 className="text-xl font-bold mb-4">Set Details</h2>
+        <h2 className="text-xl font-bold mb-4">{i18n.t("Set Details")}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Name</label>
+            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{i18n.t("Name")}</label>
             <input
               value={set.name}
               onChange={(e) => updateWordSet(setId, { name: e.target.value })}
@@ -137,20 +138,20 @@ const WordSetEditor: React.FC<WordSetEditorProps> = ({ setId, onBack }) => {
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Language</label>
+            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{i18n.t("Language")}</label>
             <select
               value={set.language || ''}
               onChange={(e) => updateWordSet(setId, { language: e.target.value as Language })}
               className="block w-full px-4 py-2 bg-base-100 dark:bg-dark-base-100 border border-base-300 dark:border-dark-base-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm transition-all duration-200"
             >
-              <option value="">Not specified</option>
+              <option value="">{i18n.t("Not specified")}</option>
               {LANGUAGES.map(lang => (
                 <option key={lang} value={lang}>{lang}</option>
               ))}
             </select>
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Description</label>
+            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{i18n.t("Description")}</label>
             <textarea
               value={set.description}
               onChange={(e) => updateWordSet(setId, { description: e.target.value })}
@@ -162,9 +163,9 @@ const WordSetEditor: React.FC<WordSetEditorProps> = ({ setId, onBack }) => {
       </Card>
 
       <div>
-        <h2 className="text-xl font-bold mb-4">Words in Set ({setWords.length})</h2>
+        <h2 className="text-xl font-bold mb-4">{i18n.t("Words in Set (")}{setWords.length})</h2>
         {setWords.length === 0 ? (
-          <p className="text-gray-500 mb-4">No words in this set yet. Generate some words and add them to this set, or add them manually below!</p>
+          <p className="text-gray-500 mb-4">{i18n.t("No words in this set yet. Generate some words and add them to this set, or add them manually below!")}</p>
         ) : (
           <div className="space-y-2 mb-4">
             {setWords.map((word, index) => (
@@ -188,8 +189,9 @@ const WordSetEditor: React.FC<WordSetEditorProps> = ({ setId, onBack }) => {
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
           </svg>
-          Add New Word
-        </button>
+          
+                            {i18n.t("Add New Word")}
+                          </button>
       </div>
     </div>
   );

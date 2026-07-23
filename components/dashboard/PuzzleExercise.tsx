@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { getAudioPronunciation } from '../../services/geminiService';
+import i18n from "i18next";
 
 gsap.registerPlugin(useGSAP);
 
@@ -206,6 +207,20 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
     }
   };
 
+  
+  const playSentence = (accent: 'en-GB' | 'en-US') => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(sentence as string);
+    utterance.lang = accent;
+    const voices = window.speechSynthesis.getVoices();
+    const targetVoice = voices.find(v => v.lang === accent || v.lang.startsWith(accent));
+    if (targetVoice) {
+      utterance.voice = targetVoice;
+    }
+    window.speechSynthesis.speak(utterance);
+  };
+
   const containerRef = useRef<HTMLDivElement>(null);
   const answerAreaRef = useRef<HTMLDivElement>(null);
 
@@ -375,7 +390,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
         )}
         
         {selectedTiles.length === 0 && (
-          <span className="text-content-muted text-sm italic absolute left-4 pointer-events-none">Ułóż zdanie z kafelków...</span>
+          <span className="text-content-muted text-sm italic absolute left-4 pointer-events-none">{i18n.t("Ułóż zdanie z kafelków...")}</span>
         )}
         
         <>
@@ -434,7 +449,37 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
           className="text-center text-primary font-bold text-3xl drop-shadow-[0_0_25px_rgba(114,240,180,0.8)] pt-4"
         >
-          Świetnie! Całe zdanie ułożone.
+          
+                            {i18n.t("Świetnie! Całe zdanie ułożone.")}
+                          </motion.div>
+      )}
+
+      {isCompleted && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="flex flex-col items-center gap-3 mt-4"
+        >
+          <p className="text-content-muted text-sm uppercase tracking-widest">{i18n.t("Przeczytaj zdanie")}</p>
+          <div className="flex justify-center gap-4">
+            <button
+              onClick={() => playSentence('en-GB')}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-base-300 hover:bg-base-200 transition-colors shadow-sm"
+              title={i18n.t("Wymowa brytyjska")}
+            >
+              <span className="text-xl">🇬🇧</span>
+              <span className="font-bold text-sm">BrE</span>
+            </button>
+            <button
+              onClick={() => playSentence('en-US')}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-base-300 hover:bg-base-200 transition-colors shadow-sm"
+              title={i18n.t("Wymowa amerykańska")}
+            >
+              <span className="text-xl">🇺🇸</span>
+              <span className="font-bold text-sm">AmE</span>
+            </button>
+          </div>
         </motion.div>
       )}
     </div>

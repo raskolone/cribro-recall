@@ -9,6 +9,7 @@ import { LANGUAGES, DIFFICULTIES } from '../../constants';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { generateVocabulary } from '../../services/geminiService';
 import { useLanguage } from '../../context/LanguageContext';
+import i18n from "i18next";
 
 const VocabularyGenerator: React.FC = () => {
   const { language: uiLanguage } = useLanguage();
@@ -41,34 +42,35 @@ const VocabularyGenerator: React.FC = () => {
 
   return (
     <Card>
-      <h2 className="text-xl font-bold mb-4">Generate New Vocabulary</h2>
+      <h2 className="text-xl font-bold mb-4">{i18n.t("Generate New Vocabulary")}</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Select
             id="language"
-            label="Language"
+            label={i18n.t("Language")}
             options={LANGUAGES}
             value={language}
             onChange={(e) => setLanguage(e.target.value as Language)}
           />
           <Select
             id="difficulty"
-            label="Difficulty"
+            label={i18n.t("Difficulty")}
             options={DIFFICULTIES}
             value={difficulty}
             onChange={(e) => setDifficulty(e.target.value as Difficulty)}
           />
           <div>
             <label htmlFor="targetSet" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">
-              Add to Set (Optional)
-            </label>
+              
+                                        {i18n.t("Add to Set (Optional)")}
+                                      </label>
             <select
               id="targetSet"
               value={targetSetId}
               onChange={(e) => setTargetSetId(e.target.value)}
               className="block w-full px-4 py-2 bg-base-100 dark:bg-dark-base-100 border border-base-300 dark:border-dark-base-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm transition-all duration-200"
             >
-              <option value="">None (Global)</option>
+              <option value="">{i18n.t("None (Global)")}</option>
               {wordSets.map(set => (
                 <option key={set.id} value={set.id}>{set.name}</option>
               ))}
@@ -86,8 +88,9 @@ const VocabularyGenerator: React.FC = () => {
           </div>
         ) : (
           <Button type="submit" className="w-full">
-            Generate 10 Words
-          </Button>
+            
+                                      {i18n.t("Generate 10 Words")}
+                                    </Button>
         )}
       </form>
     </Card>

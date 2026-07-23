@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Volume2 } from 'lucide-react';
+import i18n from "i18next";
 
 interface TTSButtonsProps {
   text: string;
@@ -47,18 +48,18 @@ const TTSButtons: React.FC<TTSButtonsProps> = ({ text }) => {
       <button 
         onClick={(e) => playTTS(e, 'en-GB')}
         className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 rounded transition-colors group/btn ${isPlaying === 'en-GB' ? 'bg-primary/20 text-primary' : 'text-content-muted hover:bg-primary/10 hover:text-primary'}`}
-        title="British English Pronunciation"
+        title={i18n.t("British English Pronunciation")}
       >
-        <span className="text-[9px] uppercase tracking-wider">UK</span>
+        <span className="text-[9px] uppercase tracking-wider">{i18n.t("UK")}</span>
         <Volume2 className={`w-3 h-3 ${isPlaying === 'en-GB' ? 'opacity-100 animate-pulse' : 'opacity-60 group-hover/btn:opacity-100'}`} />
       </button>
       <div className="w-px h-3 bg-white/10" />
       <button 
         onClick={(e) => playTTS(e, 'en-US')}
         className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 rounded transition-colors group/btn ${isPlaying === 'en-US' ? 'bg-primary/20 text-primary' : 'text-content-muted hover:bg-primary/10 hover:text-primary'}`}
-        title="American English Pronunciation"
+        title={i18n.t("American English Pronunciation")}
       >
-        <span className="text-[9px] uppercase tracking-wider">US</span>
+        <span className="text-[9px] uppercase tracking-wider">{i18n.t("US")}</span>
         <Volume2 className={`w-3 h-3 ${isPlaying === 'en-US' ? 'opacity-100 animate-pulse' : 'opacity-60 group-hover/btn:opacity-100'}`} />
       </button>
     </div>

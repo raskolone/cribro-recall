@@ -5,6 +5,7 @@ import { Word } from '../../types';
 import Button from '../ui/Button';
 
 import { useVocabulary } from '../../context/VocabularyContext';
+import i18n from "i18next";
 
 interface QuizExerciseProps {
   words: Word[];
@@ -83,11 +84,11 @@ const QuizExercise: React.FC<QuizExerciseProps> = ({ words, onExit, onComplete }
   if (isFinished) {
       return (
         <div className="text-center p-8 bg-base-200/40 backdrop-blur-xl border border-white/20 rounded-lg shadow-2xl max-w-md mx-auto">
-            <h2 className="text-2xl font-bold mb-4">Quiz Complete!</h2>
-            <p className="text-lg mb-6">Your score: <span className="font-bold text-primary">{score} / {shuffledWords.length}</span></p>
+            <h2 className="text-2xl font-bold mb-4">{i18n.t("Quiz Complete!")}</h2>
+            <p className="text-lg mb-6">{i18n.t("Your score:")} <span className="font-bold text-primary">{score} / {shuffledWords.length}</span></p>
             <div className="flex gap-4 justify-center">
-                <Button onClick={restart}>Try Again</Button>
-                <Button onClick={onExit} variant="secondary">Exit</Button>
+                <Button onClick={restart}>{i18n.t("Try Again")}</Button>
+                <Button onClick={onExit} variant="secondary">{i18n.t("Exit")}</Button>
             </div>
         </div>
       )
@@ -96,11 +97,11 @@ const QuizExercise: React.FC<QuizExerciseProps> = ({ words, onExit, onComplete }
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Quiz</h2>
-        <p className="font-semibold">Score: {score}</p>
+        <h2 className="text-2xl font-bold">{i18n.t("Quiz")}</h2>
+        <p className="font-semibold">{i18n.t("Score:")} {score}</p>
       </div>
       <div className="bg-base-200/40 backdrop-blur-xl border border-white/20 p-6 rounded-lg shadow-2xl">
-        <p className="text-lg text-center mb-6">Which word means: "{currentWord.definition}"?</p>
+        <p className="text-lg text-center mb-6">{i18n.t("Which word means: \"")}{currentWord.definition}"?</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {options.map(option => {
             const isSelected = selectedAnswer === option;

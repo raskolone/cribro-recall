@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 import { Lock, Mail, ShieldAlert } from 'lucide-react';
+import i18n from "i18next";
 
 const ForcePasswordChangeScreen: React.FC = () => {
   const { user, linkGoogleAccount, logout } = useAuth();
@@ -75,10 +76,11 @@ const ForcePasswordChangeScreen: React.FC = () => {
           <div className="w-16 h-16 bg-orange-500/10 rounded-full flex items-center justify-center text-orange-500 mb-4">
             <ShieldAlert size={32} />
           </div>
-          <h2 className="text-2xl font-bold text-center">Witaj w ZEIAN!</h2>
+          <h2 className="text-2xl font-bold text-center">{i18n.t("Witaj w ZEIAN!")}</h2>
           <p className="text-content-muted text-center text-sm mt-2">
-            Ze względów bezpieczeństwa musisz zmienić hasło tymczasowe na własne lub powiązać konto z Google.
-          </p>
+            
+                                  {i18n.t("Ze względów bezpieczeństwa musisz zmienić hasło tymczasowe na własne lub powiązać konto z Google.")}
+                                </p>
         </div>
 
         {error && (
@@ -90,15 +92,16 @@ const ForcePasswordChangeScreen: React.FC = () => {
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-content-muted uppercase tracking-wider mb-2">
-              Ustaw nowe hasło
-            </label>
+              
+                                        {i18n.t("Ustaw nowe hasło")}
+                                      </label>
             <div className="relative mb-3">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock size={18} className="text-content-muted" />
               </div>
               <input
                 type="password"
-                placeholder="Nowe hasło (min. 6 znaków)"
+                placeholder={i18n.t("Nowe hasło (min. 6 znaków)")}
                 className="w-full bg-black/30 backdrop-blur-md border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-content-muted focus:outline-none focus:border-primary/50 transition-colors"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
@@ -110,20 +113,21 @@ const ForcePasswordChangeScreen: React.FC = () => {
               </div>
               <input
                 type="password"
-                placeholder="Potwierdź nowe hasło"
+                placeholder={i18n.t("Potwierdź nowe hasło")}
                 className="w-full bg-black/30 backdrop-blur-md border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-content-muted focus:outline-none focus:border-primary/50 transition-colors"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
             </div>
             <Button className="w-full" onClick={handleUpdatePassword} isLoading={isLoading} disabled={!newPassword || !confirmPassword}>
-              Zapisz nowe hasło
-            </Button>
+              
+                                        {i18n.t("Zapisz nowe hasło")}
+                                      </Button>
           </div>
 
           <div className="relative py-4 flex items-center">
             <div className="flex-grow border-t border-white/10"></div>
-            <span className="flex-shrink-0 mx-4 text-content-muted text-sm font-bold uppercase">ALBO</span>
+            <span className="flex-shrink-0 mx-4 text-content-muted text-sm font-bold uppercase">{i18n.t("ALBO")}</span>
             <div className="flex-grow border-t border-white/10"></div>
           </div>
 
@@ -134,17 +138,19 @@ const ForcePasswordChangeScreen: React.FC = () => {
               className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-900 border-transparent transition-all"
               isLoading={isLoading}
             >
-              <span className="font-bold">Połącz z kontem Google</span>
+              <span className="font-bold">{i18n.t("Połącz z kontem Google")}</span>
             </Button>
             <p className="text-center text-xs text-content-muted mt-3">
-              Logowanie przez Google jest szybsze i bezpieczniejsze.
-            </p>
+              
+                                        {i18n.t("Logowanie przez Google jest szybsze i bezpieczniejsze.")}
+                                      </p>
           </div>
 
           <div className="pt-6 mt-6 border-t border-white/5 text-center">
             <button onClick={logout} className="text-sm text-content-muted hover:text-white underline-offset-4 hover:underline">
-              Wyloguj mnie
-            </button>
+              
+                                        {i18n.t("Wyloguj mnie")}
+                                      </button>
           </div>
         </div>
       </Card>

@@ -3,6 +3,7 @@ import { useVocabulary } from '../../context/VocabularyContext';
 import Card from '../ui/Card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useLanguage } from '../../context/LanguageContext';
+import i18n from "i18next";
 
 const ProgressOverview: React.FC = () => {
   const { words, difficultWords, lastPractice } = useVocabulary();
@@ -77,15 +78,15 @@ const ProgressOverview: React.FC = () => {
         <div className="mt-6 animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 mb-6">
             <div className="liquid-glass-tile p-3 md:p-4 rounded-xl border border-white/5">
-              <div className="text-xs sm:text-sm font-sans text-content-muted uppercase mb-1">Total Words</div>
+              <div className="text-xs sm:text-sm font-sans text-content-muted uppercase mb-1">{i18n.t("Total Words")}</div>
               <div className="text-2xl sm:text-4xl font-bold text-primary">{stats.totalWords}</div>
             </div>
             <div className="liquid-glass-tile p-3 md:p-4 rounded-xl border border-white/5">
-              <div className="text-xs sm:text-sm font-sans text-content-muted uppercase mb-1">Difficult Words</div>
+              <div className="text-xs sm:text-sm font-sans text-content-muted uppercase mb-1">{i18n.t("Difficult Words")}</div>
               <div className="text-2xl sm:text-4xl font-bold text-secondary">{stats.difficultCount}</div>
             </div>
             <div className="liquid-glass-tile p-3 md:p-4 rounded-xl border border-white/5 col-span-2 lg:col-span-1 flex flex-row items-center justify-between lg:flex-col lg:items-start lg:justify-start">
-              <div className="text-xs sm:text-sm font-sans text-content-muted uppercase mb-0 lg:mb-1">Last Practice</div>
+              <div className="text-xs sm:text-sm font-sans text-content-muted uppercase mb-0 lg:mb-1">{i18n.t("Last Practice")}</div>
               <div className="text-right lg:text-left">
                 <div className="text-base sm:text-xl font-bold text-content mt-0 lg:mt-2">
                   {lastPractice ? new Date(lastPractice.lastPracticeDate).toLocaleDateString() : 'Never'}
@@ -100,7 +101,7 @@ const ProgressOverview: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
             {/* Language Distribution Chart */}
             <div className="h-48 sm:h-56 lg:h-64">
-              <h3 className="text-sm font-mono text-content-muted uppercase mb-2 lg:mb-4 text-center">Words by Language</h3>
+              <h3 className="text-sm font-mono text-content-muted uppercase mb-2 lg:mb-4 text-center">{i18n.t("Words by Language")}</h3>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.languageData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                   <XAxis dataKey="name" stroke="#a0a0a0" fontSize={10} tickLine={false} axisLine={false} />
@@ -117,7 +118,7 @@ const ProgressOverview: React.FC = () => {
 
             {/* SRA Level Distribution Chart */}
             <div className="h-48 sm:h-56 lg:h-64">
-              <h3 className="text-sm font-mono text-content-muted uppercase mb-2 lg:mb-4 text-center">Spaced Repetition</h3>
+              <h3 className="text-sm font-mono text-content-muted uppercase mb-2 lg:mb-4 text-center">{i18n.t("Spaced Repetition")}</h3>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.levelData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                   <XAxis dataKey="name" stroke="#a0a0a0" fontSize={10} tickLine={false} axisLine={false} />
@@ -134,7 +135,7 @@ const ProgressOverview: React.FC = () => {
 
             {/* Difficulty Distribution Chart */}
             <div className="h-48 sm:h-56 lg:h-64 col-span-1 md:col-span-2 lg:col-span-1">
-              <h3 className="text-sm font-mono text-content-muted uppercase mb-2 lg:mb-4 text-center">Mastery Level</h3>
+              <h3 className="text-sm font-mono text-content-muted uppercase mb-2 lg:mb-4 text-center">{i18n.t("Mastery Level")}</h3>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie

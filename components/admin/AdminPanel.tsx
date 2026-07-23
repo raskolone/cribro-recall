@@ -16,6 +16,7 @@ import AdminTestGenerator from './AdminTestGenerator';
 import TeacherDashboardActivity from './TeacherDashboardActivity';
 import TeacherDashboardStats from './TeacherDashboardStats';
 import TeacherSpecialTaskModal from './TeacherSpecialTaskModal';
+import i18n from "i18next";
 
 interface UserWithId extends User {
   id: string;
@@ -766,17 +767,19 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-extrabold tracking-tight mb-6">Teacher Panel</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight mb-6">{i18n.t("Teacher Panel")}</h1>
 
       {activeTab === null ? (
         <div className="space-y-6">
           <div className="flex justify-end gap-2 mb-6">
             <button onClick={() => setShowAIModal(true)} className="px-4 py-2 bg-base-200/50 text-primary border border-primary/50 rounded-lg text-sm font-bold hover:bg-primary/10 transition-colors">
-              ✨ AI Lesson Generator
-            </button>
+              
+                                        {i18n.t("✨ AI Lesson Generator")}
+                                      </button>
             <button onClick={() => setShowCreateStudentModal(true)} className="px-4 py-2 bg-primary text-black rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors">
-              + Dodaj kursanta
-            </button>
+              
+                                        {i18n.t("+ Dodaj kursanta")}
+                                      </button>
           </div>
           
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
@@ -784,31 +787,31 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                 </div>
-                <h3 className="font-bold text-lg">Profile kursantów</h3>
+                <h3 className="font-bold text-lg">{i18n.t("Profile kursantów")}</h3>
               </button>
               <button onClick={() => handleTabChange('stats')} className="flex flex-col items-center justify-center p-8 rounded-2xl liquid-glass-tile group">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                 </div>
-                <h3 className="font-bold text-lg">Statystyki</h3>
+                <h3 className="font-bold text-lg">{i18n.t("Statystyki")}</h3>
               </button>
               <button onClick={() => handleTabChange('history')} className="flex flex-col items-center justify-center p-8 rounded-2xl liquid-glass-tile group">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </div>
-                <h3 className="font-bold text-lg">Historia lekcji</h3>
+                <h3 className="font-bold text-lg">{i18n.t("Historia lekcji")}</h3>
               </button>
               <button onClick={() => handleTabChange('tests')} className="flex flex-col items-center justify-center p-8 rounded-2xl liquid-glass-tile group">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                 </div>
-                <h3 className="font-bold text-lg">Testy</h3>
+                <h3 className="font-bold text-lg">{i18n.t("Testy")}</h3>
               </button>
               <button onClick={() => handleTabChange('vocabulary')} className="flex flex-col items-center justify-center p-8 rounded-2xl liquid-glass-tile group">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
                 </div>
-                <h3 className="font-bold text-lg">Słownictwo i zadania</h3>
+                <h3 className="font-bold text-lg">{i18n.t("Słownictwo i zadania")}</h3>
               </button>
             </div>
 
@@ -822,8 +825,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           <div className="flex items-center gap-4 mb-6">
             <button onClick={() => { setActiveTab(null); if (onViewChange) onViewChange('admin'); }} className="flex items-center gap-2 text-content-muted hover:text-white transition-colors bg-base-200/50 px-4 py-2 rounded-xl border border-white/5 hover:border-primary/50">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" /></svg>
-              Wróć do panelu głównego
-            </button>
+              
+                                            {i18n.t("Wróć do panelu głównego")}
+                                          </button>
           </div>
           <AdminTestGenerator user={selectedUser} users={users} />
         </div>
@@ -839,8 +843,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
                   </svg>
-                  Wróć do panelu głównego
-                </button>
+                  
+                                                            {i18n.t("Wróć do panelu głównego")}
+                                                          </button>
                 <h2 className="text-xl font-bold">
                   {activeTab === 'profile' && 'Wybierz kursanta'}
                   {activeTab === 'stats' && 'Wybierz kursanta (Statystyki)'}
@@ -854,7 +859,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto flex-1">
                   <input
                     type="text"
-                    placeholder="Szukaj po imieniu, nazwisku, emailu..."
+                    placeholder={i18n.t("Szukaj po imieniu, nazwisku, emailu...")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full sm:max-w-md bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
@@ -864,10 +869,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     onChange={(e) => setRoleFilter(e.target.value)}
                     className="w-full sm:w-48 bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
                   >
-                    <option value="all">Wszystkie role</option>
-                    <option value="user">Kursant</option>
-                    <option value="admin">Admin</option>
-                    <option value="teacher">Nauczyciel</option>
+                    <option value="all">{i18n.t("Wszystkie role")}</option>
+                    <option value="user">{i18n.t("Kursant")}</option>
+                    <option value="admin">{i18n.t("Admin")}</option>
+                    <option value="teacher">{i18n.t("Nauczyciel")}</option>
                   </select>
                 </div>
               </Card>
@@ -925,8 +930,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Wróć do listy kursantów
-                </button>
+                  
+                                                                {i18n.t("Wróć do listy kursantów")}
+                                                              </button>
                 <button
                   onClick={() => {
                     setSelectedUser(null);
@@ -941,8 +947,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Wróć do menu głównego
-                </button>
+                  
+                                                                {i18n.t("Wróć do menu głównego")}
+                                                              </button>
               </div>
 
               <Card className="bg-base-200/50 mb-6">
@@ -964,7 +971,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         }).catch(err => alert('Błąd: ' + err.message));
                       }
                     }} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                      <span className="text-xs text-white">Zmień awatar</span>
+                      <span className="text-xs text-white">{i18n.t("Zmień awatar")}</span>
                     </div>
                   </div>
                   <div>
@@ -976,9 +983,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       {selectedUser.level && <span className="ml-3 px-2 py-0.5 bg-primary/20 text-primary rounded text-xs uppercase font-bold">{selectedUser.level}</span>}
                     </p>
                     <div className="mt-3 text-sm text-content-muted flex flex-wrap gap-x-6 gap-y-2">
-                      <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-400"></div><span className="font-bold text-white">Rola:</span> {selectedUser.role === 'admin' ? 'Admin' : selectedUser.role === 'teacher' ? 'Nauczyciel' : 'Kursant'}</div>
-                      <div><span className="font-bold text-white">Logowania:</span> {selectedUser.loginCount || 0}</div>
-                      <div><span className="font-bold text-white">Ostatnio:</span> {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString() : 'Nigdy'}</div>
+                      <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-400"></div><span className="font-bold text-white">{i18n.t("Rola:")}</span> {selectedUser.role === 'admin' ? 'Admin' : selectedUser.role === 'teacher' ? 'Nauczyciel' : 'Kursant'}</div>
+                      <div><span className="font-bold text-white">{i18n.t("Logowania:")}</span> {selectedUser.loginCount || 0}</div>
+                      <div><span className="font-bold text-white">{i18n.t("Ostatnio:")}</span> {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString() : 'Nigdy'}</div>
                     </div>
                   </div>
                 </div>
@@ -1021,31 +1028,31 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
-                  <div className="text-sm text-content-muted mb-2 font-mono uppercase">Ilość Logowań</div>
+                  <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Ilość Logowań")}</div>
                   <div className="text-4xl font-display font-bold text-white">{selectedUser.loginCount || 0}</div>
                 </div>
                 <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
-                  <div className="text-sm text-content-muted mb-2 font-mono uppercase">Ostatnie Logowanie</div>
+                  <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Ostatnie Logowanie")}</div>
                   <div className="text-2xl font-display font-bold text-primary">{selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString() : 'Nigdy'}</div>
                 </div>
               </div>
               {userStats ? (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                   <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
-                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">Słowa ogółem</div>
+                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Słowa ogółem")}</div>
                     <div className="text-4xl font-display font-bold text-white">{userStats.totalWords}</div>
                   </div>
                   <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
-                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">Opanowane</div>
+                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Opanowane")}</div>
                     <div className="text-4xl font-display font-bold text-primary">{userStats.masteryCount}%</div>
                   </div>
                   <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
-                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">Trudne słowa</div>
+                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Trudne słowa")}</div>
                     <div className="text-4xl font-display font-bold text-amber-500">{userStats.difficultWords}</div>
                   </div>
                 </div>
               ) : (
-                <div className="text-center p-8 bg-base-200/50 rounded-2xl border border-white/5 text-content-muted">Brak statystyk do wyświetlenia.</div>
+                <div className="text-center p-8 bg-base-200/50 rounded-2xl border border-white/5 text-content-muted">{i18n.t("Brak statystyk do wyświetlenia.")}</div>
               )}
             </div>
           )}
@@ -1054,16 +1061,18 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <div className="space-y-8">
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold">Historia lekcji</h3>
+                  <h3 className="text-lg font-bold">{i18n.t("Historia lekcji")}</h3>
                   <div className="flex gap-2">
                     
                     <Button size="sm" variant="secondary" onClick={() => setShowAIModal(true)}>
-                      ✨ AI Lesson Summary
-                    </Button>
+                      
+                                                                                        {i18n.t("✨ AI Lesson Summary")}
+                                                                                      </Button>
                     <Button size="sm" variant="secondary" onClick={() => setShowBulkModal(true)}>
-                      📦 Bulk Import (AI)
-                    </Button>
-                    <Button size="sm" onClick={() => openLessonRecordModal('edit')}>Dodaj wpis</Button>
+                      
+                                                                                        {i18n.t("📦 Bulk Import (AI)")}
+                                                                                      </Button>
+                    <Button size="sm" onClick={() => openLessonRecordModal('edit')}>{i18n.t("Dodaj wpis")}</Button>
                   </div>
                 </div>
                 {lessonRecords.length > 0 ? (
@@ -1095,21 +1104,21 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     ))}
                   </div>
                 ) : (
-                  <p className="text-content-muted italic">Brak historii lekcji.</p>
+                  <p className="text-content-muted italic">{i18n.t("Brak historii lekcji.")}</p>
                 )}
               </div>
 
               <div>
-                <h3 className="text-lg font-bold mb-4">Historia ćwiczeń (App)</h3>
+                <h3 className="text-lg font-bold mb-4">{i18n.t("Historia ćwiczeń (App)")}</h3>
                 {practiceLogs.length > 0 ? (
                   <div className="bg-base-200/50 rounded-xl border border-white/5 overflow-hidden">
                     <table className="w-full text-left text-sm">
                       <thead className="bg-black/20 text-content-muted font-mono uppercase text-xs">
                         <tr>
-                          <th className="p-3">Data</th>
-                          <th className="p-3">Typ</th>
-                          <th className="p-3">Zestaw</th>
-                          <th className="p-3 text-right">Wynik</th>
+                          <th className="p-3">{i18n.t("Data")}</th>
+                          <th className="p-3">{i18n.t("Typ")}</th>
+                          <th className="p-3">{i18n.t("Zestaw")}</th>
+                          <th className="p-3 text-right">{i18n.t("Wynik")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
@@ -1136,7 +1145,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     </table>
                   </div>
                 ) : (
-                  <p className="text-content-muted italic">Brak ćwiczeń.</p>
+                  <p className="text-content-muted italic">{i18n.t("Brak ćwiczeń.")}</p>
                 )}
               </div>
             </div>
@@ -1147,31 +1156,34 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           {activeTab === 'vocabulary' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
-                <h3 className="text-xl font-bold">Zestawy słówek i zadania specjalne</h3>
+                <h3 className="text-xl font-bold">{i18n.t("Zestawy słówek i zadania specjalne")}</h3>
                 <div className="flex gap-2">
                   <Button variant="secondary" onClick={() => setShowSpecialTaskModal(true)}>
-                    ✨ Zadanie specjalne (AI)
-                  </Button>
+                    
+                                                                                  {i18n.t("✨ Zadanie specjalne (AI)")}
+                                                                                </Button>
                   <Button onClick={() => setShowAssignModal(true)}>
-                    Przypisz Zestaw
-                  </Button>
+                    
+                                                                                  {i18n.t("Przypisz Zestaw")}
+                                                                                </Button>
                 </div>
               </div>
 
               
               {specialTasks.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="font-bold text-lg mb-3">Zadania specjalne</h4>
+                  <h4 className="font-bold text-lg mb-3">{i18n.t("Zadania specjalne")}</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {specialTasks.map(task => (
                       <Card key={task.id} className="p-4 cursor-pointer rounded-xl liquid-glass-hover bg-primary/5 border border-primary/20">
                         <div className="flex justify-between items-start mb-2">
                           <h4 className="font-bold text-lg">{task.title}</h4>
                           <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded font-bold uppercase tracking-wider">
-                            Zadanie specjalne
-                          </span>
+                            
+                                                                {i18n.t("Zadanie specjalne")}
+                                                              </span>
                         </div>
-                        <p className="text-sm text-content-muted mb-4">Ilość zdań: {task.sentences?.length || 0}</p>
+                        <p className="text-sm text-content-muted mb-4">{i18n.t("Ilość zdań:")} {task.sentences?.length || 0}</p>
                         <div className="flex items-center justify-between text-xs font-mono text-content-muted">
                           <span className={task.status === 'completed' ? 'text-primary' : 'text-amber-500'}>
                             {task.status === 'completed' ? 'Ukończone' : 'Oczekujące'}
@@ -1191,12 +1203,12 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="font-bold text-lg">{set.title}</h4>
                         {set.assignedByTeacher && (
-                          <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded font-bold uppercase tracking-wider">Od Nauczyciela</span>
+                          <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded font-bold uppercase tracking-wider">{i18n.t("Od Nauczyciela")}</span>
                         )}
                       </div>
                       <p className="text-sm text-content-muted mb-4">{set.description || 'Brak opisu'}</p>
                       <div className="flex items-center gap-4 text-xs font-mono text-content-muted">
-                        <span>Fiszki: {set.cardCount}</span>
+                        <span>{i18n.t("Fiszki:")} {set.cardCount}</span>
                         <span>{new Date(set.createdAt?.seconds ? set.createdAt.seconds * 1000 : set.createdAt).toLocaleDateString()}</span>
                       </div>
                     </Card>
@@ -1204,8 +1216,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 </div>
               ) : (
                 <div className="text-center p-8 bg-base-200/50 rounded-2xl border border-white/5 text-content-muted">
-                  Brak przypisanych zestawów słówek.
-                </div>
+                  
+                                                                                {i18n.t("Brak przypisanych zestawów słówek.")}
+                                                                              </div>
               )}
             </div>
           )}
@@ -1214,7 +1227,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <div className="max-w-2xl space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-content-muted mb-1">Imię</label>
+                  <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Imię")}</label>
                   <input
                     type="text"
                     value={profileForm.firstName}
@@ -1224,7 +1237,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-content-muted mb-1">Nazwisko</label>
+                  <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Nazwisko")}</label>
                   <input
                     type="text"
                     value={profileForm.lastName}
@@ -1236,7 +1249,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
               
               <div>
-                <label className="block text-sm font-bold text-content-muted mb-1">Poziom zaawansowania</label>
+                <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Poziom zaawansowania")}</label>
                 <select
                   value={profileForm.level}
                   onChange={(e) => {
@@ -1244,87 +1257,93 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   }}
                   className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 text-white appearance-none cursor-pointer transition-colors"
                 >
-                  <option value="">Wybierz poziom...</option>
-                  <option value="A1">A1</option>
-                  <option value="A2">A2</option>
-                  <option value="A2/B1">A2/B1</option>
-                  <option value="B1">B1</option>
-                  <option value="B1/B2">B1/B2</option>
-                  <option value="B2">B2</option>
-                  <option value="B2/C1">B2/C1</option>
-                  <option value="C1">C1</option>
-                  <option value="C2">C2</option>
+                  <option value="">{i18n.t("Wybierz poziom...")}</option>
+                  <option value="A1">{i18n.t("A1")}</option>
+                  <option value="A2">{i18n.t("A2")}</option>
+                  <option value="A2/B1">{i18n.t("A2/B1")}</option>
+                  <option value="B1">{i18n.t("B1")}</option>
+                  <option value="B1/B2">{i18n.t("B1/B2")}</option>
+                  <option value="B2">{i18n.t("B2")}</option>
+                  <option value="B2/C1">{i18n.t("B2/C1")}</option>
+                  <option value="C1">{i18n.t("C1")}</option>
+                  <option value="C2">{i18n.t("C2")}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-content-muted mb-1">Opis kursanta (wykorzystywany przez AI)</label>
+                <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Opis kursanta (wykorzystywany przez AI)")}</label>
                 
             <textarea
                   value={profileForm.description}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, description: e.target.value }))}
                   
-                  placeholder="Zainteresowania, słabe strony, cele nauki..."
+                  placeholder={i18n.t("Zainteresowania, słabe strony, cele nauki...")}
                   rows={6}
                   className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 resize-y transition-colors"
                 />
                 <p className="text-xs text-content-muted mt-2">
-                  Ten opis będzie wysyłany do sztucznej inteligencji jako dodatkowy kontekst podczas generowania zadań domowych, aby lepiej dopasować je do kursanta.
-                </p>
+                  
+                                                                            {i18n.t("Ten opis będzie wysyłany do sztucznej inteligencji jako dodatkowy kontekst podczas generowania zadań domowych, aby lepiej dopasować je do kursanta.")}
+                                                                          </p>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-content-muted mb-1">Spersonalizowany Prompt dla AI</label>
+                <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Spersonalizowany Prompt dla AI")}</label>
                 <textarea
                   value={profileForm.aiPrompt}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, aiPrompt: e.target.value }))}
                   
-                  placeholder="Tutaj wpisz przykładowe zdania, wzornictwo, specyficzne polecenia i żelazne zasady dla tego kursanta..."
+                  placeholder={i18n.t("Tutaj wpisz przykładowe zdania, wzornictwo, specyficzne polecenia i żelazne zasady dla tego kursanta...")}
                   rows={4}
                   className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 resize-y font-mono text-sm transition-colors"
                 />
                 <p className="text-xs text-content-muted mt-2">
-                  To pole służy do ustawienia żelaznych zasad dla AI. Będzie one absolutnie priorytetowe dla sztucznej inteligencji podczas generowania zdań lub testów.
-                </p>
+                  
+                                                                            {i18n.t("To pole służy do ustawienia żelaznych zasad dla AI. Będzie one absolutnie priorytetowe dla sztucznej inteligencji podczas generowania zdań lub testów.")}
+                                                                          </p>
               </div>
 
               <div className="pt-4 border-t border-white/10 flex justify-end">
                 <Button onClick={() => handleSaveProfile()} isLoading={isSavingProfile}>
-                  Zapisz profil
-                </Button>
+                  
+                                                                            {i18n.t("Zapisz profil")}
+                                                                          </Button>
               </div>
               
               {currentUser?.role === 'admin' && (
 <div className="mt-8 pt-6 border-t border-white/10">
-                  <h3 className="text-lg font-bold mb-4">Ustawienia konta</h3>
+                  <h3 className="text-lg font-bold mb-4">{i18n.t("Ustawienia konta")}</h3>
                   
                   <div className="space-y-6">
                     <div>
-                      <span className="text-sm font-bold text-content-muted block mb-2">Uprawnienia:</span>
+                      <span className="text-sm font-bold text-content-muted block mb-2">{i18n.t("Uprawnienia:")}</span>
                       <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => handleRoleChange('user')}
                           className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'user' ? 'bg-primary text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
                         >
-                          Kursant (User)
-                        </button>
+                          
+                                                                                                    {i18n.t("Kursant (User)")}
+                                                                                                  </button>
                         <button
                           onClick={() => handleRoleChange('admin')}
                           className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'admin' ? 'bg-red-500 text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
                         >
-                          Admin
-                        </button>
+                          
+                                                                                                    {i18n.t("Admin")}
+                                                                                                  </button>
                         <button
                           onClick={() => handleRoleChange('teacher')}
                           className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'teacher' ? 'bg-purple-500 text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
                         >
-                          Nauczyciel
-                        </button>
+                          
+                                                                                                    {i18n.t("Nauczyciel")}
+                                                                                                  </button>
                       </div>
                     </div>
                     
                     <div>
-                      <span className="text-sm font-bold text-content-muted block mb-2">Zarządzanie kontem:</span>
+                      <span className="text-sm font-bold text-content-muted block mb-2">{i18n.t("Zarządzanie kontem:")}</span>
                       <div className="flex flex-wrap gap-2">
                         <Button 
                           variant="secondary" 
@@ -1342,8 +1361,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                             }
                           }}
                         >
-                          Zmień nazwę konta
-                        </Button>
+                          
+                                                                                                    {i18n.t("Zmień nazwę konta")}
+                                                                                                  </Button>
                         
                         <Button 
                           variant="secondary" 
@@ -1354,8 +1374,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                             setShowChangePasswordModal(true);
                           }}
                         >
-                          Zmień hasło
-                        </Button>
+                          
+                                                                                                    {i18n.t("Zmień hasło")}
+                                                                                                  </Button>
                         {selectedUser?.tempPassword && (
                           <Button
                             variant="secondary"
@@ -1366,8 +1387,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                               showToast('Hasło zostało skopiowane.');
                             }}
                           >
-                            📋 Skopiuj aktualne hasło
-                          </Button>
+                            
+                                                                                                          {i18n.t("📋 Skopiuj aktualne hasło")}
+                                                                                                        </Button>
                         )}
 
                         
@@ -1418,8 +1440,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                             }
                           }}
                         >
-                          Skasuj konto
-                        </Button>
+                          
+                                                                                                    {i18n.t("Skasuj konto")}
+                                                                                                  </Button>
                       </div>
                     </div>
                   </div>
@@ -1448,9 +1471,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         <div ref={assignModalAnim.overlayRef} className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div ref={assignModalAnim.contentRef} className="w-full max-w-md">
             <Card className="w-full shadow-2xl border-primary/20">
-            <h3 className="text-xl font-bold mb-4">Przypisz Zestaw Słówek</h3>
+            <h3 className="text-xl font-bold mb-4">{i18n.t("Przypisz Zestaw Słówek")}</h3>
             <p className="mb-4 text-sm text-content-muted">
-              Wybierz zestaw ze swoich (jako Admin) zestawów słówek, który zostanie skopiowany i przypisany do {selectedUser?.firstName || selectedUser?.username}.
+              
+                                            {i18n.t("Wybierz zestaw ze swoich (jako Admin) zestawów słówek, który zostanie skopiowany i przypisany do")} {selectedUser?.firstName || selectedUser?.username}.
             </p>
             
             <select
@@ -1458,23 +1482,25 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               onChange={(e) => setSelectedSetIdToAssign(e.target.value)}
               className="w-full bg-base-200/40 border border-white/10 rounded-lg p-3 text-white mb-6 outline-none focus:border-primary/50"
             >
-              <option value="">-- Wybierz zestaw --</option>
+              <option value="">{i18n.t("-- Wybierz zestaw --")}</option>
               {adminSets.map(s => (
-                <option key={s.id} value={s.id}>{s.title} ({s.cardCount} fiszek)</option>
+                <option key={s.id} value={s.id}>{s.title} ({s.cardCount}  {i18n.t("fiszek)")}</option>
               ))}
             </select>
             
             <div className="flex justify-end gap-3">
               <Button onClick={() => setShowAssignModal(false)} variant="secondary">
-                Anuluj
-              </Button>
+                
+                                                  {i18n.t("Anuluj")}
+                                                </Button>
               <Button 
                 onClick={handleAssignSet} 
                 isLoading={isAssigningSet}
                 disabled={!selectedSetIdToAssign}
               >
-                Przypisz Zestaw
-              </Button>
+                
+                                                  {i18n.t("Przypisz Zestaw")}
+                                                </Button>
             </div>
           </Card>
           </div>
@@ -1486,14 +1512,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         <div ref={deleteModalAnim.overlayRef} className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div ref={deleteModalAnim.contentRef} className="w-full max-w-md">
             <Card className="w-full shadow-2xl border-primary/20">
-            <h3 className="text-xl font-bold mb-4">Confirm Deletion</h3>
+            <h3 className="text-xl font-bold mb-4">{i18n.t("Confirm Deletion")}</h3>
             <p className="mb-6 opacity-80">
-              Are you sure you want to delete this user document? This action cannot be undone.
-            </p>
+              
+                                            {i18n.t("Are you sure you want to delete this user document? This action cannot be undone.")}
+                                          </p>
             <div className="flex justify-end gap-3">
               <Button onClick={() => setUserToDelete(null)} variant="secondary">
-                Cancel
-              </Button>
+                
+                                                  {i18n.t("Cancel")}
+                                                </Button>
               <Button 
                 onClick={() => {
                   handleDeleteUser(userToDelete);
@@ -1501,8 +1529,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 }} 
                 variant="danger"
               >
-                Delete Account
-              </Button>
+                
+                                                  {i18n.t("Delete Account")}
+                                                </Button>
             </div>
           </Card>
           </div>
@@ -1514,7 +1543,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         <div ref={driveModalAnim.overlayRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 md:p-6 overflow-y-auto">
           <div ref={driveModalAnim.contentRef} className="w-full max-w-2xl my-auto">
             <div className="bg-base-100 p-6 rounded-xl border border-white/10 shadow-2xl relative">
-            <h3 className="text-xl font-bold mb-4">Wybierz plik z Google Drive</h3>
+            <h3 className="text-xl font-bold mb-4">{i18n.t("Wybierz plik z Google Drive")}</h3>
             
             {driveError && (
               <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 rounded-lg mb-4 text-sm">
@@ -1523,7 +1552,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             )}
             {driveLoading ? (
 
-              <div className="text-center p-8 text-content-muted">Ładowanie plików...</div>
+              <div className="text-center p-8 text-content-muted">{i18n.t("Ładowanie plików...")}</div>
             ) : (
               <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                 {driveFiles.map(file => (
@@ -1532,11 +1561,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <span className="text-xs text-content-muted">{file.mimeType.includes('pdf') ? 'PDF' : 'DOC'}</span>
                   </div>
                 ))}
-                {driveFiles.length === 0 && <div className="text-center text-content-muted">Brak odpowiednich plików.</div>}
+                {driveFiles.length === 0 && <div className="text-center text-content-muted">{i18n.t("Brak odpowiednich plików.")}</div>}
               </div>
             )}
             <div className="mt-6 flex justify-end">
-              <Button variant="ghost" onClick={() => setShowDriveModal(false)}>Anuluj</Button>
+              <Button variant="ghost" onClick={() => setShowDriveModal(false)}>{i18n.t("Anuluj")}</Button>
             </div>
           </div>
           </div>
@@ -1549,33 +1578,36 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           <div ref={aiModalAnim.contentRef} className="w-full max-w-4xl my-auto">
             <div className="bg-base-100 p-6 rounded-xl border border-white/10 shadow-2xl relative">
             <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-               <span className="text-primary">✨</span> AI Lesson Summary
-            </h3>
+               <span className="text-primary">✨</span>  {i18n.t("AI Lesson Summary")}
+                                          </h3>
             <p className="text-base text-content-muted mb-4">
-               Wklej treść notatek ze spotkania (plain text lub markdown), a AI wygeneruje na ich podstawie pełny wpis z lekcji, wypełniając automatycznie datę, temat i wszystkie inne pola formularza.
-            </p>
+               
+                                             {i18n.t("Wklej treść notatek ze spotkania (plain text lub markdown), a AI wygeneruje na ich podstawie pełny wpis z lekcji, wypełniając automatycznie datę, temat i wszystkie inne pola formularza.")}
+                                          </p>
             
             <div className="flex gap-3 mb-4">
               <Button onClick={() => fetchDriveFiles('single')} variant="secondary" className="flex-1 flex justify-center items-center gap-2">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 15.02 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                Google Drive
-              </Button>
+                
+                                                  {i18n.t("Google Drive")}
+                                                </Button>
               <div className="flex-1 relative">
                 <input type="file" accept=".pdf" onChange={(e) => handlePdfUpload(e, 'single')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                <Button variant="secondary" className="w-full pointer-events-none">Załaduj plik PDF</Button>
+                <Button variant="secondary" className="w-full pointer-events-none">{i18n.t("Załaduj plik PDF")}</Button>
               </div>
             </div>
             <textarea
               value={rawMeetingNotes}
               onChange={e => setRawMeetingNotes(e.target.value)}
               className="w-full bg-base-200 border border-white/10 rounded-lg p-4 text-white h-[50vh] mb-4 font-mono text-sm leading-relaxed"
-              placeholder="Wklej tutaj surową transkrypcję z Google Meet lub własne notatki..."
+              placeholder={i18n.t("Wklej tutaj surową transkrypcję z Google Meet lub własne notatki...")}
             />
             <div className="flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setShowAIModal(false)}>Anuluj</Button>
+              <Button variant="ghost" onClick={() => setShowAIModal(false)}>{i18n.t("Anuluj")}</Button>
               <Button onClick={handleGenerateFromNotes} isLoading={isGenerating} disabled={!rawMeetingNotes.trim()}>
-                Generuj wpis z lekcji
-              </Button>
+                
+                                                  {i18n.t("Generuj wpis z lekcji")}
+                                                </Button>
             </div>
           </div>
         </div>
@@ -1589,36 +1621,39 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           <div ref={bulkModalAnim.contentRef} className="w-full max-w-4xl my-auto">
             <div className="bg-base-100 p-6 rounded-xl border border-white/10 shadow-2xl relative">
             <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-               <span className="text-primary">📦</span> Bulk Import (Wiele lekcji)
-            </h3>
+               <span className="text-primary">📦</span>  {i18n.t("Bulk Import (Wiele lekcji)")}
+                                          </h3>
             <p className="text-base text-content-muted mb-4">
-               Wklej treść historii lekcji z dokuemntu lub załącz plik, aby AI podzieliło go na osobne wpisy i przypisało do kursantów.
-            </p>
+               
+                                             {i18n.t("Wklej treść historii lekcji z dokuemntu lub załącz plik, aby AI podzieliło go na osobne wpisy i przypisało do kursantów.")}
+                                          </p>
             
             <div className="flex gap-3 mb-4">
               <Button onClick={() => fetchDriveFiles('bulk')} variant="secondary" className="flex-1 flex justify-center items-center gap-2">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 15.02 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                Google Drive
-              </Button>
+                
+                                                  {i18n.t("Google Drive")}
+                                                </Button>
               <div className="flex-1 relative">
                 <input type="file" accept=".pdf" onChange={(e) => handlePdfUpload(e, 'bulk')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                <Button variant="secondary" className="w-full pointer-events-none">Załaduj plik PDF</Button>
+                <Button variant="secondary" className="w-full pointer-events-none">{i18n.t("Załaduj plik PDF")}</Button>
               </div>
             </div>
             <textarea
               value={bulkNotes}
               onChange={e => setBulkNotes(e.target.value)}
               className="w-full bg-base-200 border border-white/10 rounded-lg p-4 text-white h-[50vh] mb-4 font-mono text-sm leading-relaxed"
-              placeholder="Wklej tutaj historię lekcji z Google Docs / plain text..."
+              placeholder={i18n.t("Wklej tutaj historię lekcji z Google Docs / plain text...")}
             />
             <div className="flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setShowBulkModal(false)}>Anuluj</Button>
+              <Button variant="ghost" onClick={() => setShowBulkModal(false)}>{i18n.t("Anuluj")}</Button>
               <Button onClick={() => {
                 if (!bulkNotes.trim()) return;
                 generateBulkSummary({ notes: bulkNotes });
               }} isLoading={isGenerating} disabled={!bulkNotes.trim()}>
-                Generuj wpisy
-              </Button>
+                
+                                                  {i18n.t("Generuj wpisy")}
+                                                </Button>
             </div>
           </div>
         </div>
@@ -1632,11 +1667,12 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           <div ref={bulkPreviewModalAnim.contentRef} className="w-full max-w-4xl my-auto">
             <div className="bg-base-100 p-6 rounded-xl border border-white/10 shadow-2xl relative">
             <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-               <span className="text-primary">✨</span> Podgląd zaimportowanych lekcji
-            </h3>
+               <span className="text-primary">✨</span>  {i18n.t("Podgląd zaimportowanych lekcji")}
+                                          </h3>
             <p className="text-base text-content-muted mb-6">
-               Sprawdź zaimportowane lekcje. Możesz rozwinąć każdą z nich, aby zobaczyć szczegóły.
-            </p>
+               
+                                             {i18n.t("Sprawdź zaimportowane lekcje. Możesz rozwinąć każdą z nich, aby zobaczyć szczegóły.")}
+                                          </p>
             
             <div className="space-y-4 max-h-[50vh] overflow-y-auto mb-6 pr-2">
               {bulkPreviewLessons.map((lesson, idx) => {
@@ -1665,31 +1701,31 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       <div className="p-4 pt-0 border-t border-white/5 bg-base-200/30 text-sm space-y-4 mt-2">
                         {lesson.revisionNotes && (
                           <div>
-                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">Notatki</div>
+                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("Notatki")}</div>
                             <div className="text-white whitespace-pre-wrap">{lesson.revisionNotes}</div>
                           </div>
                         )}
                         {lesson.vocabularyText && (
                           <div>
-                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">Słówka</div>
+                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("Słówka")}</div>
                             <div className="text-white font-mono whitespace-pre-wrap">{lesson.vocabularyText}</div>
                           </div>
                         )}
                         {lesson.studentSpeaking && (
                           <div>
-                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">O czym mówił kursant</div>
+                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("O czym mówił kursant")}</div>
                             <div className="text-white whitespace-pre-wrap">{lesson.studentSpeaking}</div>
                           </div>
                         )}
                         {lesson.thingsToImprove && (
                           <div>
-                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">Do poprawy</div>
+                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("Do poprawy")}</div>
                             <div className="text-white whitespace-pre-wrap">{lesson.thingsToImprove}</div>
                           </div>
                         )}
                         {lesson.suggestedFollowUp && (
                           <div>
-                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">Zadanie / Następna lekcja</div>
+                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("Zadanie / Następna lekcja")}</div>
                             <div className="text-white whitespace-pre-wrap">{lesson.suggestedFollowUp}</div>
                           </div>
                         )}
@@ -1701,9 +1737,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             </div>
 
             <div className="flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setShowBulkPreviewModal(false)}>Anuluj</Button>
+              <Button variant="ghost" onClick={() => setShowBulkPreviewModal(false)}>{i18n.t("Anuluj")}</Button>
               <Button onClick={handleSaveBulkLessons} isLoading={isGenerating}>
-                Zapisz wszystkie ({bulkPreviewLessons.length})
+                
+                                                  {i18n.t("Zapisz wszystkie (")}{bulkPreviewLessons.length})
               </Button>
             </div>
           </div>
@@ -1720,13 +1757,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <h3 className="text-xl font-bold mb-4">{editingRecordId ? 'Edytuj lekcję' : 'Dodaj nową lekcję'}</h3>
                 <div className="space-y-4 mb-6">
                   <div>
-                    <label className="block text-sm font-bold text-content-muted mb-1">Kursant</label>
+                    <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Kursant")}</label>
                     <select 
                       value={lessonFormStudentId} 
                       onChange={e => setLessonFormStudentId(e.target.value)}
                       className="w-full bg-base-200 border border-primary/30 rounded-lg p-2 text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary mb-2 transition-all"
                     >
-                      <option value="">Wybierz kursanta...</option>
+                      <option value="">{i18n.t("Wybierz kursanta...")}</option>
                       {users.map(u => (
                         <option key={u.id} value={u.id}>
                           {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username} ({u.level || 'Brak poziomu'})
@@ -1736,7 +1773,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-bold text-content-muted mb-1">Data</label>
+                      <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Data")}</label>
                       <input 
                         type="date" 
                         value={lessonFormDate} 
@@ -1745,28 +1782,28 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-content-muted mb-1">Temat</label>
+                      <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Temat")}</label>
                       <input 
                         type="text" 
                         value={lessonFormTopic} 
                         onChange={e => setLessonFormTopic(e.target.value)}
                         className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white"
-                        placeholder="Np. Present Perfect vs Past Simple"
+                        placeholder={i18n.t("Np. Present Perfect vs Past Simple")}
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-content-muted mb-1">Revision Notes</label>
+                    <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Revision Notes")}</label>
                     <textarea 
                       value={lessonFormSummary} 
                       onChange={e => setLessonFormSummary(e.target.value)}
                       className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
-                      placeholder="Zapis z lekcji..."
+                      placeholder={i18n.t("Zapis z lekcji...")}
                       rows={5}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-content-muted mb-1">Kursant — o czym mówił</label>
+                    <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Kursant — o czym mówił")}</label>
                     <textarea 
                       value={lessonFormStudentSpeaking} 
                       onChange={e => setLessonFormStudentSpeaking(e.target.value)}
@@ -1775,17 +1812,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-content-muted mb-1">Słownictwo & Wymowa (Vocabulary & Pronunciation)</label>
+                    <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Słownictwo & Wymowa (Vocabulary & Pronunciation)")}</label>
                     <textarea 
                       value={lessonFormWords} 
                       onChange={e => setLessonFormWords(e.target.value)}
                       className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white font-mono text-sm min-h-[120px] resize-y"
-                      placeholder="apple - jabłko&#10;banana - banan"
+                      placeholder={i18n.t("apple - jabłko&#10;banana - banan")}
                       rows={5}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-content-muted mb-1">Things to Improve</label>
+                    <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Things to Improve")}</label>
                     <textarea 
                       value={lessonFormThingsToImprove} 
                       onChange={e => setLessonFormThingsToImprove(e.target.value)}
@@ -1794,7 +1831,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-content-muted mb-1">Suggested follow-up</label>
+                    <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Suggested follow-up")}</label>
                     <textarea 
                       value={lessonFormSuggestedFollowUp} 
                       onChange={e => setLessonFormSuggestedFollowUp(e.target.value)}
@@ -1804,8 +1841,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button variant="ghost" onClick={() => setShowLessonRecordModal(false)}>Anuluj</Button>
-                  <Button onClick={handleSaveLessonRecord} isLoading={isSavingLessonRecord}>Zapisz lekcję</Button>
+                  <Button variant="ghost" onClick={() => setShowLessonRecordModal(false)}>{i18n.t("Anuluj")}</Button>
+                  <Button onClick={handleSaveLessonRecord} isLoading={isSavingLessonRecord}>{i18n.t("Zapisz lekcję")}</Button>
                 </div>
               </Card>
             ) : (
@@ -1817,8 +1854,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </div>
                   <div className="flex gap-2">
                     <Button variant="ghost" onClick={() => openLessonRecordModal('edit', viewingRecord!)}>
-                      Edytuj
-                    </Button>
+                      
+                                                                    {i18n.t("Edytuj")}
+                                                                  </Button>
                     <button onClick={() => setShowLessonRecordModal(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-content-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1832,8 +1870,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <div className="rounded-xl overflow-hidden border border-white/5 bg-[#1a1f2e]">
                       <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200">
                         <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                        Revision Notes
-                      </div>
+                        
+                                                                          {i18n.t("Revision Notes")}
+                                                                        </div>
                       <div className="p-4 text-sm text-gray-300 whitespace-pre-wrap">{viewingRecord.lessonSummary}</div>
                     </div>
                   )}
@@ -1842,8 +1881,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <div className="rounded-xl overflow-hidden border border-white/5 bg-[#242424]">
                       <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200">
                         <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                        Kursant — o czym mówił
-                      </div>
+                        
+                                                                          {i18n.t("Kursant — o czym mówił")}
+                                                                        </div>
                       <div className="p-4 text-sm text-gray-300 whitespace-pre-wrap">{viewingRecord.studentSpeaking}</div>
                     </div>
                   )}
@@ -1852,8 +1892,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <div className="rounded-xl overflow-hidden border border-white/5 bg-[#162a22]">
                       <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200">
                         <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                        Słownictwo & Wymowa
-                      </div>
+                        
+                                                                          {i18n.t("Słownictwo & Wymowa")}
+                                                                        </div>
                       <div className="p-4 text-sm font-mono text-gray-300 whitespace-pre-wrap">{viewingRecord.vocabularyText}</div>
                     </div>
                   )}
@@ -1862,8 +1903,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a1616]">
                       <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200">
                         <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                        Things to Improve
-                      </div>
+                        
+                                                                          {i18n.t("Things to Improve")}
+                                                                        </div>
                       <div className="p-4 text-sm text-gray-300 whitespace-pre-wrap">{viewingRecord.thingsToImprove}</div>
                     </div>
                   )}
@@ -1872,8 +1914,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a2816]">
                       <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200">
                         <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
-                        Suggested follow-up
-                      </div>
+                        
+                                                                          {i18n.t("Suggested follow-up")}
+                                                                        </div>
                       <div className="p-4 text-sm text-gray-300 whitespace-pre-wrap">{viewingRecord.suggestedFollowUp}</div>
                     </div>
                   )}
@@ -1889,7 +1932,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         <div ref={changePasswordModalAnim.overlayRef} className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div ref={changePasswordModalAnim.contentRef} className="w-full max-w-md">
             <Card className="w-full shadow-2xl border-primary/20">
-            <h3 className="text-xl font-bold mb-4">Zmień hasło dla {selectedUser?.firstName || selectedUser?.username}</h3>
+            <h3 className="text-xl font-bold mb-4">{i18n.t("Zmień hasło dla")} {selectedUser?.firstName || selectedUser?.username}</h3>
             <div className="space-y-4 mb-6">
               {changePasswordError && (
                 <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-sm">
@@ -1898,7 +1941,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               )}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-bold text-content-muted">Nowe hasło</label>
+                  <label className="block text-sm font-bold text-content-muted">{i18n.t("Nowe hasło")}</label>
                   <button 
                     onClick={() => {
                       const toughPass = generateStrongPassword();
@@ -1906,8 +1949,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     }}
                     className="text-xs text-primary hover:text-primary/80 font-bold flex items-center gap-1 bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20 hover:bg-primary/20 transition-all"
                   >
-                    ✨ Generuj silne hasło
-                  </button>
+                    
+                                                              {i18n.t("✨ Generuj silne hasło")}
+                                                            </button>
                 </div>
                 <div className="relative">
                   <input
@@ -1915,7 +1959,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     value={newPasswordForUser}
                     onChange={(e) => setNewPasswordForUser(e.target.value)}
                     className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 transition-colors pr-10 font-mono text-center tracking-wider text-lg"
-                    placeholder="Wpisz lub wygeneruj hasło"
+                    placeholder={i18n.t("Wpisz lub wygeneruj hasło")}
                   />
                   {newPasswordForUser && (
                     <button
@@ -1928,7 +1972,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         }
                       }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-primary transition-colors"
-                      title="Skopiuj do schowka"
+                      title={i18n.t("Skopiuj do schowka")}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -1941,15 +1985,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             </div>
             <div className="flex justify-end gap-3">
               <Button onClick={() => { setShowChangePasswordModal(false); setChangePasswordError(''); setNewPasswordForUser(''); }} variant="secondary">
-                Anuluj
-              </Button>
+                
+                                                  {i18n.t("Anuluj")}
+                                                </Button>
               <Button 
                 onClick={handleChangePassword} 
                 isLoading={isChangingPassword}
                 disabled={!newPasswordForUser || newPasswordForUser.length < 6}
               >
-                Zmień hasło
-              </Button>
+                
+                                                  {i18n.t("Zmień hasło")}
+                                                </Button>
             </div>
           </Card>
           </div>
@@ -1961,7 +2007,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         <div ref={createStudentModalAnim.overlayRef} className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div ref={createStudentModalAnim.contentRef} className="w-full max-w-md">
             <Card className="w-full shadow-2xl border-primary/20">
-            <h3 className="text-xl font-bold mb-4">Create New Student</h3>
+            <h3 className="text-xl font-bold mb-4">{i18n.t("Create New Student")}</h3>
             
             {!newStudentPassword ? (
               <div className="space-y-4 mb-6">
@@ -1971,18 +2017,18 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm font-bold text-content-muted mb-1">Student Username / Name</label>
+                  <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Student Username / Name")}</label>
                   <input
                     type="text"
                     value={newStudentUsername}
                     onChange={(e) => setNewStudentUsername(e.target.value)}
                     className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-3 focus:border-primary focus:outline-none"
-                    placeholder="e.g. John Doe"
+                    placeholder={i18n.t("e.g. John Doe")}
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-bold text-content-muted mb-2">Password Option</label>
+                  <label className="block text-sm font-bold text-content-muted mb-2">{i18n.t("Password Option")}</label>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input 
@@ -1992,7 +2038,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         onChange={() => setIsAutoGeneratePassword(true)} 
                         className="accent-primary"
                       />
-                      <span>Auto-generate</span>
+                      <span>{i18n.t("Auto-generate")}</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input 
@@ -2002,20 +2048,20 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         onChange={() => setIsAutoGeneratePassword(false)}
                         className="accent-primary"
                       />
-                      <span>Set custom</span>
+                      <span>{i18n.t("Set custom")}</span>
                     </label>
                   </div>
                 </div>
                 
                 {!isAutoGeneratePassword && (
                   <div>
-                    <label className="block text-sm font-bold text-content-muted mb-1">Custom Password</label>
+                    <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Custom Password")}</label>
                     <input
                       type="text"
                       value={passwordInput}
                       onChange={(e) => setPasswordInput(e.target.value)}
                       className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-3 focus:border-primary focus:outline-none"
-                      placeholder="Minimum 6 characters"
+                      placeholder={i18n.t("Minimum 6 characters")}
                       minLength={6}
                     />
                   </div>
@@ -2024,10 +2070,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             ) : (
               <div className="space-y-4 mb-6">
                 <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg text-center space-y-2 relative">
-                  <div className="text-green-500 font-bold mb-2">Student Created Successfully!</div>
-                  <div className="text-sm text-content-muted">Email (Login):</div>
+                  <div className="text-green-500 font-bold mb-2">{i18n.t("Student Created Successfully!")}</div>
+                  <div className="text-sm text-content-muted">{i18n.t("Email (Login):")}</div>
                   <div className="font-mono text-lg">{normalizeUsername(newStudentUsername)}</div>
-                  <div className="text-sm text-content-muted mt-2">Password:</div>
+                  <div className="text-sm text-content-muted mt-2">{i18n.t("Password:")}</div>
                   <div className="font-mono text-lg font-bold tracking-widest bg-base-100 p-2 rounded inline-flex items-center gap-2 border border-base-300">
                     {newStudentPassword}
                     <button 
@@ -2038,10 +2084,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       }}
                       className="text-xs text-primary hover:underline px-2 py-1 rounded bg-primary/10 ml-2"
                     >
-                      Copy
-                    </button>
+                      
+                                                                        {i18n.t("Copy")}
+                                                                      </button>
                   </div>
-                  <p className="text-xs text-amber-500 mt-2">Please copy these credentials and share them securely with the student. This password will not be shown again.</p>
+                  <p className="text-xs text-amber-500 mt-2">{i18n.t("Please copy these credentials and share them securely with the student. This password will not be shown again.")}</p>
                 </div>
               </div>
             )}
@@ -2049,11 +2096,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <div className="flex justify-end gap-3">
               {!newStudentPassword ? (
                 <>
-                  <Button onClick={() => { setShowCreateStudentModal(false); setCreateStudentError(''); }} variant="secondary">Cancel</Button>
-                  <Button onClick={handleCreateStudent} isLoading={isCreatingStudent} disabled={!newStudentUsername}>Create Account</Button>
+                  <Button onClick={() => { setShowCreateStudentModal(false); setCreateStudentError(''); }} variant="secondary">{i18n.t("Cancel")}</Button>
+                  <Button onClick={handleCreateStudent} isLoading={isCreatingStudent} disabled={!newStudentUsername}>{i18n.t("Create Account")}</Button>
                 </>
               ) : (
-                <Button onClick={() => { setShowCreateStudentModal(false); setNewStudentPassword(''); setNewStudentUsername(''); }}>Close</Button>
+                <Button onClick={() => { setShowCreateStudentModal(false); setNewStudentPassword(''); setNewStudentUsername(''); }}>{i18n.t("Close")}</Button>
               )}
             </div>
           </Card>

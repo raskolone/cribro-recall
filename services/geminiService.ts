@@ -56,14 +56,14 @@ if (!process.env.API_KEY) {
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const generateContentWithFallback = async (params: any) => {
-  const models = ["gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-3.1-pro-preview"];
+  const models = ['gemini-3.6-flash', 'gemini-3.1-flash-lite'];
   let lastError;
   for (const model of models) {
     try {
       console.log(`Attempting generation with ${model}...`);
       
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Request timed out after 90 seconds")), 90000);
+        setTimeout(() => reject(new Error("Request timed out after 60 seconds")), 60000);
       });
       
       const apiCall = ai.models.generateContent({

@@ -36,6 +36,7 @@ import Button from '../ui/Button';
 import { ChevronDown, ChevronRight, LayoutDashboard, Library, ClipboardList, Settings, User, BookOpen, Sparkles, BarChart3 } from 'lucide-react';
 
 import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
+import i18n from "i18next";
 
 type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests';
 type PracticeView = { type: 'exercise'; exercise: ExerciseType; isRevisionMode?: boolean; isSpacedRepetitionMode?: boolean } | null;
@@ -104,9 +105,9 @@ const PracticeSetSelector = ({ onSelectSet, onCancel }: { onSelectSet: (id: stri
   if (sets.length === 0) {
     return (
       <div className="text-center p-12 liquid-glass-card shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] mx-auto max-w-2xl mt-12">
-        <h2 className="text-2xl font-bold mb-4">No Word Lists found</h2>
-        <p className="text-content-muted mb-8">You need to create a Word List before practicing.</p>
-        <Button onClick={onCancel}>Back to Dashboard</Button>
+        <h2 className="text-2xl font-bold mb-4">{i18n.t("No Word Lists found")}</h2>
+        <p className="text-content-muted mb-8">{i18n.t("You need to create a Word List before practicing.")}</p>
+        <Button onClick={onCancel}>{i18n.t("Back to Dashboard")}</Button>
       </div>
     );
   }
@@ -114,8 +115,8 @@ const PracticeSetSelector = ({ onSelectSet, onCancel }: { onSelectSet: (id: stri
   return (
     <div className="max-w-4xl mx-auto pt-8">
       <div className="flex items-center justify-between mb-8">
-        <h2 className="text-2xl font-bold">Select a Word List to Practice</h2>
-        <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+        <h2 className="text-2xl font-bold">{i18n.t("Select a Word List to Practice")}</h2>
+        <Button variant="ghost" onClick={onCancel}>{i18n.t("Cancel")}</Button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {sets.map(set => (
@@ -125,8 +126,8 @@ const PracticeSetSelector = ({ onSelectSet, onCancel }: { onSelectSet: (id: stri
             onClick={() => onSelectSet(set.id)}
           >
             <h3 className="font-bold text-lg mb-2">{set.title}</h3>
-            <p className="text-sm text-content-muted mb-4">{set.cardCount} cards</p>
-            <Button className="w-full pointer-events-none" variant="secondary">Start Practice</Button>
+            <p className="text-sm text-content-muted mb-4">{set.cardCount}  {i18n.t("cards")}</p>
+            <Button className="w-full pointer-events-none" variant="secondary">{i18n.t("Start Practice")}</Button>
           </div>
         ))}
       </div>
@@ -852,7 +853,7 @@ const Dashboard: React.FC = () => {
                   {greeting}
                 </h1>
                 {user?.streakCount !== undefined && user?.streakCount > 0 && (
-                  <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1.5 rounded-full border border-base-300 shadow-sm" title="Your current streak">
+                  <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1.5 rounded-full border border-base-300 shadow-sm" title={i18n.t("Your current streak")}>
                     <AnimatedFlame />
                     <span className="font-bold text-sm text-white">{user.streakCount}</span>
                   </div>

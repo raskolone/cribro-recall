@@ -5,6 +5,7 @@ import { Word } from '../../types';
 import Button from '../ui/Button';
 
 import { useVocabulary } from '../../context/VocabularyContext';
+import i18n from "i18next";
 
 interface FillInBlankExerciseProps {
   words: Word[];
@@ -89,11 +90,11 @@ const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit
   if (isFinished) {
     return (
       <div className="text-center p-8 bg-base-200/40 backdrop-blur-xl border border-white/20 rounded-lg shadow-2xl max-w-md mx-auto">
-          <h2 className="text-2xl font-bold mb-4">Exercise Complete!</h2>
-          <p className="text-lg mb-6">Your score: <span className="font-bold text-primary">{score} / {words.length}</span></p>
+          <h2 className="text-2xl font-bold mb-4">{i18n.t("Exercise Complete!")}</h2>
+          <p className="text-lg mb-6">{i18n.t("Your score:")} <span className="font-bold text-primary">{score} / {words.length}</span></p>
           <div className="flex gap-4 justify-center">
-              <Button onClick={restart}>Try Again</Button>
-              <Button onClick={onExit} variant="secondary">Exit</Button>
+              <Button onClick={restart}>{i18n.t("Try Again")}</Button>
+              <Button onClick={onExit} variant="secondary">{i18n.t("Exit")}</Button>
           </div>
       </div>
     )
@@ -104,14 +105,15 @@ const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit
   return (
     <div className="p-4 max-w-3xl mx-auto">
        <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Fill in the Blank</h2>
+        <h2 className="text-2xl font-bold">{i18n.t("Fill in the Blank")}</h2>
         <p className="font-semibold text-content-muted">
-           Progress: {Math.min(currentIndex + 1, practiceQueue.length)} / {practiceQueue.length} <span className="ml-4 text-white">Score: {score}</span>
+           
+                             {i18n.t("Progress:")} {Math.min(currentIndex + 1, practiceQueue.length)} / {practiceQueue.length} <span className="ml-4 text-white">{i18n.t("Score:")} {score}</span>
         </p>
       </div>
       <div className="bg-base-200/40 backdrop-blur-xl border border-white/20 p-6 rounded-lg shadow-2xl transition-all duration-300">
-        <p className="text-lg text-center mb-2">Complete the sentence:</p>
-        <p className="text-center text-gray-600 mb-8">(Hint: the word means "{currentWord.definition}")</p>
+        <p className="text-lg text-center mb-2">{i18n.t("Complete the sentence:")}</p>
+        <p className="text-center text-gray-600 mb-8">{i18n.t("(Hint: the word means \"")}{currentWord.definition}")</p>
 
         <div className="text-2xl text-center flex flex-wrap justify-center items-center gap-2 font-medium">
             <span>{sentenceParts[0]}</span>
@@ -137,14 +139,15 @@ const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit
 
         <div className="mt-12 flex justify-center min-h-[5rem]">
             {!isSubmitted ? (
-                <Button onClick={handleSubmit} disabled={!inputValue.trim()}>Check Answer</Button>
+                <Button onClick={handleSubmit} disabled={!inputValue.trim()}>{i18n.t("Check Answer")}</Button>
             ) : (
                 <div className="text-center space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     {isCorrect ? (
-                        <p className="text-green-500 font-bold text-xl drop-shadow-[0_0_10px_rgba(34,197,94,0.4)]">Correct!</p>
+                        <p className="text-green-500 font-bold text-xl drop-shadow-[0_0_10px_rgba(34,197,94,0.4)]">{i18n.t("Correct!")}</p>
                     ) : (
                         <p className="text-red-500 font-bold text-xl drop-shadow-[0_0_10px_rgba(239,68,68,0.4)]">
-                            Not quite. The correct answer is: <strong className="underline decoration-2 underline-offset-4 decoration-red-400">{currentWord.word}</strong>
+                            
+                                                                      {i18n.t("Not quite. The correct answer is:")} <strong className="underline decoration-2 underline-offset-4 decoration-red-400">{currentWord.word}</strong>
                         </p>
                     )}
                     <Button onClick={handleNext} autoFocus className="mt-4">

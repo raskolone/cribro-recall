@@ -6,6 +6,7 @@ import { generateTranslationExercises } from '../../services/geminiService';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
+import i18n from "i18next";
 
 interface TeacherSpecialTaskModalProps {
   user: User;
@@ -215,10 +216,12 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
           <div>
             <h2 className="text-xl font-bold flex items-center gap-2 text-white">
               <Sparkles className="w-6 h-6 text-primary" />
-              Zadanie specjalne (AI)
-            </h2>
+              
+                                        {i18n.t("Zadanie specjalne (AI)")}
+                                      </h2>
             <p className="text-sm text-content-muted mt-1">
-              Dla ucznia: {user.firstName} {user.lastName || ''} ({user.email || user.username})
+              
+                                        {i18n.t("Dla ucznia:")} {user.firstName} {user.lastName || ''} ({user.email || user.username})
             </p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors text-content-muted hover:text-white">
@@ -239,11 +242,13 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
             <div className="flex items-center justify-between flex-wrap gap-2">
               <label className="text-sm font-bold text-white flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-primary" />
-                Wybierz lekcję z historii kursanta:
-              </label>
+                
+                                              {i18n.t("Wybierz lekcję z historii kursanta:")}
+                                            </label>
               {selectedWords.length > 0 && (
                 <span className="text-xs font-mono bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full">
-                  Wybrane słówka ({selectedWords.length})
+                  
+                                                    {i18n.t("Wybrane słówka (")}{selectedWords.length})
                 </span>
               )}
             </div>
@@ -251,10 +256,11 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
             {isLoadingLessons ? (
               <div className="flex items-center gap-2 text-sm text-content-muted p-2">
                 <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                Ładowanie historii lekcji...
-              </div>
+                
+                                              {i18n.t("Ładowanie historii lekcji...")}
+                                            </div>
             ) : lessonRecords.length === 0 ? (
-              <p className="text-sm text-content-muted italic">Brak zapisanych lekcji dla tego kursanta.</p>
+              <p className="text-sm text-content-muted italic">{i18n.t("Brak zapisanych lekcji dla tego kursanta.")}</p>
             ) : (
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -268,7 +274,8 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
                   >
                     {lessonRecords.map((record, index) => (
                       <option key={record.id} value={record.id}>
-                        Lekcja #{lessonRecords.length - index} — {record.topic} ({record.date})
+                        
+                                                    {i18n.t("Lekcja #")}{lessonRecords.length - index} — {record.topic} ({record.date})
                       </option>
                     ))}
                   </select>
@@ -287,7 +294,8 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
                   <div className="mt-4 pt-4 border-t border-white/5 space-y-3 animate-fadeIn">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold uppercase tracking-wider text-content-muted">
-                        Słownictwo z lekcji: <span className="text-white">{currentSelectedLesson.topic}</span>
+                        
+                                                                              {i18n.t("Słownictwo z lekcji:")} <span className="text-white">{currentSelectedLesson.topic}</span>
                       </span>
                       {currentLessonVocabItems.length > 0 && (
                         <button
@@ -302,7 +310,7 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
                     </div>
 
                     {currentLessonVocabItems.length === 0 ? (
-                      <p className="text-xs text-content-muted italic">Brak słówek w opisie tej lekcji.</p>
+                      <p className="text-xs text-content-muted italic">{i18n.t("Brak słówek w opisie tej lekcji.")}</p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
                         {currentLessonVocabItems.map((word, idx) => {
@@ -338,13 +346,14 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-bold text-content-muted mb-2">
-                Instrukcje / Sugestie dla AI
-              </label>
+                
+                                              {i18n.t("Instrukcje / Sugestie dla AI")}
+                                            </label>
 
               {/* Display selected words pill summary above or inside */}
               {selectedWords.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-base-200/50 rounded-xl border border-white/5">
-                  <span className="text-xs text-content-muted self-center mr-1">Dodane słówka:</span>
+                  <span className="text-xs text-content-muted self-center mr-1">{i18n.t("Dodane słówka:")}</span>
                   {selectedWords.map((w, i) => (
                     <span
                       key={i}
@@ -368,7 +377,7 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
               <textarea
                 value={manualPrompt}
                 onChange={(e) => setManualPrompt(e.target.value)}
-                placeholder="Np. Użyj słówek związanych z podróżowaniem. Skup się na czasie Past Simple..."
+                placeholder={i18n.t("Np. Użyj słówek związanych z podróżowaniem. Skup się na czasie Past Simple...")}
                 className="w-full bg-base-200/50 border border-white/10 rounded-xl p-4 outline-none focus:border-primary/50 transition-colors h-24 resize-none text-white text-sm"
               />
 
@@ -383,8 +392,9 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
             <div className="flex items-center gap-4">
               <div>
                 <label className="block text-sm font-bold text-content-muted mb-2">
-                  Liczba zdań
-                </label>
+                  
+                                                    {i18n.t("Liczba zdań")}
+                                                  </label>
                 <input
                   type="number"
                   min={1}
@@ -405,8 +415,9 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4 mr-2" />
-                      Wygeneruj zdania
-                    </>
+                      
+                                                                    {i18n.t("Wygeneruj zdania")}
+                                                                  </>
                   )}
                 </Button>
               </div>
@@ -417,10 +428,10 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
           {generatedSentences.length > 0 && (
             <div className="space-y-4 pt-6 border-t border-white/5">
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-lg text-white">Wygenerowane zdania</h3>
+                <h3 className="font-bold text-lg text-white">{i18n.t("Wygenerowane zdania")}</h3>
                 <span className="text-sm font-mono text-content-muted">
-                  {generatedSentences.filter((s) => s.accepted).length} / {generatedSentences.length} zaakceptowanych
-                </span>
+                  {generatedSentences.filter((s) => s.accepted).length} / {generatedSentences.length}  {i18n.t("zaakceptowanych")}
+                                                  </span>
               </div>
 
               <div className="space-y-3">
@@ -437,7 +448,7 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
                       <div className="space-y-2 flex-1">
                         <p className="font-bold text-white">{s.polishSentence}</p>
                         <p className="text-content-muted text-sm">{s.englishTranslation}</p>
-                        {s.hint && <p className="text-xs text-primary/70">Wskazówka: {s.hint}</p>}
+                        {s.hint && <p className="text-xs text-primary/70">{i18n.t("Wskazówka:")} {s.hint}</p>}
                       </div>
                       <button
                         onClick={() => toggleSentence(s.id)}
@@ -467,8 +478,9 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
                     ) : (
                       <RefreshCw className="w-4 h-4 mr-2" />
                     )}
-                    Wygeneruj brakujące zdania (zamiast odrzuconych)
-                  </Button>
+                    
+                                                          {i18n.t("Wygeneruj brakujące zdania (zamiast odrzuconych)")}
+                                                        </Button>
                 </div>
               )}
             </div>
@@ -479,16 +491,18 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
         {generatedSentences.length > 0 && (
           <div className="p-6 border-t border-white/5 bg-base-200/50 flex justify-end gap-3">
             <Button variant="secondary" onClick={onClose} disabled={isSaving}>
-              Anuluj
-            </Button>
+              
+                                        {i18n.t("Anuluj")}
+                                      </Button>
             <Button onClick={handleSaveTask} disabled={isSaving || generatedSentences.filter((s) => s.accepted).length === 0}>
               {isSaving ? (
                 <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
               ) : (
                 <>
                   <Check className="w-4 h-4 mr-2" />
-                  Zapisz jako Zadanie specjalne
-                </>
+                  
+                                                        {i18n.t("Zapisz jako Zadanie specjalne")}
+                                                      </>
               )}
             </Button>
           </div>

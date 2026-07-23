@@ -7,6 +7,7 @@ import Card from '../ui/Card';
 import { generateTest, modifyTest } from '../../services/geminiService';
 import { useAuth } from '../../context/AuthContext';
 import { MessageSquare, BookOpen, Calendar, ChevronRight, CheckCircle, X, ChevronUp, ChevronDown, Edit2 } from 'lucide-react';
+import i18n from "i18next";
 
 interface AdminTestGeneratorProps {
   user?: any;
@@ -286,13 +287,13 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
     <div className="space-y-8">
       {(!initialUser && users.length > 0) && (
         <Card className="p-6 bg-base-200/50">
-          <label className="block text-sm font-bold text-content-muted mb-2">Wybierz kursanta</label>
+          <label className="block text-sm font-bold text-content-muted mb-2">{i18n.t("Wybierz kursanta")}</label>
           <select
             value={selectedUserId}
             onChange={(e) => setSelectedUserId(e.target.value)}
             className="w-full bg-base-100 border border-white/10 rounded-xl p-3 outline-none focus:border-primary/50 text-white font-medium"
           >
-            <option value="">-- Wybierz kursanta --</option>
+            <option value="">{i18n.t("-- Wybierz kursanta --")}</option>
             {users.map(u => (
               <option key={u.id} value={u.id}>
                 {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
@@ -302,7 +303,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
         </Card>
       )}
       {!user ? (
-         <div className="text-center p-8 text-content-muted">Proszę wybrać kursanta, aby wygenerować test.</div>
+         <div className="text-center p-8 text-content-muted">{i18n.t("Proszę wybrać kursanta, aby wygenerować test.")}</div>
       ) : (
         <div className="space-y-8">
       {/* Lesson Selection Modal */}
@@ -316,8 +317,8 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                     <BookOpen className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold">Historia lekcji</h3>
-                    <p className="text-sm text-content-muted/80">Wybierz lekcje, które posłużą jako kontekst do testu</p>
+                    <h3 className="text-xl font-bold">{i18n.t("Historia lekcji")}</h3>
+                    <p className="text-sm text-content-muted/80">{i18n.t("Wybierz lekcje, które posłużą jako kontekst do testu")}</p>
                   </div>
                 </div>
                 <button onClick={() => setIsLessonModalOpen(false)} className="text-content-muted hover:text-white transition-colors">
@@ -351,13 +352,13 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                           <div className="text-sm text-content-muted mt-2 space-y-2">
                             {l.lessonSummary && (
                               <div className="line-clamp-2 border-l-2 border-white/10 pl-3">
-                                <span className="text-xs font-bold uppercase text-white/50 block mb-0.5">Podsumowanie</span>
+                                <span className="text-xs font-bold uppercase text-white/50 block mb-0.5">{i18n.t("Podsumowanie")}</span>
                                 {l.lessonSummary}
                               </div>
                             )}
                             {l.vocabularyText && !l.lessonSummary && (
                               <div className="line-clamp-2 border-l-2 border-white/10 pl-3 font-mono">
-                                <span className="text-xs font-bold uppercase text-white/50 block mb-0.5">Słownictwo</span>
+                                <span className="text-xs font-bold uppercase text-white/50 block mb-0.5">{i18n.t("Słownictwo")}</span>
                                 {l.vocabularyText}
                               </div>
                             )}
@@ -370,22 +371,26 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                 {lessons.length === 0 && (
                   <div className="text-center text-content-muted p-10 bg-base-100/50 rounded-xl border border-white/5">
                     <BookOpen className="w-8 h-8 mx-auto mb-3 opacity-50" />
-                    Brak historii lekcji dla tego kursanta
-                  </div>
+                    
+                                                                      {i18n.t("Brak historii lekcji dla tego kursanta")}
+                                                                    </div>
                 )}
               </div>
               
               <div className="p-6 border-t border-white/5 bg-base-200/30 flex justify-between items-center">
                 <div className="text-sm font-bold text-primary">
-                  Wybrano lekcji: {selectedLessons.length}
+                  
+                                                                {i18n.t("Wybrano lekcji:")} {selectedLessons.length}
                 </div>
                 <div className="flex gap-3">
                   <Button variant="ghost" onClick={() => setIsLessonModalOpen(false)}>
-                    Zamknij
-                  </Button>
+                    
+                                                                      {i18n.t("Zamknij")}
+                                                                    </Button>
                   <Button onClick={() => setIsLessonModalOpen(false)} className="bg-primary text-black hover:bg-primary/90">
-                    Zatwierdź Wybór
-                  </Button>
+                    
+                                                                      {i18n.t("Zatwierdź Wybór")}
+                                                                    </Button>
                 </div>
               </div>
             </Card>
@@ -404,8 +409,8 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                     <Edit2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold">Podgląd i Edycja Testu</h3>
-                    <p className="text-sm text-content-muted/80">Liczba pytań: {generatedQuestions.length}</p>
+                    <h3 className="text-xl font-bold">{i18n.t("Podgląd i Edycja Testu")}</h3>
+                    <p className="text-sm text-content-muted/80">{i18n.t("Liczba pytań:")} {generatedQuestions.length}</p>
                   </div>
                 </div>
                 <button onClick={() => setIsPreviewModalOpen(false)} className="text-content-muted hover:text-white transition-colors">
@@ -443,7 +448,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                         </div>
                         
                         <div>
-                          <label className="block text-xs font-bold text-content-muted mb-2 uppercase tracking-wider">Treść Pytania</label>
+                          <label className="block text-xs font-bold text-content-muted mb-2 uppercase tracking-wider">{i18n.t("Treść Pytania")}</label>
                           <div className="space-y-2">
                             {q.instruction && (
                               <input 
@@ -454,7 +459,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                                   setGeneratedQuestions(newQ);
                                 }}
                                 className="w-full bg-base-100 border border-white/10 rounded-lg p-2 text-primary text-sm font-bold outline-none focus:border-primary/50"
-                                placeholder="Polecenie"
+                                placeholder={i18n.t("Polecenie")}
                               />
                             )}
                             <textarea
@@ -467,7 +472,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                         
                         {(q.type === 'multiple_choice' || q.type === 'find_mistake') && q.options && (
                           <div className="space-y-3">
-                            <label className="block text-xs font-bold text-content-muted uppercase tracking-wider">Opcje odpowiedzi (tylko odczyt)</label>
+                            <label className="block text-xs font-bold text-content-muted uppercase tracking-wider">{i18n.t("Opcje odpowiedzi (tylko odczyt)")}</label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               {q.options.map((opt, j) => (
                                 <div key={j} className={`p-4 rounded-xl border text-base font-medium transition-all ${opt === q.correctAnswer ? "border-primary bg-primary/10 shadow-[0_0_15px_rgba(114,240,180,0.1)] text-primary" : "border-white/10 bg-base-100 text-content-muted"}`}>
@@ -480,7 +485,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
 
                         {q.type === 'matching' && q.options && (
                           <div className="space-y-3">
-                            <label className="block text-xs font-bold text-content-muted uppercase tracking-wider">Pary (tylko odczyt)</label>
+                            <label className="block text-xs font-bold text-content-muted uppercase tracking-wider">{i18n.t("Pary (tylko odczyt)")}</label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               {q.options.map((opt, j) => {
                                 const parts = opt.split('=');
@@ -498,7 +503,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
 
                         {q.type !== 'writing' && (
                           <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
-                            <span className="text-xs font-bold uppercase text-primary tracking-wider shrink-0">Prawidłowa Odpowiedź:</span>
+                            <span className="text-xs font-bold uppercase text-primary tracking-wider shrink-0">{i18n.t("Prawidłowa Odpowiedź:")}</span>
                             <span className="text-base font-medium text-white">{q.correctAnswer}</span>
                           </div>
                         )}
@@ -511,24 +516,26 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
               <div className="p-6 border-t border-white/5 bg-base-200/50 space-y-4">
                 <div>                  <label className="block text-sm font-bold text-content-muted mb-2 flex items-center gap-2">
                     <MessageSquare className="w-4 h-4 text-primary" />
-                    Asystent AI - poproś o automatyczne poprawki
-                  </label>
+                    
+                                                                  {i18n.t("Asystent AI - poproś o automatyczne poprawki")}
+                                                                </label>
                   <div className="flex gap-2">
                     <textarea
                       value={feedback}
                       onChange={e => setFeedback(e.target.value)}
                       className="flex-1 bg-base-100 border border-white/10 rounded-xl p-3 outline-none focus:border-primary/50 text-sm h-12"
-                      placeholder="Napisz do AI co poprawić (np. 'zrób łatwiejsze słownictwo w pytaniu 3')"
+                      placeholder={i18n.t("Napisz do AI co poprawić (np. 'zrób łatwiejsze słownictwo w pytaniu 3')")}
                     />
                     <Button onClick={handleModifyTest} isLoading={isModifying} disabled={!feedback} variant="secondary" className="whitespace-nowrap px-6">
-                      Popraw Test AI
-                    </Button>
+                      
+                                                                            {i18n.t("Popraw Test AI")}
+                                                                          </Button>
                   </div>
                 </div>
 
                 <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row gap-4 items-end">
                   <div className="flex-1 w-full">
-                    <label className="block text-sm font-bold text-content-muted mb-2">Data Wykonania (Do kiedy)</label>
+                    <label className="block text-sm font-bold text-content-muted mb-2">{i18n.t("Data Wykonania (Do kiedy)")}</label>
                     <input
                       type="date"
                       value={dueDate}
@@ -538,8 +545,9 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                     />
                   </div>
                   <Button onClick={handleSaveTest} isLoading={isSaving} className="bg-primary text-black hover:bg-primary/90 px-8 py-3 w-full sm:w-auto text-base">
-                    Przypisz Test
-                  </Button>
+                    
+                                                                      {i18n.t("Przypisz Test")}
+                                                                    </Button>
                 </div>
               </div>
             </Card>
@@ -549,32 +557,32 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card className="p-6 bg-base-200/40 backdrop-blur-md border border-white/10">
-          <h2 className="text-xl font-bold mb-4">Wygeneruj Nowy Test</h2>
+          <h2 className="text-xl font-bold mb-4">{i18n.t("Wygeneruj Nowy Test")}</h2>
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-bold text-content-muted mb-1">Tytuł Testu</label>
+              <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Tytuł Testu")}</label>
               <input
                 type="text"
                 value={testTitle}
                 onChange={e => setTestTitle(e.target.value)}
                 className="w-full bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50"
-                placeholder="np. Test Podsumowujący Miesiąc"
+                placeholder={i18n.t("np. Test Podsumowujący Miesiąc")}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-bold text-content-muted mb-1">Zakres Materiału / Instrukcje (Opcjonalne)</label>
+              <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Zakres Materiału / Instrukcje (Opcjonalne)")}</label>
               <textarea
                 value={scope}
                 onChange={e => setScope(e.target.value)}
                 className="w-full bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 h-24"
-                placeholder="np. Czas Present Simple i słownictwo z podróży"
+                placeholder={i18n.t("np. Czas Present Simple i słownictwo z podróży")}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-bold text-content-muted mb-1">Źródła materiału do testu</label>
+              <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Źródła materiału do testu")}</label>
               <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3">
                 <div className="relative overflow-hidden w-full sm:w-auto">
                   <input
@@ -584,31 +592,35 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                   <Button variant="secondary" className="w-full sm:w-auto whitespace-nowrap flex justify-center">
-                    Wybierz plik
-                  </Button>
+                    
+                                                                      {i18n.t("Wybierz plik")}
+                                                                    </Button>
                 </div>
                 
                 <Button onClick={fetchDriveFiles} variant="secondary" className="w-full sm:w-auto whitespace-nowrap flex justify-center items-center gap-2">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 15.02 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                  Google Drive
-                </Button>
+                  
+                                                                {i18n.t("Google Drive")}
+                                                              </Button>
                 
                 <Button onClick={() => setIsLessonModalOpen(true)} variant="secondary" className="w-full sm:w-auto whitespace-nowrap flex justify-center items-center gap-2 text-primary border-primary/30 bg-primary/5 hover:bg-primary/10">
                   <BookOpen className="w-4 h-4" />
-                  Historia lekcji {selectedLessons.length > 0 && `(${selectedLessons.length})`}
+                  
+                                                                {i18n.t("Historia lekcji")} {selectedLessons.length > 0 && `(${selectedLessons.length})`}
                 </Button>
               </div>
               
-              {file && <div className="text-xs text-primary mt-2 flex items-center gap-2 bg-primary/10 p-2 rounded-lg w-fit border border-primary/20">Wybór z dysku: {file.name}</div>}
+              {file && <div className="text-xs text-primary mt-2 flex items-center gap-2 bg-primary/10 p-2 rounded-lg w-fit border border-primary/20">{i18n.t("Wybór z dysku:")} {file.name}</div>}
               {driveFile && (
                 <div className="text-xs text-primary mt-2 flex items-center gap-2 bg-primary/10 p-2 rounded-lg w-fit border border-primary/20">
-                  Google Drive: {driveFile.name}
+                  
+                                                                {i18n.t("Google Drive:")} {driveFile.name}
                   <button onClick={() => setDriveFile(null)} className="ml-2 hover:text-white transition-colors">✕</button>
                 </div>
               )}
               {selectedLessons.length > 0 && (
                 <div className="mt-4 space-y-2">
-                  <div className="text-xs font-bold text-content-muted uppercase">Wybrane lekcje ({selectedLessons.length}):</div>
+                  <div className="text-xs font-bold text-content-muted uppercase">{i18n.t("Wybrane lekcje (")}{selectedLessons.length}):</div>
                   <div className="flex flex-col gap-2">
                     {lessons.filter(l => selectedLessons.includes(l.id)).map(l => (
                       <div key={l.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-primary/20 bg-primary/5 text-sm">
@@ -622,7 +634,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                         <button 
                           onClick={() => toggleLesson(l.id)} 
                           className="shrink-0 p-1 rounded-md text-content-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                          title="Usuń z wyboru"
+                          title={i18n.t("Usuń z wyboru")}
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -636,7 +648,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-bold text-content-muted mb-2">Ilość zadań do testu: {tasksCount}</label>
+                <label className="block text-sm font-bold text-content-muted mb-2">{i18n.t("Ilość zadań do testu:")} {tasksCount}</label>
                 <input
                   type="range"
                   min="1"
@@ -652,23 +664,23 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
               </div>
               
               <div>
-                <label className="block text-sm font-bold text-content-muted mb-2">Limit podejść</label>
+                <label className="block text-sm font-bold text-content-muted mb-2">{i18n.t("Limit podejść")}</label>
                 <select
                   value={attemptsLimit}
                   onChange={e => setAttemptsLimit(parseInt(e.target.value))}
                   className="w-full bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-white"
                 >
-                  <option value="1">1 podejście</option>
-                  <option value="2">2 podejścia</option>
-                  <option value="3">3 podejścia</option>
-                  <option value="5">5 podejść</option>
-                  <option value="999">Bez limitu</option>
+                  <option value="1">{i18n.t("1 podejście")}</option>
+                  <option value="2">{i18n.t("2 podejścia")}</option>
+                  <option value="3">{i18n.t("3 podejścia")}</option>
+                  <option value="5">{i18n.t("5 podejść")}</option>
+                  <option value="999">{i18n.t("Bez limitu")}</option>
                 </select>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-content-muted mb-3">Typy zadań do wygenerowania</label>
+              <label className="block text-sm font-bold text-content-muted mb-3">{i18n.t("Typy zadań do wygenerowania")}</label>
               <div className="flex flex-wrap gap-3">
                 {[
                   { id: 'multiple_choice', label: 'Wielokrotny wybór' },
@@ -707,46 +719,50 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
               </div>
               {selectedTypes.includes('writing') && (
                 <div className="mt-6 p-4 rounded-xl border border-primary/20 bg-primary/5">
-                  <label className="block text-sm font-bold text-primary mb-2">Temat writingu i wymagania (np. limit znaków)</label>
+                  <label className="block text-sm font-bold text-primary mb-2">{i18n.t("Temat writingu i wymagania (np. limit znaków)")}</label>
                   <textarea
                     value={writingTopic}
                     onChange={e => setWritingTopic(e.target.value)}
                     className="w-full bg-base-100 border border-white/10 rounded-lg p-3 outline-none focus:border-primary/50 text-white min-h-[100px]"
-                    placeholder="Podaj temat, instrukcje i limit znaków dla zadania otwartego..."
+                    placeholder={i18n.t("Podaj temat, instrukcje i limit znaków dla zadania otwartego...")}
                   />
                   <p className="text-xs text-primary/70 mt-2">
-                    Uwaga: Zadanie to będzie miało zablokowane funkcje kopiowania, wklejania oraz autokorekty w panelu kursanta.
-                  </p>
+                    
+                                                                      {i18n.t("Uwaga: Zadanie to będzie miało zablokowane funkcje kopiowania, wklejania oraz autokorekty w panelu kursanta.")}
+                                                                    </p>
                 </div>
               )}
             </div>
 
             <Button onClick={handleGenerate} isLoading={isGenerating} className="w-full" disabled={!testTitle || selectedTypes.length === 0}>
 
-              Generuj Test za pomocą AI
-            </Button>
+              
+
+                                                    {i18n.t("Generuj Test za pomocą AI")}
+                                                  </Button>
           </div>
         </Card>
 
         <div className="space-y-6">
           {generatedQuestions && (
             <Card className="p-6 bg-primary/5 border border-primary/20 flex flex-col items-center justify-center space-y-4">
-              <h3 className="font-bold text-lg text-primary text-center">Test wygenerowany pomyślnie! ({generatedQuestions.length} pytań)</h3>
-              <p className="text-content-muted text-sm text-center">Możesz teraz przejrzeć i edytować pytania przed przypisaniem testu kursantowi.</p>
+              <h3 className="font-bold text-lg text-primary text-center">{i18n.t("Test wygenerowany pomyślnie! (")}{generatedQuestions.length}  {i18n.t("pytań)")}</h3>
+              <p className="text-content-muted text-sm text-center">{i18n.t("Możesz teraz przejrzeć i edytować pytania przed przypisaniem testu kursantowi.")}</p>
               <Button onClick={() => setIsPreviewModalOpen(true)} className="bg-primary text-black hover:bg-primary/90 w-full sm:w-auto">
-                Podgląd i edycja testu
-              </Button>
+                
+                                                          {i18n.t("Podgląd i edycja testu")}
+                                                        </Button>
             </Card>
           )}
 
           <Card className="p-6 bg-base-200/40 backdrop-blur-md border border-white/10">
-            <h3 className="font-bold mb-4">Przypisane Testy</h3>
+            <h3 className="font-bold mb-4">{i18n.t("Przypisane Testy")}</h3>
             <div className="space-y-2">
               {tests.map(test => (
                 <div key={test.id} className="p-3 bg-base-100 rounded-lg border border-base-300 flex justify-between items-center">
                   <div>
                     <div className="font-bold text-sm">{test.title}</div>
-                    <div className="text-xs text-content-muted">Do: {test.dueDate} • Pytań: {test.questions.length}</div>
+                    <div className="text-xs text-content-muted">{i18n.t("Do:")} {test.dueDate}  {i18n.t("• Pytań:")} {test.questions.length}</div>
                   </div>
                   <div>
                     <span className={`text-xs font-bold px-2 py-1 rounded-full ${test.status === 'pending' ? 'bg-orange-500/20 text-orange-400' : 'bg-primary/20 text-primary'}`}>
@@ -756,7 +772,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                   </div>
                 </div>
               ))}
-              {tests.length === 0 && <div className="text-sm text-content-muted text-center py-4">Brak przypisanych testów</div>}
+              {tests.length === 0 && <div className="text-sm text-content-muted text-center py-4">{i18n.t("Brak przypisanych testów")}</div>}
             </div>
           </Card>
         </div>

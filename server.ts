@@ -7,7 +7,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
 
 async function generateContentWithRetry(aiClient: any, contents: any, config: any) {
-  const models = ['gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-3.1-pro-preview'];
+  const models = ['gemini-3.6-flash', 'gemini-3.1-flash-lite'];
   let lastError;
   
   for (const model of models) {
@@ -17,7 +17,7 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
         console.log(`[Server] Attempting generation with ${model}... (retries left: ${retries})`);
         
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error("Request timed out after 90 seconds")), 90000);
+          setTimeout(() => reject(new Error("Request timed out after 60 seconds")), 60000);
         });
         
         const apiCall = aiClient.models.generateContent({
@@ -34,6 +34,9 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
         
         if (err?.message?.includes("timed out")) {
           break; // Next model immediately on timeout
+        } else if (String(err?.status) === "429" && err?.message?.includes("Quota exceeded for metric")) {
+          console.warn("[Server] Quota exceeded, switching model immediately");
+          break; // Next model immediately
         } else if (String(err?.status) === "503" || String(err?.status) === "429" || err?.message?.includes("503") || err?.message?.includes("429")) {
           retries--;
           if (retries > 0) {

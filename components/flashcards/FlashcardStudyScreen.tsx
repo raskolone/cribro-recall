@@ -9,6 +9,7 @@ import { Flashcard, FlashcardSet } from '../../types';
 import PronunciationMic from '../ui/PronunciationMic';
 import TTSButtons from './TTSButtons';
 import ConfirmModal from '../ui/ConfirmModal';
+import i18n from "i18next";
 
 interface FlashcardStudyScreenProps {
   setId: string;
@@ -76,7 +77,8 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
           <button onClick={onBack} className="text-content-muted hover:text-white flex items-center gap-2">
-            &larr; {language === 'pl' ? 'Wróć do zestawu' : 'Back to set'}
+            
+                                {i18n.t("&larr;")} {language === 'pl' ? 'Wróć do zestawu' : 'Back to set'}
           </button>
           <h2 className="text-2xl font-bold">{set?.title}</h2>
         </div>
@@ -396,7 +398,8 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
             t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?', 
             () => { closeConfirm(); onBack(); }
           ); }} className="text-content-muted hover:text-white flex items-center gap-2">
-          &larr; {t('flashcards.quit')}
+          
+                            {i18n.t("&larr;")} {t('flashcards.quit')}
         </button>
         <div className="font-mono text-sm">
           {currentIndex + 1} / {cards.length}
@@ -469,25 +472,25 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
       </div>
 
       <div className="flex justify-between md:hidden px-4">
-         <button onClick={handlePrev} disabled={currentIndex === 0} className={`p-2 ${currentIndex === 0 ? 'opacity-30' : ''}`}>&larr; Poprzednia</button>
-         <button onClick={handleNext} disabled={currentIndex === cards.length - 1} className={`p-2 ${currentIndex === cards.length - 1 ? 'opacity-30' : ''}`}>Następna &rarr;</button>
+         <button onClick={handlePrev} disabled={currentIndex === 0} className={`p-2 ${currentIndex === 0 ? 'opacity-30' : ''}`}>{i18n.t("&larr; Poprzednia")}</button>
+         <button onClick={handleNext} disabled={currentIndex === cards.length - 1} className={`p-2 ${currentIndex === cards.length - 1 ? 'opacity-30' : ''}`}>{i18n.t("Następna &rarr;")}</button>
       </div>
 
       {isFlipped ? (
         <div className="grid grid-cols-2 gap-4 mt-8">
           <Button variant="danger" className="py-4 text-lg flex flex-col items-center justify-center gap-1" onClick={() => handleAnswer(false)}>
-            <span>Umiem</span>
-            <span className="text-[10px] uppercase opacity-70">Nie umiem (Strzałka w lewo)</span>
+            <span>{i18n.t("Umiem")}</span>
+            <span className="text-[10px] uppercase opacity-70">{i18n.t("Nie umiem (Strzałka w lewo)")}</span>
           </Button>
           <Button className="py-4 text-lg flex flex-col items-center justify-center gap-1" onClick={() => handleAnswer(true)}>
-            <span>Umiem</span>
-            <span className="text-[10px] uppercase opacity-70">Umiem (Strzałka w prawo)</span>
+            <span>{i18n.t("Umiem")}</span>
+            <span className="text-[10px] uppercase opacity-70">{i18n.t("Umiem (Strzałka w prawo)")}</span>
           </Button>
         </div>
       ) : (
         <div className="text-center text-content-muted text-sm animate-pulse mt-8 flex flex-col items-center gap-2">
           <span>{t('flashcards.clickReveal')}</span>
-          <span className="bg-base-300 px-2 py-1 rounded text-xs">Spacja</span>
+          <span className="bg-base-300 px-2 py-1 rounded text-xs">{i18n.t("Spacja")}</span>
         </div>
       )}
     </div>
@@ -592,7 +595,8 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
             t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?', 
             () => { closeConfirm(); onBack(); }
           ); }} className="text-content-muted hover:text-white flex items-center gap-2">
-          &larr; {t('flashcards.quit')}
+          
+                            {i18n.t("&larr;")} {t('flashcards.quit')}
         </button>
         <div className="font-mono text-sm">
           {currentIndex + 1} / {cards.length}
@@ -616,7 +620,7 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
                 if(currentCard.audioUrl){const audio = new Audio(currentCard.audioUrl);audio.play();}
               }}
               className="w-10 h-10 flex items-center justify-center rounded-full bg-base-300 text-primary hover:bg-base-100 border border-base-300 transition-colors"
-              title="Play audio"
+              title={i18n.t("Play audio")}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
             </button>
@@ -770,7 +774,8 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
             t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?', 
             () => { closeConfirm(); onBack(); }
           ); }} className="text-content-muted hover:text-white flex items-center gap-2">
-          &larr; {t('flashcards.quit')}
+          
+                            {i18n.t("&larr;")} {t('flashcards.quit')}
         </button>
         <div className="font-mono text-sm">
           {currentIndex + 1} / {cards.length}
@@ -794,7 +799,7 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
                 if(currentCard.audioUrl){const audio = new Audio(currentCard.audioUrl);audio.play();}
               }}
               className="w-10 h-10 flex items-center justify-center rounded-full bg-base-300 text-primary hover:bg-base-100 border border-base-300 transition-colors"
-              title="Play audio"
+              title={i18n.t("Play audio")}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
             </button>
@@ -817,21 +822,22 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
               status === 'incorrect' ? 'border-red-500 text-red-400' :
               'border-base-300 focus:border-primary'
             }`}
-            placeholder="Type the definition..."
+            placeholder={i18n.t("Type the definition...")}
           />
         </div>
         
         {status === 'incorrect' && (
           <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-center">
-            <div className="text-sm text-red-400 mb-1">Correct answer:</div>
+            <div className="text-sm text-red-400 mb-1">{i18n.t("Correct answer:")}</div>
             <div className="text-xl font-bold text-white" dangerouslySetInnerHTML={{ __html: currentCard?.definition || '' }} />
           </div>
         )}
         
         {status === 'typing' && (
           <Button type="submit" className="w-full py-4 text-lg" disabled={!input.trim()}>
-            Submit
-          </Button>
+            
+                                  {i18n.t("Submit")}
+                                </Button>
         )}
       </form>
     </div>
@@ -930,12 +936,14 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, show
       <div className="max-w-2xl mx-auto text-center space-y-8">
         <h2 className="text-3xl font-bold">{t('flashcards.complete')}</h2>
         <Card className="py-12">
-          <div className="text-6xl font-black text-primary mb-4">{timeScore} pts</div>
+          <div className="text-6xl font-black text-primary mb-4">{timeScore}  {i18n.t("pts")}</div>
           <p className="text-xl text-content-muted mb-2">
-            Time: {elapsedTime}s
+            
+                                {i18n.t("Time:")} {elapsedTime}s
           </p>
           <p className="text-xl text-content-muted">
-            Mistakes: {mistakes}
+            
+                                {i18n.t("Mistakes:")} {mistakes}
           </p>
         </Card>
         <Button onClick={onBack} className="w-full">{t('flashcards.back')}</Button>
@@ -951,7 +959,8 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, show
             t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?', 
             () => { closeConfirm(); onBack(); }
           ); }} className="text-content-muted hover:text-white flex items-center gap-2">
-          &larr; {t('flashcards.quit')}
+          
+                            {i18n.t("&larr;")} {t('flashcards.quit')}
         </button>
         <div className="font-mono text-xl font-bold">
           {elapsedTime}s
@@ -1019,7 +1028,8 @@ const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm }: any) => {
             t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?', 
             () => { closeConfirm(); onBack(); }
           ); }} className="text-content-muted hover:text-white flex items-center gap-2">
-          &larr; {t('flashcards.quit')}
+          
+                            {i18n.t("&larr;")} {t('flashcards.quit')}
         </button>
         <div className="font-mono text-sm">
           {currentIndex + 1} / {cards.length}
@@ -1048,7 +1058,7 @@ const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm }: any) => {
                     if(currentCard.audioUrl){const audio = new Audio(currentCard.audioUrl);audio.play();}
                   }}
                   className="w-10 h-10 flex items-center justify-center rounded-full bg-base-300 text-secondary hover:bg-base-100 border border-base-300 transition-colors"
-                  title="Play audio"
+                  title={i18n.t("Play audio")}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </button>
@@ -1067,7 +1077,7 @@ const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm }: any) => {
                     if(currentCard.audioUrl){const audio = new Audio(currentCard.audioUrl);audio.play();}
                   }}
                   className="w-10 h-10 flex items-center justify-center rounded-full bg-base-100 text-secondary hover:bg-base-300 border border-base-300 transition-colors"
-                  title="Play audio"
+                  title={i18n.t("Play audio")}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </button>
@@ -1081,8 +1091,9 @@ const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm }: any) => {
 
       <div className="flex justify-between mt-8">
         <Button variant="secondary" onClick={handlePrev} disabled={currentIndex === 0}>
-          &larr; Previous
-        </Button>
+          
+                            {i18n.t("&larr; Previous")}
+                          </Button>
         <Button onClick={handleNext}>
           {currentIndex === cards.length - 1 ? 'Finish' : 'Next \u2192'}
         </Button>

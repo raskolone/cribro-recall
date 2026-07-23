@@ -8,7 +8,7 @@ import Button from '../ui/Button';
 import { Flashcard, FlashcardSet } from '../../types';
 import { getAISuggestions } from '../../services/aiSuggestions';
 import { generateFlashcardsFromText, formatFlashcardsWithAI, generateContextSentence, generateImageForTerm } from '../../services/geminiService';
-
+import i18n from "i18next";
 
 interface FlashcardEditScreenProps {
   setId: string;
@@ -522,7 +522,8 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
         <div>
           <div className="flex items-center gap-4 mb-2">
             <button onClick={onBack} className="text-content-muted hover:text-white transition-colors">
-              &larr; {language === 'pl' ? 'Wróć' : 'Back'}
+              
+                                        {i18n.t("&larr;")} {language === 'pl' ? 'Wróć' : 'Back'}
             </button>
             <h1 className="text-2xl font-bold">
               {set?.title ? (language === 'pl' ? 'Edytuj zestaw' : 'Edit set') : (language === 'pl' ? 'Stwórz nowy zestaw fiszek' : 'Create new flashcard set')}
@@ -606,13 +607,13 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
           <Card key={card.id || index} className="p-0 overflow-visible relative group bg-base-100 border border-base-300 hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-0.5 rounded-2xl">
             {/* Hover Toolbar */}
             <div className="absolute -top-12 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-base-300/90 backdrop-blur-md p-1.5 rounded-xl z-10 shadow-xl border border-white/10">
-              <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('bold'); }} className="w-8 h-8 flex items-center justify-center hover:bg-base-200 rounded-lg text-content-muted hover:text-white font-bold transition-colors" title="Bold">B</button>
-              <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('italic'); }} className="w-8 h-8 flex items-center justify-center hover:bg-base-200 rounded-lg text-content-muted hover:text-white italic font-serif transition-colors" title="Italic">I</button>
-              <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('underline'); }} className="w-8 h-8 flex items-center justify-center hover:bg-base-200 rounded-lg text-content-muted hover:text-white underline transition-colors" title="Underline">U</button>
+              <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('bold'); }} className="w-8 h-8 flex items-center justify-center hover:bg-base-200 rounded-lg text-content-muted hover:text-white font-bold transition-colors" title={i18n.t("Bold")}>B</button>
+              <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('italic'); }} className="w-8 h-8 flex items-center justify-center hover:bg-base-200 rounded-lg text-content-muted hover:text-white italic font-serif transition-colors" title={i18n.t("Italic")}>I</button>
+              <button onMouseDown={(e) => { e.preventDefault(); document.execCommand('underline'); }} className="w-8 h-8 flex items-center justify-center hover:bg-base-200 rounded-lg text-content-muted hover:text-white underline transition-colors" title={i18n.t("Underline")}>U</button>
               <div className="w-px h-4 bg-white/10 mx-1" />
-              <input type="color" onInput={(e) => document.execCommand('foreColor', false, e.currentTarget.value)} className="w-6 h-6 p-0 border-0 rounded cursor-pointer mx-1" title="Color" />
+              <input type="color" onInput={(e) => document.execCommand('foreColor', false, e.currentTarget.value)} className="w-6 h-6 p-0 border-0 rounded cursor-pointer mx-1" title={i18n.t("Color")} />
               <div className="w-px h-4 bg-white/10 mx-1" />
-              <button onMouseDown={(e) => { e.preventDefault(); handleVoiceInput(index); }} className="w-8 h-8 flex items-center justify-center hover:bg-blue-500/20 rounded-lg text-blue-400 hover:text-blue-300 transition-colors" title="Voice Input">🎤</button>
+              <button onMouseDown={(e) => { e.preventDefault(); handleVoiceInput(index); }} className="w-8 h-8 flex items-center justify-center hover:bg-blue-500/20 rounded-lg text-blue-400 hover:text-blue-300 transition-colors" title={i18n.t("Voice Input")}>🎤</button>
               <button 
                 onMouseDown={(e) => { e.preventDefault(); handleToggleLock(index); }} 
                 className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${card.isLocked ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30' : 'hover:bg-base-200 text-content-muted hover:text-white'}`} 
@@ -696,11 +697,11 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                 <div className="flex flex-col items-center md:items-end gap-2 group/media">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold text-content-muted uppercase tracking-widest">{language === 'pl' ? 'OBRAZ' : 'IMAGE'}</span>
-                    <button onClick={() => handleGenerateImage(index)} disabled={isGeneratingImageFor === index || card.isLocked} className="text-[10px] font-bold text-purple-400 hover:text-purple-300 transition-colors uppercase" title="Generate with AI">✨ AI</button>
+                    <button onClick={() => handleGenerateImage(index)} disabled={isGeneratingImageFor === index || card.isLocked} className="text-[10px] font-bold text-purple-400 hover:text-purple-300 transition-colors uppercase" title={i18n.t("Generate with AI")}>{i18n.t("✨ AI")}</button>
                   </div>
                   {card.imageUrl ? (
                     <div className="relative group/img">
-                      <img src={card.imageUrl} alt="Card visual" className="w-16 h-12 object-cover rounded-lg border border-white/10" referrerPolicy="no-referrer" />
+                      <img src={card.imageUrl} alt={i18n.t("Card visual")} className="w-16 h-12 object-cover rounded-lg border border-white/10" referrerPolicy="no-referrer" />
                       <button onClick={() => handleUpdateCard(index, 'imageUrl', '')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover/img:opacity-100 transition-opacity">×</button>
                     </div>
                   ) : (
@@ -712,7 +713,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                           reader.onloadend = () => handleUpdateCard(index, 'imageUrl', reader.result as string);
                           reader.readAsDataURL(file);
                         }
-                      }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" title="Upload Image" />
+                      }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" title={i18n.t("Upload Image")} />
                       <button className="w-16 h-12 border-2 border-dashed border-base-300 rounded-lg flex items-center justify-center text-content-muted transition-all bg-base-200/50 hover:bg-primary/5 relative">
                         {isGeneratingImageFor === index ? <span className="animate-spin text-lg">⏳</span> : <span className="text-lg font-bold">+</span>}
                       </button>
@@ -727,7 +728,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                 <div>
                   <div className="flex justify-between mb-3 border-b-2 border-transparent">
                     <span className="text-xs font-bold text-content-muted uppercase tracking-widest">{language === 'pl' ? 'ZDANIE Z KONTEKSTEM' : 'CONTEXT SENTENCE'}</span>
-                    <button onClick={() => handleGenerateContext(index)} disabled={isGeneratingContextFor === index || card.isLocked} className="text-[10px] font-bold text-purple-400 hover:text-purple-300 transition-colors uppercase" title="Generate Context with AI">
+                    <button onClick={() => handleGenerateContext(index)} disabled={isGeneratingContextFor === index || card.isLocked} className="text-[10px] font-bold text-purple-400 hover:text-purple-300 transition-colors uppercase" title={i18n.t("Generate Context with AI")}>
                       {isGeneratingContextFor === index ? '⏳' : '✨ AI'}
                     </button>
                   </div>
@@ -761,7 +762,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
           <Card className="w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">{language === 'pl' ? 'Importuj fiszki' : 'Import flashcards'}</h2>
-              <button onClick={() => setIsImportModalOpen(false)} className="text-content-muted hover:text-white text-2xl">&times;</button>
+              <button onClick={() => setIsImportModalOpen(false)} className="text-content-muted hover:text-white text-2xl">{i18n.t("&times;")}</button>
             </div>
             
             <div className="flex-1 overflow-y-auto space-y-6 pr-2">
@@ -828,7 +829,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                 <div className="flex-1">
                   <div onClick={fetchDriveFiles} className="border-2 border-dashed border-base-300 rounded-lg p-4 text-center cursor-pointer hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2">
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 15.02 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                    <span className="text-sm font-medium">Google Drive</span>
+                    <span className="text-sm font-medium">{i18n.t("Google Drive")}</span>
                   </div>
                 </div>
               </div>
@@ -858,14 +859,14 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
       {showDriveModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 md:p-6 overflow-y-auto">
           <div className="bg-base-100 p-6 rounded-xl w-full max-w-2xl border border-white/10 shadow-2xl relative my-auto">
-            <h3 className="text-xl font-bold mb-4">Wybierz plik z Google Drive</h3>
+            <h3 className="text-xl font-bold mb-4">{i18n.t("Wybierz plik z Google Drive")}</h3>
             {driveError && (
               <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 rounded-lg mb-4 text-sm">
                 {driveError}
               </div>
             )}
             {driveLoading ? (
-              <div className="text-center p-8 text-content-muted">Ładowanie plików...</div>
+              <div className="text-center p-8 text-content-muted">{i18n.t("Ładowanie plików...")}</div>
             ) : (
               <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                 {driveFiles.map(file => (
@@ -874,11 +875,11 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                     <span className="text-xs text-content-muted">{file.mimeType.includes('pdf') ? 'PDF' : (file.mimeType.includes('document') ? 'DOC' : 'TXT')}</span>
                   </div>
                 ))}
-                {driveFiles.length === 0 && <div className="text-center text-content-muted">Brak odpowiednich plików.</div>}
+                {driveFiles.length === 0 && <div className="text-center text-content-muted">{i18n.t("Brak odpowiednich plików.")}</div>}
               </div>
             )}
             <div className="mt-6 flex justify-end">
-              <Button variant="ghost" onClick={() => setShowDriveModal(false)}>Anuluj</Button>
+              <Button variant="ghost" onClick={() => setShowDriveModal(false)}>{i18n.t("Anuluj")}</Button>
             </div>
           </div>
         </div>

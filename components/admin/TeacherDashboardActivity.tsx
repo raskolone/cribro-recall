@@ -4,6 +4,7 @@ import { db } from '../../firebase';
 import { User } from '../../types';
 import { Activity, Clock } from 'lucide-react';
 import Card from '../ui/Card';
+import i18n from "i18next";
 
 interface ActivityProps {
   users: (User & { id: string })[];
@@ -33,8 +34,8 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
             <Activity size={24} />
           </div>
           <div className="text-left">
-            <h3 className="font-bold text-lg">Ostatnia aktywność kursantów</h3>
-            <p className="text-sm text-content-muted">Zobacz kto ostatnio się logował i ćwiczył</p>
+            <h3 className="font-bold text-lg">{i18n.t("Ostatnia aktywność kursantów")}</h3>
+            <p className="text-sm text-content-muted">{i18n.t("Zobacz kto ostatnio się logował i ćwiczył")}</p>
           </div>
         </div>
         <svg 
@@ -49,7 +50,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
       {isOpen && (
         <div className="p-6 border-t border-white/5 bg-base-100/50">
           {recentLogins.length === 0 ? (
-            <p className="text-center text-content-muted py-8">Brak ostatniej aktywności.</p>
+            <p className="text-center text-content-muted py-8">{i18n.t("Brak ostatniej aktywności.")}</p>
           ) : (
             <div className="space-y-4">
               {recentLogins.map(u => (
@@ -72,7 +73,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
                       <Clock size={14} />
                       <span>{new Date(u.lastLoginDate!).toLocaleString()}</span>
                     </div>
-                    <div className="text-xs text-primary font-bold mt-1">Logowania: {u.loginCount || 0}</div>
+                    <div className="text-xs text-primary font-bold mt-1">{i18n.t("Logowania:")} {u.loginCount || 0}</div>
                   </div>
                 </div>
               ))}

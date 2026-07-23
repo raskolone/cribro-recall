@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Button from '../ui/Button';
+import i18n from "i18next";
 
 interface Step {
   targetId: string;
@@ -106,8 +107,8 @@ export const OnboardingTour: React.FC<{ onComplete: () => void }> = ({ onComplet
           <div className="absolute top-10 -left-2 w-4 h-4 bg-base-300 border-l border-b border-primary/30 transform rotate-45" />
           
           <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-bold text-primary uppercase tracking-wider">Krok {currentStep + 1} z {steps.length}</span>
-            <button onClick={onComplete} className="text-xs text-content-muted hover:text-white transition-colors">Pomiń</button>
+            <span className="text-xs font-bold text-primary uppercase tracking-wider">{i18n.t("Krok")} {currentStep + 1} z {steps.length}</span>
+            <button onClick={onComplete} className="text-xs text-content-muted hover:text-white transition-colors">{i18n.t("Pomiń")}</button>
           </div>
           
           <h3 className="text-lg font-bold text-white mb-2">{step.title}</h3>

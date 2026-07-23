@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useVocabulary } from '../../context/VocabularyContext';
 import WordCard from './WordCard';
 import Card from '../ui/Card';
+import i18n from "i18next";
 
 const WordList: React.FC = () => {
   const { words, wordSets } = useVocabulary();
@@ -19,11 +20,11 @@ const WordList: React.FC = () => {
   return (
     <Card>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-        <h2 className="text-xl font-bold">My Vocabulary</h2>
+        <h2 className="text-xl font-bold">{i18n.t("My Vocabulary")}</h2>
         <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
           <input
             type="text"
-            placeholder="Search words..."
+            placeholder={i18n.t("Search words...")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full sm:w-48 px-4 py-2 bg-base-100 dark:bg-dark-base-100 border border-base-300 dark:border-dark-base-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm transition-all duration-200"
@@ -34,8 +35,8 @@ const WordList: React.FC = () => {
               onChange={(e) => setFilterSetId(e.target.value)}
               className="px-4 py-2 bg-base-100 dark:bg-dark-base-100 border border-base-300 dark:border-dark-base-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm transition-all duration-200"
             >
-              <option value="all">All Words</option>
-              <option value="global">Global Words</option>
+              <option value="all">{i18n.t("All Words")}</option>
+              <option value="global">{i18n.t("Global Words")}</option>
               {wordSets.map(set => (
                 <option key={set.id} value={set.id}>{set.name}</option>
               ))}

@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell } from 'recharts';
 import { BarChart3 } from 'lucide-react';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
+import i18n from "i18next";
 
 interface StatsProps {
   users: (User & { id: string })[];
@@ -85,8 +86,8 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
             <BarChart3 size={24} />
           </div>
           <div className="text-left">
-            <h3 className="font-bold text-lg">Statystyki graficzne</h3>
-            <p className="text-sm text-content-muted">Analizuj postępy i zaangażowanie</p>
+            <h3 className="font-bold text-lg">{i18n.t("Statystyki graficzne")}</h3>
+            <p className="text-sm text-content-muted">{i18n.t("Analizuj postępy i zaangażowanie")}</p>
           </div>
         </div>
         <svg 
@@ -106,7 +107,7 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
               value={selectedUserId || ''}
               onChange={(e) => setSelectedUserId(e.target.value || null)}
             >
-              <option value="">Wszyscy kursanci (Ogólne statystyki)</option>
+              <option value="">{i18n.t("Wszyscy kursanci (Ogólne statystyki)")}</option>
               {users.map(u => (
                 <option key={u.id} value={u.id}>
                   {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
@@ -118,7 +119,7 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
           {!selectedUserId ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="p-4 rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5">
-                <h4 className="font-bold text-center mb-4">Top 10: Najczęstsze logowania</h4>
+                <h4 className="font-bold text-center mb-4">{i18n.t("Top 10: Najczęstsze logowania")}</h4>
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={loginStats}>
@@ -132,7 +133,7 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
                 </div>
               </div>
               <div className="p-4 rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5">
-                <h4 className="font-bold text-center mb-4">Poziomy zaawansowania</h4>
+                <h4 className="font-bold text-center mb-4">{i18n.t("Poziomy zaawansowania")}</h4>
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -158,7 +159,8 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
           ) : (
             <div className="p-6 rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5">
               <h4 className="font-bold text-lg mb-6">
-                Postępy w ćwiczeniach (Ostatnie sesje): {selectedUser?.firstName || selectedUser?.username}
+                
+                                                  {i18n.t("Postępy w ćwiczeniach (Ostatnie sesje):")} {selectedUser?.firstName || selectedUser?.username}
               </h4>
               {isLoadingLogs ? (
                 <div className="h-64 flex items-center justify-center">
@@ -166,8 +168,9 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
                 </div>
               ) : userLogs.length === 0 ? (
                 <div className="h-64 flex items-center justify-center text-content-muted">
-                  Brak historii ćwiczeń dla tego kursanta.
-                </div>
+                  
+                                                            {i18n.t("Brak historii ćwiczeń dla tego kursanta.")}
+                                                          </div>
               ) : (
                 <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">

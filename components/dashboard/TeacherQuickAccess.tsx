@@ -5,6 +5,7 @@ import { User } from '../../types';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { BarChart2, History, User as UserIcon, ClipboardList, Search } from 'lucide-react';
+import i18n from "i18next";
 
 interface UserWithId extends User {
   id: string;
@@ -45,37 +46,37 @@ const TeacherQuickAccess: React.FC<TeacherQuickAccessProps> = ({ onNavigate, onS
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <h2 className="text-xl font-bold whitespace-nowrap text-primary">Panel nauczyciela</h2>
+        <h2 className="text-xl font-bold whitespace-nowrap text-primary">{i18n.t("Panel nauczyciela")}</h2>
         <div className="h-px bg-base-300 flex-1"></div>
       </div>
       
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card onClick={() => onNavigate('admin-stats')} className="cursor-pointer hover:border-primary/50 flex flex-col items-center justify-center p-6 gap-3 transition-colors liquid-glass-tile">
           <BarChart2 className="w-8 h-8 text-primary" />
-          <span className="font-bold text-sm md:text-base">Statystyki</span>
+          <span className="font-bold text-sm md:text-base">{i18n.t("Statystyki")}</span>
         </Card>
         <Card onClick={() => onNavigate('admin-history')} className="cursor-pointer hover:border-primary/50 flex flex-col items-center justify-center p-6 gap-3 transition-colors liquid-glass-tile">
           <History className="w-8 h-8 text-primary" />
-          <span className="font-bold text-sm md:text-base">Historia</span>
+          <span className="font-bold text-sm md:text-base">{i18n.t("Historia")}</span>
         </Card>
         <Card onClick={() => onNavigate('admin-profile')} className="cursor-pointer hover:border-primary/50 flex flex-col items-center justify-center p-6 gap-3 transition-colors liquid-glass-tile">
           <UserIcon className="w-8 h-8 text-primary" />
-          <span className="font-bold text-sm md:text-base">Profil kursanta</span>
+          <span className="font-bold text-sm md:text-base">{i18n.t("Profil kursanta")}</span>
         </Card>
         <Card onClick={() => onNavigate('admin-tests')} className="cursor-pointer hover:border-primary/50 flex flex-col items-center justify-center p-6 gap-3 transition-colors liquid-glass-tile">
           <ClipboardList className="w-8 h-8 text-primary" />
-          <span className="font-bold text-sm md:text-base">Testy</span>
+          <span className="font-bold text-sm md:text-base">{i18n.t("Testy")}</span>
         </Card>
       </div>
 
       <Card className="liquid-glass-tile p-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-          <h3 className="font-bold">Wybierz kursanta</h3>
+          <h3 className="font-bold">{i18n.t("Wybierz kursanta")}</h3>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-content-muted" />
             <input 
               type="text" 
-              placeholder="Szukaj kursanta..." 
+              placeholder={i18n.t("Szukaj kursanta...")} 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-base-100 border border-base-300 rounded-lg pl-9 pr-4 py-2 outline-none focus:border-primary/50 text-sm"
@@ -84,7 +85,7 @@ const TeacherQuickAccess: React.FC<TeacherQuickAccessProps> = ({ onNavigate, onS
         </div>
         
         {isLoading ? (
-          <div className="text-center py-4 text-content-muted">Ładowanie kursantów...</div>
+          <div className="text-center py-4 text-content-muted">{i18n.t("Ładowanie kursantów...")}</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
             {filteredUsers.map(u => (
@@ -109,7 +110,7 @@ const TeacherQuickAccess: React.FC<TeacherQuickAccessProps> = ({ onNavigate, onS
               </div>
             ))}
             {filteredUsers.length === 0 && (
-              <div className="col-span-full text-center py-4 text-content-muted">Nie znaleziono kursantów.</div>
+              <div className="col-span-full text-center py-4 text-content-muted">{i18n.t("Nie znaleziono kursantów.")}</div>
             )}
           </div>
         )}

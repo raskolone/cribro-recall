@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Bug, X, AlertCircle } from 'lucide-react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
+import i18n from "i18next";
 
 interface BugReporterProps {
   errorContext?: string;
@@ -65,7 +66,7 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
       <button 
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 z-50 bg-red-500 hover:bg-red-600 text-white p-3 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110"
-        title="Zgłoś problem"
+        title={i18n.t("Zgłoś problem")}
       >
         <Bug size={24} />
       </button>
@@ -77,8 +78,9 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
       <div className="bg-red-500/10 p-4 border-b border-white/10 flex justify-between items-center">
         <h3 className="font-bold flex items-center gap-2 text-red-400">
           <AlertCircle size={18} />
-          Zgłoś problem
-        </h3>
+          
+                            {i18n.t("Zgłoś problem")}
+                          </h3>
         <button 
           onClick={() => {
             setIsOpen(false);
@@ -92,17 +94,19 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
       
       {submitted ? (
         <div className="p-6 text-center text-green-400 font-medium">
-          Dziękujemy! Twoje zgłoszenie zostało wysłane.
-        </div>
+          
+                            {i18n.t("Dziękujemy! Twoje zgłoszenie zostało wysłane.")}
+                          </div>
       ) : (
         <form onSubmit={handleSubmit} className="p-4 space-y-4 bg-black/40">
           <p className="text-sm text-content-muted">
-            Coś nie działa poprawnie? Opisz nam co się stało, abyśmy mogli to naprawić.
-          </p>
+            
+                                      {i18n.t("Coś nie działa poprawnie? Opisz nam co się stało, abyśmy mogli to naprawić.")}
+                                    </p>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Opisz problem... (np. Przycisk X nie reaguje po kliknięciu)"
+            placeholder={i18n.t("Opisz problem... (np. Przycisk X nie reaguje po kliknięciu)")}
             className="w-full h-32 p-3 bg-black/50 border border-white/10 rounded-xl text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none resize-none placeholder:text-white/20"
             required
           />

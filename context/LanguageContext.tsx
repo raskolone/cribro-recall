@@ -89,6 +89,8 @@ const translations = {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+import i18n from '../i18n';
+
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [language, setLanguage] = useState<Language>('pl');
 
@@ -96,24 +98,29 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     const savedLang = localStorage.getItem('app_language') as Language;
     if (savedLang && (savedLang === 'pl' || savedLang === 'en')) {
       setLanguage(savedLang);
+      i18n.changeLanguage(savedLang);
     } else {
       const browserLang = navigator.language.startsWith('pl') ? 'pl' : 'en';
       setLanguage(browserLang);
+      i18n.changeLanguage(browserLang);
     }
   }, []);
 
   const handleSetLanguage = (lang: Language) => {
     setLanguage(lang);
     localStorage.setItem('app_language', lang);
+    i18n.changeLanguage(lang);
   };
 
   const t = (key: string): string => {
-    return translations[language][key as keyof typeof translations['en']] || key;
+    return translations[language][key as keyof typeof translations['en']] || i18n.t(key);
   };
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage, t }}>
-      {children}
+      <div key={language} style={{ display: 'contents' }}>
+        {children}
+      </div>
     </LanguageContext.Provider>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import i18n from "i18next";
 
 interface PronunciationMicProps {
   targetWord: string;
@@ -95,12 +96,12 @@ const PronunciationMic: React.FC<PronunciationMicProps> = ({ targetWord }) => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
               </svg>
-              <span className="text-xs font-mono text-content-muted">Analyzing pronunciation...</span>
+              <span className="text-xs font-mono text-content-muted">{i18n.t("Analyzing pronunciation...")}</span>
              </div>
           ) : (
              <div className="flex flex-col gap-1">
                <div className="flex justify-between items-center">
-                 <span className="text-xs font-bold text-primary">Analysis Result</span>
+                 <span className="text-xs font-bold text-primary">{i18n.t("Analysis Result")}</span>
                  <button onClick={() => setFeedback(null)} className="text-content-muted hover:text-white">
                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />

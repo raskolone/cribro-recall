@@ -12,6 +12,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { FREQUENCIES } from '../../constants';
 import { RevisionFrequency } from '../../types';
 import { LogOut, User } from 'lucide-react';
+import i18n from "i18next";
 
 const SettingsScreen: React.FC = () => {
     const { frequency, setFrequency, deleteAllWords, words } = useVocabulary();
@@ -69,8 +70,8 @@ const SettingsScreen: React.FC = () => {
                             <h2 className="text-xl font-bold text-white">{user?.username}</h2>
                             <p className="text-sm text-content-muted">{user?.username}</p>
                             <div className="mt-1 flex items-center gap-2">
-                                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-base-300 text-content-muted">Role: {user?.role}</span>
-                                {user?.level && <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-primary/20 text-primary">Level: {user.level}</span>}
+                                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-base-300 text-content-muted">{i18n.t("Role:")} {user?.role}</span>
+                                {user?.level && <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-primary/20 text-primary">{i18n.t("Level:")} {user.level}</span>}
                             </div>
                         </div>
                     </div>
@@ -117,27 +118,29 @@ const SettingsScreen: React.FC = () => {
                 </Card>
 
                 <Card>
-                    <h2 className="text-xl font-bold mb-4">Revision Program</h2>
+                    <h2 className="text-xl font-bold mb-4">{i18n.t("Revision Program")}</h2>
                     <div className="space-y-4">
                         <Select
                             id="frequency"
-                            label="Revision Frequency"
+                            label={i18n.t("Revision Frequency")}
                             options={FREQUENCIES}
                             value={frequency}
                             onChange={(e) => setFrequency(e.target.value as RevisionFrequency)}
                         />
                         <p className="text-sm text-content-muted">
-                            This setting controls how often you are prompted to revise words you have marked as difficult.
-                        </p>
+                            
+                                                        {i18n.t("This setting controls how often you are prompted to revise words you have marked as difficult.")}
+                                                    </p>
                     </div>
                 </Card>
 
                 <Card className="border-red-500/30 bg-red-500/5">
-                    <h2 className="text-xl font-bold mb-4 text-red-500">Danger Zone</h2>
+                    <h2 className="text-xl font-bold mb-4 text-red-500">{i18n.t("Danger Zone")}</h2>
                     <div className="space-y-4">
                         <p className="text-sm text-content-muted">
-                            Permanently delete all generated words from your account. This action cannot be undone.
-                        </p>
+                            
+                                                        {i18n.t("Permanently delete all generated words from your account. This action cannot be undone.")}
+                                                    </p>
                         <Button 
                             variant="danger" 
                             onClick={handleDeleteClick} 
@@ -145,7 +148,8 @@ const SettingsScreen: React.FC = () => {
                             disabled={words.length === 0}
                             className="w-full sm:w-auto"
                         >
-                            Clear All Words ({words.length})
+                            
+                                                        {i18n.t("Clear All Words (")}{words.length})
                         </Button>
                     </div>
                 </Card>
@@ -155,17 +159,20 @@ const SettingsScreen: React.FC = () => {
             {showDeleteModal && (
                 <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <Card className="w-full max-w-md shadow-2xl border-primary/20">
-                        <h3 className="text-xl font-bold mb-4 text-red-500">Confirm Deletion</h3>
+                        <h3 className="text-xl font-bold mb-4 text-red-500">{i18n.t("Confirm Deletion")}</h3>
                         <p className="mb-6 opacity-80">
-                            Are you sure you want to delete all {words.length} generated words? This action cannot be undone.
-                        </p>
+                            
+                                                        {i18n.t("Are you sure you want to delete all")} {words.length}  {i18n.t("generated words? This action cannot be undone.")}
+                                                    </p>
                         <div className="flex justify-end gap-3">
                             <Button onClick={() => setShowDeleteModal(false)} variant="secondary">
-                                Cancel
-                            </Button>
+                                
+                                                                {i18n.t("Cancel")}
+                                                            </Button>
                             <Button onClick={executeDeleteAll} variant="danger" isLoading={isDeleting}>
-                                Yes, Delete All
-                            </Button>
+                                
+                                                                {i18n.t("Yes, Delete All")}
+                                                            </Button>
                         </div>
                     </Card>
                 </div>

@@ -20,6 +20,7 @@ interface MatchCard {
 }
 
 import { useVocabulary } from '../../context/VocabularyContext';
+import i18n from "i18next";
 
 interface MatchExerciseProps {
   words: Word[];
@@ -136,10 +137,10 @@ const MatchExercise: React.FC<MatchExerciseProps> = ({ words, onExit, onComplete
   if (isFinished) {
     return (
       <div className="text-center p-8 bg-base-200/40 backdrop-blur-xl border border-white/20 rounded-lg shadow-2xl">
-        <h2 className="text-3xl font-bold mb-4 text-primary">Match Completed!</h2>
-        <p className="text-xl mb-6">Time: {timeElapsed} seconds</p>
+        <h2 className="text-3xl font-bold mb-4 text-primary">{i18n.t("Match Completed!")}</h2>
+        <p className="text-xl mb-6">{i18n.t("Time:")} {timeElapsed}  {i18n.t("seconds")}</p>
         <div className="flex justify-center gap-4">
-          <Button onClick={onExit}>Back to Dashboard</Button>
+          <Button onClick={onExit}>{i18n.t("Back to Dashboard")}</Button>
         </div>
       </div>
     );
@@ -148,11 +149,11 @@ const MatchExercise: React.FC<MatchExerciseProps> = ({ words, onExit, onComplete
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Match the Words</h2>
+        <h2 className="text-2xl font-bold">{i18n.t("Match the Words")}</h2>
         <div className="text-xl font-mono bg-base-200/50 px-4 py-2 rounded-lg backdrop-blur-sm border border-white/20">
           {Math.floor(timeElapsed / 60)}:{(timeElapsed % 60).toString().padStart(2, '0')}
         </div>
-        <Button onClick={onExit} variant="secondary">Exit</Button>
+        <Button onClick={onExit} variant="secondary">{i18n.t("Exit")}</Button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

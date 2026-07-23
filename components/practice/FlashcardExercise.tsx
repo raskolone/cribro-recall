@@ -6,6 +6,7 @@ import Button from '../ui/Button';
 import TTSButtons from '../flashcards/TTSButtons';
 
 import { useVocabulary } from '../../context/VocabularyContext';
+import i18n from "i18next";
 
 interface FlashcardExerciseProps {
   words: Word[];
@@ -83,12 +84,12 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
     const correctCount = Object.values(results).filter(Boolean).length;
     return (
       <div className="text-center p-8 bg-base-200/40 backdrop-blur-xl border border-white/20 rounded-lg shadow-2xl max-w-md mx-auto">
-          <h2 className="text-2xl font-bold mb-4">Flashcards Complete!</h2>
-          <p className="text-lg mb-2">You've reviewed all {shuffledWords.length} words.</p>
-          <p className="text-sm text-content-muted mb-6">Accuracy: {Math.round((correctCount / shuffledWords.length) * 100)}%</p>
+          <h2 className="text-2xl font-bold mb-4">{i18n.t("Flashcards Complete!")}</h2>
+          <p className="text-lg mb-2">{i18n.t("You've reviewed all")} {shuffledWords.length}  {i18n.t("words.")}</p>
+          <p className="text-sm text-content-muted mb-6">{i18n.t("Accuracy:")} {Math.round((correctCount / shuffledWords.length) * 100)}%</p>
           <div className="flex gap-4 justify-center">
-              <Button onClick={() => { setIsFinished(false); setCurrentIndex(0); setResults({}); }}>Review Again</Button>
-              <Button onClick={onExit} variant="secondary">Exit</Button>
+              <Button onClick={() => { setIsFinished(false); setCurrentIndex(0); setResults({}); }}>{i18n.t("Review Again")}</Button>
+              <Button onClick={onExit} variant="secondary">{i18n.t("Exit")}</Button>
           </div>
       </div>
     );
@@ -98,8 +99,8 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
     <div className="flex flex-col items-center p-4">
       <div className="w-full max-w-2xl">
         <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">Flashcards</h2>
-            <Button onClick={onExit} variant="ghost">Exit</Button>
+            <h2 className="text-2xl font-bold">{i18n.t("Flashcards")}</h2>
+            <Button onClick={onExit} variant="ghost">{i18n.t("Exit")}</Button>
         </div>
         
         <div
@@ -119,7 +120,8 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
         </div>
         
         <p className="text-center mt-4 text-gray-500">
-          Card {currentIndex + 1} of {shuffledWords.length}
+          
+                            {i18n.t("Card")} {currentIndex + 1}  {i18n.t("of")} {shuffledWords.length}
         </p>
 
         <div className="mt-6 grid grid-cols-1 gap-3">
@@ -157,7 +159,7 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
         </div>
 
         <div className="flex justify-between mt-8">
-          <Button variant="ghost" onClick={handlePrev} disabled={currentIndex === 0 || !!selectedAnswer}>Previous</Button>
+          <Button variant="ghost" onClick={handlePrev} disabled={currentIndex === 0 || !!selectedAnswer}>{i18n.t("Previous")}</Button>
         </div>
       </div>
     </div>

@@ -6,6 +6,7 @@ import { getAudioPronunciation } from '../../services/geminiService';
 import { playAudio } from '../../utils/audioUtils';
 import { VOICE_CONFIG } from '../../constants';
 import PronunciationMic from '../ui/PronunciationMic';
+import i18n from "i18next";
 
 interface WordCardProps {
   word: Word;
@@ -39,7 +40,7 @@ const WordCard: React.FC<WordCardProps> = ({ word }) => {
       <button
         onClick={() => deleteWord(word.id)}
         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600"
-        title="Delete word"
+        title={i18n.t("Delete word")}
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -55,16 +56,17 @@ const WordCard: React.FC<WordCardProps> = ({ word }) => {
             <div className="flex items-center space-x-2">
               <div className="flex items-center bg-primary/10 rounded-full pr-1 overflow-hidden">
                 <span className="px-3 text-xs font-bold text-primary border-r border-primary/20 hidden sm:block">
-                  Audio Pronunciation
-                </span>
+                  
+                                                    {i18n.t("Audio Pronunciation")}
+                                                  </span>
                 <AudioButton
-                  label="US"
+                  label={i18n.t("US")}
                   onClick={() => handlePlayAudio('American')}
                   isLoading={isPlaying === 'American'}
                   className="bg-transparent hover:bg-primary/20"
                 />
                 <AudioButton
-                  label="UK"
+                  label={i18n.t("UK")}
                   onClick={() => handlePlayAudio('British')}
                   isLoading={isPlaying === 'British'}
                   className="bg-transparent hover:bg-primary/20"
