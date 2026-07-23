@@ -29,7 +29,6 @@ const LessonHistoryScreen: React.FC = () => {
         const snapshot = await getDocs(q);
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonRecord));
         return data.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonRecord));
       };
 
       const fetchPracticeLogs = async () => {

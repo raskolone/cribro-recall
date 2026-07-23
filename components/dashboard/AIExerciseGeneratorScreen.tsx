@@ -42,12 +42,10 @@ import {
 } from 'lucide-react';
 
 
-const ACCENTS = ['en-US', 'en-GB', 'en-AU', 'en-SCT'];
+const ACCENTS = ['en-US', 'en-GB'];
 const ACCENT_FLAGS: Record<string, string> = {
   'en-US': '🇺🇸',
-  'en-GB': '🇬🇧',
-  'en-AU': '🇦🇺',
-  'en-SCT': '🏴󠁧󠁢󠁳󠁣󠁴󠁿'
+  'en-GB': '🇬🇧'
 };
 
 const DEFAULT_GENERATION_PROMPT = `ROLE:
@@ -2021,11 +2019,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                          <div className="font-medium text-primary/90 text-sm">
                            {singleEvaluationResults[activeSentenceIndex].correctTranslation}
                          </div>
-                         <div className="flex items-center justify-center gap-1.5 shrink-0 bg-black/30 p-1 rounded-md">
+                         <div className="flex items-center justify-center gap-1.5 shrink-0 bg-black/30 p-1 rounded-md mt-2">
                            <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-US')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("🇺🇸 Amerykański")} disabled={isPlayingAudio}>🇺🇸</button>
                            <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-GB')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("🇬🇧 Brytyjski")} disabled={isPlayingAudio}>🇬🇧</button>
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-AU')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("🇦🇺 Australijski")} disabled={isPlayingAudio}>🇦🇺</button>
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-SCT')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("🏴󠁧󠁢󠁳󠁣󠁴󠁿 Szkocki")} disabled={isPlayingAudio}>🏴󠁧󠁢󠁳󠁣󠁴󠁿</button>
                          </div>
                        </div>
 
