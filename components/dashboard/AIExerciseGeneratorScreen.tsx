@@ -458,7 +458,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
 
   // Settings states
-  const [activeTab, setActiveTab] = useState<'ai' | 'other'>(typeof window !== 'undefined' && window.innerWidth < 1024 ? 'other' : 'ai');
+  const [activeTab, setActiveTab] = useState<'ai' | 'other'>('ai');
   const [selectedSetId, setSelectedSetId] = useState<string>('all');
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
   const [level, setLevel] = useState<string>(user?.level || 'B1');
@@ -1192,7 +1192,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-base-300 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
-            ✨ {language === 'pl' ? 'Widok kursanta' : 'Student View'}
+            ✨ {isTeacher ? (language === 'pl' ? 'Widok kursanta' : 'Student View') : (language === 'pl' ? 'Panel ćwiczeniowy' : 'Practice Panel')}
           </h1>
           <p className="text-content-muted text-sm mt-1">
             {language === 'pl' 

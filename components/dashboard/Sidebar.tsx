@@ -45,18 +45,18 @@ const NavLink: React.FC<{
   <button id={id}
     onClick={onClick}
     title={isCollapsed ? (typeof children === 'string' ? children : undefined) : undefined}
-    className={`group w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'px-4'} py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ease-out border ${
+    className={`group w-full flex items-center ${isCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ease-out border ${
       isActive
         ? 'liquid-glass-button !rounded-xl scale-[1.02]'
         : 'text-content-muted border-transparent liquid-glass-hover'
     } active:scale-[0.97]`}
   >
     {icon && (
-      <div className={`flex items-center justify-center transition-transform duration-300 ${isCollapsed ? '' : 'mr-3'} group-hover:scale-110 group-hover:text-primary ${isActive ? 'scale-110 text-primary' : ''}`}>
+      <div className={`flex items-center justify-center transition-transform duration-300 ${isCollapsed ? 'mr-3 md:mr-0' : 'mr-3'} group-hover:scale-110 group-hover:text-primary ${isActive ? 'scale-110 text-primary' : ''}`}>
         {icon}
       </div>
     )}
-    {!isCollapsed && <span className="transition-all duration-300 group-hover:translate-x-0.5">{children}</span>}
+    <span className={`transition-all duration-300 group-hover:translate-x-0.5 ${isCollapsed ? 'md:hidden' : 'block'}`}>{children}</span>
   </button>
 );
 
@@ -114,12 +114,14 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
       )}
       
       <aside 
-        className={`fixed inset-x-0 top-0 h-auto max-h-[100vh] z-50 liquid-glass-panel !rounded-none !border-0 !border-b !border-white/10 flex flex-col transform transition-all duration-300 ease-in-out md:relative md:inset-y-0 md:left-0 md:h-screen md:!border-b-0 md:!border-r flex-shrink-0 ${
-          isOpen ? 'translate-y-0' : '-translate-y-full md:translate-y-0'
+        className={`fixed inset-y-0 left-0 h-full w-[280px] z-50 liquid-glass-panel !rounded-none !border-0 !border-r !border-white/10 flex flex-col transform transition-transform duration-300 ease-in-out md:relative md:h-screen flex-shrink-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         } ${isDesktopCollapsed ? 'md:w-20' : 'md:w-64'}`}
       >
-        <div className={`p-4 md:p-6 flex items-center ${isDesktopCollapsed ? 'justify-center' : 'justify-between'} border-b border-base-300 mb-6`}>
-          {!isDesktopCollapsed && <BrandLogo className="text-xl" showTagline={false} isCollapsed={false} />}
+        <div className={`p-4 md:p-6 flex items-center ${isDesktopCollapsed ? 'justify-between md:justify-center' : 'justify-between'} border-b border-base-300 mb-6`}>
+          <div className={`${isDesktopCollapsed ? 'md:hidden' : 'block'}`}>
+            <BrandLogo className="text-xl" showTagline={false} isCollapsed={false} />
+          </div>
           
           <div className="flex items-center">
             {onToggleCollapse && (
@@ -140,7 +142,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
         </div>
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           <NavLink id="tour-generator" icon={<LayoutDashboard size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('dashboard')} isActive={currentView === 'dashboard'}>
-              {language === 'pl' ? 'Panel główny' : 'Dashboard'}
+              {isTeacher ? (language === 'pl' ? 'Panel główny' : 'Dashboard') : (language === 'pl' ? 'Panel ćwiczeniowy' : 'Practice Panel')}
           </NavLink>
 
           {isTeacher && (
@@ -190,11 +192,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
             <NavLink icon={<Settings size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('settings')} isActive={currentView === 'settings'}>
               {language === 'pl' ? 'Ustawienia' : 'Settings'}
             </NavLink>
-            <button onClick={() => logout()} className={`w-full flex items-center ${isDesktopCollapsed ? 'justify-center px-0' : 'px-4'} py-2.5 text-sm font-medium rounded-xl transition-all duration-200 text-red-400 hover:bg-red-500/10`}>
-              <div className={`flex items-center justify-center ${isDesktopCollapsed ? '' : 'mr-3'}`}>
+            <button onClick={() => logout()} className={`group w-full flex items-center ${isDesktopCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-2.5 text-sm font-bold rounded-xl transition-all duration-200 text-red-400 hover:bg-red-500/10`}>
+              <div className={`flex items-center justify-center transition-transform duration-300 ${isDesktopCollapsed ? 'mr-3 md:mr-0' : 'mr-3'} group-hover:scale-110`}>
                 <LogOut size={20} />
               </div>
-              {!isDesktopCollapsed && <span>{language === 'pl' ? 'Wyloguj się' : 'Logout'}</span>}
+              <span className={`transition-all duration-300 group-hover:translate-x-0.5 ${isDesktopCollapsed ? 'md:hidden' : 'block'}`}>{language === 'pl' ? 'Wyloguj się' : 'Logout'}</span>
             </button>
           </div>
           

@@ -12,8 +12,8 @@ const steps = [
     icon: <Sparkles className="w-8 h-8 text-primary" />,
     title: { pl: 'Generator AI', en: 'AI Generator' },
     desc: { 
-      pl: 'W menu "Widok kursanta" (lub głównym ekranie) wygenerujesz ćwiczenia językowe, dostosowane do Twojego poziomu i celów.',
-      en: 'In the "Student View" (or main screen) you can generate language exercises tailored to your level and goals.'
+      pl: 'W panelu ćwiczeniowym wygenerujesz ćwiczenia językowe, dostosowane do Twojego poziomu i celów.',
+      en: 'In the practice panel you can generate language exercises tailored to your level and goals.'
     }
   },
   {
