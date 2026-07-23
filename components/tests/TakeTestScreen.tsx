@@ -115,6 +115,9 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
                   <div className="text-sm font-bold text-content-muted mb-2 uppercase tracking-wider">
                     {q.type === 'multiple_choice' ? 'Wielokrotny wybór' : q.type === 'find_mistake' ? 'Wybór poprawnego zdania' : q.type === 'fill_in_blank' ? 'Luki' : q.type === 'matching' ? 'Łączenie w pary' : q.type === 'writing' ? 'Writing' : 'Tłumaczenie'}
                   </div>
+                  {q.instruction && (
+                    <div className="font-bold text-primary text-lg mb-2">{q.instruction}</div>
+                  )}
                   <div className="font-medium text-xl leading-relaxed">{q.prompt}</div>
                   {q.hint && <div className="mt-3 text-sm text-content-muted/80 italic flex items-center gap-2"><span>💡</span> Wskazówka: {q.hint}</div>}
                 </div>

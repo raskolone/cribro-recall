@@ -202,6 +202,7 @@ export type TestQuestionType = 'multiple_choice' | 'fill_in_blank' | 'translatio
 export interface TestQuestion {
   id: string;
   type: TestQuestionType;
+  instruction?: string;
   prompt: string; // The question or sentence to translate
   options?: string[]; // For multiple choice
   correctAnswer: string; 

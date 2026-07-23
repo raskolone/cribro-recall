@@ -1,12 +1,9 @@
-with open('components/tests/TakeTestScreen.tsx', 'r') as f:
-    lines = f.readlines()
+import re
+with open('components/admin/AdminTestGenerator.tsx', 'r') as f:
+    text = f.read()
 
-new_lines = []
-skip = False
-for i, line in enumerate(lines):
-    if "Uwaga: Funkcja wklejania jest zablokowana w tym zadaniu." in line:
-        # found the duplicate block
-        pass
-    new_lines.append(line)
+text = re.sub(r'\s*\);\n\};\n\s*\)\}\n\s*</div>\n\s*\);\n\};\nexport default AdminTestGenerator;', 
+              '\n        )}\n      </div>\n    </div>\n  );\n};\nexport default AdminTestGenerator;', text)
 
-# Wait, let me just reconstruct the whole file because it's completely messed up.
+with open('components/admin/AdminTestGenerator.tsx', 'w') as f:
+    f.write(text)

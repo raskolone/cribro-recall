@@ -138,16 +138,29 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
         </div>
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           <NavLink id="tour-generator" icon={<LayoutDashboard size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('dashboard')} isActive={currentView === 'dashboard'}>
-              {isTeacher ? (language === 'pl' ? 'Panel główny' : 'Dashboard') : (language === 'pl' ? 'Panel ćwiczeniowy' : 'Practice Panel')}
+              {isTeacher ? (language === 'pl' ? 'Panel nauczyciela' : 'Dashboard') : (language === 'pl' ? 'Panel kursanta' : 'Practice Panel')}
           </NavLink>
 
           {isTeacher && (
             <NavLink icon={<Sparkles size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('ai-generator')} isActive={currentView === 'ai-generator'}>
-                {language === 'pl' ? 'Widok kursanta' : 'Student View'}
+                {language === 'pl' ? 'Panel kursanta' : 'Student View'}
             </NavLink>
           )}
 
-          {isAdmin && (
+          
+          <NavLink id="tour-flashcards" icon={<Library size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('flashcard-sets')} isActive={currentView === 'flashcard-sets'}>
+              {language === 'pl' ? 'Moje słownictwo' : 'My Word Lists'}
+          </NavLink>
+
+          <NavLink id="tour-history" icon={<History size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('lesson-history')} isActive={currentView === 'lesson-history'}>
+              {language === 'pl' ? 'Historia lekcji' : 'Lesson History'}
+          </NavLink>
+          <NavLink icon={<ClipboardList size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('tests')} isActive={currentView === 'tests'}>
+              {language === 'pl' ? 'Testy' : 'Tests'}
+          </NavLink>
+          
+          <div className="pt-4 mt-4 border-t border-base-300">
+            {isAdmin && (
             <div className="relative">
               <NavLink 
                 icon={
@@ -166,26 +179,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
                 isActive={currentView === 'admin-debugging'}
               >
                   <span className={newBugsCount > 0 ? "text-red-400 font-bold" : ""}>
-                    {language === 'pl' ? 'Zgłoszenia błędów' : 'Debugging'}
+                    {language === 'pl' ? 'Zgłoszone błędy' : 'Reported bugs'}
                     {newBugsCount > 0 && ` (${newBugsCount})`}
                   </span>
               </NavLink>
             </div>
           )}
-
-          <NavLink id="tour-flashcards" icon={<Library size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('flashcard-sets')} isActive={currentView === 'flashcard-sets'}>
-              {language === 'pl' ? 'Słownictwo' : 'My Word Lists'}
-          </NavLink>
-
-          <NavLink id="tour-history" icon={<History size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('lesson-history')} isActive={currentView === 'lesson-history'}>
-              {language === 'pl' ? 'Historia lekcji' : 'Lesson History'}
-          </NavLink>
-          <NavLink icon={<ClipboardList size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('tests')} isActive={currentView === 'tests'}>
-              {language === 'pl' ? 'Testy' : 'Tests'}
-          </NavLink>
-          
-          <div className="pt-4 mt-4 border-t border-base-300">
-            <NavLink icon={<Settings size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('settings')} isActive={currentView === 'settings'}>
+<NavLink icon={<Settings size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('settings')} isActive={currentView === 'settings'}>
               {language === 'pl' ? 'Ustawienia' : 'Settings'}
             </NavLink>
             <button onClick={() => logout()} className={`group relative z-10 hover:z-20 w-full flex items-center ${isDesktopCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border border-transparent text-red-400 hover:bg-red-500/10 active:scale-[0.98]`}>

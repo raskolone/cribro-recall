@@ -9,10 +9,13 @@ import { useAuth } from '../../context/AuthContext';
 import { MessageSquare, BookOpen, Calendar, ChevronRight, CheckCircle, X, ChevronUp, ChevronDown, Edit2 } from 'lucide-react';
 
 interface AdminTestGeneratorProps {
-  user: User;
+  user?: any;
+  users?: any[];
 }
 
-const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
+const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUser, users = [] }) => {
+  const [selectedUserId, setSelectedUserId] = useState<string>(initialUser?.id || '');
+  const user = initialUser || users.find(u => u.id === selectedUserId);
   const [lessons, setLessons] = useState<LessonRecord[]>([]);
   const [selectedLessons, setSelectedLessons] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
@@ -20,7 +23,8 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
   const [isModifying, setIsModifying] = useState<boolean>(false);
   const [tasksCount, setTasksCount] = useState<number>(10);
   const [attemptsLimit, setAttemptsLimit] = useState<number>(1);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(['multiple_choice', 'fill_in_blank', 'translation', 'matching', 'writing', 'find_mistake']);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [writingTopic, setWritingTopic] = useState('');
 
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,7 +91,6 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
   
   const [testTitle, setTestTitle] = useState('');
   const [scope, setScope] = useState('');
-  const [instructions, setInstructions] = useState('');
   const [dueDate, setDueDate] = useState('');
   
   const [isGenerating, setIsGenerating] = useState(false);
@@ -98,12 +101,11 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
   const [tests, setTests] = useState<StudentTest[]>([]);
 
   useEffect(() => {
-    fetchLessons();
-    fetchTests();
-  }, [user.id]);
+    if(user?.id) { fetchLessons(); fetchTests(); }
+  }, [user?.id]);
 
   const fetchLessons = async () => {
-    if (!user.id) return;
+    if (!user?.id) return;
     try {
       const q = query(collection(db, `users/${user.id}/lessonRecords`));
       const snap = await getDocs(q);
@@ -116,7 +118,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
   };
 
   const fetchTests = async () => {
-    if (!user.id) return;
+    if (!user?.id) return;
     try {
       const q = query(collection(db, `users/${user.id}/tests`));
       const snap = await getDocs(q);
@@ -131,10 +133,8 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
   const handleGenerate = async () => {
     let currentScope = scope;
     if (selectedTypes.includes('writing')) {
-      const topic = window.prompt("Wybrałeś zadanie Writing. Podaj temat lub instrukcje dla writingu:");
-      if (!topic) return alert("Temat writingu jest wymagany, aby wygenerować test z tym typem zadania.");
-      currentScope = scope + "\n\n[TEMAT WRITINGU]: " + topic;
-      setScope(currentScope);
+      if (!writingTopic) return alert("Temat writingu jest wymagany, aby wygenerować test z tym typem zadania.");
+      currentScope = scope + "\n\n[TEMAT WRITINGU I WYMOGI (np. limit znaków)]: " + writingTopic;
     }
     if (!testTitle) return alert("Podaj tytuł testu");
     if (selectedTypes.length === 0) return alert("Wybierz przynajmniej jeden typ zadań");
@@ -208,7 +208,6 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
         studentId: user.id,
         title: testTitle,
         scope,
-        instructions,
         dueDate,
         createdAt: new Date().toISOString(),
         status: 'pending',
@@ -223,7 +222,6 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
       setIsPreviewModalOpen(false);
       setTestTitle('');
       setScope('');
-      setInstructions('');
       setDueDate('');
       setSelectedLessons([]);
       fetchTests();
@@ -264,8 +262,49 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
     );
   };
 
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+    if (sourceIndex === targetIndex || isNaN(sourceIndex) || !generatedQuestions) return;
+    
+    const newQuestions = [...generatedQuestions];
+    const [removed] = newQuestions.splice(sourceIndex, 1);
+    newQuestions.splice(targetIndex, 0, removed);
+    setGeneratedQuestions(newQuestions);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
   return (
     <div className="space-y-8">
+      {(!initialUser && users.length > 0) && (
+        <Card className="p-6 bg-base-200/50">
+          <label className="block text-sm font-bold text-content-muted mb-2">Wybierz kursanta</label>
+          <select
+            value={selectedUserId}
+            onChange={(e) => setSelectedUserId(e.target.value)}
+            className="w-full bg-base-100 border border-white/10 rounded-xl p-3 outline-none focus:border-primary/50 text-white font-medium"
+          >
+            <option value="">-- Wybierz kursanta --</option>
+            {users.map(u => (
+              <option key={u.id} value={u.id}>
+                {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
+              </option>
+            ))}
+          </select>
+        </Card>
+      )}
+      {!user ? (
+         <div className="text-center p-8 text-content-muted">Proszę wybrać kursanta, aby wygenerować test.</div>
+      ) : (
+        <div className="space-y-8">
       {/* Lesson Selection Modal */}
       {isLessonModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-6 overflow-y-auto">
@@ -376,12 +415,19 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
 
               <div className="p-6 overflow-y-auto flex-1 space-y-6">
                 {generatedQuestions.map((q, i) => (
-                  <div key={q.id} className="p-6 bg-base-200/40 backdrop-blur-md border border-white/10 rounded-2xl space-y-6 relative group transition-all">
+                  <div 
+                    key={q.id} 
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, i)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, i)}
+                    className="p-4 bg-base-200/40 backdrop-blur-md border border-white/10 rounded-xl space-y-4 relative group transition-all cursor-grab active:cursor-grabbing hover:border-primary/50"
+                  >
                     <div className="flex items-start gap-4 md:gap-6">
                       <div className="font-bold text-primary text-lg w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                         {i + 1}
                       </div>
-                      <div className="flex-1 space-y-6 w-full overflow-hidden">
+                      <div className="flex-1 space-y-3 w-full overflow-hidden">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div className="text-sm font-bold text-content-muted uppercase tracking-wider">
                             {q.type === 'multiple_choice' ? 'Wielokrotny wybór' : q.type === 'fill_in_blank' ? 'Luki' : q.type === 'matching' ? 'Łączenie w pary' : q.type === 'writing' ? 'Writing' : q.type === 'find_mistake' ? 'Poprawne zdanie' : 'Tłumaczenie'}
@@ -398,11 +444,25 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
                         
                         <div>
                           <label className="block text-xs font-bold text-content-muted mb-2 uppercase tracking-wider">Treść Pytania</label>
-                          <textarea
-                            value={q.prompt}
+                          <div className="space-y-2">
+                            {q.instruction && (
+                              <input 
+                                value={q.instruction}
+                                onChange={(e) => {
+                                  const newQ = [...generatedQuestions];
+                                  newQ[i].instruction = e.target.value;
+                                  setGeneratedQuestions(newQ);
+                                }}
+                                className="w-full bg-base-100 border border-white/10 rounded-lg p-2 text-primary text-sm font-bold outline-none focus:border-primary/50"
+                                placeholder="Polecenie"
+                              />
+                            )}
+                            <textarea
+                              value={q.prompt}
                             onChange={(e) => updateQuestionPrompt(i, e.target.value)}
-                            className="w-full bg-base-100 border border-white/10 rounded-xl p-4 text-white text-lg font-medium outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all resize-y min-h-[80px]"
+                            className="w-full bg-base-100 border border-white/10 rounded-lg p-3 text-white text-base outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all resize-y min-h-[60px]"
                           />
+                          </div>
                         </div>
                         
                         {(q.type === 'multiple_choice' || q.type === 'find_mistake') && q.options && (
@@ -437,7 +497,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
                         )}
 
                         {q.type !== 'writing' && (
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-4 p-4 rounded-xl bg-primary/5 border border-primary/10">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
                             <span className="text-xs font-bold uppercase text-primary tracking-wider shrink-0">Prawidłowa Odpowiedź:</span>
                             <span className="text-base font-medium text-white">{q.correctAnswer}</span>
                           </div>
@@ -513,20 +573,6 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
               />
             </div>
             
-            <div>
-              <label className="block text-sm font-bold text-content-muted mb-1">Źródła materiału do testu</label>
-              </div>
-            
-            <div>
-              <label className="block text-sm font-bold text-content-muted mb-1">Instrukcje dla kursanta (opcjonalne)</label>
-              <textarea
-                value={instructions}
-                onChange={e => setInstructions(e.target.value)}
-                className="w-full bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 min-h-[80px]"
-                placeholder="np. Czas na wykonanie testu to 60 minut..."
-              />
-            </div>
-
             <div>
               <label className="block text-sm font-bold text-content-muted mb-1">Źródła materiału do testu</label>
               <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3">
@@ -659,6 +705,20 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
                   </label>
                 )})}
               </div>
+              {selectedTypes.includes('writing') && (
+                <div className="mt-6 p-4 rounded-xl border border-primary/20 bg-primary/5">
+                  <label className="block text-sm font-bold text-primary mb-2">Temat writingu i wymagania (np. limit znaków)</label>
+                  <textarea
+                    value={writingTopic}
+                    onChange={e => setWritingTopic(e.target.value)}
+                    className="w-full bg-base-100 border border-white/10 rounded-lg p-3 outline-none focus:border-primary/50 text-white min-h-[100px]"
+                    placeholder="Podaj temat, instrukcje i limit znaków dla zadania otwartego..."
+                  />
+                  <p className="text-xs text-primary/70 mt-2">
+                    Uwaga: Zadanie to będzie miało zablokowane funkcje kopiowania, wklejania oraz autokorekty w panelu kursanta.
+                  </p>
+                </div>
+              )}
             </div>
 
             <Button onClick={handleGenerate} isLoading={isGenerating} className="w-full" disabled={!testTitle || selectedTypes.length === 0}>
@@ -702,7 +762,8 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user }) => {
         </div>
       </div>
     </div>
+      )}
+    </div>
   );
 };
-
 export default AdminTestGenerator;

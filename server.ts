@@ -6,6 +6,53 @@ import { getAuth } from "firebase-admin/auth";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
 
+async function generateContentWithRetry(aiClient: any, contents: any, config: any) {
+  const models = ['gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-3.1-pro-preview'];
+  let lastError;
+  
+  for (const model of models) {
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        console.log(`[Server] Attempting generation with ${model}... (retries left: ${retries})`);
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("Request timed out after 90 seconds")), 90000);
+        });
+        
+        const apiCall = aiClient.models.generateContent({
+          model,
+          contents,
+          config
+        });
+        
+        const response = await Promise.race([apiCall, timeoutPromise]);
+        return response;
+      } catch (err: any) {
+        console.warn(`[Server] Model ${model} failed:`, err?.status || err?.message);
+        lastError = err;
+        
+        if (err?.message?.includes("timed out")) {
+          break; // Next model immediately on timeout
+        } else if (String(err?.status) === "503" || String(err?.status) === "429" || err?.message?.includes("503") || err?.message?.includes("429")) {
+          retries--;
+          if (retries > 0) {
+            console.log(`[Server] Waiting before retry...`);
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
+          }
+        } else if (String(err?.status) === "404" || (String(err?.status) === "400" && err?.message?.includes("not found"))) {
+          break; // Next model
+        } else {
+          break; // Try next model on unknown errors
+        }
+      }
+    }
+  }
+  throw lastError;
+}
+
+
 // Wait, I need VITE_FIREBASE_CONFIG for the project ID.
 // Wait, process.env is available here but VITE_ variables are loaded by Vite.
 // However `dot-env` or manually parsing process.env.VITE_FIREBASE_CONFIG.
@@ -170,15 +217,16 @@ ${allLessonsContext}
 ${lessonContext}
 4. Wygeneruj DOKŁADNIE ${tasksCount || 10} zadań.
 5. Użyj TYLKO następujących typów zadań wybranych przez nauczyciela: ${selectedTypes ? selectedTypes.join(', ') : 'multiple_choice, fill_in_blank, translation'}.
+   ZABRANIA SIĘ TWORZENIA ZADAŃ INNEGO TYPU. Jeśli na liście nie ma 'writing', kategorycznie nie twórz zadań 'writing'.
    Dozwolone typy: 
    - multiple_choice (wielokrotnego wyboru),
    - fill_in_blank (wpisywanie brakujących elementów),
    - translation (tłumaczenie z polskiego na angielski),
    - matching (łączenie w pary - w opcjach podaj pary do złączenia oddzielone znakiem =, a w correctAnswer napisz np. 'połączone'),
    - writing (zadanie polegające na dłuższej wypowiedzi pisemnej na podstawie zagadnień, bez correctAnswer, uczeń pisze własny tekst).
-   - find_mistake (znalezienie błędu w zdaniu. W polu options wygeneruj dokładnie 4 wersje tego samego zdania, z czego TYLKO JEDNA jest całkowicie poprawna pod względem gramatycznym i leksykalnym, a w polu correctAnswer podaj DOKŁADNIE tekst tej jednej poprawnej wersji).
-6. WAŻNE: W polu "prompt" KAŻDEGO zadania ZAWSZE zamieść wyraźne polecenie dla kursanta (np. "Wybierz prawidłową opcję:", "Napisz krótką historię o swoich ostatnich wakacjach używając czasu Past Simple:").
-7. Jeśli jednym z wybranych typów jest "writing", upewnij się, że jedno z zadań ma type "writing" i wymaga napisania dłuższego tekstu opartego na zagadnieniach z wybranych lekcji.
+   - find_mistake (znalezienie błędu w zdaniu. W polu options wygeneruj 4 wersje zdania, tylko JEDNA jest w 100% poprawna, w correctAnswer - dokładna poprawna wersja).
+6. WAŻNE: W polu "instruction" KAŻDEGO zadania ZAWSZE zamieść wyraźne polecenie w języku polskim (np. "Wybierz prawidłową opcję:", "Uzupełnij luki w zdaniu:"). W polu "prompt" umieść właściwe zadanie (np. zdanie z luką, zdanie do przetłumaczenia).
+7. Jeśli jednym z wybranych typów jest "writing", upewnij się, że jedno z zadań to "writing". Jeśli nie - kategorycznie nie.
 8. Zdania mają być autentyczne i naturalne, by kursant widział ich praktyczne zastosowanie.
 
 Tytuł testu: ${testTitle}
@@ -222,6 +270,7 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
           type: Type.OBJECT,
           properties: {
             type: { type: Type.STRING, enum: ["multiple_choice", "fill_in_blank", "translation", "matching", "writing", "find_mistake"], description: "Type of the question" },
+            instruction: { type: Type.STRING, description: "Clear instruction in Polish, e.g. \"Uzupełnij luki:\"" },
             prompt: { type: Type.STRING, description: "The question or the sentence to translate/fill" },
             options: { 
               type: Type.ARRAY, 
@@ -235,29 +284,12 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
         }
       };
 
-      let response;
-      try {
-        response = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
-          contents: contents,
-          config: {
-            responseMimeType: 'application/json',
-            responseSchema: schema,
-            temperature: 0.4
-          }
-        });
-      } catch (err) {
-        console.warn("gemini-3.5-flash failed in test generator, falling back to gemini-3.1-flash-lite", err);
-        response = await ai.models.generateContent({
-          model: 'gemini-3.1-flash-lite',
-          contents: contents,
-          config: {
-            responseMimeType: 'application/json',
-            responseSchema: schema,
-            temperature: 0.4
-          }
-        });
-      }
+            let response = await generateContentWithRetry(ai, contents, {
+        responseMimeType: 'application/json',
+        responseSchema: schema,
+        temperature: 0.4
+      });
+        
       
       let parsed = [];
       try {
@@ -366,73 +398,35 @@ Zwróć wynik jako JSON z tablicą obiektów o polu "lessons". Każdy obiekt lek
 
 Bądź dokładny. Wykorzystaj całą dostępną treść, nie pomijaj lekcji.`;
 
-      let response;
-      try {
-        response = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
-          contents: contents,
-          config: {
-            systemInstruction: sysInstruction,
-            responseMimeType: "application/json",
-            responseSchema: {
+            const schema = {
+        type: Type.OBJECT,
+        properties: {
+          lessons: {
+            type: Type.ARRAY,
+            items: {
               type: Type.OBJECT,
               properties: {
-                lessons: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      date: { type: Type.STRING },
-                      studentId: { type: Type.STRING },
-                      lessonTopic: { type: Type.STRING },
-                      revisionNotes: { type: Type.STRING },
-                      vocabularyText: { type: Type.STRING },
-                      studentSpeaking: { type: Type.STRING },
-                      thingsToImprove: { type: Type.STRING },
-                      suggestedFollowUp: { type: Type.STRING },
-                    },
-                    required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText"]
-                  }
-                }
+                date: { type: Type.STRING },
+                studentId: { type: Type.STRING },
+                lessonTopic: { type: Type.STRING },
+                revisionNotes: { type: Type.STRING },
+                vocabularyText: { type: Type.STRING },
+                studentSpeaking: { type: Type.STRING },
+                thingsToImprove: { type: Type.STRING },
+                suggestedFollowUp: { type: Type.STRING },
               },
-              required: ["lessons"]
+              required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText"]
             }
           }
-        });
-      } catch (err) {
-        console.warn("gemini-3.5-flash failed, falling back to gemini-3.1-flash-lite", err);
-        response = await ai.models.generateContent({
-          model: 'gemini-3.1-flash-lite',
-          contents: contents,
-          config: {
-            systemInstruction: sysInstruction,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                lessons: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      date: { type: Type.STRING },
-                      studentId: { type: Type.STRING },
-                      lessonTopic: { type: Type.STRING },
-                      revisionNotes: { type: Type.STRING },
-                      vocabularyText: { type: Type.STRING },
-                      studentSpeaking: { type: Type.STRING },
-                      thingsToImprove: { type: Type.STRING },
-                      suggestedFollowUp: { type: Type.STRING },
-                    },
-                    required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText"]
-                  }
-                }
-              },
-              required: ["lessons"]
-            }
-          }
-        });
-      }
+        },
+        required: ["lessons"]
+      };
+      
+      let response = await generateContentWithRetry(ai, contents, {
+        systemInstruction: sysInstruction,
+        responseMimeType: "application/json",
+        responseSchema: schema
+      });
 
       const responseText = response.text;
       if (!responseText) throw new Error("No response from Gemini");
@@ -536,53 +530,25 @@ Zwróć wynik jako JSON z poniższymi polami:
 - suggestedFollowUp (string, Ustalenia i najlepsze tematy na kolejną lekcję, po polsku)
 `;
 
-      let response;
-      try {
-        response = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
-          contents: promptContext,
-          config: {
-            systemInstruction: sysInstruction,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                studentId: { type: Type.STRING },
-                lessonTopic: { type: Type.STRING },
-                revisionNotes: { type: Type.STRING },
-                vocabularyText: { type: Type.STRING },
-                studentSpeaking: { type: Type.STRING },
-                thingsToImprove: { type: Type.STRING },
-                suggestedFollowUp: { type: Type.STRING },
-              },
-              required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
-            }
-          }
-        });
-      } catch(err) {
-        console.warn("gemini-3.5-flash failed, falling back to gemini-3.1-flash-lite", err);
-        response = await ai.models.generateContent({
-          model: 'gemini-3.1-flash-lite',
-          contents: promptContext,
-          config: {
-            systemInstruction: sysInstruction,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                studentId: { type: Type.STRING },
-                lessonTopic: { type: Type.STRING },
-                revisionNotes: { type: Type.STRING },
-                vocabularyText: { type: Type.STRING },
-                studentSpeaking: { type: Type.STRING },
-                thingsToImprove: { type: Type.STRING },
-                suggestedFollowUp: { type: Type.STRING },
-              },
-              required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
-            }
-          }
-        });
-      }
+            const schema = {
+        type: Type.OBJECT,
+        properties: {
+          studentId: { type: Type.STRING },
+          lessonTopic: { type: Type.STRING },
+          revisionNotes: { type: Type.STRING },
+          vocabularyText: { type: Type.STRING },
+          studentSpeaking: { type: Type.STRING },
+          thingsToImprove: { type: Type.STRING },
+          suggestedFollowUp: { type: Type.STRING },
+        },
+        required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
+      };
+
+      let response = await generateContentWithRetry(ai, promptContext, {
+        systemInstruction: sysInstruction,
+        responseMimeType: "application/json",
+        responseSchema: schema
+      });
 
       const text = response.text;
       if (!text) throw new Error("No response from Gemini");
@@ -626,19 +592,15 @@ Zwróć JSON z polami:
 - feedback (string, Twój szczegółowy feedback dla ucznia, z wylistowanymi błędami i poradami)
 `;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              score: { type: Type.NUMBER },
-              feedback: { type: Type.STRING }
-            },
-            required: ["score", "feedback"]
-          }
+            const response = await generateContentWithRetry(ai, prompt, {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            score: { type: Type.NUMBER },
+            feedback: { type: Type.STRING }
+          },
+          required: ["score", "feedback"]
         }
       });
       

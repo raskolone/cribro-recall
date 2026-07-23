@@ -56,14 +56,14 @@ if (!process.env.API_KEY) {
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const generateContentWithFallback = async (params: any) => {
-  const models = ["gemini-3.5-flash", "gemini-3.1-flash-lite"];
+  const models = ["gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-3.1-pro-preview"];
   let lastError;
   for (const model of models) {
     try {
       console.log(`Attempting generation with ${model}...`);
       
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Request timed out after 15 seconds")), 15000);
+        setTimeout(() => reject(new Error("Request timed out after 90 seconds")), 90000);
       });
       
       const apiCall = ai.models.generateContent({
@@ -77,9 +77,9 @@ const generateContentWithFallback = async (params: any) => {
       console.warn(`Model ${model} failed:`, e?.status || e?.message);
       lastError = e;
       if (e?.message?.includes("timed out")) continue;
-      if (e?.status === 404 || e?.status === 503 || e?.status === 429) continue;
-      if (e?.status === 400 && e?.message?.includes("not found")) continue;
-      if (e?.status === 400) throw e;
+      if (String(e?.status) === "404" || String(e?.status) === "503" || String(e?.status) === "429" || e?.message?.includes("503") || e?.message?.includes("429")) continue;
+      if (String(e?.status) === "400" && e?.message?.includes("not found")) continue;
+      if (String(e?.status) === "400") throw e;
     }
   }
   throw lastError;
