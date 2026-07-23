@@ -50,9 +50,41 @@ const ACCENT_FLAGS: Record<string, string> = {
   'en-SCT': '🏴󠁧󠁢󠁳󠁣󠁴󠁿'
 };
 
-const DEFAULT_GENERATION_PROMPT = `Jesteś wirtualnym nauczycielem języka angielskiego. Twoim absolutnym priorytetem jest personalizacja UX - wygenerowane zdania muszą być maksymalnie dopasowane do ucznia.\n\n[START KONTEKST UCZNIA]\n\nProfil (hobby, praca, wiek): \${userProfile || "Brak danych"}\n\nNajczęstsze błędy: \${weaknessesList || "Brak zidentyfikowanych błędów"}\n[KONIEC KONTEKST UCZNIA]\n\nWygeneruj dokładnie [NUM_SENTENCES] unikalnych zdań po polsku do przetłumaczenia na język angielski, na wybranym poziomie CEFR.\n\nZASADY TWORZENIA:\n\nPobierz dostarczony zestaw słówek z historii lekcji i zbuduj na ich podstawie zdania. Nawiązuj do tematu lekcji.\n\nWykorzystaj Profil kursanta, aby zdania były angażujące i osobiście interesujące.\n\nPRIORYTET: Skonstruuj zdania w taki sposób, aby WYMUSIĆ na uczniu użycie gramatyki/słownictwa z listy "Najczęstsze błędy" (jeśli występuje).\n\nWAŻNE DLA UKŁADANKI: Buduj zdania, które naturalnie dzielą się na pełne frazy i bloki znaczeniowe (np. podmiot + orzeczenie, wyrażenia przyimkowe), co ułatwi ich późniejsze pocięcie na logiczne "kostki" w ćwiczeniu.\n\nZapewnij krótką wskazówkę (po polsku) dla każdego zdania, ułatwiającą tłumaczenie.`;
+const DEFAULT_GENERATION_PROMPT = `ROLE:
+You are an expert English Language Content Creator specializing in adaptive, personalized language practice.
 
-const DEFAULT_EVALUATION_PROMPT = `Przeanalizuj i oceń tłumaczenie angielskie wykonane przez ucznia dla każdego zdania po polsku. Zwróć uwagę na poprawność gramatyczną, słownictwo, idiomy i naturalność wypowiedzi.\n\n[START KONTEKST BŁĘDÓW]\nMiej szczególną uwagę na te historyczne błędy ucznia: \${weaknessesList || "Brak danych"}. Jeśli uczeń ponownie popełnił błąd z tej listy, zaznacz to w swoim feedbacku, przypominając mu o tym problemie.\n[KONIEC KONTEKST BŁĘDÓW]\n\nWskaż mocne strony, alternatywne poprawne opcje i precyzyjnie wyjaśnij ewentualne błędy po polsku.\nDla każdego zdania określ procentowy wynik poprawności (score) od 0 do 100.`;
+TASK:
+Generate natural, highly realistic sentences using the provided list of target vocabulary from the student's personal word list or lesson history. Adapt the tone and topic naturally to match the vocabulary context.
+
+RULES FOR SENTENCE GENERATION:
+- CONTEXT: Sentences MUST sound like real-world communication relevant to the provided vocabulary (e.g., casual, technical, business, everyday conversation).
+- NATURALNESS: Never force multiple target words into a single sentence if it sounds awkward. Use MAXIMUM 1 target word per sentence.
+- GRAMMAR & STYLE: Use modern, natural English. Avoid academic, bizarre, or forced phrasing.
+- VARIETY: Use diverse sentence structures (mix conditionals, modal verbs, different tenses, and sentence lengths).
+- LOGIC & REALISM: Sentences MUST be practical, logical, and make total sense in practice. Do NOT forcefully combine unrelated student profile keywords into a sentence if it compromises natural logic and realism.
+
+[SPERSONALIZOWANE WSKAZÓWKI I PROMPT DLA KURSANTA]
+Dla tego kursanta obowiązują następujące spersonalizowane wskazówki:
+- Spersonalizowany Prompt Kursanta: \${userAiPrompt || "Brak specjalnych wskazówek"}
+- Profil i tło kursanta: \${userProfile || "Brak dodatkowego profilu"}
+- Najczęstsze błędy: \${weaknessesList || "Brak zidentyfikowanych błędów"}`;
+
+const DEFAULT_EVALUATION_PROMPT = `ROLE:
+You are a fair, intelligent AI Language Evaluator.
+
+TASK:
+Evaluate the student's translation based ONLY on the provided target sentence and expected meaning. Accept any grammatically correct, natural phrasing or valid synonym.
+
+CRITICAL ISOLATION RULE:
+Evaluate ONLY the data provided in the current input block. Ignore any previous sentences or chat history.
+
+GRADING RUBRIC (Total Score: 100%):
+1. Meaning & Accuracy (40%): Does the translation convey the exact intended meaning? Accept valid synonyms and natural reformulations! (Max 40 points)
+2. Grammar & Syntax (40%): Are tenses, word order, prepositions, and articles correct? (Max 40 points)
+3. Target Vocabulary & Spelling (20%): Is the key vocabulary used correctly and spelled properly? (Max 20 points)
+
+[HISTORYCZNE BŁĘDY KURSANTA]
+Zwróć dodatkową uwagę na te błędy kursanta, jeśli wystąpią: \${weaknessesList || "Brak zidentyfikowanych błędów"}`;
 
 import { ExerciseType } from '../../types';
 
@@ -864,11 +896,18 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       addLog('fetchPromises resolved');
 
       // Call Gemini API service function
-      const studentProfileContext = `Kluczowy profil kursanta: ${user?.firstName ? `Imię kursanta: ${user.firstName}. ` : ''}${user?.description ? `Cały wpis z profilu kursanta (zainteresowania, cele, przykładowe zdania): ${user.description}` : 'Brak dodatkowych danych profilu.'}${user?.aiPrompt ? `\nSpersonalizowany Prompt (ŻELAZNA ZASADA DLA AI - uczeń musi widzieć przykłady w tym stylu): ${user.aiPrompt}` : ''}`;
+      const studentProfileContext = `
+Spersonalizowany Prompt Kursanta (ŻELAZNE WSKAZÓWKI AI DLA KURSANTA):
+${user?.aiPrompt ? user.aiPrompt : 'Brak dodatkowych wskazówek.'}
+
+Profil i tło kursanta:
+${user?.description ? user.description : 'Brak dodatkowego opisu.'}
+`;
       
       let userProfileStr = user?.description || "Brak danych";
+      let userAiPromptStr = user?.aiPrompt || "Brak dodatkowych wskazówek";
       
-let finalGenPrompt = customGenPrompt;
+      let finalGenPrompt = customGenPrompt;
       if (additionalInstructions.trim().length > 0) {
         finalGenPrompt += '\n\nDODATKOWE INSTRUKCJE OD NAUCZYCIELA: ' + additionalInstructions;
       }
@@ -877,6 +916,7 @@ let finalGenPrompt = customGenPrompt;
       }
       const resolvedGenPrompt = finalGenPrompt
         .replace(/\$\{userProfile(?: \|\| "[^"]+")?\}/g, userProfileStr)
+        .replace(/\$\{userAiPrompt(?: \|\| "[^"]+")?\}/g, userAiPromptStr)
         .replace(/\$\{weaknessesList(?: \|\| "[^"]+")?\}/g, weaknessesListStr);
 
       addLog('Calling generateTranslationExercises');
@@ -1941,9 +1981,37 @@ let finalGenPrompt = customGenPrompt;
                     />
                     
                     <div className={`p-3.5 rounded-xl border ${singleEvaluationResults[activeSentenceIndex].isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
-                       <div className="font-bold flex items-center gap-2 mb-3 text-sm">
-                         {singleEvaluationResults[activeSentenceIndex].isCorrect ? '✅ Poprawnie!' : '❌ Błędy w tłumaczeniu'}
+                       <div className="font-bold flex items-center justify-between mb-3 text-sm">
+                         <span className="flex items-center gap-2">
+                           {singleEvaluationResults[activeSentenceIndex].isCorrect ? '✅ Poprawnie!' : '❌ Błędy w tłumaczeniu'}
+                         </span>
+                         <span className={`text-xs font-bold font-mono px-2.5 py-1 rounded-lg border ${
+                           singleEvaluationResults[activeSentenceIndex].score >= 80 
+                             ? 'bg-green-500/20 border-green-500/30 text-green-300' 
+                             : singleEvaluationResults[activeSentenceIndex].score >= 60 
+                               ? 'bg-amber-500/20 border-amber-500/30 text-amber-300' 
+                               : 'bg-red-500/20 border-red-500/30 text-red-300'
+                         }`}>
+                           Wynik: {singleEvaluationResults[activeSentenceIndex].score}%
+                         </span>
                        </div>
+                       
+                       {singleEvaluationResults[activeSentenceIndex].breakdown && (
+                         <div className="grid grid-cols-3 gap-2 mb-3 text-[11px] font-mono">
+                           <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center">
+                             <div className="text-content-muted text-[9px] uppercase tracking-wider">{language === 'pl' ? 'Znaczenie' : 'Meaning'}</div>
+                             <div className="font-bold text-white mt-0.5">{singleEvaluationResults[activeSentenceIndex].breakdown?.meaning_score}/40</div>
+                           </div>
+                           <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center">
+                             <div className="text-content-muted text-[9px] uppercase tracking-wider">{language === 'pl' ? 'Gramatyka' : 'Grammar'}</div>
+                             <div className="font-bold text-white mt-0.5">{singleEvaluationResults[activeSentenceIndex].breakdown?.grammar_score}/40</div>
+                           </div>
+                           <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center">
+                             <div className="text-content-muted text-[9px] uppercase tracking-wider">{language === 'pl' ? 'Słownictwo' : 'Vocab'}</div>
+                             <div className="font-bold text-white mt-0.5">{singleEvaluationResults[activeSentenceIndex].breakdown?.vocabulary_score}/20</div>
+                           </div>
+                         </div>
+                       )}
                        
                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 liquid-glass-tile rounded-lg mb-3 border border-white/5">
                          <div className="font-medium text-primary/90 text-sm">
@@ -2259,6 +2327,23 @@ let finalGenPrompt = customGenPrompt;
 
                   {/* Sentences table style */}
                   <div className="space-y-3 pt-2">
+                    {res.breakdown && (
+                      <div className="grid grid-cols-3 gap-2 text-[11px] font-mono">
+                        <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center">
+                          <div className="text-content-muted text-[9px] uppercase tracking-wider">{language === 'pl' ? 'Znaczenie' : 'Meaning'}</div>
+                          <div className="font-bold text-white mt-0.5">{res.breakdown.meaning_score}/40</div>
+                        </div>
+                        <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center">
+                          <div className="text-content-muted text-[9px] uppercase tracking-wider">{language === 'pl' ? 'Gramatyka' : 'Grammar'}</div>
+                          <div className="font-bold text-white mt-0.5">{res.breakdown.grammar_score}/40</div>
+                        </div>
+                        <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center">
+                          <div className="text-content-muted text-[9px] uppercase tracking-wider">{language === 'pl' ? 'Słownictwo' : 'Vocab'}</div>
+                          <div className="font-bold text-white mt-0.5">{res.breakdown.vocabulary_score}/20</div>
+                        </div>
+                      </div>
+                    )}
+
                     <div>
                       <div className="text-xs text-content-muted font-bold mb-1 uppercase tracking-wider">{language === 'pl' ? 'Po polsku' : 'In Polish'}</div>
                       <div className="text-base font-semibold text-white">{res.polishSentence}</div>

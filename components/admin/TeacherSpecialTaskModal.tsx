@@ -91,7 +91,13 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({ user,
     setError('');
 
     try {
-      const studentProfileContext = `Kluczowy profil kursanta: ${user?.firstName ? `Imię kursanta: ${user.firstName}. ` : ''}${user?.description ? `Cały wpis z profilu kursanta (zainteresowania, cele, przykładowe zdania): ${user.description}` : 'Brak dodatkowych danych profilu.'}`;
+      const studentProfileContext = `
+Spersonalizowany Prompt Kursanta (ŻELAZNE WSKAZÓWKI DLA AI):
+${user?.aiPrompt ? user.aiPrompt : 'Brak dodatkowych wskazówek.'}
+
+Profil i tło kursanta:
+${user?.description ? user.description : 'Brak dodatkowego opisu.'}
+`;
       const finalPromptInstructions = getCombinedInstructions();
       const finalPrompt = `Jesteś nauczycielem przygotowującym zdania do przetłumaczenia z polskiego na angielski dla tego ucznia. 
 INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania odpowiednie dla poziomu ucznia.'}`;

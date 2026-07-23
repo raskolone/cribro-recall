@@ -153,6 +153,12 @@ export interface TranslationEvaluationResult {
   isCorrect: boolean;
   score: number;
   explanation: string;
+  suggested_better_version?: string;
+  breakdown?: {
+    meaning_score: number;
+    grammar_score: number;
+    vocabulary_score: number;
+  };
   feedbackSyntax?: string;
   feedbackVocab?: string;
   feedbackRule?: string;

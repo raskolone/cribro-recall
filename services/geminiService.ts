@@ -150,32 +150,55 @@ export const generateVocabulary = async (language: Language, difficulty: Difficu
   }
 };
 
-const translationExerciseSchema = {
-  type: Type.ARRAY,
-  items: {
-    type: Type.OBJECT,
-    properties: {
-      polishSentence: { type: Type.STRING, description: "Zdanie po polsku do przetłumaczenia" },
-      englishTranslation: { type: Type.STRING, description: "The correct or recommended English translation" },
-      hint: { type: Type.STRING, description: "A subtle hint in Polish, e.g., suggesting a grammar structure or key vocabulary word to use" }
-    },
-    required: ['polishSentence', 'englishTranslation', 'hint']
-  }
+const sentenceGeneratorSchema = {
+  type: Type.OBJECT,
+  properties: {
+    sentences: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          id: { type: Type.INTEGER },
+          english_sentence: { type: Type.STRING, description: "Clean, natural English sentence." },
+          polish_translation: { type: Type.STRING, description: "Naturalne polskie tłumaczenie." },
+          target_word_used: { type: Type.STRING, description: "The single target word used in this sentence." },
+          hint: { type: Type.STRING, description: "A subtle hint in Polish, e.g. suggesting a grammar structure or vocabulary clue." }
+        },
+        required: ['english_sentence', 'polish_translation']
+      }
+    }
+  },
+  required: ['sentences']
 };
 
 const evaluationResultSchema = {
-  type: Type.ARRAY,
-  items: {
-    type: Type.OBJECT,
-    properties: {
-      polishSentence: { type: Type.STRING },
-      correctTranslation: { type: Type.STRING },
-      studentAnswer: { type: Type.STRING },
-      isCorrect: { type: Type.BOOLEAN, description: "Whether the translation is completely correct and natural." },
-      feedback: { type: Type.STRING, description: "Feedback in Polish explaining errors or giving praise." }
-    },
-    required: ['polishSentence', 'correctTranslation', 'studentAnswer', 'isCorrect', 'feedback']
-  }
+  type: Type.OBJECT,
+  properties: {
+    evaluations: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          id: { type: Type.INTEGER },
+          score: { type: Type.INTEGER, description: "Total score (0-100) = meaning_score + grammar_score + vocabulary_score" },
+          is_correct: { type: Type.BOOLEAN, description: "True if sentence translation is acceptable/accurate (score >= 75)" },
+          breakdown: {
+            type: Type.OBJECT,
+            properties: {
+              meaning_score: { type: Type.INTEGER, description: "Meaning & Accuracy score (0-40)" },
+              grammar_score: { type: Type.INTEGER, description: "Grammar & Syntax score (0-40)" },
+              vocabulary_score: { type: Type.INTEGER, description: "Target Vocabulary & Spelling score (0-20)" }
+            },
+            required: ["meaning_score", "grammar_score", "vocabulary_score"]
+          },
+          feedback: { type: Type.STRING, description: "Krótkie, konkretne wyjaśnienie błędu po polsku." },
+          suggested_better_version: { type: Type.STRING, description: "Idealne zdanie alternatywne." }
+        },
+        required: ["score", "is_correct", "breakdown", "feedback", "suggested_better_version"]
+      }
+    }
+  },
+  required: ["evaluations"]
 };
 
 export const generateTranslationExercises = async (
@@ -187,35 +210,87 @@ export const generateTranslationExercises = async (
   numSentences: number = 5,
   pastExercisesContext?: string
 ): Promise<TranslationExercise[]> => {
-  const shortLesson = lessonContext ? `Lesson context: ${lessonContext.substring(0, 500)}` : '';
-  const shortProfile = studentProfileContext ? `Student profile: ${studentProfileContext.substring(0, 300)}` : '';
-  const shortPast = pastExercisesContext ? `Past exercises to avoid repeats: ${pastExercisesContext.substring(0, 500)}` : '';
+  const shortLesson = lessonContext ? `\n\n[LESSON / TOPIC CONTEXT]:\n${lessonContext.substring(0, 1000)}` : '';
+  const shortProfile = studentProfileContext ? `\n\n[STUDENT SPECIFIC INSTRUCTIONS & PROFILE]:\n${studentProfileContext}` : '';
+  const shortPast = pastExercisesContext ? `\n\n[PAST EXERCISES TO AVOID REPEATS]:\n${pastExercisesContext.substring(0, 600)}` : '';
 
-  const basePrompt = `Generate exactly ${numSentences} unique Polish-English translation exercises for a student at CEFR level ${level}.
-Make them short, practical, and strictly appropriate for ${level}.
-${words.length > 0 ? 'Use these words if possible: ' + words.join(', ') : ''}${shortLesson}${shortProfile}${shortPast}
+  const masterPrompt = `ROLE:
+You are an expert English Language Content Creator specializing in adaptive, personalized language practice.
 
-Return JSON array of objects with:
-- polishSentence (string)
-- englishTranslation (string)
-- hint (string, in Polish)`;
+TASK:
+Generate natural, highly realistic sentences using the provided list of target vocabulary from the student's personal word list or lesson history. Adapt the tone and topic naturally to match the vocabulary context.
 
-  const finalPrompt = customPrompt ? `${customPrompt}\n\nConstraints:\n${basePrompt}` : basePrompt;
+RULES FOR SENTENCE GENERATION:
+- CONTEXT: Sentences MUST sound like real-world communication relevant to the provided vocabulary (e.g., casual, technical, business, everyday conversation).
+- NATURALNESS: Never force multiple target words into a single sentence if it sounds awkward. Use MAXIMUM 1 target word per sentence.
+- GRAMMAR & STYLE: Use modern, natural English. Avoid academic, bizarre, or forced phrasing.
+- VARIETY: Use diverse sentence structures (mix conditionals, modal verbs, different tenses, and sentence lengths).
+- LOGIC & REALISM: Sentences MUST be practical, logical, and make total sense in real-world communication. Do NOT forcefully weave random student profile keywords or hobbies into a sentence if it makes the sentence illogical, weird, or artificial. Practical usability is the absolute highest priority.
+
+INPUT FORMAT:
+Target Vocabulary List: ${words.length > 0 ? words.join(', ') : 'General level-appropriate vocabulary'}
+Target CEFR Level: ${level || 'B2'}
+Number of Sentences: ${numSentences}`;
+
+  const studentContextBlock = `${shortProfile}${shortLesson}${shortPast}`;
+  const customBlock = customPrompt ? `\n\n[ADDITIONAL INSTRUCTIONS / PROMPT OVERRIDE]:\n${customPrompt}` : '';
+
+  const finalPrompt = `${masterPrompt}${studentContextBlock}${customBlock}
+
+OUTPUT FORMAT (Strict JSON):
+Return ONLY a valid JSON object matching this schema. No markdown, no extra conversational text:
+{
+  "sentences": [
+    {
+      "id": 1,
+      "english_sentence": "Clean, natural English sentence.",
+      "polish_translation": "Naturalne polskie tłumaczenie.",
+      "target_word_used": "word",
+      "hint": "Wskazówka po polsku"
+    }
+  ]
+}`;
 
   const MAX_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const config = {
-        systemInstruction: "You are an AI language tutor. Generate short, level-appropriate translation sentences. Be fast and concise. Always return valid JSON array.",
+        systemInstruction: "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output.",
         responseMimeType: "application/json",
-        responseSchema: translationExerciseSchema,
+        responseSchema: sentenceGeneratorSchema,
       };
       
       const response = await generateContentWithFallback({ contents: finalPrompt, config });
       let jsonText = extractJSON(response?.text || "");
-      const parsed = JSON.parse(jsonText) as TranslationExercise[];
-      if (parsed && parsed.length > 0) {
-        return parsed;
+      let parsedRaw: any = null;
+      try {
+        parsedRaw = JSON.parse(jsonText);
+      } catch (parseErr) {
+        console.warn(`JSON parse error on attempt ${attempt}:`, parseErr);
+      }
+
+      let sentenceList: any[] = [];
+      if (Array.isArray(parsedRaw)) {
+        sentenceList = parsedRaw;
+      } else if (parsedRaw && Array.isArray(parsedRaw.sentences)) {
+        sentenceList = parsedRaw.sentences;
+      }
+
+      const exercises: TranslationExercise[] = sentenceList.map((item: any) => {
+        const polishSentence = item.polish_translation || item.polishSentence || '';
+        const englishTranslation = item.english_sentence || item.englishTranslation || '';
+        const targetWord = item.target_word_used || item.targetWord || '';
+        const hint = item.hint || (targetWord ? `Użyj słówka: '${targetWord}'` : '');
+
+        return {
+          polishSentence,
+          englishTranslation,
+          hint,
+        };
+      }).filter(ex => ex.polishSentence && ex.englishTranslation);
+
+      if (exercises && exercises.length > 0) {
+        return exercises;
       }
       console.warn(`Attempt ${attempt}: Received empty exercises, retrying...`);
     } catch (error: any) {
@@ -234,32 +309,113 @@ export const evaluateTranslations = async (
   strictnessPrompt: string,
   evalStudentContext: string
 ): Promise<TranslationEvaluationResult[]> => {
-  const prompt = `Evaluate the following student translations from Polish to English.
-${evalStudentContext}
-${strictnessPrompt}
+  const masterEvalPrompt = `ROLE:
+You are a fair, intelligent AI Language Evaluator.
 
-Exercises:
-${exercises.map((ex, i) => `${i + 1}. Polish: "${ex.polishSentence}" | Expected: "${ex.englishTranslation}" | Student Answer: "${studentAnswers[i]}"`).join('\n')}`;
+TASK:
+Evaluate the student's translation based ONLY on the provided target sentence and expected meaning. Accept any grammatically correct, natural phrasing or valid synonym.
+
+CRITICAL ISOLATION RULE:
+Evaluate ONLY the data provided in the current input block. Ignore any previous sentences or chat history.
+
+GRADING RUBRIC (Total Score: 100%):
+1. Meaning & Accuracy (40%): Does the translation convey the exact intended meaning? Accept valid synonyms and natural reformulations! (Max 40 points)
+2. Grammar & Syntax (40%): Are tenses, word order, prepositions, and articles correct? (Max 40 points)
+3. Target Vocabulary & Spelling (20%): Is the key vocabulary used correctly and spelled properly? (Max 20 points)
+
+IMPORTANT GRADING RULES:
+- If the student's input is a completely valid, natural English translation, award high or full marks (85-100%). Do NOT unfairly penalize for valid synonyms or natural phrasing variations.
+- Calculate total score = meaning_score + grammar_score + vocabulary_score.
+- Set is_correct to true if total score >= 75 or if the answer is functionally correct.
+
+INPUT DATA:
+${exercises.map((ex, i) => `---
+[Item ${i + 1}]
+Original Target Sentence: ${ex.polishSentence}
+Expected Reference Meaning: ${ex.englishTranslation}
+Student Input: ${studentAnswers[i] || "(brak odpowiedzi)"}`).join('\n')}`;
+
+  const fullPrompt = `${masterEvalPrompt}
+
+${evalStudentContext ? `[STUDENT CONTEXT]:\n${evalStudentContext}` : ''}
+${strictnessPrompt ? `[ADDITIONAL EVALUATION INSTRUCTIONS]:\n${strictnessPrompt}` : ''}
+
+OUTPUT FORMAT (Strict JSON):
+Return ONLY a valid JSON object matching the requested schema with an array "evaluations".`;
 
   const MAX_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const config = {
-        systemInstruction: "You are an AI language tutor evaluating translations. Always return a valid JSON array.",
+        systemInstruction: "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.",
         responseMimeType: "application/json",
         responseSchema: evaluationResultSchema,
       };
-      const response = await generateContentWithFallback({ contents: prompt, config });
+      const response = await generateContentWithFallback({ contents: fullPrompt, config });
       let jsonText = extractJSON(response?.text || "");
-      const parsed = JSON.parse(jsonText) as TranslationEvaluationResult[];
-      if (parsed && parsed.length > 0) {
-        return parsed;
+      let parsedRaw: any = null;
+      try {
+        parsedRaw = JSON.parse(jsonText);
+      } catch (pErr) {
+        console.warn(`JSON parse error on attempt ${attempt}:`, pErr);
+      }
+
+      let evalList: any[] = [];
+      if (Array.isArray(parsedRaw)) {
+        evalList = parsedRaw;
+      } else if (parsedRaw && Array.isArray(parsedRaw.evaluations)) {
+        evalList = parsedRaw.evaluations;
+      }
+
+      const results: TranslationEvaluationResult[] = exercises.map((ex, i) => {
+        const item = evalList[i] || {};
+        const meaningScore = typeof item.breakdown?.meaning_score === 'number'
+          ? item.breakdown.meaning_score
+          : (typeof item.score === 'number' ? Math.min(40, Math.round(item.score * 0.4)) : 40);
+
+        const grammarScore = typeof item.breakdown?.grammar_score === 'number'
+          ? item.breakdown.grammar_score
+          : (typeof item.score === 'number' ? Math.min(40, Math.round(item.score * 0.4)) : 40);
+
+        const vocabScore = typeof item.breakdown?.vocabulary_score === 'number'
+          ? item.breakdown.vocabulary_score
+          : (typeof item.score === 'number' ? Math.min(20, Math.round(item.score * 0.2)) : 20);
+
+        const calculatedScore = typeof item.score === 'number'
+          ? item.score
+          : (meaningScore + grammarScore + vocabScore);
+
+        const isCorrect = typeof item.is_correct === 'boolean'
+          ? item.is_correct
+          : (typeof item.isCorrect === 'boolean' ? item.isCorrect : calculatedScore >= 75);
+
+        const feedback = item.feedback || item.explanation || (isCorrect ? 'Świetne, naturalne tłumaczenie!' : 'Sprawdź sugerowane poprawki.');
+        const suggested = item.suggested_better_version || item.correctTranslation || ex.englishTranslation;
+
+        return {
+          polishSentence: ex.polishSentence,
+          correctTranslation: suggested,
+          studentAnswer: studentAnswers[i] || '',
+          isCorrect,
+          score: Math.min(100, Math.max(0, calculatedScore)),
+          explanation: feedback,
+          suggested_better_version: suggested,
+          breakdown: {
+            meaning_score: meaningScore,
+            grammar_score: grammarScore,
+            vocabulary_score: vocabScore
+          }
+        };
+      });
+
+      if (results && results.length > 0) {
+        return results;
       }
       console.warn(`Attempt ${attempt}: Received empty evaluation, retrying...`);
     } catch (error: any) {
       console.error(`Error evaluating translations on attempt ${attempt}:`, error);
       if (attempt === MAX_RETRIES) {
-        throw new Error("Failed to evaluate translations with AI.");
+        throw new Error(error.message || "Failed to evaluate translations with AI.");
       }
     }
   }
