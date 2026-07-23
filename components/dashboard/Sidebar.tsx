@@ -114,9 +114,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
       )}
       
       <aside 
-        className={`fixed inset-y-0 left-0 z-50 liquid-glass-panel !rounded-none !border-0 !border-r !border-white/10 flex flex-col transform transition-all duration-300 ease-in-out md:relative flex-shrink-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        } ${isDesktopCollapsed ? 'w-20' : 'w-64'}`}
+        className={`fixed inset-x-0 top-0 h-auto max-h-[100vh] z-50 liquid-glass-panel !rounded-none !border-0 !border-b !border-white/10 flex flex-col transform transition-all duration-300 ease-in-out md:relative md:inset-y-0 md:left-0 md:h-screen md:!border-b-0 md:!border-r flex-shrink-0 ${
+          isOpen ? 'translate-y-0' : '-translate-y-full md:translate-y-0'
+        } ${isDesktopCollapsed ? 'md:w-20' : 'md:w-64'}`}
       >
         <div className={`p-4 md:p-6 flex items-center ${isDesktopCollapsed ? 'justify-center' : 'justify-between'} border-b border-base-300 mb-6`}>
           {!isDesktopCollapsed && <BrandLogo className="text-xl" showTagline={false} isCollapsed={false} />}

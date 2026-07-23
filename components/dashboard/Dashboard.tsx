@@ -6,6 +6,7 @@ import { auth, db } from '../../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import Sidebar from './Sidebar';
 import ConfirmModal from '../ui/ConfirmModal';
+import BugReporter from '../ui/BugReporter';
 import VocabularyGenerator from './VocabularyGenerator';
 import WordList from './WordList';
 import ProgressOverview from './ProgressOverview';
@@ -276,7 +277,16 @@ const Dashboard: React.FC = () => {
   const { words, difficultWords, dueWords, frequency, lastPractice, lastRevisionDate } = useVocabulary();
   const { language } = useLanguage();
   const { showLearningProgressChart } = useSettings();
-  const [view, setView] = useState<View>('dashboard');
+  const [view, setView] = useState<View>(() => {
+    const isMobile = window.innerWidth < 768;
+    const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
+    
+    if (isTeacher) {
+      return isMobile ? 'ai-generator' : 'admin';
+    } else {
+      return 'ai-generator';
+    }
+  });
   const [adminSelectedUserId, setAdminSelectedUserId] = useState<string | null>(null);
   const [practiceView, setPracticeView] = useState<PracticeView>(null);
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
@@ -825,8 +835,8 @@ const Dashboard: React.FC = () => {
         onToggleCollapse={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
       />
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto pb-24 md:pb-8">
-        <header className="relative z-50 flex justify-between items-center mb-6 p-4 rounded-2xl liquid-glass-card">
-          <div className="flex items-center gap-3">
+        <header className="relative z-40 flex flex-col md:flex-row md:justify-between items-center mb-6 p-4 rounded-2xl liquid-glass-card gap-4">
+          <div className="w-full flex items-center justify-between md:justify-start gap-4">
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="md:hidden p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5"
@@ -836,13 +846,13 @@ const Dashboard: React.FC = () => {
               </svg>
             </button>
 
-            <div>
-              <div className="flex items-center flex-wrap gap-2">
+            <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start flex-wrap gap-2">
                 <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
                   {greeting}
                 </h1>
                 {user?.streakCount !== undefined && user?.streakCount > 0 && (
-                  <div className="flex items-center gap-1.5 ml-2 bg-black/20 px-3 py-1.5 rounded-full border border-base-300 shadow-sm" title="Your current streak">
+                  <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1.5 rounded-full border border-base-300 shadow-sm" title="Your current streak">
                     <AnimatedFlame />
                     <span className="font-bold text-sm text-white">{user.streakCount}</span>
                   </div>
@@ -852,6 +862,9 @@ const Dashboard: React.FC = () => {
                 <p className="text-sm text-content-muted mt-1 font-medium">{slogan}</p>
               )}
             </div>
+            
+            {/* Empty div to balance flex spacing on mobile (hamburger on left, this on right) */}
+            <div className="w-10 md:hidden"></div>
           </div>
         </header>
         <div ref={contentRef} className="w-full h-full">
@@ -951,6 +964,7 @@ const Dashboard: React.FC = () => {
           </button>
         </div>
       )}
+      {user?.role === "user" && <BugReporter />}
       <ConfirmModal
         isOpen={confirmModalState.isOpen}
         title={confirmModalState.title}

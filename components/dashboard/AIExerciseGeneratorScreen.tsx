@@ -1930,14 +1930,14 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                 </motion.div>
               )}
             </AnimatePresence>
-            <Card ref={practiceCardRef} className="liquid-glass-card p-5 md:p-6 space-y-4 relative overflow-hidden">
+            <Card ref={practiceCardRef} className="liquid-glass-card p-4 md:p-6 space-y-3 relative overflow-hidden flex flex-col">
               {/* Background design accents */}
               <div className="absolute top-0 right-0 p-6 opacity-[0.02] pointer-events-none select-none">
                 <Sparkles className="w-48 h-48 text-primary" />
               </div>
 
-            <div className="space-y-3 relative z-10">
-              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-mono font-bold">
+            <div className="space-y-3 relative z-10 flex flex-col items-center text-center">
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-mono font-bold mx-auto">
                 Zdanie {activeSentenceIndex + 1}
               </div>
 
@@ -1948,11 +1948,11 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
               {/* Optional hint toggle */}
               {exercises[activeSentenceIndex].hint && (
-                <div>
+                <div className="w-full">
                   <button
                     type="button"
                     onClick={() => toggleHint(activeSentenceIndex)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-500 hover:text-amber-400 transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-500 hover:text-amber-400 transition-colors mx-auto"
                   >
                     <Lightbulb className="w-3.5 h-3.5" />
                     {showHints[activeSentenceIndex] 
@@ -1960,7 +1960,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       : (language === 'pl' ? 'Pokaż wskazówkę' : 'Show hint')}
                   </button>
                   {showHints[activeSentenceIndex] && (
-                    <div className="mt-1.5 bg-amber-500/[0.04] border border-amber-500/15 rounded-xl p-3 text-xs text-amber-400 animate-fade-in-up">
+                    <div className="mt-1.5 mx-auto bg-amber-500/[0.04] border border-amber-500/15 rounded-xl p-3 text-xs text-amber-400 animate-fade-in-up max-w-lg">
                       {exercises[activeSentenceIndex].hint}
                     </div>
                   )}
@@ -1968,20 +1968,20 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               )}
 
               {/* Student answer field */}
-              <div className="space-y-1 mt-4 pt-3.5 border-t border-white/5">
-                <label className="block text-xs font-semibold text-content-muted/80 mb-1">
+              <div className="w-full space-y-2 mt-2 pt-3 border-t border-white/5 flex flex-col items-center">
+                <label className="block text-xs font-semibold text-content-muted/80 text-center w-full">
                   {language === 'pl' ? 'Twoje tłumaczenie na angielski:' : 'Your translation to English:'}
                 </label>
                 
                 {evaluationStatuses[activeSentenceIndex] === 'evaluated' && singleEvaluationResults[activeSentenceIndex] ? (
-                  <div className="space-y-3">
+                  <div className="space-y-3 w-full text-center flex flex-col items-center">
                     <div 
-                      className="w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner rounded-xl p-3.5 text-sm"
+                      className="w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner rounded-xl p-3 text-sm text-center"
                       dangerouslySetInnerHTML={{ __html: singleEvaluationResults[activeSentenceIndex].highlightedAnswer || singleEvaluationResults[activeSentenceIndex].studentAnswer }}
                     />
                     
-                    <div className={`p-3.5 rounded-xl border ${singleEvaluationResults[activeSentenceIndex].isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
-                       <div className="font-bold flex items-center justify-between mb-3 text-sm">
+                    <div className={`w-full p-3.5 rounded-xl border flex flex-col items-center text-center ${singleEvaluationResults[activeSentenceIndex].isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                       <div className="font-bold flex flex-col sm:flex-row items-center justify-between w-full mb-3 text-sm gap-2">
                          <span className="flex items-center gap-2">
                            {singleEvaluationResults[activeSentenceIndex].isCorrect ? '✅ Poprawnie!' : '❌ Błędy w tłumaczeniu'}
                          </span>
@@ -1997,27 +1997,27 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                        </div>
                        
                        {singleEvaluationResults[activeSentenceIndex].breakdown && (
-                         <div className="grid grid-cols-3 gap-2 mb-3 text-[11px] font-mono">
-                           <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center">
+                         <div className="grid grid-cols-3 gap-2 w-full mb-3 text-[11px] font-mono">
+                           <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center flex flex-col items-center justify-center">
                              <div className="text-content-muted text-[9px] uppercase tracking-wider">{language === 'pl' ? 'Znaczenie' : 'Meaning'}</div>
                              <div className="font-bold text-white mt-0.5">{singleEvaluationResults[activeSentenceIndex].breakdown?.meaning_score}/40</div>
                            </div>
-                           <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center">
+                           <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center flex flex-col items-center justify-center">
                              <div className="text-content-muted text-[9px] uppercase tracking-wider">{language === 'pl' ? 'Gramatyka' : 'Grammar'}</div>
                              <div className="font-bold text-white mt-0.5">{singleEvaluationResults[activeSentenceIndex].breakdown?.grammar_score}/40</div>
                            </div>
-                           <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center">
+                           <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center flex flex-col items-center justify-center">
                              <div className="text-content-muted text-[9px] uppercase tracking-wider">{language === 'pl' ? 'Słownictwo' : 'Vocab'}</div>
                              <div className="font-bold text-white mt-0.5">{singleEvaluationResults[activeSentenceIndex].breakdown?.vocabulary_score}/20</div>
                            </div>
                          </div>
                        )}
                        
-                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 liquid-glass-tile rounded-lg mb-3 border border-white/5">
+                       <div className="w-full flex flex-col items-center gap-3 p-2.5 liquid-glass-tile rounded-lg mb-3 border border-white/5 text-center">
                          <div className="font-medium text-primary/90 text-sm">
                            {singleEvaluationResults[activeSentenceIndex].correctTranslation}
                          </div>
-                         <div className="flex items-center gap-1.5 shrink-0 bg-black/30 p-1 rounded-md">
+                         <div className="flex items-center justify-center gap-1.5 shrink-0 bg-black/30 p-1 rounded-md">
                            <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-US')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇺🇸 Amerykański" disabled={isPlayingAudio}>🇺🇸</button>
                            <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-GB')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇬🇧 Brytyjski" disabled={isPlayingAudio}>🇬🇧</button>
                            <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-AU')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title="🇦🇺 Australijski" disabled={isPlayingAudio}>🇦🇺</button>
@@ -2025,27 +2025,27 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                          </div>
                        </div>
 
-                       <div className="space-y-3 mt-1 text-xs">
+                       <div className="space-y-3 mt-1 text-xs w-full text-center">
                          {singleEvaluationResults[activeSentenceIndex].feedbackSyntax && (
-                           <div>
+                           <div className="flex flex-col items-center text-center">
                              <span className="font-bold text-content-muted text-[10px] uppercase tracking-wider">{language === 'pl' ? 'Szyk i gramatyka' : 'Syntax & Grammar'}</span>
-                             <p className="mt-0.5 opacity-90 leading-relaxed">{singleEvaluationResults[activeSentenceIndex].feedbackSyntax}</p>
+                             <p className="mt-0.5 opacity-90 leading-relaxed text-center">{singleEvaluationResults[activeSentenceIndex].feedbackSyntax}</p>
                            </div>
                          )}
                          {singleEvaluationResults[activeSentenceIndex].feedbackVocab && (
-                           <div>
+                           <div className="flex flex-col items-center text-center">
                              <span className="font-bold text-content-muted text-[10px] uppercase tracking-wider">{language === 'pl' ? 'Słownictwo i naturalność' : 'Vocabulary & Naturalness'}</span>
-                             <p className="mt-0.5 opacity-90 leading-relaxed">{singleEvaluationResults[activeSentenceIndex].feedbackVocab}</p>
+                             <p className="mt-0.5 opacity-90 leading-relaxed text-center">{singleEvaluationResults[activeSentenceIndex].feedbackVocab}</p>
                            </div>
                          )}
                          {singleEvaluationResults[activeSentenceIndex].feedbackRule && (
-                           <div className="bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
+                           <div className="bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20 flex flex-col items-center text-center mx-auto">
                              <span className="font-bold text-amber-500/90 text-[10px] uppercase tracking-wider">{language === 'pl' ? 'Złota zasada' : 'Golden Rule'}</span>
-                             <p className="mt-0.5 opacity-90 leading-relaxed">{singleEvaluationResults[activeSentenceIndex].feedbackRule}</p>
+                             <p className="mt-0.5 opacity-90 leading-relaxed text-center">{singleEvaluationResults[activeSentenceIndex].feedbackRule}</p>
                            </div>
                          )}
                          {(!singleEvaluationResults[activeSentenceIndex].feedbackSyntax && !singleEvaluationResults[activeSentenceIndex].feedbackVocab) && (
-                           <p className="whitespace-pre-wrap opacity-90 leading-relaxed text-xs">{singleEvaluationResults[activeSentenceIndex].explanation}</p>
+                           <p className="whitespace-pre-wrap opacity-90 leading-relaxed text-xs text-center">{singleEvaluationResults[activeSentenceIndex].explanation}</p>
                          )}
                        </div>
                     </div>
@@ -2084,7 +2084,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     placeholder={language === 'pl' ? 'Wpisz swoje tłumaczenie tutaj...' : 'Type your translation here...'}
                     rows={2}
                     disabled={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
-                    className="w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner focus:border-primary/40 focus:ring-1 focus:ring-primary/20 rounded-xl p-3 text-sm outline-none transition-all duration-200"
+                    className="w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner focus:border-primary/40 focus:ring-1 focus:ring-primary/20 rounded-xl p-3 text-sm outline-none transition-all duration-200 text-center"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -2100,22 +2100,23 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               </div>
             </div>
             {/* Navigation controls */}
-            <div className="flex justify-between items-center pt-4">
+            <div className="flex justify-between items-center pt-4 flex-wrap gap-3">
               <Button
                 variant="secondary"
                 onClick={handlePrev}
                 disabled={activeSentenceIndex === 0}
+                className="px-4 py-2 text-sm"
               >
                 {language === 'pl' ? 'Poprzednie' : 'Previous'}
               </Button>
               
               {exerciseFormat === 'puzzle' ? (
-                <>
+                <div className="flex-1 flex justify-end">
                   {activeSentenceIndex === exercises.length - 1 && practiceMode === 'fixed' ? (
                     <AILoadingButton
                       onClick={handleFinishAll}
                       disabled={studentAnswers[activeSentenceIndex] !== exercises[activeSentenceIndex].englishTranslation}
-                      className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-black font-extrabold text-sm w-full sm:w-auto"
                     >
                       {language === 'pl' ? 'Zakończ rozgrzewkę' : 'Finish warmup'}
                     </AILoadingButton>
@@ -2124,23 +2125,23 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       onClick={handleNext}
                       disabled={studentAnswers[activeSentenceIndex] !== exercises[activeSentenceIndex].englishTranslation || isGeneratingMore}
                       isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
-                      loadingText={language === 'pl' ? 'Ładowanie ćwiczenia...' : 'Loading exercise...'}
-                      className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
+                      loadingText={language === 'pl' ? 'Ładowanie...' : 'Loading...'}
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-black font-extrabold text-sm w-full sm:w-auto"
                     >
                       {language === 'pl' ? 'Następne' : 'Next'}
                     </AILoadingButton>
                   )}
-                </>
+                </div>
               ) : evaluationStatuses[activeSentenceIndex] !== 'evaluated' ? (
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-1 justify-end">
                   <AILoadingButton
                     onClick={handleEvaluateSingle}
                     disabled={!studentAnswers[activeSentenceIndex]?.trim()}
                     isLoading={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
-                    loadingText={language === 'pl' ? 'Sprawdzanie...' : 'Checking...'}
-                    className="px-6 py-3 bg-base-300 hover:bg-base-300/80 text-white font-bold"
+                    loadingText={language === 'pl' ? '...' : '...'}
+                    className="px-4 md:px-6 py-2 md:py-3 bg-base-300 hover:bg-base-300/80 text-white font-bold text-sm"
                   >
-                    {language === 'pl' ? 'Sprawdź aktualne' : 'Check current'}
+                    {language === 'pl' ? 'Sprawdź' : 'Check'}
                   </AILoadingButton>
 
                   {activeSentenceIndex === exercises.length - 1 && practiceMode === 'fixed' ? (
@@ -2148,29 +2149,29 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       onClick={handleFinishAll}
                       disabled={!studentAnswers[activeSentenceIndex]?.trim() || isGeneratingMore}
                       isLoading={isGeneratingMore}
-                      loadingText={language === 'pl' ? 'Ocenianie...' : 'Evaluating...'}
-                      className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
+                      loadingText={language === 'pl' ? '...' : '...'}
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-black font-extrabold text-sm"
                     >
-                      {language === 'pl' ? 'Zakończ i podsumuj' : 'Finish & Summarize'}
+                      {language === 'pl' ? 'Zakończ' : 'Finish'}
                     </AILoadingButton>
                   ) : (
                     <AILoadingButton
                       onClick={handleNext}
                       disabled={!studentAnswers[activeSentenceIndex]?.trim() || isGeneratingMore}
                       isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
-                      loadingText={language === 'pl' ? 'Ładowanie...' : 'Loading...'}
-                      className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
+                      loadingText={language === 'pl' ? '...' : '...'}
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-black font-extrabold text-sm"
                     >
-                      {language === 'pl' ? 'Następne' : 'Next'}
+                      {language === 'pl' ? 'Dalej' : 'Next'}
                     </AILoadingButton>
                   )}
                 </div>
               ) : (
-                <>
+                <div className="flex gap-2 flex-1 justify-end">
                   {activeSentenceIndex === exercises.length - 1 && practiceMode === 'fixed' ? (
                     <AILoadingButton
                       onClick={handleFinishAll}
-                      className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-black font-extrabold text-sm"
                     >
                       {language === 'pl' ? 'Zakończ i podsumuj' : 'Finish & Summarize'}
                     </AILoadingButton>
@@ -2179,13 +2180,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       onClick={handleNext}
                       disabled={isGeneratingMore}
                       isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
-                      loadingText={language === 'pl' ? 'Ładowanie ćwiczenia...' : 'Loading exercise...'}
-                      className="px-6 py-3 bg-primary hover:bg-primary/95 text-black font-extrabold"
+                      loadingText={language === 'pl' ? '...' : '...'}
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-black font-extrabold text-sm"
                     >
-                      {language === 'pl' ? 'Następne' : 'Next'}
+                      {language === 'pl' ? 'Dalej' : 'Next'}
                     </AILoadingButton>
                   )}
-                </>
+                </div>
               )}
             </div>
           </Card>
