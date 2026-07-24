@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Word } from '../../types';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { getAudioPronunciation } from '../../services/geminiService';
+import { generateSpeech } from '../../services/elevenLabsService';
 import { playAudio } from '../../utils/audioUtils';
 import { VOICE_CONFIG } from '../../constants';
 import PronunciationMic from '../ui/PronunciationMic';
@@ -20,14 +21,15 @@ const WordCard: React.FC<WordCardProps> = ({ word }) => {
     if (isPlaying) return;
     setIsPlaying(variant);
     try {
-      let voice: string;
       if (word.language === 'English') {
-        voice = VOICE_CONFIG.English[variant as 'American' | 'British'];
+        const accent = variant === 'American' ? 'en-US' : 'en-GB';
+        const audio = await generateSpeech(word.word, accent);
+        await audio.play();
       } else {
-        voice = VOICE_CONFIG[word.language];
+        const voice = VOICE_CONFIG[word.language];
+        const audio = await getAudioPronunciation(word.word, voice);
+        await playAudio(audio);
       }
-      const audio = await getAudioPronunciation(word.word, voice);
-      await playAudio(audio);
     } catch (error) {
       console.error(`Failed to play ${variant} audio`, error);
     } finally {

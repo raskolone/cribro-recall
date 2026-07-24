@@ -68,18 +68,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setUser(newUser);
           }
         } catch (error: any) {
-          handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
-          
-          // If the error was offline and handleFirestoreError swallowed it, populate offline fallback user
-          if (error?.code === 'unavailable' || error?.message?.includes('offline') || error?.message?.includes('unavailable')) {
-             const fallbackEmail = firebaseUser.email || '';
-             setUser({
-               id: firebaseUser.uid,
-               username: firebaseUser.isAnonymous ? 'Demo User (Offline)' : (firebaseUser.displayName || 'User (Offline)'),
-               email: fallbackEmail,
-               role: fallbackEmail === 'maciej.wyrozumski@gmail.com' ? 'admin' : 'user'
-             });
-          }
+          console.error("Error loading user profile from firestore:", error);
+          const fallbackEmail = firebaseUser.email || '';
+          setUser({
+            id: firebaseUser.uid,
+            username: firebaseUser.displayName || (fallbackEmail ? fallbackEmail.split('@')[0] : 'User'),
+            email: fallbackEmail,
+            role: fallbackEmail === 'maciej.wyrozumski@gmail.com' ? 'admin' : 'user'
+          });
         }
       } else {
         setUser(null);

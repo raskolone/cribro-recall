@@ -4,7 +4,6 @@ import Button from '../ui/Button';
 import Card from '../ui/Card';
 import confetti from 'canvas-confetti';
 import ContextMenu from '../ui/ContextMenu';
-import { getAudioPronunciation } from '../../services/geminiService';
 
 interface MatchExerciseProps {
   words: Word[];
@@ -20,6 +19,7 @@ interface MatchCard {
 }
 
 import { useVocabulary } from '../../context/VocabularyContext';
+import { generateSpeech } from '../../services/elevenLabsService';
 import i18n from "i18next";
 
 interface MatchExerciseProps {
@@ -48,10 +48,8 @@ const MatchExercise: React.FC<MatchExerciseProps> = ({ words, onExit, onComplete
   
   const playAudio = async (text: string) => {
     try {
-      const audioData = await getAudioPronunciation(text, 'en');
-      if (!audioData) return;
-      const audio = new Audio(`data:audio/mp3;base64,${audioData}`);
-      audio.play();
+      const audio = await generateSpeech(text, 'en-US');
+      await audio.play();
     } catch (e) {
       console.error(e);
     }

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { getAudioPronunciation } from '../../services/geminiService';
+import { generateSpeech } from '../../services/elevenLabsService';
 import i18n from "i18next";
 
 gsap.registerPlugin(useGSAP);
@@ -198,42 +198,23 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
     
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
-  const playAudio = async (text: string, lang: string = 'en-US') => {
+  const playAudio = async (text: string, lang: 'en-US' | 'en-GB' = 'en-US') => {
     if (!text) return;
     setIsPlayingAudio(true);
     try {
-      const res = await fetch(`/api/tts?text=${encodeURIComponent(text)}&lang=${lang}`);
-      if (!res.ok) throw new Error('Audio generation failed');
-      const blob = await res.blob();
-      if (blob.size === 0) throw new Error('Empty audio blob');
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      
+      const audio = await generateSpeech(text, lang);
       audio.onended = () => setIsPlayingAudio(false);
       audio.onerror = () => setIsPlayingAudio(false);
-      
-      audio.play().catch(err => {
-        console.warn("Audio playback failed:", err);
-        setIsPlayingAudio(false);
-      });
+      await audio.play();
     } catch (err) {
       console.error(err);
       setIsPlayingAudio(false);
     }
   };
 
-  
-  const playSentence = (accent: 'en-GB' | 'en-US') => {
-    if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(sentence as string);
-    utterance.lang = accent;
-    const voices = window.speechSynthesis.getVoices();
-    const targetVoice = voices.find(v => v.lang === accent || v.lang.startsWith(accent));
-    if (targetVoice) {
-      utterance.voice = targetVoice;
-    }
-    window.speechSynthesis.speak(utterance);
+  const playSentence = async (accent: 'en-GB' | 'en-US') => {
+    if (!sentence) return;
+    await playAudio(sentence as string, accent);
   };
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -486,7 +467,8 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
           <div className="flex justify-center gap-4">
             <button
               onClick={() => playSentence('en-GB')}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-base-300 hover:bg-base-200 transition-colors shadow-sm"
+              disabled={isPlayingAudio}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-base-300 hover:bg-base-200 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               title={i18n.t("Wymowa brytyjska")}
             >
               <span className="text-xl">🇬🇧</span>
@@ -494,7 +476,8 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
             </button>
             <button
               onClick={() => playSentence('en-US')}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-base-300 hover:bg-base-200 transition-colors shadow-sm"
+              disabled={isPlayingAudio}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-base-300 hover:bg-base-200 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               title={i18n.t("Wymowa amerykańska")}
             >
               <span className="text-xl">🇺🇸</span>

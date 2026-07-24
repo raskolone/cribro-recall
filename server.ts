@@ -615,70 +615,72 @@ Zwróć JSON z polami:
     }
   });
 
-  // Text-to-Speech API
-  app.get("/api/tts", async (req, res) => {
+  // Text-to-Speech API (ElevenLabs proxy & fallback)
+  const handleTTS = async (req: express.Request, res: express.Response) => {
     try {
-      const text = req.query.text as string;
-      const lang = req.query.lang as string; // 'en-US' or 'en-GB'
+      const text = (req.body?.text || req.query.text) as string;
+      const lang = (req.body?.accent || req.body?.lang || req.query.lang || req.query.accent || 'en-US') as string;
+      const customVoiceId = req.body?.voice_id || req.body?.voiceId;
+
       if (!text) {
         return res.status(400).json({ error: "Missing text parameter" });
       }
 
+      // Format text: ensure punctuation at end
+      const trimmedText = text.replace(/<[^>]+>/g, '').trim();
+      const formattedText = /[.?!]$/.test(trimmedText) ? trimmedText : `${trimmedText}.`;
+
+      // Voice mapping
+      let voiceId = "S9WrLrqYPJzmQyWPWbZ5"; // Default en-US / AmE
+      if (customVoiceId) {
+        voiceId = customVoiceId;
+      } else if (lang === 'en-GB' || lang === 'BrE') {
+        voiceId = "NbkKnEAZ7Bqw4EAkVEaz"; // en-GB / BrE
+      } else {
+        voiceId = "S9WrLrqYPJzmQyWPWbZ5"; // en-US / AmE
+      }
+
       const elevenLabsKey = process.env.ELEVENLABS_API_KEY;
       
-      // If ElevenLabs API key is present, use it
       if (elevenLabsKey) {
-        // Voice selection based on language
-        let voiceId = 'cgSgspJ2msm6clMCkdW9'; // Default to Jessica (US)
-        
-        const usVoices = ['EXAVITQu4vr4xnSDxMaL', 'cgSgspJ2msm6clMCkdW9', '21m00Tcm4TlvDq8ikWAM'];
-        const gbVoices = ['Xb7hH8MSUJpSbSDYk0k2', 'CYw3kZ02Hs0563khs1Fj', 'JBFqnCBsd6RMkjVDRZzb'];
-        const auVoices = ['IKne3meq5aSn9XLyUdCD', 'ZQe5CZNOzWyzPSCn5a3c'];
-        const sctVoices = ['D38z5RcWu1voky8WS1ja', 'N2lVS1w4EtoT3dr4eOWO'];
+        try {
+          const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+            method: 'POST',
+            headers: {
+              'Accept': 'audio/mpeg',
+              'xi-api-key': elevenLabsKey,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              text: formattedText,
+              model_id: "eleven_turbo_v2_5",
+              voice_settings: {
+                stability: 0.75,
+                similarity_boost: 0.85,
+                style: 0.0,
+                use_speaker_boost: true
+              }
+            })
+          });
 
-        if (lang === 'en-GB') {
-          voiceId = gbVoices[Math.floor(Math.random() * gbVoices.length)];
-        } else if (lang === 'en-AU') {
-          voiceId = auVoices[Math.floor(Math.random() * auVoices.length)];
-        } else if (lang === 'en-SCT') {
-          voiceId = sctVoices[Math.floor(Math.random() * sctVoices.length)];
-        } else if (lang === 'en-US') {
-          voiceId = usVoices[Math.floor(Math.random() * usVoices.length)];
+          if (response.ok) {
+            const audioBuffer = await response.arrayBuffer();
+            res.set({
+              'Content-Type': 'audio/mpeg',
+              'Cache-Control': 'public, max-age=31536000'
+            });
+            return res.send(Buffer.from(audioBuffer));
+          } else {
+            const errorText = await response.text();
+            console.warn(`ElevenLabs API returned ${response.status}: ${errorText}, falling back to Google TTS`);
+          }
+        } catch (elError) {
+          console.warn('ElevenLabs request failed, falling back to Google TTS:', elError);
         }
-
-        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
-          method: 'POST',
-          headers: {
-            'Accept': 'audio/mpeg',
-            'xi-api-key': elevenLabsKey,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            text: text,
-            model_id: "eleven_multilingual_v2",
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.75
-            }
-          })
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`ElevenLabs API error: ${response.status} ${errorText}`);
-        }
-
-        const audioBuffer = await response.arrayBuffer();
-        res.set({
-          'Content-Type': 'audio/mpeg',
-          'Cache-Control': 'public, max-age=31536000'
-        });
-        res.send(Buffer.from(audioBuffer));
-        return;
       }
 
       // Fallback to Google Translate TTS
-      const googleTranslateUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${lang || 'en'}&client=tw-ob`;
+      const googleTranslateUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(formattedText)}&tl=${lang.startsWith('en') ? lang : 'en'}&client=tw-ob`;
       
       const response = await fetch(googleTranslateUrl, {
         headers: {
@@ -700,7 +702,10 @@ Zwróć JSON z polami:
       console.error('TTS error:', error);
       res.status(500).json({ error: error.message });
     }
-  });
+  };
+
+  app.get("/api/tts", handleTTS);
+  app.post("/api/tts", handleTTS);
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

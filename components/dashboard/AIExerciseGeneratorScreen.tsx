@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { collection, getDocs, query, orderBy, limit, addDoc, where, documentId, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, logMistakesToFirebase } from '../../services/geminiService';
+import { generateSpeech } from '../../services/elevenLabsService';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog } from '../../types';
 import { getVocabularySetsForStudent, markVocabularySetAsUsed } from '../../services/lessonRecord';
 import Card from '../ui/Card';
@@ -87,44 +88,7 @@ Zwróć dodatkową uwagę na te błędy kursanta, jeśli wystąpią: \${weakness
 import { ExerciseType } from '../../types';
 import i18n from "i18next";
 
-let audioCtx: AudioContext | null = null;
-const playSliderSound = () => {
-  try {
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    if (audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
-    const now = audioCtx.currentTime;
-    
-    // Wooden block knock / click synthesis
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    const filter = audioCtx.createBiquadFilter();
-
-    osc.type = 'sine';
-    // Frequency drop for wooden click timbre
-    osc.frequency.setValueAtTime(850, now);
-    osc.frequency.exponentialRampToValueAtTime(360, now + 0.025);
-
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(650, now);
-    filter.Q.setValueAtTime(3.8, now);
-
-    gain.gain.setValueAtTime(0.45, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
-
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    osc.start(now);
-    osc.stop(now + 0.04);
-  } catch (e) {
-    // Ignore audio errors
-  }
-};
+const playSliderSound = () => {};
 
 
 const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?: string }> = ({ language, level }) => {
@@ -527,15 +491,12 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     if (playingAudioIndex === index) return;
     setPlayingAudioIndex(index);
     try {
-      const res = await fetch(`/api/tts?text=${encodeURIComponent(text)}&lang=${lang}`);
-      if (!res.ok) throw new Error('Audio failed');
-      const blob = await res.blob();
-      if (blob.size === 0) throw new Error('Empty audio blob');
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
+      const audio = await generateSpeech(text, lang as any);
       audio.onended = () => {
         setPlayingAudioIndex(null);
-        URL.revokeObjectURL(url);
+      };
+      audio.onerror = () => {
+        setPlayingAudioIndex(null);
       };
       await audio.play();
     } catch (err) {
@@ -955,14 +916,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
     if (!text) return;
     setIsPlayingAudio(true);
     try {
-      const res = await fetch(`/api/tts?text=${encodeURIComponent(text)}&lang=${lang}`);
-      if (!res.ok) throw new Error('Audio generation failed');
-      const blob = await res.blob();
-      if (blob.size === 0) throw new Error('Empty audio blob');
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
+      const audio = await generateSpeech(text, lang as any);
       audio.onended = () => setIsPlayingAudio(false);
-      audio.play();
+      audio.onerror = () => setIsPlayingAudio(false);
+      await audio.play();
     } catch (error) {
       console.error('Audio playback error:', error);
       setIsPlayingAudio(false);

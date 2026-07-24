@@ -64,7 +64,12 @@
     scrollbar-width: none;  /* Firefox */
 }
 
-:root { font-family: 'DM Sans', sans-serif; }
+:root { font-family: 'DM Sans', sans-serif; color-scheme: dark; }
+html, body, #root {
+  background-color: #0a0e1a;
+  min-height: 100vh;
+  color: #eae8e3;
+}
 body {
   background: radial-gradient(circle at 50% -20%, #172a46 0%, #09101c 70%), #09101c;
   background-attachment: fixed;
