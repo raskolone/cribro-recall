@@ -408,12 +408,6 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
             </button>
           ))}
         </>
-        {isCompleted && (
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 z-30 bg-base-100/80 p-1.5 rounded-lg backdrop-blur-md border border-white/10 shadow-lg animate-in fade-in zoom-in duration-300">
-            <button onClick={(e) => { e.stopPropagation(); playAudio(sentence, 'en-US'); }} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("🇺🇸 Amerykański")} disabled={isPlayingAudio}>🇺🇸</button>
-            <button onClick={(e) => { e.stopPropagation(); playAudio(sentence, 'en-GB'); }} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("🇬🇧 Brytyjski")} disabled={isPlayingAudio}>🇬🇧</button>
-          </div>
-        )}
       </div>
 
       {/* Available Tiles */}
