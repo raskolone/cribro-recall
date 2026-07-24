@@ -13,9 +13,11 @@ import { importVocabularyFromLessons } from '../../services/vocabularyService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import AdminTestGenerator from './AdminTestGenerator';
+import AllTestsTeacherView from './AllTestsTeacherView';
 import TeacherDashboardActivity from './TeacherDashboardActivity';
 import TeacherDashboardStats from './TeacherDashboardStats';
 import TeacherSpecialTaskModal from './TeacherSpecialTaskModal';
+import { Trash2 } from 'lucide-react';
 import i18n from "i18next";
 
 interface UserWithId extends User {
@@ -829,7 +831,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                             {i18n.t("Wróć do panelu głównego")}
                                           </button>
           </div>
-          <AdminTestGenerator user={selectedUser} users={users} />
+          {selectedUser ? (
+            <AdminTestGenerator user={selectedUser} users={users} />
+          ) : (
+            <AllTestsTeacherView />
+          )}
         </div>
       ) : (
         <div className="space-y-6">
@@ -1175,13 +1181,31 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   <h4 className="font-bold text-lg mb-3">{i18n.t("Zadania specjalne")}</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {specialTasks.map(task => (
-                      <Card key={task.id} className="p-4 cursor-pointer rounded-xl liquid-glass-hover bg-primary/5 border border-primary/20">
+                      <Card key={task.id} className="p-4 rounded-xl bg-primary/5 border border-primary/20 relative group">
                         <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-bold text-lg">{task.title}</h4>
-                          <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded font-bold uppercase tracking-wider">
-                            
-                                                                {i18n.t("Zadanie specjalne")}
-                                                              </span>
+                          <h4 className="font-bold text-lg pr-2">{task.title}</h4>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded font-bold uppercase tracking-wider">
+                              {i18n.t("Zadanie specjalne")}
+                            </span>
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (!window.confirm(i18n.t("Czy na pewno chcesz usunąć to zadanie specjalne? Kursant nie będzie go już widział."))) return;
+                                try {
+                                  await deleteDoc(doc(db, 'specialTasks', task.id));
+                                  setSpecialTasks(prev => prev.filter(t => t.id !== task.id));
+                                } catch (err) {
+                                  console.error(err);
+                                  alert(i18n.t("Błąd podczas usuwania zadania"));
+                                }
+                              }}
+                              className="p-1 rounded text-content-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                              title={i18n.t("Usuń zadanie specjalne")}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                         <p className="text-sm text-content-muted mb-4">{i18n.t("Ilość zdań:")} {task.sentences?.length || 0}</p>
                         <div className="flex items-center justify-between text-xs font-mono text-content-muted">

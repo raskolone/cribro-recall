@@ -5,7 +5,7 @@ import { ExerciseType } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { LogOut, Bug } from 'lucide-react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, collectionGroup, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 
 interface SidebarProps {
@@ -74,6 +74,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
   const isAdmin = user?.role === 'admin';
   const [isAdminExpanded, setIsAdminExpanded] = useState(currentView.startsWith('admin'));
   const [newBugsCount, setNewBugsCount] = useState(0);
+  const [unreadTestsCount, setUnreadTestsCount] = useState(0);
 
   useEffect(() => {
     if (isAdmin) {
@@ -84,6 +85,22 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
       return () => unsubscribe();
     }
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (isTeacher) {
+      try {
+        const q = query(collectionGroup(db, 'tests'), where('teacherRead', '==', false));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          setUnreadTestsCount(snapshot.size);
+        }, (err) => {
+          console.error("collectionGroup tests snapshot error:", err);
+        });
+        return () => unsubscribe();
+      } catch (err) {
+        console.error("Error setting up tests snapshot listener:", err);
+      }
+    }
+  }, [isTeacher]);
 
   React.useEffect(() => {
     if (currentView.startsWith('admin')) setIsAdminExpanded(true);
@@ -155,8 +172,26 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           <NavLink id="tour-history" icon={<History size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('lesson-history')} isActive={currentView === 'lesson-history'}>
               {language === 'pl' ? 'Historia lekcji' : 'Lesson History'}
           </NavLink>
-          <NavLink icon={<ClipboardList size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('tests')} isActive={currentView === 'tests'}>
+          <NavLink 
+            icon={
+              <div className="relative">
+                <ClipboardList size={20} className={unreadTestsCount > 0 ? "text-primary animate-bounce" : ""} />
+                {unreadTestsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-black"></span>
+                  </span>
+                )}
+              </div>
+            } 
+            isCollapsed={isDesktopCollapsed} 
+            onClick={() => handleNavigate('tests')} 
+            isActive={currentView === 'tests'}
+          >
+            <span className={unreadTestsCount > 0 ? "text-primary font-bold" : ""}>
               {language === 'pl' ? 'Testy' : 'Tests'}
+              {unreadTestsCount > 0 && ` (${unreadTestsCount})`}
+            </span>
           </NavLink>
           
           <div className="pt-4 mt-4 border-t border-base-300">

@@ -197,14 +197,15 @@ export interface VocabularySet {
 }
 
 
-export type TestQuestionType = 'multiple_choice' | 'fill_in_blank' | 'translation' | 'matching' | 'writing' | 'find_mistake';
+export type TestQuestionType = 'multiple_choice' | 'fill_in_blank' | 'fill_in_blank_bank' | 'translation' | 'matching' | 'writing' | 'find_mistake';
 
 export interface TestQuestion {
   id: string;
   type: TestQuestionType;
   instruction?: string;
   prompt: string; // The question or sentence to translate
-  options?: string[]; // For multiple choice
+  options?: string[]; // For multiple choice or matching
+  wordBank?: string[]; // For fill in blank bank
   correctAnswer: string; 
   hint?: string;
 }
@@ -221,11 +222,14 @@ export interface SpecialTask {
 export interface StudentTest {
   id?: string;
   studentId: string;
+  studentName?: string;
+  studentEmail?: string;
   title: string;
   scope: string; // Zakres materiału
   instructions?: string;
   dueDate: string;
   createdAt: string;
+  completedAt?: string;
   status: 'pending' | 'completed' | 'graded';
   questions: TestQuestion[];
   score?: number;
@@ -234,6 +238,7 @@ export interface StudentTest {
   attemptsUsed?: number;
   studentAnswers?: Record<string, string>;
   aiFeedback?: string; // Map of questionId to student's answer
+  teacherRead?: boolean;
 }
 
 export interface BugReport {

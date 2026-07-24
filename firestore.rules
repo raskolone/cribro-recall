@@ -245,6 +245,10 @@ service cloud.firestore {
       }
     }
 
+    match /{path=**}/tests/{testId} {
+      allow read, write: if isAdmin();
+    }
+
     match /specialTasks/{taskId} {
       allow read: if request.auth != null && (resource.data.studentId == request.auth.uid || isAdmin());
       allow create: if request.auth != null && (request.resource.data.studentId == request.auth.uid || isAdmin());

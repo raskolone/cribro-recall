@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
@@ -7,12 +7,87 @@ import { gradeTest } from '../../services/geminiService';
 import Card from '../ui/Card';
 import ConfirmModal from '../ui/ConfirmModal';
 import Button from '../ui/Button';
+import { MatchingTask } from './MatchingTask';
+import { WordBankFillInBlankTask } from './WordBankFillInBlankTask';
 import i18n from "i18next";
+import { parseNumberedItems, formatSubAnswers, parseSubAnswers, normalizePromptLines } from '../../utils/testFormatters';
 
 interface TakeTestScreenProps {
   test: StudentTest;
   onBack: () => void;
 }
+
+const SentenceListTask: React.FC<{
+  type: 'translation' | 'fill_in_blank';
+  prompt: string;
+  initialAnswer?: string;
+  onChange: (ans: string) => void;
+}> = ({ type, prompt, initialAnswer, onChange }) => {
+  const sentences = useMemo(() => parseNumberedItems(prompt), [prompt]);
+  const [subAnswers, setSubAnswers] = useState<Record<number, string>>(() => 
+    parseSubAnswers(initialAnswer || '', sentences.length)
+  );
+
+  React.useEffect(() => {
+    if (initialAnswer !== undefined) {
+      setSubAnswers(parseSubAnswers(initialAnswer, sentences.length));
+    }
+  }, [initialAnswer, sentences.length]);
+
+  const handleTextChange = (index: number, val: string) => {
+    const updated = { ...subAnswers, [index]: val };
+    setSubAnswers(updated);
+    onChange(formatSubAnswers(updated, sentences.length));
+  };
+
+  return (
+    <div className="space-y-5">
+      {sentences.map((s, idx) => (
+        <div key={idx} className="p-5 md:p-6 rounded-2xl bg-base-200/60 border border-white/10 space-y-3.5 shadow-md">
+          {/* Nieedytowalna treść zdania */}
+          <div className="p-4 rounded-xl bg-black/50 border border-white/10 flex items-start gap-3.5">
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-primary/20 text-primary font-extrabold text-sm shrink-0 mt-0.5">
+              {s.num}
+            </span>
+            <p className="text-base md:text-lg font-semibold text-white leading-relaxed pt-0.5">
+              {s.text}
+            </p>
+          </div>
+
+          {/* Pole do wpisywania odpowiedzi - bez zbędnych banerów, z cichą blokadą wklejania */}
+          <div>
+            <label className="block text-xs font-bold text-content-muted uppercase tracking-wider mb-2 px-1">
+              {type === 'translation' ? `Twoje tłumaczenie zdania ${s.num}:` : `Twoja odpowiedź dla zdania ${s.num}:`}
+            </label>
+            <input
+              type="text"
+              value={subAnswers[idx] || ''}
+              onChange={(e) => handleTextChange(idx, e.target.value)}
+              onPaste={(e) => e.preventDefault()}
+              onCopy={(e) => e.preventDefault()}
+              onCut={(e) => e.preventDefault()}
+              onDrop={(e) => e.preventDefault()}
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && ['v', 'V'].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck="false"
+              placeholder={
+                type === 'translation'
+                  ? `Wpisz tłumaczenie zdania ${s.num}...`
+                  : `Wpisz odpowiedź dla zdania ${s.num}...`
+              }
+              className="w-full bg-black/60 border border-white/15 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl p-3.5 text-base text-white outline-none transition-all placeholder:text-content-muted/40 font-medium cursor-text"
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
   const { user } = useAuth();
@@ -64,6 +139,7 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
         score: gradeResult.score,
         aiFeedback: gradeResult.feedback,
         attemptsUsed: newAttemptsUsed,
+        teacherRead: false,
         completedAt: new Date().toISOString()
       });
       setGradingResult(gradeResult);
@@ -115,12 +191,24 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
               <div className="flex-1 space-y-6 w-full overflow-hidden">
                 <div>
                   <div className="text-sm font-bold text-content-muted mb-2 uppercase tracking-wider">
-                    {q.type === 'multiple_choice' ? 'Wielokrotny wybór' : q.type === 'find_mistake' ? 'Wybór poprawnego zdania' : q.type === 'fill_in_blank' ? 'Luki' : q.type === 'matching' ? 'Łączenie w pary' : q.type === 'writing' ? 'Writing' : 'Tłumaczenie'}
+                    {q.type === 'multiple_choice' ? 'Wielokrotny wybór' 
+                      : q.type === 'find_mistake' ? 'Wybór poprawnego zdania' 
+                      : q.type === 'fill_in_blank_bank' ? 'Luki z banku słów (rozsypka)' 
+                      : q.type === 'fill_in_blank' ? 'Luki' 
+                      : q.type === 'matching' ? 'Łączenie w pary' 
+                      : q.type === 'writing' ? 'Writing' 
+                      : 'Tłumaczenie'}
                   </div>
-                  {q.instruction && (
+                  {q.instruction && 
+                   q.instruction.trim().toLowerCase() !== q.prompt.trim().toLowerCase() && 
+                   !q.prompt.trim().toLowerCase().startsWith(q.instruction.trim().toLowerCase()) && (
                     <div className="font-bold text-primary text-lg mb-2">{q.instruction}</div>
                   )}
-                  <div className="font-medium text-xl leading-relaxed">{q.prompt}</div>
+                  {q.type !== 'translation' && q.type !== 'fill_in_blank' && q.type !== 'fill_in_blank_bank' && (
+                    <div className="font-medium text-xl leading-relaxed whitespace-pre-wrap">
+                      {normalizePromptLines(q.prompt)}
+                    </div>
+                  )}
                   {q.hint && <div className="mt-3 text-sm text-content-muted/80 italic flex items-center gap-2"><span>💡</span>  {i18n.t("Wskazówka:")} {q.hint}</div>}
                 </div>
                 
@@ -142,45 +230,36 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
                   </div>
                 )}
                 
+                {q.type === 'fill_in_blank_bank' && (
+                  <WordBankFillInBlankTask
+                    prompt={q.prompt}
+                    correctAnswer={q.correctAnswer}
+                    wordBank={q.wordBank}
+                    options={q.options}
+                    onChange={ans => handleAnswerChange(q.id, ans)}
+                    initialAnswer={answers[q.id]}
+                  />
+                )}
+
                 {(q.type === 'fill_in_blank' || q.type === 'translation') && (
-                  <div>
-                    <input
-                      type="text"
-                      value={answers[q.id] || ''}
-                      onChange={e => handleAnswerChange(q.id, e.target.value)}
-                      placeholder={q.type === 'translation' ? "Przetłumacz na angielski..." : "Wpisz brakujący fragment..."}
-                      className="w-full bg-black/30 backdrop-blur-sm border border-white/10 rounded-xl p-4 text-lg outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
-                    />
-                  </div>
+                  <SentenceListTask
+                    type={q.type}
+                    prompt={q.prompt}
+                    initialAnswer={answers[q.id]}
+                    onChange={ans => handleAnswerChange(q.id, ans)}
+                  />
                 )}
                 
                 {q.type === 'matching' && q.options && (
-                  <div className="space-y-4">
-                    <div className="text-sm text-content-muted">{i18n.t("Przepisz połączone pary (oddzielone znakiem równości =):")}</div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 opacity-80">
-                        {q.options.map((opt, j) => {
-                            const p = opt.split('=');
-                            return (
-                                <div key={j} className="p-3 border border-white/10 rounded-xl bg-black/30 backdrop-blur-sm flex items-center justify-between text-sm">
-                                    <span>{p[0]?.trim()}</span>
-                                    <span className="text-content-muted">/</span>
-                                    <span>{p[1]?.trim()}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <textarea
-                      value={answers[q.id] || ''}
-                      onChange={e => handleAnswerChange(q.id, e.target.value)}
-                      placeholder={i18n.t("Wpisz połączone pary, np: jabłko = apple pies = dog")}
-                      className="w-full bg-black/30 backdrop-blur-sm border border-white/10 rounded-xl p-4 text-base outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all h-32 resize-y font-mono"
-                    />
-                  </div>
+                  <MatchingTask
+                    options={q.options}
+                    onChange={ans => handleAnswerChange(q.id, ans)}
+                    initialAnswer={answers[q.id]}
+                  />
                 )}
 
                 {q.type === 'writing' && (
                   <div>
-                    <div className="text-sm text-content-muted mb-2 font-bold text-primary">{i18n.t("Uwaga: Funkcja wklejania jest zablokowana w tym zadaniu.")}</div>
                     <textarea
                       value={answers[q.id] || ''}
                       onChange={e => handleAnswerChange(q.id, e.target.value)}
@@ -191,7 +270,7 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
                       autoComplete="off"
                       autoCorrect="off"
                       spellCheck="false"
-                      className="w-full bg-black/30 backdrop-blur-sm border border-white/10 rounded-xl p-4 text-lg outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all min-h-[200px] resize-y"
+                      className="w-full bg-black/30 backdrop-blur-sm border border-white/10 rounded-xl p-4 text-lg text-white outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all min-h-[200px] resize-y cursor-text font-medium"
                     />
                   </div>
                 )}

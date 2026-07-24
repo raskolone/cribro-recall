@@ -693,6 +693,10 @@ const Dashboard: React.FC = () => {
     }
 
     if (view === 'tests') {
+      const isTeacherUser = user?.role === 'admin' || user?.role === 'teacher';
+      if (isTeacherUser) {
+        return <AdminPanel initialTab="tests" onViewChange={changeView} initialSelectedUserId={adminSelectedUserId} onUserSelect={(id) => changeView(view, { adminSelectedUserId: id })} />;
+      }
       return <StudentTestsScreen onBack={() => changeView('dashboard', { activeSetId: null, practiceView: null, adminSelectedUserId: null })} />;
     }
         // Default to dashboard view

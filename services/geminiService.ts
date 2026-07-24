@@ -434,7 +434,8 @@ export const generateTest = async (
   attemptsLimit: number,
   selectedTypes: string[] = ['multiple_choice', 'fill_in_blank', 'translation'],
   fileData?: { data: string; mimeType: string } | null,
-  driveFile?: { id: string, mimeType: string, token: string }
+  driveFile?: { id: string, mimeType: string, token: string },
+  typeCounts?: Record<string, number>
 ): Promise<any[]> => {
   
   const user = auth.currentUser;
@@ -456,6 +457,7 @@ export const generateTest = async (
       tasksCount,
       attemptsLimit,
       selectedTypes,
+      typeCounts,
       fileData,
       driveFile
     })
@@ -585,10 +587,13 @@ Zwróć 10 poprawionych zadań jako JSON (tablica obiektów). Zastąp te, które
       type: Type.OBJECT,
       properties: {
         id: { type: Type.STRING },
-        type: { type: Type.STRING, enum: ['multiple_choice', 'fill_in_blank', 'translation'] },
+        type: { type: Type.STRING, enum: ['multiple_choice', 'fill_in_blank', 'fill_in_blank_bank', 'translation', 'matching', 'writing', 'find_mistake'] },
+        instruction: { type: Type.STRING },
         prompt: { type: Type.STRING },
         options: { type: Type.ARRAY, items: { type: Type.STRING }, nullable: true },
+        wordBank: { type: Type.ARRAY, items: { type: Type.STRING }, nullable: true },
         correctAnswer: { type: Type.STRING },
+        hint: { type: Type.STRING, nullable: true },
       },
       required: ["id", "type", "prompt", "correctAnswer"],
     },

@@ -198,39 +198,65 @@ app.use((err: any, req: any, res: any, next: any) => {
   // Proxy for Gemini API
   app.post('/api/gemini/generate-test', requireFirebaseAdmin, async (req, res) => {
     try {
-      const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, fileData, driveFile } = req.body;
+      const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, typeCounts, fileData, driveFile } = req.body;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
       
-      
       const ai = new GoogleGenAI({ apiKey });
       
+      let typeBreakdownInstruction = '';
+      if (typeCounts && typeof typeCounts === 'object' && Object.keys(typeCounts).length > 0) {
+        const parts = Object.entries(typeCounts)
+          .filter(([t]) => !selectedTypes || selectedTypes.includes(t))
+          .map(([type, count]) => `- ${type}: DOKŁADNIE 1 ZADANIE ZBIORCZE zawierające ${count} przykładów/zdań w bullet pointach`);
+        if (parts.length > 0) {
+          typeBreakdownInstruction = `STRUKTURA ZADAŃ W TESTU (GŁÓWNA ZASADA GRUPOWANIA):\n${parts.join('\n')}\nKażdy z wybranych typów ma stanowić DOKŁADNIE JEDNO POJEDYNCZE ZADANIE ZBIORCZE z wybraną liczbą przykładów! Łączna liczba obiektów w tablicy pytań ma wynosić DOKŁADNIE ${selectedTypes ? selectedTypes.length : 1} (po jednym obiekcie dla każdego wybranego typu).`;
+        }
+      }
+
       let contents = [];
       const prompt = `Jesteś asystentem edukacyjnym, generatorem testów opartym o zaawansowany model.
 Twoim zadaniem jest przygotowanie wysoce spersonalizowanego testu dla kursanta, analizując jego historię lekcji.
 
+# KLUCZOWA ZASADA STRUKTURALNA (POJEDYNCZE ZADANIE ZBIORCZE DLA KAŻDEGO TYPU ĆWICZENIA):
+Dla każdego wybranego typu zadania (np. 'translation', 'fill_in_blank', 'matching' itp.) twórz **TYLKO JEDNO DANE ZADANIE ZBIORCZE** (jeden obiekt w tablicy JSON).
+Wszystkie podane przykłady/zdania dla danego typu umieść WEWNĄTRZ tego jednego zadania (np. w polu 'prompt' jako wypunktowana/numerowana lista w bullet pointach 1., 2., 3., 4... lub w 'options' w przypadku łączenia w pary).
+Nie twórz osobnych obiektów zadań dla każdego zdania!
+
+Przykład: Jeśli nauczyciel wybrał 'translation' i liczbę przykładów 4:
+Tworzysz 1 obiekt typu 'translation':
+- instruction: "Przetłumacz poniższe zdania na język angielski:"
+- prompt: "1. Pierwsze zdanie po polsku.\n2. Drugie zdanie po polsku.\n3. Trzecie zdanie po polsku.\n4. Czwarte zdanie po polsku."
+- correctAnswer: "1. First sentence.\n2. Second sentence.\n3. Third sentence.\n4. Fourth sentence."
+
 # ZASADY ŻELAZNE:
 1. Przeanalizuj dokładnie profil kursanta:
 ${studentProfile}
-Oraz CAŁĄ historię jego lekcji, aby skroić test jak najbardziej personalnie (zainteresowania, typowe błędy, słownictwo):
+Oraz CAŁĄ historię jego lekcji:
 ${allLessonsContext}
 
 2. Test musi być ściśle dostosowany do poziomu kursanta: ${level}.
 3. Oprzyj merytorykę zadań GŁÓWNIE na wybranych lekcjach stanowiących kontekst bieżącego materiału:
 ${lessonContext}
-4. Wygeneruj DOKŁADNIE ${tasksCount || 10} zadań.
-5. Użyj TYLKO następujących typów zadań wybranych przez nauczyciela: ${selectedTypes ? selectedTypes.join(', ') : 'multiple_choice, fill_in_blank, translation'}.
-   ZABRANIA SIĘ TWORZENIA ZADAŃ INNEGO TYPU. Jeśli na liście nie ma 'writing', kategorycznie nie twórz zadań 'writing'.
-   Dozwolone typy: 
-   - multiple_choice (wielokrotnego wyboru),
-   - fill_in_blank (wpisywanie brakujących elementów),
-   - translation (tłumaczenie z polskiego na angielski),
-   - matching (łączenie w pary - w opcjach podaj pary do złączenia oddzielone znakiem =, a w correctAnswer napisz np. 'połączone'),
-   - writing (zadanie polegające na dłuższej wypowiedzi pisemnej na podstawie zagadnień, bez correctAnswer, uczeń pisze własny tekst).
-   - find_mistake (znalezienie błędu w zdaniu. W polu options wygeneruj 4 wersje zdania, tylko JEDNA jest w 100% poprawna, w correctAnswer - dokładna poprawna wersja).
-6. WAŻNE: W polu "instruction" KAŻDEGO zadania ZAWSZE zamieść wyraźne polecenie w języku polskim (np. "Wybierz prawidłową opcję:", "Uzupełnij luki w zdaniu:"). W polu "prompt" umieść właściwe zadanie (np. zdanie z luką, zdanie do przetłumaczenia).
-7. Jeśli jednym z wybranych typów jest "writing", upewnij się, że jedno z zadań to "writing". Jeśli nie - kategorycznie nie.
-8. Zdania mają być autentyczne i naturalne, by kursant widział ich praktyczne zastosowanie.
+4. Wygeneruj DOKŁADNIE ${selectedTypes ? selectedTypes.length : 1} obiektów zadań w tablicy wynikowej (po 1 zbiorczym zadaniu na każdy typ):
+${typeBreakdownInstruction}
+
+5. Użyj TYLKO następujących typów zadań wybranych przez nauczyciela: ${selectedTypes ? selectedTypes.join(', ') : 'multiple_choice, fill_in_blank, fill_in_blank_bank, translation'}.
+   ZABRANIA SIĘ TWORZENIA ZADAŃ INNEGO TYPU.
+   Zasady dla typów zadań zbiorczych:
+   - translation: 1 zadanie zbiorcze. W 'prompt' umieść N zdań polskich w punktach (1., 2., ...). W 'correctAnswer' umieść N angielskich tłumaczeń w punktach (1., 2., ...).
+   - fill_in_blank: 1 zadanie zbiorcze. W 'prompt' umieść N zdań z lukami '___' w punktach (1., 2., ...). W 'correctAnswer' umieść N poprawnych słów w punktach.
+   - fill_in_blank_bank: 1 zadanie zbiorcze. W 'wordBank' umieść słowa w rozsypce dla wszystkich N zdań. W 'prompt' umieść N zdań z lukami '___' w punktach (1., 2., ...). W 'correctAnswer' umieść N odpowiedzi.
+   - matching: 1 zadanie zbiorcze. W 'options' zamieść listę wszystkich N par w formacie ["słowo1 = word1", "słowo2 = word2", ...].
+   - find_mistake: 1 zadanie zbiorcze. W 'prompt' umieść N zdań/punktów do poprawienia.
+   - multiple_choice: 1 zadanie zbiorcze. W 'prompt' umieść N pytań wielokrotnego wyboru (1. ..., 2. ...).
+   - writing: 1 zadanie z dłuższą wypowiedzią pisemną.
+
+6. WAŻNE - FORMATOWANIE I BRAK DUBLOWANIA:
+   W polu "instruction" zamieść Krótkie Ogólne Polecenie w języku polskim (np. "Przetłumacz poniższe zdania na język angielski:").
+   W polu "prompt" umieść właściwe przykłady w punktach 1., 2., 3...
+   BEZWZGLĘDNIE KAŻDY PUNKT (1., 2., 3...) W POLU "prompt" ORAZ "correctAnswer" MUSI ZACZYNAĆ SIĘ OD NOWEJ LINII (\n)! ZABRANIA SIĘ UMIESZCZANIA KILKU ZDAŃ W TEJ SAMEJ LINII.
+   BEZWZGLĘDNIE ZABRANIA SIĘ POWTARZANIA TREŚCI POLECENIA W POLU PROMPT!
 
 Tytuł testu: ${testTitle}
 Zakres materiału: ${scope}
@@ -272,18 +298,23 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
         items: {
           type: Type.OBJECT,
           properties: {
-            type: { type: Type.STRING, enum: ["multiple_choice", "fill_in_blank", "translation", "matching", "writing", "find_mistake"], description: "Type of the question" },
-            instruction: { type: Type.STRING, description: "Clear instruction in Polish, e.g. \"Uzupełnij luki:\"" },
+            type: { type: Type.STRING, enum: ["multiple_choice", "fill_in_blank", "fill_in_blank_bank", "translation", "matching", "writing", "find_mistake"], description: "Type of the question" },
+            instruction: { type: Type.STRING, description: "Short instruction in Polish, e.g. \"Uzupełnij luki:\"" },
             prompt: { type: Type.STRING, description: "The question or the sentence to translate/fill" },
             options: { 
               type: Type.ARRAY, 
               items: { type: Type.STRING },
-              description: "Options for multiple_choice. Leave empty for other types."
+              description: "Options for multiple_choice, find_mistake or matching pairs."
             },
-            correctAnswer: { type: Type.STRING, description: "The correct answer (exact string). For translation, the correct English translation." },
+            wordBank: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: "List of words in the word bank for fill_in_blank_bank"
+            },
+            correctAnswer: { type: Type.STRING, description: "The correct answer (exact string)." },
             hint: { type: Type.STRING, description: "Optional hint in Polish." }
           },
-          required: ["type", "prompt", "correctAnswer"]
+          required: ["type", "instruction", "prompt", "correctAnswer"]
         }
       };
 
