@@ -128,7 +128,12 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
     try {
       if (!user?.id || !test.id) throw new Error("Not authenticated");
       
-      const gradeResult = await gradeTest(test.title, test.questions, answers);
+      let gradeResult = { score: 0, feedback: 'Odpowiedzi zostały zapisane i przesłane do weryfikacji.' };
+      try {
+        gradeResult = await gradeTest(test.title, test.questions, answers);
+      } catch (aiErr) {
+        console.warn("AI grading error, proceeding with answers saved:", aiErr);
+      }
       
       const newAttemptsUsed = (test.attemptsUsed || 0) + 1;
       
@@ -146,7 +151,7 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
       setSubmitted(true);
     } catch (err) {
       console.error(err);
-      alert("Wystąpił błąd podczas zapisywania odpowiedzi lub weryfikacji AI.");
+      alert("Wystąpił błąd podczas zapisywania odpowiedzi.");
     } finally {
       setIsSubmitting(false);
     }

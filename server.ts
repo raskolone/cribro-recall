@@ -94,7 +94,26 @@ app.use((err: any, req: any, res: any, next: any) => {
   const adminApp = getAdminApp();
   const adminAuth = getAuth(adminApp);
 
-  // Authentication Middleware
+  // Authentication Middlewares
+  async function requireFirebaseAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'Missing Bearer token' });
+      return;
+    }
+    
+    const idToken = authHeader.slice(7);
+    try {
+      const decodedToken = await adminAuth.verifyIdToken(idToken);
+      (req as any).userUid = decodedToken.uid;
+      (req as any).userEmail = decodedToken.email;
+      next();
+    } catch (err) {
+      console.error(err);
+      res.status(401).json({ error: 'Invalid or expired token' });
+    }
+  }
+
   async function requireFirebaseAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
@@ -599,7 +618,7 @@ Zwróć wynik jako JSON z poniższymi polami:
 
 
   
-  app.post('/api/gemini/grade-test', requireFirebaseAdmin, async (req, res) => {
+  app.post('/api/gemini/grade-test', requireFirebaseAuth, async (req, res) => {
     try {
       const { testTitle, questions, studentAnswers } = req.body;
       const apiKey = process.env.GEMINI_API_KEY;
