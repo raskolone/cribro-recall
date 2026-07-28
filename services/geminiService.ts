@@ -162,9 +162,10 @@ const sentenceGeneratorSchema = {
           english_sentence: { type: Type.STRING, description: "Clean, natural English sentence." },
           polish_translation: { type: Type.STRING, description: "Naturalne polskie tłumaczenie." },
           target_word_used: { type: Type.STRING, description: "The single target word used in this sentence." },
-          hint: { type: Type.STRING, description: "A subtle hint in Polish, e.g. suggesting a grammar structure or vocabulary clue." }
+          hint: { type: Type.STRING, description: "A subtle hint in Polish, e.g. suggesting a grammar structure or vocabulary clue." },
+          puzzleChunks: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of sentence chunks for the warmup exercise. Keep phrases logical (e.g. phrasal verbs together, don't split very short words)." }
         },
-        required: ['english_sentence', 'polish_translation']
+        required: ['english_sentence', 'polish_translation', 'puzzleChunks']
       }
     }
   },
@@ -247,7 +248,8 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
       "english_sentence": "Clean, natural English sentence.",
       "polish_translation": "Naturalne polskie tłumaczenie.",
       "target_word_used": "word",
-      "hint": "Wskazówka po polsku"
+      "hint": "Wskazówka po polsku",
+      "puzzleChunks": ["Clean,", "natural English", "sentence."]
     }
   ]
 }`;
@@ -256,7 +258,7 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const config = {
-        systemInstruction: "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output.",
+        systemInstruction: "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: When generating puzzleChunks, DO NOT split the sentence into single words, especially at higher levels! Create logical, natural phrasing blocks (e.g., keep phrasal verbs together, keep names with titles, don't separate prepositions from their noun phrases if it breaks logic). Act as a highly intelligent assistant structuring a warmup exercise.",
         responseMimeType: "application/json",
         responseSchema: sentenceGeneratorSchema,
       };
@@ -287,6 +289,7 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
           polishSentence,
           englishTranslation,
           hint,
+          puzzleChunks: item.puzzleChunks || undefined,
         };
       }).filter(ex => ex.polishSentence && ex.englishTranslation);
 

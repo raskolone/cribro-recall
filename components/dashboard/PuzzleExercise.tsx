@@ -109,6 +109,7 @@ const CuteMascot = ({ state }: { state: 'idle' | 'happy' | 'error' | 'thinking' 
 
 interface PuzzleExerciseProps {
   sentence: string;
+  puzzleChunks?: string[];
   level: string;
   currentAnswer: string;
   onAnswerChange: (answer: string) => void;
@@ -130,7 +131,7 @@ interface TileData {
   colorClass: string;
 }
 
-const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, currentAnswer, onAnswerChange }) => {
+const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks, level, currentAnswer, onAnswerChange }) => {
   const [tiles, setTiles] = useState<TileData[]>([]);
   const [selectedTiles, setSelectedTiles] = useState<TileData[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -297,7 +298,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, level, curren
       return chunks;
     };
 
-    const chunks = semanticChunking(sentence);
+    const chunks = puzzleChunks && puzzleChunks.length > 0 ? puzzleChunks : semanticChunking(sentence);
     
     const initialTiles = chunks.map((chunk, idx) => ({
       id: `tile-${idx}-${chunk.replace(/[^a-zA-Z0-9]/g, '')}`,

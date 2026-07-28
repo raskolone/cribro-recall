@@ -144,6 +144,7 @@ export interface TranslationExercise {
   polishSentence: string;
   englishTranslation: string;
   hint?: string;
+  puzzleChunks?: string[];
 }
 
 export interface TranslationEvaluationResult {
@@ -210,6 +211,7 @@ export interface TestQuestion {
   wordBank?: string[]; // For fill in blank bank
   correctAnswer: string; 
   hint?: string;
+  puzzleChunks?: string[];
 }
 
 export interface SpecialTask {

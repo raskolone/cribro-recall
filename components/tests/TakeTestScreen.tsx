@@ -10,7 +10,8 @@ import Button from '../ui/Button';
 import { MatchingTask } from './MatchingTask';
 import { WordBankFillInBlankTask } from './WordBankFillInBlankTask';
 import { exportTestToPDF } from "../../utils/pdfExport";
-import { Download } from "lucide-react";
+import { Download, CheckCircle } from "lucide-react";
+import Markdown from "react-markdown";
 import i18n from "i18next";
 import { parseNumberedItems, formatSubAnswers, parseSubAnswers, normalizePromptLines } from '../../utils/testFormatters';
 

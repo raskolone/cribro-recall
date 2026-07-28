@@ -2042,6 +2042,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                 {exerciseFormat === 'puzzle' ? (
                   <PuzzleExercise 
                     sentence={exercises[activeSentenceIndex].englishTranslation}
+                    puzzleChunks={exercises[activeSentenceIndex].puzzleChunks}
                     level={level}
                     currentAnswer={studentAnswers[activeSentenceIndex] || ''}
                     onAnswerChange={(ans) => {
