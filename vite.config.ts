@@ -16,15 +16,21 @@ export default defineConfig(({ mode }) => {
         tailwindcss(),
         VitePWA({
           registerType: 'autoUpdate',
-          includeAssets: ['favicon.svg', 'cribro-logo.svg', 'apple-touch-icon.png'],
+          includeAssets: ['favicon.svg', 'cribro-logo.svg', 'apple-touch-icon.png', 'cribro-icon.svg'],
           manifest: {
             name: 'CRIBRO ENGLISH',
             short_name: 'Cribro',
-            description: 'Your English AI Coach - Spersonalizowane lekcje angielskiego z AI',
+            description: 'Cribro English',
             theme_color: '#0a0a0a',
             background_color: '#0a0a0a',
             display: 'standalone',
             icons: [
+              {
+                src: 'cribro-icon.svg',
+                sizes: 'any',
+                type: 'image/svg+xml',
+                purpose: 'any maskable'
+              },
               {
                 src: 'icon-192x192.png',
                 sizes: '192x192',
