@@ -1,0 +1,1 @@
+sed -i 's/singleEvaluationResults\[activeSentenceIndex\].correctTranslation/singleEvaluationResults[activeSentenceIndex].highlighted_better_version || singleEvaluationResults[activeSentenceIndex].correctTranslation/g' components/dashboard/AIExerciseGeneratorScreen.tsx

@@ -475,6 +475,9 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [selectedVoiceLang, setSelectedVoiceLang] = useState<string>('en-US');
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [showHints, setShowHints] = useState<boolean[]>([]);
+  const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
+  const [grammarChapters, setGrammarChapters] = useState<any[]>([]);
+  const [isLoadingTopics, setIsLoadingTopics] = useState(false);
   
   // Loading & error states
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -1155,6 +1158,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               ? 'Ćwicz tłumaczenie zdań z języka polskiego na angielski na podstawie Twoich słówek i poziomu zaawansowania.'
               : 'Practice translating sentences from Polish to English based on your word lists and CEFR level.'}
           </p>
+
         </div>
         <div className="flex items-center gap-2">
           {isTeacher && (
@@ -1225,6 +1229,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               >
                 {language === 'pl' ? 'Zapisz' : 'Save changes'}
               </button>
+
             </div>
           </div>
           <p className="text-xs text-content-muted">
@@ -1279,6 +1284,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               >
                 <X className="w-5 h-5 text-red-400/70" />
               </button>
+
             </div>
           </motion.div>
         )}
@@ -1358,6 +1364,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       >
                         <X className="w-4 h-4" />
                       </button>
+
                     </div>
                   </div>
                 </motion.div>
@@ -1392,6 +1399,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                                                   {i18n.t("BETA")}
                                                                 </span>
                 </button>
+
               </div>
 
               {/* Single Box Body content */}
@@ -1448,10 +1456,11 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse shrink-0" />
                             )}
                           </button>
+
                         </div>
                       ))}
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {/* Option 1: Wszystkie słówka (Mix) */}
                         <button
                           type="button"
@@ -1504,11 +1513,27 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             <span className="font-semibold text-sm">
                               {language === 'pl' ? 'Wybierz lekcję' : 'Select lesson'}
                             </span>
+
                           </div>
                           {selectedSetId === 'lessons' || selectedLessonIds.length > 0 ? (
                             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse shrink-0" />
                           ) : null}
                         </button>
+                        {user?.role === "admin" && (
+                          <button
+                            type="button"
+                            onClick={() => setIsTopicModalOpen(true)}
+                            className={`p-4 rounded-2xl border text-left transition-all duration-300 flex items-center justify-between min-h-[56px] border-white/10 bg-[#121824] hover:bg-[#17202e] hover:border-white/20 text-gray-300`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <Sparkles className="w-4 h-4 shrink-0 text-gray-400" />
+                              <span className="font-semibold text-sm">
+                                {language === "pl" ? "Tematyka mieszana (Demo)" : "Mixed topics (Demo)"}
+                              </span>
+                            </div>
+                          </button>
+                        )}
+
                       </div>
 
                       {/* Expandable Lesson Drawer when "Wybierz lekcję" is active */}
@@ -1588,6 +1613,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                       >
                                         <Eye className="w-3.5 h-3.5" />
                                       </button>
+
                                     </div>
 
                                     <AnimatePresence>
@@ -1735,6 +1761,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               {val}
                             </button>
                           ))}
+
                         </div>
                       </div>
                     </div>
@@ -1920,6 +1947,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   {showHints[activeSentenceIndex] && (
                     <div className="mt-1.5 mx-auto bg-amber-500/[0.04] border border-amber-500/15 rounded-xl p-3 text-xs text-amber-400 animate-fade-in-up max-w-lg">
                       {exercises[activeSentenceIndex].hint}
+
                     </div>
                   )}
                 </div>
@@ -1973,12 +2001,14 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                        )}
                        
                        <div className="w-full flex flex-col items-center gap-3 p-2.5 liquid-glass-tile rounded-lg mb-3 border border-white/5 text-center">
-                         <div className="font-medium text-primary/90 text-sm">
-                           {singleEvaluationResults[activeSentenceIndex].correctTranslation}
-                         </div>
+                         <div 
+                           className="font-medium text-primary/90 text-sm"
+                           dangerouslySetInnerHTML={{ __html: singleEvaluationResults[activeSentenceIndex].highlighted_better_version || singleEvaluationResults[activeSentenceIndex].correctTranslation }}
+                         />
                          <div className="flex items-center justify-center gap-1.5 shrink-0 bg-black/30 p-1 rounded-md mt-2">
                            <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-US')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("🇺🇸 Amerykański")} disabled={isPlayingAudio}>🇺🇸</button>
                            <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-GB')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("🇬🇧 Brytyjski")} disabled={isPlayingAudio}>🇬🇧</button>
+
                          </div>
                        </div>
 
@@ -2308,7 +2338,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       <div className="text-base font-semibold text-white">{res.polishSentence}</div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-white/5">
+                    <div className="flex flex-col space-y-4 pt-2 border-t border-white/5">
                       <div>
                         <div className="text-xs text-content-muted font-bold mb-1 uppercase tracking-wider">{language === 'pl' ? 'Twoja odpowiedź' : 'Your translation'}</div>
                         <div className={`text-sm p-2.5 rounded-lg font-medium border ${
@@ -2342,10 +2372,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 )}
                               </button>
                             ))}
+
                           </div>
                         </div>
-                        <div className="text-sm p-2.5 bg-primary/[0.02] border border-primary/10 text-primary-light rounded-lg font-medium">
-                          {res.correctTranslation}
+                        <div className="text-sm p-2.5 bg-primary/[0.02] border border-primary/10 text-primary-light rounded-lg font-medium" dangerouslySetInnerHTML={{ __html: res.highlighted_better_version || res.correctTranslation }}>
                         </div>
                       </div>
                     </div>
@@ -2396,6 +2426,66 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                 </div>
               </Card>
             ))}
+          </div>
+        </div>
+      )}
+      {isTopicModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm" onClick={() => setIsTopicModalOpen(false)}>
+          <div 
+            className="bg-[#121824] rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-white/10 shadow-[0_16px_64px_rgba(0,0,0,0.6)]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-20 flex items-center justify-between p-6 bg-[#121824]/95 backdrop-blur-xl border-b border-white/10">
+              <div>
+                 <h2 className="text-xl font-bold text-white">Tematyka mieszana (Baza tematów)</h2>
+                 <p className="text-sm text-content-muted">Wybierz kategorię z bazy, aby wygenerować zdania do ćwiczeń.</p>
+              </div>
+              <button 
+                onClick={() => setIsTopicModalOpen(false)}
+                className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {isLoadingTopics ? (
+                <div className="flex justify-center p-8"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+              ) : grammarChapters.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">Brak tematów w bazie. Skonfiguruj w panelu admina.</div>
+              ) : (
+                grammarChapters.map((chapter: any, cIdx: number) => (
+                  <div key={chapter.id || cIdx} className="border border-white/5 bg-base-200/50 rounded-xl overflow-hidden">
+                    <div className="p-4 bg-white/5 font-bold text-white border-b border-white/5 flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">{cIdx + 1}</div>
+                      {chapter.name}
+                    </div>
+                    <div className="p-2 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+                      {chapter.topics.map((topic: any, tIdx: number) => {
+                         const hasSentences = (topic.sentences || "").trim().length > 0;
+                         return (
+                          <button
+                            key={topic.id || tIdx}
+                            disabled={!hasSentences}
+                            onClick={() => {
+                               setIsTopicModalOpen(false);
+                               const promptAddon = `[TŁUMACZENIA]: Wygeneruj ćwiczenia, bazując ściśle na tych zdaniach, lekko je modyfikując: \n${topic.sentences}`;
+                               handleGenerate(false, promptAddon);
+                            }}
+                            className={`p-3 rounded-lg border text-left flex flex-col justify-center min-h-[60px] ${hasSentences ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/50 text-emerald-100" : "opacity-50 cursor-not-allowed border-transparent bg-black/10 text-gray-600"}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-mono text-content-muted">{tIdx + 1}.</span>
+                              <span className="font-semibold text-sm truncate flex-1">{topic.name}</span>
+                            </div>
+                            {hasSentences && <div className="text-[10px] text-emerald-400 mt-1 ml-6">{topic.sentences.split("\n").filter((s:string) => s.trim()).length} zdań</div>}
+                          </button>
+                         );
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}

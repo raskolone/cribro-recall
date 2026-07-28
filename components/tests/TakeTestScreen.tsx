@@ -9,6 +9,8 @@ import ConfirmModal from '../ui/ConfirmModal';
 import Button from '../ui/Button';
 import { MatchingTask } from './MatchingTask';
 import { WordBankFillInBlankTask } from './WordBankFillInBlankTask';
+import { exportTestToPDF } from "../../utils/pdfExport";
+import { Download } from "lucide-react";
 import i18n from "i18next";
 import { parseNumberedItems, formatSubAnswers, parseSubAnswers, normalizePromptLines } from '../../utils/testFormatters';
 
@@ -161,8 +163,41 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
     return (
       <div className="max-w-2xl mx-auto text-center space-y-6 pt-12">
         <h2 className="text-3xl font-bold text-primary">{i18n.t("Test Zakończony!")}</h2>
-        <p className="text-content-muted">{i18n.t("Twoje odpowiedzi zostały zapisane. Oczekuj na pełne sprawdzenie przez nauczyciela.")}</p>
+        <p className="text-content-muted">{i18n.t("Twoje odpowiedzi zostały zapisane.")}</p>
+        
+        {gradingResult?.feedback && (
+          <div className="mt-8 text-left max-w-3xl mx-auto">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <CheckCircle className="text-primary w-6 h-6" /> {i18n.t("Informacja zwrotna (AI Feedback)")}
+            </h3>
+            
+            {gradingResult.score !== undefined && (
+              <div className="mb-4 text-lg">
+                <strong>{i18n.t("Wynik:")}</strong> {gradingResult.score} {i18n.t("pkt")}
+              </div>
+            )}
+
+            <div className="bg-black/30 backdrop-blur-sm border border-white/10 p-6 rounded-2xl prose prose-invert max-w-none text-white/90">
+              <Markdown>{gradingResult.feedback}</Markdown>
+            </div>
+          </div>
+        )}
         <Button onClick={onBack}>{i18n.t("Wróć do listy testów")}</Button>
+        <Button 
+          onClick={() => {
+            exportTestToPDF({
+              ...test,
+              studentAnswers: answers,
+              aiFeedback: gradingResult?.feedback,
+              score: gradingResult?.score,
+              completedAt: new Date().toISOString()
+            }, i18n.t)
+          }}
+          className="ml-4 bg-transparent border border-white/20 text-white hover:bg-white/10"
+        >
+          <Download className="w-4 h-4 mr-2 inline" />
+          {i18n.t("Pobierz raport (PDF)")}
+        </Button>
       </div>
     );
   }

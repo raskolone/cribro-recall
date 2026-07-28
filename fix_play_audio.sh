@@ -1,0 +1,1 @@
+sed -i "s/playAudio(singleEvaluationResults\[activeSentenceIndex\].highlighted_better_version || singleEvaluationResults\[activeSentenceIndex\].correctTranslation/playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation/g" components/dashboard/AIExerciseGeneratorScreen.tsx

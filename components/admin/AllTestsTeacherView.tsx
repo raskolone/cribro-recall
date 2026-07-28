@@ -6,6 +6,7 @@ import Card from '../ui/Card';
 import Button from '../ui/Button';
 import TestPreviewModal from './TestPreviewModal';
 import TestEditModal from './TestEditModal';
+import ConfirmModal from '../ui/ConfirmModal';
 import { Eye, Edit2, Trash2, Search, Filter, Bell, CheckCircle2, Clock, Calendar, Award, User as UserIcon } from 'lucide-react';
 import i18n from 'i18next';
 
@@ -19,6 +20,7 @@ export const AllTestsTeacherView: React.FC = () => {
   // Modals state
   const [previewTest, setPreviewTest] = useState<StudentTest | null>(null);
   const [editTest, setEditTest] = useState<StudentTest | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{isOpen: boolean; test: StudentTest | null}>({isOpen: false, test: null});
 
   const fetchAllData = async () => {
     setIsLoading(true);
@@ -67,11 +69,10 @@ export const AllTestsTeacherView: React.FC = () => {
 
   const handleDeleteTest = async (test: StudentTest) => {
     if (!test.id || !test.studentId) return;
-    if (!window.confirm(i18n.t("Czy na pewno chcesz usunąć ten przypisany test? Kursant nie będzie go już widział."))) return;
-
     try {
       await deleteDoc(doc(db, `users/${test.studentId}/tests`, test.id));
       setTests(prev => prev.filter(t => t.id !== test.id));
+      setConfirmModal({isOpen: false, test: null});
     } catch (err) {
       console.error(err);
       alert(i18n.t("Błąd podczas usuwania testu"));
@@ -272,7 +273,7 @@ export const AllTestsTeacherView: React.FC = () => {
                     </Button>
 
                     <button
-                      onClick={() => handleDeleteTest(test)}
+                      onClick={() => setConfirmModal({isOpen: true, test})}
                       className="p-2 rounded-lg text-content-muted hover:text-red-400 hover:bg-red-400/10 transition-colors border border-transparent hover:border-red-400/20"
                       title={i18n.t("Usuń test")}
                     >
@@ -286,6 +287,15 @@ export const AllTestsTeacherView: React.FC = () => {
         </div>
       )}
 
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={i18n.t("Potwierdzenie usunięcia")}
+        message={i18n.t("Czy na pewno chcesz usunąć ten przypisany test? Kursant nie będzie go już widział.")}
+        confirmText={i18n.t("Usuń")}
+        cancelText={i18n.t("Anuluj")}
+        onConfirm={() => confirmModal.test && handleDeleteTest(confirmModal.test)}
+        onCancel={() => setConfirmModal({isOpen: false, test: null})}
+      />
       {/* Modals */}
       <TestPreviewModal
         test={previewTest}

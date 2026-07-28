@@ -191,10 +191,11 @@ const evaluationResultSchema = {
             },
             required: ["meaning_score", "grammar_score", "vocabulary_score"]
           },
-          feedback: { type: Type.STRING, description: "Krótkie, konkretne wyjaśnienie błędu po polsku." },
-          suggested_better_version: { type: Type.STRING, description: "Idealne zdanie alternatywne." }
+          feedback: { type: Type.STRING, description: "Krótkie, konkretne wyjaśnienie błędu po polsku. Uzasadnij co trzeba zmienić i czy to będzie bardzo istotne." },
+          suggested_better_version: { type: Type.STRING, description: "Idealne zdanie alternatywne." },
+          highlighted_better_version: { type: Type.STRING, description: "Sugerowana odpowiedź z zaznaczonymi błędami ucznia. Użyj tagu <span class='text-red-500 font-bold'>...</span> aby objąć fragmenty, które uczeń napisał źle, a Ty je poprawiłeś w sugerowanej wersji." }
         },
-        required: ["score", "is_correct", "breakdown", "feedback", "suggested_better_version"]
+        required: ["score", "is_correct", "breakdown", "feedback", "suggested_better_version", "highlighted_better_version"]
       }
     }
   },

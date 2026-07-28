@@ -1,0 +1,6 @@
+sed -i 's/className="grid grid-cols-1 sm:grid-cols-2 gap-3"/className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"/g' components/dashboard/AIExerciseGeneratorScreen.tsx
+
+sed -i '/<\/button>/,/<\/div>/ {
+  /<\/div>/i \
+                        {user?.role === "admin" && (\n                          <button\n                            type="button"\n                            onClick={() => setIsTopicModalOpen(true)}\n                            className={`p-4 rounded-2xl border text-left transition-all duration-300 flex items-center justify-between min-h-[56px] border-white/10 bg-[#121824] hover:bg-[#17202e] hover:border-white/20 text-gray-300`}\n                          >\n                            <div className="flex items-center gap-2.5">\n                              <Sparkles className="w-4 h-4 shrink-0 text-gray-400" />\n                              <span className="font-semibold text-sm">\n                                {language === "pl" ? "Tematyka mieszana (Demo)" : "Mixed topics (Demo)"}\n                              </span>\n                            </div>\n                          </button>\n                        )}\n
+}' components/dashboard/AIExerciseGeneratorScreen.tsx

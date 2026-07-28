@@ -20,6 +20,7 @@ export const TestEditModal: React.FC<TestEditModalProps> = ({ test, isOpen, onCl
   const [attemptsLimit, setAttemptsLimit] = useState(1);
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     if (test) {
@@ -34,10 +35,10 @@ export const TestEditModal: React.FC<TestEditModalProps> = ({ test, isOpen, onCl
   if (!isOpen || !test) return null;
 
   const handleSave = async () => {
-    if (!title.trim()) return alert(i18n.t("Podaj tytuł testu"));
-    if (!dueDate) return alert(i18n.t("Wybierz datę wykonania testu"));
-    if (questions.length === 0) return alert(i18n.t("Test musi posiadać przynajmniej jedno pytanie"));
-
+    setErrorMsg('');
+    if (!title.trim()) return setErrorMsg(i18n.t("Podaj tytuł testu"));
+    if (!dueDate) return setErrorMsg(i18n.t("Wybierz datę wykonania testu"));
+    if (questions.length === 0) return setErrorMsg(i18n.t("Test musi posiadać przynajmniej jedno pytanie"));
     setIsSaving(true);
     try {
       const testRef = doc(db, `users/${test.studentId}/tests`, test.id!);
@@ -50,12 +51,12 @@ export const TestEditModal: React.FC<TestEditModalProps> = ({ test, isOpen, onCl
         maxScore: questions.length
       });
 
-      alert(i18n.t("Zapisano zmiany w teście!"));
+      // success handled by UI
       onSaved();
       onClose();
     } catch (err: any) {
       console.error(err);
-      alert(i18n.t("Błąd podczas zapisywania zmian w teście: ") + err.message);
+      setErrorMsg(i18n.t("Błąd podczas zapisywania: ") + err.message);
     } finally {
       setIsSaving(false);
     }
@@ -115,6 +116,7 @@ export const TestEditModal: React.FC<TestEditModalProps> = ({ test, isOpen, onCl
 
         {/* Form Body */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          {errorMsg && <div className="p-3 bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl text-sm">{errorMsg}</div>}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Tytuł testu")}</label>

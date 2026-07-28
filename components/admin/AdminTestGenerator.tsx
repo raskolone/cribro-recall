@@ -8,6 +8,7 @@ import { generateTest, modifyTest } from '../../services/geminiService';
 import { useAuth } from '../../context/AuthContext';
 import { MessageSquare, BookOpen, Calendar, ChevronRight, CheckCircle, X, ChevronUp, ChevronDown, Edit2, Trash2, Plus, Eye, Sparkles } from 'lucide-react';
 import TestPreviewModal from './TestPreviewModal';
+import ConfirmModal from '../ui/ConfirmModal';
 import TestEditModal from './TestEditModal';
 import i18n from "i18next";
 import { normalizePromptLines, parseNumberedItems } from '../../utils/testFormatters';
@@ -115,6 +116,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
   const [tests, setTests] = useState<StudentTest[]>([]);
   const [assignedPreviewTest, setAssignedPreviewTest] = useState<StudentTest | null>(null);
   const [assignedEditTest, setAssignedEditTest] = useState<StudentTest | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{isOpen: boolean; testId: string | null}>({isOpen: false, testId: null});
 
   // Helper to compute automatic title & scope based on lessons/tests/files
   const computeAutoTitleAndScope = (
@@ -243,10 +245,10 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
 
   const handleDeleteTest = async (testId: string) => {
     if (!user?.id || !testId) return;
-    if (!window.confirm(i18n.t("Czy na pewno chcesz usunąć ten przypisany test? Kursant nie będzie go już widział."))) return;
     try {
       await deleteDoc(doc(db, `users/${user.id}/tests`, testId));
       setTests(prev => prev.filter(t => t.id !== testId));
+      setConfirmModal({isOpen: false, testId: null});
     } catch (err) {
       console.error(err);
       alert(i18n.t("Błąd podczas usuwania testu"));
@@ -1141,7 +1143,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                     </button>
 
                     <button
-                      onClick={() => test.id && handleDeleteTest(test.id)}
+                      onClick={() => test.id && setConfirmModal({isOpen: true, testId: test.id})}
                       className="p-1.5 rounded-lg text-content-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
                       title={i18n.t("Usuń przypisany test")}
                     >
@@ -1158,6 +1160,15 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
     </div>
       )}
 
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={i18n.t("Potwierdzenie usunięcia")}
+        message={i18n.t("Czy na pewno chcesz usunąć ten przypisany test? Kursant nie będzie go już widział.")}
+        confirmText={i18n.t("Usuń")}
+        cancelText={i18n.t("Anuluj")}
+        onConfirm={() => confirmModal.testId && handleDeleteTest(confirmModal.testId)}
+        onCancel={() => setConfirmModal({isOpen: false, testId: null})}
+      />
       {/* Modals for previewing and editing assigned tests */}
       <TestPreviewModal
         test={assignedPreviewTest}

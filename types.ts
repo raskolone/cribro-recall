@@ -14,6 +14,7 @@ export interface User {
   requirePasswordChange?: boolean;
   lastStreakDate?: string;
   loginCount?: number;
+  dismissedNotifications?: string[];
   lastLoginDate?: string;
   createdAt?: string;
   firstName?: string;
@@ -154,6 +155,7 @@ export interface TranslationEvaluationResult {
   score: number;
   explanation: string;
   suggested_better_version?: string;
+  highlighted_better_version?: string;
   breakdown?: {
     meaning_score: number;
     grammar_score: number;

@@ -4,7 +4,7 @@ import gsap from 'gsap';
 import { ExerciseType } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { LogOut, Bug } from 'lucide-react';
+import { Database, LogOut, Bug } from 'lucide-react';
 import { collection, collectionGroup, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 
@@ -161,6 +161,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           {isTeacher && (
             <NavLink icon={<Sparkles size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('ai-generator')} isActive={currentView === 'ai-generator'}>
                 {language === 'pl' ? 'Panel kursanta' : 'Student View'}
+            </NavLink>
+          )}
+          {isTeacher && (
+            <NavLink icon={<Database size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('topic-database')} isActive={currentView === 'topic-database'}>
+                {language === 'pl' ? 'Baza tematów' : 'Topic Database'}
             </NavLink>
           )}
 

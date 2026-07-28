@@ -1,3 +1,5 @@
+import TopicDatabaseScreen from "../admin/TopicDatabaseScreen";
+import StudentNotifications from "./StudentNotifications";
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -38,7 +40,7 @@ import { ChevronDown, ChevronRight, LayoutDashboard, Library, ClipboardList, Set
 import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
 import i18n from "i18next";
 
-type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests';
+type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database';
 type PracticeView = { type: 'exercise'; exercise: ExerciseType; isRevisionMode?: boolean; isSpacedRepetitionMode?: boolean } | null;
 
 
@@ -679,6 +681,9 @@ const Dashboard: React.FC = () => {
     if (view === 'presentation' && activeSetId) {
       return <FlashcardPresentationScreen setId={activeSetId} onBack={() => changeView('flashcard-sets', { activeSetId: null })} />;
     }
+    if (view === 'topic-database' && (user?.role === 'admin' || user?.role === 'teacher')) {
+      return <TopicDatabaseScreen />;
+    }
     if (view === 'admin-debugging' && user?.role === 'admin') {
       return <AdminDebuggingScreen onBack={() => changeView('dashboard')} />;
     }
@@ -739,40 +744,7 @@ const Dashboard: React.FC = () => {
           <div className="flex-1 space-y-6">
             {/* Welcome message / header for students */}
             
-            <AnimatePresence>
-              {user?.hasNewVocabulary && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -20, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  className="relative group cursor-pointer"
-                  onClick={() => changeView('ai-generator')}
-                >
-                  <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl animate-pulse" />
-                  <div className="relative liquid-glass-card !border-primary/40 bg-gradient-to-r from-primary/10 to-base-200/50 p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                          <BookOpen className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-base-100 animate-ping" />
-                        <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-base-100" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-white text-sm md:text-base">
-                          {language === 'pl' ? 'Masz nowy zestaw słownictwa! 🎉' : 'You have a new vocabulary set! 🎉'}
-                        </h3>
-                        <p className="text-primary/80 text-xs md:text-sm">
-                          {language === 'pl' ? 'Twój nauczyciel udostępnił nowe słówka z lekcji. Kliknij, aby poćwiczyć.' : 'Your teacher shared new vocabulary. Click here to practice.'}
-                        </p>
-                      </div>
-                    </div>
-                    <button className="px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary font-semibold rounded-lg text-sm transition-colors shrink-0">
-                      {language === 'pl' ? 'Przejdź do ćwiczeń' : 'Go to exercises'}
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <StudentNotifications onNavigate={(view) => changeView(view)} />
 
             <div className="liquid-glass-card p-6 bg-gradient-to-br from-primary/10 to-transparent relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
