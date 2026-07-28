@@ -8,6 +8,7 @@ import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
 import { User, PracticeLog, FlashcardSet, LessonRecord } from '../../types';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
+import { generateLessonSummary, generateBulkLessonSummary } from '../../services/geminiService';
 import { useFirebaseAdminApi } from '../../hooks/useFirebaseAdminApi';
 import { importVocabularyFromLessons } from '../../services/vocabularyService';
 import Card from '../ui/Card';
@@ -172,21 +173,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       
       if (mode === 'single') {
         setIsGenerating(true);
+        setSummaryError('');
         try {
-          const token = await auth.currentUser?.getIdToken();
-          const res = await fetch('/api/gemini/lesson-summary', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({
-              pdfBase64: base64,
-              students: mapStudents()
-            })
-          });
-          if (!res.ok) throw new Error(await res.text());
-          const data = await res.json();
+          
+          const studentsStr = mapStudents().map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n');
+          const data = await generateLessonSummary('', base64, studentsStr);
+
           applySingleSummary(data);
         } catch(err: any) {
-          alert("Error: " + err.message);
+          setSummaryError(err.message || 'Wystąpił nieznany błąd podczas generowania podsumowania.');
         } finally {
           setIsGenerating(false);
           e.target.value = '';
@@ -202,23 +197,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   const handleGenerateFromNotes = async () => {
     if (!rawMeetingNotes.trim()) return;
     setIsGenerating(true);
+    setSummaryError('');
     try {
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) throw new Error("Authentication required");
+      
+      const studentsStr = mapStudents().map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n');
+      const data = await generateLessonSummary(rawMeetingNotes, '', studentsStr);
 
-      const res = await fetch('/api/gemini/lesson-summary', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({
-          notes: rawMeetingNotes,
-          students: mapStudents()
-        })
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
       applySingleSummary(data);
     } catch (err: any) {
-      alert("Error generating summary: " + err.message);
+      setSummaryError(err.message || 'Wystąpił nieznany błąd podczas generowania podsumowania.');
     } finally {
       setIsGenerating(false);
     }
@@ -226,22 +213,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
 
   const generateBulkSummary = async ({ notes, pdfBase64, driveFile }: any) => {
     setIsGenerating(true);
+    setBulkSummaryError('');
     try {
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) throw new Error("Authentication required");
+      
+      if (driveFile) {
+        throw new Error("Direct Drive file fetching is not supported in client-side mode yet. Please upload PDF or paste text.");
+      }
+      const studentsStr = mapStudents().map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n');
+      const data = await generateBulkLessonSummary(notes || '', pdfBase64 || '', studentsStr);
 
-      const res = await fetch('/api/gemini/import-lessons-batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({
-          textContent: notes,
-          pdfBase64,
-          driveFile,
-          students: mapStudents()
-        })
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
       
       if (data.lessons && Array.isArray(data.lessons)) {
         setBulkPreviewLessons(data.lessons);
@@ -249,10 +229,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         setShowBulkModal(false);
         setBulkNotes('');
       } else {
-        alert("Unexpected response format");
+        setBulkSummaryError('Unexpected response format');
       }
     } catch (err: any) {
-      alert("Error generating bulk summary: " + err.message);
+      setBulkSummaryError(err.message || 'Wystąpił nieznany błąd podczas generowania podsumowania zbiorczego.');
     } finally {
       setIsGenerating(false);
     }
@@ -612,6 +592,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [driveLoading, setDriveLoading] = useState(false);
   const [driveError, setDriveError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [summaryError, setSummaryError] = useState('');
+  const [bulkSummaryError, setBulkSummaryError] = useState('');
   const [viewingRecord, setViewingRecord] = useState<LessonRecord | null>(null);
   const [isSavingLessonRecord, setIsSavingLessonRecord] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
@@ -1620,6 +1602,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <Button variant="secondary" className="w-full pointer-events-none">{i18n.t("Załaduj plik PDF")}</Button>
               </div>
             </div>
+            {summaryError && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg mb-4 text-sm font-medium">
+                {summaryError}
+              </div>
+            )}
             <textarea
               value={rawMeetingNotes}
               onChange={e => setRawMeetingNotes(e.target.value)}
@@ -1663,6 +1650,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <Button variant="secondary" className="w-full pointer-events-none">{i18n.t("Załaduj plik PDF")}</Button>
               </div>
             </div>
+            {bulkSummaryError && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg mb-4 text-sm font-medium">
+                {bulkSummaryError}
+              </div>
+            )}
             <textarea
               value={bulkNotes}
               onChange={e => setBulkNotes(e.target.value)}
