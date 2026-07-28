@@ -222,3 +222,12 @@ tr.liquid-glass-hover:hover {
 .animate-pulsar-soft {
   animation: pulsar-soft 2.5s infinite ease-in-out;
 }
+
+@keyframes liquidDrop {
+  0% { transform: translate(-50%, 0) scaleY(1); opacity: 1; }
+  50% { transform: translate(-50%, 15px) scaleY(1.5); opacity: 0.8; }
+  100% { transform: translate(-50%, 25px) scaleY(0.5); opacity: 0; }
+}
+.animate-liquid-drop {
+  animation: liquidDrop 1.5s infinite ease-in;
+}
