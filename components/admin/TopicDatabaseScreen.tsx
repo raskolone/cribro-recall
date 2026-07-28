@@ -6,6 +6,7 @@ import Button from '../ui/Button';
 import i18n from "i18next";
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { useAuth } from '../../context/AuthContext';
 
 interface GrammarTopic {
   id: string;
@@ -114,10 +115,14 @@ const DEFAULT_CHAPTERS: GrammarChapter[] = Array.from({ length: 6 }, (_, chapter
 }));
 
 export default function TopicDatabaseScreen() {
+  const { user } = useAuth();
   const [chapters, setChapters] = useState<GrammarChapter[]>(DEFAULT_CHAPTERS);
   const [expandedChapterId, setExpandedChapterId] = useState<string | null>(null);
   const [expandedTopicId, setExpandedTopicId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+
+
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
