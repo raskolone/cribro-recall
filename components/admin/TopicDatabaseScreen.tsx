@@ -107,15 +107,32 @@ const getTopicsForChapter = (chapterIndex: number) => {
 const DEFAULT_CHAPTERS: GrammarChapter[] = Array.from({ length: 6 }, (_, chapterIndex) => ({
   id: `chapter-${chapterIndex + 1}`,
   name: `Gramatyka ${chapterIndex + 1}`,
-  topics: getTopicsForChapter(chapterIndex).map((topicName, topicIndex) => ({
-    id: `chapter-${chapterIndex + 1}-topic-${topicIndex + 1}`,
-    name: topicName,
-    sentences: ''
-  }))
+  topics: getTopicsForChapter(chapterIndex).map((topicName, topicIndex) => {
+    let prompt = '';
+    if (chapterIndex === 0) {
+      const parts = topicName.split("—");
+      let polishPart = topicName;
+      if (parts.length > 1) {
+        polishPart = parts[1].trim();
+      }
+      prompt = 'Wygeneruj zdania po polsku związane z tematem "' + polishPart + '". Skopiuj poniższe zdania (jeśli są dodane poniżej) i lekko zmień ich treść.';
+    }
+    return {
+      id: `chapter-${chapterIndex + 1}-topic-${topicIndex + 1}`,
+      name: topicName,
+      sentences: prompt
+    };
+  })
 }));
 
 export default function TopicDatabaseScreen() {
   const { user } = useAuth();
+
+  const allowedEmails = ['maciej.wyrozumski@gmail.com', 'marta.lukaszczyk@gmail.com'];
+  if (!user?.email || !allowedEmails.includes(user.email.toLowerCase())) {
+    return <div className="p-8 text-center text-red-500 font-bold">Brak dostępu.</div>;
+  }
+
   const [chapters, setChapters] = useState<GrammarChapter[]>(DEFAULT_CHAPTERS);
   const [expandedChapterId, setExpandedChapterId] = useState<string | null>(null);
   const [expandedTopicId, setExpandedTopicId] = useState<string | null>(null);

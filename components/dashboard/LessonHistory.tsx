@@ -12,8 +12,9 @@ import Markdown from 'react-markdown';
 import i18n from "i18next";
 
 const LessonHistory: React.FC = () => {
-  const { user } = useAuth();
   const { language } = useLanguage();
+  const { user } = useAuth();
+  const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
   const [lessons, setLessons] = useState<LessonRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -110,7 +111,7 @@ const LessonHistory: React.FC = () => {
             </div>
 
             <div className="space-y-3 mb-4">
-              {lesson.studentSpeaking && (
+              {isTeacher && lesson.studentSpeaking && (
                 <div className="rounded-xl overflow-hidden border border-white/5 bg-[#242424]">
                   <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200 text-sm">
                     <span className="w-2 h-2 rounded-full bg-gray-400"></span>
@@ -132,7 +133,7 @@ const LessonHistory: React.FC = () => {
                 </div>
               )}
 
-              {lesson.suggestedFollowUp && (
+              {isTeacher && lesson.suggestedFollowUp && (
                 <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a2816]">
                   <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200 text-sm">
                     <span className="w-2 h-2 rounded-full bg-yellow-500"></span>

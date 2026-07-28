@@ -13,6 +13,7 @@ import gsap from 'gsap';
 const LessonHistoryScreen: React.FC = () => {
   const { user } = useAuth();
   const { language } = useLanguage();
+  const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
   const [lessons, setLessons] = useState<LessonRecord[]>([]);
   const [practiceLogs, setPracticeLogs] = useState<PracticeLog[]>([]);
   const [activeTab, setActiveTab] = useState<'lessons' | 'sessions'>('lessons');
@@ -298,7 +299,7 @@ const LessonHistoryScreen: React.FC = () => {
                 </div>
               )}
 
-              {selectedLesson.studentSpeaking && (
+              {isTeacher && selectedLesson.studentSpeaking && (
                 <div className="space-y-3">
                    <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
                      <AlertCircle className="w-4 h-4 text-blue-400" />
@@ -322,7 +323,7 @@ const LessonHistoryScreen: React.FC = () => {
                 </div>
               )}
 
-              {selectedLesson.suggestedFollowUp && (
+              {isTeacher && selectedLesson.suggestedFollowUp && (
                 <div className="space-y-3">
                    <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
                      <Clock className="w-4 h-4 text-amber-400" />
