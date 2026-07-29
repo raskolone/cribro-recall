@@ -29,6 +29,7 @@ import AIExerciseGeneratorScreen from './AIExerciseGeneratorScreen';
 import { OnboardingTour } from './OnboardingTour';
 import LessonHistoryScreen from './LessonHistoryScreen';
 import StudentTestsScreen from '../tests/StudentTestsScreen';
+import StudentStatsScreen from './StudentStatsScreen';
 import { useAuth } from '../../context/AuthContext';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { useFlashcards } from '../../context/FlashcardContext';
@@ -41,7 +42,7 @@ import { ChevronDown, ChevronRight, LayoutDashboard, Library, ClipboardList, Set
 import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
 import i18n from "i18next";
 
-type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database';
+type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats';
 type PracticeView = { type: 'exercise'; exercise: ExerciseType; isRevisionMode?: boolean; isSpacedRepetitionMode?: boolean } | null;
 
 

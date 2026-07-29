@@ -224,12 +224,13 @@ export const generateTranslationExercises = async (
 You are an expert English Language Content Creator specializing in adaptive, personalized language practice.
 
 TASK:
-Generate natural, highly realistic sentences using the provided list of target vocabulary from the student's personal word list or lesson history. Adapt the tone and topic naturally to match the vocabulary context.
+Generate natural, highly realistic sentences using the provided list of target vocabulary. Adapt the tone and topic naturally to match the vocabulary context. 
+CRITICAL: The Polish translations MUST be perfectly natural, logically coherent, grammatically flawless, and sound like something a native Polish speaker would actually say in real life. Do not generate robotic, word-for-word, or awkwardly phrased Polish sentences.
 
 RULES FOR SENTENCE GENERATION:
 - CONTEXT: Sentences MUST sound like real-world communication relevant to the provided vocabulary (e.g., casual, technical, business, everyday conversation).
 - NATURALNESS: Never force multiple target words into a single sentence if it sounds awkward. Use MAXIMUM 1 target word per sentence.
-- GRAMMAR & STYLE: Use modern, natural English. Avoid academic, bizarre, or forced phrasing.
+- GRAMMAR & STYLE: Use modern, natural English. Avoid academic, bizarre, or forced phrasing. The Polish translation MUST also be perfectly natural.
 - VARIETY: Use diverse sentence structures (mix conditionals, modal verbs, different tenses, and sentence lengths).
 - LOGIC & REALISM: Sentences MUST be practical, logical, and make total sense in real-world communication. Do NOT forcefully weave random student profile keywords or hobbies into a sentence if it makes the sentence illogical, weird, or artificial. Practical usability is the absolute highest priority.
 

@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import gsap from 'gsap';
+import html2pdf from 'html2pdf.js';
 import { useLanguage } from '../../context/LanguageContext';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
@@ -95,108 +96,103 @@ const playSliderSound = () => {};
 
 const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?: string }> = ({ language, level }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const tangledGroupRef = useRef<SVGGElement>(null);
-  const organizedGroupRef = useRef<SVGGElement>(null);
-  const strandPathRef = useRef<SVGPathElement>(null);
-  const coreGlowRef = useRef<HTMLDivElement>(null);
+  const tangledRef = useRef<SVGPathElement>(null);
+  const spiralRef = useRef<SVGPathElement>(null);
+  const stringPullRef = useRef<SVGPathElement>(null);
   const statusTextRef = useRef<HTMLParagraphElement>(null);
+
+  const tangledPath = useMemo(() => {
+    const points = [];
+    const numPoints = 120;
+    for (let i = 0; i < numPoints; i++) {
+      const t = i * 0.5;
+      const radius = 20 + 55 * Math.abs(Math.sin(t * 1.7) * Math.cos(t * 2.3));
+      const angle = t * 3.4;
+      points.push({
+        x: 100 + radius * Math.cos(angle),
+        y: 100 + radius * Math.sin(angle)
+      });
+    }
+    let d = `M ${points[0].x} ${points[0].y} `;
+    for (let i = 1; i < points.length - 1; i++) {
+      const xc = (points[i].x + points[i + 1].x) / 2;
+      const yc = (points[i].y + points[i + 1].y) / 2;
+      d += `Q ${points[i].x} ${points[i].y}, ${xc} ${yc} `;
+    }
+    return d;
+  }, []);
+
+  const spiralPath = useMemo(() => {
+    let d = "";
+    const turns = 7;
+    const maxRadius = 75;
+    for (let i = 0; i <= 360 * turns; i += 5) {
+      const angle = (i * Math.PI) / 180;
+      const radius = (maxRadius * i) / (360 * turns);
+      const x = 100 + radius * Math.cos(angle);
+      const y = 100 + radius * Math.sin(angle);
+      if (i === 0) d = `M ${x} ${y} `;
+      else d += `L ${x} ${y} `;
+    }
+    return d;
+  }, []);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Create master timeline that continuously morphs chaos -> structure
-      const tl = gsap.timeline({ repeat: -1, yoyo: true, repeatDelay: 0.5 });
+      const tl = gsap.timeline({ repeat: -1, yoyo: true, repeatDelay: 1.5 });
 
-      // 1. Rotate the chaotic tangled ball continuously
-      if (tangledGroupRef.current) {
-        gsap.to(tangledGroupRef.current, {
-          rotation: 360,
-          transformOrigin: '50% 50%',
-          duration: 12,
-          repeat: -1,
-          ease: 'none',
-        });
+      const tangledLength = tangledRef.current?.getTotalLength() || 2000;
+      const spiralLength = spiralRef.current?.getTotalLength() || 2000;
+      const pullLength = stringPullRef.current?.getTotalLength() || 500;
 
-        // Individual tangled strands wobble organically
-        const strands = tangledGroupRef.current.querySelectorAll('.tangled-strand');
-        strands.forEach((strand, i) => {
-          gsap.to(strand, {
-            rotation: (i % 2 === 0 ? 1 : -1) * (15 + i * 10),
-            scale: 0.85 + (i % 3) * 0.1,
-            transformOrigin: '50% 50%',
-            duration: 2.5 + i * 0.4,
-            repeat: -1,
-            yoyo: true,
-            ease: 'sine.inOut',
-          });
-        });
-      }
+      // Initial state
+      gsap.set(tangledRef.current, { strokeDasharray: tangledLength, strokeDashoffset: 0, opacity: 1 });
+      gsap.set(spiralRef.current, { strokeDasharray: spiralLength, strokeDashoffset: spiralLength, opacity: 1 });
+      gsap.set(stringPullRef.current, { strokeDasharray: pullLength, strokeDashoffset: pullLength, opacity: 0 });
 
-      // 2. Rotate organized concentric rings in opposite directions
-      if (organizedGroupRef.current) {
-        const rings = organizedGroupRef.current.querySelectorAll('.organized-ring');
-        rings.forEach((ring, i) => {
-          gsap.to(ring, {
-            rotation: (i % 2 === 0 ? 360 : -360),
-            transformOrigin: '50% 50%',
-            duration: 10 + i * 4,
-            repeat: -1,
-            ease: 'none',
-          });
-        });
-      }
-
-      // 3. Main transformation timeline: Untangling from chaotic yarn ball into pristine concentric lines
-      tl.to(tangledGroupRef.current, {
-        scale: 0.4,
-        opacity: 0.15,
-        filter: 'blur(2px)',
+      // The animation: Untangling
+      tl.to(tangledRef.current, {
+        strokeDashoffset: tangledLength,
         duration: 3.5,
-        ease: 'power2.inOut',
+        ease: 'power2.inOut'
       }, 0);
 
-      tl.to(organizedGroupRef.current, {
-        scale: 1,
-        opacity: 1,
-        stagger: 0.15,
+      // The thread being pulled away
+      tl.fromTo(stringPullRef.current, 
+        { strokeDashoffset: pullLength, opacity: 0 },
+        { strokeDashoffset: 0, opacity: 1, duration: 1.5, ease: 'power1.in' },
+        0
+      );
+      tl.to(stringPullRef.current, {
+        strokeDashoffset: -pullLength,
+        opacity: 0,
+        duration: 1.5,
+        ease: 'power1.out'
+      }, 1.5);
+
+      // Forming the perfect spiral
+      tl.to(spiralRef.current, {
+        strokeDashoffset: 0,
         duration: 3.5,
-        ease: 'power2.inOut',
-      }, 0);
+        ease: 'power2.inOut'
+      }, 0.5);
 
-      // Animate strand unspooling length
-      if (strandPathRef.current) {
-        gsap.fromTo(strandPathRef.current, 
-          { strokeDashoffset: 600 },
-          {
-            strokeDashoffset: 0,
-            duration: 4,
-            repeat: -1,
-            ease: 'sine.inOut',
-          }
-        );
-      }
+      // Add a subtle rotation to the whole thing
+      tl.fromTo('.yarn-container',
+        { rotation: -10, scale: 0.95 },
+        { rotation: 10, scale: 1.05, duration: 4, ease: 'sine.inOut' },
+        0
+      );
 
-      // Core pulsing light
-      if (coreGlowRef.current) {
-        gsap.to(coreGlowRef.current, {
-          scale: 1.25,
-          opacity: 0.9,
-          duration: 1.8,
-          repeat: -1,
-          yoyo: true,
-          ease: 'sine.inOut',
-        });
-      }
+      // Pulse text
+      gsap.to(statusTextRef.current, {
+        opacity: 0.6,
+        duration: 1.2,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut',
+      });
 
-      // Subtle pulse on status text
-      if (statusTextRef.current) {
-        gsap.to(statusTextRef.current, {
-          opacity: 0.6,
-          duration: 1.2,
-          repeat: -1,
-          yoyo: true,
-          ease: 'sine.inOut',
-        });
-      }
     }, containerRef);
 
     return () => ctx.revert();
@@ -204,174 +200,54 @@ const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?
 
   return (
     <div ref={containerRef} className="flex flex-col items-center justify-center p-8 text-center h-full min-h-[420px] w-full max-w-xl mx-auto my-auto animate-fade-in">
-      {/* GSAP Tangled Yarn -> Organized Geometry Canvas */}
-      <div className="relative w-64 h-64 mb-6 flex items-center justify-center select-none">
-        {/* Ambient Glow Aura */}
-        <div 
-          ref={coreGlowRef} 
-          className="absolute w-44 h-44 rounded-full bg-gradient-to-tr from-emerald-500/25 via-teal-400/20 to-cyan-500/15 blur-3xl pointer-events-none" 
-        />
-
-        {/* Central SVG Stage */}
+      <div className="relative w-64 h-64 mb-6 flex items-center justify-center select-none yarn-container origin-center">
+        {/* Glow behind the yarn */}
+        <div className="absolute inset-0 bg-green-500/10 blur-3xl rounded-full" />
+        
         <svg
-          className="w-full h-full drop-shadow-[0_0_25px_rgba(52,211,153,0.35)]"
+          className="w-full h-full drop-shadow-[0_0_15px_rgba(74,222,128,0.3)]"
           viewBox="0 0 200 200"
           fill="none"
         >
-          <defs>
-            <linearGradient id="emeraldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#34d399" />
-              <stop offset="50%" stopColor="#2dd4bf" />
-              <stop offset="100%" stopColor="#38bdf8" />
-            </linearGradient>
-            <linearGradient id="yarnGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#10b981" />
-              <stop offset="50%" stopColor="#a7f3d0" />
-              <stop offset="100%" stopColor="#06b6d4" />
-            </linearGradient>
-            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-          </defs>
-
-          {/* LAYER 1: Tangled Yarn Ball (Chaotic overlapping loops) */}
-          <g ref={tangledGroupRef} className="origin-center">
-            {/* Tangled loop 1 */}
-            <path
-              className="tangled-strand"
-              d="M 100,40 C 140,30 160,80 150,110 C 140,140 110,160 80,150 C 50,140 40,100 60,70 C 80,40 120,50 140,70 C 160,90 140,140 100,160 C 60,180 30,120 50,90 C 70,60 130,30 100,40 Z"
-              stroke="url(#yarnGradient)"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              fill="none"
-              opacity="0.85"
-            />
-            {/* Tangled loop 2 */}
-            <path
-              className="tangled-strand"
-              d="M 60,100 C 40,60 90,30 130,50 C 170,70 160,120 130,150 C 100,180 50,150 40,110 C 30,70 80,40 120,60 C 160,80 150,130 110,150 C 70,170 50,130 60,100 Z"
-              stroke="#34d399"
-              strokeWidth="2"
-              strokeLinecap="round"
-              fill="none"
-              opacity="0.75"
-            />
-            {/* Tangled loop 3 */}
-            <path
-              className="tangled-strand"
-              d="M 110,50 C 150,60 170,110 140,140 C 110,170 60,160 40,120 C 20,80 60,40 100,50 C 140,60 150,110 130,140 C 110,170 70,150 60,110 Z"
-              stroke="#22d3ee"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              fill="none"
-              opacity="0.7"
-            />
-            {/* Tangled loop 4 */}
-            <path
-              className="tangled-strand"
-              d="M 80,60 C 120,40 160,70 150,120 C 140,170 90,160 60,130 C 30,100 50,50 90,60 C 130,70 140,120 110,150 C 80,180 50,130 80,60 Z"
-              stroke="#a7f3d0"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              fill="none"
-              opacity="0.6"
-            />
-            {/* Chaotic density core lines */}
-            <path
-              className="tangled-strand"
-              d="M 75,85 Q 125,65 135,115 Q 145,165 95,145 Q 45,125 75,85 Z"
-              stroke="#fbbf24"
-              strokeWidth="1.2"
-              fill="none"
-              opacity="0.65"
-            />
-          </g>
-
-          {/* LAYER 2: Unspooling Thread Strand */}
+          {/* Tangled chaotic string */}
           <path
-            ref={strandPathRef}
-            d="M 100,20 C 150,20 180,50 180,100 C 180,150 150,180 100,180 C 50,180 20,150 20,100 C 20,50 50,20 100,20"
-            stroke="url(#emeraldGradient)"
-            strokeWidth="2"
+            ref={tangledRef}
+            d={tangledPath}
+            stroke="#4ade80"
+            strokeWidth="4"
             strokeLinecap="round"
-            strokeDasharray="600"
-            fill="none"
-            filter="url(#glow)"
+            strokeLinejoin="round"
           />
 
-          {/* LAYER 3: Organized Harmonious Circles (Revealed as yarn untangles) */}
-          <g ref={organizedGroupRef} className="origin-center opacity-0 scale-50">
-            {/* Outer pristine ring */}
-            <circle
-              className="organized-ring"
-              cx="100"
-              cy="100"
-              r="78"
-              stroke="url(#emeraldGradient)"
-              strokeWidth="2"
-              strokeDasharray="180 20 60 20"
-              fill="none"
-              filter="url(#glow)"
-            />
-            {/* Second concentric ring */}
-            <circle
-              className="organized-ring"
-              cx="100"
-              cy="100"
-              r="60"
-              stroke="#22d3ee"
-              strokeWidth="1.8"
-              strokeDasharray="120 15 40 15"
-              fill="none"
-              opacity="0.85"
-            />
-            {/* Third concentric ring */}
-            <circle
-              className="organized-ring"
-              cx="100"
-              cy="100"
-              r="42"
-              stroke="#34d399"
-              strokeWidth="1.5"
-              strokeDasharray="80 10 30 10"
-              fill="none"
-              opacity="0.9"
-            />
-            {/* Innermost pristine circle */}
-            <circle
-              className="organized-ring"
-              cx="100"
-              cy="100"
-              r="24"
-              stroke="#a7f3d0"
-              strokeWidth="2"
-              fill="none"
-            />
-            {/* Orbiting geometric nodes */}
-            <circle cx="100" cy="22" r="3.5" fill="#34d399" filter="url(#glow)" />
-            <circle cx="178" cy="100" r="3" fill="#22d3ee" filter="url(#glow)" />
-            <circle cx="100" cy="178" r="3.5" fill="#38bdf8" filter="url(#glow)" />
-            <circle cx="22" cy="100" r="3" fill="#a7f3d0" filter="url(#glow)" />
-          </g>
+          {/* String pulling away from tangle */}
+          <path
+            ref={stringPullRef}
+            d="M 100,100 C 130,50 180,20 220,-20"
+            stroke="#4ade80"
+            strokeWidth="4"
+            strokeLinecap="round"
+          />
 
-          {/* Center Glowing AI Core Icon */}
-          <g className="origin-center">
-            <circle cx="100" cy="100" r="16" fill="#064e3b" stroke="#34d399" strokeWidth="1.5" />
-            <circle cx="100" cy="100" r="6" fill="#34d399" className="animate-pulse" />
-          </g>
+          {/* Organized perfect spiral */}
+          <path
+            ref={spiralRef}
+            d={spiralPath}
+            stroke="#4ade80"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </div>
 
-      {/* Title & Subtitle (Clean & Elegant, No Console Box) */}
       <h3 className="text-xl font-bold text-white mb-2 tracking-tight flex items-center justify-center gap-2">
-        <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse" />
-        <span>{language === 'pl' ? 'Sztuczna inteligencja tworzy zadania...' : 'AI is crafting your exercises...'}</span>
+        <Sparkles className="w-5 h-5 text-green-400 animate-pulse" />
+        <span>{language === 'pl' ? 'Sztuczna inteligencja rozplątuje myśli...' : 'AI is untangling concepts...'}</span>
       </h3>
-      <p ref={statusTextRef} className="text-xs text-emerald-300/80 font-medium tracking-wide max-w-sm mx-auto">
+      <p ref={statusTextRef} className="text-sm text-green-300/80 font-medium tracking-wide max-w-sm mx-auto">
         {language === 'pl' 
-          ? 'Porządkowanie myśli i dopasowywanie treści do Twojego poziomu' 
-          : 'Organizing concepts and tailoring content to your level'}
+          ? 'Porządkowanie struktury i tworzenie idealnych ćwiczeń' 
+          : 'Organizing structure and creating perfect exercises'}
       </p>
     </div>
   );
@@ -1017,6 +893,29 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
     setIsGeneratingMore(true);
     let currentEvalResults = { ...singleEvaluationResults };
     
+    // Fill in default results for empty answers
+    for (let i = 0; i < exercises.length; i++) {
+      if (!studentAnswers[i]?.trim() && !currentEvalResults[i]) {
+        currentEvalResults[i] = {
+          polishSentence: exercises[i].polishSentence,
+          correctTranslation: exercises[i].englishTranslation,
+          studentAnswer: '',
+          isCorrect: false,
+          score: 0,
+          explanation: language === 'pl' ? 'Brak odpowiedzi.' : 'No answer provided.',
+          suggested_better_version: exercises[i].englishTranslation,
+          feedbackSyntax: '',
+          feedbackVocab: '',
+          feedbackRule: '',
+          breakdown: {
+            meaning_score: 0,
+            grammar_score: 0,
+            vocabulary_score: 0
+          }
+        };
+      }
+    }
+
     // Find sentences that need evaluation
     const unevaluatedIndices = [];
     for (let i = 0; i < exercises.length; i++) {
@@ -1057,22 +956,38 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
         }
       } catch (err) {
         console.error("Batch evaluation failed", err);
-        setError(language === 'pl' ? "Błąd podczas masowej oceny: " + err.message : "Error during batch evaluation: " + err.message);
-        setIsGeneratingMore(false);
-        return;
+        setError(language === 'pl' ? "Nie udało się ocenić wszystkich odpowiedzi z powodu błędu. Wygenerowano przybliżone wyniki." : "Failed to evaluate all answers due to an error. Fallback results generated.");
+        
+        // Fallback for failed evaluation
+        unevaluatedIndices.forEach(idx => {
+           currentEvalResults[idx] = {
+             polishSentence: exercises[idx].polishSentence,
+             correctTranslation: exercises[idx].englishTranslation,
+             studentAnswer: studentAnswers[idx] || '',
+             isCorrect: false,
+             score: 0,
+             explanation: language === 'pl' ? 'Wystąpił błąd podczas oceny.' : 'An error occurred during evaluation.',
+             suggested_better_version: exercises[idx].englishTranslation,
+             feedbackSyntax: '',
+             feedbackVocab: '',
+             feedbackRule: '',
+             breakdown: { meaning_score: 0, grammar_score: 0, vocabulary_score: 0 }
+           };
+        });
       }
     }
 
     setIsGeneratingMore(false);
 
     // Generate full results
-    const results = exercises.map((_, i) => currentEvalResults[i]).filter(Boolean);
+    // currentEvalResults now contains evaluations for all items
+    const results = exercises.map((_, i) => currentEvalResults[i]);
     setEvaluationResults(results);
     setStep('results');
     setTimeLeft(null);
 
     if (user && results.length > 0) {
-      const score = Math.round(results.reduce((acc, r) => acc + r.score, 0) / results.length);
+      const score = Math.round(results.reduce((acc, r) => acc + (r?.score || 0), 0) / results.length);
       const exercisesDetails = results.map((r) => {
         if (r.explanation === 'Ułożono poprawnie.') {
            return `${r.polishSentence} -> ${r.studentAnswer} [UKŁADANKA - Wymagane powtórzenie przez samodzielne Wpisywanie]`;
@@ -1080,13 +995,26 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
         return `${r.polishSentence} -> ${r.studentAnswer}`;
       }).join(' | ');
       
+      const detailedFeedback = results.map((r) => ({
+        polishSentence: r?.polishSentence || '',
+        studentAnswer: r?.studentAnswer || '',
+        correctTranslation: r?.correctTranslation || '',
+        isCorrect: r?.isCorrect || false,
+        score: r?.score || 0,
+        explanation: r?.explanation || '',
+        feedbackSyntax: r?.feedbackSyntax || '',
+        feedbackVocab: r?.feedbackVocab || '',
+        feedbackRule: r?.feedbackRule || ''
+      }));
+
       const logData: any = {
         exerciseType: 'ai_translation',
         date: new Date().toISOString(),
         isRevisionMode: false,
         score: score,
         totalWords: results.length,
-        exercisesData: exercisesDetails
+        exercisesData: exercisesDetails,
+        detailedFeedback: detailedFeedback
       };
       if (testName) logData.testName = testName;
       
@@ -1394,25 +1322,44 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           </span>
                         )}
                       </h2>
-                      {onChangeView ? (
-                        <MobileTopMenu 
-                          currentView="dashboard" 
-                          onChangeView={onChangeView}
-                          isExerciseActive={step === 'exercises' || step === 'results'}
-                          onConfirmEndSession={(onEnd) => {
-                            showConfirm(
-                              language === 'pl' ? 'Zakończ trening' : 'End session',
-                              language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję nauki? Dotychczasowe odpowiedzi zostaną ocenione.' : 'Are you sure you want to end this study session? Your answers will be evaluated.',
-                              () => {
-                                closeConfirm();
-                                onEnd();
-                              }
-                            );
-                          }}
-                        />
-                      ) : (
-                        <div className="w-10"></div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {step === 'exercises' && (
+                          <button
+                            onClick={() => {
+                              showConfirm(
+                                language === 'pl' ? 'Zakończ trening' : 'End session',
+                                language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję nauki? Dotychczasowe odpowiedzi zostaną ocenione.' : 'Are you sure you want to end this study session? Your answers will be evaluated.',
+                                () => {
+                                  closeConfirm();
+                                  handleEvaluate();
+                                }
+                              );
+                            }}
+                            className="md:hidden p-2 text-content-muted hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors"
+                          >
+                            <X className="w-6 h-6" />
+                          </button>
+                        )}
+                        {onChangeView ? (
+                          <MobileTopMenu 
+                            currentView="dashboard" 
+                            onChangeView={onChangeView}
+                            isExerciseActive={step === 'exercises' || step === 'results'}
+                            onConfirmEndSession={(onEnd) => {
+                              showConfirm(
+                                language === 'pl' ? 'Zakończ trening' : 'End session',
+                                language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję nauki? Dotychczasowe odpowiedzi zostaną ocenione.' : 'Are you sure you want to end this study session? Your answers will be evaluated.',
+                                () => {
+                                  closeConfirm();
+                                  onEnd();
+                                }
+                              );
+                            }}
+                          />
+                        ) : (
+                          <div className="w-10"></div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Content Container */}
@@ -2614,6 +2561,25 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                 </div>
               </Card>
             ))}
+          </div>
+          
+          <div className="flex justify-center mt-8 space-x-4">
+            <Button
+              onClick={() => {
+                if (resultsRef.current) {
+                  const opt = {
+                    margin: 10,
+                    filename: 'ai_exercise_report.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                  };
+                  html2pdf().set(opt).from(resultsRef.current).save();
+                }
+              }}
+            >
+              {language === 'pl' ? 'Pobierz raport PDF' : 'Download PDF Report'}
+            </Button>
           </div>
         </div>
       )}
