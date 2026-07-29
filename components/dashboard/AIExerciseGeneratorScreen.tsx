@@ -409,12 +409,13 @@ const AILoadingButton = ({ isLoading, onClick, children, className, disabled, lo
 };
 
 interface AIExerciseGeneratorScreenProps {
+  onOpenSidebar?: () => void;
   initialSetId?: string | null;
   onStartPractice?: (type: any, mode1?: boolean, mode2?: boolean) => void;
   onExerciseStateChange?: (active: boolean) => void;
 }
 
-const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ initialSetId = null, onStartPractice, onExerciseStateChange }) => {
+const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ initialSetId = null, onStartPractice, onExerciseStateChange, onOpenSidebar }) => {
   const { language } = useLanguage();
   const { sets, getFlashcards } = useFlashcards();
   const { user } = useAuth();
@@ -1149,7 +1150,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
       </AnimatePresence>
       <div className="space-y-6 relative z-10">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-base-300 pb-5">
+        <div className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-base-300 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
             ✨ {isTeacher ? (language === 'pl' ? 'Widok kursanta' : 'Student View') : (language === 'pl' ? 'Panel ćwiczeniowy' : 'Practice Panel')}
@@ -1296,7 +1297,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
         isLoading ? (
           <AIGenerationLoader language={language} level={level} logs={debugLogs} />
         ) : (
-          <div className="max-w-2xl mx-auto mt-4 px-4">
+          <div className="max-w-2xl mx-auto sm:mt-4 w-full">
             <AnimatePresence>
               {user?.hasNewVocabulary && !isBannerDismissed && (
                 <motion.div 
@@ -1371,9 +1372,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                 </motion.div>
               )}
             </AnimatePresence>
-            <Card className="p-0 sm:p-8 border-none sm:border-solid sm:border sm:border-white/10 bg-[#05080f] sm:bg-[#0d131d] backdrop-blur-2xl relative overflow-visible sm:overflow-hidden flex flex-col rounded-none sm:rounded-3xl shadow-none sm:shadow-[0_20px_60px_rgba(0,0,0,0.55)] max-w-2xl mx-auto min-h-screen sm:min-h-0">
+            <Card className="p-0 md:p-8 border-none md:border-solid md:border md:border-white/10 bg-[#05080f] md:bg-[#0d131d] backdrop-blur-2xl relative overflow-visible md:overflow-hidden flex flex-col rounded-none md:rounded-3xl shadow-none md:shadow-[0_20px_60px_rgba(0,0,0,0.55)] max-w-2xl mx-auto min-h-screen md:min-h-0">
               {/* Top Segmented Navigation Tabs Bar */}
-              <div className="hidden sm:flex bg-[#141d2a] border border-white/5 p-1 rounded-2xl gap-1 mb-7">
+              <div className="hidden md:flex bg-[#141d2a] border border-white/5 p-1 rounded-2xl gap-1 mb-7">
                 <button
                   type="button"
                   onClick={() => setActiveTab('ai')}
@@ -1409,11 +1410,19 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
                   <>
                   {/* --- MOBILE REDESIGN (Only visible below 'sm' breakpoint) --- */}
-                  <div className="block sm:hidden bg-[#05080f] min-h-screen pb-32 animate-fade-in-up">
+                  <div className="block md:hidden bg-[#05080f] min-h-screen pb-32 animate-fade-in-up">
                     {/* Header */}
-                    <div className="pt-8 pb-6 px-6 text-center">
-                      <h2 className="text-2xl font-bold text-white mb-1">{language === 'pl' ? 'Konfiguracja Treningu' : 'Training Configuration'}</h2>
-                      <p className="text-sm text-gray-400">{language === 'pl' ? 'Dostosuj i rozpocznij sesję AI.' : 'Customize and start AI session.'}</p>
+                    <div className="pt-6 pb-6 px-6 flex items-center justify-between">
+                      <button 
+                        onClick={onOpenSidebar}
+                        className="p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                      </button>
+                      <h2 className="text-2xl font-bold text-white">{language === 'pl' ? 'Czas na trening' : 'Time for training'}</h2>
+                      <div className="w-10"></div>
                     </div>
 
                     {/* Content Container */}
@@ -1494,24 +1503,19 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             {numSentences}
                           </span>
                         </div>
-                        <div className="flex justify-between gap-3">
-                          {[5, 10, 15, 20].map((val) => (
-                            <button
-                              key={val}
-                              type="button"
-                              onClick={() => {
-                                setNumSentences(val);
-                                playSliderSound();
-                              }}
-                              className={`flex-1 py-3 rounded-full font-bold text-sm transition-all duration-300 ${
-                                numSentences === val
-                                  ? 'bg-[#10b981] text-black shadow-[0_0_20px_rgba(16,185,129,0.4)] scale-105'
-                                  : 'bg-[#131b26] border border-white/10 text-gray-400 hover:text-white'
-                              }`}
-                            >
-                              {val}
-                            </button>
-                          ))}
+                        <div className="bg-[#121824] border border-primary/20 rounded-2xl p-5 space-y-4 animate-pulsar-soft">
+                          <input
+                            type="range"
+                            min="1"
+                            max="25"
+                            step="1"
+                            value={numSentences}
+                            onChange={(e) => {
+                              setNumSentences(parseInt(e.target.value));
+                              playSliderSound();
+                            }}
+                            className="w-full h-2 bg-[#202b3c] rounded-lg appearance-none cursor-pointer accent-emerald-400 focus:outline-none"
+                          />
                         </div>
                       </div>
                     </div>
@@ -1532,7 +1536,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     </div>
                   </div>
 
-                  <div className="hidden sm:block space-y-7 animate-fade-in-up">
+                  <div className="hidden md:block space-y-7 animate-fade-in-up">
                     {/* Title & Subtitle */}
                     <div>
                       <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
@@ -1639,7 +1643,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         <input
                           type="range"
                           min="1"
-                          max="20"
+                          max="25"
                           step="1"
                           value={numSentences}
                           onChange={(e) => {

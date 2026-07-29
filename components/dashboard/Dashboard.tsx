@@ -276,6 +276,7 @@ const AnimatedFlame = () => {
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const isTeacherGlobal = user?.role === 'admin' || user?.role === 'teacher';
   const { sets } = useFlashcards();
   const { words, difficultWords, dueWords, frequency, lastPractice, lastRevisionDate } = useVocabulary();
   const { language } = useLanguage();
@@ -691,7 +692,7 @@ const Dashboard: React.FC = () => {
       return <AdminPanel initialTab={view === 'admin' ? null : view.replace('admin-', '')} onViewChange={changeView} initialSelectedUserId={adminSelectedUserId} onUserSelect={(id) => changeView(view, { adminSelectedUserId: id })} />;
     }
     if (view === 'ai-generator') {
-      return <AIExerciseGeneratorScreen key={`ai-gen-${exerciseResetKey}`} initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />;
+      return <AIExerciseGeneratorScreen key={`ai-gen-${exerciseResetKey}`} initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} onOpenSidebar={() => setIsSidebarOpen(true)} />;
     }
     if (view === 'lesson-history') {
       return <LessonHistoryScreen />;
@@ -707,8 +708,8 @@ const Dashboard: React.FC = () => {
         // Default to dashboard view
     const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
 
-    if (!isTeacher && view === 'dashboard') {
-      return <AIExerciseGeneratorScreen key={`ai-gen-${exerciseResetKey}`} initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} />;
+    if (!isTeacherGlobal && view === 'dashboard') {
+      return <AIExerciseGeneratorScreen key={`ai-gen-${exerciseResetKey}`} initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} onOpenSidebar={() => setIsSidebarOpen(true)} />;
     }
 
     return (
@@ -811,8 +812,8 @@ const Dashboard: React.FC = () => {
         isDesktopCollapsed={isDesktopCollapsed}
         onToggleCollapse={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
       />
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto pb-24 md:pb-8">
-        <header className="relative z-40 flex flex-col md:flex-row md:justify-between items-center mb-6 p-4 rounded-2xl liquid-glass-card gap-4">
+      <main className={`flex-1 overflow-y-auto pb-24 md:pb-8 ${(!isTeacherGlobal && view === 'dashboard') || view === 'ai-generator' ? 'p-0 sm:p-6 lg:p-8' : 'p-4 sm:p-6 lg:p-8'}`}>
+        <header className={`relative z-40 flex-col md:flex-row md:justify-between items-center mb-6 p-4 rounded-2xl liquid-glass-card gap-4 ${(!isTeacherGlobal && view === 'dashboard') || view === 'ai-generator' ? 'hidden md:flex' : 'flex'}`}>
           <div className="w-full flex items-center justify-between md:justify-start gap-4">
             <button 
               onClick={() => setIsSidebarOpen(true)}
