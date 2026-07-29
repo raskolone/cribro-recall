@@ -21,6 +21,7 @@ export interface User {
   lastName?: string;
   level?: string;
   hasNewVocabulary?: boolean;
+  hasNewLesson?: boolean;
   description?: string;
   aiPrompt?: string;
   isSuspended?: boolean;

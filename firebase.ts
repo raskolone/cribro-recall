@@ -40,8 +40,7 @@ export const firebaseConfig = getFirebaseConfig();
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-import { initializeFirestore } from 'firebase/firestore';
-export const db = initializeFirestore(app, { experimentalForceLongPolling: true }, "ai-studio-520a4841-33d0-41ef-829a-838ebc44072d");
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || "ai-studio-520a4841-33d0-41ef-829a-838ebc44072d");
 
 export enum OperationType {
   CREATE = 'create',

@@ -431,6 +431,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [practiceMode, setPracticeMode] = useState<'fixed' | 'time'>('fixed');
   const [exerciseFormat, setExerciseFormat] = useState<'typing' | 'puzzle' | 'test' | 'speaking'>('puzzle');
   const [isLessonSelectorOpen, setIsLessonSelectorOpen] = useState(false);
+  const [previewVocabSet, setPreviewVocabSet] = useState<VocabularySet | null>(null);
   const [selectedGrammarTopic, setSelectedGrammarTopic] = useState<any>(null);
   const [expandedGrammarLevel, setExpandedGrammarLevel] = useState<number | null>(null);
 
@@ -1163,7 +1164,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
       {/* Pulsar effect for the whole screen area */}
       <AnimatePresence>
         {(isLoading || isEvaluating || isGeneratingMore) && (
-          <motion.div 
+          <motion.div key="global-loader" 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -1179,29 +1180,16 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
       </AnimatePresence>
       <div className="space-y-6 relative z-10">
         {/* Header */}
-        <div className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-base-300 pb-5">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
-            ✨ {isTeacher ? (language === 'pl' ? 'Widok kursanta' : 'Student View') : (language === 'pl' ? 'Panel ćwiczeniowy' : 'Practice Panel')}
-          </h1>
-          <p className="text-content-muted text-sm mt-1">
-            {language === 'pl' 
-              ? 'Ćwicz tłumaczenie zdań z języka polskiego na angielski na podstawie Twoich słówek i poziomu zaawansowania.'
-              : 'Practice translating sentences from Polish to English based on your word lists and CEFR level.'}
-          </p>
-
-        </div>
+        <div className="hidden md:flex flex-col md:flex-row md:items-center justify-end gap-4 border-b border-base-300 pb-2">
         <div className="flex items-center gap-2">
           {isTeacher && (
-            <Button 
-              variant="secondary" 
-              size="sm" 
+            <button
               onClick={() => setIsConfigOpen(!isConfigOpen)}
-              className="flex items-center gap-1.5"
+              className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              title={language === 'pl' ? 'Konfiguracja Promptu' : 'Prompt Setup'}
             >
-              <Settings className="w-4 h-4" />
-              {language === 'pl' ? 'Konfiguracja Promptu' : 'Prompt Setup'}
-            </Button>
+              <Settings className="w-5 h-5" />
+            </button>
           )}
           {step !== 'setup' && (
             <Button 
@@ -1294,7 +1282,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
       {/* Enhanced Error & Loading Logs */}
       <AnimatePresence>
         {error && (
-          <motion.div 
+          <motion.div key="error-banner" 
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
@@ -1327,82 +1315,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
           <AIGenerationLoader language={language} level={level} logs={debugLogs} />
         ) : (
           <div className="max-w-2xl mx-auto sm:mt-4 w-full">
-            <AnimatePresence>
-              {user?.hasNewVocabulary && !isBannerDismissed && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -20, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                  className="relative group mb-6"
-                >
-                  <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-primary/30 to-secondary/30 opacity-70 blur-md animate-pulse group-hover:opacity-100 transition duration-1000" />
-                  <div className="relative border border-primary/40 rounded-2xl bg-gradient-to-r from-primary/15 to-base-100/90 p-4 flex items-center justify-between backdrop-blur-md gap-4">
-                    <div 
-                      className="flex items-center gap-4 cursor-pointer flex-1"
-                      onClick={() => {
-                        setSelectedSetId('lessons');
-                        if (vocabularySets.length > 0 && selectedLessonIds.length === 0) {
-                          setSelectedLessonIds([vocabularySets[0].id]);
-                        }
-                        setIsBannerDismissed(true);
-                        if (user?.id) {
-                          updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
-                        }
-                      }}
-                    >
-                      <div className="relative shrink-0">
-                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                          <BookOpen className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-base-100 animate-ping" />
-                        <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-base-100" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-bold text-white text-sm md:text-base leading-tight">
-                          {language === 'pl' ? 'Masz przypisany nowy zestaw! 🎉' : 'You have a new vocabulary set! 🎉'}
-                        </h3>
-                        <p className="text-primary/90 text-xs md:text-sm mt-0.5 font-medium">
-                          {language === 'pl' ? 'Twój nauczyciel dodał nowe słówka z lekcji. Kliknij, aby je poćwiczyć.' : 'Your teacher shared new vocabulary. Click to practice.'}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button 
-                        onClick={() => {
-                          setSelectedSetId('lessons');
-                          if (vocabularySets.length > 0 && selectedLessonIds.length === 0) {
-                            setSelectedLessonIds([vocabularySets[0].id]);
-                          }
-                          setIsBannerDismissed(true);
-                          if (user?.id) {
-                            updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-primary text-black font-bold rounded-lg text-xs hover:bg-primary/95 transition-all shadow-md active:scale-95"
-                      >
-                        {language === 'pl' ? 'Przejdź' : 'Go'}
-                      </button>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsBannerDismissed(true);
-                          if (user?.id) {
-                            updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
-                          }
-                        }}
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            
             <Card className="p-0 md:p-8 border-none md:border-solid md:border md:border-white/10 bg-[#05080f] md:bg-[#0d131d] backdrop-blur-2xl relative overflow-visible md:overflow-hidden flex flex-col rounded-none md:rounded-3xl shadow-none md:shadow-[0_20px_60px_rgba(0,0,0,0.55)] max-w-2xl mx-auto min-h-screen md:min-h-0">
               {/* Top Segmented Navigation Tabs Bar */}
+              {isTeacher && (
               <div className="hidden md:flex bg-[#141d2a] border border-white/5 p-1 rounded-2xl gap-1 mb-7">
                 <button
                   type="button"
@@ -1432,6 +1348,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                 </button>
 
               </div>
+              )}
 
               {/* Single Box Body content */}
               <div>
@@ -1450,7 +1367,31 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                       </button>
-                      <h2 className="text-2xl font-bold text-white">{language === 'pl' ? 'Czas na trening' : 'Time for training'}</h2>
+                      <h2 className="text-2xl font-bold text-white flex items-center flex-wrap gap-y-2">
+                        {language === 'pl' ? 'Czas na trening' : 'Time for training'}
+                        {user?.hasNewVocabulary && !isBannerDismissed && (
+                          <span 
+                            onClick={() => {
+                              setSelectedSetId('lessons');
+                              if (vocabularySets.length > 0 && selectedLessonIds.length === 0) {
+                                setSelectedLessonIds([vocabularySets[0].id]);
+                              }
+                              setIsBannerDismissed(true);
+                              if (user?.id) {
+                                updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
+                              }
+                            }}
+                            className="ml-3 text-xs md:text-sm px-3 py-1 bg-primary/20 text-primary border border-primary/40 rounded-full animate-pulse cursor-pointer hover:bg-primary/30 transition-colors whitespace-nowrap font-semibold"
+                          >
+                            {language === 'pl' ? 'Nowe słówka' : 'New vocab'}
+                          </span>
+                        )}
+                        {user?.hasNewLesson && (
+                          <span className="ml-2 text-xs md:text-sm px-3 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full animate-pulse cursor-default whitespace-nowrap font-semibold">
+                            {language === 'pl' ? 'Nowa lekcja' : 'New lesson'}
+                          </span>
+                        )}
+                      </h2>
                       <div className="w-10"></div>
                     </div>
 
@@ -1569,97 +1510,105 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   </div>
 
                   <div className="hidden md:block space-y-7 animate-fade-in-up">
-                    {/* Title & Subtitle */}
-                    <div>
-                      <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                        {language === 'pl' ? 'Konfiguracja Treningu' : 'Training Configuration'}
+                    {/* Title */}
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center flex-wrap gap-y-2">
+                        {language === 'pl' ? 'Czas na trening' : 'Time for training'}
+                        {user?.hasNewVocabulary && !isBannerDismissed && (
+                          <span 
+                            onClick={() => {
+                              setSelectedSetId('lessons');
+                              if (vocabularySets.length > 0 && selectedLessonIds.length === 0) {
+                                setSelectedLessonIds([vocabularySets[0].id]);
+                              }
+                              setIsBannerDismissed(true);
+                              if (user?.id) {
+                                updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
+                              }
+                            }}
+                            className="ml-3 text-xs md:text-sm px-3 py-1 bg-primary/20 text-primary border border-primary/40 rounded-full animate-pulse cursor-pointer hover:bg-primary/30 transition-colors whitespace-nowrap font-semibold"
+                          >
+                            {language === 'pl' ? 'Nowe słówka' : 'New vocab'}
+                          </span>
+                        )}
+                        {user?.hasNewLesson && (
+                          <span className="ml-2 text-xs md:text-sm px-3 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full animate-pulse cursor-default whitespace-nowrap font-semibold">
+                            {language === 'pl' ? 'Nowa lekcja' : 'New lesson'}
+                          </span>
+                        )}
                       </h2>
-                      <p className="text-sm text-gray-400 mt-1 font-normal">
-                        {language === 'pl' ? 'Dostosuj parametry wyzwania i rozpocznij sesję AI.' : 'Customize challenge parameters and launch AI session.'}
-                      </p>
+                    </div>
+
+                    {/* SECTION 2: TRYB ĆWICZENIA (Two large tiles) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Card 1: Układanka */}
+                      <button
+                        type="button"
+                        onClick={() => setExerciseFormat('puzzle')}
+                        className={`relative aspect-square sm:aspect-auto sm:h-48 rounded-[2rem] flex flex-col items-center justify-center transition-all duration-500 overflow-hidden ${
+                          exerciseFormat === 'puzzle'
+                            ? 'bg-gradient-to-br from-[#10b981]/20 to-[#090d16] border-[0.5px] border-[#10b981]/50 shadow-[0_0_30px_rgba(16,185,129,0.3),inset_0_2px_15px_rgba(16,185,129,0.4)]'
+                            : 'bg-gradient-to-br from-white/5 to-transparent border-[0.5px] border-white/10 shadow-[inset_0_2px_15px_rgba(255,255,255,0.05)] hover:border-white/20'
+                        }`}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 rounded-[2rem]"></div>
+                        <LayoutGrid className={`w-10 h-10 mb-3 z-10 ${exerciseFormat === 'puzzle' ? 'text-[#10b981] drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'text-gray-400'}`} />
+                        <span className={`text-sm font-bold z-10 ${exerciseFormat === 'puzzle' ? 'text-white' : 'text-gray-400'}`}>{language === 'pl' ? 'Układanka' : 'Puzzle'}</span>
+                        {exerciseFormat === 'puzzle' && (
+                          <div className="absolute top-4 right-4 flex items-center justify-center">
+                            <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Card 2: Prawdziwe wyzwanie */}
+                      <button
+                        type="button"
+                        onClick={() => setExerciseFormat('typing')}
+                        className={`relative aspect-square sm:aspect-auto sm:h-48 rounded-[2rem] flex flex-col items-center justify-center transition-all duration-500 overflow-hidden ${
+                          exerciseFormat === 'typing'
+                            ? 'bg-gradient-to-br from-[#10b981]/20 to-[#090d16] border-[0.5px] border-[#10b981]/50 shadow-[0_0_30px_rgba(16,185,129,0.3),inset_0_2px_15px_rgba(16,185,129,0.4)]'
+                            : 'bg-gradient-to-br from-white/5 to-transparent border-[0.5px] border-white/10 shadow-[inset_0_2px_15px_rgba(255,255,255,0.05)] hover:border-white/20'
+                        }`}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 rounded-[2rem]"></div>
+                        <Keyboard className={`w-10 h-10 mb-3 z-10 ${exerciseFormat === 'typing' ? 'text-[#10b981] drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'text-gray-400'}`} />
+                        <span className={`text-sm font-bold z-10 ${exerciseFormat === 'typing' ? 'text-white' : 'text-gray-400'}`}>{language === 'pl' ? 'Prawdziwe Wyzwanie' : 'Real Challenge'}</span>
+                        {exerciseFormat === 'typing' && (
+                          <div className="absolute top-4 right-4 flex items-center justify-center">
+                            <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+                          </div>
+                        )}
+                      </button>
                     </div>
 
                     {/* Unified Źródło Słownictwa Box */}
-                      <div>
-                        <button 
-                          type="button"
-                          onClick={() => setIsLessonSelectorOpen(true)}
-                          className="w-full bg-[#131b26] border border-white/10 hover:border-white/20 transition-colors rounded-2xl p-4 flex items-center justify-between"
-                        >
-                          <div className="flex items-center gap-3">
-                            <BookOpen className="w-5 h-5 text-emerald-400" />
-                            <span className="text-sm font-semibold text-white">
-                              {language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary source'}
-                            </span>
-                          </div>
-                          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isLessonSelectorOpen ? 'rotate-180' : ''}`} />
-                        </button>
-                        <div className="mt-2 px-2 text-[10px] text-gray-400 font-medium whitespace-pre-wrap leading-relaxed">
-                          
-                          {selectedSetId === 'grammar' && selectedGrammarTopic ? (language === 'pl' ? `Gramatyka ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}` : `Grammar ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}`) :
-                           selectedSetId === 'all' && selectedLessonIds.length === 0 ? (language === 'pl' ? 'Wybrano: Wszystkie słówka (Mix)' : 'Selected: All vocab') : 
-
-                           selectedSetId === 'lessons' || selectedLessonIds.length > 0 ? (language === 'pl' ? `Wybrane lekcje: ${vocabularySets.filter(s => selectedLessonIds.includes(s.id)).map(s => s.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()).join(', ')}` : `Selected lessons: ${selectedLessonIds.length}`) : 
-                           specialTasks.find(t => 'special-task-' + t.id === selectedSetId) ? (language === 'pl' ? 'Wybrano: Zadanie specjalne' : 'Selected: Special Task') : ''}
-                        </div>
-                      </div>
-
-                    {/* SECTION 2: TRYB ĆWICZENIA */}
-                    <div className="space-y-3">
-                      <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                        {language === 'pl' ? 'Tryb ćwiczenia' : 'Exercise mode'}
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-4">
+                        {language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary source'}
                       </label>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                        {/* Card 1: Rozgrzewka */}
-                        <div
-                          onClick={() => setExerciseFormat('puzzle')}
-                          className={`p-5 rounded-2xl border text-left transition-all duration-300 cursor-pointer relative ${
-                            exerciseFormat === 'puzzle'
-                              ? 'border-emerald-500/60 bg-gradient-to-br from-[#0e2722] via-[#102026] to-[#121b27] shadow-[0_0_20px_rgba(16,185,129,0.15)]'
-                              : 'border-white/10 bg-[#121824] hover:bg-[#17202e] hover:border-white/20'
-                          }`}
-                        >
-                          {exerciseFormat === 'puzzle' && (
-                            <div className="absolute top-4 right-4 flex items-center justify-center">
-                              <span className="animate-ping absolute inline-flex h-3.5 w-3.5 rounded-full bg-emerald-400 opacity-75" />
-                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-                            </div>
-                          )}
-                          <h4 className="text-base font-bold text-white mb-1">
-                            {language === 'pl' ? 'Układanka' : 'Puzzle'}
-                          </h4>
-                          <p className="text-xs text-gray-400 leading-relaxed font-normal pr-4">
-                            {language === 'pl' 
-                              ? 'Układaj rozrzucone słowa we właściwej kolejności.'
-                              : 'Arrange scattered words in the correct order.'}
-                          </p>
+                      <button 
+                        type="button"
+                        onClick={() => setIsLessonSelectorOpen(true)}
+                        className="w-full bg-[#131b26] border border-white/10 hover:border-white/20 transition-colors rounded-2xl p-4 flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <BookOpen className="w-5 h-5 text-emerald-400" />
+                          <span className="text-sm font-semibold text-white">
+                            {language === 'pl' ? 'Wybierz lekcje' : 'Choose lessons'}
+                          </span>
                         </div>
+                        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isLessonSelectorOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      <div className="mt-2 px-2 text-[10px] text-gray-400 font-medium whitespace-pre-wrap leading-relaxed">
+                          
+                        {selectedSetId === 'grammar' && selectedGrammarTopic ? (language === 'pl' ? `Gramatyka ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}` : `Grammar ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}`) :
+                         selectedSetId === 'all' && selectedLessonIds.length === 0 ? (language === 'pl' ? 'Wybrano: Wszystkie słówka (Mix)' : 'Selected: All vocab') : 
 
-                        {/* Card 2: Prawdziwe Wyzwanie */}
-                        <div
-                          onClick={() => setExerciseFormat('typing')}
-                          className={`p-5 rounded-2xl border text-left transition-all duration-300 cursor-pointer relative ${
-                            exerciseFormat === 'typing'
-                              ? 'border-emerald-500/60 bg-gradient-to-br from-[#0e2722] via-[#102026] to-[#121b27] shadow-[0_0_20px_rgba(16,185,129,0.15)]'
-                              : 'border-white/10 bg-[#121824] hover:bg-[#17202e] hover:border-white/20'
-                          }`}
-                        >
-                          {exerciseFormat === 'typing' && (
-                            <div className="absolute top-4 right-4 flex items-center justify-center">
-                              <span className="animate-ping absolute inline-flex h-3.5 w-3.5 rounded-full bg-emerald-400 opacity-75" />
-                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-                            </div>
-                          )}
-                          <h4 className="text-base font-bold text-white mb-1">
-                            {language === 'pl' ? 'Prawdziwe Wyzwanie' : 'Real Challenge'}
-                          </h4>
-                          <p className="text-xs text-gray-400 leading-relaxed font-normal pr-4">
-                            {language === 'pl' 
-                              ? 'Wpisuj całe zdania z klawiatury. Weryfikacja błędów przez AI.'
-                              : 'Type full sentences with keyboard. AI error verification.'}
-                          </p>
-                        </div>
+                         selectedSetId === 'lessons' || selectedLessonIds.length > 0 ? (language === 'pl' ? `Wybrane lekcje: ${vocabularySets.filter(s => selectedLessonIds.includes(s.id)).map(s => s.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()).join(', ')}` : `Selected lessons: ${selectedLessonIds.length}`) : 
+                         specialTasks.find(t => 'special-task-' + t.id === selectedSetId) ? (language === 'pl' ? 'Wybrano: Zadanie specjalne' : 'Selected: Special Task') : ''}
                       </div>
                     </div>
 
@@ -1732,7 +1681,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   {/* Modal Lesson Selection for Mobile */}
                         <AnimatePresence>
                           {isLessonSelectorOpen && (
-                            <motion.div
+                            <motion.div key="lesson-selector"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               exit={{ opacity: 0 }}
@@ -1807,7 +1756,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                           }}
                                           className="w-5 h-5 text-emerald-400 focus:ring-emerald-400 rounded border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
                                         />
-                                        <div className="flex flex-col min-w-0">
+                                        <div className="flex-1 flex flex-col min-w-0">
                                           <span className="text-sm font-semibold leading-none flex items-center flex-wrap gap-y-2">
                                             <span className="text-[10px] font-mono bg-white/10 px-2 py-1 rounded text-emerald-300 mr-2 border border-white/5">L{lessonNumber}</span>
                                             <span className={`${isSelected ? 'text-white' : 'text-gray-300'} break-words whitespace-normal leading-tight`}>
@@ -1815,6 +1764,17 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                             </span>
                                           </span>
                                         </div>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setPreviewVocabSet(set);
+                                          }}
+                                          className="p-2 -mr-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors flex-shrink-0"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                        </button>
                                       </label>
                                     );
                                   }) : (
@@ -1860,7 +1820,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                       </div>
                                       <AnimatePresence>
                                         {expandedGrammarLevel === cIdx && (
-                                          <motion.div
+                                          <motion.div key="grammar-level"
                                             initial={{ height: 0, opacity: 0 }}
                                             animate={{ height: 'auto', opacity: 1 }}
                                             exit={{ height: 0, opacity: 0 }}
@@ -1912,6 +1872,60 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                     className="w-full py-4 rounded-2xl bg-[#10b981] text-black font-bold text-base shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                                   >
                                     {language === 'pl' ? 'Zatwierdź' : 'Confirm'}
+                                  </button>
+                                </div>
+                              </motion.div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        <AnimatePresence>
+                          {previewVocabSet && (
+                            <motion.div key="preview-modal"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="fixed inset-0 z-[110] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+                            >
+                              <motion.div
+                                initial={{ y: 20, opacity: 0, scale: 0.95 }}
+                                animate={{ y: 0, opacity: 1, scale: 1 }}
+                                exit={{ y: 20, opacity: 0, scale: 0.95 }}
+                                className="bg-[#0f1522] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85vh]"
+                              >
+                                <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+                                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <span className="text-emerald-400">👀</span>
+                                    {previewVocabSet.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
+                                  </h3>
+                                  <button 
+                                    onClick={() => setPreviewVocabSet(null)}
+                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                                  >
+                                    <X className="w-5 h-5" />
+                                  </button>
+                                </div>
+                                <div className="overflow-y-auto custom-scrollbar flex-1 pr-2">
+                                  {previewVocabSet.vocabularyText ? (
+                                    <div className="flex flex-col gap-2">
+                                      {previewVocabSet.vocabularyText.split(/[\n;]+/).map(i => i.trim()).filter(i => i.length > 0).map((line, lIdx) => (
+                                        <div key={lIdx} className="bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-gray-200">
+                                          {line}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="text-center text-gray-400 py-8">
+                                      Brak słownictwa do wyświetlenia.
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="mt-6 pt-4 border-t border-white/10">
+                                  <button 
+                                    onClick={() => setPreviewVocabSet(null)}
+                                    className="w-full py-4 rounded-2xl bg-[#10b981] text-black font-bold text-base shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                                  >
+                                    {language === 'pl' ? 'Zamknij' : 'Close'}
                                   </button>
                                 </div>
                               </motion.div>
@@ -2004,7 +2018,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
         )
       )}
       {step === 'practice' && exercises.length > 0 && (
-        <div className="max-w-2xl mx-auto space-y-4">
+        <div className="max-w-2xl mx-auto space-y-4 pb-28 md:pb-8">
           {/* Progress header */}
           <div className="flex items-center justify-between text-xs">
             <span className="font-mono text-content-muted">
@@ -2036,7 +2050,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
             {/* AI Motivating Bubble */}
             <AnimatePresence>
               {activeSentenceIndex > 0 && activeSentenceIndex % 3 === 0 && studentAnswers[activeSentenceIndex - 1]?.trim() && (
-                <motion.div 
+                <motion.div key="motivating-bubble" 
                   initial={{ opacity: 0, x: 15, y: -15, scale: 0.85 }}
                   animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.85 }}
