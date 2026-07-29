@@ -895,6 +895,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
       let userAiPromptStr = user?.aiPrompt || "Brak dodatkowych wskazówek";
       
       let finalGenPrompt = customGenPrompt;
+      if (selectedSetId === 'grammar' && selectedGrammarTopic && selectedGrammarTopic.sentences) {
+         if (selectedGrammarTopic.chapterIndex === 0) {
+            finalGenPrompt += `\n\n[TŁUMACZENIA - Gramatyka 1]: Wygeneruj proste zdania na poziomie A1-A2, używając tych wzorów jako inspiracji:\n${selectedGrammarTopic.sentences}`;
+         } else {
+            finalGenPrompt += `\n\n[TŁUMACZENIA]: Wygeneruj ćwiczenia, bazując ściśle na tych zdaniach, lekko je modyfikując: \n${selectedGrammarTopic.sentences}`;
+         }
+      }
       if (additionalInstructions.trim().length > 0) {
         finalGenPrompt += '\n\nDODATKOWE INSTRUKCJE OD NAUCZYCIELA: ' + additionalInstructions;
       }
@@ -1751,7 +1758,72 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 </div>
                                 
                                 <div className="overflow-y-auto custom-scrollbar flex-1 -mr-2 pr-2 space-y-2 pb-6">
-                                  {/* Option to select "All" */}
+                                  <h4 className="text-sm font-bold text-gray-400 px-2 mb-2 uppercase tracking-wider">{language === 'pl' ? 'Moje lekcje' : 'My lessons'}</h4>
+                                  {specialTasks.length > 0 && specialTasks.map(task => (
+                                    <label key={task.id} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${
+                                      selectedSetId === 'special-task-' + task.id ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5'
+                                    }`}>
+                                      <input 
+                                        type="radio" 
+                                        name="mobileSourceModal"
+                                        checked={selectedSetId === 'special-task-' + task.id}
+                                        onChange={() => {
+                                          if (selectedSetId !== 'special-task-' + task.id) {
+                                            setSelectedSetId('special-task-' + task.id);
+                                            setSelectedLessonIds([]);
+                                          } else {
+                                            setSelectedSetId('all');
+                                          }
+                                        }}
+                                        className="w-5 h-5 text-emerald-400 focus:ring-emerald-400 rounded-full border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
+                                      />
+                                      <span className={`text-base font-semibold ${selectedSetId === 'special-task-' + task.id ? 'text-emerald-400' : 'text-gray-300'}`}>
+                                        {task.title}
+                                      </span>
+                                    </label>
+                                  ))}
+
+
+                                  {vocabularySets.length > 0 ? vocabularySets.map((set, index) => {
+                                    const isSelected = selectedLessonIds.includes(set.id);
+                                    const lessonNumber = vocabularySets.length - index;
+                                    return (
+                                      <label 
+                                        key={set.id} 
+                                        className={`flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${
+                                          isSelected ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5'
+                                        }`}
+                                      >
+                                        <input 
+                                          type="checkbox" 
+                                          checked={isSelected}
+                                          onChange={() => {
+                                            setSelectedSetId('lessons');
+                                            if (isSelected) {
+                                              setSelectedLessonIds(prev => prev.filter(id => id !== set.id));
+                                            } else {
+                                              setSelectedLessonIds(prev => [...prev, set.id]);
+                                            }
+                                          }}
+                                          className="w-5 h-5 text-emerald-400 focus:ring-emerald-400 rounded border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
+                                        />
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="text-sm font-semibold leading-none flex items-center flex-wrap gap-y-2">
+                                            <span className="text-[10px] font-mono bg-white/10 px-2 py-1 rounded text-emerald-300 mr-2 border border-white/5">L{lessonNumber}</span>
+                                            <span className={`${isSelected ? 'text-white' : 'text-gray-300'} break-words whitespace-normal leading-tight`}>
+                                              {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
+                                            </span>
+                                          </span>
+                                        </div>
+                                      </label>
+                                    );
+                                  }) : (
+                                    <div className="text-center text-sm text-gray-400 py-8">Brak lekcji</div>
+                                  )}
+                                  
+<div className="h-px w-full bg-white/10 my-4"></div>
+<h4 className="text-sm font-bold text-gray-400 px-2 mb-2 uppercase tracking-wider">{language === 'pl' ? 'Mix' : 'Mix'}</h4>
+{/* Option to select "All" */}
                                   <label className={`flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${
                                     selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5'
                                   }`}>
@@ -1769,9 +1841,6 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                       {language === 'pl' ? 'Wszystkie słówka (Mix)' : 'All vocabulary'}
                                     </span>
                                   </label>
-                                  
-                                  
-                                  
                                   {/* Grammar Options */}
                                   <div className="h-px w-full bg-white/10 my-4"></div>
                                   <h4 className="text-sm font-bold text-gray-400 px-2 mb-2 uppercase tracking-wider">{language === 'pl' ? 'Gramatyka' : 'Grammar'}</h4>
@@ -1836,70 +1905,6 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                       </AnimatePresence>
                                     </div>
                                   ))}
-
-<div className="h-px w-full bg-white/10 my-4"></div>
-<h4 className="text-sm font-bold text-gray-400 px-2 mb-2 uppercase tracking-wider">{language === 'pl' ? 'Inne' : 'Other'}</h4>
-                                  {specialTasks.length > 0 && specialTasks.map(task => (
-                                    <label key={task.id} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${
-                                      selectedSetId === 'special-task-' + task.id ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5'
-                                    }`}>
-                                      <input 
-                                        type="radio" 
-                                        name="mobileSourceModal"
-                                        checked={selectedSetId === 'special-task-' + task.id}
-                                        onChange={() => {
-                                          if (selectedSetId !== 'special-task-' + task.id) {
-                                            setSelectedSetId('special-task-' + task.id);
-                                            setSelectedLessonIds([]);
-                                          } else {
-                                            setSelectedSetId('all');
-                                          }
-                                        }}
-                                        className="w-5 h-5 text-emerald-400 focus:ring-emerald-400 rounded-full border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
-                                      />
-                                      <span className={`text-base font-semibold ${selectedSetId === 'special-task-' + task.id ? 'text-emerald-400' : 'text-gray-300'}`}>
-                                        {task.title}
-                                      </span>
-                                    </label>
-                                  ))}
-
-
-                                  {vocabularySets.length > 0 ? vocabularySets.map((set, index) => {
-                                    const isSelected = selectedLessonIds.includes(set.id);
-                                    const lessonNumber = vocabularySets.length - index;
-                                    return (
-                                      <label 
-                                        key={set.id} 
-                                        className={`flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${
-                                          isSelected ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5'
-                                        }`}
-                                      >
-                                        <input 
-                                          type="checkbox" 
-                                          checked={isSelected}
-                                          onChange={() => {
-                                            setSelectedSetId('lessons');
-                                            if (isSelected) {
-                                              setSelectedLessonIds(prev => prev.filter(id => id !== set.id));
-                                            } else {
-                                              setSelectedLessonIds(prev => [...prev, set.id]);
-                                            }
-                                          }}
-                                          className="w-5 h-5 text-emerald-400 focus:ring-emerald-400 rounded border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
-                                        />
-                                        <div className="flex flex-col min-w-0">
-                                          <span className="text-sm font-semibold leading-none flex items-center flex-wrap gap-y-2">
-                                            <span className="text-[10px] font-mono bg-white/10 px-2 py-1 rounded text-emerald-300 mr-2 border border-white/5">L{lessonNumber}</span>
-                                            <span className={`${isSelected ? 'text-white' : 'text-gray-300'} break-words whitespace-normal leading-tight`}>
-                                              {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
-                                            </span>
-                                          </span>
-                                        </div>
-                                      </label>
-                                    );
-                                  }) : (
-                                    <div className="text-center text-sm text-gray-400 py-8">Brak lekcji</div>
-                                  )}
                                 </div>
                                 <div className="mt-4 pt-4 border-t border-white/10">
                                   <button 
@@ -2599,7 +2604,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             disabled={!hasSentences}
                             onClick={() => {
                                setIsTopicModalOpen(false);
-                               const promptAddon = `[TŁUMACZENIA]: Wygeneruj ćwiczenia, bazując ściśle na tych zdaniach, lekko je modyfikując: \n${topic.sentences}`;
+                               const promptAddon = cIdx === 0
+                                  ? `[TŁUMACZENIA - Gramatyka 1]: Wygeneruj proste zdania na poziomie A1-A2, używając tych wzorów jako inspiracji:\n${topic.sentences}`
+                                  : `[TŁUMACZENIA]: Wygeneruj ćwiczenia, bazując ściśle na tych zdaniach, lekko je modyfikując: \n${topic.sentences}`;
                                handleGenerate(false, promptAddon);
                             }}
                             className={`p-3 rounded-lg border text-left flex flex-col justify-center min-h-[60px] ${hasSentences ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/50 text-emerald-100" : "opacity-50 cursor-not-allowed border-transparent bg-black/10 text-gray-600"}`}
