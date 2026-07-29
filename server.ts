@@ -743,7 +743,7 @@ Zwróć JSON z polami:
       }
 
       // Fallback to Google Translate TTS
-      const googleTranslateUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(formattedText)}&tl=${lang.startsWith('en') ? lang : 'en'}&client=tw-ob`;
+      const googleTranslateUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(formattedText)}&tl=${lang.startsWith('en') ? 'en' : (lang === 'pl' ? 'pl' : lang)}&client=tw-ob`;
       
       const response = await fetch(googleTranslateUrl, {
         headers: {

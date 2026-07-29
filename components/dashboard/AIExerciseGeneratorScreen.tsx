@@ -209,6 +209,12 @@ const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?
           viewBox="0 0 200 200"
           fill="none"
         >
+          <defs>
+            <filter id="crayon" x="-10%" y="-10%" width="120%" height="120%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="4" result="noise" />
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.5" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+          </defs>
           {/* Tangled chaotic string */}
           <path
             ref={tangledRef}
@@ -217,6 +223,7 @@ const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?
             strokeWidth="4"
             strokeLinecap="round"
             strokeLinejoin="round"
+            filter="url(#crayon)"
           />
 
           {/* String pulling away from tangle */}
@@ -226,6 +233,7 @@ const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?
             stroke="#4ade80"
             strokeWidth="4"
             strokeLinecap="round"
+            filter="url(#crayon)"
           />
 
           {/* Organized perfect spiral */}
@@ -236,6 +244,7 @@ const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?
             strokeWidth="4"
             strokeLinecap="round"
             strokeLinejoin="round"
+            filter="url(#crayon)"
           />
         </svg>
       </div>
@@ -1092,6 +1101,63 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
   return (
     <div className="relative">
       {/* Pulsar effect for the whole screen area */}
+
+      {/* GLOBAL MOBILE HEADER */}
+      <div className="md:hidden pt-6 pb-2 px-6 flex items-center justify-between bg-transparent z-40">
+        <button 
+          onClick={onOpenSidebar}
+          className="p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <h2 className="text-xl font-bold text-white flex items-center justify-center gap-2">
+          {step === 'setup' ? (language === 'pl' ? 'Czas na trening' : 'Time for training') : 
+           step === 'practice' ? (language === 'pl' ? 'Ćwiczenie' : 'Practice') :
+           step === 'results' ? (language === 'pl' ? 'Wyniki' : 'Results') : 
+           (language === 'pl' ? 'Sukces' : 'Success')}
+        </h2>
+        <div className="flex items-center gap-2">
+          {step === 'practice' && (
+            <button
+              onClick={() => {
+                showConfirm(
+                  language === 'pl' ? 'Zakończ trening' : 'End session',
+                  language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję nauki? Dotychczasowe odpowiedzi zostaną ocenione.' : 'Are you sure you want to end this study session? Your answers will be evaluated.',
+                  () => {
+                    closeConfirm();
+                    handleEvaluate();
+                  }
+                );
+              }}
+              className="p-2 text-content-muted hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          )}
+          {onChangeView ? (
+            <MobileTopMenu 
+              currentView="dashboard" 
+              onChangeView={onChangeView}
+              isExerciseActive={step === 'practice' || step === 'results'}
+              onConfirmEndSession={(onEnd) => {
+                showConfirm(
+                  language === 'pl' ? 'Zakończ trening' : 'End session',
+                  language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję nauki? Dotychczasowe odpowiedzi zostaną ocenione.' : 'Are you sure you want to end this study session? Your answers will be evaluated.',
+                  () => {
+                    closeConfirm();
+                    onEnd();
+                  }
+                );
+              }}
+            />
+          ) : (
+            <div className="w-10" />
+          )}
+        </div>
+      </div>
+
       <AnimatePresence>
         {(isLoading || isEvaluating || isGeneratingMore) && (
           <motion.div key="global-loader" 
@@ -1287,81 +1353,6 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   <>
                   {/* --- MOBILE REDESIGN (Only visible below 'sm' breakpoint) --- */}
                   <div className="block md:hidden bg-[#05080f] min-h-screen pb-32 animate-fade-in-up">
-                    {/* Header */}
-                    <div className="pt-6 pb-6 px-6 flex items-center justify-between">
-                      <button 
-                        onClick={onOpenSidebar}
-                        className="p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                      </button>
-                      <h2 className="text-2xl font-bold text-white flex items-center flex-wrap gap-y-2">
-                        {language === 'pl' ? 'Czas na trening' : 'Time for training'}
-                        {user?.hasNewVocabulary && !isBannerDismissed && (
-                          <span 
-                            onClick={() => {
-                              setSelectedSetId('lessons');
-                              if (vocabularySets.length > 0 && selectedLessonIds.length === 0) {
-                                setSelectedLessonIds([vocabularySets[0].id]);
-                              }
-                              setIsBannerDismissed(true);
-                              if (user?.id) {
-                                updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
-                              }
-                            }}
-                            className="ml-3 text-xs md:text-sm px-3 py-1 bg-primary/20 text-primary border border-primary/40 rounded-full animate-pulse cursor-pointer hover:bg-primary/30 transition-colors whitespace-nowrap font-semibold"
-                          >
-                            {language === 'pl' ? 'Nowe słówka' : 'New vocab'}
-                          </span>
-                        )}
-                        {user?.hasNewLesson && (
-                          <span className="ml-2 text-xs md:text-sm px-3 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full animate-pulse cursor-default whitespace-nowrap font-semibold">
-                            {language === 'pl' ? 'Nowa lekcja' : 'New lesson'}
-                          </span>
-                        )}
-                      </h2>
-                      <div className="flex items-center gap-2">
-                        {step === 'exercises' && (
-                          <button
-                            onClick={() => {
-                              showConfirm(
-                                language === 'pl' ? 'Zakończ trening' : 'End session',
-                                language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję nauki? Dotychczasowe odpowiedzi zostaną ocenione.' : 'Are you sure you want to end this study session? Your answers will be evaluated.',
-                                () => {
-                                  closeConfirm();
-                                  handleEvaluate();
-                                }
-                              );
-                            }}
-                            className="md:hidden p-2 text-content-muted hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors"
-                          >
-                            <X className="w-6 h-6" />
-                          </button>
-                        )}
-                        {onChangeView ? (
-                          <MobileTopMenu 
-                            currentView="dashboard" 
-                            onChangeView={onChangeView}
-                            isExerciseActive={step === 'exercises' || step === 'results'}
-                            onConfirmEndSession={(onEnd) => {
-                              showConfirm(
-                                language === 'pl' ? 'Zakończ trening' : 'End session',
-                                language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję nauki? Dotychczasowe odpowiedzi zostaną ocenione.' : 'Are you sure you want to end this study session? Your answers will be evaluated.',
-                                () => {
-                                  closeConfirm();
-                                  onEnd();
-                                }
-                              );
-                            }}
-                          />
-                        ) : (
-                          <div className="w-10"></div>
-                        )}
-                      </div>
-                    </div>
-
                     {/* Content Container */}
                     <div className="px-6 space-y-8">
                       
