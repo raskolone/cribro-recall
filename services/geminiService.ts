@@ -262,7 +262,7 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const config = {
-        systemInstruction: "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: The goal of this exercise is just to familiarize the user with the material, so split the sentence into LONGER chunks (2-4 words per chunk). Do NOT split into single words. Keep logical phrases together (e.g., 'I have been', 'to the store').",
+        systemInstruction: "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: The goal of this exercise is just to familiarize the user with the material, so split the sentence into LONGER chunks (2-5 words per chunk). Do NOT split into single words. Keep logical phrases together (e.g., 'I have been', 'to the store'). For sentences above 10 words, divide them into a MAXIMUM of 5 chunks.",
         responseMimeType: "application/json",
         responseSchema: sentenceGeneratorSchema,
       };
