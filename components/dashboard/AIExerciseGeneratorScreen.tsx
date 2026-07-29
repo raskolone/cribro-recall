@@ -42,7 +42,7 @@ import {
   Target,
   Layers,
   Shuffle, X, Eye
-, CheckCircle2 , LayoutGrid , Mic } from 'lucide-react';
+, CheckCircle2 , LayoutGrid , Mic, AlertCircle } from 'lucide-react';
 
 
 const ACCENTS = ['en-US', 'en-GB'];
@@ -2181,27 +2181,36 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                          </div>
                        </div>
 
-                       <div className="space-y-3 mt-1 text-xs w-full text-center">
+                       <div className="space-y-3 mt-1 text-xs w-full text-left">
                          {singleEvaluationResults[activeSentenceIndex].feedbackSyntax && (
-                           <div className="flex flex-col items-center text-center">
-                             <span className="font-bold text-content-muted text-[10px] uppercase tracking-wider">{language === 'pl' ? 'Szyk i gramatyka' : 'Syntax & Grammar'}</span>
-                             <p className="mt-0.5 opacity-90 leading-relaxed text-center">{singleEvaluationResults[activeSentenceIndex].feedbackSyntax}</p>
+                           <div className="bg-red-500/10 p-3 rounded-lg border border-red-500/20 flex flex-col items-start text-left w-full">
+                             <div className="flex items-center gap-1.5 font-bold text-red-400 text-[10px] uppercase tracking-wider mb-1">
+                               <AlertCircle className="w-3.5 h-3.5" />
+                               {language === 'pl' ? 'Szyk i gramatyka' : 'Syntax & Grammar'}
+                             </div>
+                             <p className="opacity-90 leading-relaxed text-red-100">{singleEvaluationResults[activeSentenceIndex].feedbackSyntax}</p>
                            </div>
                          )}
                          {singleEvaluationResults[activeSentenceIndex].feedbackVocab && (
-                           <div className="flex flex-col items-center text-center">
-                             <span className="font-bold text-content-muted text-[10px] uppercase tracking-wider">{language === 'pl' ? 'Słownictwo i naturalność' : 'Vocabulary & Naturalness'}</span>
-                             <p className="mt-0.5 opacity-90 leading-relaxed text-center">{singleEvaluationResults[activeSentenceIndex].feedbackVocab}</p>
+                           <div className="bg-blue-500/10 p-3 rounded-lg border border-blue-500/20 flex flex-col items-start text-left w-full">
+                             <div className="flex items-center gap-1.5 font-bold text-blue-400 text-[10px] uppercase tracking-wider mb-1">
+                               <AlertCircle className="w-3.5 h-3.5" />
+                               {language === 'pl' ? 'Słownictwo i naturalność' : 'Vocabulary & Naturalness'}
+                             </div>
+                             <p className="opacity-90 leading-relaxed text-blue-100">{singleEvaluationResults[activeSentenceIndex].feedbackVocab}</p>
                            </div>
                          )}
                          {singleEvaluationResults[activeSentenceIndex].feedbackRule && (
-                           <div className="bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20 flex flex-col items-center text-center mx-auto">
-                             <span className="font-bold text-amber-500/90 text-[10px] uppercase tracking-wider">{language === 'pl' ? 'Złota zasada' : 'Golden Rule'}</span>
-                             <p className="mt-0.5 opacity-90 leading-relaxed text-center">{singleEvaluationResults[activeSentenceIndex].feedbackRule}</p>
+                           <div className="bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 flex flex-col items-start text-left w-full">
+                             <div className="flex items-center gap-1.5 font-bold text-amber-500 text-[10px] uppercase tracking-wider mb-1">
+                               <Sparkles className="w-3.5 h-3.5" />
+                               {language === 'pl' ? 'Złota zasada' : 'Golden Rule'}
+                             </div>
+                             <p className="opacity-90 leading-relaxed text-amber-100 font-medium">{singleEvaluationResults[activeSentenceIndex].feedbackRule}</p>
                            </div>
                          )}
-                         {(!singleEvaluationResults[activeSentenceIndex].feedbackSyntax && !singleEvaluationResults[activeSentenceIndex].feedbackVocab) && (
-                           <p className="whitespace-pre-wrap opacity-90 leading-relaxed text-xs text-center">{singleEvaluationResults[activeSentenceIndex].explanation}</p>
+                         {(!singleEvaluationResults[activeSentenceIndex].feedbackSyntax && !singleEvaluationResults[activeSentenceIndex].feedbackVocab && !singleEvaluationResults[activeSentenceIndex].feedbackRule) && (
+                           <p className="whitespace-pre-wrap opacity-90 leading-relaxed text-xs text-center p-3">{singleEvaluationResults[activeSentenceIndex].explanation}</p>
                          )}
                        </div>
                     </div>
@@ -2567,21 +2576,30 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         {(res.feedbackSyntax || res.feedbackVocab || res.feedbackRule) ? (
                           <div className="space-y-3">
                             {res.feedbackSyntax && (
-                              <div>
-                                <div className="text-xs font-bold text-yellow-500 uppercase tracking-wider mb-1">{language === 'pl' ? 'Szyk i gramatyka' : 'Syntax & Grammar'}</div>
-                                <div className="text-sm text-yellow-100/90">{res.feedbackSyntax}</div>
+                              <div className="bg-red-500/10 p-3 rounded-lg border border-red-500/20">
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-red-400 uppercase tracking-wider mb-1">
+                                  <AlertCircle className="w-3.5 h-3.5" />
+                                  {language === 'pl' ? 'Szyk i gramatyka' : 'Syntax & Grammar'}
+                                </div>
+                                <div className="text-sm text-red-100/90 leading-relaxed">{res.feedbackSyntax}</div>
                               </div>
                             )}
                             {res.feedbackVocab && (
-                              <div>
-                                <div className="text-xs font-bold text-yellow-500 uppercase tracking-wider mb-1">{language === 'pl' ? 'Słownictwo i naturalność' : 'Vocabulary & Naturalness'}</div>
-                                <div className="text-sm text-yellow-100/90">{res.feedbackVocab}</div>
+                              <div className="bg-blue-500/10 p-3 rounded-lg border border-blue-500/20">
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">
+                                  <AlertCircle className="w-3.5 h-3.5" />
+                                  {language === 'pl' ? 'Słownictwo i naturalność' : 'Vocabulary & Naturalness'}
+                                </div>
+                                <div className="text-sm text-blue-100/90 leading-relaxed">{res.feedbackVocab}</div>
                               </div>
                             )}
                             {res.feedbackRule && (
-                              <div>
-                                <div className="text-xs font-bold text-yellow-400 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" />{language === 'pl' ? 'Złota zasada' : 'Golden Rule'}</div>
-                                <div className="text-sm text-yellow-50 font-medium">{res.feedbackRule}</div>
+                              <div className="bg-amber-500/10 p-3 rounded-lg border border-amber-500/20">
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-1">
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                  {language === 'pl' ? 'Złota zasada' : 'Golden Rule'}
+                                </div>
+                                <div className="text-sm text-amber-100 font-medium leading-relaxed">{res.feedbackRule}</div>
                               </div>
                             )}
                           </div>

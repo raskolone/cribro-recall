@@ -56,7 +56,8 @@ if (!process.env.API_KEY) {
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const generateContentWithFallback = async (params: any) => {
-  const models = ['gemini-3.6-flash', 'gemini-3.1-flash-lite'];
+  const models = params.preferredModels || ['gemini-3.1-flash', 'gemini-3.1-pro-preview', 'gemini-3.1-flash-lite'];
+  const { preferredModels, ...apiParams } = params;
   let lastError;
   for (const model of models) {
     try {
@@ -67,7 +68,7 @@ const generateContentWithFallback = async (params: any) => {
       });
       
       const apiCall = ai.models.generateContent({
-        ...params,
+        ...apiParams,
         model,
       });
 
@@ -192,7 +193,10 @@ const evaluationResultSchema = {
             },
             required: ["meaning_score", "grammar_score", "vocabulary_score"]
           },
-          feedback: { type: Type.STRING, description: "Krótkie, konkretne wyjaśnienie błędu po polsku. Uzasadnij co trzeba zmienić i czy to będzie bardzo istotne." },
+          feedback: { type: Type.STRING, description: "Krótkie, ogólne wyjaśnienie błędu po polsku." },
+          feedbackSyntax: { type: Type.STRING, description: "Wyjaśnienie błędów gramatycznych lub szyku (po polsku)." },
+          feedbackVocab: { type: Type.STRING, description: "Wyjaśnienie błędów słownikowych (po polsku)." },
+          feedbackRule: { type: Type.STRING, description: "Złota zasada, żeby uniknąć błędu w przyszłości (po polsku)." },
           suggested_better_version: { type: Type.STRING, description: "Idealne zdanie alternatywne." },
           highlighted_better_version: { type: Type.STRING, description: "Sugerowana odpowiedź z zaznaczonymi błędami ucznia. Użyj tagu <span class='text-red-500 font-bold'>...</span> aby objąć fragmenty, które uczeń napisał źle, a Ty je poprawiłeś w sugerowanej wersji." }
         },
@@ -314,10 +318,10 @@ export const evaluateTranslations = async (
   evalStudentContext: string
 ): Promise<TranslationEvaluationResult[]> => {
   const masterEvalPrompt = `ROLE:
-You are a fair, intelligent AI Language Evaluator.
+You are a fair, highly intelligent AI Language Evaluator.
 
 TASK:
-Evaluate the student's translation based ONLY on the provided target sentence and expected meaning. Accept any grammatically correct, natural phrasing or valid synonym.
+Evaluate the student's translation based ONLY on the provided target sentence and expected meaning. Accept any grammatically correct, natural phrasing or valid synonym. You MUST provide categorized feedback to help the student improve.
 
 CRITICAL ISOLATION RULE:
 Evaluate ONLY the data provided in the current input block. Ignore any previous sentences or chat history.
@@ -331,6 +335,13 @@ IMPORTANT GRADING RULES:
 - If the student's input is a completely valid, natural English translation, award high or full marks (85-100%). Do NOT unfairly penalize for valid synonyms or natural phrasing variations.
 - Calculate total score = meaning_score + grammar_score + vocabulary_score.
 - Set is_correct to true if total score >= 75 or if the answer is functionally correct.
+
+FEEDBACK REQUIREMENTS (CRITICAL):
+If the answer is NOT perfect (score < 100), you MUST provide:
+- feedbackSyntax: Explain grammar or word order mistakes (in Polish).
+- feedbackVocab: Explain vocabulary errors or suggest more natural words (in Polish).
+- feedbackRule (Golden Rule): A short, memorable rule to help avoid this mistake in the future (in Polish).
+If the answer is correct, you can leave these empty or provide positive reinforcement.
 
 INPUT DATA:
 ${exercises.map((ex, i) => `---
@@ -355,7 +366,7 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
         responseMimeType: "application/json",
         responseSchema: evaluationResultSchema,
       };
-      const response = await generateContentWithFallback({ contents: fullPrompt, config });
+      const response = await generateContentWithFallback({ contents: fullPrompt, config, preferredModels: ['gemini-3.1-pro-preview', 'gemini-3.1-flash'] });
       let jsonText = extractJSON(response?.text || "");
       let parsedRaw: any = null;
       try {
@@ -404,6 +415,9 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
           score: Math.min(100, Math.max(0, calculatedScore)),
           explanation: feedback,
           suggested_better_version: suggested,
+          feedbackSyntax: item.feedbackSyntax || '',
+          feedbackVocab: item.feedbackVocab || '',
+          feedbackRule: item.feedbackRule || '',
           breakdown: {
             meaning_score: meaningScore,
             grammar_score: grammarScore,
