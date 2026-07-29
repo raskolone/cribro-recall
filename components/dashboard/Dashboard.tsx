@@ -23,6 +23,7 @@ import FlashcardStatsScreen from '../flashcards/FlashcardStatsScreen';
 import AdminPanel from '../admin/AdminPanel';
 import AdminDebuggingScreen from '../admin/AdminDebuggingScreen';
 import LearningProgressChart from './LearningProgressChart';
+import MobileTopMenu from './MobileTopMenu';
 import { useSettings } from '../../context/SettingsContext';
 import AIExerciseGeneratorScreen from './AIExerciseGeneratorScreen';
 import { OnboardingTour } from './OnboardingTour';
@@ -841,107 +842,30 @@ const Dashboard: React.FC = () => {
               )}
             </div>
             
-            {/* Empty div to balance flex spacing on mobile (hamburger on left, this on right) */}
-            <div className="w-10 md:hidden"></div>
+            {/* Mobile Top Nav for views that show the header */}
+            <MobileTopMenu 
+              currentView={view} 
+              onChangeView={(v) => changeView(v, { practiceView: null })}
+              isExerciseActive={isExerciseActive}
+              onConfirmEndSession={(onEnd) => {
+                 showConfirm(
+                   language === 'pl' ? 'Zakończ sesję' : 'End session',
+                   language === 'pl' ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?',
+                   () => {
+                     closeConfirm();
+                     setExerciseResetKey(k => k + 1);
+                     setIsExerciseActive(false);
+                     onEnd();
+                   }
+                 );
+              }}
+            />
           </div>
         </header>
         <div ref={contentRef} className="w-full h-full">
           {renderContent()}
         </div>
       </main>
-      {/* Mobile Bottom Navigation */}
-      {!(user?.role === 'admin' || user?.role === 'teacher') && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 liquid-glass-panel rounded-none border-0 border-t border-white/10 px-4 py-2 flex justify-between items-center z-50 shadow-[0_-8px_32px_rgba(0,0,0,0.4)] pb-safe">
-          <button 
-            onClick={() => {
-               if (isExerciseActive) {
-                  showConfirm(
-                    language === 'pl' ? 'Zakończ sesję' : 'End session',
-                    language === 'pl' ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?',
-                    () => {
-                      closeConfirm();
-                      setExerciseResetKey(k => k + 1);
-                      setIsExerciseActive(false);
-                      changeView('dashboard', { practiceView: null });
-                    }
-                  );
-               } else {
-                 changeView('dashboard', { practiceView: null });
-               }
-            }}
-            className={`flex flex-col items-center p-2 rounded-xl transition-all ${view === 'dashboard' ? 'text-primary' : 'text-content-muted hover:text-white'}`}
-          >
-            <LayoutDashboard size={24} />
-            <span className="text-[10px] mt-1 font-medium">{language === 'pl' ? 'Start' : 'Home'}</span>
-          </button>
-          
-          <button 
-            onClick={() => {
-               if (isExerciseActive) {
-                  showConfirm(
-                    language === 'pl' ? 'Zakończ sesję' : 'End session',
-                    language === 'pl' ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?',
-                    () => {
-                      closeConfirm();
-                      setIsExerciseActive(false);
-                      changeView('flashcard-sets', { practiceView: null });
-                    }
-                  );
-               } else {
-                 changeView('flashcard-sets', { practiceView: null });
-               }
-            }}
-            className={`flex flex-col items-center p-2 rounded-xl transition-all ${view === 'flashcard-sets' ? 'text-primary' : 'text-content-muted hover:text-white'}`}
-          >
-            <Library size={24} />
-            <span className="text-[10px] mt-1 font-medium">{language === 'pl' ? 'Fiszki' : 'Cards'}</span>
-          </button>
-
-          <button 
-            onClick={() => {
-               if (isExerciseActive) {
-                  showConfirm(
-                    language === 'pl' ? 'Zakończ sesję' : 'End session',
-                    language === 'pl' ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?',
-                    () => {
-                      closeConfirm();
-                      setIsExerciseActive(false);
-                      changeView('tests', { practiceView: null });
-                    }
-                  );
-               } else {
-                 changeView('tests', { practiceView: null });
-               }
-            }}
-            className={`flex flex-col items-center p-2 rounded-xl transition-all ${view === 'tests' ? 'text-primary' : 'text-content-muted hover:text-white'}`}
-          >
-            <ClipboardList size={24} />
-            <span className="text-[10px] mt-1 font-medium">{language === 'pl' ? 'Testy' : 'Tests'}</span>
-          </button>
-          
-          <button 
-            onClick={() => {
-               if (isExerciseActive) {
-                  showConfirm(
-                    language === 'pl' ? 'Zakończ sesję' : 'End session',
-                    language === 'pl' ? 'Czy na pewno chcesz zakończyć aktywne ćwiczenie?' : 'Are you sure you want to end the active exercise?',
-                    () => {
-                      closeConfirm();
-                      setIsExerciseActive(false);
-                      changeView('settings', { practiceView: null });
-                    }
-                  );
-               } else {
-                 changeView('settings', { practiceView: null });
-               }
-            }}
-            className={`flex flex-col items-center p-2 rounded-xl transition-all ${view === 'settings' ? 'text-primary' : 'text-content-muted hover:text-white'}`}
-          >
-            <Settings size={24} />
-            <span className="text-[10px] mt-1 font-medium">{language === 'pl' ? 'Menu' : 'Menu'}</span>
-          </button>
-        </div>
-      )}
       {user?.role === "user" && <BugReporter />}
       <ConfirmModal
         isOpen={confirmModalState.isOpen}

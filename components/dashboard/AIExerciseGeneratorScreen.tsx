@@ -14,6 +14,7 @@ import Card from '../ui/Card';
 import PuzzleExercise from './PuzzleExercise';
 import Button from '../ui/Button';
 import ConfirmModal from '../ui/ConfirmModal';
+import MobileTopMenu from './MobileTopMenu';
 import { motion, AnimatePresence } from 'motion/react';
 import {    
   Sparkles, 
@@ -414,9 +415,10 @@ interface AIExerciseGeneratorScreenProps {
   initialSetId?: string | null;
   onStartPractice?: (type: any, mode1?: boolean, mode2?: boolean) => void;
   onExerciseStateChange?: (active: boolean) => void;
+  onChangeView?: (view: string) => void;
 }
 
-const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ initialSetId = null, onStartPractice, onExerciseStateChange, onOpenSidebar }) => {
+const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ initialSetId = null, onStartPractice, onExerciseStateChange, onOpenSidebar, onChangeView }) => {
   const { language } = useLanguage();
   const { sets, getFlashcards } = useFlashcards();
   const { user } = useAuth();
@@ -1392,7 +1394,25 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           </span>
                         )}
                       </h2>
-                      <div className="w-10"></div>
+                      {onChangeView ? (
+                        <MobileTopMenu 
+                          currentView="dashboard" 
+                          onChangeView={onChangeView}
+                          isExerciseActive={step === 'exercises' || step === 'results'}
+                          onConfirmEndSession={(onEnd) => {
+                            showConfirm(
+                              language === 'pl' ? 'Zakończ trening' : 'End session',
+                              language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję nauki? Dotychczasowe odpowiedzi zostaną ocenione.' : 'Are you sure you want to end this study session? Your answers will be evaluated.',
+                              () => {
+                                closeConfirm();
+                                onEnd();
+                              }
+                            );
+                          }}
+                        />
+                      ) : (
+                        <div className="w-10"></div>
+                      )}
                     </div>
 
                     {/* Content Container */}
