@@ -126,6 +126,19 @@ export interface SessionResult {
   responseTimeMs: number;
 }
 
+export interface FlashcardProgress {
+  id?: string;
+  flashcardId: string;
+  userId: string;
+  setId: string;
+  nextReviewDate: string;
+  interval: number;
+  easeFactor: number;
+  repetitions: number;
+  lastReviewedAt: string;
+}
+
+
 export interface AISuggestionCache {
   id: string;
   term: string;

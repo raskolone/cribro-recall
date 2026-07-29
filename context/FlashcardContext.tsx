@@ -15,6 +15,7 @@ interface FlashcardContextType {
   saveFlashcards: (setId: string, cards: Partial<Flashcard>[]) => Promise<void>;
   
   saveSession: (sessionData: Partial<StudySession>, results: Partial<SessionResult>[]) => Promise<void>;
+  getProgress: (setId?: string) => Promise<any[]>;
   getSessions: (setId?: string) => Promise<StudySession[]>;
   getSessionResults: (sessionId: string) => Promise<SessionResult[]>;
 }
@@ -298,6 +299,26 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
       await batch.commit();
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'sessions');
+    }
+  };
+
+  const getProgress = async (setId?: string) => {
+    if (!userId) return [];
+    try {
+      const progressRef = collection(db, `users/${userId}/flashcardProgress`);
+      let q = query(progressRef);
+      if (setId) {
+        q = query(progressRef, where('setId', '==', setId));
+      }
+      const snapshot = await getDocs(q);
+      const progress: any[] = [];
+      snapshot.forEach(doc => {
+        progress.push({ id: doc.id, ...doc.data() });
+      });
+      return progress;
+    } catch (error) {
+      console.error('Error fetching progress:', error);
+      return [];
     }
   };
 

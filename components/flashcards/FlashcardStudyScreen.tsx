@@ -221,12 +221,35 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
   const [startTime, setStartTime] = useState<number>(0);
   const [isFinished, setIsFinished] = useState(false);
   const [isReversed, setIsReversed] = useState(false);
+  const touchStartRef = useRef<number | null>(null);
+  const touchCurrentRef = useRef<number | null>(null);
+
+  const { getProgress } = useFlashcards();
 
   useEffect(() => {
-    const shuffled = [...initialCards].sort(() => Math.random() - 0.5);
-    setCards(shuffled);
-    setStartTime(Date.now());
-  }, [initialCards]);
+    const loadCards = async () => {
+      let progress: any[] = [];
+      if (getProgress) {
+         progress = await getProgress(setId);
+      }
+      
+      const cardsWithProgress = initialCards.map((card: any) => {
+        const prog = progress.find(p => p.flashcardId === card.id);
+        return {
+           ...card,
+           nextReviewDate: prog?.nextReviewDate || '1970-01-01T00:00:00.000Z'
+        };
+      });
+
+      cardsWithProgress.sort((a: any, b: any) => new Date(a.nextReviewDate).getTime() - new Date(b.nextReviewDate).getTime());
+      
+      setCards(cardsWithProgress);
+      setStartTime(Date.now());
+    };
+    loadCards();
+  }, [initialCards, setId, getProgress]);
+
+
 
   const handleFlip = useCallback(() => {
     setIsFlipped(prev => !prev);
@@ -342,6 +365,64 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
     }
   }, [currentIndex, cards.length]);
 
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartRef.current = e.touches[0].clientX;
+    touchCurrentRef.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (touchStartRef.current === null) return;
+    touchCurrentRef.current = e.touches[0].clientX;
+    const diff = touchCurrentRef.current - touchStartRef.current;
+    
+    // Add visual feedback for swipe
+    if (cardContainerRef.current && isFlipped) {
+      gsap.to(cardContainerRef.current, {
+        x: diff,
+        rotation: diff * 0.05,
+        duration: 0.1
+      });
+    } else if (cardContainerRef.current && !isFlipped) {
+      gsap.to(cardContainerRef.current, {
+        x: diff * 0.5, // resistance when not flipped
+        rotation: diff * 0.02,
+        duration: 0.1
+      });
+    }
+  }, [isFlipped]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (touchStartRef.current === null || touchCurrentRef.current === null) return;
+    const diff = touchCurrentRef.current - touchStartRef.current;
+    
+    if (isFlipped) {
+      if (diff > 80) {
+        handleAnswer(true);
+      } else if (diff < -80) {
+        handleAnswer(false);
+      } else {
+        // snap back
+        if (cardContainerRef.current) {
+           gsap.to(cardContainerRef.current, { x: 0, rotation: 0, duration: 0.3, ease: "back.out(1.5)" });
+        }
+      }
+    } else {
+      if (diff > 80) {
+        handlePrev();
+      } else if (diff < -80) {
+        handleNext();
+      } else {
+        // snap back
+        if (cardContainerRef.current) {
+           gsap.to(cardContainerRef.current, { x: 0, rotation: 0, duration: 0.3, ease: "back.out(1.5)" });
+        }
+      }
+    }
+    
+    touchStartRef.current = null;
+    touchCurrentRef.current = null;
+  }, [isFlipped, handleAnswer, handlePrev, handleNext]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isFinished) return;
@@ -435,8 +516,11 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
           <div>
             <div 
               ref={cardContainerRef}
-              className="relative w-full aspect-[3/2] cursor-pointer"
+              className="relative w-full aspect-[3/2] cursor-pointer touch-pan-y"
               onClick={handleFlip}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
             >
               <motion.div 
                 className="w-full h-full relative preserve-3d"
@@ -488,7 +572,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
       {isFlipped ? (
         <div className="grid grid-cols-2 gap-4 mt-8">
           <Button variant="danger" className="py-4 text-lg flex flex-col items-center justify-center gap-1" onClick={() => handleAnswer(false)}>
-            <span>{i18n.t("Umiem")}</span>
+            <span>{i18n.t("Nie umiem")}</span>
             <span className="text-[10px] uppercase opacity-70">{i18n.t("Nie umiem (Strzałka w lewo)")}</span>
           </Button>
           <Button className="py-4 text-lg flex flex-col items-center justify-center gap-1" onClick={() => handleAnswer(true)}>
