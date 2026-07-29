@@ -5,6 +5,7 @@ import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
 import { collection, getDocs, query, orderBy, limit, addDoc, where, documentId, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { getDoc } from 'firebase/firestore';
 import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, logMistakesToFirebase } from '../../services/geminiService';
 import { generateSpeech } from '../../services/elevenLabsService';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog } from '../../types';
@@ -430,6 +431,9 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [practiceMode, setPracticeMode] = useState<'fixed' | 'time'>('fixed');
   const [exerciseFormat, setExerciseFormat] = useState<'typing' | 'puzzle' | 'test' | 'speaking'>('puzzle');
   const [isLessonSelectorOpen, setIsLessonSelectorOpen] = useState(false);
+  const [selectedGrammarTopic, setSelectedGrammarTopic] = useState<any>(null);
+  const [expandedGrammarLevel, setExpandedGrammarLevel] = useState<number | null>(null);
+
   const [timeLimit, setTimeLimit] = useState<number>(3); // minutes
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const numSentencesRef = useRef<HTMLSpanElement>(null);
@@ -557,8 +561,26 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   }, [timeLimit]);
 
 
+
   useEffect(() => {
-    
+    const fetchTopics = async () => {
+      setIsLoadingTopics(true);
+      try {
+        const docRef = doc(db, 'system', 'topic_database');
+        const snap = await getDoc(docRef);
+        if (snap.exists() && snap.data().chapters) {
+          setGrammarChapters(snap.data().chapters);
+        }
+      } catch (err) {
+        console.error("Error fetching grammar topics", err);
+      } finally {
+        setIsLoadingTopics(false);
+      }
+    };
+    fetchTopics();
+  }, []);
+
+  useEffect(() => {
     if (user?.id) {
       getVocabularySetsForStudent(user.id)
         .then(setVocabularySets)
@@ -1487,7 +1509,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isLessonSelectorOpen ? 'rotate-180' : ''}`} />
                         </button>
                         <div className="mt-2 px-2 text-[10px] text-gray-400 font-medium whitespace-pre-wrap leading-relaxed">
-                          {selectedSetId === 'all' && selectedLessonIds.length === 0 ? (language === 'pl' ? 'Wybrano: Wszystkie słówka (Mix)' : 'Selected: All vocab') : 
+                          
+                          {selectedSetId === 'grammar' && selectedGrammarTopic ? (language === 'pl' ? `Gramatyka ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}` : `Grammar ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}`) :
+                           selectedSetId === 'all' && selectedLessonIds.length === 0 ? (language === 'pl' ? 'Wybrano: Wszystkie słówka (Mix)' : 'Selected: All vocab') : 
+
                            selectedSetId === 'lessons' || selectedLessonIds.length > 0 ? (language === 'pl' ? `Wybrane lekcje: ${vocabularySets.filter(s => selectedLessonIds.includes(s.id)).map(s => s.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()).join(', ')}` : `Selected lessons: ${selectedLessonIds.length}`) : 
                            specialTasks.find(t => 'special-task-' + t.id === selectedSetId) ? (language === 'pl' ? 'Wybrano: Zadanie specjalne' : 'Selected: Special Task') : ''}
                         </div>
@@ -1563,7 +1588,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isLessonSelectorOpen ? 'rotate-180' : ''}`} />
                         </button>
                         <div className="mt-2 px-2 text-[10px] text-gray-400 font-medium whitespace-pre-wrap leading-relaxed">
-                          {selectedSetId === 'all' && selectedLessonIds.length === 0 ? (language === 'pl' ? 'Wybrano: Wszystkie słówka (Mix)' : 'Selected: All vocab') : 
+                          
+                          {selectedSetId === 'grammar' && selectedGrammarTopic ? (language === 'pl' ? `Gramatyka ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}` : `Grammar ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}`) :
+                           selectedSetId === 'all' && selectedLessonIds.length === 0 ? (language === 'pl' ? 'Wybrano: Wszystkie słówka (Mix)' : 'Selected: All vocab') : 
+
                            selectedSetId === 'lessons' || selectedLessonIds.length > 0 ? (language === 'pl' ? `Wybrane lekcje: ${vocabularySets.filter(s => selectedLessonIds.includes(s.id)).map(s => s.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()).join(', ')}` : `Selected lessons: ${selectedLessonIds.length}`) : 
                            specialTasks.find(t => 'special-task-' + t.id === selectedSetId) ? (language === 'pl' ? 'Wybrano: Zadanie specjalne' : 'Selected: Special Task') : ''}
                         </div>
@@ -1743,7 +1771,74 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   </label>
                                   
                                   
+                                  
+                                  {/* Grammar Options */}
                                   <div className="h-px w-full bg-white/10 my-4"></div>
+                                  <h4 className="text-sm font-bold text-gray-400 px-2 mb-2 uppercase tracking-wider">{language === 'pl' ? 'Gramatyka' : 'Grammar'}</h4>
+                                  {grammarChapters.length > 0 && grammarChapters.map((chapter: any, cIdx: number) => (
+                                    <div key={chapter.id || cIdx} className="mb-2">
+                                      <div 
+                                        className="flex items-center justify-between p-4 rounded-2xl bg-[#18212e] border border-white/5 cursor-pointer hover:bg-white/5 transition-colors"
+                                        onClick={() => setExpandedGrammarLevel(expandedGrammarLevel === cIdx ? null : cIdx)}
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
+                                            {cIdx + 1}
+                                          </div>
+                                          <span className="text-base font-semibold text-gray-300">{chapter.name}</span>
+                                        </div>
+                                        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${expandedGrammarLevel === cIdx ? 'rotate-180' : ''}`} />
+                                      </div>
+                                      <AnimatePresence>
+                                        {expandedGrammarLevel === cIdx && (
+                                          <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            className="overflow-hidden"
+                                          >
+                                            <div className="pt-2 pl-4 space-y-2">
+                                              {chapter.topics.map((topic: any, tIdx: number) => {
+                                                const hasSentences = (topic.sentences || "").trim().length > 0;
+                                                const isSelected = selectedSetId === 'grammar' && selectedGrammarTopic?.id === topic.id;
+                                                return (
+                                                  <label 
+                                                    key={topic.id || tIdx} 
+                                                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${hasSentences ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'} ${
+                                                      isSelected ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-black/20 border-white/5 hover:border-white/10'
+                                                    }`}
+                                                  >
+                                                    <input 
+                                                      type="radio" 
+                                                      name="mobileSourceModal"
+                                                      disabled={!hasSentences}
+                                                      checked={isSelected}
+                                                      onChange={() => {
+                                                        if (hasSentences) {
+                                                          setSelectedSetId('grammar');
+                                                          setSelectedGrammarTopic({ ...topic, chapterIndex: cIdx });
+                                                          setSelectedLessonIds([]);
+                                                        }
+                                                      }}
+                                                      className="w-4 h-4 text-emerald-400 focus:ring-emerald-400 rounded-full border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
+                                                    />
+                                                    <div className="flex flex-col">
+                                                      <span className={`text-sm font-semibold ${isSelected ? 'text-emerald-400' : 'text-gray-300'}`}>
+                                                        {tIdx + 1}. {topic.name}
+                                                      </span>
+                                                    </div>
+                                                  </label>
+                                                );
+                                              })}
+                                            </div>
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
+                                    </div>
+                                  ))}
+
+<div className="h-px w-full bg-white/10 my-4"></div>
+<h4 className="text-sm font-bold text-gray-400 px-2 mb-2 uppercase tracking-wider">{language === 'pl' ? 'Inne' : 'Other'}</h4>
                                   {specialTasks.length > 0 && specialTasks.map(task => (
                                     <label key={task.id} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${
                                       selectedSetId === 'special-task-' + task.id ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5'

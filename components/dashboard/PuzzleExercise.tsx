@@ -1,3 +1,4 @@
+import { Volume2 } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { gsap } from 'gsap';
@@ -390,7 +391,18 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks,
           <span className="text-content-muted text-sm italic absolute left-4 pointer-events-none">{i18n.t("Ułóż zdanie z kafelków...")}</span>
         )}
         
+        {selectedTiles.length > 0 && !isCompleted && (
+          <button 
+            onClick={() => playAudio(selectedTiles.map(t => t.text).join(' '))}
+            disabled={isPlayingAudio}
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/5 hover:bg-white/10 text-emerald-400 transition-colors z-30 disabled:opacity-50"
+            title={i18n.t("Posłuchaj ułożonego fragmentu")}
+          >
+            <Volume2 className="w-5 h-5" />
+          </button>
+        )}
         <>
+
           {selectedTiles.map((st, idx) => (
             <button
               ref={(el) => {
@@ -418,22 +430,35 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks,
             const isError = errorTileId === tile.id;
                         
             return (
-              <button
+              
+              <div
                 key={tile.id}
-                id={tile.id}
-                type="button"
-                onClick={(e) => handleTileClick(tile, e)}
-                onContextMenu={(e) => { e.preventDefault(); playAudio(tile.text); }}
-                disabled={isCompleted}
-                
-                className={`px-5 py-2.5 rounded-xl font-bold text-sm md:text-base shadow-sm backdrop-blur-md border z-10
-                  ${isError 
-                    ? 'bg-red-500 text-white border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.9)] scale-105' 
-                    : `${tile.colorClass} hover:scale-105 hover:-translate-y-1 hover:shadow-lg cursor-pointer active:scale-95 transition-colors duration-200`
-                  }`}
+                className="relative group inline-block"
               >
-                {tile.text}
-              </button>
+                <button
+                  id={tile.id}
+                  type="button"
+                  onClick={(e) => handleTileClick(tile, e)}
+                  disabled={isCompleted}
+                  className={`pr-8 pl-4 py-2.5 rounded-xl font-bold text-sm md:text-base shadow-sm backdrop-blur-md border z-10
+                    ${isError 
+                      ? 'bg-red-500 text-white border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.9)] scale-105' 
+                      : `${tile.colorClass} hover:scale-105 hover:-translate-y-1 hover:shadow-lg cursor-pointer active:scale-95 transition-colors duration-200`
+                    }`}
+                >
+                  {tile.text}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); playAudio(tile.text); }}
+                  disabled={isPlayingAudio || isCompleted}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-white/20 text-white/70 hover:text-white transition-colors z-20"
+                  title="Posłuchaj słowa"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
             );
           })}
         </>
