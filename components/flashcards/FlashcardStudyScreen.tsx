@@ -220,6 +220,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
   const [results, setResults] = useState<{ flashcardId: string; isCorrect: boolean; responseTimeMs: number }[]>([]);
   const [startTime, setStartTime] = useState<number>(0);
   const [isFinished, setIsFinished] = useState(false);
+  const [isReversed, setIsReversed] = useState(false);
 
   useEffect(() => {
     const shuffled = [...initialCards].sort(() => Math.random() - 0.5);
@@ -401,8 +402,16 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
           
                             {i18n.t("&larr;")} {t('flashcards.quit')}
         </button>
-        <div className="font-mono text-sm">
-          {currentIndex + 1} / {cards.length}
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setIsReversed(!isReversed)}
+            className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-400"
+          >
+            {isReversed ? 'PL -> EN' : 'EN -> PL'}
+          </button>
+          <div className="font-mono text-sm">
+            {currentIndex + 1} / {cards.length}
+          </div>
         </div>
       </div>
 
@@ -452,7 +461,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
                   style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
                 >
                   <div className="absolute top-4 right-4 z-10 flex gap-2">
-                    {/* Definition might not be strictly English, but we can allow TTS for it as well if it's the target language. But usually it's native. We omit it here or keep it. Let's just remove audioUrl button for now. */}
+                    <TTSButtons text={currentCard.definition} />
                   </div>
                   <div className="text-sm font-mono text-primary uppercase tracking-widest mb-8">{t('flashcards.definition')}</div>
                   <div className="text-3xl md:text-4xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard.definition }} />
@@ -598,8 +607,16 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
           
                             {i18n.t("&larr;")} {t('flashcards.quit')}
         </button>
-        <div className="font-mono text-sm">
-          {currentIndex + 1} / {cards.length}
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setIsReversed(!isReversed)}
+            className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-400"
+          >
+            {isReversed ? 'PL -> EN' : 'EN -> PL'}
+          </button>
+          <div className="font-mono text-sm">
+            {currentIndex + 1} / {cards.length}
+          </div>
         </div>
       </div>
 
@@ -979,6 +996,7 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, show
 const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm }: any) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [isReversed, setIsReversed] = useState(false);
 
   const handleNext = () => {
     if (currentIndex < cards.length - 1) {
@@ -1028,19 +1046,19 @@ const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm }: any) => {
         <div className={`w-full h-full transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
           <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 border border-white/10 hover:border-secondary/50 transition-colors">
             <div className="absolute top-4 right-4 z-10 flex gap-2">
-              <PronunciationMic targetWord={currentCard.term.replace(/<[^>]+>/g, '')} />
-              <TTSButtons text={currentCard.term} />
+              <PronunciationMic targetWord={isReversed ? currentCard.definition.replace(/<[^>]+>/g, '') : currentCard.term.replace(/<[^>]+>/g, '')} />
+              <TTSButtons text={isReversed ? currentCard.definition : currentCard.term} />
             </div>
-            <div className="text-sm font-mono text-content-muted uppercase tracking-widest mb-8">{t('flashcards.term')}</div>
-            <div className="text-4xl md:text-5xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard.term }} />
+            <div className="text-sm font-mono text-content-muted uppercase tracking-widest mb-8">{isReversed ? t('flashcards.definition') : t('flashcards.term')}</div>
+            <div className="text-4xl md:text-5xl font-bold" dangerouslySetInnerHTML={{ __html: isReversed ? currentCard.definition : currentCard.term }} />
           </Card>
           
           <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 border border-secondary/50 rotate-y-180">
             <div className="absolute top-4 right-4 z-10 flex gap-2">
-              <TTSButtons text={currentCard.term} />
+              <TTSButtons text={isReversed ? currentCard.term : currentCard.definition} />
             </div>
-            <div className="text-sm font-mono text-secondary uppercase tracking-widest mb-8">{t('flashcards.definition')}</div>
-            <div className="text-3xl md:text-4xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard.definition }} />
+            <div className="text-sm font-mono text-secondary uppercase tracking-widest mb-8">{isReversed ? t('flashcards.term') : t('flashcards.definition')}</div>
+            <div className="text-3xl md:text-4xl font-bold" dangerouslySetInnerHTML={{ __html: isReversed ? currentCard.term : currentCard.definition }} />
           </Card>
         </div>
       </div>
