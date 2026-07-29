@@ -214,7 +214,8 @@ export const generateTranslationExercises = async (
   lessonContext?: string,
   studentProfileContext?: string,
   numSentences: number = 5,
-  pastExercisesContext?: string
+  pastExercisesContext?: string,
+  isGrammar?: boolean
 ): Promise<TranslationExercise[]> => {
   const shortLesson = lessonContext ? `\n\n[LESSON / TOPIC CONTEXT]:\n${lessonContext.substring(0, 1000)}` : '';
   const shortProfile = studentProfileContext ? `\n\n[STUDENT SPECIFIC INSTRUCTIONS & PROFILE]:\n${studentProfileContext}` : '';
@@ -236,7 +237,7 @@ RULES FOR SENTENCE GENERATION:
 
 INPUT FORMAT:
 Target Vocabulary List: ${words.length > 0 ? words.join(', ') : 'General level-appropriate vocabulary'}
-Target CEFR Level: ${level || 'B2'}
+Target CEFR Level: ${isGrammar ? 'ZIGNORUJ poziom kursanta (bypassed). Poziom trudności musi być dokładnie dopasowany do dostarczonych przykładów z bazy.' : (level || 'B2')}
 Number of Sentences: ${numSentences}`;
 
   const studentContextBlock = `${shortProfile}${shortLesson}${shortPast}`;
