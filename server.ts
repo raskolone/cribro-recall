@@ -7,7 +7,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
 
 async function generateContentWithRetry(aiClient: any, contents: any, config: any, customModels?: string[]) {
-  const models = customModels || ['gemini-3.1-flash-lite', 'gemini-3.6-flash'];
+  const models = customModels || ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash'];
   let lastError;
   
   for (const model of models) {
@@ -76,20 +76,19 @@ function getAdminApp() {
   return initializeApp(); // App Default Credentials
 }
 
-async function startServer() {
+export async function createApp() {
   const app = express();
-  const PORT = 3000;
   
   app.use(express.json({ limit: '50mb' }));
-app.use((err: any, req: any, res: any, next: any) => {
-  if (err instanceof SyntaxError && 'body' in err) {
-    return res.status(400).json({ error: 'Invalid JSON payload' });
-  }
-  if (err.type === 'entity.too.large') {
-    return res.status(413).json({ error: 'Payload too large' });
-  }
-  next(err);
-});
+  app.use((err: any, req: any, res: any, next: any) => {
+    if (err instanceof SyntaxError && 'body' in err) {
+      return res.status(400).json({ error: 'Invalid JSON payload' });
+    }
+    if (err.type === 'entity.too.large') {
+      return res.status(413).json({ error: 'Payload too large' });
+    }
+    next(err);
+  });
 
   const adminApp = getAdminApp();
   const adminAuth = getAuth(adminApp);
@@ -218,8 +217,8 @@ app.use((err: any, req: any, res: any, next: any) => {
   app.post('/api/gemini/generate-test', requireFirebaseAdmin, async (req, res) => {
     try {
       const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, typeCounts, fileData, driveFile } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured. Please set GEMINI_API_KEY or API_KEY in environment variables.' });
       
       const ai = new GoogleGenAI({ apiKey });
       
@@ -378,13 +377,17 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
         return res.status(400).json({ error: 'Missing textContent, pdfBase64 or driveFile' });
       }
       
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
       if (!apiKey) {
-        return res.status(500).json({ error: 'Gemini API key not configured' });
+        return res.status(500).json({ error: 'Gemini API key not configured. Please set GEMINI_API_KEY or API_KEY in environment variables.' });
       }
       const ai = new GoogleGenAI({ apiKey });
       
-      const studentsListStr = students ? students.map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n') : 'Brak bazy kursantów';
+      const studentsListStr = typeof students === 'string' 
+        ? students 
+        : (Array.isArray(students) 
+            ? students.map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name || s.username || ''} | Poziom: ${s.level || ''} | Opis: ${s.description || ''}`).join('\n')
+            : 'Brak bazy kursantów');
 
       let contents: any[] = [];
       
@@ -447,14 +450,15 @@ Na podstawie dostarczonego pliku PDF lub tekstu zawierającego historię lekcji 
 Plik może zawierać wiele lekcji ułożonych chronologicznie lub według numerów. Twoim zadaniem jest znalezienie KAŻDEJ lekcji i wyciągnięcie z niej maksimum informacji.
 
 # Zanim wygenerujesz
-1. Zidentyfikuj kursanta (studentId) dla KAŻDEJ lekcji na podstawie podanej bazy kursantów (imienia, nazwiska lub opisu widocznego w pliku). 
+1. Zidentyfikuj kursanta lub kursantów (studentIds / studentId) dla KAŻDEJ lekcji na podstawie podanej bazy kursantów (imienia, nazwiska lub opisu widocznego w pliku). Jeśli lekcja jest dla grupy kursantów, dopasuj wszystkich w podanej tablicy studentIds.
 2. Podziel dokument na logiczne bloki odpowiadające pojedynczym lekcjom.
 3. Przeanalizuj inteligentnie każdą lekcję i przypisz jej fragmenty do odpowiednich kategorii w systemie.
 
 # Wygeneruj wynik w formacie JSON
 Zwróć wynik jako JSON z tablicą obiektów o polu "lessons". Każdy obiekt lekcji musi zawierać szczegółowe dane:
 - date (string): Data lekcji w formacie YYYY-MM-DD. Poszukaj daty w tekście (np. "12 marca", "12.03.2024"). Jeśli absolutnie brak, wygeneruj dzisiejszą.
-- studentId (string): ID wybranego kursanta dopasowanego z bazy.
+- studentId (string): ID wybranego głównego kursanta dopasowanego z bazy.
+- studentIds (array of strings): Lista ID wszystkich dopasowanych kursantów dla danej lekcji (np. przy zajęciach grupowych).
 - lessonTopic (string): Krótki temat lekcji (max 50 znaków), wywnioskowany z treści.
 - revisionNotes (string): Główne notatki, zagadnienia gramatyczne i tematy poruszane na lekcji.
 - vocabularyText (string): Wyodrębnione nowe słówka, zwroty i ich tłumaczenia (najlepiej w formie 'angielski - polski').
@@ -474,6 +478,7 @@ Bądź dokładny. Wykorzystaj całą dostępną treść, nie pomijaj lekcji.`;
               properties: {
                 date: { type: Type.STRING },
                 studentId: { type: Type.STRING },
+                studentIds: { type: Type.ARRAY, items: { type: Type.STRING } },
                 lessonTopic: { type: Type.STRING },
                 revisionNotes: { type: Type.STRING },
                 vocabularyText: { type: Type.STRING },
@@ -512,14 +517,18 @@ Bądź dokładny. Wykorzystaj całą dostępną treść, nie pomijaj lekcji.`;
         return res.status(400).json({ error: 'Missing notes, pdfBase64 or driveFile' });
       }
       
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
       if (!apiKey) {
-        return res.status(500).json({ error: 'Gemini API key not configured' });
+        return res.status(500).json({ error: 'Gemini API key not configured. Please set GEMINI_API_KEY or API_KEY in environment variables.' });
       }
 
       const ai = new GoogleGenAI({ apiKey });
       
-      const studentsListStr = students ? students.map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n') : 'Brak bazy kursantów';
+      const studentsListStr = typeof students === 'string' 
+        ? students 
+        : (Array.isArray(students) 
+            ? students.map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name || s.username || ''} | Poziom: ${s.level || ''} | Opis: ${s.description || ''}`).join('\n')
+            : 'Brak bazy kursantów');
 
       let promptContext: any[] = [];
       
@@ -583,11 +592,12 @@ Jeśli w materiale brakuje danych do danej sekcji, wpisz po polsku:
 Brak danych w transkrypcji.
 
 # Zanim wygenerujesz
-Zidentyfikuj kursanta, którego dotyczy lekcja na podstawie podanej bazy kursantów i dopasuj studentId. Dostosuj poziom języka i szczegółowość treści do profilu wybranego kursanta.
+Zidentyfikuj kursanta lub kursantów, których dotyczy lekcja na podstawie podanej bazy kursantów i dopasuj studentId oraz studentIds (jeśli to lekcja grupowa dla kilku kursantów). Dostosuj poziom języka i szczegółowość treści do profilu kursantów.
 
 # Wygeneruj wynik w formacie JSON
 Zwróć wynik jako JSON z poniższymi polami:
-- studentId (string, ID wybranego kursanta z Bazy Kursantów, jeśli nie potrafisz dopasować zostaw puste)
+- studentId (string, ID głównego wybranego kursanta z Bazy Kursantów, jeśli nie potrafisz dopasować zostaw puste)
+- studentIds (array of strings, Lista ID wszystkich kursantów z Bazy Kursantów, jeśli lekcja dotyczyła grupy lub kilku osób)
 - lessonTopic (string, Krótkie, jednozdaniowe podsumowanie tematu lekcji na podstawie revision notes. Maksymalnie 50 znaków, bez daty, zwięzłe hasło bez wieloczęściowych zdań.)
 - revisionNotes (string, Krótkie podsumowanie lekcji w stronie biernej po polsku, 3-6 zdań)
 - vocabularyText (string, Słownictwo i wymowa z lekcji. Zasada formatowania: każde słowo i jego definicja (lub wymowa) mają być w osobnej linijce, oddzielone myślnikiem. Np. "word - tłumaczenie" i w następnej linii kolejne słowo)
@@ -600,6 +610,7 @@ Zwróć wynik jako JSON z poniższymi polami:
         type: Type.OBJECT,
         properties: {
           studentId: { type: Type.STRING },
+          studentIds: { type: Type.ARRAY, items: { type: Type.STRING } },
           lessonTopic: { type: Type.STRING },
           revisionNotes: { type: Type.STRING },
           vocabularyText: { type: Type.STRING },
@@ -634,8 +645,8 @@ Zwróć wynik jako JSON z poniższymi polami:
   app.post('/api/gemini/grade-test', requireFirebaseAuth, async (req, res) => {
     try {
       const { testTitle, questions, studentAnswers } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured. Please set GEMINI_API_KEY or API_KEY in environment variables.' });
       
       const ai = new GoogleGenAI({ apiKey });
       
@@ -681,8 +692,8 @@ Zwróć JSON z polami:
   app.post('/api/gemini/student-stats-summary', requireFirebaseAuth, async (req, res) => {
     try {
       const { stats, logsSummary, language } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured. Please set GEMINI_API_KEY or API_KEY in environment variables.' });
       
       const ai = new GoogleGenAI({ apiKey });
       
@@ -828,6 +839,13 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
   app.get("/api/tts", handleTTS);
   app.post("/api/tts", handleTTS);
 
+  return app;
+}
+
+async function startServer() {
+  const app = await createApp();
+  const PORT = 3000;
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -848,4 +866,6 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
   });
 }
 
-startServer().catch(console.error);
+if (!process.env.VERCEL) {
+  startServer().catch(console.error);
+}

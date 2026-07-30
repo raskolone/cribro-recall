@@ -2,8 +2,15 @@ import { GoogleGenAI } from '@google/genai';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 
-// Initialize Gemini API
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Initialize Gemini API lazily
+let aiInstance: GoogleGenAI | null = null;
+const getAI = () => {
+  if (!aiInstance) {
+    const key = process.env.GEMINI_API_KEY || process.env.API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.VITE_API_KEY || '';
+    aiInstance = new GoogleGenAI({ apiKey: key });
+  }
+  return aiInstance;
+};
 
 export interface SuggestionRequest {
   action: 'autocomplete' | 'define';
@@ -59,8 +66,8 @@ They have typed "${req.term}" in ${sourceLangName}.
 Provide up to 5 autocomplete suggestions or related terms in ${sourceLangName} that start with or are closely related to "${req.term}".
 Return ONLY a JSON array of strings. No markdown formatting, no explanations.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
+      const response = await getAI().models.generateContent({
+        model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
           temperature: 0.3,
@@ -82,8 +89,8 @@ Return ONLY a JSON array of strings. No markdown formatting, no explanations.`;
 Provide a clear, concise translation or definition for the term "${req.term}" from ${sourceLangName} to ${targetLangName}.
 Return ONLY the translated term or short definition as a plain string. No quotes, no explanations.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
+      const response = await getAI().models.generateContent({
+        model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
           temperature: 0.1,

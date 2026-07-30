@@ -50,13 +50,17 @@ export const extractJSON = (text: string): string => {
 };
 
 
-if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable is not set");
-}
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+let aiInstance: GoogleGenAI | null = null;
+const getAI = () => {
+  if (!aiInstance) {
+    const key = process.env.GEMINI_API_KEY || process.env.API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.VITE_API_KEY || '';
+    aiInstance = new GoogleGenAI({ apiKey: key || 'dummy_key' });
+  }
+  return aiInstance;
+};
 
 const generateContentWithFallback = async (params: any) => {
-  const models = params.preferredModels || ['gemini-3.1-flash', 'gemini-3.1-pro-preview', 'gemini-3.1-flash-lite'];
+  const models = params.preferredModels || ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash'];
   const { preferredModels, ...apiParams } = params;
   let lastError;
   for (const model of models) {
@@ -67,7 +71,7 @@ const generateContentWithFallback = async (params: any) => {
         setTimeout(() => reject(new Error("Request timed out after 60 seconds")), 60000);
       });
       
-      const apiCall = ai.models.generateContent({
+      const apiCall = getAI().models.generateContent({
         ...apiParams,
         model,
       });
@@ -89,12 +93,6 @@ const generateContentWithFallback = async (params: any) => {
 
 
 
-
-
-
-if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable is not set");
-}
 
 
 
@@ -556,8 +554,8 @@ export const generateImageForTerm = async (term: string, context?: string): Prom
   const prompt = `A clear, educational, and high-quality illustration representing the concept of "${term}". ${context ? `Context: ${context}.` : ''} Minimalist and clean style.`;
   
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.1-flash-lite",
+    const response = await getAI().models.generateContent({
+      model: "gemini-2.5-flash",
       contents: { parts: [{ text: prompt }] },
       config: {
         imageConfig: {
@@ -845,7 +843,7 @@ export const generateHomework = async (topic: string, summary: string, words: st
 
 export const getAudioPronunciation = async (text: string, language: string): Promise<string> => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model: "gemini-3.1-flash-tts-preview",
       contents: [{ parts: [{ text: text }] }],
       config: {
@@ -869,6 +867,27 @@ export const generateLessonSummary = async (
   pdfBase64: string,
   studentsStr: string
 ) => {
+  try {
+    const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+    const res = await fetch('/api/gemini/lesson-summary', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        notes,
+        pdfBase64,
+        students: studentsStr
+      })
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (backendErr) {
+    console.warn("Backend lesson summary failed, attempting fallback...", backendErr);
+  }
+
   const promptText = `Jako asystent nauczyciela języka angielskiego, przeanalizuj notatki z lekcji (lub załączony dokument) i przygotuj strukturalne podsumowanie lekcji w formacie JSON.
 
 Lista dostępnych uczniów (wybierz studentId najbardziej pasującego ucznia z listy):
@@ -919,6 +938,27 @@ export const generateBulkLessonSummary = async (
   pdfBase64: string,
   studentsStr: string
 ) => {
+  try {
+    const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+    const res = await fetch('/api/gemini/import-lessons-batch', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        textContent: notes,
+        pdfBase64,
+        students: studentsStr
+      })
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (backendErr) {
+    console.warn("Backend bulk lesson summary failed, attempting fallback...", backendErr);
+  }
+
   const promptText = `Jako asystent nauczyciela języka angielskiego, przeanalizuj notatki zawierające opisy wielu lekcji (lub załączony dokument) i przygotuj zbiorcze podsumowanie dla każdej rozpoznanej lekcji/ucznia w formacie JSON.
 
 Lista dostępnych uczniów (wybierz studentId najbardziej pasującego ucznia dla każdej lekcji):

@@ -146,7 +146,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   const mapStudents = () => users.map(u => ({ id: u.id, name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, level: u.level, description: u.description }));
 
   const applySingleSummary = (data: any) => {
-    if (data.studentId) setLessonFormStudentId(data.studentId);
+    const ids: string[] = data.studentIds && Array.isArray(data.studentIds) && data.studentIds.length > 0
+      ? data.studentIds
+      : (data.studentId ? [data.studentId] : (selectedUser?.id ? [selectedUser.id] : []));
+
+    setLessonFormStudentIds(ids);
+    setLessonFormStudentId(ids[0] || '');
     if (data.lessonTopic) setLessonFormTopic(data.lessonTopic);
     if (data.revisionNotes) setLessonFormSummary(data.revisionNotes);
     if (data.vocabularyText) setLessonFormWords(data.vocabularyText);
@@ -171,23 +176,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       const base64 = event.target?.result?.toString().split(',')[1];
       if (!base64) return;
       
-      if (mode === 'single') {
-        setIsGenerating(true);
-        setSummaryError('');
-        try {
-          
-          const studentsStr = mapStudents().map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n');
-          const data = await generateLessonSummary('', base64, studentsStr);
+      setIsGenerating(true);
+      setSummaryError('');
+      setBulkSummaryError('');
+      try {
+        const studentsStr = mapStudents().map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n');
+        const fallbackStudentId = selectedUser?.id || '';
+        
+        const data = await generateBulkLessonSummary('', base64, studentsStr);
 
-          applySingleSummary(data);
-        } catch(err: any) {
-          setSummaryError(err.message || 'Wystąpił nieznany błąd podczas generowania podsumowania.');
-        } finally {
-          setIsGenerating(false);
-          e.target.value = '';
+        if (data?.lessons && Array.isArray(data.lessons) && data.lessons.length > 0) {
+          const lessonsWithStudent = data.lessons.map((l: any) => {
+            const ids = l.studentIds && Array.isArray(l.studentIds) && l.studentIds.length > 0
+              ? l.studentIds
+              : (l.studentId ? [l.studentId] : (fallbackStudentId ? [fallbackStudentId] : []));
+            return {
+              ...l,
+              studentId: ids[0] || '',
+              studentIds: ids
+            };
+          });
+
+          if (lessonsWithStudent.length > 1 || mode === 'bulk') {
+            setBulkPreviewLessons(lessonsWithStudent);
+            setShowBulkPreviewModal(true);
+            setShowBulkModal(false);
+            setShowAIModal(false);
+          } else {
+            applySingleSummary(lessonsWithStudent[0]);
+          }
+        } else {
+          const singleData = await generateLessonSummary('', base64, studentsStr);
+          if (selectedUser?.id && !singleData.studentId) singleData.studentId = selectedUser.id;
+          applySingleSummary(singleData);
         }
-      } else {
-        generateBulkSummary({ pdfBase64: base64 });
+      } catch (err: any) {
+        const errMsg = err.message || 'Wystąpił błąd podczas analizowania pliku PDF.';
+        if (mode === 'bulk') setBulkSummaryError(errMsg);
+        else setSummaryError(errMsg);
+      } finally {
+        setIsGenerating(false);
         e.target.value = '';
       }
     };
@@ -199,13 +227,37 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     setIsGenerating(true);
     setSummaryError('');
     try {
-      
       const studentsStr = mapStudents().map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n');
-      const data = await generateLessonSummary(rawMeetingNotes, '', studentsStr);
+      const fallbackStudentId = selectedUser?.id || '';
+      const data = await generateBulkLessonSummary(rawMeetingNotes, '', studentsStr);
 
-      applySingleSummary(data);
+      if (data?.lessons && Array.isArray(data.lessons) && data.lessons.length > 0) {
+        const lessonsWithStudent = data.lessons.map((l: any) => {
+          const ids = l.studentIds && Array.isArray(l.studentIds) && l.studentIds.length > 0
+            ? l.studentIds
+            : (l.studentId ? [l.studentId] : (fallbackStudentId ? [fallbackStudentId] : []));
+          return {
+            ...l,
+            studentId: ids[0] || '',
+            studentIds: ids
+          };
+        });
+
+        if (lessonsWithStudent.length > 1) {
+          setBulkPreviewLessons(lessonsWithStudent);
+          setShowBulkPreviewModal(true);
+          setShowAIModal(false);
+          setRawMeetingNotes('');
+        } else {
+          applySingleSummary(lessonsWithStudent[0]);
+        }
+      } else {
+        const singleData = await generateLessonSummary(rawMeetingNotes, '', studentsStr);
+        if (selectedUser?.id && !singleData.studentId) singleData.studentId = selectedUser.id;
+        applySingleSummary(singleData);
+      }
     } catch (err: any) {
-      setSummaryError(err.message || 'Wystąpił nieznany błąd podczas generowania podsumowania.');
+      setSummaryError(err.message || 'Wystąpił błąd podczas generowania podsumowania.');
     } finally {
       setIsGenerating(false);
     }
@@ -224,7 +276,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
 
       
       if (data.lessons && Array.isArray(data.lessons)) {
-        setBulkPreviewLessons(data.lessons);
+        const lessonsWithStudents = data.lessons.map((l: any) => {
+          const ids = l.studentIds && Array.isArray(l.studentIds) && l.studentIds.length > 0
+            ? l.studentIds
+            : (l.studentId ? [l.studentId] : []);
+          return {
+            ...l,
+            studentId: ids[0] || '',
+            studentIds: ids
+          };
+        });
+        setBulkPreviewLessons(lessonsWithStudents);
         setShowBulkPreviewModal(true);
         setShowBulkModal(false);
         setBulkNotes('');
@@ -242,32 +304,39 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     try {
       let savedCount = 0;
       for (const lesson of bulkPreviewLessons) {
-        if (!lesson.studentId) continue;
-        await createLessonRecordWithVocabularySet({
-          studentId: lesson.studentId,
-          date: lesson.date || new Date().toISOString().split('T')[0],
-          topic: lesson.lessonTopic || 'Podsumowanie lekcji',
-          vocabularyText: lesson.vocabularyText || '',
-          lessonSummary: lesson.revisionNotes || '',
-          studentSpeaking: lesson.studentSpeaking || '',
-          thingsToImprove: lesson.thingsToImprove || '',
-          suggestedFollowUp: lesson.suggestedFollowUp || ''
-        });
-        
-        await updateDoc(doc(db, 'users', lesson.studentId), {
-           hasNewVocabulary: true
-        });
-        savedCount++;
+        const targetStudentIds: string[] = lesson.studentIds && Array.isArray(lesson.studentIds) && lesson.studentIds.length > 0
+          ? lesson.studentIds
+          : (lesson.studentId ? [lesson.studentId] : []);
+
+        if (targetStudentIds.length === 0) continue;
+
+        for (const sId of targetStudentIds) {
+          await createLessonRecordWithVocabularySet({
+            studentId: sId,
+            date: lesson.date || new Date().toISOString().split('T')[0],
+            topic: lesson.lessonTopic || 'Podsumowanie lekcji',
+            vocabularyText: lesson.vocabularyText || '',
+            lessonSummary: lesson.revisionNotes || '',
+            studentSpeaking: lesson.studentSpeaking || '',
+            thingsToImprove: lesson.thingsToImprove || '',
+            suggestedFollowUp: lesson.suggestedFollowUp || ''
+          });
+          
+          await updateDoc(doc(db, 'users', sId), {
+             hasNewVocabulary: true
+          });
+          savedCount++;
+        }
       }
       
-      alert(`Zapisano ${savedCount} wpisów z lekcji.`);
+      showToast(`Zapisano ${savedCount} wpisów z lekcji dla wybranych kursantów.`);
       setShowBulkPreviewModal(false);
       setBulkPreviewLessons([]);
       
       if (selectedUser) {
         fetchUserLogsAndStats(selectedUser.id);
       }
-    } catch (e) {
+    } catch (e: any) {
       alert('Błąd podczas zapisywania lekcji: ' + e.message);
     } finally {
       setIsGenerating(false);
@@ -321,15 +390,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     }
   };
   const handleSaveLessonRecord = async () => {
-    if (!lessonFormStudentId) {
-      alert("Wybierz kursanta.");
+    const targetStudentIds = lessonFormStudentIds.length > 0 
+      ? lessonFormStudentIds 
+      : (lessonFormStudentId ? [lessonFormStudentId] : []);
+
+    if (targetStudentIds.length === 0) {
+      alert("Wybierz przynajmniej jednego kursanta.");
       return;
     }
     setIsSavingLessonRecord(true);
     try {
       if (editingRecordId) {
+        const primaryStudentId = lessonFormStudentId || targetStudentIds[0];
         const recordData = {
-          studentId: lessonFormStudentId,
+          studentId: primaryStudentId,
           date: lessonFormDate,
           topic: lessonFormTopic,
           vocabularyText: lessonFormWords,
@@ -341,16 +415,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         };
         
         // Fetch the existing record to see if it has a vocabularySetId
-        const recordDoc = await getDocs(query(collection(db, `users/${lessonFormStudentId}/lessonRecords`), where("__name__", "==", editingRecordId)));
+        const recordDoc = await getDocs(query(collection(db, `users/${primaryStudentId}/lessonRecords`), where("__name__", "==", editingRecordId)));
         let vocabSetId = "";
         if (!recordDoc.empty) {
            vocabSetId = recordDoc.docs[0].data().vocabularySetId;
         }
 
-        await updateDoc(doc(db, `users/${lessonFormStudentId}/lessonRecords`, editingRecordId), recordData);
+        await updateDoc(doc(db, `users/${primaryStudentId}/lessonRecords`, editingRecordId), recordData);
         
         if (vocabSetId) {
-           await updateDoc(doc(db, `users/${lessonFormStudentId}/vocabularySets`, vocabSetId), {
+           await updateDoc(doc(db, `users/${primaryStudentId}/vocabularySets`, vocabSetId), {
               date: lessonFormDate,
               topic: lessonFormTopic,
               title: buildVocabularySetTitle(lessonFormDate, lessonFormTopic),
@@ -359,29 +433,51 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
               updatedAt: new Date().toISOString()
            });
         }
+
+        // If additional students were selected during edit, create record for them too
+        for (const sId of targetStudentIds) {
+          if (sId === primaryStudentId) continue;
+          await createLessonRecordWithVocabularySet({
+            studentId: sId,
+            date: lessonFormDate,
+            topic: lessonFormTopic,
+            vocabularyText: lessonFormWords,
+            lessonSummary: lessonFormSummary,
+            studentSpeaking: lessonFormStudentSpeaking,
+            thingsToImprove: lessonFormThingsToImprove,
+            suggestedFollowUp: lessonFormSuggestedFollowUp
+          });
+          await updateDoc(doc(db, 'users', sId), {
+             hasNewVocabulary: true
+          });
+        }
       } else {
-        await createLessonRecordWithVocabularySet({
-          studentId: lessonFormStudentId,
-          date: lessonFormDate,
-          topic: lessonFormTopic,
-          vocabularyText: lessonFormWords,
-          lessonSummary: lessonFormSummary,
-          studentSpeaking: lessonFormStudentSpeaking,
-          thingsToImprove: lessonFormThingsToImprove,
-          suggestedFollowUp: lessonFormSuggestedFollowUp
-        });
-        
-        // Optionally update the user document to set hasNewVocabulary=true
-        await updateDoc(doc(db, 'users', lessonFormStudentId), {
-           hasNewVocabulary: true
-        });
+        // Create lesson record for all selected students
+        for (const sId of targetStudentIds) {
+          await createLessonRecordWithVocabularySet({
+            studentId: sId,
+            date: lessonFormDate,
+            topic: lessonFormTopic,
+            vocabularyText: lessonFormWords,
+            lessonSummary: lessonFormSummary,
+            studentSpeaking: lessonFormStudentSpeaking,
+            thingsToImprove: lessonFormThingsToImprove,
+            suggestedFollowUp: lessonFormSuggestedFollowUp
+          });
+          
+          await updateDoc(doc(db, 'users', sId), {
+             hasNewVocabulary: true
+          });
+        }
       }
       
+      showToast(targetStudentIds.length > 1 
+        ? `Zapisano lekcję dla ${targetStudentIds.length} kursantów (zajęcia grupowe)!` 
+        : `Zapisano lekcję.`);
       closeLessonRecordModal();
-      if (selectedUser?.id === lessonFormStudentId) {
-        fetchUserLogsAndStats(lessonFormStudentId);
+      if (selectedUser?.id && targetStudentIds.includes(selectedUser.id)) {
+        fetchUserLogsAndStats(selectedUser.id);
       }
-      alert('Zapisano wpis z lekcji.');
     } catch (e: any) {
       alert('Błąd podczas zapisywania lekcji: ' + e.message);
     } finally {
@@ -558,6 +654,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   // Lesson Record Form States
   const [showLessonRecordModal, setShowLessonRecordModal] = useState(false);
   const [lessonFormStudentId, setLessonFormStudentId] = useState('');
+  const [lessonFormStudentIds, setLessonFormStudentIds] = useState<string[]>([]);
   const [lessonFormDate, setLessonFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [lessonFormTopic, setLessonFormTopic] = useState('');
   const [lessonFormWords, setLessonFormWords] = useState('');
@@ -605,7 +702,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     if (record) {
       setEditingRecordId(record.id);
       setViewingRecord(record);
-      setLessonFormStudentId(record.studentId || selectedUser?.id || '');
+      const sId = record.studentId || selectedUser?.id || '';
+      setLessonFormStudentId(sId);
+      setLessonFormStudentIds(sId ? [sId] : []);
       setLessonFormDate(record.date);
       setLessonFormTopic(record.topic);
       setLessonFormWords(record.vocabularyText || (record as any).words || '');
@@ -616,7 +715,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       setRawMeetingNotes('');
     } else {
       if (!preserveData) {
-        setLessonFormStudentId(selectedUser?.id || '');
+        const defaultStudentId = selectedUser?.id || '';
+        setLessonFormStudentId(defaultStudentId);
+        setLessonFormStudentIds(defaultStudentId ? [defaultStudentId] : []);
         setEditingRecordId(null);
         setViewingRecord(null);
         setLessonFormDate(new Date().toISOString().split('T')[0]);
@@ -628,7 +729,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         setLessonFormSuggestedFollowUp('');
         setRawMeetingNotes('');
       }
-
     }
     setShowLessonRecordModal(true);
   };
@@ -1702,9 +1802,43 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                            <span className="font-mono text-xs text-primary px-2 py-0.5 rounded bg-primary/10">{lesson.date}</span>
                            <h4 className="font-bold text-lg">{lesson.lessonTopic || 'Brak tematu'}</h4>
                         </div>
-                        <div className="text-sm text-content-muted flex items-center gap-2">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                          {student ? `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.username : 'Nieznany kursant'}
+                        <div className="text-sm text-content-muted flex items-center gap-2 flex-wrap mt-1">
+                          <svg className="w-4 h-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                          <span className="text-xs text-content-muted">{i18n.t("Kursant(ci)")}:</span>
+                          {users.map(u => {
+                            const currentIds = lesson.studentIds && lesson.studentIds.length > 0
+                              ? lesson.studentIds
+                              : (lesson.studentId ? [lesson.studentId] : []);
+                            const isAssigned = currentIds.includes(u.id);
+                            const fullName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username;
+                            return (
+                              <button
+                                key={u.id}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const updatedIds = isAssigned
+                                    ? currentIds.filter((id: string) => id !== u.id)
+                                    : [...currentIds, u.id];
+                                  const updatedLessons = [...bulkPreviewLessons];
+                                  updatedLessons[idx] = {
+                                    ...updatedLessons[idx],
+                                    studentId: updatedIds[0] || '',
+                                    studentIds: updatedIds
+                                  };
+                                  setBulkPreviewLessons(updatedLessons);
+                                }}
+                                className={`text-xs px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 ${
+                                  isAssigned 
+                                    ? 'bg-primary/20 border-primary/50 text-white font-semibold' 
+                                    : 'bg-base-300/40 border-white/10 text-content-muted/60 hover:text-white hover:bg-white/10'
+                                }`}
+                              >
+                                <span>{isAssigned ? '✓' : '+'}</span>
+                                <span>{fullName}</span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                       <div className="text-content-muted">
@@ -1773,19 +1907,97 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <h3 className="text-xl font-bold mb-4">{editingRecordId ? 'Edytuj lekcję' : 'Dodaj nową lekcję'}</h3>
                 <div className="space-y-4 mb-6">
                   <div>
-                    <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Kursant")}</label>
-                    <select 
-                      value={lessonFormStudentId} 
-                      onChange={e => setLessonFormStudentId(e.target.value)}
-                      className="w-full bg-base-200 border border-primary/30 rounded-lg p-2 text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary mb-2 transition-all"
-                    >
-                      <option value="">{i18n.t("Wybierz kursanta...")}</option>
-                      {users.map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username} ({u.level || 'Brak poziomu'})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-bold text-content-muted">
+                        {i18n.t("Kursant / Kursanci (zajęcia indywidualne lub grupowe)")}
+                      </label>
+                      <div className="flex gap-2">
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            const allIds = users.map(u => u.id);
+                            setLessonFormStudentIds(allIds);
+                            if (allIds.length > 0) setLessonFormStudentId(allIds[0]);
+                          }}
+                          className="text-xs text-primary hover:underline font-medium"
+                        >
+                          {i18n.t("Zaznacz wszystkich")}
+                        </button>
+                        <span className="text-white/20">|</span>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            setLessonFormStudentIds([]);
+                            setLessonFormStudentId('');
+                          }}
+                          className="text-xs text-content-muted hover:text-white hover:underline font-medium"
+                        >
+                          {i18n.t("Wyczyść")}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="bg-base-200/90 border border-primary/20 rounded-xl p-3 max-h-[160px] overflow-y-auto space-y-1.5 custom-scrollbar mb-2">
+                      {users.length === 0 ? (
+                        <div className="text-xs text-content-muted p-2">{i18n.t("Brak dostępnych kursantów")}</div>
+                      ) : (
+                        users.map(u => {
+                          const isSelected = lessonFormStudentIds.includes(u.id);
+                          const fullName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username;
+                          return (
+                            <label 
+                              key={u.id}
+                              className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${
+                                isSelected 
+                                  ? 'bg-primary/20 border border-primary/40 text-white font-medium' 
+                                  : 'hover:bg-white/5 border border-transparent text-content-muted'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 text-sm">
+                                <input 
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    let newIds: string[];
+                                    if (isSelected) {
+                                      newIds = lessonFormStudentIds.filter(id => id !== u.id);
+                                    } else {
+                                      newIds = [...lessonFormStudentIds, u.id];
+                                    }
+                                    setLessonFormStudentIds(newIds);
+                                    setLessonFormStudentId(newIds[0] || '');
+                                  }}
+                                  className="checkbox checkbox-primary checkbox-xs rounded"
+                                />
+                                <span>{fullName}</span>
+                              </div>
+                              {u.level && (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-base-300 text-content-muted font-mono">
+                                  {u.level}
+                                </span>
+                              )}
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {lessonFormStudentIds.length > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs px-2.5 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary font-bold">
+                          {lessonFormStudentIds.length === 1 
+                            ? i18n.t("1 kursant (lekcja indywidualna)") 
+                            : `${lessonFormStudentIds.length} ${i18n.t("kursantów (zajęcia grupowe)")}`
+                          }
+                        </span>
+                        <span className="text-xs text-content-muted truncate max-w-full">
+                          {users
+                            .filter(u => lessonFormStudentIds.includes(u.id))
+                            .map(u => `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username)
+                            .join(', ')}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
