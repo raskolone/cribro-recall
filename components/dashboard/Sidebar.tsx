@@ -165,7 +165,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           )}
           {isTeacher && (
             <NavLink icon={<Database size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('topic-database')} isActive={currentView === 'topic-database'}>
-                {language === 'pl' ? 'Zasoby' : 'Resources'}
+                {language === 'pl' ? 'Baza tematów' : 'Topic Database'}
             </NavLink>
           )}
 

@@ -72,7 +72,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
                 if (data.date) {
                   const logDate = new Date(data.date);
                   if (!isNaN(logDate.getTime())) {
-                    const isTest = data.exerciseType === 'test' || Boolean(data.testName);
+                    const isTest = (data.exerciseType as string) === 'test' || Boolean(data.testName);
                     const scoreText = data.score !== undefined && data.totalWords
                       ? `${data.score}/${data.totalWords}`
                       : (data.score !== undefined ? `${data.score}%` : undefined);

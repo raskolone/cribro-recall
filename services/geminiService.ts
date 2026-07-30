@@ -118,16 +118,35 @@ const callDeepSeek = async (prompt: string, systemInstruction: string, model: st
   return data.text;
 };
 
+export const PREFERRED_AI_MODELS = [
+  'deepseek-reasoner',
+  'deepseek-chat',
+  'gemini-3.6-flash',
+  'gemini-3.1-pro-preview'
+];
+
+export const formatAIModelName = (model?: string): string => {
+  if (!model) return 'DeepSeek Pro (R1)';
+  if (model.includes('deepseek-reasoner')) return 'DeepSeek Pro (R1)';
+  if (model.includes('deepseek-chat') || model.includes('deepseek')) return 'DeepSeek Lite (V3)';
+  if (model.includes('gemini-3.6') || model.includes('gemini-3.1') || model.includes('gemini')) return 'Gemini AI';
+  return model;
+};
+
 const generateTextWithUnifiedFallback = async (
   prompt: string,
   systemInstruction: string,
-  preferredModels: string[],
-  geminiConfig?: any
+  preferredModels: string[] = PREFERRED_AI_MODELS,
+  geminiConfig?: any,
+  onModelAttempt?: (model: string) => void
 ): Promise<{ text: string, modelUsed: string }> => {
   let lastError;
   for (const model of preferredModels) {
     try {
       console.log(`Attempting generation with ${model}...`);
+      if (onModelAttempt) {
+        onModelAttempt(model);
+      }
       
       if (model.startsWith('deepseek')) {
         const text = await callDeepSeek(prompt, systemInstruction, model);
@@ -269,7 +288,8 @@ export const generateTranslationExercises = async (
   studentProfileContext?: string,
   numSentences: number = 5,
   pastExercisesContext?: string,
-  isGrammar?: boolean
+  isGrammar?: boolean,
+  onModelAttempt?: (model: string) => void
 ): Promise<TranslationExercise[]> => {
   const shortLesson = lessonContext ? `\n\n[LESSON / TOPIC CONTEXT]:\n${lessonContext.substring(0, 1000)}` : '';
   const shortProfile = studentProfileContext ? `\n\n[STUDENT SPECIFIC INSTRUCTIONS & PROFILE]:\n${studentProfileContext}` : '';
@@ -320,7 +340,7 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
     try {
       const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: The goal of this exercise is just to familiarize the user with the material, so split the sentence into LONGER chunks (2-5 words per chunk). Do NOT split into single words. Keep logical phrases together (e.g., 'I have been', 'to the store'). For sentences above 10 words, divide them into a MAXIMUM of 5 chunks.";
       
-      const preferredModels = ['deepseek-chat', 'gemini-3.6-flash', 'gemini-3.1-pro-preview'];
+      const preferredModels = PREFERRED_AI_MODELS;
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: sentenceGeneratorSchema,
@@ -330,9 +350,11 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
         finalPrompt,
         systemInstruction,
         preferredModels,
-        geminiConfig
+        geminiConfig,
+        onModelAttempt
       );
       let responseText = fallbackRes1.text;
+      let modelUsed = fallbackRes1.modelUsed;
 
       // Krok 2: Weryfikacja i poprawa logiczna
       const verificationPrompt = `Przeanalizuj poniższe wygenerowane zdania w formacie JSON:
@@ -346,9 +368,13 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawny obiekt JSON, zachowując dok
         verificationPrompt,
         systemInstruction,
         preferredModels,
-        geminiConfig
+        geminiConfig,
+        onModelAttempt
       );
-      responseText = fallbackRes2.text;
+      if (fallbackRes2.text) {
+        responseText = fallbackRes2.text;
+        modelUsed = fallbackRes2.modelUsed;
+      }
 
       let jsonText = extractJSON(responseText || "");
       let parsedRaw: any = null;
@@ -376,6 +402,7 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawny obiekt JSON, zachowując dok
           englishTranslation,
           hint,
           puzzleChunks: item.puzzleChunks || undefined,
+          modelUsed,
         };
       }).filter(ex => ex.polishSentence && ex.englishTranslation);
 
@@ -397,7 +424,8 @@ export const evaluateTranslations = async (
   exercises: TranslationExercise[],
   studentAnswers: string[],
   strictnessPrompt: string,
-  evalStudentContext: string
+  evalStudentContext: string,
+  onModelAttempt?: (model: string) => void
 ): Promise<TranslationEvaluationResult[]> => {
   const masterEvalPrompt = `ROLE:
 You are a fair, highly intelligent AI Language Evaluator.
@@ -447,7 +475,7 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
     try {
       const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.";
       
-      const preferredModels = ['deepseek-reasoner', 'deepseek-chat', 'gemini-3.6-flash', 'gemini-3.1-pro-preview'];
+      const preferredModels = PREFERRED_AI_MODELS;
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: evaluationResultSchema,
@@ -457,7 +485,8 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
         fullPrompt,
         systemInstruction,
         preferredModels,
-        geminiConfig
+        geminiConfig,
+        onModelAttempt
       );
       const responseText = fallbackRes.text;
       const modelUsed = fallbackRes.modelUsed;
@@ -507,8 +536,7 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
           ? item.is_correct
           : (typeof item.isCorrect === 'boolean' ? item.isCorrect : calculatedScore >= 75);
 
-        const baseFeedback = item.feedback || item.explanation || (isCorrect ? 'Świetne, naturalne tłumaczenie!' : 'Sprawdź sugerowane poprawki.');
-        const feedback = `${baseFeedback}\n\n(Oceniono przez: ${modelUsed})`;
+        const feedback = item.feedback || item.explanation || (isCorrect ? 'Świetne, naturalne tłumaczenie!' : 'Sprawdź sugerowane poprawki.');
         const suggested = item.suggested_better_version || item.correctTranslation || ex.englishTranslation;
 
         return {
@@ -526,7 +554,8 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
             meaning_score: meaningScore,
             grammar_score: grammarScore,
             vocabulary_score: vocabScore
-          }
+          },
+          modelUsed,
         };
       });
 

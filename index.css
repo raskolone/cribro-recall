@@ -231,3 +231,15 @@ tr.liquid-glass-hover:hover {
 .animate-liquid-drop {
   animation: liquidDrop 1.5s infinite ease-in;
 }
+
+@keyframes shine {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 125%;
+  }
+}
+.animate-shine {
+  animation: shine 2.5s infinite ease-in-out;
+}

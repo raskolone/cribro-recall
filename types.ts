@@ -162,6 +162,7 @@ export interface TranslationExercise {
   englishTranslation: string;
   hint?: string;
   puzzleChunks?: string[];
+  modelUsed?: string;
 }
 
 export interface TranslationEvaluationResult {
@@ -183,6 +184,7 @@ export interface TranslationEvaluationResult {
   feedbackVocab?: string;
   feedbackRule?: string;
   mistakes?: string[];
+  modelUsed?: string;
 }
 
 export interface LessonRecord {

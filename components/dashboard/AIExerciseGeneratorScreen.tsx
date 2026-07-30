@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { collection, getDocs, query, orderBy, limit, addDoc, where, documentId, doc, updateDoc, setDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { getDoc } from 'firebase/firestore';
-import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, logMistakesToFirebase } from '../../services/geminiService';
+import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, logMistakesToFirebase, formatAIModelName } from '../../services/geminiService';
 import { generateSpeech } from '../../services/elevenLabsService';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog } from '../../types';
 import { getVocabularySetsForStudent, markVocabularySetAsUsed } from '../../services/lessonRecord';
@@ -29,6 +29,7 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   AlertTriangle,
   HelpCircle,
   Play,
@@ -135,10 +136,36 @@ Zwróć dodatkową uwagę na te błędy kursanta, jeśli wystąpią: \${weakness
 import { ExerciseType } from '../../types';
 import i18n from "i18next";
 
-const playSliderSound = () => {};
+const playSliderSound = () => {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    
+    // Wooden block / tap sound synthesis
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    // Frequency drop for wooden click
+    osc.frequency.setValueAtTime(540 + Math.random() * 30, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(130, ctx.currentTime + 0.035);
+    
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.035);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start();
+    osc.stop(ctx.currentTime + 0.04);
+  } catch (e) {
+    // Ignore browser autoplay/audio context restriction errors
+  }
+};
 
 
-const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?: string }> = ({ language, level }) => {
+const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?: string; currentModel?: string }> = ({ language, level, currentModel }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tangledRef = useRef<SVGPathElement>(null);
   const spiralRef = useRef<SVGPathElement>(null);
@@ -302,6 +329,18 @@ const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?
           ? 'Porządkowanie struktury i tworzenie idealnych ćwiczeń' 
           : 'Organizing structure and creating perfect exercises'}
       </p>
+
+      <div className="mt-4 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-semibold shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
+        </span>
+        <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+        <span>
+          {language === 'pl' ? 'Wysyłam zapytanie do: ' : 'Sending query to: '}
+          <strong className="text-white font-bold">{formatAIModelName(currentModel || 'deepseek-reasoner')}</strong>
+        </span>
+      </div>
     </div>
   );
 };
@@ -550,6 +589,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   // Loading & error states
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
+  const [activeGeneratingModel, setActiveGeneratingModel] = useState<string>('deepseek-reasoner');
   const [error, setError] = useState<string | null>(null);
   const [debugLogs, setDebugLogs] = useState<string>('');
   const addLog = (msg: string) => { console.log(msg); setDebugLogs(prev => prev + "\n" + msg); };
@@ -985,7 +1025,17 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
         .replace(/\$\{weaknessesList(?: \|\| "[^"]+")?\}/g, weaknessesListStr);
 
       addLog('Calling generateTranslationExercises');
-      const generated = await generateTranslationExercises(level, wordsToUse, resolvedGenPrompt, lessonContextString, studentProfileContext, practiceMode === 'time' ? 10 : numSentences, pastExercisesContext, selectedSetId === 'grammar');
+      const generated = await generateTranslationExercises(
+        level, 
+        wordsToUse, 
+        resolvedGenPrompt, 
+        lessonContextString, 
+        studentProfileContext, 
+        practiceMode === 'time' ? 10 : numSentences, 
+        pastExercisesContext, 
+        selectedSetId === 'grammar',
+        (model) => setActiveGeneratingModel(model)
+      );
       
       addLog('generateTranslationExercises returned ' + (generated ? generated.length : 'null'));
       if (generated && generated.length > 0) {
@@ -1054,7 +1104,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
       } else if (evaluationStrictness === 'loose') {
         strictnessPrompt += '\n\nOCENIAJ LUŹNO. Akceptuj drobne błędy i literówki. Zwracaj uwagę na ogólny przekaz.';
       }
-      const results = await evaluateTranslations([exercises[currentIdx]], [answer], strictnessPrompt, evalStudentContext);
+      const results = await evaluateTranslations(
+        [exercises[currentIdx]], 
+        [answer], 
+        strictnessPrompt, 
+        evalStudentContext,
+        (model) => setActiveGeneratingModel(model)
+      );
       
       if (results && results.length > 0) {
         const result = results[0];
@@ -1132,7 +1188,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
         const exercisesToEval = unevaluatedIndices.map(i => exercises[i]);
         const answersToEval = unevaluatedIndices.map(i => studentAnswers[i]);
-        const batchResults = await evaluateTranslations(exercisesToEval, answersToEval, strictnessPrompt, evalStudentContext);
+        const batchResults = await evaluateTranslations(
+          exercisesToEval, 
+          answersToEval, 
+          strictnessPrompt, 
+          evalStudentContext,
+          (model) => setActiveGeneratingModel(model)
+        );
 
         if (batchResults && batchResults.length === unevaluatedIndices.length) {
           batchResults.forEach((res, idx) => {
@@ -1517,7 +1579,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
       {/* STEP 1: SETUP */}
       {step === 'setup' && (
         isLoading ? (
-          <AIGenerationLoader language={language} level={level} logs={debugLogs} />
+          <AIGenerationLoader language={language} level={level} logs={debugLogs} currentModel={activeGeneratingModel} />
         ) : (
           <div className="max-w-2xl mx-auto sm:mt-4 w-full">
             
@@ -1536,108 +1598,204 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       
                       {/* Section 1: TRYB ĆWICZENIA */}
                       <div>
-                        <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-4">
-                          {language === 'pl' ? 'Tryb ćwiczenia' : 'Exercise mode'}
-                        </label>
-                        <div className="grid grid-cols-2 gap-4">
-                          {/* Sphere 1: Układanka */}
+                        <div className="flex items-center justify-between mb-4">
+                          <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                            {language === 'pl' ? 'Tryb ćwiczenia' : 'Exercise mode'}
+                          </label>
+                          <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-semibold">
+                            4 Formaty
+                          </span>
+                        </div>
+
+                        {/* Top Row: Two Large Primary Cards (Puzzle & Typing) */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Card 1: Układanka */}
                           <button 
                             type="button"
                             onClick={() => setExerciseFormat('puzzle')}
-                            className={`relative aspect-square rounded-[2rem] flex flex-col items-center justify-center transition-all duration-500 overflow-hidden ${
+                            className={`group relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[170px] ${
                               exerciseFormat === 'puzzle' 
-                                ? 'bg-gradient-to-br from-[#10b981]/20 to-[#090d16] border-[0.5px] border-[#10b981]/50 shadow-[0_0_30px_rgba(16,185,129,0.3),inset_0_2px_15px_rgba(16,185,129,0.4)]' 
-                                : 'bg-gradient-to-br from-white/5 to-transparent border-[0.5px] border-white/10 shadow-[inset_0_2px_15px_rgba(255,255,255,0.05)]'
+                                ? 'bg-[#0d1422] border-2 border-[#10b981] shadow-[0_0_35px_rgba(16,185,129,0.35)] scale-[1.02]' 
+                                : 'bg-[#0a0e17] border border-white/10 hover:border-emerald-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1'
                             }`}
                           >
-                            <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 rounded-[2rem]"></div>
-                            <LayoutGrid className={`w-8 h-8 mb-2 z-10 ${exerciseFormat === 'puzzle' ? 'text-[#10b981] drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'text-gray-400'}`} />
-                            <span className={`text-[11px] font-bold z-10 ${exerciseFormat === 'puzzle' ? 'text-white' : 'text-gray-400'}`}>{language === 'pl' ? 'Układanka' : 'Puzzle'}</span>
-                            {exerciseFormat === 'puzzle' && (
-                              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-4 animate-liquid-drop rounded-full bg-gradient-to-b from-[#10b981] to-transparent shadow-[0_0_8px_#10b981]"></div>
-                            )}
+                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                            <div className="absolute -inset-full top-0 block bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 group-hover:animate-shine pointer-events-none" />
+
+                            <div className="flex items-center justify-between w-full z-10">
+                              <div className={`w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform ${exerciseFormat === 'puzzle' ? 'text-emerald-400 bg-emerald-500/20 border-emerald-500' : ''}`}>
+                                <LayoutGrid className="w-6 h-6 drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                              </div>
+                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                                {language === 'pl' ? 'Rekomendowane' : 'Recommended'}
+                              </span>
+                            </div>
+
+                            <div className="z-10 mt-3">
+                              <h3 className="text-xl font-serif font-bold text-white group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                                {language === 'pl' ? 'Układanka' : 'Puzzle'} <ChevronRight className="w-5 h-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                              </h3>
+                              <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                                {language === 'pl' ? 'Układaj zdania z interaktywnych klocków i ucz się szybkiego szyku.' : 'Assemble sentences from interactive tiles.'}
+                              </p>
+                            </div>
                           </button>
-                          {/* Sphere 4: Prawdziwe Wyzwanie */}
+
+                          {/* Card 2: Prawdziwe Wyzwanie */}
                           <button 
                             type="button"
                             onClick={() => setExerciseFormat('typing')}
-                            className={`relative aspect-square rounded-[2rem] flex flex-col items-center justify-center transition-all duration-500 overflow-hidden ${
+                            className={`group relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[170px] ${
                               exerciseFormat === 'typing' 
-                                ? 'bg-gradient-to-br from-[#10b981]/20 to-[#090d16] border-[0.5px] border-[#10b981]/50 shadow-[0_0_30px_rgba(16,185,129,0.3),inset_0_2px_15px_rgba(16,185,129,0.4)]' 
-                                : 'bg-gradient-to-br from-white/5 to-transparent border-[0.5px] border-white/10 shadow-[inset_0_2px_15px_rgba(255,255,255,0.05)]'
+                                ? 'bg-[#0d1422] border-2 border-cyan-500 shadow-[0_0_35px_rgba(6,182,212,0.35)] scale-[1.02]' 
+                                : 'bg-[#0a0e17] border border-white/10 hover:border-cyan-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1'
                             }`}
                           >
-                            <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 rounded-[2rem]"></div>
-                            <CheckCircle2 className={`w-8 h-8 mb-2 z-10 ${exerciseFormat === 'typing' ? 'text-[#10b981] drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'text-gray-400'}`} />
-                            <span className={`text-[11px] font-bold z-10 text-center px-2 leading-tight ${exerciseFormat === 'typing' ? 'text-white' : 'text-gray-400'}`}>{language === 'pl' ? 'Prawdziwe\nWyzwanie' : 'Real\nChallenge'}</span>
-                            {exerciseFormat === 'typing' && (
-                              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-4 animate-liquid-drop rounded-full bg-gradient-to-b from-[#10b981] to-transparent shadow-[0_0_8px_#10b981]"></div>
-                            )}
+                            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                            <div className="absolute -inset-full top-0 block bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 group-hover:animate-shine pointer-events-none" />
+
+                            <div className="flex items-center justify-between w-full z-10">
+                              <div className={`w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform ${exerciseFormat === 'typing' ? 'text-cyan-400 bg-cyan-500/20 border-cyan-500' : ''}`}>
+                                <Keyboard className="w-6 h-6 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                              </div>
+                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20">
+                                {language === 'pl' ? 'Wpisywanie' : 'Typing'}
+                              </span>
+                            </div>
+
+                            <div className="z-10 mt-3">
+                              <h3 className="text-xl font-serif font-bold text-white group-hover:text-cyan-400 transition-colors flex items-center gap-1.5">
+                                {language === 'pl' ? 'Prawdziwe Wyzwanie' : 'Real Challenge'} <ChevronRight className="w-5 h-5 text-cyan-400 group-hover:translate-x-1 transition-transform" />
+                              </h3>
+                              <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                                {language === 'pl' ? 'Pisanie pełnych zdań z pamięci i inteligentna korekta AI.' : 'Type full sentences with instant AI feedback.'}
+                              </p>
+                            </div>
                           </button>
                         </div>
                         
+                        {/* Bottom Row: Two Compact Cards (Flashcards & Match) */}
                         <div className="grid grid-cols-2 gap-4 mt-4">
                           {/* Card 3: Fiszki */}
                           <button
                             type="button"
                             onClick={() => handleStartOtherPractice('flashcards')}
-                            className="relative aspect-auto h-24 rounded-[2rem] flex flex-col items-center justify-center gap-1 transition-all duration-500 overflow-hidden bg-gradient-to-br from-white/5 to-transparent border-[0.5px] border-white/10 shadow-[inset_0_2px_15px_rgba(255,255,255,0.05)] hover:border-white/20"
+                            className="group relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17] border border-white/10 hover:border-purple-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1 text-left min-h-[110px]"
                           >
-                            <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 rounded-[2rem]"></div>
-                            <div className="text-2xl shrink-0 z-10">🗂️</div>
-                            <span className="text-[11px] font-bold z-10 text-gray-400">{language === 'pl' ? 'Fiszki' : 'Flashcards'}</span>
+                            <div className="flex items-center justify-between w-full z-10">
+                              <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-lg group-hover:scale-110 transition-transform">
+                                🗂️
+                              </div>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-purple-400 bg-purple-500/10 border border-purple-500/20">
+                                {language === 'pl' ? 'Nauka' : 'Learn'}
+                              </span>
+                            </div>
+                            <div className="z-10 mt-2">
+                              <h4 className="text-sm font-serif font-bold text-white group-hover:text-purple-300 transition-colors flex items-center gap-1">
+                                {language === 'pl' ? 'Fiszki' : 'Flashcards'} <ChevronRight className="w-4 h-4 text-purple-400 group-hover:translate-x-1 transition-transform" />
+                              </h4>
+                            </div>
                           </button>
                           
                           {/* Card 4: Dopasowanie */}
                           <button
                             type="button"
                             onClick={() => handleStartOtherPractice('match')}
-                            className="relative aspect-auto h-24 rounded-[2rem] flex flex-col items-center justify-center gap-1 transition-all duration-500 overflow-hidden bg-gradient-to-br from-white/5 to-transparent border-[0.5px] border-white/10 shadow-[inset_0_2px_15px_rgba(255,255,255,0.05)] hover:border-white/20"
+                            className="group relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17] border border-white/10 hover:border-amber-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1 text-left min-h-[110px]"
                           >
-                            <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 rounded-[2rem]"></div>
-                            <div className="text-2xl shrink-0 z-10">🧩</div>
-                            <span className="text-[11px] font-bold z-10 text-gray-400">{language === 'pl' ? 'Dopasowanie' : 'Match'}</span>
+                            <div className="flex items-center justify-between w-full z-10">
+                              <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-lg group-hover:scale-110 transition-transform">
+                                🧩
+                              </div>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20">
+                                {language === 'pl' ? 'Gra' : 'Game'}
+                              </span>
+                            </div>
+                            <div className="z-10 mt-2">
+                              <h4 className="text-sm font-serif font-bold text-white group-hover:text-amber-300 transition-colors flex items-center gap-1">
+                                {language === 'pl' ? 'Dopasowanie' : 'Match'} <ChevronRight className="w-4 h-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
+                              </h4>
+                            </div>
                           </button>
                         </div>
                       </div>
 
-                      {/* Unified Źródło Słownictwa Box (Mobile) */}
-                      <div>
+                      {/* Unified Źródło Słownictwa Box (Mobile - Centered Layout) */}
+                      <div className="bg-[#0c1017] border border-white/10 hover:border-emerald-500/40 rounded-3xl p-6 text-center flex flex-col items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.5)] relative overflow-hidden group transition-all duration-300">
+                        <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                        
+                        {/* Basket Floating Badge if populated */}
                         {basketWords.length > 0 && (
-                          <div className="flex items-center justify-end mb-2">
+                          <div className="w-full flex justify-end mb-3">
                             <button
                               type="button"
                               onClick={() => setIsBasketModalOpen(true)}
-                              className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full transition-all hover:scale-105 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full transition-all hover:scale-105 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
                             >
                               <ShoppingBag className="w-3.5 h-3.5" />
                               <span>{language === 'pl' ? `Koszyk (${basketWords.length})` : `Basket (${basketWords.length})`}</span>
                             </button>
                           </div>
                         )}
+
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-3 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] group-hover:scale-110 transition-transform">
+                          {selectedSetId === 'basket' ? <ShoppingBag className="w-6 h-6" /> : <BookOpen className="w-6 h-6" />}
+                        </div>
+
+                        <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-widest font-mono mb-1">
+                          {language === 'pl' ? 'ŹRÓDŁO SŁOWNICTWA' : 'VOCABULARY SOURCE'}
+                        </span>
+
+                        {/* Large Prominent Headline */}
+                        <h3 className="text-xl font-serif font-bold text-white group-hover:text-emerald-300 transition-colors cursor-pointer flex items-center justify-center gap-2" onClick={() => setIsLessonSelectorOpen(true)}>
+                          {selectedSetId === 'basket'
+                            ? (language === 'pl' ? `Koszyk Słówek (${basketWords.length} słów)` : `Word Basket (${basketWords.length})`)
+                            : selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0
+                            ? (language === 'pl' ? 'Wybrana Gramatyka' : 'Selected Grammar')
+                            : selectedSetId === 'all' && selectedLessonIds.length === 0
+                            ? (language === 'pl' ? 'Wszystkie Słówka (Mix)' : 'All Vocabulary')
+                            : selectedLessonIds.length > 0
+                            ? (language === 'pl' ? `Wybrane Lekcje (${selectedLessonIds.length})` : `Selected Lessons (${selectedLessonIds.length})`)
+                            : (language === 'pl' ? 'Wybierz zestaw z bazy' : 'Select Vocabulary Source')}
+                          <ChevronRight className="w-5 h-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                        </h3>
+
+                        {/* List of selected items as pills below */}
+                        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 max-w-full">
+                          {selectedSetId === 'basket' ? (
+                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                              {language === 'pl' ? `Mieszanka ${basketWords.length} wyselekcjonowanych słówek` : `Mix of ${basketWords.length} selected words`}
+                            </span>
+                          ) : selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0 ? (
+                            selectedGrammarTopics.map((topic, i) => (
+                              <span key={i} className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                                {topic.name}
+                              </span>
+                            ))
+                          ) : selectedLessonIds.length > 0 ? (
+                            vocabularySets
+                              .filter(s => selectedLessonIds.includes(s.id))
+                              .map((set, i) => (
+                                <span key={i} className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+                                  {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
+                                </span>
+                              ))
+                          ) : (
+                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/5 border border-white/10 text-gray-400">
+                              {language === 'pl' ? 'Kliknij, aby wybrać zestawy lekcji' : 'Click to select lesson sets'}
+                            </span>
+                          )}
+                        </div>
+
                         <button 
                           type="button"
                           onClick={() => setIsLessonSelectorOpen(true)}
-                          className="w-full bg-[#131b26] border border-white/10 hover:border-emerald-500/30 transition-all rounded-2xl p-4 flex items-center justify-between group"
+                          className="mt-5 px-5 py-2 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold transition-all hover:scale-105 flex items-center gap-2 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
-                              {selectedSetId === 'basket' ? <ShoppingBag className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
-                            </div>
-                            <span className="text-sm font-semibold text-white">
-                              {selectedSetId === 'basket'
-                                ? (language === 'pl' ? `Koszyk słówek (${basketWords.length} słów)` : `Basket (${basketWords.length} words)`)
-                                : (language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary source')}
-                            </span>
-                          </div>
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>{language === 'pl' ? 'Zmień źródło słownictwa' : 'Change Vocabulary Source'}</span>
+                          <ChevronRight className="w-4 h-4" />
                         </button>
-                        <div className="mt-2 px-2 text-[10px] text-gray-400 font-medium whitespace-pre-wrap leading-relaxed">
-                          {selectedSetId === 'basket' ? (language === 'pl' ? `Wybrano: Koszyk słówek (Mix ${basketWords.length} słów z lekcji)` : `Selected: Basket (${basketWords.length} words)`) :
-                           selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0 ? (language === 'pl' ? `Gramatyka: ${selectedGrammarTopics.map(t => t.name).join(', ')}` : `Grammar: ${selectedGrammarTopics.map(t => t.name).join(', ')}`) :
-                           selectedSetId === 'all' && selectedLessonIds.length === 0 ? (language === 'pl' ? 'Wybrano: Wszystkie słówka (Mix)' : 'Selected: All vocab') : 
-                           selectedSetId === 'lessons' || selectedLessonIds.length > 0 ? (language === 'pl' ? `Wybrane lekcje: ${vocabularySets.filter(s => selectedLessonIds.includes(s.id)).map(s => s.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()).join(', ')}` : `Selected lessons: ${selectedLessonIds.length}`) : 
-                           specialTasks.find(t => 'special-task-' + t.id === selectedSetId) ? (language === 'pl' ? 'Wybrano: Zadanie specjalne' : 'Selected: Special Task') : ''}
-                        </div>
                       </div>
 
                       {/* Section 3: ILOŚĆ ZDAŃ */}
@@ -1747,112 +1905,206 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       </div>
                     </div>
 
-                    {/* SECTION 2: TRYB ĆWICZENIA (Two large tiles) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {/* Card 1: Układanka */}
-                      <button
-                        type="button"
-                        onClick={() => setExerciseFormat('puzzle')}
-                        className={`relative aspect-square sm:aspect-auto sm:h-48 rounded-[2rem] flex flex-col items-center justify-center transition-all duration-500 overflow-hidden ${
-                          exerciseFormat === 'puzzle'
-                            ? 'bg-gradient-to-br from-[#10b981]/20 to-[#090d16] border-[0.5px] border-[#10b981]/50 shadow-[0_0_30px_rgba(16,185,129,0.3),inset_0_2px_15px_rgba(16,185,129,0.4)]'
-                            : 'bg-gradient-to-br from-white/5 to-transparent border-[0.5px] border-white/10 shadow-[inset_0_2px_15px_rgba(255,255,255,0.05)] hover:border-white/20'
-                        }`}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 rounded-[2rem]"></div>
-                        <LayoutGrid className={`w-10 h-10 mb-3 z-10 ${exerciseFormat === 'puzzle' ? 'text-[#10b981] drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'text-gray-400'}`} />
-                        <span className={`text-sm font-bold z-10 ${exerciseFormat === 'puzzle' ? 'text-white' : 'text-gray-400'}`}>{language === 'pl' ? 'Układanka' : 'Puzzle'}</span>
-                        {exerciseFormat === 'puzzle' && (
-                          <div className="absolute top-4 right-4 flex items-center justify-center">
-                            <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-                          </div>
-                        )}
-                      </button>
+                    {/* SECTION 2: TRYB ĆWICZENIA (Two large tiles, two smaller below) */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                          {language === 'pl' ? 'Tryb ćwiczenia' : 'Exercise mode'}
+                        </label>
+                        <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-semibold">
+                          4 Formaty
+                        </span>
+                      </div>
 
-                      {/* Card 2: Prawdziwe wyzwanie */}
-                      <button
-                        type="button"
-                        onClick={() => setExerciseFormat('typing')}
-                        className={`relative aspect-square sm:aspect-auto sm:h-48 rounded-[2rem] flex flex-col items-center justify-center transition-all duration-500 overflow-hidden ${
-                          exerciseFormat === 'typing'
-                            ? 'bg-gradient-to-br from-[#10b981]/20 to-[#090d16] border-[0.5px] border-[#10b981]/50 shadow-[0_0_30px_rgba(16,185,129,0.3),inset_0_2px_15px_rgba(16,185,129,0.4)]'
-                            : 'bg-gradient-to-br from-white/5 to-transparent border-[0.5px] border-white/10 shadow-[inset_0_2px_15px_rgba(255,255,255,0.05)] hover:border-white/20'
-                        }`}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 rounded-[2rem]"></div>
-                        <Keyboard className={`w-10 h-10 mb-3 z-10 ${exerciseFormat === 'typing' ? 'text-[#10b981] drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'text-gray-400'}`} />
-                        <span className={`text-sm font-bold z-10 ${exerciseFormat === 'typing' ? 'text-white' : 'text-gray-400'}`}>{language === 'pl' ? 'Prawdziwe Wyzwanie' : 'Real Challenge'}</span>
-                        {exerciseFormat === 'typing' && (
-                          <div className="absolute top-4 right-4 flex items-center justify-center">
-                            <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+                      {/* Top Row: Two Large Primary Cards (Puzzle & Typing) */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Card 1: Układanka */}
+                        <button
+                          type="button"
+                          onClick={() => setExerciseFormat('puzzle')}
+                          className={`group relative text-left rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[180px] ${
+                            exerciseFormat === 'puzzle'
+                              ? 'bg-[#0d1422] border-2 border-[#10b981] shadow-[0_0_35px_rgba(16,185,129,0.35)] scale-[1.02]'
+                              : 'bg-[#0a0e17] border border-white/10 hover:border-emerald-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1'
+                          }`}
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                          <div className="absolute -inset-full top-0 block bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 group-hover:animate-shine pointer-events-none" />
+
+                          <div className="flex items-center justify-between w-full z-10">
+                            <div className={`w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform ${exerciseFormat === 'puzzle' ? 'text-emerald-400 bg-emerald-500/20 border-emerald-500' : ''}`}>
+                              <LayoutGrid className="w-6 h-6 drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                            </div>
+                            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                              {language === 'pl' ? 'Rekomendowane' : 'Recommended'}
+                            </span>
                           </div>
-                        )}
-                      </button>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 mt-4 mb-4">
-                      {/* Card 3: Fiszki */}
-                      <button
-                        type="button"
-                        onClick={() => handleStartOtherPractice('flashcards')}
-                        className="relative aspect-auto h-24 rounded-[2rem] flex flex-col items-center justify-center gap-1 transition-all duration-500 overflow-hidden bg-gradient-to-br from-white/5 to-transparent border-[0.5px] border-white/10 shadow-[inset_0_2px_15px_rgba(255,255,255,0.05)] hover:border-white/20"
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 rounded-[2rem]"></div>
-                        <div className="text-2xl shrink-0 z-10">🗂️</div>
-                        <span className="text-[11px] font-bold z-10 text-gray-400">{language === 'pl' ? 'Fiszki' : 'Flashcards'}</span>
-                      </button>
+
+                          <div className="z-10 mt-4">
+                            <h3 className="text-2xl font-serif font-bold text-white group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                              {language === 'pl' ? 'Układanka' : 'Puzzle'} <ChevronRight className="w-5 h-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                            </h3>
+                            <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                              {language === 'pl' ? 'Układaj zdania z interaktywnych klocków i ucz się szybkiego szyku.' : 'Assemble sentences from interactive tiles.'}
+                            </p>
+                          </div>
+                        </button>
+
+                        {/* Card 2: Prawdziwe wyzwanie */}
+                        <button
+                          type="button"
+                          onClick={() => setExerciseFormat('typing')}
+                          className={`group relative text-left rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[180px] ${
+                            exerciseFormat === 'typing'
+                              ? 'bg-[#0d1422] border-2 border-cyan-500 shadow-[0_0_35px_rgba(6,182,212,0.35)] scale-[1.02]'
+                              : 'bg-[#0a0e17] border border-white/10 hover:border-cyan-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1'
+                          }`}
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                          <div className="absolute -inset-full top-0 block bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 group-hover:animate-shine pointer-events-none" />
+
+                          <div className="flex items-center justify-between w-full z-10">
+                            <div className={`w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform ${exerciseFormat === 'typing' ? 'text-cyan-400 bg-cyan-500/20 border-cyan-500' : ''}`}>
+                              <Keyboard className="w-6 h-6 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                            </div>
+                            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20">
+                              {language === 'pl' ? 'Wpisywanie' : 'Typing'}
+                            </span>
+                          </div>
+
+                          <div className="z-10 mt-4">
+                            <h3 className="text-2xl font-serif font-bold text-white group-hover:text-cyan-400 transition-colors flex items-center gap-1.5">
+                              {language === 'pl' ? 'Prawdziwe Wyzwanie' : 'Real Challenge'} <ChevronRight className="w-5 h-5 text-cyan-400 group-hover:translate-x-1 transition-transform" />
+                            </h3>
+                            <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                              {language === 'pl' ? 'Pisanie pełnych zdań z pamięci i inteligentna korekta AI.' : 'Type full sentences with instant AI feedback.'}
+                            </p>
+                          </div>
+                        </button>
+                      </div>
                       
-                      {/* Card 4: Dopasowanie */}
-                      <button
-                        type="button"
-                        onClick={() => handleStartOtherPractice('match')}
-                        className="relative aspect-auto h-24 rounded-[2rem] flex flex-col items-center justify-center gap-1 transition-all duration-500 overflow-hidden bg-gradient-to-br from-white/5 to-transparent border-[0.5px] border-white/10 shadow-[inset_0_2px_15px_rgba(255,255,255,0.05)] hover:border-white/20"
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 rounded-[2rem]"></div>
-                        <div className="text-2xl shrink-0 z-10">🧩</div>
-                        <span className="text-[11px] font-bold z-10 text-gray-400">{language === 'pl' ? 'Dopasowanie' : 'Match'}</span>
-                      </button>
+                      {/* Bottom Row: Two Compact Cards (Flashcards & Match) */}
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Card 3: Fiszki */}
+                        <button
+                          type="button"
+                          onClick={() => handleStartOtherPractice('flashcards')}
+                          className="group relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17] border border-white/10 hover:border-purple-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1 text-left min-h-[115px]"
+                        >
+                          <div className="flex items-center justify-between w-full z-10">
+                            <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-xl group-hover:scale-110 transition-transform">
+                              🗂️
+                            </div>
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold text-purple-400 bg-purple-500/10 border border-purple-500/20">
+                              {language === 'pl' ? 'Nauka' : 'Learn'}
+                            </span>
+                          </div>
+                          <div className="z-10 mt-2">
+                            <h4 className="text-base font-serif font-bold text-white group-hover:text-purple-300 transition-colors flex items-center gap-1">
+                              {language === 'pl' ? 'Fiszki' : 'Flashcards'} <ChevronRight className="w-4 h-4 text-purple-400 group-hover:translate-x-1 transition-transform" />
+                            </h4>
+                          </div>
+                        </button>
+                        
+                        {/* Card 4: Dopasowanie */}
+                        <button
+                          type="button"
+                          onClick={() => handleStartOtherPractice('match')}
+                          className="group relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17] border border-white/10 hover:border-amber-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1 text-left min-h-[115px]"
+                        >
+                          <div className="flex items-center justify-between w-full z-10">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xl group-hover:scale-110 transition-transform">
+                              🧩
+                            </div>
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20">
+                              {language === 'pl' ? 'Gra' : 'Game'}
+                            </span>
+                          </div>
+                          <div className="z-10 mt-2">
+                            <h4 className="text-base font-serif font-bold text-white group-hover:text-amber-300 transition-colors flex items-center gap-1">
+                              {language === 'pl' ? 'Dopasowanie' : 'Match'} <ChevronRight className="w-4 h-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
+                            </h4>
+                          </div>
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Unified Źródło Słownictwa Box (Desktop) */}
-                    <div>
+                    {/* Unified Źródło Słownictwa Box (Desktop - Centered Layout) */}
+                    <div className="bg-[#0c1017] border border-white/10 hover:border-emerald-500/40 rounded-3xl p-8 text-center flex flex-col items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.5)] relative overflow-hidden group transition-all duration-300">
+                      <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                      
+                      {/* Basket Floating Badge if populated */}
                       {basketWords.length > 0 && (
-                        <div className="flex items-center justify-end mb-2">
+                        <div className="w-full flex justify-end mb-2">
                           <button
                             type="button"
                             onClick={() => setIsBasketModalOpen(true)}
-                            className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full transition-all hover:scale-105 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                            className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full transition-all hover:scale-105 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
                           >
                             <ShoppingBag className="w-3.5 h-3.5" />
                             <span>{language === 'pl' ? `Koszyk (${basketWords.length})` : `Basket (${basketWords.length})`}</span>
                           </button>
                         </div>
                       )}
+
+                      <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-3 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] group-hover:scale-110 transition-transform">
+                        {selectedSetId === 'basket' ? <ShoppingBag className="w-7 h-7" /> : <BookOpen className="w-7 h-7" />}
+                      </div>
+
+                      <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest font-mono mb-1">
+                        {language === 'pl' ? 'ŹRÓDŁO SŁOWNICTWA' : 'VOCABULARY SOURCE'}
+                      </span>
+
+                      {/* Large Prominent Headline */}
+                      <h3 className="text-2xl sm:text-3xl font-serif font-bold text-white group-hover:text-emerald-300 transition-colors cursor-pointer flex items-center justify-center gap-2" onClick={() => setIsLessonSelectorOpen(true)}>
+                        {selectedSetId === 'basket'
+                          ? (language === 'pl' ? `Koszyk Słówek (${basketWords.length} słów)` : `Word Basket (${basketWords.length})`)
+                          : selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0
+                          ? (language === 'pl' ? 'Wybrana Gramatyka' : 'Selected Grammar')
+                          : selectedSetId === 'all' && selectedLessonIds.length === 0
+                          ? (language === 'pl' ? 'Wszystkie Słówka (Mix)' : 'All Vocabulary')
+                          : selectedLessonIds.length > 0
+                          ? (language === 'pl' ? `Wybrane Lekcje (${selectedLessonIds.length})` : `Selected Lessons (${selectedLessonIds.length})`)
+                          : (language === 'pl' ? 'Wybierz zestaw z bazy' : 'Select Vocabulary Source')}
+                        <ChevronRight className="w-6 h-6 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                      </h3>
+
+                      {/* List of selected items as pills below */}
+                      <div className="mt-4 flex flex-wrap items-center justify-center gap-2 max-w-xl">
+                        {selectedSetId === 'basket' ? (
+                          <span className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                            {language === 'pl' ? `Mieszanka ${basketWords.length} wyselekcjonowanych słówek` : `Mix of ${basketWords.length} selected words`}
+                          </span>
+                        ) : selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0 ? (
+                          selectedGrammarTopics.map((topic, i) => (
+                            <span key={i} className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                              {topic.name}
+                            </span>
+                          ))
+                        ) : selectedLessonIds.length > 0 ? (
+                          vocabularySets
+                            .filter(s => selectedLessonIds.includes(s.id))
+                            .map((set, i) => (
+                              <span key={i} className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+                                {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
+                              </span>
+                            ))
+                        ) : (
+                          <span className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white/5 border border-white/10 text-gray-400">
+                            {language === 'pl' ? 'Kliknij, aby wybrać zestawy lekcji' : 'Click to select lesson sets'}
+                          </span>
+                        )}
+                      </div>
+
                       <button 
                         type="button"
                         onClick={() => setIsLessonSelectorOpen(true)}
-                        className="w-full bg-[#131b26] border border-white/10 hover:border-emerald-500/30 transition-all rounded-2xl p-4 flex items-center justify-between group"
+                        className="mt-6 px-6 py-2.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold transition-all hover:scale-105 flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
-                            {selectedSetId === 'basket' ? <ShoppingBag className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
-                          </div>
-                          <span className="text-sm font-semibold text-white">
-                            {selectedSetId === 'basket'
-                              ? (language === 'pl' ? `Koszyk słówek (${basketWords.length} słów)` : `Basket (${basketWords.length} words)`)
-                              : (language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary source')}
-                          </span>
-                        </div>
+                        <BookOpen className="w-4 h-4" />
+                        <span>{language === 'pl' ? 'Zmień źródło słownictwa' : 'Change Vocabulary Source'}</span>
+                        <ChevronRight className="w-4 h-4" />
                       </button>
-                      <div className="mt-2 px-2 text-[10px] text-gray-400 font-medium whitespace-pre-wrap leading-relaxed">
-                        {selectedSetId === 'basket' ? (language === 'pl' ? `Wybrano: Koszyk słówek (Mix ${basketWords.length} słów z lekcji)` : `Selected: Basket (${basketWords.length} words)`) :
-                         selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0 ? (language === 'pl' ? `Gramatyka: ${selectedGrammarTopics.map(t => t.name).join(', ')}` : `Grammar: ${selectedGrammarTopics.map(t => t.name).join(', ')}`) :
-                         selectedSetId === 'all' && selectedLessonIds.length === 0 ? (language === 'pl' ? 'Wybrano: Wszystkie słówka (Mix)' : 'Selected: All vocab') : 
-                         selectedSetId === 'lessons' || selectedLessonIds.length > 0 ? (language === 'pl' ? `Wybrane lekcje: ${vocabularySets.filter(s => selectedLessonIds.includes(s.id)).map(s => s.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()).join(', ')}` : `Selected lessons: ${selectedLessonIds.length}`) : 
-                         specialTasks.find(t => 'special-task-' + t.id === selectedSetId) ? (language === 'pl' ? 'Wybrano: Zadanie specjalne' : 'Selected: Special Task') : ''}
-                      </div>
                     </div>
 
                     {/* SECTION 3: ILOŚĆ ZDAŃ */}
@@ -2628,8 +2880,15 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     
                     <div className={`w-full p-3.5 rounded-xl border flex flex-col items-center text-center ${singleEvaluationResults[activeSentenceIndex].isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
                        <div className="font-bold flex flex-col sm:flex-row items-center justify-between w-full mb-3 text-sm gap-2">
-                         <span className="flex items-center gap-2">
+                         <span className="flex items-center gap-2 flex-wrap">
                            {singleEvaluationResults[activeSentenceIndex].isCorrect ? '✅ Poprawnie!' : '❌ Błędy w tłumaczeniu'}
+                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[11px] font-medium">
+                             <Sparkles className="w-3 h-3 text-cyan-400" />
+                             <span>
+                               {language === 'pl' ? 'Sprawdzone przez: ' : 'Evaluated by: '}
+                               <strong className="text-white font-bold">{formatAIModelName(singleEvaluationResults[activeSentenceIndex].modelUsed)}</strong>
+                             </span>
+                           </span>
                          </span>
                          <span className={`text-xs font-bold font-mono px-2.5 py-1 rounded-lg border ${
                            singleEvaluationResults[activeSentenceIndex].score >= 80 
@@ -2846,6 +3105,22 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                 </div>
               )}
             </div>
+
+            {(evaluationStatuses[activeSentenceIndex] === 'evaluating' || isGeneratingMore) && (
+              <div className="w-full flex justify-center mt-3 animate-fade-in">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-semibold shadow-[0_0_15px_rgba(6,182,212,0.15)]">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
+                  </span>
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>
+                    {language === 'pl' ? 'Wysyłam zapytanie do: ' : 'Sending query to: '}
+                    <strong className="text-white font-bold">{formatAIModelName(activeGeneratingModel)}</strong>
+                  </span>
+                </div>
+              </div>
+            )}
           </Card>
           </div>
 
@@ -2966,9 +3241,17 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               }`}>
                 <div className="space-y-4">
                   <div className="flex justify-between items-start gap-4">
-                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-black/30 rounded text-xs font-mono text-content-muted">
-                      
-                                                      {i18n.t("Zdanie")} {idx + 1}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-black/30 rounded text-xs font-mono text-content-muted">
+                        {i18n.t("Zdanie")} {idx + 1}
+                      </div>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-medium shadow-sm">
+                        <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>
+                          {language === 'pl' ? 'Sprawdzone przez: ' : 'Evaluated by: '}
+                          <strong className="text-white font-semibold">{formatAIModelName(res.modelUsed)}</strong>
+                        </span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className={`text-sm font-bold font-mono ${
