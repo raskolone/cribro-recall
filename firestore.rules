@@ -122,7 +122,7 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['id', 'username', 'role', 'email', 'photoURL', 'streakCount', 'lastStreakDate', 'createdAt', 'loginCount', 'lastLoginDate', 'firstName', 'lastName', 'level', 'description', 'requirePasswordChange', 'tempPassword', 'tempPasswordLogins', 'isSuspended', 'onboardingCompleted', 'hasNewVocabulary', 'aiPrompt']) &&
+      return hasOnlyAllowedFields(['id', 'username', 'role', 'email', 'photoURL', 'streakCount', 'lastStreakDate', 'createdAt', 'loginCount', 'lastLoginDate', 'firstName', 'lastName', 'level', 'description', 'requirePasswordChange', 'tempPassword', 'tempPasswordLogins', 'isSuspended', 'onboardingCompleted', 'hasNewVocabulary', 'hasNewLesson', 'dismissedNotifications', 'translatedSentencesCount', 'aiPrompt']) &&
              validStringLength('username', 1, 100) &&
              validStringLength('email', 0, 100) &&
              data.role in ['admin', 'user', 'admin_student'] &&
@@ -138,6 +138,9 @@ service cloud.firestore {
              (!('isSuspended' in data) || data.isSuspended is bool) &&
              (!('onboardingCompleted' in data) || data.onboardingCompleted is bool) &&
              (!('hasNewVocabulary' in data) || data.hasNewVocabulary is bool) &&
+             (!('hasNewLesson' in data) || data.hasNewLesson is bool) &&
+             (!('dismissedNotifications' in data) || data.dismissedNotifications is list) &&
+             (!('translatedSentencesCount' in data) || data.translatedSentencesCount is number) &&
              (!('aiPrompt' in data) || data.aiPrompt is string) &&
              isValidOptionalString('firstName', 0, 100) &&
              isValidOptionalString('lastName', 0, 100) &&

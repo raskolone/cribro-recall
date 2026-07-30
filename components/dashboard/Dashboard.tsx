@@ -534,11 +534,20 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (user?.role === 'user' && (user?.hasNewLesson || user?.hasNewVocabulary)) {
-      setShowNewVocabModal(true);
+      if (localStorage.getItem(`dismissed_vocab_${user?.id}`) !== 'true') {
+        setShowNewVocabModal(true);
+      }
+    } else {
+      setShowNewVocabModal(false);
     }
-  }, [user?.role, user?.hasNewLesson, user?.hasNewVocabulary]);
+  }, [user?.role, user?.hasNewLesson, user?.hasNewVocabulary, user?.id]);
 
   const handleClearNewLessonFlag = async () => {
+    if (user?.id) {
+      try {
+        localStorage.setItem(`dismissed_vocab_${user.id}`, 'true');
+      } catch (e) {}
+    }
     setShowNewVocabModal(false);
     if (user?.id) {
       try {
