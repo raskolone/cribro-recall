@@ -1602,12 +1602,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
                       {/* Unified Źródło Słownictwa Box (Mobile) */}
                       <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
-                            <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>{language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary source'}</span>
-                          </label>
-                          {basketWords.length > 0 && (
+                        {basketWords.length > 0 && (
+                          <div className="flex items-center justify-end mb-2">
                             <button
                               type="button"
                               onClick={() => setIsBasketModalOpen(true)}
@@ -1616,8 +1612,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               <ShoppingBag className="w-3.5 h-3.5" />
                               <span>{language === 'pl' ? `Koszyk (${basketWords.length})` : `Basket (${basketWords.length})`}</span>
                             </button>
-                          )}
-                        </div>
+                          </div>
+                        )}
                         <button 
                           type="button"
                           onClick={() => setIsLessonSelectorOpen(true)}
@@ -1630,10 +1626,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             <span className="text-sm font-semibold text-white">
                               {selectedSetId === 'basket'
                                 ? (language === 'pl' ? `Koszyk słówek (${basketWords.length} słów)` : `Basket (${basketWords.length} words)`)
-                                : (language === 'pl' ? 'Wybierz lekcje' : 'Choose lessons')}
+                                : (language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary source')}
                             </span>
                           </div>
-                          <ChevronDown className={`w-5 h-5 text-gray-400 group-hover:text-white transition-transform duration-300 ${isLessonSelectorOpen ? 'rotate-180' : ''}`} />
                         </button>
                         <div className="mt-2 px-2 text-[10px] text-gray-400 font-medium whitespace-pre-wrap leading-relaxed">
                           {selectedSetId === 'basket' ? (language === 'pl' ? `Wybrano: Koszyk słówek (Mix ${basketWords.length} słów z lekcji)` : `Selected: Basket (${basketWords.length} words)`) :
@@ -1822,12 +1817,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
                     {/* Unified Źródło Słownictwa Box (Desktop) */}
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
-                          <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>{language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary source'}</span>
-                        </label>
-                        {basketWords.length > 0 && (
+                      {basketWords.length > 0 && (
+                        <div className="flex items-center justify-end mb-2">
                           <button
                             type="button"
                             onClick={() => setIsBasketModalOpen(true)}
@@ -1836,8 +1827,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             <ShoppingBag className="w-3.5 h-3.5" />
                             <span>{language === 'pl' ? `Koszyk (${basketWords.length})` : `Basket (${basketWords.length})`}</span>
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                       <button 
                         type="button"
                         onClick={() => setIsLessonSelectorOpen(true)}
@@ -1850,10 +1841,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <span className="text-sm font-semibold text-white">
                             {selectedSetId === 'basket'
                               ? (language === 'pl' ? `Koszyk słówek (${basketWords.length} słów)` : `Basket (${basketWords.length} words)`)
-                              : (language === 'pl' ? 'Wybierz lekcje' : 'Choose lessons')}
+                              : (language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary source')}
                           </span>
                         </div>
-                        <ChevronDown className={`w-5 h-5 text-gray-400 group-hover:text-white transition-transform duration-300 ${isLessonSelectorOpen ? 'rotate-180' : ''}`} />
                       </button>
                       <div className="mt-2 px-2 text-[10px] text-gray-400 font-medium whitespace-pre-wrap leading-relaxed">
                         {selectedSetId === 'basket' ? (language === 'pl' ? `Wybrano: Koszyk słówek (Mix ${basketWords.length} słów z lekcji)` : `Selected: Basket (${basketWords.length} words)`) :

@@ -53,29 +53,48 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
     const qLessons = query(lessonsRef, orderBy('date', 'desc'));
     const unsubscribeLessons = onSnapshot(qLessons, (snapshot) => {
       const lessonSets: FlashcardSet[] = [];
-      snapshot.forEach(doc => {
+      const validDocs = snapshot.docs.filter(doc => {
+        const d = doc.data();
+        return d.vocabularyText && d.vocabularyText.trim().length > 0;
+      });
+      const totalDocs = validDocs.length;
+      
+      validDocs.forEach((doc, index) => {
         const data = doc.data();
-        if (data.vocabularyText && data.vocabularyText.trim().length > 0) {
-            let rawLines: string[] = [];
-            if (data.vocabularyText.includes('\n')) {
-              rawLines = data.vocabularyText.split('\n');
-            } else {
-              rawLines = data.vocabularyText.split(/[,;]+/);
-            }
-            const vocabList = rawLines.map((i: string) => i.trim()).filter((i: string) => i.length > 0);
-            if (vocabList.length > 0) {
-                lessonSets.push({
-                    id: `lesson_${doc.id}`,
-                    userId: userId,
-                    title: `[Lekcja] ${data.topic || 'Bez tematu'}`,
-                    description: `Słownictwo z lekcji: ${data.date}`,
-                    isPublic: false,
-                    cardCount: vocabList.length,
-                    createdAt: data.createdAt || data.date,
-                    updatedAt: data.date,
-                    isLessonVocabulary: true
-                });
-            }
+        let rawLines: string[] = [];
+        if (data.vocabularyText.includes('\n')) {
+          rawLines = data.vocabularyText.split('\n');
+        } else {
+          rawLines = data.vocabularyText.split(/[,;]+/);
+        }
+        const vocabList = rawLines.map((i: string) => i.trim()).filter((i: string) => i.length > 0);
+        if (vocabList.length > 0) {
+            const rawTopic = data.topic || '';
+            const cleanTopic = rawTopic
+              .replace(/^\[Lekcja\]\s*/i, '')
+              .replace(/^(Lekcja|Lesson)\s*#?\d+[\s:\-–]*/i, '')
+              .replace(/\((Lekcja|Lesson)\s*#?\d+\)\s*/gi, '')
+              .replace(/^Słownictwo\s+z\s+lekcji[\s:\-–]*/i, '')
+              .replace(/^\d+\.\s*/, '')
+              .trim();
+            
+            const title = cleanTopic || data.date || 'Bez tematu';
+            const lessonNum = totalDocs - index;
+
+            lessonSets.push({
+                id: `lesson_${doc.id}`,
+                userId: userId,
+                title: title,
+                description: `Data: ${data.date}`,
+                isPublic: false,
+                cardCount: vocabList.length,
+                createdAt: data.createdAt || data.date,
+                updatedAt: data.date,
+                isLessonVocabulary: true,
+                lessonNumber: lessonNum,
+                lessonDate: data.date,
+                lessonTopic: cleanTopic
+            });
         }
       });
       currentLessonSets = lessonSets;

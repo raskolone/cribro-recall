@@ -699,6 +699,9 @@ const Dashboard: React.FC = () => {
     if (view === 'lesson-history') {
       return <LessonHistoryScreen />;
     }
+    if (view === 'student-stats') {
+      return <StudentStatsScreen />;
+    }
 
     if (view === 'tests') {
       const isTeacherUser = user?.role === 'admin' || user?.role === 'teacher';

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, Library, ClipboardList, Settings, MoreVertical } from 'lucide-react';
+import { LayoutDashboard, Library, ClipboardList, Settings, MoreVertical, BarChart2 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -41,6 +41,7 @@ const MobileTopMenu: React.FC<MobileTopMenuProps> = ({
 
   const navItems = [
     { id: 'dashboard', icon: <LayoutDashboard size={18} />, label: language === 'pl' ? 'Start' : 'Home' },
+    { id: 'student-stats', icon: <BarChart2 size={18} />, label: language === 'pl' ? 'Statystyki' : 'Stats' },
     { id: 'flashcard-sets', icon: <Library size={18} />, label: language === 'pl' ? 'Fiszki' : 'Cards' },
     { id: 'tests', icon: <ClipboardList size={18} />, label: language === 'pl' ? 'Testy' : 'Tests' },
     { id: 'settings', icon: <Settings size={18} />, label: language === 'pl' ? 'Menu' : 'Menu' },

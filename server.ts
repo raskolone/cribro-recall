@@ -6,8 +6,8 @@ import { getAuth } from "firebase-admin/auth";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
 
-async function generateContentWithRetry(aiClient: any, contents: any, config: any) {
-  const models = ['gemini-3.6-flash', 'gemini-3.1-flash-lite'];
+async function generateContentWithRetry(aiClient: any, contents: any, config: any, customModels?: string[]) {
+  const models = customModels || ['gemini-3.1-flash-lite', 'gemini-3.6-flash'];
   let lastError;
   
   for (const model of models) {
@@ -674,6 +674,64 @@ Zwróć JSON z polami:
       res.json(JSON.parse(response.text));
     } catch (err: any) {
       console.error(err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/gemini/student-stats-summary', requireFirebaseAuth, async (req, res) => {
+    try {
+      const { stats, logsSummary, language } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
+      
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const isPl = language !== 'en';
+      const prompt = `Jesteś doświadczonym, empatycznym i wybitnym metodykiem oraz nauczycielem języka angielskiego (ELT Pedagogical Specialist & Language Coach).
+Twoim zadaniem jest przedstawienie kompleksowego, merytorycznego i metodycznego komentarza dla kursanta na podstawie analizy jego wyników w ćwiczeniach językowych.
+
+Oto statystyki liczbowe kursanta:
+- Łączna liczba sesji ćwiczeniowych: ${stats?.totalExercises || 0}
+- Średni wynik procentowy poprawności: ${stats?.averageScore || 0}%
+- Przetłumaczone zdania/słowa: ${stats?.totalWords || 0}
+- Obecny streak (dni nauki z rzędu): ${stats?.currentStreak || 0}
+- Najdłuższy streak: ${stats?.longestStreak || 0}
+
+Oto analiza wykonanych zdań i szczegółowych logów ćwiczeń:
+${logsSummary || "Brak szczegółowych zdań z ćwiczeń."}
+
+Wypełnij poniższe pola w języku ${isPl ? 'polskim' : 'angielskim'}:
+1. "overallTeacherCommentary": Merytoryczny i metodyczny podsumowujący komentarz nauczyciela języka angielskiego (2-3 wartościowe akapity). Odnieś się do konkretnych struktur, które kursant opanował oraz do błędów, które popełnia. Podaj wyjaśnienie dlaczego dany błąd powstaje (np. kalka z języka polskiego, niepoprawny czas, złe przyimki) i jak go unikać. Używaj zachęcającego, profesjonalnego tonu.
+2. "keyStrengths": Tablica 2-4 konkretnych punktów / mocnych stron w opanowaniu angielskiego.
+3. "areasToImprove": Tablica 2-4 konkretnych zagadnień gramatycznych lub leksykalnych do dalszego ćwiczenia.
+4. "pedagogicalTip": 1-2 zdaniowa praktyczna poradnikowa wskazówka metodyczna na nadchodzące sesje.
+
+Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (array of strings), areasToImprove (array of strings), pedagogicalTip (string).`;
+
+      const response = await generateContentWithRetry(ai, prompt, {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            overallTeacherCommentary: { type: Type.STRING },
+            keyStrengths: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            },
+            areasToImprove: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            },
+            pedagogicalTip: { type: Type.STRING }
+          },
+          required: ["overallTeacherCommentary", "keyStrengths", "areasToImprove", "pedagogicalTip"]
+        }
+      });
+      
+      if (!response.text) throw new Error("No response from AI");
+      res.json(JSON.parse(response.text));
+    } catch (err: any) {
+      console.error("Error in student-stats-summary endpoint:", err);
       res.status(500).json({ error: err.message });
     }
   });

@@ -71,11 +71,12 @@ export interface PracticeLog {
   id: string;
   exerciseType: ExerciseType;
   date: string;
-  isRevisionMode: boolean;
+  isRevisionMode?: boolean;
   score?: number;
   totalWords?: number;
   testName?: string;
-  exercisesData?: string;
+  exercisesData?: TranslationEvaluationResult[] | string | any;
+  detailedFeedback?: TranslationEvaluationResult[] | any[];
 }
 
 // New Flashcard Module Types
@@ -90,6 +91,7 @@ export interface FlashcardSet {
   updatedAt: any; // Timestamp
   assignedByTeacher?: boolean;
   isLessonVocabulary?: boolean;
+  lessonNumber?: number;
   lessonDate?: string;
   lessonTopic?: string;
 }
