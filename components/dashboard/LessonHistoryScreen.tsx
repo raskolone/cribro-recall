@@ -6,7 +6,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { LessonRecord, PracticeLog } from '../../types';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import { Calendar, Tag, Sparkles, X, FileText, Clock, Search, BookOpen, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Calendar, Tag, Sparkles, X, FileText, Clock, Search, BookOpen, AlertCircle, ArrowLeft, LayoutGrid, List, ChevronRight } from 'lucide-react';
 import Markdown from 'react-markdown';
 import gsap from 'gsap';
 
@@ -17,6 +17,7 @@ const LessonHistoryScreen: React.FC = () => {
   const [lessons, setLessons] = useState<LessonRecord[]>([]);
   const [practiceLogs, setPracticeLogs] = useState<PracticeLog[]>([]);
   const [activeTab, setActiveTab] = useState<'lessons' | 'sessions'>('lessons');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedLesson, setSelectedLesson] = useState<LessonRecord | null>(null);
   const [selectedLog, setSelectedLog] = useState<PracticeLog | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,7 +112,7 @@ const LessonHistoryScreen: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-24 relative">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">
             {language === 'pl' ? 'Historia i postępy' : 'History & Progress'}
@@ -123,21 +124,55 @@ const LessonHistoryScreen: React.FC = () => {
           </p>
         </div>
         
-        <div className="flex liquid-glass-tile p-1 rounded-lg border border-base-300">
-           <button 
-             onClick={() => setActiveTab('lessons')}
-             className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'lessons' ? 'bg-primary text-black' : 'text-content-muted hover:text-white'}`}
-           >
-             <FileText className="w-4 h-4" />
-             {language === 'pl' ? 'Notatki z lekcji' : 'Lesson Notes'}
-           </button>
-           <button 
-             onClick={() => setActiveTab('sessions')}
-             className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'sessions' ? 'bg-primary text-black' : 'text-content-muted hover:text-white'}`}
-           >
-             <Clock className="w-4 h-4" />
-             {language === 'pl' ? 'Historia Sesji' : 'Session History'}
-           </button>
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+          {/* Grid / List Switcher (Visible when in lessons tab) */}
+          {activeTab === 'lessons' && (
+            <div className="flex items-center gap-1 bg-[#0a0f1a] border border-white/10 p-1 rounded-xl shadow-inner">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  viewMode === 'grid'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-black shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+                title={language === 'pl' ? 'Widok kafelkowy' : 'Tile view'}
+              >
+                <LayoutGrid className="w-4 h-4" />
+                <span>{language === 'pl' ? 'Kafelki' : 'Tiles'}</span>
+              </button>
+
+              <button
+                onClick={() => setViewMode('list')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  viewMode === 'list'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-black shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+                title={language === 'pl' ? 'Widok listy' : 'List view'}
+              >
+                <List className="w-4 h-4" />
+                <span>{language === 'pl' ? 'Lista' : 'List'}</span>
+              </button>
+            </div>
+          )}
+
+          {/* Main Tabs (Lesson Notes vs Session History) */}
+          <div className="flex liquid-glass-tile p-1 rounded-xl border border-white/10">
+             <button 
+               onClick={() => setActiveTab('lessons')}
+               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'lessons' ? 'bg-gradient-to-r from-emerald-500 to-teal-400 text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-content-muted hover:text-white'}`}
+             >
+               <FileText className="w-4 h-4" />
+               {language === 'pl' ? 'Notatki z lekcji' : 'Lesson Notes'}
+             </button>
+             <button 
+               onClick={() => setActiveTab('sessions')}
+               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'sessions' ? 'bg-gradient-to-r from-emerald-500 to-teal-400 text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-content-muted hover:text-white'}`}
+             >
+               <Clock className="w-4 h-4" />
+               {language === 'pl' ? 'Historia Sesji' : 'Session History'}
+             </button>
+          </div>
         </div>
       </div>
 
@@ -158,43 +193,108 @@ const LessonHistoryScreen: React.FC = () => {
                    : 'You do not have any lesson records assigned yet.'}
              </p>
            </div>
-        ) : (
-           <div className="grid grid-cols-1 gap-4">
-           {lessons.map((lesson, index) => {
-             const lessonNumber = lessons.length - index;
-             return (
-             <Card 
-               key={lesson.id} 
-               onClick={() => setSelectedLesson(lesson)}
-               className="p-4 cursor-pointer hover:border-primary/50 transition-colors liquid-glass-tile group flex items-center justify-between"
-             >
-                 <div className="flex items-center gap-4 pr-4">
-                   <div className="w-12 h-12 flex-shrink-0 bg-primary/10 text-primary font-mono font-bold rounded-lg flex items-center justify-center group-hover:bg-primary group-hover:text-black transition-colors">
-                     #{lessonNumber}
-                   </div>
-                   <div className="flex-1 min-w-0">
-                     <h3 className="font-bold text-white text-lg line-clamp-1 group-hover:text-primary transition-colors">
-                       {lesson.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
-                     </h3>
-                     <div className="flex items-center gap-2 text-xs font-mono text-content-muted mt-1">
-                       <Calendar className="w-3.5 h-3.5" />
-                       {new Date(lesson.date).toLocaleDateString()}
-                     </div>
-                   </div>
-                 </div>
-                 <div className="flex items-center gap-4 text-content-muted">
-                    <div className="hidden sm:flex gap-2 flex-wrap">
+        ) : viewMode === 'grid' ? (
+          /* Grid View (Kafelki) - Błyszczące kafelki jak w bazie tematów */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {lessons.map((lesson, index) => {
+              const lessonNumber = lessons.length - index;
+              const vocabCount = lesson.vocabularyText ? getVocabList(lesson.vocabularyText).length : 0;
+              const cleanTopic = lesson.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim();
+
+              return (
+                <div
+                  key={lesson.id}
+                  onClick={() => setSelectedLesson(lesson)}
+                  className="bg-[#0a0e17] border border-white/10 hover:border-emerald-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_36px_rgba(16,185,129,0.25)] rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 relative overflow-hidden group cursor-pointer hover:-translate-y-1.5 min-h-[220px]"
+                >
+                  {/* Glass & Shiny Effects */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                  <div className="absolute -inset-full top-0 block bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 group-hover:animate-shine pointer-events-none" />
+
+                  <div>
+                    {/* Top Row: Lesson Number Badge & Date Pill */}
+                    <div className="flex items-center justify-between mb-4 relative z-10">
+                      <span className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono font-black text-sm flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-black transition-all shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]">
+                        #{lessonNumber}
+                      </span>
+                      <div className="flex items-center gap-1.5 text-xs font-mono text-gray-400 bg-white/5 border border-white/10 px-3 py-1 rounded-full">
+                        <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                        {new Date(lesson.date).toLocaleDateString()}
+                      </div>
+                    </div>
+
+                    {/* Topic Title */}
+                    <h3 className="text-lg font-serif font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-2 mb-3 relative z-10">
+                      {cleanTopic}
+                    </h3>
+
+                    {/* Badges */}
+                    <div className="flex flex-wrap items-center gap-2 mt-2 relative z-10">
                       {lesson.lessonSummary && (
-                        <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-primary/10 text-primary">
-                          <Sparkles className="w-3 h-3" />
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                          <Sparkles className="w-3 h-3 text-emerald-400" />
                           {language === 'pl' ? 'Podsumowanie' : 'Summary'}
                         </span>
                       )}
+                      {vocabCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                          <Tag className="w-3 h-3 text-cyan-400" />
+                          {vocabCount} {language === 'pl' ? 'słów' : 'words'}
+                        </span>
+                      )}
                     </div>
-                 </div>
-             </Card>
-           )})}
-         </div>
+                  </div>
+
+                  {/* Bottom Footer Action */}
+                  <div className="flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:text-emerald-300 mt-5 pt-3 border-t border-white/5 relative z-10">
+                    <span>{language === 'pl' ? 'Zobacz notatki' : 'View notes'}</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform text-emerald-400" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* List View (Lista) */
+          <div className="grid grid-cols-1 gap-4">
+            {lessons.map((lesson, index) => {
+              const lessonNumber = lessons.length - index;
+              const cleanTopic = lesson.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim();
+
+              return (
+              <Card 
+                key={lesson.id} 
+                onClick={() => setSelectedLesson(lesson)}
+                className="p-4 cursor-pointer hover:border-emerald-500/50 transition-colors liquid-glass-tile group flex items-center justify-between"
+              >
+                  <div className="flex items-center gap-4 pr-4">
+                    <div className="w-12 h-12 flex-shrink-0 bg-emerald-500/10 text-emerald-400 font-mono font-bold rounded-xl flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-black transition-colors">
+                      #{lessonNumber}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-white text-lg line-clamp-1 group-hover:text-emerald-400 transition-colors">
+                        {cleanTopic}
+                      </h3>
+                      <div className="flex items-center gap-2 text-xs font-mono text-content-muted mt-1">
+                        <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                        {new Date(lesson.date).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-content-muted">
+                     <div className="hidden sm:flex gap-2 flex-wrap">
+                       {lesson.lessonSummary && (
+                         <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                           <Sparkles className="w-3 h-3" />
+                           {language === 'pl' ? 'Podsumowanie' : 'Summary'}
+                         </span>
+                       )}
+                     </div>
+                     <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform text-emerald-400" />
+                  </div>
+              </Card>
+            )})}
+          </div>
         )
       ) : (
          practiceLogs.length === 0 ? (

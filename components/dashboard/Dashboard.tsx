@@ -30,6 +30,7 @@ import { OnboardingTour } from './OnboardingTour';
 import LessonHistoryScreen from './LessonHistoryScreen';
 import StudentTestsScreen from '../tests/StudentTestsScreen';
 import StudentStatsScreen from './StudentStatsScreen';
+import NewVocabularyModal from './NewVocabularyModal';
 import { useAuth } from '../../context/AuthContext';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { useFlashcards } from '../../context/FlashcardContext';
@@ -529,6 +530,33 @@ const Dashboard: React.FC = () => {
 
   const contentRef = useRef<HTMLDivElement>(null);
 
+  const [showNewVocabModal, setShowNewVocabModal] = useState(false);
+
+  useEffect(() => {
+    if (user?.role === 'user' && (user?.hasNewLesson || user?.hasNewVocabulary)) {
+      setShowNewVocabModal(true);
+    }
+  }, [user?.role, user?.hasNewLesson, user?.hasNewVocabulary]);
+
+  const handleClearNewLessonFlag = async () => {
+    setShowNewVocabModal(false);
+    if (user?.id) {
+      try {
+        await updateDoc(doc(db, 'users', user.id), {
+          hasNewLesson: false,
+          hasNewVocabulary: false
+        });
+      } catch (e) {
+        console.error("Failed to clear hasNewLesson", e);
+      }
+    }
+  };
+
+  const handleViewNewVocabulary = async () => {
+    await handleClearNewLessonFlag();
+    changeView('lesson-history');
+  };
+
   useEffect(() => {
     if (contentRef.current) {
       gsap.fromTo(contentRef.current, 
@@ -879,6 +907,11 @@ const Dashboard: React.FC = () => {
         onCancel={closeConfirm}
         confirmText={language === 'pl' ? 'Potwierdź' : 'Confirm'}
         cancelText={language === 'pl' ? 'Anuluj' : 'Cancel'}
+      />
+      <NewVocabularyModal 
+        isOpen={showNewVocabModal}
+        onClose={handleClearNewLessonFlag}
+        onViewHistory={handleViewNewVocabulary}
       />
     </div>
   );

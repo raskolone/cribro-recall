@@ -96,6 +96,16 @@ export async function createLessonRecordWithVocabularySet(input: {
   await setDoc(recordRef, recordData);
   await setDoc(setRef, setData);
 
+  // Mark student user record as having a new lesson & new vocabulary for notification popups & badges
+  try {
+    await updateDoc(doc(db, 'users', input.studentId), {
+      hasNewLesson: true,
+      hasNewVocabulary: true
+    });
+  } catch (e) {
+    console.warn("Could not set hasNewLesson on user doc:", e);
+  }
+
   // 4. Extract vocabulary as a dedicated FlashcardSet
   if (input.vocabularyText && input.vocabularyText.trim().length > 0) {
     try {

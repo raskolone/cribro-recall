@@ -12,7 +12,7 @@ import {
   signInAnonymously,
   linkWithPopup
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -35,45 +35,55 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isAuthReady, setIsAuthReady] = useState(false);
 
   useEffect(() => {
+    let userUnsub: (() => void) | null = null;
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (userUnsub) {
+        userUnsub();
+        userUnsub = null;
+      }
+
       if (firebaseUser) {
         try {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
           
-          if (userDoc.exists()) {
-            let data = userDoc.data();
-            if (data.isSuspended) {
-              alert("Twoje konto zostało zawieszone.");
-              await signOut(auth);
-              setUser(null);
-              setIsAuthReady(true);
-              return;
+          userUnsub = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+              let data = docSnap.data();
+              if (data.isSuspended) {
+                alert("Twoje konto zostało zawieszone.");
+                signOut(auth);
+                setUser(null);
+                setIsAuthReady(true);
+                return;
+              }
+              if (firebaseUser.email && firebaseUser.email.toLowerCase().includes('maciej.wyrozumski') && data.role !== 'admin') {
+                data.role = 'admin';
+                updateDoc(userDocRef, { role: 'admin' }).catch(() => {});
+              }
+              setUser({ id: firebaseUser.uid, ...data } as User);
+            } else {
+              const defaultName = firebaseUser.isAnonymous ? 'Demo User' : (firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User'));
+              const email = firebaseUser.email || '';
+              const role = email === 'maciej.wyrozumski@gmail.com' ? 'admin' : 'user';
+              
+              const newUser: User = {
+                id: firebaseUser.uid,
+                username: defaultName,
+                email: email,
+                role: role,
+                photoURL: firebaseUser.photoURL || undefined
+              };
+              
+              setDoc(userDocRef, newUser).catch(console.error);
+              setUser(newUser);
             }
-            if (firebaseUser.email && firebaseUser.email.toLowerCase().includes('maciej.wyrozumski') && data.role !== 'admin') {
-              data.role = 'admin';
-              try {
-                await updateDoc(userDocRef, { role: 'admin' });
-              } catch(e) {}
-            }
-            setUser({ id: firebaseUser.uid, ...data } as User);
-          } else {
-            // Create user document
-            const defaultName = firebaseUser.isAnonymous ? 'Demo User' : (firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User'));
-            const email = firebaseUser.email || '';
-            const role = email === 'maciej.wyrozumski@gmail.com' ? 'admin' : 'user';
-            
-            const newUser: User = {
-              id: firebaseUser.uid,
-              username: defaultName,
-              email: email,
-              role: role,
-              photoURL: firebaseUser.photoURL || undefined
-            };
-            
-            await setDoc(userDocRef, newUser);
-            setUser(newUser);
-          }
+            setIsAuthReady(true);
+          }, (err) => {
+            console.error("User snapshot error:", err);
+            setIsAuthReady(true);
+          });
+
         } catch (error: any) {
           console.error("Error loading user profile from firestore:", error);
           const fallbackEmail = firebaseUser.email || '';
@@ -83,14 +93,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             email: fallbackEmail,
             role: fallbackEmail === 'maciej.wyrozumski@gmail.com' ? 'admin' : 'user'
           });
+          setIsAuthReady(true);
         }
       } else {
         setUser(null);
+        setIsAuthReady(true);
       }
-      setIsAuthReady(true);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (userUnsub) userUnsub();
+    };
   }, []);
 
   const login = async () => {

@@ -40,12 +40,13 @@ const NavLink: React.FC<{
   isActive: boolean;
   icon?: React.ReactNode;
   isCollapsed?: boolean;
+  className?: string;
   children: React.ReactNode;
-}> = ({ id, onClick, isActive, icon, isCollapsed, children }) => (
+}> = ({ id, onClick, isActive, icon, isCollapsed, className = '', children }) => (
   <button id={id}
     onClick={onClick}
     title={isCollapsed ? (typeof children === 'string' ? children : undefined) : undefined}
-    className={`group relative z-10 hover:z-20 w-full flex items-center ${isCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border ${isActive ? 'bg-primary/10 border-primary/20 text-primary shadow-[0_0_15px_rgba(114,240,180,0.15)]' : 'text-content-muted border-transparent hover:bg-white/5 hover:border-white/10 hover:text-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]'} active:scale-[0.98]`}
+    className={`group relative z-10 hover:z-20 w-full flex items-center ${isCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border ${isActive ? 'bg-primary/10 border-primary/20 text-primary shadow-[0_0_15px_rgba(114,240,180,0.15)]' : 'text-content-muted border-transparent hover:bg-white/5 hover:border-white/10 hover:text-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]'} active:scale-[0.98] ${className}`}
   >
     {icon && (
       <div className={`flex items-center justify-center transition-transform duration-300 ${isCollapsed ? 'mr-3 md:mr-0' : 'mr-3'} group-hover:scale-110 group-hover:text-primary ${isActive ? 'scale-110 text-primary' : ''}`}>
@@ -178,24 +179,31 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               {language === 'pl' ? 'Statystyki' : 'Statistics'}
           </NavLink>
 
-          <NavLink id="tour-history" icon={
-            <div className="relative">
-              <History size={20} className={user?.hasNewLesson ? "text-primary animate-pulse" : ""} />
-              {user?.hasNewLesson && (
-                <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-black"></span>
-                </span>
-              )}
-            </div>
-          } isCollapsed={isDesktopCollapsed} onClick={() => {
-            if (user?.hasNewLesson && user?.id) {
-               import('firebase/firestore').then(({ doc, updateDoc }) => {
-                 updateDoc(doc(db, 'users', user.id), { hasNewLesson: false }).catch(console.error);
-               });
-            }
-            handleNavigate('lesson-history');
-          }} isActive={currentView === 'lesson-history'}>
+          <NavLink 
+            id="tour-history" 
+            className={user?.hasNewLesson ? "!bg-emerald-500/20 !text-emerald-300 !border-emerald-500/60 shadow-[0_0_25px_rgba(16,185,129,0.4)] animate-pulse font-extrabold" : ""}
+            icon={
+              <div className="relative">
+                <History size={20} className={user?.hasNewLesson ? "text-emerald-400 animate-pulse drop-shadow-[0_0_10px_rgba(16,185,129,0.9)] scale-110" : ""} />
+                {user?.hasNewLesson && (
+                  <span className="absolute -top-2 -right-2 flex h-5 w-5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-90"></span>
+                    <span className="relative inline-flex rounded-full h-5 w-5 bg-emerald-500 border-2 border-black items-center justify-center text-[8px] font-black text-black shadow-[0_0_12px_rgba(16,185,129,0.9)]">N</span>
+                  </span>
+                )}
+              </div>
+            } 
+            isCollapsed={isDesktopCollapsed} 
+            onClick={() => {
+              if ((user?.hasNewLesson || user?.hasNewVocabulary) && user?.id) {
+                 import('firebase/firestore').then(({ doc, updateDoc }) => {
+                   updateDoc(doc(db, 'users', user.id), { hasNewLesson: false, hasNewVocabulary: false }).catch(console.error);
+                 });
+              }
+              handleNavigate('lesson-history');
+            }} 
+            isActive={currentView === 'lesson-history'}
+          >
               {language === 'pl' ? 'Historia lekcji' : 'Lesson History'}
           </NavLink>
           <NavLink 
