@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 
@@ -11,20 +14,36 @@ interface AssignedTasksProps {
 const AssignedTasks: React.FC<AssignedTasksProps> = ({ onStudySet }) => {
   const { sets } = useFlashcards();
   const { language } = useLanguage();
+  const { user } = useAuth();
   
   const [checkedSets, setCheckedSets] = useState<string[]>(() => {
     try {
-      return JSON.parse((function(){ try { return localStorage.getItem('checked_sets'); } catch(e) { return null; } })() || '[]');
+      const local = JSON.parse(localStorage.getItem('checked_sets') || '[]');
+      const dismissed = user?.dismissedNotifications || [];
+      return Array.from(new Set([...local, ...dismissed]));
     } catch {
-      return [];
+      return user?.dismissedNotifications || [];
     }
   });
 
-  const handleCheckSet = (setId: string) => {
+  const handleCheckSet = async (setId: string) => {
     if (!checkedSets.includes(setId)) {
-      const updated = [...checkedSets, setId];
+      const updated = Array.from(new Set([...checkedSets, setId]));
       setCheckedSets(updated);
-      (function(){ try { localStorage.setItem('checked_sets', JSON.stringify(updated)); } catch(e) {} })();
+      try {
+        localStorage.setItem('checked_sets', JSON.stringify(updated));
+      } catch(e) {}
+
+      if (user?.id) {
+        try {
+          const dismissed = user.dismissedNotifications || [];
+          if (!dismissed.includes(setId)) {
+            await updateDoc(doc(db, 'users', user.id), {
+              dismissedNotifications: [...dismissed, setId]
+            });
+          }
+        } catch(e) {}
+      }
     }
   };
 

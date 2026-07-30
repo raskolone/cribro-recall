@@ -112,8 +112,16 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     return last;
   }, [sets, sessions]);
 
-  const isRecent = (dateStr: any) => {
-    if (!dateStr) return false;
+  const isRecent = (set: FlashcardSet) => {
+    if (!set || !set.createdAt) return false;
+    const dismissed = user?.dismissedNotifications || [];
+    let checkedSets: string[] = [];
+    try {
+      checkedSets = JSON.parse(localStorage.getItem('checked_sets') || '[]');
+    } catch(e) {}
+    if (dismissed.includes(set.id) || checkedSets.includes(set.id)) return false;
+
+    const dateStr = set.createdAt;
     const date = typeof dateStr === 'string' ? new Date(dateStr) : (dateStr.toDate ? dateStr.toDate() : new Date());
     if (isNaN(date.getTime())) return false;
     const diffDays = Math.ceil(Math.abs(Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
@@ -148,7 +156,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
 
     return (
       <div key={set.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-base-200/50 p-4 rounded-xl border border-white/5 hover:border-amber-500/30 transition-colors gap-4 relative overflow-hidden">
-        {isRecent(set.createdAt) && (
+        {isRecent(set) && (
            <div className="absolute top-0 right-0 px-2 py-1 bg-amber-500 text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 animate-pulse">
              {language === 'pl' ? 'Nowe' : 'New'}
            </div>
@@ -207,7 +215,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
 
     return (
       <Card key={set.id} className="flex flex-col h-full hover:border-primary/50 transition-colors group relative overflow-hidden">
-        {isRecent(set.createdAt) && (
+        {isRecent(set) && (
            <div className="absolute top-0 right-0 px-2 py-1 bg-secondary text-secondary-content text-[10px] font-bold uppercase rounded-bl-lg z-10 animate-pulse">
              {language === 'pl' ? 'Nowe' : 'New'}
            </div>

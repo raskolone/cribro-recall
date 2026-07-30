@@ -19,6 +19,13 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate 
   const { sets } = useFlashcards();
   const [tests, setTests] = useState<StudentTest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [localDismissed, setLocalDismissed] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('checked_sets') || '[]');
+    } catch {
+      return [];
+    }
+  });
 
   useEffect(() => {
     if (user?.id && user?.role === 'user') {
@@ -41,12 +48,12 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate 
 
   if (loading || !user || user.role !== 'user') return null;
 
-  const dismissed = user.dismissedNotifications || [];
+  const dismissed = Array.from(new Set([...(user.dismissedNotifications || []), ...localDismissed]));
 
   // Filter out sets assigned by teacher that haven't been dismissed
   const assignedSets = sets.filter(s => s.assignedByTeacher && !dismissed.includes(s.id));
   
-  // Filter out pending tests that haven't been dismissed (or maybe all tests that are not dismissed? A pending test is best)
+  // Filter out pending tests that haven't been dismissed
   const assignedTests = tests.filter(t => t.status === 'pending' && !dismissed.includes(t.id));
 
   const items = [
@@ -60,25 +67,38 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate 
 
   const handleDismiss = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
+    const newLocal = Array.from(new Set([...localDismissed, id]));
+    setLocalDismissed(newLocal);
+    try {
+      localStorage.setItem('checked_sets', JSON.stringify(newLocal));
+    } catch(e) {}
+
     if (!user?.id) return;
     
-    const updatedDismissed = [...dismissed, id];
+    const updatedDismissed = Array.from(new Set([...(user.dismissedNotifications || []), ...newLocal]));
     try {
       await updateDoc(doc(db, 'users', user.id), {
         dismissedNotifications: updatedDismissed
       });
-      // Context user will update automatically if it's subscribed, or we might need to rely on local state to hide it instantly.
     } catch (err) {
       console.error('Failed to dismiss', err);
     }
   };
 
   const handleClick = async (id: string, view: string) => {
-    // Optionally dismiss when clicking through? The user said "kliknięciu w przejdź lub X ma zniknąć"
+    const newLocal = Array.from(new Set([...localDismissed, id]));
+    setLocalDismissed(newLocal);
+    try {
+      localStorage.setItem('checked_sets', JSON.stringify(newLocal));
+    } catch(e) {}
+
     if (user?.id) {
-       await updateDoc(doc(db, 'users', user.id), {
-          dismissedNotifications: [...dismissed, id]
-       });
+       const updatedDismissed = Array.from(new Set([...(user.dismissedNotifications || []), ...newLocal]));
+       try {
+         await updateDoc(doc(db, 'users', user.id), {
+            dismissedNotifications: updatedDismissed
+         });
+       } catch(err) {}
     }
     onNavigate(view);
   };
