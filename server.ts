@@ -101,14 +101,18 @@ export async function createApp() {
       return;
     }
     
-    const idToken = authHeader.slice(7);
+    const idToken = authHeader.slice(7).trim();
+    if (!idToken || idToken === 'null' || idToken === 'undefined') {
+      res.status(401).json({ error: 'Missing or empty Bearer token' });
+      return;
+    }
     try {
       const decodedToken = await adminAuth.verifyIdToken(idToken);
       (req as any).userUid = decodedToken.uid;
       (req as any).userEmail = decodedToken.email;
       next();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.warn('Auth token verification failed:', err.message);
       res.status(401).json({ error: 'Invalid or expired token' });
     }
   }
@@ -120,7 +124,11 @@ export async function createApp() {
       return;
     }
     
-    const idToken = authHeader.slice(7);
+    const idToken = authHeader.slice(7).trim();
+    if (!idToken || idToken === 'null' || idToken === 'undefined') {
+      res.status(401).json({ error: 'Missing or empty Bearer token' });
+      return;
+    }
     try {
       // Very simple admin check: decode token using Admin SDK (easier than manually parsing with JWKS here)
       // Actually, if we use Admin SDK, we don't strictly *need* JWKS, adminAuth.verifyIdToken does exactly that securely.
@@ -136,8 +144,8 @@ export async function createApp() {
       
       (req as any).adminUid = decodedToken.uid;
       next();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.warn('Admin Auth token verification failed:', err.message);
       res.status(401).json({ error: 'Invalid or expired token' });
     }
   }
