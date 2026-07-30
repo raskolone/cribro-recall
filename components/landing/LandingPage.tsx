@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import gsap from 'gsap';
+
 import Button from '../ui/Button';
 import Typewriter from './Typewriter';
 import { useLanguage } from '../../context/LanguageContext';
@@ -40,14 +40,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (containerRef.current && containerRef.current.children.length > 0) {
-      gsap.fromTo(gsap.utils.toArray(containerRef.current.children), 
-        { opacity: 0, y: 30 },
-        { opacity: 1, y: 0, duration: 0.8, stagger: 0.15, ease: 'power3.out', clearProps: 'all' }
-      );
-    }
-  }, []);
+  
 
   return (
     <div className="min-h-screen text-content relative overflow-hidden font-sans bg-transparent flex items-center">

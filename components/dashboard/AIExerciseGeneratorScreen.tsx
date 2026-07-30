@@ -357,7 +357,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   // Vocabulary Basket State
   const [basketWords, setBasketWords] = useState<BasketWordItem[]>(() => {
     try {
-      const saved = localStorage.getItem('ai_vocab_basket');
+      const saved = (function(){ try { return localStorage.getItem('ai_vocab_basket'); } catch(e) { return null; } })();
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -368,7 +368,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
   useEffect(() => {
     try {
-      localStorage.setItem('ai_vocab_basket', JSON.stringify(basketWords));
+      (function(){ try { localStorage.setItem('ai_vocab_basket', JSON.stringify(basketWords)); } catch(e) {} })();
     } catch (e) {
       console.error(e);
     }
@@ -505,11 +505,11 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [additionalInstructions, setAdditionalInstructions] = useState<string>('');
   const [testName, setTestName] = useState<string>('');
   const [customGenPrompt, setCustomGenPrompt] = useState<string>(() => {
-    return localStorage.getItem('ai_custom_gen_prompt') || DEFAULT_GENERATION_PROMPT;
+    return (function(){ try { return localStorage.getItem('ai_custom_gen_prompt'); } catch(e) { return null; } })() || DEFAULT_GENERATION_PROMPT;
   });
   const [evaluationStrictness, setEvaluationStrictness] = useState<'normal' | 'strict' | 'loose'>('normal');
   const [customEvalPrompt, setCustomEvalPrompt] = useState<string>(() => {
-    return localStorage.getItem('ai_custom_eval_prompt') || DEFAULT_EVALUATION_PROMPT;
+    return (function(){ try { return localStorage.getItem('ai_custom_eval_prompt'); } catch(e) { return null; } })() || DEFAULT_EVALUATION_PROMPT;
   });
 
   const [confirmModalState, setConfirmModalState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({
@@ -732,8 +732,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   }, [step, evaluationResults]);
 
   const handleSavePrompts = () => {
-    localStorage.setItem('ai_custom_gen_prompt', customGenPrompt);
-    localStorage.setItem('ai_custom_eval_prompt', customEvalPrompt);
+    (function(){ try { localStorage.setItem('ai_custom_gen_prompt', customGenPrompt); } catch(e) {} })();
+    (function(){ try { localStorage.setItem('ai_custom_eval_prompt', customEvalPrompt); } catch(e) {} })();
     alert(language === 'pl' ? 'Prompty zostały pomyślnie zapisane!' : 'Prompts saved successfully!');
   };
 
@@ -741,8 +741,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     if (window.confirm(language === 'pl' ? 'Czy na pewno chcesz zresetować prompty do domyślnych?' : 'Are you sure you want to reset prompts to default?')) {
       setCustomGenPrompt(DEFAULT_GENERATION_PROMPT);
       setCustomEvalPrompt(DEFAULT_EVALUATION_PROMPT);
-      localStorage.removeItem('ai_custom_gen_prompt');
-      localStorage.removeItem('ai_custom_eval_prompt');
+      (function(){ try { localStorage.removeItem('ai_custom_gen_prompt'); } catch(e) {} })();
+      (function(){ try { localStorage.removeItem('ai_custom_eval_prompt'); } catch(e) {} })();
     }
   };
 

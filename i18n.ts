@@ -3,7 +3,12 @@ import { initReactI18next } from 'react-i18next';
 import en from './en.json';
 import pl from './pl.json';
 
-const savedLang = localStorage.getItem('app_language') || 'pl';
+let savedLang = 'pl';
+try {
+  savedLang = localStorage.getItem('app_language') || 'pl';
+} catch (e) {
+  console.warn('localStorage access denied, falling back to default language');
+}
 
 i18n
   .use(initReactI18next)
@@ -20,7 +25,11 @@ i18n
   });
 
 i18n.on('languageChanged', (lng) => {
-  localStorage.setItem('app_language', lng);
+  try {
+    localStorage.setItem('app_language', lng);
+  } catch (e) {
+    console.warn('localStorage access denied');
+  }
 });
 
 export default i18n;

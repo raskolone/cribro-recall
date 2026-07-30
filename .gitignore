@@ -15,7 +15,6 @@ lerna-debug.log*
 .env.production.local
 
 node_modules
-dist
 *.local
 
 # Editor directories and files

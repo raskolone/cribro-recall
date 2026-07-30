@@ -15,7 +15,7 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <ErrorBoundary><App /></ErrorBoundary>
     </ErrorBoundary>
   </React.StrictMode>
 );

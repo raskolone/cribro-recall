@@ -7,7 +7,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
 
 async function generateContentWithRetry(aiClient: any, contents: any, config: any, customModels?: string[]) {
-  const models = customModels || ['gemini-3.6-flash', 'gemini-3.1-pro-preview'];
+  const models = customModels || ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash'];
   let lastError;
   
   for (const model of models) {
@@ -886,7 +886,8 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
       };
 
       if (!isReasoner) {
-        bodyPayload.response_format = { type: "json_object" };
+        // DeepSeek is often unstable with response_format, we can rely on standard prompt instruction.
+        // bodyPayload.response_format = { type: "json_object" };
       }
 
       const response = await fetch("https://api.deepseek.com/chat/completions", {

@@ -540,7 +540,7 @@ const Dashboard: React.FC = () => {
 
   const [checkedSets, setCheckedSets] = useState<string[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem('checked_sets') || '[]');
+      return JSON.parse((function(){ try { return localStorage.getItem('checked_sets'); } catch(e) { return null; } })() || '[]');
     } catch {
       return [];
     }
@@ -549,7 +549,7 @@ const Dashboard: React.FC = () => {
   const handleCheckSet = (setId: string) => {
     const updated = [...checkedSets, setId];
     setCheckedSets(updated);
-    localStorage.setItem('checked_sets', JSON.stringify(updated));
+    (function(){ try { localStorage.setItem('checked_sets', JSON.stringify(updated)); } catch(e) {} })();
   };
 
   useEffect(() => {

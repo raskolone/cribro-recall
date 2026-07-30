@@ -60,7 +60,7 @@ const getAI = () => {
 };
 
 const generateContentWithFallback = async (params: any) => {
-  const models = params.preferredModels || ['gemini-3.6-flash', 'gemini-3.1-pro-preview'];
+  const models = params.preferredModels || ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash'];
   const { preferredModels, ...apiParams } = params;
   let lastError;
   for (const model of models) {
@@ -84,7 +84,8 @@ const generateContentWithFallback = async (params: any) => {
       if (e?.message?.includes("timed out")) continue;
       if (String(e?.status) === "404" || String(e?.status) === "503" || String(e?.status) === "429" || e?.message?.includes("503") || e?.message?.includes("429")) continue;
       if (String(e?.status) === "400" && e?.message?.includes("not found")) continue;
-      if (String(e?.status) === "400") throw e;
+      // Allow it to fall back on 400 as well, it might be a schema mismatch that another model handles better
+      continue;
     }
   }
   throw lastError;
@@ -102,8 +103,15 @@ const callDeepSeek = async (prompt: string, systemInstruction: string, model: st
   });
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(`DeepSeek API error: ${res.status} - ${errorData.error || res.statusText}`);
+    let errorText = res.statusText;
+    try {
+      const errorData = await res.json();
+      errorText = errorData.error || errorText;
+    } catch {
+      const rawText = await res.text().catch(() => '');
+      errorText = rawText ? `Raw: ${rawText.substring(0, 100)}` : errorText;
+    }
+    throw new Error(`DeepSeek API error: ${res.status} - ${errorText}`);
   }
 
   const data = await res.json();
@@ -141,7 +149,7 @@ const generateTextWithUnifiedFallback = async (
       lastError = error;
     }
   }
-  throw lastError;
+  throw lastError || new Error("All models failed without providing an error message.");
 };
 
 const vocabularySchema = {
@@ -311,7 +319,7 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
     try {
       const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: The goal of this exercise is just to familiarize the user with the material, so split the sentence into LONGER chunks (2-5 words per chunk). Do NOT split into single words. Keep logical phrases together (e.g., 'I have been', 'to the store'). For sentences above 10 words, divide them into a MAXIMUM of 5 chunks.";
       
-      const preferredModels = ['deepseek-chat', 'gemini-3.6-flash', 'gemini-3.1-pro-preview'];
+      const preferredModels = ['deepseek-chat', 'gemini-2.5-flash', 'gemini-2.5-pro'];
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: sentenceGeneratorSchema,
@@ -436,7 +444,7 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
     try {
       const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.";
       
-      const preferredModels = ['deepseek-v4-pro', 'deepseek-reasoner', 'deepseek-chat', 'gemini-3.1-pro-preview', 'gemini-3.6-flash'];
+      const preferredModels = ['deepseek-reasoner', 'deepseek-chat', 'gemini-2.5-flash', 'gemini-2.5-pro'];
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: evaluationResultSchema,
@@ -464,6 +472,14 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
         evalList = parsedRaw;
       } else if (parsedRaw && Array.isArray(parsedRaw.evaluations)) {
         evalList = parsedRaw.evaluations;
+      }
+
+      if (!evalList || evalList.length !== exercises.length) {
+        console.warn(`Attempt ${attempt}: Evaluation length mismatch. Expected ${exercises.length}, got ${evalList?.length || 0}. Retrying...`);
+        if (attempt === MAX_RETRIES) {
+          throw new Error("AI returned invalid evaluation format.");
+        }
+        continue;
       }
 
       const results: TranslationEvaluationResult[] = exercises.map((ex, i) => {
@@ -809,7 +825,7 @@ Dla "fill_in_blank":
 
   try {
     const systemInstruction = "Jesteś zaawansowanym asystentem lektora języka angielskiego. Skupiasz się na poprawności merytorycznej i dostarczasz poprawny JSON.";
-    const preferredModels = ['deepseek-chat', 'gemini-3.6-flash', 'gemini-3.1-pro-preview'];
+    const preferredModels = ['deepseek-chat', 'gemini-2.5-flash', 'gemini-2.5-pro'];
     const geminiConfig = {
       responseMimeType: "application/json",
     };

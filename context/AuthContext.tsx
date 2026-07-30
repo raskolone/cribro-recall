@@ -174,7 +174,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const credential = GoogleAuthProvider.credentialFromResult(result);
       
       if (credential?.accessToken) {
-        localStorage.setItem('google_workspace_access_token', credential.accessToken);
+        (function(){ try { localStorage.setItem('google_workspace_access_token', credential.accessToken); } catch(e) {} })();
         return credential.accessToken;
       }
       throw new Error('No access token received');

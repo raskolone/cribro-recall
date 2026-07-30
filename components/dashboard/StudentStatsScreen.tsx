@@ -359,7 +359,7 @@ const StudentStatsScreen: React.FC = () => {
       const data = await res.json();
       setAiAnalysis(data);
       // Cache in localStorage
-      localStorage.setItem(`ai_teacher_stats_${user?.id}`, JSON.stringify({ data, timestamp: Date.now() }));
+      (function(){ try { localStorage.setItem(`ai_teacher_stats_${user?.id}`, JSON.stringify({ data, timestamp: Date.now() })); } catch(e) {} })();
     } catch (err: any) {
       console.error(err);
       setAiError(language === 'pl' ? 'Nie udało się pobrać komentarza nauczyciela AI.' : 'Could not fetch AI teacher commentary.');
@@ -370,7 +370,7 @@ const StudentStatsScreen: React.FC = () => {
 
   useEffect(() => {
     if (user?.id && logs.length > 0 && !aiAnalysis && !isAiLoading) {
-      const cached = localStorage.getItem(`ai_teacher_stats_${user.id}`);
+      const cached = (function(){ try { return localStorage.getItem(`ai_teacher_stats_${user.id}`); } catch(e) { return null; } })();
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
