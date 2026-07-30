@@ -232,6 +232,12 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks,
 
     const semanticChunking = (sentence: string): string[] => {
       const words = sentence.trim().split(/\s+/);
+      
+      // Jeżeli zdanie jest krótkie (np. do 8 słów), rozbijamy je na każde słowo z osobna.
+      if (words.length <= 8) {
+        return words;
+      }
+
       const chunks: string[] = [];
       let currentChunk: string[] = [];
       

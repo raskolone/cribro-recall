@@ -60,7 +60,7 @@ const getAI = () => {
 };
 
 const generateContentWithFallback = async (params: any) => {
-  const models = params.preferredModels || ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash'];
+  const models = params.preferredModels || ['gemini-3.6-flash', 'gemini-3.1-pro-preview'];
   const { preferredModels, ...apiParams } = params;
   let lastError;
   for (const model of models) {
@@ -284,6 +284,7 @@ CRITICAL: The Polish translations MUST be perfectly natural, logically coherent,
 
 RULES FOR SENTENCE GENERATION:
 - CONTEXT: Sentences MUST sound like real-world communication relevant to the provided vocabulary (e.g., casual, technical, business, everyday conversation).
+- LENGTH: Maximum sentence length is 16 words, regardless of the level. Do not exceed 16 words for the entire sentence.
 - NATURALNESS: Never force multiple target words into a single sentence if it sounds awkward. Use MAXIMUM 1 target word per sentence.
 - GRAMMAR & STYLE: Use modern, natural English. Avoid academic, bizarre, or forced phrasing. The Polish translation MUST also be perfectly natural.
 - VARIETY: Use diverse sentence structures (mix conditionals, modal verbs, different tenses, and sentence lengths).
@@ -319,7 +320,7 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
     try {
       const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: The goal of this exercise is just to familiarize the user with the material, so split the sentence into LONGER chunks (2-5 words per chunk). Do NOT split into single words. Keep logical phrases together (e.g., 'I have been', 'to the store'). For sentences above 10 words, divide them into a MAXIMUM of 5 chunks.";
       
-      const preferredModels = ['deepseek-chat', 'gemini-2.5-flash', 'gemini-2.5-pro'];
+      const preferredModels = ['deepseek-chat', 'gemini-3.6-flash', 'gemini-3.1-pro-preview'];
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: sentenceGeneratorSchema,
@@ -414,8 +415,10 @@ GRADING RUBRIC (Total Score: 100%):
 
 IMPORTANT GRADING RULES:
 - If the student's input is a completely valid, natural English translation, award high or full marks (85-100%). Do NOT unfairly penalize for valid synonyms or natural phrasing variations.
+- CRITICAL: If the student's input is a random string (e.g. "asdf"), completely wrong, irrelevant, missing ("(brak odpowiedzi)"), or in the wrong language, you MUST assign: meaning_score: 0, grammar_score: 0, vocabulary_score: 0, score: 0, and is_correct: false.
+- Deduct points for grammar errors, wrong vocabulary, or missing words.
 - Calculate total score = meaning_score + grammar_score + vocabulary_score.
-- Set is_correct to true if total score >= 75 or if the answer is functionally correct.
+- Set is_correct to true ONLY if total score >= 75 AND the core meaning is preserved.
 
 FEEDBACK REQUIREMENTS (CRITICAL):
 If the answer is NOT perfect (score < 100), you MUST provide:
@@ -444,7 +447,7 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
     try {
       const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.";
       
-      const preferredModels = ['deepseek-reasoner', 'deepseek-chat', 'gemini-2.5-flash', 'gemini-2.5-pro'];
+      const preferredModels = ['deepseek-reasoner', 'deepseek-chat', 'gemini-3.6-flash', 'gemini-3.1-pro-preview'];
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: evaluationResultSchema,
@@ -656,7 +659,7 @@ export const generateImageForTerm = async (term: string, context?: string): Prom
   
   try {
     const response = await getAI().models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-flash-lite-image",
       contents: { parts: [{ text: prompt }] },
       config: {
         imageConfig: {
@@ -825,7 +828,7 @@ Dla "fill_in_blank":
 
   try {
     const systemInstruction = "Jesteś zaawansowanym asystentem lektora języka angielskiego. Skupiasz się na poprawności merytorycznej i dostarczasz poprawny JSON.";
-    const preferredModels = ['deepseek-chat', 'gemini-2.5-flash', 'gemini-2.5-pro'];
+    const preferredModels = ['deepseek-chat', 'gemini-3.6-flash', 'gemini-3.1-pro-preview'];
     const geminiConfig = {
       responseMimeType: "application/json",
     };

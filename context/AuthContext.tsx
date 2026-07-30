@@ -43,6 +43,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           
           if (userDoc.exists()) {
             let data = userDoc.data();
+            if (data.isSuspended) {
+              alert("Twoje konto zostało zawieszone.");
+              await signOut(auth);
+              setUser(null);
+              setIsAuthReady(true);
+              return;
+            }
             if (firebaseUser.email && firebaseUser.email.toLowerCase().includes('maciej.wyrozumski') && data.role !== 'admin') {
               data.role = 'admin';
               try {

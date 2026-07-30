@@ -18,6 +18,7 @@ import AllTestsTeacherView from './AllTestsTeacherView';
 import TeacherDashboardActivity from './TeacherDashboardActivity';
 import TeacherDashboardStats from './TeacherDashboardStats';
 import TeacherSpecialTaskModal from './TeacherSpecialTaskModal';
+import AssignVocabularyModal from './AssignVocabularyModal';
 import { Trash2 } from 'lucide-react';
 import i18n from "i18next";
 
@@ -69,9 +70,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       logsList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setPracticeLogs(logsList);
 
-      // Fetch User's Flashcard Sets
+      // Fetch User's Flashcard Sets (now we fetch wordSets inside user doc)
       try {
-        const setsQ = query(collection(db, 'sets'), where('userId', '==', userId));
+        const setsQ = query(collection(db, `users/${userId}/wordSets`));
         const setsSnapshot = await getDocs(setsQ);
         const setsList = setsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FlashcardSet));
         setsList.sort((a, b) => new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt).getTime() - new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt).getTime());
@@ -101,6 +102,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
 
   const handleSelectUser = (user: UserWithId) => {
     setSelectedUser(user);
+    setActiveTab('profile');
     if (onUserSelect) onUserSelect(user.id);
     fetchUserLogsAndStats(user.id);
   };
@@ -855,63 +857,109 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
       {activeTab === null ? (
         <div className="space-y-6">
-          <div className="flex justify-end gap-2 mb-6">
+          <div className="flex justify-end gap-2 mb-4">
             <button onClick={() => setShowAIModal(true)} className="px-4 py-2 bg-base-200/50 text-primary border border-primary/50 rounded-lg text-sm font-bold hover:bg-primary/10 transition-colors">
-              
-                                        {i18n.t("✨ AI Lesson Generator")}
-                                      </button>
+              {i18n.t("✨ AI Lesson Generator")}
+            </button>
             <button onClick={() => setShowCreateStudentModal(true)} className="px-4 py-2 bg-primary text-black rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors">
-              
-                                        {i18n.t("+ Dodaj kursanta")}
-                                      </button>
+              {i18n.t("+ Dodaj kursanta")}
+            </button>
           </div>
-          
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-              <button onClick={() => handleTabChange('profile')} className="flex flex-col items-center justify-center p-8 rounded-2xl liquid-glass-tile group">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                </div>
-                <h3 className="font-bold text-lg">{i18n.t("Profile kursantów")}</h3>
-              </button>
-              <button onClick={() => handleTabChange('stats')} className="flex flex-col items-center justify-center p-8 rounded-2xl liquid-glass-tile group">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                </div>
-                <h3 className="font-bold text-lg">{i18n.t("Statystyki")}</h3>
-              </button>
-              <button onClick={() => handleTabChange('history')} className="flex flex-col items-center justify-center p-8 rounded-2xl liquid-glass-tile group">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </div>
-                <h3 className="font-bold text-lg">{i18n.t("Historia lekcji")}</h3>
-              </button>
-              <button onClick={() => handleTabChange('tests')} className="flex flex-col items-center justify-center p-8 rounded-2xl liquid-glass-tile group">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                </div>
-                <h3 className="font-bold text-lg">{i18n.t("Testy")}</h3>
-              </button>
-              <button onClick={() => handleTabChange('vocabulary')} className="flex flex-col items-center justify-center p-8 rounded-2xl liquid-glass-tile group">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
-                </div>
-                <h3 className="font-bold text-lg">{i18n.t("Słownictwo i zadania")}</h3>
-              </button>
+
+          {/* Single Glass Box: Ogólne statystyki kursantów */}
+          <TeacherDashboardActivity users={users} />
+
+          {/* Student List & Search/Filter */}
+          <div className="space-y-4 mt-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-base-200/50 p-4 rounded-2xl border border-white/5">
+              <div className="font-bold text-lg text-white">
+                {i18n.t("Lista kursantów")} ({users.length})
+              </div>
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                <input
+                  type="text"
+                  placeholder={i18n.t("Szukaj po imieniu, nazwisku, emailu...")}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full sm:w-72 bg-base-100 border border-base-300 rounded-lg p-2 text-sm outline-none focus:border-primary/50"
+                />
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className="w-full sm:w-40 bg-base-100 border border-base-300 rounded-lg p-2 text-sm outline-none focus:border-primary/50"
+                >
+                  <option value="all">{i18n.t("Wszystkie role")}</option>
+                  <option value="user">{i18n.t("Kursant")}</option>
+                  <option value="admin">{i18n.t("Admin")}</option>
+                  <option value="teacher">{i18n.t("Nauczyciel")}</option>
+                </select>
+              </div>
             </div>
 
-            <div className="space-y-6 mt-10">
-              <TeacherDashboardActivity users={users} />
-              <TeacherDashboardStats users={users} />
+            {/* Narrow student rows in liquid glass cards */}
+            <div className="space-y-2.5">
+              {users.filter(u => {
+                const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.username} ${u.email || ''}`.toLowerCase();
+                const matchesSearch = searchStr.includes(searchQuery.toLowerCase());
+                const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+                return matchesSearch && matchesRole;
+              }).map((u) => (
+                <div
+                  key={u.id}
+                  onClick={() => handleSelectUser(u)}
+                  className="bg-gradient-to-r from-base-200/80 via-base-200/50 to-base-200/80 backdrop-blur-xl border border-white/10 hover:border-primary/50 hover:bg-base-200/90 p-3.5 px-5 rounded-2xl cursor-pointer flex items-center justify-between gap-4 transition-all duration-300 group shadow-lg hover:shadow-primary/10 relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                  
+                  <div className="flex items-center gap-3.5 min-w-0 relative z-10">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-bold text-primary text-sm flex-shrink-0 border border-primary/30 shadow-inner overflow-hidden group-hover:scale-105 transition-transform">
+                      {u.photoURL ? (
+                        <img src={u.photoURL} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        u.firstName ? u.firstName[0].toUpperCase() : u.username[0].toUpperCase()
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2.5 truncate">
+                      <span className="font-bold text-sm text-white group-hover:text-primary transition-colors truncate">
+                        {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
+                      </span>
+                      <span className="text-xs text-content-muted hidden md:inline truncate font-mono">
+                        ({u.username})
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 flex-shrink-0 relative z-10">
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider border ${
+                      u.role === 'admin' ? 'bg-red-500/10 text-red-400 border-red-500/30' : u.role === 'teacher' ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' : 'bg-primary/10 text-primary border-primary/30'
+                    }`}>
+                      {u.role === 'teacher' ? 'Nauczyciel' : u.role === 'admin' ? 'Admin' : 'Kursant'}
+                    </span>
+
+                    {u.level && (
+                      <span className="bg-primary/20 text-primary border border-primary/30 px-2.5 py-1 rounded-lg text-xs font-mono font-bold shadow-inner">
+                        Poziom: {u.level}
+                      </span>
+                    )}
+
+                    <div className="text-content-muted group-hover:text-primary group-hover:translate-x-1 transition-all">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
+          </div>
         </div>
       ) : activeTab === 'tests' ? (
         <div className="space-y-6">
           <div className="flex items-center gap-4 mb-6">
             <button onClick={() => { setActiveTab(null); if (onViewChange) onViewChange('admin'); }} className="flex items-center gap-2 text-content-muted hover:text-white transition-colors bg-base-200/50 px-4 py-2 rounded-xl border border-white/5 hover:border-primary/50">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" /></svg>
-              
-                                            {i18n.t("Wróć do panelu głównego")}
-                                          </button>
+              {i18n.t("Wróć do panelu głównego")}
+            </button>
           </div>
           {selectedUser ? (
             <AdminTestGenerator user={selectedUser} users={users} />
@@ -931,9 +979,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
                   </svg>
-                  
-                                                            {i18n.t("Wróć do panelu głównego")}
-                                                          </button>
+                  {i18n.t("Wróć do panelu głównego")}
+                </button>
                 <h2 className="text-xl font-bold">
                   {activeTab === 'profile' && 'Wybierz kursanta'}
                   {activeTab === 'stats' && 'Wybierz kursanta (Statystyki)'}
@@ -965,42 +1012,59 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 </div>
               </Card>
 
-              <div className="grid grid-cols-1 gap-4 p-2" >
-                
+              <div className="space-y-2.5">
                 {users.filter(u => {
-                  const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.username} ${u.username}`.toLowerCase();
+                  const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.username} ${u.email || ''}`.toLowerCase();
                   const matchesSearch = searchStr.includes(searchQuery.toLowerCase());
                   const matchesRole = roleFilter === 'all' || u.role === roleFilter;
                   return matchesSearch && matchesRole;
-                }).map((u, index) => (
+                }).map((u) => (
                   <div
                     key={u.id}
-                    
-                    
-                    
-                    
                     onClick={() => handleSelectUser(u)}
-                    className="liquid-glass-hover bg-base-200/40 border border-white/5 p-5 md:p-6 rounded-2xl cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+                    className="bg-gradient-to-r from-base-200/80 via-base-200/50 to-base-200/80 backdrop-blur-xl border border-white/10 hover:border-primary/50 hover:bg-base-200/90 p-3.5 px-5 rounded-2xl cursor-pointer flex items-center justify-between gap-4 transition-all duration-300 group shadow-lg hover:shadow-primary/10 relative overflow-hidden"
                   >
-                    <div>
-                      <div className="font-bold text-xl mb-1 group-hover:text-primary transition-colors">
-                        {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
+                    <div className="flex items-center gap-3.5 min-w-0 relative z-10">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-bold text-primary text-sm flex-shrink-0 border border-primary/30 shadow-inner overflow-hidden group-hover:scale-105 transition-transform">
+                        {u.photoURL ? (
+                          <img src={u.photoURL} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          u.firstName ? u.firstName[0].toUpperCase() : u.username[0].toUpperCase()
+                        )}
                       </div>
-                      <div className="text-base text-content-muted">{u.username}</div>
+                      <div className="flex items-center gap-2.5 truncate">
+                        <span className="font-bold text-sm text-white group-hover:text-primary transition-colors truncate">
+                          {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
+                        </span>
+                        <span className="text-xs text-content-muted hidden md:inline truncate font-mono">
+                          ({u.username})
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-red-500/10 text-red-500' : u.role === 'teacher' ? 'bg-purple-500/10 text-purple-500' : 'bg-primary/10 text-primary'}`}>
+
+                    <div className="flex items-center gap-3 flex-shrink-0 relative z-10">
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider border ${
+                        u.role === 'admin' ? 'bg-red-500/10 text-red-400 border-red-500/30' : u.role === 'teacher' ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' : 'bg-primary/10 text-primary border-primary/30'
+                      }`}>
                         {u.role === 'teacher' ? 'Nauczyciel' : u.role === 'admin' ? 'Admin' : 'Kursant'}
                       </span>
-                      <div className="text-content-muted group-hover:text-white transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+
+                      {u.level && (
+                        <span className="bg-primary/20 text-primary border border-primary/30 px-2.5 py-1 rounded-lg text-xs font-mono font-bold shadow-inner">
+                          Poziom: {u.level}
+                        </span>
+                      )}
+
+                      <div className="text-content-muted group-hover:text-primary group-hover:translate-x-1 transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                         </svg>
                       </div>
                     </div>
                   </div>
                 ))}
-                
               </div>
             </div>
           ) : (
@@ -1018,9 +1082,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  
-                                                                {i18n.t("Wróć do listy kursantów")}
-                                                              </button>
+                  {i18n.t("Wróć do listy kursantów")}
+                </button>
                 <button
                   onClick={() => {
                     setSelectedUser(null);
@@ -1035,9 +1098,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  
-                                                                {i18n.t("Wróć do menu głównego")}
-                                                              </button>
+                  {i18n.t("Wróć do menu głównego")}
+                </button>
               </div>
 
               <Card className="bg-base-200/50 mb-6">
@@ -1078,24 +1140,28 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </div>
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-white/5 flex gap-2 overflow-x-auto hide-scrollbar">
+                {/* Mini Boxes for Selected Student Details */}
+                <div className="mt-6 pt-6 border-t border-white/5 grid grid-cols-2 sm:grid-cols-5 gap-3">
                   {[
-                    { id: 'profile', label: 'Profil kursanta' },
-                    { id: 'stats', label: 'Statystyki' },
-                    { id: 'history', label: 'Historia lekcji' },
-                    { id: 'tests', label: 'Testy' },
-                    { id: 'vocabulary', label: 'Słownictwo i zadania' }
+                    { id: 'profile', label: 'Profil kursanta', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+                    { id: 'stats', label: 'Statystyki', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+                    { id: 'history', label: 'Historia lekcji', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+                    { id: 'tests', label: 'Testy', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+                    { id: 'vocabulary', label: 'Słownictwo i zadania', icon: 'M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129' }
                   ].map(tab => (
                     <button
                       key={tab.id}
                       onClick={() => handleTabChange(tab.id)}
-                      className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all ${
+                      className={`p-3 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-2 border ${
                         activeTab === tab.id 
-                          ? 'bg-primary text-black shadow-md' 
-                          : 'text-content-muted hover:text-white hover:bg-base-300 bg-base-200/50'
+                          ? 'bg-primary text-black border-primary shadow-lg' 
+                          : 'bg-base-100/60 text-content-muted hover:text-white hover:bg-base-200 border-white/5'
                       }`}
                     >
-                      {tab.label}
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
+                      </svg>
+                      <span className="text-center">{tab.label}</span>
                     </button>
                   ))}
                 </div>
@@ -1307,7 +1373,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   {userSets.map(set => (
                     <Card key={set.id} className="p-4 cursor-pointer rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5">
                       <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-bold text-lg">{set.title}</h4>
+                        <h4 className="font-bold text-lg">{set.title || (set as any).name}</h4>
                         {set.assignedByTeacher && (
                           <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded font-bold uppercase tracking-wider">{i18n.t("Od Nauczyciela")}</span>
                         )}
@@ -1539,10 +1605,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                           className="bg-red-500/20 text-red-500 hover:bg-red-500/30 border-transparent"
                           onClick={() => {
                             if (confirm('Czy na pewno chcesz usunąć to konto? Tej operacji nie można cofnąć.')) {
-                              deleteDoc(doc(db, 'users', selectedUser.id)).then(() => {
-                                setUsers(users.filter(u => u.id !== selectedUser.id));
-                                setSelectedUser(null);
-                              }).catch(err => alert('Błąd: ' + err.message));
+                              handleDeleteUser(selectedUser.id);
                             }
                           }}
                         >
@@ -1573,45 +1636,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       )}
 
       {/* Assign Set Modal */}
-      {showAssignModal && (
-        <div ref={assignModalAnim.overlayRef} className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div ref={assignModalAnim.contentRef} className="w-full max-w-md">
-            <Card className="w-full shadow-2xl border-primary/20">
-            <h3 className="text-xl font-bold mb-4">{i18n.t("Przypisz Zestaw Słówek")}</h3>
-            <p className="mb-4 text-sm text-content-muted">
-              
-                                            {i18n.t("Wybierz zestaw ze swoich (jako Admin) zestawów słówek, który zostanie skopiowany i przypisany do")} {selectedUser?.firstName || selectedUser?.username}.
-            </p>
-            
-            <select
-              value={selectedSetIdToAssign}
-              onChange={(e) => setSelectedSetIdToAssign(e.target.value)}
-              className="w-full bg-base-200/40 border border-white/10 rounded-lg p-3 text-white mb-6 outline-none focus:border-primary/50"
-            >
-              <option value="">{i18n.t("-- Wybierz zestaw --")}</option>
-              {adminSets.map(s => (
-                <option key={s.id} value={s.id}>{s.title} ({s.cardCount}  {i18n.t("fiszek)")}</option>
-              ))}
-            </select>
-            
-            <div className="flex justify-end gap-3">
-              <Button onClick={() => setShowAssignModal(false)} variant="secondary">
-                
-                                                  {i18n.t("Anuluj")}
-                                                </Button>
-              <Button 
-                onClick={handleAssignSet} 
-                isLoading={isAssigningSet}
-                disabled={!selectedSetIdToAssign}
-              >
-                
-                                                  {i18n.t("Przypisz Zestaw")}
-                                                </Button>
-            </div>
-          </Card>
-          </div>
-        </div>
-      )}
+      <AssignVocabularyModal
+        isOpen={showAssignModal}
+        onClose={() => setShowAssignModal(false)}
+        targetUser={selectedUser}
+        onSetAssigned={() => {
+          if (selectedUser) {
+            fetchUserLogsAndStats(selectedUser.id);
+          }
+        }}
+      />
 
       {/* Delete User Modal */}
       {userToDelete && (
