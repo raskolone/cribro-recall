@@ -363,7 +363,8 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
       saveFlashcards,
       saveSession,
       getSessions,
-      getSessionResults
+      getSessionResults,
+      getProgress
     }}>
       {children}
     </FlashcardContext.Provider>

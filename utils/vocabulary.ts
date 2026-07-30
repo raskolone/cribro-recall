@@ -1,8 +1,8 @@
 export function buildVocabularySetTitle(date: string, topic?: string): string {
   if (topic && topic.trim().length > 0) {
-    return `${date} — ${topic.trim()}`;
+    return topic.trim();
   }
-  return `${date} — Lesson vocabulary`;
+  return `${date} — Słownictwo z lekcji`;
 }
 
 export function countVocabularyItems(vocabularyText: string): number {

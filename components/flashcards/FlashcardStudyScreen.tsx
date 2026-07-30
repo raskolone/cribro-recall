@@ -27,6 +27,7 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMode, setSelectedMode] = useState<StudyMode>(initialMode || null);
+  const [isReversed, setIsReversed] = useState(false);
 
   const [confirmModalState, setConfirmModalState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({
     isOpen: false,
@@ -600,6 +601,7 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
   const [results, setResults] = useState<{ flashcardId: string; isCorrect: boolean; responseTimeMs: number }[]>([]);
   const [startTime, setStartTime] = useState<number>(0);
   const [isFinished, setIsFinished] = useState(false);
+  const [isReversed, setIsReversed] = useState(false);
 
   useEffect(() => {
     const shuffled = [...initialCards].sort(() => Math.random() - 0.5);

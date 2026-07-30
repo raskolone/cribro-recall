@@ -1,7 +1,40 @@
 import { db } from '../firebase';
-import { doc, setDoc, collection, getDocs, query, orderBy, where, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, getDocs, query, orderBy, where, serverTimestamp, updateDoc, writeBatch } from 'firebase/firestore';
 import { LessonRecord, VocabularySet } from '../types';
 import { buildVocabularySetTitle, countVocabularyItems } from '../utils/vocabulary';
+
+export function parseVocabularyTextToCards(vocabularyText: string) {
+  if (!vocabularyText) return [];
+  const lines = vocabularyText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  return lines.map((line, idx) => {
+    let term = line;
+    let definition = '';
+    if (line.includes(' - ')) {
+      const parts = line.split(' - ');
+      term = parts[0].trim();
+      definition = parts.slice(1).join(' - ').trim();
+    } else if (line.includes(' – ')) {
+      const parts = line.split(' – ');
+      term = parts[0].trim();
+      definition = parts.slice(1).join(' – ').trim();
+    } else if (line.includes(':')) {
+      const parts = line.split(':');
+      term = parts[0].trim();
+      definition = parts.slice(1).join(':').trim();
+    } else if (line.includes('=')) {
+      const parts = line.split('=');
+      term = parts[0].trim();
+      definition = parts.slice(1).join('=').trim();
+    }
+    return {
+      position: idx,
+      term,
+      definition,
+      termLanguage: 'English',
+      definitionLanguage: 'Polish'
+    };
+  });
+}
 
 export async function createLessonRecordWithVocabularySet(input: {
   studentId: string;
@@ -17,6 +50,8 @@ export async function createLessonRecordWithVocabularySet(input: {
   const lessonRecordId = `lesson-${Date.now()}`;
   const vocabularySetId = `vocab-${Date.now()}`;
   const now = new Date().toISOString();
+
+  const title = buildVocabularySetTitle(input.date, input.topic);
 
   // 1. Create LessonRecord object
   const lessonRecord: LessonRecord = {
@@ -39,7 +74,7 @@ export async function createLessonRecordWithVocabularySet(input: {
     id: vocabularySetId,
     studentId: input.studentId,
     lessonRecordId: lessonRecordId,
-    title: buildVocabularySetTitle(input.date, input.topic),
+    title: title,
     date: input.date,
     topic: input.topic,
     vocabularyText: input.vocabularyText,
@@ -52,10 +87,6 @@ export async function createLessonRecordWithVocabularySet(input: {
   };
 
   // 3. Save both to Firestore
-  // We save them in root level collections for easier querying, or under the student's subcollection depending on how current code works.
-  // The prompt says "create a lesson record in Firestore" and "create a vocabulary set in Firestore".
-  // Looking at AdminPanel.tsx, lesson records are saved at: users/${studentId}/lessonRecords/${recordId}
-  
   const recordRef = doc(db, `users/${input.studentId}/lessonRecords/${lessonRecordId}`);
   const setRef = doc(db, `users/${input.studentId}/vocabularySets/${vocabularySetId}`);
 
@@ -64,6 +95,39 @@ export async function createLessonRecordWithVocabularySet(input: {
 
   await setDoc(recordRef, recordData);
   await setDoc(setRef, setData);
+
+  // 4. Extract vocabulary as a dedicated FlashcardSet
+  if (input.vocabularyText && input.vocabularyText.trim().length > 0) {
+    try {
+      const flashcardSetId = `set-lesson-${Date.now()}`;
+      const cards = parseVocabularyTextToCards(input.vocabularyText);
+      const flashcardSetRef = doc(db, `sets/${flashcardSetId}`);
+      await setDoc(flashcardSetRef, {
+        userId: input.studentId,
+        title: title,
+        description: `Słownictwo z lekcji: ${input.date}`,
+        isPublic: false,
+        cardCount: cards.length,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        assignedByTeacher: true,
+        isLessonVocabulary: true,
+        lessonTopic: input.topic,
+        lessonDate: input.date
+      });
+
+      if (cards.length > 0) {
+        const batch = writeBatch(db);
+        cards.forEach((card, index) => {
+          const cardRef = doc(db, `sets/${flashcardSetId}/flashcards/card-${index}`);
+          batch.set(cardRef, card);
+        });
+        await batch.commit();
+      }
+    } catch (e) {
+      console.warn("Could not create flashcard set for lesson:", e);
+    }
+  }
 
   return { lessonRecordId, vocabularySetId };
 }

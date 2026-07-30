@@ -694,7 +694,7 @@ const Dashboard: React.FC = () => {
       return <AdminPanel initialTab={view === 'admin' ? null : view.replace('admin-', '')} onViewChange={changeView} initialSelectedUserId={adminSelectedUserId} onUserSelect={(id) => changeView(view, { adminSelectedUserId: id })} />;
     }
     if (view === 'ai-generator') {
-      return <AIExerciseGeneratorScreen key={`ai-gen-${exerciseResetKey}`} initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} onOpenSidebar={() => setIsSidebarOpen(true)} />;
+      return <AIExerciseGeneratorScreen key={`ai-gen-${exerciseResetKey}`} initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} onOpenSidebar={() => setIsSidebarOpen(true)} onChangeView={(v, extra) => changeView(v as View, extra)} />;
     }
     if (view === 'lesson-history') {
       return <LessonHistoryScreen />;
@@ -711,7 +711,7 @@ const Dashboard: React.FC = () => {
     const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
 
     if (!isTeacherGlobal && view === 'dashboard') {
-      return <AIExerciseGeneratorScreen key={`ai-gen-${exerciseResetKey}`} initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} onOpenSidebar={() => setIsSidebarOpen(true)} />;
+      return <AIExerciseGeneratorScreen key={`ai-gen-${exerciseResetKey}`} initialSetId={activeSetId} onStartPractice={startPractice} onExerciseStateChange={setIsExerciseActive} onOpenSidebar={() => setIsSidebarOpen(true)} onChangeView={(v, extra) => changeView(v as View, extra)} />;
     }
 
     return (

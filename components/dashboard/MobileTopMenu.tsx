@@ -74,7 +74,7 @@ const MobileTopMenu: React.FC<MobileTopMenuProps> = ({
                     : 'text-content hover:bg-white/5 hover:text-white font-medium'
                 }`}
               >
-                {React.cloneElement(item.icon as React.ReactElement, {
+                {React.cloneElement(item.icon as React.ReactElement<any>, {
                   className: currentView === item.id ? 'text-primary' : 'text-content-muted'
                 })}
                 {item.label}

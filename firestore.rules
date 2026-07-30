@@ -179,6 +179,19 @@ service cloud.firestore {
              isValidDateString(data.updatedAt);
     }
 
+    function isValidFlashcardProgress(data) {
+      return hasRequiredFields(['flashcardId', 'setId', 'userId', 'repetitions', 'interval', 'easeFactor', 'nextReviewDate', 'lastReviewedAt']) &&
+             hasOnlyAllowedFields(['flashcardId', 'setId', 'userId', 'repetitions', 'interval', 'easeFactor', 'nextReviewDate', 'lastReviewedAt']) &&
+             validStringLength('flashcardId', 1, 100) &&
+             validStringLength('setId', 1, 100) &&
+             validStringLength('userId', 1, 100) &&
+             data.repetitions is number &&
+             data.interval is number &&
+             data.easeFactor is number &&
+             isValidDateString(data.nextReviewDate) &&
+             isValidDateString(data.lastReviewedAt);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -242,6 +255,13 @@ service cloud.firestore {
         allow create: if isAdmin();
         allow update: if isAdmin();
         allow delete: if isAdmin();
+      }
+
+      match /flashcardProgress/{progressId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if (isOwner(userId) || isAdmin()) && isValidFlashcardProgress(request.resource.data);
+        allow update: if (isOwner(userId) || isAdmin()) && isValidFlashcardProgress(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
       }
     }
 

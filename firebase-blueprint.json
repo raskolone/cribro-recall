@@ -50,6 +50,22 @@
         "revisionFrequency": { "type": "string" },
         "lastRevisionDate": { "type": "string", "format": "date-time" }
       }
+    },
+    "FlashcardProgress": {
+      "title": "FlashcardProgress",
+      "description": "Spaced repetition tracking for a single flashcard.",
+      "type": "object",
+      "properties": {
+        "flashcardId": { "type": "string" },
+        "setId": { "type": "string" },
+        "userId": { "type": "string" },
+        "repetitions": { "type": "number" },
+        "interval": { "type": "number" },
+        "easeFactor": { "type": "number" },
+        "nextReviewDate": { "type": "string", "format": "date-time" },
+        "lastReviewedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["flashcardId", "setId", "userId", "repetitions", "interval", "easeFactor", "nextReviewDate", "lastReviewedAt"]
     }
   },
   "firestore": {
@@ -68,6 +84,10 @@
     "/users/{userId}/settings/practice": {
       "schema": { "$ref": "#/entities/UserSettings" },
       "description": "User's practice history and settings."
+    },
+    "/users/{userId}/flashcardProgress/{progressId}": {
+      "schema": { "$ref": "#/entities/FlashcardProgress" },
+      "description": "User's spaced repetition card progress records."
     }
   }
 }

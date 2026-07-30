@@ -11,6 +11,7 @@ export interface User {
   role: 'admin' | 'user' | 'teacher';
   photoURL?: string;
   streakCount?: number;
+  translatedSentencesCount?: number;
   requirePasswordChange?: boolean;
   lastStreakDate?: string;
   loginCount?: number;

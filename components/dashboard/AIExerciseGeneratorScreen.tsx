@@ -4,7 +4,7 @@ import html2pdf from 'html2pdf.js';
 import { useLanguage } from '../../context/LanguageContext';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
-import { collection, getDocs, query, orderBy, limit, addDoc, where, documentId, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, addDoc, where, documentId, doc, updateDoc, setDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { getDoc } from 'firebase/firestore';
 import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, logMistakesToFirebase } from '../../services/geminiService';
@@ -42,8 +42,52 @@ import {
   Puzzle,
   Target,
   Layers,
-  Shuffle, X, Eye
-, CheckCircle2 , LayoutGrid , Mic, AlertCircle } from 'lucide-react';
+  Shuffle, X, Eye, Flame,
+  CheckCircle2, LayoutGrid, Mic, AlertCircle,
+  Plus, Minus, ShoppingBag, Trash2, Check
+} from 'lucide-react';
+
+export interface BasketWordItem {
+  id: string;
+  term: string;
+  definition?: string;
+  sourceTopic?: string;
+}
+
+export function parseLineToWordItem(line: string, sourceTopic?: string): BasketWordItem {
+  let cleanLine = line.replace(/^[\s\*\-\•\d\.]+\s*/, '').trim();
+  let term = cleanLine;
+  let definition = '';
+  
+  if (cleanLine.includes(' - ')) {
+    const parts = cleanLine.split(' - ');
+    term = parts[0].trim();
+    definition = parts.slice(1).join(' - ').trim();
+  } else if (cleanLine.includes(' – ')) {
+    const parts = cleanLine.split(' – ');
+    term = parts[0].trim();
+    definition = parts.slice(1).join(' – ').trim();
+  } else if (cleanLine.includes(' — ')) {
+    const parts = cleanLine.split(' — ');
+    term = parts[0].trim();
+    definition = parts.slice(1).join(' — ').trim();
+  } else if (cleanLine.includes(':')) {
+    const parts = cleanLine.split(':');
+    term = parts[0].trim();
+    definition = parts.slice(1).join(':').trim();
+  } else if (cleanLine.includes('=')) {
+    const parts = cleanLine.split('=');
+    term = parts[0].trim();
+    definition = parts.slice(1).join('=').trim();
+  }
+
+  return {
+    id: term.toLowerCase(),
+    term,
+    definition,
+    sourceTopic
+  };
+}
 
 
 const ACCENTS = ['en-US', 'en-GB'];
@@ -300,14 +344,144 @@ interface AIExerciseGeneratorScreenProps {
   initialSetId?: string | null;
   onStartPractice?: (type: any, mode1?: boolean, mode2?: boolean) => void;
   onExerciseStateChange?: (active: boolean) => void;
-  onChangeView?: (view: string) => void;
+  onChangeView?: (view: string, extra?: any) => void;
 }
 
 const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ initialSetId = null, onStartPractice, onExerciseStateChange, onOpenSidebar, onChangeView }) => {
   const { language } = useLanguage();
   const { sets, getFlashcards } = useFlashcards();
-  const { user } = useAuth();
+  const { user, updateUserStreak } = useAuth();
   const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
+  const [translatedSentencesCount, setTranslatedSentencesCount] = useState<number>(user?.translatedSentencesCount || 0);
+
+  // Vocabulary Basket State
+  const [basketWords, setBasketWords] = useState<BasketWordItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('ai_vocab_basket');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [isBasketModalOpen, setIsBasketModalOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ai_vocab_basket', JSON.stringify(basketWords));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [basketWords]);
+
+  const toggleBasketWord = (wordItem: BasketWordItem) => {
+    const normKey = wordItem.term.trim().toLowerCase();
+    setBasketWords(prev => {
+      const exists = prev.some(w => w.term.trim().toLowerCase() === normKey);
+      if (exists) {
+        return prev.filter(w => w.term.trim().toLowerCase() !== normKey);
+      } else {
+        return [...prev, { ...wordItem, id: normKey }];
+      }
+    });
+  };
+
+  const isWordInBasket = (term: string) => {
+    const normKey = term.trim().toLowerCase();
+    return basketWords.some(w => w.term.trim().toLowerCase() === normKey);
+  };
+
+  const addAllWordsFromTextToBasket = (text: string, sourceTopic?: string) => {
+    if (!text) return;
+    const lines = text.split(/[\n;]+/).map(l => l.trim()).filter(l => l.length > 0);
+    const newItems = lines.map(line => parseLineToWordItem(line, sourceTopic));
+    
+    setBasketWords(prev => {
+      const existingKeys = new Set(prev.map(w => w.term.trim().toLowerCase()));
+      const toAdd = newItems.filter(item => !existingKeys.has(item.term.trim().toLowerCase()));
+      return [...prev, ...toAdd];
+    });
+  };
+
+  const clearBasket = () => {
+    setBasketWords([]);
+  };
+
+  const syncBasketToFirestoreSet = async (items: BasketWordItem[]) => {
+    if (!user?.id || items.length === 0) return null;
+    const setId = `set-basket-${user.id}`;
+    const setRef = doc(db, `sets/${setId}`);
+    
+    await setDoc(setRef, {
+      userId: user.id,
+      title: language === 'pl' ? 'Koszyk Słówek' : 'Vocabulary Basket',
+      description: language === 'pl' ? `Wybrane słówka (${items.length})` : `Custom selected words (${items.length})`,
+      isPublic: false,
+      cardCount: items.length,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      isBasketSet: true
+    });
+
+    const batch = writeBatch(db);
+    items.forEach((item, index) => {
+      const cardRef = doc(db, `sets/${setId}/flashcards/card-${index}`);
+      batch.set(cardRef, {
+        position: index,
+        term: item.term,
+        definition: item.definition || '',
+        termLanguage: 'English',
+        definitionLanguage: 'Polish'
+      });
+    });
+    await batch.commit();
+    return setId;
+  };
+
+  const handleStartBasketPractice = async (type: 'intro' | 'flashcards' | 'quiz' | 'match') => {
+    if (!user?.id || basketWords.length === 0) {
+      alert(language === 'pl' ? 'Koszyk jest pusty! Dodaj najpierw słówka przyciskiem +' : 'Basket is empty! Add words first using +');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const setId = await syncBasketToFirestoreSet(basketWords);
+      if (setId && onChangeView) {
+        onChangeView('flashcard-study', { 
+          activeSetId: setId, 
+          practiceView: { type: 'exercise', exercise: type } 
+        });
+      } else {
+        onStartPractice?.(type);
+      }
+    } catch (err) {
+      console.error("Could not sync basket set:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      if (user.translatedSentencesCount !== undefined) {
+        setTranslatedSentencesCount(user.translatedSentencesCount);
+      } else {
+        getDocs(collection(db, `users/${user.id}/practiceLogs`)).then(snapshot => {
+          let total = 0;
+          snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.detailedFeedback && Array.isArray(data.detailedFeedback)) {
+              total += data.detailedFeedback.length;
+            } else if (data.totalWords) {
+              total += data.totalWords;
+            }
+          });
+          setTranslatedSentencesCount(total);
+          updateDoc(doc(db, 'users', user.id), { translatedSentencesCount: total }).catch(console.error);
+        }).catch(console.error);
+      }
+    }
+  }, [user?.id, user?.translatedSentencesCount]);
 
   // Settings states
   const [activeTab, setActiveTab] = useState<'ai' | 'other'>('ai');
@@ -573,6 +747,10 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   };
 
   const handleStartOtherPractice = (type: any, mode1?: boolean, mode2?: boolean) => {
+    if (selectedSetId === 'basket') {
+      handleStartBasketPractice(type);
+      return;
+    }
     if (user?.id && (selectedSetId === 'lessons' || selectedLessonIds.length > 0)) {
       selectedLessonIds.forEach(id => {
         const set = vocabularySets.find(s => s.id === id);
@@ -728,7 +906,15 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       if (selectedSetId !== 'general') {
         fetchPromises.push((async () => {
           try {
-            if (selectedSetId === 'lessons' || selectedLessonIds.length > 0) {
+            if (selectedSetId === 'basket') {
+              if (basketWords.length === 0) {
+                setIsLoading(false);
+                setError(language === 'pl' ? 'Twój koszyk jest pusty! Dodaj najpierw słówka z lekcji przyciskiem +' : 'Basket is empty! Add words from lessons using +');
+                setIsBasketModalOpen(true);
+                return;
+              }
+              wordsToUse = basketWords.map(w => w.definition ? `${w.term} (${w.definition})` : w.term);
+            } else if (selectedSetId === 'lessons' || selectedLessonIds.length > 0) {
               const selectedSets = vocabularySets.filter(s => selectedLessonIds.includes(s.id));
               const allWords: string[] = [];
               selectedSets.forEach(set => {
@@ -1030,6 +1216,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
           await logMistakesToFirebase(user.id, allMistakes);
         }
 
+        const newSentencesCount = (user?.translatedSentencesCount || translatedSentencesCount || 0) + results.length;
+        setTranslatedSentencesCount(newSentencesCount);
+        await updateDoc(doc(db, 'users', user.id), { translatedSentencesCount: newSentencesCount });
+        if (updateUserStreak) {
+          updateUserStreak().catch(console.error);
+        }
+
         // mark special task as completed
         if (selectedSetId?.startsWith('special-task-')) {
            const taskId = selectedSetId.replace('special-task-', '');
@@ -1123,7 +1316,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję nauki? Dotychczasowe odpowiedzi zostaną ocenione.' : 'Are you sure you want to end this study session? Your answers will be evaluated.',
                   () => {
                     closeConfirm();
-                    handleEvaluate();
+                    handleFinishAll();
                   }
                 );
               }}
@@ -1153,6 +1346,25 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
           )}
         </div>
       </div>
+
+      {step === 'setup' && (
+        <div className="md:hidden px-6 pt-1 pb-3 flex flex-col gap-2 border-b border-white/10">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0 animate-pulse" />
+              {language === 'pl' 
+                ? `Przetłumaczyłeś już ${translatedSentencesCount} zdań. Świetna robota!` 
+                : `You translated ${translatedSentencesCount} sentences. Great job!`}
+            </p>
+            <div className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 rounded-xl shrink-0">
+              <Flame className="w-4 h-4 text-amber-400 fill-amber-300" />
+              <span className="text-xs font-bold text-amber-300">
+                {user?.streakCount || 0}d
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <AnimatePresence>
         {(isLoading || isEvaluating || isGeneratingMore) && (
@@ -1309,38 +1521,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
           <div className="max-w-2xl mx-auto sm:mt-4 w-full">
             
             <Card className="p-0 md:p-8 border-none md:border-solid md:border md:border-white/10 bg-[#05080f] md:bg-[#0d131d] backdrop-blur-2xl relative overflow-visible md:overflow-hidden flex flex-col rounded-none md:rounded-3xl shadow-none md:shadow-[0_20px_60px_rgba(0,0,0,0.55)] max-w-2xl mx-auto min-h-screen md:min-h-0">
-              {/* Top Segmented Navigation Tabs Bar */}
-              {isTeacher && (
-              <div className="hidden md:flex bg-[#141d2a] border border-white/5 p-1 rounded-2xl gap-1 mb-7">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('ai')}
-                  className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-200 text-center ${
-                    activeTab === 'ai' 
-                      ? 'liquid-glass-button !rounded-xl !text-white shadow-[0_0_20px_rgba(114,240,180,0.3)] !border-primary/50' 
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  {language === 'pl' ? 'Trening AI' : 'AI Training'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('other')}
-                  className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-200 text-center flex items-center justify-center gap-2 ${
-                    activeTab === 'other' 
-                      ? 'bg-[#222d3e] text-white shadow-sm border border-white/10' 
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <span>{language === 'pl' ? 'Pozostałe ćwiczenia' : 'Other exercises'}</span>
-                  <span className="px-1.5 py-0.5 text-[10px] font-mono tracking-wider bg-white/10 text-gray-300 rounded uppercase">
-                    
-                                                                  {i18n.t("BETA")}
-                                                                </span>
-                </button>
 
-              </div>
-              )}
 
               {/* Single Box Body content */}
               <div>
@@ -1419,26 +1600,45 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         </div>
                       </div>
 
-                      {/* Unified Źródło Słownictwa Box */}
+                      {/* Unified Źródło Słownictwa Box (Mobile) */}
                       <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
+                            <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>{language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary source'}</span>
+                          </label>
+                          {basketWords.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setIsBasketModalOpen(true)}
+                              className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full transition-all hover:scale-105 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                            >
+                              <ShoppingBag className="w-3.5 h-3.5" />
+                              <span>{language === 'pl' ? `Koszyk (${basketWords.length})` : `Basket (${basketWords.length})`}</span>
+                            </button>
+                          )}
+                        </div>
                         <button 
                           type="button"
                           onClick={() => setIsLessonSelectorOpen(true)}
-                          className="w-full bg-[#131b26] border border-white/10 hover:border-white/20 transition-colors rounded-2xl p-4 flex items-center justify-between"
+                          className="w-full bg-[#131b26] border border-white/10 hover:border-emerald-500/30 transition-all rounded-2xl p-4 flex items-center justify-between group"
                         >
                           <div className="flex items-center gap-3">
-                            <BookOpen className="w-5 h-5 text-emerald-400" />
+                            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
+                              {selectedSetId === 'basket' ? <ShoppingBag className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
+                            </div>
                             <span className="text-sm font-semibold text-white">
-                              {language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary source'}
+                              {selectedSetId === 'basket'
+                                ? (language === 'pl' ? `Koszyk słówek (${basketWords.length} słów)` : `Basket (${basketWords.length} words)`)
+                                : (language === 'pl' ? 'Wybierz lekcje' : 'Choose lessons')}
                             </span>
                           </div>
-                          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isLessonSelectorOpen ? 'rotate-180' : ''}`} />
+                          <ChevronDown className={`w-5 h-5 text-gray-400 group-hover:text-white transition-transform duration-300 ${isLessonSelectorOpen ? 'rotate-180' : ''}`} />
                         </button>
                         <div className="mt-2 px-2 text-[10px] text-gray-400 font-medium whitespace-pre-wrap leading-relaxed">
-                          
-                          {selectedSetId === 'grammar' && selectedGrammarTopic ? (language === 'pl' ? `Gramatyka ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}` : `Grammar ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}`) :
+                          {selectedSetId === 'basket' ? (language === 'pl' ? `Wybrano: Koszyk słówek (Mix ${basketWords.length} słów z lekcji)` : `Selected: Basket (${basketWords.length} words)`) :
+                           selectedSetId === 'grammar' && selectedGrammarTopic ? (language === 'pl' ? `Gramatyka ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}` : `Grammar ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}`) :
                            selectedSetId === 'all' && selectedLessonIds.length === 0 ? (language === 'pl' ? 'Wybrano: Wszystkie słówka (Mix)' : 'Selected: All vocab') : 
-
                            selectedSetId === 'lessons' || selectedLessonIds.length > 0 ? (language === 'pl' ? `Wybrane lekcje: ${vocabularySets.filter(s => selectedLessonIds.includes(s.id)).map(s => s.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()).join(', ')}` : `Selected lessons: ${selectedLessonIds.length}`) : 
                            specialTasks.find(t => 'special-task-' + t.id === selectedSetId) ? (language === 'pl' ? 'Wybrano: Zadanie specjalne' : 'Selected: Special Task') : ''}
                         </div>
@@ -1488,33 +1688,67 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   </div>
 
                   <div className="hidden md:block space-y-7 animate-fade-in-up">
-                    {/* Title */}
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center flex-wrap gap-y-2">
-                        {language === 'pl' ? 'Czas na trening' : 'Time for training'}
-                        {user?.hasNewVocabulary && !isBannerDismissed && (
-                          <span 
-                            onClick={() => {
-                              setSelectedSetId('lessons');
-                              if (vocabularySets.length > 0 && selectedLessonIds.length === 0) {
-                                setSelectedLessonIds([vocabularySets[0].id]);
-                              }
-                              setIsBannerDismissed(true);
-                              if (user?.id) {
-                                updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
-                              }
-                            }}
-                            className="ml-3 text-xs md:text-sm px-3 py-1 bg-primary/20 text-primary border border-primary/40 rounded-full animate-pulse cursor-pointer hover:bg-primary/30 transition-colors whitespace-nowrap font-semibold"
-                          >
-                            {language === 'pl' ? 'Nowe słówka' : 'New vocab'}
+                    {/* Title Header with Streak & Sentence Counters */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-white/10">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center flex-wrap gap-y-2">
+                            {language === 'pl' ? 'Czas na trening' : 'Time for training'}
+                          </h2>
+                          {user?.hasNewVocabulary && !isBannerDismissed && (
+                            <span 
+                              onClick={() => {
+                                setSelectedSetId('lessons');
+                                if (vocabularySets.length > 0 && selectedLessonIds.length === 0) {
+                                  setSelectedLessonIds([vocabularySets[0].id]);
+                                }
+                                setIsBannerDismissed(true);
+                                if (user?.id) {
+                                  updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
+                                }
+                              }}
+                              className="text-xs md:text-sm px-3 py-1 bg-primary/20 text-primary border border-primary/40 rounded-full animate-pulse cursor-pointer hover:bg-primary/30 transition-colors whitespace-nowrap font-semibold"
+                            >
+                              {language === 'pl' ? 'Nowe słówka' : 'New vocab'}
+                            </span>
+                          )}
+                          {user?.hasNewLesson && (
+                            <span className="text-xs md:text-sm px-3 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full animate-pulse cursor-default whitespace-nowrap font-semibold">
+                              {language === 'pl' ? 'Nowa lekcja' : 'New lesson'}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs sm:text-sm text-emerald-400 font-semibold flex items-center gap-1.5 pt-0.5">
+                          <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 animate-pulse" />
+                          {language === 'pl' 
+                            ? `Przetłumaczyłeś już ${translatedSentencesCount} zdań. Świetna robota!` 
+                            : `You have already translated ${translatedSentencesCount} sentences. Great job!`}
+                        </p>
+                      </div>
+
+                      {/* Streak Counter Badge */}
+                      <div className="flex items-center gap-3 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-red-500/15 border border-amber-500/30 px-4 py-2.5 rounded-2xl shadow-[0_0_20px_rgba(245,158,11,0.15)] shrink-0">
+                        <div className="p-2 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-slate-950 font-black shadow-[0_0_12px_rgba(245,158,11,0.6)]">
+                          <Flame className="w-5 h-5 text-slate-950 fill-amber-200 animate-bounce" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-amber-300/80 font-bold uppercase tracking-wider">
+                            {language === 'pl' ? 'Streak treningu' : 'Training Streak'}
                           </span>
-                        )}
-                        {user?.hasNewLesson && (
-                          <span className="ml-2 text-xs md:text-sm px-3 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full animate-pulse cursor-default whitespace-nowrap font-semibold">
-                            {language === 'pl' ? 'Nowa lekcja' : 'New lesson'}
+                          <span className="text-sm font-black text-white flex items-center gap-1">
+                            {user?.streakCount ? (
+                              <>
+                                <span className="text-amber-400 text-base">{user.streakCount}</span> 
+                                {language === 'pl' ? (user.streakCount === 1 ? 'dzień z rzędu' : 'dni z rzędu') : (user.streakCount === 1 ? 'day streak' : 'days streak')} 🔥
+                              </>
+                            ) : (
+                              <span className="text-amber-200/90 text-xs">
+                                {language === 'pl' ? '0 dni — ćwicz dzisiaj!' : '0 days — start today!'}
+                              </span>
+                            )}
                           </span>
-                        )}
-                      </h2>
+                        </div>
+                      </div>
                     </div>
 
                     {/* SECTION 2: TRYB ĆWICZENIA (Two large tiles) */}
@@ -1586,29 +1820,45 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       </button>
                     </div>
 
-                    {/* Unified Źródło Słownictwa Box */}
+                    {/* Unified Źródło Słownictwa Box (Desktop) */}
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-4">
-                        {language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary source'}
-                      </label>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
+                          <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>{language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary source'}</span>
+                        </label>
+                        {basketWords.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setIsBasketModalOpen(true)}
+                            className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full transition-all hover:scale-105 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                          >
+                            <ShoppingBag className="w-3.5 h-3.5" />
+                            <span>{language === 'pl' ? `Koszyk (${basketWords.length})` : `Basket (${basketWords.length})`}</span>
+                          </button>
+                        )}
+                      </div>
                       <button 
                         type="button"
                         onClick={() => setIsLessonSelectorOpen(true)}
-                        className="w-full bg-[#131b26] border border-white/10 hover:border-white/20 transition-colors rounded-2xl p-4 flex items-center justify-between"
+                        className="w-full bg-[#131b26] border border-white/10 hover:border-emerald-500/30 transition-all rounded-2xl p-4 flex items-center justify-between group"
                       >
                         <div className="flex items-center gap-3">
-                          <BookOpen className="w-5 h-5 text-emerald-400" />
+                          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
+                            {selectedSetId === 'basket' ? <ShoppingBag className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
+                          </div>
                           <span className="text-sm font-semibold text-white">
-                            {language === 'pl' ? 'Wybierz lekcje' : 'Choose lessons'}
+                            {selectedSetId === 'basket'
+                              ? (language === 'pl' ? `Koszyk słówek (${basketWords.length} słów)` : `Basket (${basketWords.length} words)`)
+                              : (language === 'pl' ? 'Wybierz lekcje' : 'Choose lessons')}
                           </span>
                         </div>
-                        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isLessonSelectorOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`w-5 h-5 text-gray-400 group-hover:text-white transition-transform duration-300 ${isLessonSelectorOpen ? 'rotate-180' : ''}`} />
                       </button>
                       <div className="mt-2 px-2 text-[10px] text-gray-400 font-medium whitespace-pre-wrap leading-relaxed">
-                          
-                        {selectedSetId === 'grammar' && selectedGrammarTopic ? (language === 'pl' ? `Gramatyka ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}` : `Grammar ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}`) :
+                        {selectedSetId === 'basket' ? (language === 'pl' ? `Wybrano: Koszyk słówek (Mix ${basketWords.length} słów z lekcji)` : `Selected: Basket (${basketWords.length} words)`) :
+                         selectedSetId === 'grammar' && selectedGrammarTopic ? (language === 'pl' ? `Gramatyka ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}` : `Grammar ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}`) :
                          selectedSetId === 'all' && selectedLessonIds.length === 0 ? (language === 'pl' ? 'Wybrano: Wszystkie słówka (Mix)' : 'Selected: All vocab') : 
-
                          selectedSetId === 'lessons' || selectedLessonIds.length > 0 ? (language === 'pl' ? `Wybrane lekcje: ${vocabularySets.filter(s => selectedLessonIds.includes(s.id)).map(s => s.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()).join(', ')}` : `Selected lessons: ${selectedLessonIds.length}`) : 
                          specialTasks.find(t => 'special-task-' + t.id === selectedSetId) ? (language === 'pl' ? 'Wybrano: Zadanie specjalne' : 'Selected: Special Task') : ''}
                       </div>
@@ -1709,7 +1959,46 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 </div>
                                 
                                 <div className="overflow-y-auto custom-scrollbar flex-1 -mr-2 pr-2 space-y-2 pb-6">
-                                  <h4 className="text-sm font-bold text-gray-400 px-2 mb-2 uppercase tracking-wider">{language === 'pl' ? 'Moje lekcje' : 'My lessons'}</h4>
+                                  <h4 className="text-sm font-bold text-gray-400 px-2 mb-2 uppercase tracking-wider">{language === 'pl' ? 'Wybierz źródło' : 'Select source'}</h4>
+                                  
+                                  {/* Koszyk Option if populated */}
+                                  {basketWords.length > 0 && (
+                                    <label className={`flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${
+                                      selectedSetId === 'basket' ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
+                                    }`}>
+                                      <input 
+                                        type="radio" 
+                                        name="mobileSourceModal"
+                                        checked={selectedSetId === 'basket'}
+                                        onChange={() => {
+                                          setSelectedSetId('basket');
+                                          setSelectedLessonIds([]);
+                                        }}
+                                        className="w-5 h-5 text-emerald-400 focus:ring-emerald-400 rounded-full border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
+                                      />
+                                      <div className="flex-1 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <ShoppingBag className="w-5 h-5 text-emerald-400" />
+                                          <span className={`text-base font-semibold ${selectedSetId === 'basket' ? 'text-emerald-400' : 'text-gray-200'}`}>
+                                            {language === 'pl' ? `Koszyk Słówek (${basketWords.length})` : `Vocabulary Basket (${basketWords.length})`}
+                                          </span>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setIsBasketModalOpen(true);
+                                          }}
+                                          className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 font-medium transition-colors"
+                                        >
+                                          {language === 'pl' ? 'Otwórz koszyk' : 'Open basket'}
+                                        </button>
+                                      </div>
+                                    </label>
+                                  )}
+
+                                  <h4 className="text-sm font-bold text-gray-400 px-2 mt-4 mb-2 uppercase tracking-wider">{language === 'pl' ? 'Moje lekcje' : 'My lessons'}</h4>
                                   {specialTasks.length > 0 && specialTasks.map(task => (
                                     <label key={task.id} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${
                                       selectedSetId === 'special-task-' + task.id ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5'
@@ -1773,9 +2062,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                             e.stopPropagation();
                                             setPreviewVocabSet(set);
                                           }}
-                                          className="p-2 -mr-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors flex-shrink-0"
+                                          className="p-2 -mr-2 rounded-lg bg-white/5 hover:bg-white/10 text-emerald-400 hover:text-emerald-300 transition-colors flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold"
                                         >
                                           <Eye className="w-4 h-4" />
+                                          <span className="hidden sm:inline">{language === 'pl' ? 'Podgląd' : 'Preview'}</span>
                                         </button>
                                       </label>
                                     );
@@ -1895,11 +2185,16 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 exit={{ y: 20, opacity: 0, scale: 0.95 }}
                                 className="bg-[#0f1522] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85vh]"
                               >
-                                <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
-                                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                    <span className="text-emerald-400">👀</span>
-                                    {previewVocabSet.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
-                                  </h3>
+                                <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
+                                  <div>
+                                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                      <BookOpen className="w-5 h-5 text-emerald-400" />
+                                      {previewVocabSet.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
+                                    </h3>
+                                    <p className="text-xs text-gray-400 mt-0.5">
+                                      {language === 'pl' ? 'Kliknij +, aby dodać konkretne słówko do koszyka' : 'Click + to add specific words to basket'}
+                                    </p>
+                                  </div>
                                   <button 
                                     onClick={() => setPreviewVocabSet(null)}
                                     className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
@@ -1907,29 +2202,246 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                     <X className="w-5 h-5" />
                                   </button>
                                 </div>
-                                <div className="overflow-y-auto custom-scrollbar flex-1 pr-2">
+
+                                {previewVocabSet.vocabularyText && (
+                                  <div className="mb-4 flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+                                    <span className="text-xs font-medium text-emerald-300">
+                                      {language === 'pl' ? 'Chcesz całą lekcję?' : 'Want full lesson?'}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        addAllWordsFromTextToBasket(
+                                          previewVocabSet.vocabularyText, 
+                                          previewVocabSet.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()
+                                        );
+                                      }}
+                                      className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-bold hover:bg-emerald-400 transition-colors flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                      <span>{language === 'pl' ? 'Dodaj wszystkie do koszyka' : 'Add all to basket'}</span>
+                                    </button>
+                                  </div>
+                                )}
+
+                                <div className="overflow-y-auto custom-scrollbar flex-1 pr-1 space-y-2">
                                   {previewVocabSet.vocabularyText ? (
-                                    <div className="flex flex-col gap-2">
-                                      {previewVocabSet.vocabularyText.split(/[\n;]+/).map(i => i.trim()).filter(i => i.length > 0).map((line, lIdx) => (
-                                        <div key={lIdx} className="bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-gray-200">
-                                          {line}
-                                        </div>
-                                      ))}
-                                    </div>
+                                    previewVocabSet.vocabularyText
+                                      .split(/[\n;]+/)
+                                      .map(i => i.trim())
+                                      .filter(i => i.length > 0)
+                                      .map((line, lIdx) => {
+                                        const wordItem = parseLineToWordItem(
+                                          line, 
+                                          previewVocabSet.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()
+                                        );
+                                        const inBasket = isWordInBasket(wordItem.term);
+                                        return (
+                                          <div key={lIdx} className={`flex items-center justify-between gap-3 border rounded-xl p-3 text-sm transition-all ${
+                                            inBasket 
+                                              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200' 
+                                              : 'bg-white/5 border-white/10 text-gray-200 hover:border-white/20'
+                                          }`}>
+                                            <div className="flex-1 min-w-0">
+                                              <span className="font-semibold text-white block truncate">{wordItem.term}</span>
+                                              {wordItem.definition && (
+                                                <span className="text-xs text-gray-400 block truncate">{wordItem.definition}</span>
+                                              )}
+                                            </div>
+                                            <button
+                                              type="button"
+                                              onClick={() => toggleBasketWord(wordItem)}
+                                              className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all shrink-0 ${
+                                                inBasket
+                                                  ? 'bg-emerald-500 text-black shadow-[0_0_10px_rgba(16,185,129,0.4)]'
+                                                  : 'bg-white/10 hover:bg-emerald-500/20 hover:text-emerald-400 text-gray-300 border border-white/10'
+                                              }`}
+                                              title={inBasket ? 'Usuń z koszyka' : 'Dodaj do koszyka'}
+                                            >
+                                              {inBasket ? <Check className="w-4 h-4 stroke-[3]" /> : <Plus className="w-4 h-4" />}
+                                            </button>
+                                          </div>
+                                        );
+                                      })
                                   ) : (
                                     <div className="text-center text-gray-400 py-8">
                                       Brak słownictwa do wyświetlenia.
                                     </div>
                                   )}
                                 </div>
-                                <div className="mt-6 pt-4 border-t border-white/10">
+
+                                <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between gap-3">
+                                  {basketWords.length > 0 && (
+                                    <button
+                                      onClick={() => {
+                                        setPreviewVocabSet(null);
+                                        setIsBasketModalOpen(true);
+                                      }}
+                                      className="py-3 px-4 rounded-xl bg-white/10 text-white font-semibold text-xs hover:bg-white/20 transition-colors flex items-center gap-2"
+                                    >
+                                      <ShoppingBag className="w-4 h-4 text-emerald-400" />
+                                      <span>{language === 'pl' ? `Zobacz koszyk (${basketWords.length})` : `View basket (${basketWords.length})`}</span>
+                                    </button>
+                                  )}
                                   <button 
                                     onClick={() => setPreviewVocabSet(null)}
-                                    className="w-full py-4 rounded-2xl bg-[#10b981] text-black font-bold text-base shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                                    className="flex-1 py-3.5 rounded-xl bg-[#10b981] text-black font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                                   >
-                                    {language === 'pl' ? 'Zamknij' : 'Close'}
+                                    {language === 'pl' ? 'Gotowe' : 'Done'}
                                   </button>
                                 </div>
+                              </motion.div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        {/* Modal: Vocabulary Basket (Koszyk Słówek) */}
+                        <AnimatePresence>
+                          {isBasketModalOpen && (
+                            <motion.div key="basket-modal"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+                            >
+                              <motion.div
+                                initial={{ y: 20, opacity: 0, scale: 0.95 }}
+                                animate={{ y: 0, opacity: 1, scale: 1 }}
+                                exit={{ y: 20, opacity: 0, scale: 0.95 }}
+                                className="bg-[#0f1522] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85vh]"
+                              >
+                                <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                                      <ShoppingBag className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                      <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                        {language === 'pl' ? 'Koszyk Słówek' : 'Vocabulary Basket'}
+                                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                          {basketWords.length}
+                                        </span>
+                                      </h3>
+                                      <p className="text-xs text-gray-400">
+                                        {language === 'pl' ? 'Twój własny zestaw słów wymiksowany z lekcji' : 'Your custom mix of vocabulary from lessons'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <button 
+                                    onClick={() => setIsBasketModalOpen(false)}
+                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                                  >
+                                    <X className="w-5 h-5" />
+                                  </button>
+                                </div>
+
+                                {basketWords.length > 0 && (
+                                  <div className="flex justify-end mb-2">
+                                    <button
+                                      type="button"
+                                      onClick={clearBasket}
+                                      className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 font-medium px-2 py-1 rounded hover:bg-rose-500/10 transition-colors"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>{language === 'pl' ? 'Wyczyść koszyk' : 'Clear basket'}</span>
+                                    </button>
+                                  </div>
+                                )}
+
+                                <div className="overflow-y-auto custom-scrollbar flex-1 pr-1 space-y-2">
+                                  {basketWords.length > 0 ? (
+                                    basketWords.map((item, idx) => (
+                                      <div key={item.id + idx} className="flex items-center justify-between gap-3 bg-white/5 border border-white/10 hover:border-white/20 rounded-xl p-3 text-sm text-gray-200 transition-all">
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-white truncate">{item.term}</span>
+                                            {item.sourceTopic && (
+                                              <span className="text-[10px] font-mono bg-white/10 px-2 py-0.5 rounded text-gray-400 truncate max-w-[120px]">
+                                                {item.sourceTopic}
+                                              </span>
+                                            )}
+                                          </div>
+                                          {item.definition && (
+                                            <span className="text-xs text-gray-400 block truncate mt-0.5">{item.definition}</span>
+                                          )}
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleBasketWord(item)}
+                                          className="p-2 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors shrink-0"
+                                          title="Usuń z koszyka"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <div className="text-center text-gray-400 py-12 space-y-3">
+                                      <ShoppingBag className="w-12 h-12 text-gray-600 mx-auto stroke-[1.5]" />
+                                      <p className="text-sm font-medium">
+                                        {language === 'pl' ? 'Twój koszyk jest pusty.' : 'Your basket is empty.'}
+                                      </p>
+                                      <p className="text-xs text-gray-500 max-w-xs mx-auto">
+                                        {language === 'pl' ? 'Wejdź w dowolną lekcję i kliknij przycisk +, aby dodać słówka do koszyka.' : 'Open any lesson and click + to add words into your basket.'}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {basketWords.length > 0 && (
+                                  <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                      {language === 'pl' ? 'Wybierz typ ćwiczenia dla koszyka' : 'Choose exercise type for basket'}
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedSetId('basket');
+                                          setIsBasketModalOpen(false);
+                                          handleGenerate(false);
+                                        }}
+                                        className="py-3 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-black font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                      >
+                                        <Sparkles className="w-4 h-4 fill-black" />
+                                        <span>{language === 'pl' ? 'Trening AI' : 'AI Sentences'}</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setIsBasketModalOpen(false);
+                                          handleStartBasketPractice('flashcards');
+                                        }}
+                                        className="py-3 px-3 rounded-xl bg-white/10 border border-white/10 hover:border-emerald-500/40 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-white/15 transition-all"
+                                      >
+                                        <span>🗂️ {language === 'pl' ? 'Fiszki' : 'Flashcards'}</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setIsBasketModalOpen(false);
+                                          handleStartBasketPractice('quiz');
+                                        }}
+                                        className="py-3 px-3 rounded-xl bg-white/10 border border-white/10 hover:border-emerald-500/40 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-white/15 transition-all"
+                                      >
+                                        <span>📝 {language === 'pl' ? 'Quiz' : 'Quiz'}</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setIsBasketModalOpen(false);
+                                          handleStartBasketPractice('match');
+                                        }}
+                                        className="py-3 px-3 rounded-xl bg-white/10 border border-white/10 hover:border-emerald-500/40 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-white/15 transition-all"
+                                      >
+                                        <span>🧩 {language === 'pl' ? 'Dopasowanie' : 'Match'}</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </motion.div>
                             </motion.div>
                           )}
@@ -2605,9 +3117,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   const opt = {
                     margin: 10,
                     filename: 'ai_exercise_report.pdf',
-                    image: { type: 'jpeg', quality: 0.98 },
+                    image: { type: 'jpeg' as const, quality: 0.98 },
                     html2canvas: { scale: 2, useCORS: true },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
                   };
                   html2pdf().set(opt).from(resultsRef.current).save();
                 }
