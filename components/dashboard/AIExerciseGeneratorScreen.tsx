@@ -1610,165 +1610,172 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         {/* Top Row: Two Large Primary Cards (Puzzle & Typing) */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {/* Card 1: Układanka */}
-                          <button 
-                            type="button"
-                            onClick={() => setExerciseFormat('puzzle')}
-                            className={`group relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[170px] ${
-                              exerciseFormat === 'puzzle' 
-                                ? 'bg-[#0d1422] border-2 border-[#10b981] shadow-[0_0_35px_rgba(16,185,129,0.35)] scale-[1.02]' 
-                                : 'bg-[#0a0e17] border border-white/10 hover:border-emerald-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1'
-                            }`}
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                            <div className="absolute -inset-full top-0 block bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 group-hover:animate-shine pointer-events-none" />
+                          <div className="relative group">
+                            <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-emerald-500/0 via-emerald-500/40 to-emerald-500/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
+                            <button 
+                              type="button"
+                              onClick={() => setExerciseFormat('puzzle')}
+                              className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[170px] ${
+                                exerciseFormat === 'puzzle' 
+                                  ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.45)] scale-[1.02]' 
+                                  : 'bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-emerald-500/70 hover:shadow-[0_0_25px_rgba(16,185,129,0.3)] hover:-translate-y-1'
+                              }`}
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
-                            <div className="flex items-center justify-between w-full z-10">
-                              <div className={`w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform ${exerciseFormat === 'puzzle' ? 'text-emerald-400 bg-emerald-500/20 border-emerald-500' : ''}`}>
-                                <LayoutGrid className="w-6 h-6 drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                              <div className="flex items-center justify-between w-full z-10">
+                                <div className={`w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover/card:scale-110 transition-transform ${exerciseFormat === 'puzzle' ? 'text-emerald-400 bg-emerald-500/20 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]' : ''}`}>
+                                  <LayoutGrid className="w-6 h-6 drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                                </div>
+                                <span className="px-3 py-1 rounded-full text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                                  {language === 'pl' ? 'Rekomendowane' : 'Recommended'}
+                                </span>
                               </div>
-                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
-                                {language === 'pl' ? 'Rekomendowane' : 'Recommended'}
-                              </span>
-                            </div>
 
-                            <div className="z-10 mt-3">
-                              <h3 className="text-xl font-serif font-bold text-white group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
-                                {language === 'pl' ? 'Układanka' : 'Puzzle'} <ChevronRight className="w-5 h-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
-                              </h3>
-                              <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                                {language === 'pl' ? 'Układaj zdania z interaktywnych klocków i ucz się szybkiego szyku.' : 'Assemble sentences from interactive tiles.'}
-                              </p>
-                            </div>
-                          </button>
+                              <div className="z-10 mt-3">
+                                <h3 className="text-xl font-serif font-bold text-white group-hover/card:text-emerald-400 transition-colors flex items-center gap-1.5">
+                                  {language === 'pl' ? 'Układanka' : 'Puzzle'} <ChevronRight className="w-5 h-5 text-emerald-400 group-hover/card:translate-x-1 transition-transform" />
+                                </h3>
+                                <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                                  {language === 'pl' ? 'Układaj zdania z interaktywnych klocków i ucz się szybkiego szyku.' : 'Assemble sentences from interactive tiles.'}
+                                </p>
+                              </div>
+                            </button>
+                          </div>
 
                           {/* Card 2: Prawdziwe Wyzwanie */}
-                          <button 
-                            type="button"
-                            onClick={() => setExerciseFormat('typing')}
-                            className={`group relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[170px] ${
-                              exerciseFormat === 'typing' 
-                                ? 'bg-[#0d1422] border-2 border-cyan-500 shadow-[0_0_35px_rgba(6,182,212,0.35)] scale-[1.02]' 
-                                : 'bg-[#0a0e17] border border-white/10 hover:border-cyan-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1'
-                            }`}
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                            <div className="absolute -inset-full top-0 block bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 group-hover:animate-shine pointer-events-none" />
+                          <div className="relative group">
+                            <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-cyan-500/0 via-cyan-500/40 to-cyan-500/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
+                            <button 
+                              type="button"
+                              onClick={() => setExerciseFormat('typing')}
+                              className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[170px] ${
+                                exerciseFormat === 'typing' 
+                                  ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-cyan-400 shadow-[0_0_35px_rgba(6,182,212,0.45)] scale-[1.02]' 
+                                  : 'bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-cyan-500/70 hover:shadow-[0_0_25px_rgba(6,182,212,0.3)] hover:-translate-y-1'
+                              }`}
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
-                            <div className="flex items-center justify-between w-full z-10">
-                              <div className={`w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform ${exerciseFormat === 'typing' ? 'text-cyan-400 bg-cyan-500/20 border-cyan-500' : ''}`}>
-                                <Keyboard className="w-6 h-6 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                              <div className="flex items-center justify-between w-full z-10">
+                                <div className={`w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover/card:scale-110 transition-transform ${exerciseFormat === 'typing' ? 'text-cyan-400 bg-cyan-500/20 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : ''}`}>
+                                  <Keyboard className="w-6 h-6 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                                </div>
+                                <span className="px-3 py-1 rounded-full text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20">
+                                  {language === 'pl' ? 'Wpisywanie' : 'Typing'}
+                                </span>
                               </div>
-                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20">
-                                {language === 'pl' ? 'Wpisywanie' : 'Typing'}
-                              </span>
-                            </div>
 
-                            <div className="z-10 mt-3">
-                              <h3 className="text-xl font-serif font-bold text-white group-hover:text-cyan-400 transition-colors flex items-center gap-1.5">
-                                {language === 'pl' ? 'Prawdziwe Wyzwanie' : 'Real Challenge'} <ChevronRight className="w-5 h-5 text-cyan-400 group-hover:translate-x-1 transition-transform" />
-                              </h3>
-                              <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                                {language === 'pl' ? 'Pisanie pełnych zdań z pamięci i inteligentna korekta AI.' : 'Type full sentences with instant AI feedback.'}
-                              </p>
-                            </div>
-                          </button>
+                              <div className="z-10 mt-3">
+                                <h3 className="text-xl font-serif font-bold text-white group-hover/card:text-cyan-400 transition-colors flex items-center gap-1.5">
+                                  {language === 'pl' ? 'Prawdziwe Wyzwanie' : 'Real Challenge'} <ChevronRight className="w-5 h-5 text-cyan-400 group-hover/card:translate-x-1 transition-transform" />
+                                </h3>
+                                <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                                  {language === 'pl' ? 'Pisanie pełnych zdań z pamięci i inteligentna korekta AI.' : 'Type full sentences with instant AI feedback.'}
+                                </p>
+                              </div>
+                            </button>
+                          </div>
                         </div>
                         
                         {/* Bottom Row: Two Compact Cards (Flashcards & Match) */}
                         <div className="grid grid-cols-2 gap-4 mt-4">
                           {/* Card 3: Fiszki */}
-                          <button
-                            type="button"
-                            onClick={() => handleStartOtherPractice('flashcards')}
-                            className="group relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17] border border-white/10 hover:border-purple-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1 text-left min-h-[110px]"
-                          >
-                            <div className="flex items-center justify-between w-full z-10">
-                              <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-lg group-hover:scale-110 transition-transform">
-                                🗂️
+                          <div className="relative group">
+                            <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-purple-500/0 via-purple-500/50 to-purple-500/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
+                            <button
+                              type="button"
+                              onClick={() => handleStartOtherPractice('flashcards')}
+                              className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-purple-500/70 hover:shadow-[0_0_30px_rgba(168,85,247,0.35)] hover:-translate-y-1 text-left min-h-[110px]"
+                            >
+                              <div className="flex items-center justify-between w-full z-10">
+                                <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-lg group-hover/card:scale-110 transition-transform shadow-[0_0_10px_rgba(168,85,247,0.2)]">
+                                  🗂️
+                                </div>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-purple-400 bg-purple-500/10 border border-purple-500/20">
+                                  {language === 'pl' ? 'Nauka' : 'Learn'}
+                                </span>
                               </div>
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-purple-400 bg-purple-500/10 border border-purple-500/20">
-                                {language === 'pl' ? 'Nauka' : 'Learn'}
-                              </span>
-                            </div>
-                            <div className="z-10 mt-2">
-                              <h4 className="text-sm font-serif font-bold text-white group-hover:text-purple-300 transition-colors flex items-center gap-1">
-                                {language === 'pl' ? 'Fiszki' : 'Flashcards'} <ChevronRight className="w-4 h-4 text-purple-400 group-hover:translate-x-1 transition-transform" />
-                              </h4>
-                            </div>
-                          </button>
+                              <div className="z-10 mt-2">
+                                <h4 className="text-sm font-serif font-bold text-white group-hover/card:text-purple-300 transition-colors flex items-center gap-1">
+                                  {language === 'pl' ? 'Fiszki' : 'Flashcards'} <ChevronRight className="w-4 h-4 text-purple-400 group-hover/card:translate-x-1 transition-transform" />
+                                </h4>
+                              </div>
+                            </button>
+                          </div>
                           
                           {/* Card 4: Dopasowanie */}
-                          <button
-                            type="button"
-                            onClick={() => handleStartOtherPractice('match')}
-                            className="group relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17] border border-white/10 hover:border-amber-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1 text-left min-h-[110px]"
-                          >
-                            <div className="flex items-center justify-between w-full z-10">
-                              <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-lg group-hover:scale-110 transition-transform">
-                                🧩
+                          <div className="relative group">
+                            <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-amber-500/0 via-amber-500/50 to-amber-500/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
+                            <button
+                              type="button"
+                              onClick={() => handleStartOtherPractice('match')}
+                              className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-amber-500/70 hover:shadow-[0_0_30px_rgba(245,158,11,0.35)] hover:-translate-y-1 text-left min-h-[110px]"
+                            >
+                              <div className="flex items-center justify-between w-full z-10">
+                                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-lg group-hover/card:scale-110 transition-transform shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+                                  🧩
+                                </div>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20">
+                                  {language === 'pl' ? 'Gra' : 'Game'}
+                                </span>
                               </div>
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20">
-                                {language === 'pl' ? 'Gra' : 'Game'}
-                              </span>
-                            </div>
-                            <div className="z-10 mt-2">
-                              <h4 className="text-sm font-serif font-bold text-white group-hover:text-amber-300 transition-colors flex items-center gap-1">
-                                {language === 'pl' ? 'Dopasowanie' : 'Match'} <ChevronRight className="w-4 h-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
-                              </h4>
-                            </div>
-                          </button>
+                              <div className="z-10 mt-2">
+                                <h4 className="text-sm font-serif font-bold text-white group-hover/card:text-amber-300 transition-colors flex items-center gap-1">
+                                  {language === 'pl' ? 'Dopasowanie' : 'Match'} <ChevronRight className="w-4 h-4 text-amber-400 group-hover/card:translate-x-1 transition-transform" />
+                                </h4>
+                              </div>
+                            </button>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Unified Źródło Słownictwa Box (Mobile - Centered Layout) */}
-                      <div className="bg-[#0c1017] border border-white/10 hover:border-emerald-500/40 rounded-3xl p-6 text-center flex flex-col items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.5)] relative overflow-hidden group transition-all duration-300">
-                        <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                        
-                        {/* Basket Floating Badge if populated */}
-                        {basketWords.length > 0 && (
-                          <div className="w-full flex justify-end mb-3">
-                            <button
-                              type="button"
-                              onClick={() => setIsBasketModalOpen(true)}
-                              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full transition-all hover:scale-105 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
-                            >
-                              <ShoppingBag className="w-3.5 h-3.5" />
-                              <span>{language === 'pl' ? `Koszyk (${basketWords.length})` : `Basket (${basketWords.length})`}</span>
-                            </button>
+                      {/* Źródło Słownictwa - Wąski Pasek z wybranymi pod spodem */}
+                      <div className="w-full space-y-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setIsLessonSelectorOpen(true)}
+                          className="w-full group relative flex items-center justify-between px-4 py-3 rounded-2xl bg-[#0c1017]/90 backdrop-blur-md border border-white/10 hover:border-emerald-500/60 shadow-[0_8px_25px_rgba(0,0,0,0.4)] hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] transition-all duration-300 cursor-pointer overflow-hidden text-left"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                          
+                          <div className="flex items-center gap-2.5 z-10">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                              {selectedSetId === 'basket' ? <ShoppingBag className="w-4 h-4" /> : <BookOpen className="w-4 h-4" />}
+                            </div>
+                            <span className="text-sm font-serif font-bold text-white group-hover:text-emerald-300 transition-colors">
+                              {language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary Source'}
+                            </span>
                           </div>
-                        )}
 
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-3 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] group-hover:scale-110 transition-transform">
-                          {selectedSetId === 'basket' ? <ShoppingBag className="w-6 h-6" /> : <BookOpen className="w-6 h-6" />}
-                        </div>
+                          <div className="flex items-center gap-2 z-10 shrink-0">
+                            {basketWords.length > 0 && (
+                              <span 
+                                onClick={(e) => { e.stopPropagation(); setIsBasketModalOpen(true); }}
+                                className="text-[11px] font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1 hover:scale-105 transition-transform"
+                              >
+                                <ShoppingBag className="w-3 h-3" />
+                                <span>{basketWords.length}</span>
+                              </span>
+                            )}
+                            <div className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-bold text-emerald-400 group-hover:bg-emerald-500 group-hover:text-black transition-all flex items-center gap-1">
+                              <span>{language === 'pl' ? 'Wybierz' : 'Select'}</span>
+                              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                            </div>
+                          </div>
+                        </button>
 
-                        <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-widest font-mono mb-1">
-                          {language === 'pl' ? 'ŹRÓDŁO SŁOWNICTWA' : 'VOCABULARY SOURCE'}
-                        </span>
-
-                        {/* Large Prominent Headline */}
-                        <h3 className="text-xl font-serif font-bold text-white group-hover:text-emerald-300 transition-colors cursor-pointer flex items-center justify-center gap-2" onClick={() => setIsLessonSelectorOpen(true)}>
-                          {selectedSetId === 'basket'
-                            ? (language === 'pl' ? `Koszyk Słówek (${basketWords.length} słów)` : `Word Basket (${basketWords.length})`)
-                            : selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0
-                            ? (language === 'pl' ? 'Wybrana Gramatyka' : 'Selected Grammar')
-                            : selectedSetId === 'all' && selectedLessonIds.length === 0
-                            ? (language === 'pl' ? 'Wszystkie Słówka (Mix)' : 'All Vocabulary')
-                            : selectedLessonIds.length > 0
-                            ? (language === 'pl' ? `Wybrane Lekcje (${selectedLessonIds.length})` : `Selected Lessons (${selectedLessonIds.length})`)
-                            : (language === 'pl' ? 'Wybierz zestaw z bazy' : 'Select Vocabulary Source')}
-                          <ChevronRight className="w-5 h-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
-                        </h3>
-
-                        {/* List of selected items as pills below */}
-                        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 max-w-full">
+                        {/* Wybrane pozycje pod spodem */}
+                        <div className="flex flex-wrap items-center gap-1.5 px-1">
                           {selectedSetId === 'basket' ? (
-                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
-                              {language === 'pl' ? `Mieszanka ${basketWords.length} wyselekcjonowanych słówek` : `Mix of ${basketWords.length} selected words`}
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+                              <ShoppingBag className="w-3 h-3 text-emerald-400" />
+                              {language === 'pl' ? `Koszyk (${basketWords.length} słów)` : `Basket (${basketWords.length} words)`}
                             </span>
                           ) : selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0 ? (
                             selectedGrammarTopics.map((topic, i) => (
-                              <span key={i} className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                              <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+                                <Sparkles className="w-3 h-3 text-emerald-400" />
                                 {topic.name}
                               </span>
                             ))
@@ -1776,26 +1783,18 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             vocabularySets
                               .filter(s => selectedLessonIds.includes(s.id))
                               .map((set, i) => (
-                                <span key={i} className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+                                <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+                                  <BookOpen className="w-3 h-3 text-emerald-400" />
                                   {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
                                 </span>
                               ))
                           ) : (
-                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/5 border border-white/10 text-gray-400">
-                              {language === 'pl' ? 'Kliknij, aby wybrać zestawy lekcji' : 'Click to select lesson sets'}
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-gray-400">
+                              <BookOpen className="w-3 h-3 text-gray-400" />
+                              {language === 'pl' ? 'Wszystkie Słówka (Mix z Zasobów)' : 'All Vocabulary (Mix)'}
                             </span>
                           )}
                         </div>
-
-                        <button 
-                          type="button"
-                          onClick={() => setIsLessonSelectorOpen(true)}
-                          className="mt-5 px-5 py-2 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold transition-all hover:scale-105 flex items-center gap-2 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
-                        >
-                          <BookOpen className="w-3.5 h-3.5" />
-                          <span>{language === 'pl' ? 'Zmień źródło słownictwa' : 'Change Vocabulary Source'}</span>
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
                       </div>
 
                       {/* Section 3: ILOŚĆ ZDAŃ */}
@@ -1919,165 +1918,172 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       {/* Top Row: Two Large Primary Cards (Puzzle & Typing) */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Card 1: Układanka */}
-                        <button
-                          type="button"
-                          onClick={() => setExerciseFormat('puzzle')}
-                          className={`group relative text-left rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[180px] ${
-                            exerciseFormat === 'puzzle'
-                              ? 'bg-[#0d1422] border-2 border-[#10b981] shadow-[0_0_35px_rgba(16,185,129,0.35)] scale-[1.02]'
-                              : 'bg-[#0a0e17] border border-white/10 hover:border-emerald-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1'
-                          }`}
-                        >
-                          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                          <div className="absolute -inset-full top-0 block bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 group-hover:animate-shine pointer-events-none" />
+                        <div className="relative group">
+                          <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-emerald-500/0 via-emerald-500/40 to-emerald-500/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
+                          <button
+                            type="button"
+                            onClick={() => setExerciseFormat('puzzle')}
+                            className={`w-full group/card relative text-left rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[180px] ${
+                              exerciseFormat === 'puzzle'
+                                ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.45)] scale-[1.02]'
+                                : 'bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-emerald-500/70 hover:shadow-[0_0_25px_rgba(16,185,129,0.3)] hover:-translate-y-1'
+                            }`}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
-                          <div className="flex items-center justify-between w-full z-10">
-                            <div className={`w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform ${exerciseFormat === 'puzzle' ? 'text-emerald-400 bg-emerald-500/20 border-emerald-500' : ''}`}>
-                              <LayoutGrid className="w-6 h-6 drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                            <div className="flex items-center justify-between w-full z-10">
+                              <div className={`w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover/card:scale-110 transition-transform ${exerciseFormat === 'puzzle' ? 'text-emerald-400 bg-emerald-500/20 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]' : ''}`}>
+                                <LayoutGrid className="w-6 h-6 drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                              </div>
+                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                                {language === 'pl' ? 'Rekomendowane' : 'Recommended'}
+                              </span>
                             </div>
-                            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
-                              {language === 'pl' ? 'Rekomendowane' : 'Recommended'}
-                            </span>
-                          </div>
 
-                          <div className="z-10 mt-4">
-                            <h3 className="text-2xl font-serif font-bold text-white group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
-                              {language === 'pl' ? 'Układanka' : 'Puzzle'} <ChevronRight className="w-5 h-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
-                            </h3>
-                            <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                              {language === 'pl' ? 'Układaj zdania z interaktywnych klocków i ucz się szybkiego szyku.' : 'Assemble sentences from interactive tiles.'}
-                            </p>
-                          </div>
-                        </button>
+                            <div className="z-10 mt-4">
+                              <h3 className="text-2xl font-serif font-bold text-white group-hover/card:text-emerald-400 transition-colors flex items-center gap-1.5">
+                                {language === 'pl' ? 'Układanka' : 'Puzzle'} <ChevronRight className="w-5 h-5 text-emerald-400 group-hover/card:translate-x-1 transition-transform" />
+                              </h3>
+                              <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                                {language === 'pl' ? 'Układaj zdania z interaktywnych klocków i ucz się szybkiego szyku.' : 'Assemble sentences from interactive tiles.'}
+                              </p>
+                            </div>
+                          </button>
+                        </div>
 
                         {/* Card 2: Prawdziwe wyzwanie */}
-                        <button
-                          type="button"
-                          onClick={() => setExerciseFormat('typing')}
-                          className={`group relative text-left rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[180px] ${
-                            exerciseFormat === 'typing'
-                              ? 'bg-[#0d1422] border-2 border-cyan-500 shadow-[0_0_35px_rgba(6,182,212,0.35)] scale-[1.02]'
-                              : 'bg-[#0a0e17] border border-white/10 hover:border-cyan-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1'
-                          }`}
-                        >
-                          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                          <div className="absolute -inset-full top-0 block bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 group-hover:animate-shine pointer-events-none" />
+                        <div className="relative group">
+                          <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-cyan-500/0 via-cyan-500/40 to-cyan-500/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
+                          <button
+                            type="button"
+                            onClick={() => setExerciseFormat('typing')}
+                            className={`w-full group/card relative text-left rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[180px] ${
+                              exerciseFormat === 'typing'
+                                ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-cyan-400 shadow-[0_0_35px_rgba(6,182,212,0.45)] scale-[1.02]'
+                                : 'bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-cyan-500/70 hover:shadow-[0_0_25px_rgba(6,182,212,0.3)] hover:-translate-y-1'
+                            }`}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
-                          <div className="flex items-center justify-between w-full z-10">
-                            <div className={`w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform ${exerciseFormat === 'typing' ? 'text-cyan-400 bg-cyan-500/20 border-cyan-500' : ''}`}>
-                              <Keyboard className="w-6 h-6 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                            <div className="flex items-center justify-between w-full z-10">
+                              <div className={`w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover/card:scale-110 transition-transform ${exerciseFormat === 'typing' ? 'text-cyan-400 bg-cyan-500/20 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : ''}`}>
+                                <Keyboard className="w-6 h-6 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                              </div>
+                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20">
+                                {language === 'pl' ? 'Wpisywanie' : 'Typing'}
+                              </span>
                             </div>
-                            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20">
-                              {language === 'pl' ? 'Wpisywanie' : 'Typing'}
-                            </span>
-                          </div>
 
-                          <div className="z-10 mt-4">
-                            <h3 className="text-2xl font-serif font-bold text-white group-hover:text-cyan-400 transition-colors flex items-center gap-1.5">
-                              {language === 'pl' ? 'Prawdziwe Wyzwanie' : 'Real Challenge'} <ChevronRight className="w-5 h-5 text-cyan-400 group-hover:translate-x-1 transition-transform" />
-                            </h3>
-                            <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                              {language === 'pl' ? 'Pisanie pełnych zdań z pamięci i inteligentna korekta AI.' : 'Type full sentences with instant AI feedback.'}
-                            </p>
-                          </div>
-                        </button>
+                            <div className="z-10 mt-4">
+                              <h3 className="text-2xl font-serif font-bold text-white group-hover/card:text-cyan-400 transition-colors flex items-center gap-1.5">
+                                {language === 'pl' ? 'Prawdziwe Wyzwanie' : 'Real Challenge'} <ChevronRight className="w-5 h-5 text-cyan-400 group-hover/card:translate-x-1 transition-transform" />
+                              </h3>
+                              <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                                {language === 'pl' ? 'Pisanie pełnych zdań z pamięci i inteligentna korekta AI.' : 'Type full sentences with instant AI feedback.'}
+                              </p>
+                            </div>
+                          </button>
+                        </div>
                       </div>
                       
                       {/* Bottom Row: Two Compact Cards (Flashcards & Match) */}
                       <div className="grid grid-cols-2 gap-4">
                         {/* Card 3: Fiszki */}
-                        <button
-                          type="button"
-                          onClick={() => handleStartOtherPractice('flashcards')}
-                          className="group relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17] border border-white/10 hover:border-purple-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1 text-left min-h-[115px]"
-                        >
-                          <div className="flex items-center justify-between w-full z-10">
-                            <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-xl group-hover:scale-110 transition-transform">
-                              🗂️
+                        <div className="relative group">
+                          <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-purple-500/0 via-purple-500/50 to-purple-500/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
+                          <button
+                            type="button"
+                            onClick={() => handleStartOtherPractice('flashcards')}
+                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-purple-500/70 hover:shadow-[0_0_30px_rgba(168,85,247,0.35)] hover:-translate-y-1 text-left min-h-[115px]"
+                          >
+                            <div className="flex items-center justify-between w-full z-10">
+                              <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-xl group-hover/card:scale-110 transition-transform shadow-[0_0_10px_rgba(168,85,247,0.2)]">
+                                🗂️
+                              </div>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold text-purple-400 bg-purple-500/10 border border-purple-500/20">
+                                {language === 'pl' ? 'Nauka' : 'Learn'}
+                              </span>
                             </div>
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold text-purple-400 bg-purple-500/10 border border-purple-500/20">
-                              {language === 'pl' ? 'Nauka' : 'Learn'}
-                            </span>
-                          </div>
-                          <div className="z-10 mt-2">
-                            <h4 className="text-base font-serif font-bold text-white group-hover:text-purple-300 transition-colors flex items-center gap-1">
-                              {language === 'pl' ? 'Fiszki' : 'Flashcards'} <ChevronRight className="w-4 h-4 text-purple-400 group-hover:translate-x-1 transition-transform" />
-                            </h4>
-                          </div>
-                        </button>
+                            <div className="z-10 mt-2">
+                              <h4 className="text-base font-serif font-bold text-white group-hover/card:text-purple-300 transition-colors flex items-center gap-1">
+                                {language === 'pl' ? 'Fiszki' : 'Flashcards'} <ChevronRight className="w-4 h-4 text-purple-400 group-hover/card:translate-x-1 transition-transform" />
+                              </h4>
+                            </div>
+                          </button>
+                        </div>
                         
                         {/* Card 4: Dopasowanie */}
-                        <button
-                          type="button"
-                          onClick={() => handleStartOtherPractice('match')}
-                          className="group relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17] border border-white/10 hover:border-amber-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:-translate-y-1 text-left min-h-[115px]"
-                        >
-                          <div className="flex items-center justify-between w-full z-10">
-                            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xl group-hover:scale-110 transition-transform">
-                              🧩
+                        <div className="relative group">
+                          <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-amber-500/0 via-amber-500/50 to-amber-500/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
+                          <button
+                            type="button"
+                            onClick={() => handleStartOtherPractice('match')}
+                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-amber-500/70 hover:shadow-[0_0_30px_rgba(245,158,11,0.35)] hover:-translate-y-1 text-left min-h-[115px]"
+                          >
+                            <div className="flex items-center justify-between w-full z-10">
+                              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xl group-hover/card:scale-110 transition-transform shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+                                🧩
+                              </div>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20">
+                                {language === 'pl' ? 'Gra' : 'Game'}
+                              </span>
                             </div>
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20">
-                              {language === 'pl' ? 'Gra' : 'Game'}
-                            </span>
-                          </div>
-                          <div className="z-10 mt-2">
-                            <h4 className="text-base font-serif font-bold text-white group-hover:text-amber-300 transition-colors flex items-center gap-1">
-                              {language === 'pl' ? 'Dopasowanie' : 'Match'} <ChevronRight className="w-4 h-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
-                            </h4>
-                          </div>
-                        </button>
+                            <div className="z-10 mt-2">
+                              <h4 className="text-base font-serif font-bold text-white group-hover/card:text-amber-300 transition-colors flex items-center gap-1">
+                                {language === 'pl' ? 'Dopasowanie' : 'Match'} <ChevronRight className="w-4 h-4 text-amber-400 group-hover/card:translate-x-1 transition-transform" />
+                              </h4>
+                            </div>
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Unified Źródło Słownictwa Box (Desktop - Centered Layout) */}
-                    <div className="bg-[#0c1017] border border-white/10 hover:border-emerald-500/40 rounded-3xl p-8 text-center flex flex-col items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.5)] relative overflow-hidden group transition-all duration-300">
-                      <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                      
-                      {/* Basket Floating Badge if populated */}
-                      {basketWords.length > 0 && (
-                        <div className="w-full flex justify-end mb-2">
-                          <button
-                            type="button"
-                            onClick={() => setIsBasketModalOpen(true)}
-                            className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full transition-all hover:scale-105 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
-                          >
-                            <ShoppingBag className="w-3.5 h-3.5" />
-                            <span>{language === 'pl' ? `Koszyk (${basketWords.length})` : `Basket (${basketWords.length})`}</span>
-                          </button>
+                    {/* Źródło Słownictwa - Wąski Pasek z wybranymi pozycjami pod spodem */}
+                    <div className="w-full space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => setIsLessonSelectorOpen(true)}
+                        className="w-full group relative flex items-center justify-between px-5 py-3.5 rounded-2xl bg-[#0c1017]/90 backdrop-blur-md border border-white/10 hover:border-emerald-500/60 shadow-[0_8px_25px_rgba(0,0,0,0.4)] hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] transition-all duration-300 cursor-pointer overflow-hidden text-left"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                        
+                        <div className="flex items-center gap-3 z-10">
+                          <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                            {selectedSetId === 'basket' ? <ShoppingBag className="w-4.5 h-4.5" /> : <BookOpen className="w-4.5 h-4.5" />}
+                          </div>
+                          <span className="text-base font-serif font-bold text-white group-hover:text-emerald-300 transition-colors">
+                            {language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary Source'}
+                          </span>
                         </div>
-                      )}
 
-                      <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-3 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] group-hover:scale-110 transition-transform">
-                        {selectedSetId === 'basket' ? <ShoppingBag className="w-7 h-7" /> : <BookOpen className="w-7 h-7" />}
-                      </div>
+                        <div className="flex items-center gap-2.5 z-10 shrink-0">
+                          {basketWords.length > 0 && (
+                            <span 
+                              onClick={(e) => { e.stopPropagation(); setIsBasketModalOpen(true); }}
+                              className="text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 rounded-full flex items-center gap-1.5 hover:scale-105 transition-transform shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                            >
+                              <ShoppingBag className="w-3.5 h-3.5" />
+                              <span>{language === 'pl' ? `Koszyk (${basketWords.length})` : `Basket (${basketWords.length})`}</span>
+                            </span>
+                          )}
+                          <div className="px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-400 group-hover:bg-emerald-500 group-hover:text-black transition-all flex items-center gap-1">
+                            <span>{language === 'pl' ? 'Wybierz' : 'Select'}</span>
+                            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </div>
+                      </button>
 
-                      <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest font-mono mb-1">
-                        {language === 'pl' ? 'ŹRÓDŁO SŁOWNICTWA' : 'VOCABULARY SOURCE'}
-                      </span>
-
-                      {/* Large Prominent Headline */}
-                      <h3 className="text-2xl sm:text-3xl font-serif font-bold text-white group-hover:text-emerald-300 transition-colors cursor-pointer flex items-center justify-center gap-2" onClick={() => setIsLessonSelectorOpen(true)}>
-                        {selectedSetId === 'basket'
-                          ? (language === 'pl' ? `Koszyk Słówek (${basketWords.length} słów)` : `Word Basket (${basketWords.length})`)
-                          : selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0
-                          ? (language === 'pl' ? 'Wybrana Gramatyka' : 'Selected Grammar')
-                          : selectedSetId === 'all' && selectedLessonIds.length === 0
-                          ? (language === 'pl' ? 'Wszystkie Słówka (Mix)' : 'All Vocabulary')
-                          : selectedLessonIds.length > 0
-                          ? (language === 'pl' ? `Wybrane Lekcje (${selectedLessonIds.length})` : `Selected Lessons (${selectedLessonIds.length})`)
-                          : (language === 'pl' ? 'Wybierz zestaw z bazy' : 'Select Vocabulary Source')}
-                        <ChevronRight className="w-6 h-6 text-emerald-400 group-hover:translate-x-1 transition-transform" />
-                      </h3>
-
-                      {/* List of selected items as pills below */}
-                      <div className="mt-4 flex flex-wrap items-center justify-center gap-2 max-w-xl">
+                      {/* Lista wybranych pozycji pod spodem */}
+                      <div className="flex flex-wrap items-center gap-2 px-1">
                         {selectedSetId === 'basket' ? (
-                          <span className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
-                            {language === 'pl' ? `Mieszanka ${basketWords.length} wyselekcjonowanych słówek` : `Mix of ${basketWords.length} selected words`}
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+                            <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
+                            {language === 'pl' ? `Koszyk Słówek (${basketWords.length} słów)` : `Word Basket (${basketWords.length} words)`}
                           </span>
                         ) : selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0 ? (
                           selectedGrammarTopics.map((topic, i) => (
-                            <span key={i} className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                            <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+                              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
                               {topic.name}
                             </span>
                           ))
@@ -2085,26 +2091,18 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           vocabularySets
                             .filter(s => selectedLessonIds.includes(s.id))
                             .map((set, i) => (
-                              <span key={i} className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+                              <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+                                <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
                                 {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
                               </span>
                             ))
                         ) : (
-                          <span className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white/5 border border-white/10 text-gray-400">
-                            {language === 'pl' ? 'Kliknij, aby wybrać zestawy lekcji' : 'Click to select lesson sets'}
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-gray-400">
+                            <BookOpen className="w-3.5 h-3.5 text-gray-400" />
+                            {language === 'pl' ? 'Wszystkie Słówka (Mix z Zasobów)' : 'All Vocabulary (Mix)'}
                           </span>
                         )}
                       </div>
-
-                      <button 
-                        type="button"
-                        onClick={() => setIsLessonSelectorOpen(true)}
-                        className="mt-6 px-6 py-2.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold transition-all hover:scale-105 flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
-                      >
-                        <BookOpen className="w-4 h-4" />
-                        <span>{language === 'pl' ? 'Zmień źródło słownictwa' : 'Change Vocabulary Source'}</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
                     </div>
 
                     {/* SECTION 3: ILOŚĆ ZDAŃ */}
@@ -3418,7 +3416,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
           >
             <div className="sticky top-0 z-20 flex items-center justify-between p-6 bg-[#121824]/95 backdrop-blur-xl border-b border-white/10">
               <div>
-                 <h2 className="text-xl font-bold text-white">Tematyka mieszana (Baza tematów)</h2>
+                 <h2 className="text-xl font-bold text-white">Tematyka mieszana (Zasoby)</h2>
                  <p className="text-sm text-content-muted">Wybierz kategorię z bazy, aby wygenerować zdania do ćwiczeń.</p>
               </div>
               <button 

@@ -233,14 +233,6 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks,
     const semanticChunking = (sentence: string): string[] => {
       const words = sentence.trim().split(/\s+/);
       
-      // Jeżeli zdanie jest krótkie (np. do 8 słów), rozbijamy je na każde słowo z osobna.
-      if (words.length <= 8) {
-        return words;
-      }
-
-      const chunks: string[] = [];
-      let currentChunk: string[] = [];
-      
       const dontBreakAfter = new Set([
         'the', 'a', 'an', 'my', 'your', 'his', 'her', 'our', 'their', 'this', 'that', 'these', 'those',
         'of', 'very', 'not', 'no', 'to', 'in', 'on', 'at', 'with', 'about', 'by', 'from', 'as', 'into', 'like', 'for'
@@ -249,6 +241,32 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks,
       const phrasalVerbParticles = new Set([
         'up', 'down', 'out', 'in', 'on', 'off', 'over', 'away', 'back', 'through', 'along', 'forward'
       ]);
+
+      // Rule 1: Wypowiedzi do 8 słów - rozkładamy na pojedyncze słowa, ew. łącząc w pary przyimki/czasowniki frazowe
+      if (words.length <= 8) {
+        const shortChunks: string[] = [];
+        for (let i = 0; i < words.length; i++) {
+          const word = words[i];
+          const cleanWord = word.replace(/[^a-zA-Z]/g, '').toLowerCase();
+          const nextWord = i < words.length - 1 ? words[i + 1] : null;
+          const cleanNextWord = nextWord ? nextWord.replace(/[^a-zA-Z]/g, '').toLowerCase() : '';
+
+          if (dontBreakAfter.has(cleanWord) && nextWord) {
+            shortChunks.push(`${word} ${nextWord}`);
+            i++;
+          } else if (phrasalVerbParticles.has(cleanNextWord) && i < words.length - 1) {
+            shortChunks.push(`${word} ${nextWord}`);
+            i++;
+          } else {
+            shortChunks.push(word);
+          }
+        }
+        return shortChunks;
+      }
+
+      // Rule 2: Zdania powyżej 8 słów - budujemy większe fragmenty (2-4 słowa), tak żeby było ok. 3-5 klocków
+      const chunks: string[] = [];
+      let currentChunk: string[] = [];
       
       const phraseStarters = new Set([
         'the', 'a', 'an', 'my', 'your', 'his', 'her', 'our', 'their', 'this', 'that', 'these', 'those',
@@ -265,24 +283,20 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks,
         const cleanNextWord = nextWord ? nextWord.replace(/[^a-zA-Z]/g, '').toLowerCase() : '';
         
         currentChunk.push(word);
-        
         const hasPunctuation = /[.,!?;:]$/.test(word);
         
         let shouldBreak = false;
         
         if (hasPunctuation) {
           shouldBreak = true;
-        } else if (phrasalVerbParticles.has(cleanNextWord)) {
-          // Keep phrasal verbs together
-          shouldBreak = false;
         } else if (dontBreakAfter.has(cleanWord)) {
-          // Don't break after articles/prepositions
           shouldBreak = false;
-        } else if (phraseStarters.has(cleanNextWord)) {
-          // Break before new phrases, prepositions, pronouns, verbs
+        } else if (phrasalVerbParticles.has(cleanNextWord)) {
+          shouldBreak = false;
+        } else if (currentChunk.length >= 3) {
+          // Dla długich zdań staramy się trzymać klocki po 3 słowa
           shouldBreak = true;
-        } else if (currentChunk.length >= 2) {
-          // Break every 2-3 words otherwise to keep fragments small
+        } else if (phraseStarters.has(cleanNextWord) && currentChunk.length >= 2) {
           shouldBreak = true;
         }
 

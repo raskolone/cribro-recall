@@ -129,7 +129,8 @@ export const formatAIModelName = (model?: string): string => {
   if (!model) return 'DeepSeek Pro (R1)';
   if (model.includes('deepseek-reasoner')) return 'DeepSeek Pro (R1)';
   if (model.includes('deepseek-chat') || model.includes('deepseek')) return 'DeepSeek Lite (V3)';
-  if (model.includes('gemini-3.6') || model.includes('gemini-3.1') || model.includes('gemini')) return 'Gemini AI';
+  if (model.includes('gemini-3.5-flash-lite') || model.includes('gemini-2.5-flash-lite')) return 'Gemini 3.5 Flash Lite';
+  if (model.includes('gemini-3.6') || model.includes('gemini-3.5') || model.includes('gemini-3.1') || model.includes('gemini')) return 'Gemini AI';
   return model;
 };
 
@@ -338,9 +339,16 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
   const MAX_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: The goal of this exercise is just to familiarize the user with the material, so split the sentence into LONGER chunks (2-5 words per chunk). Do NOT split into single words. Keep logical phrases together (e.g., 'I have been', 'to the store'). For sentences above 10 words, divide them into a MAXIMUM of 5 chunks.";
+      const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: 1) If the target sentence has FEWER THAN 8 words (< 8 words): split into mostly SINGLE WORDS or small pairs (e.g. phrasal verbs 'look up', prepositions 'in the'). 2) If the target sentence has 8 OR MORE WORDS (>= 8 words): group into LARGER logical phrase chunks (2-4 words per chunk, e.g. 'I decided to go', 'to the grocery store', 'after work'). Limit long sentences to 3 to 5 chunks maximum so it is achievable and serves as a good warmup before typing.";
       
-      const preferredModels = PREFERRED_AI_MODELS;
+      const preferredModels = [
+        'gemini-3.5-flash-lite',
+        'gemini-2.5-flash-lite',
+        'gemini-3.5-flash',
+        'gemini-3.6-flash',
+        'deepseek-chat',
+        'deepseek-reasoner'
+      ];
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: sentenceGeneratorSchema,

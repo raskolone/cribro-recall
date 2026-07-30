@@ -8,8 +8,8 @@ export const ELEVENLABS_VOICES = {
 } as const;
 
 export const DEFAULT_VOICE_SETTINGS = {
-  stability: 0.75,
-  similarity_boost: 0.85,
+  stability: 0.85, // Opanowany, stabilny i spokojny lektor
+  similarity_boost: 0.88, // Wyrazista i poprawna dykcja
   style: 0.0,
   use_speaker_boost: true
 };
