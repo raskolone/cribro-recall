@@ -3002,8 +3002,12 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
-                        if (studentAnswers[activeSentenceIndex]?.trim()) {
+                        if (evaluationStatuses[activeSentenceIndex] !== 'evaluated') {
+                          if (studentAnswers[activeSentenceIndex]?.trim()) {
                             handleEvaluateSingle();
+                          }
+                        } else {
+                          handleNext();
                         }
                       }
                     }}

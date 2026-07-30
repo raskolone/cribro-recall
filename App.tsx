@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { VocabularyProvider } from './context/VocabularyContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -14,6 +14,16 @@ import ForcePasswordChangeScreen from './components/auth/ForcePasswordChangeScre
 import GlobalErrorBoundary from './components/ui/GlobalErrorBoundary';
 
 const App: React.FC = () => {
+  useEffect(() => {
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        window.dispatchEvent(new CustomEvent('close-modal'));
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
   return (
     <LanguageProvider>
       <AuthProvider>

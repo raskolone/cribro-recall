@@ -31,6 +31,7 @@ import LessonHistoryScreen from './LessonHistoryScreen';
 import StudentTestsScreen from '../tests/StudentTestsScreen';
 import StudentStatsScreen from './StudentStatsScreen';
 import NewVocabularyModal from './NewVocabularyModal';
+import StatsModal from './StatsModal';
 import { useAuth } from '../../context/AuthContext';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { useFlashcards } from '../../context/FlashcardContext';
@@ -317,6 +318,7 @@ const Dashboard: React.FC = () => {
 
   const [isExerciseActive, setIsExerciseActive] = useState(false);
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
 
   const [greeting, setGreeting] = useState('');
   const [slogan, setSlogan] = useState('');
@@ -810,13 +812,14 @@ const Dashboard: React.FC = () => {
               </button>
             </div>
 
-            <div className="liquid-glass-card p-6 space-y-6">
-              <h2 className="text-xl font-bold flex items-center gap-2 border-b border-white/10 pb-3">
+            <div className="liquid-glass-card p-6 flex items-center justify-between">
+              <h2 className="text-xl font-bold flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-primary" />
                 {language === 'pl' ? 'Twoje postępy w nauce' : 'Your Learning Progress'}
               </h2>
-              <ProgressOverview />
-              {showLearningProgressChart && <LearningProgressChart />}
+              <Button onClick={() => setShowStatsModal(true)} variant="secondary" size="sm">
+                {language === 'pl' ? 'Zobacz szczegóły' : 'View Details'}
+              </Button>
             </div>
           </div>
         )}
@@ -879,7 +882,7 @@ const Dashboard: React.FC = () => {
                 )}
               </div>
               {user?.role !== 'admin' && user?.role !== 'teacher' && (
-                <p className="text-sm text-content-muted mt-1 font-medium">{slogan}</p>
+                <p className="text-sm text-content-muted mt-1 font-medium min-h-[1.25rem]">{slogan}</p>
               )}
             </div>
             
@@ -922,6 +925,7 @@ const Dashboard: React.FC = () => {
         onClose={handleClearNewLessonFlag}
         onViewHistory={handleViewNewVocabulary}
       />
+      <StatsModal isOpen={showStatsModal} onClose={() => setShowStatsModal(false)} />
     </div>
   );
 };

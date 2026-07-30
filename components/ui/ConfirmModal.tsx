@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Card from './Card';
 import Button from './Button';
 
@@ -21,6 +21,14 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onConfirm,
   onCancel
 }) => {
+  useEffect(() => {
+    const handleCloseModal = () => {
+      onCancel();
+    };
+    window.addEventListener('close-modal', handleCloseModal);
+    return () => window.removeEventListener('close-modal', handleCloseModal);
+  }, [onCancel]);
+
   if (!isOpen) return null;
 
   return (

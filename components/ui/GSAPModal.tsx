@@ -6,6 +6,14 @@ export const GSAPModal = ({ children, isOpen, onClose, maxWidth = 'max-w-lg', cl
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const handleCloseModal = () => {
+      if (onClose) onClose();
+    };
+    window.addEventListener('close-modal', handleCloseModal);
+    return () => window.removeEventListener('close-modal', handleCloseModal);
+  }, [onClose]);
+
+  useEffect(() => {
     if (isOpen) {
       if (overlayRef.current) {
         gsap.fromTo(overlayRef.current,
