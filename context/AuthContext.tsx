@@ -25,6 +25,7 @@ interface AuthContextType {
   updateUserStreak: () => Promise<{streakCount: number, showConfetti: boolean}>;
   connectGoogleDrive: () => Promise<string>;
   connectGoogleWorkspace: () => Promise<string>;
+  connectGoogleCalendar: () => Promise<string>;
   linkGoogleAccount: () => Promise<void>;
 }
 
@@ -191,6 +192,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const provider = new GoogleAuthProvider();
       provider.addScope('https://www.googleapis.com/auth/drive.readonly');
       provider.addScope('https://www.googleapis.com/auth/documents.readonly');
+      provider.addScope('https://www.googleapis.com/auth/calendar.events');
+      provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
       const result = await signInWithPopup(auth, provider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
       
@@ -202,6 +205,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error: any) {
       if (error.code !== 'auth/popup-closed-by-user') {
         console.error('Failed to connect Google Workspace:', error);
+      }
+      throw error;
+    }
+  };
+
+  const connectGoogleCalendar = async (): Promise<string> => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/calendar.events');
+      provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      
+      if (credential?.accessToken) {
+        (function(){ try { localStorage.setItem('google_calendar_access_token', credential.accessToken); } catch(e) {} })();
+        return credential.accessToken;
+      }
+      throw new Error('No access token received');
+    } catch (error: any) {
+      if (error.code !== 'auth/popup-closed-by-user') {
+        console.error('Failed to connect Google Calendar:', error);
       }
       throw error;
     }
@@ -307,7 +331,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthReady, login, loginWithEmail, registerWithEmail, loginAnonymously, logout, updateUserStreak, connectGoogleDrive, connectGoogleWorkspace, linkGoogleAccount }}>
+    <AuthContext.Provider value={{ user, isAuthReady, login, loginWithEmail, registerWithEmail, loginAnonymously, logout, updateUserStreak, connectGoogleDrive, connectGoogleWorkspace, connectGoogleCalendar, linkGoogleAccount }}>
       {children}
     </AuthContext.Provider>
   );

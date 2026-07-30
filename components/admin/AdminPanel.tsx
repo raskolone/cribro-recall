@@ -30,7 +30,14 @@ interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: an
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId, onUserSelect }) => {
   const { sets: adminSets, getFlashcards } = useFlashcards();
-  const { connectGoogleDrive } = useAuth();
+  const { connectGoogleDrive, connectGoogleWorkspace } = useAuth();
+  const [driveAccessToken, setDriveAccessToken] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('google_workspace_access_token');
+    } catch {
+      return null;
+    }
+  });
   const { createUser, deleteUser, changeUserRole: updateRoleApi, changeUserPassword } = useFirebaseAdminApi();
   const { user: currentUser } = useAuth();
   
@@ -140,9 +147,120 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       alert('Błąd podczas usuwania użytkownika: ' + e.message);
     }
   };
-  const processDriveFile = async (file: any) => {};
-  const fetchDriveFiles = async (mode?: string) => {
-    alert('Integracja z Google Drive wymaga skonfigurowania OAuth. Możesz użyć opcji przesłania pliku PDF poniżej.');
+  const fetchDriveFiles = async (mode?: 'single' | 'bulk') => {
+    setDriveModalMode(mode || 'single');
+    setDriveLoading(true);
+    setDriveError(null);
+    setShowDriveModal(true);
+
+    try {
+      let token = driveAccessToken;
+      if (!token) {
+        token = connectGoogleWorkspace ? await connectGoogleWorkspace() : await connectGoogleDrive();
+        setDriveAccessToken(token);
+      }
+
+      const q = encodeURIComponent("mimeType = 'application/vnd.google-apps.document' or mimeType = 'text/plain' or mimeType = 'application/pdf' or mimeType = 'application/vnd.google-apps.file' and trashed = false");
+      const response = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=30&fields=files(id,name,mimeType,modifiedTime)&orderBy=modifiedTime%20desc`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          token = connectGoogleWorkspace ? await connectGoogleWorkspace() : await connectGoogleDrive();
+          setDriveAccessToken(token);
+          const retryRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=30&fields=files(id,name,mimeType,modifiedTime)&orderBy=modifiedTime%20desc`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+          if (!retryRes.ok) throw new Error(`Google Drive error (${retryRes.status})`);
+          const data = await retryRes.json();
+          setDriveFiles(data.files || []);
+        } else {
+          throw new Error(`Google Drive error (${response.status})`);
+        }
+      } else {
+        const data = await response.json();
+        setDriveFiles(data.files || []);
+      }
+    } catch (err: any) {
+      console.error("Error fetching Drive files:", err);
+      setDriveError(err.message || 'Nie udało się pobrać plików z Google Drive.');
+    } finally {
+      setDriveLoading(false);
+    }
+  };
+
+  const processDriveFile = async (file: any) => {
+    setDriveLoading(true);
+    setDriveError(null);
+    try {
+      let token = driveAccessToken;
+      if (!token) {
+        token = connectGoogleWorkspace ? await connectGoogleWorkspace() : await connectGoogleDrive();
+        setDriveAccessToken(token);
+      }
+
+      let textContent = '';
+      if (file.mimeType === 'application/vnd.google-apps.document') {
+        const exportRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}/export?mimeType=text/plain`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!exportRes.ok) throw new Error('Nie udało się wyeksportować pliku Google Docs');
+        textContent = await exportRes.text();
+      } else if (file.mimeType === 'text/plain') {
+        const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!fileRes.ok) throw new Error('Nie udało się pobrać zawartości pliku tekstowego');
+        textContent = await fileRes.text();
+      } else if (file.mimeType === 'application/pdf') {
+        const pdfRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!pdfRes.ok) throw new Error('Nie udało się pobrać pliku PDF');
+        const pdfBlob = await pdfRes.blob();
+        const arrayBuffer = await pdfBlob.arrayBuffer();
+        try {
+          const pdfjsLib = (window as any).pdfjsLib;
+          if (pdfjsLib) {
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let fullText = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const text = await page.getTextContent();
+              fullText += text.items.map((item: any) => item.str).join(' ') + '\n';
+            }
+            textContent = fullText;
+          } else {
+            textContent = await pdfBlob.text();
+          }
+        } catch {
+          textContent = await pdfBlob.text();
+        }
+      } else {
+        const res = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        textContent = await res.text();
+      }
+
+      if (driveModalMode === 'bulk') {
+        setBulkNotes(textContent);
+      } else {
+        setRawMeetingNotes(textContent);
+      }
+      setShowDriveModal(false);
+      showToast('Wczytano treść pliku z Google Drive!');
+    } catch (err: any) {
+      console.error("Error processing Drive file:", err);
+      setDriveError(err.message || 'Błąd podczas odczytywania pliku z Google Drive.');
+    } finally {
+      setDriveLoading(false);
+    }
   };
 
   const mapStudents = () => users.map(u => ({ id: u.id, name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, level: u.level, description: u.description }));
