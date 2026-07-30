@@ -365,8 +365,19 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks,
   };
 
   return (
-    <div className="space-y-4 relative max-w-4xl mx-auto mt-4" ref={containerRef}>
+    <div className="space-y-6 relative max-w-4xl mx-auto mt-4" ref={containerRef}>
       <CuteMascot state={mascotState} />
+
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center p-6 bg-base-300 rounded-2xl border border-white/10 shadow-lg"
+      >
+        <h3 className="text-content-muted text-sm uppercase tracking-widest mb-2">{i18n.t("Przetłumacz zdanie")}</h3>
+        <p className="text-3xl font-bold text-white leading-tight">
+          {sentence}
+        </p>
+      </motion.div>
       
       {/* Answer Area */}
       <div 

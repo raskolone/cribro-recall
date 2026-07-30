@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import { Word } from '../../types';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { getAudioPronunciation } from '../../services/geminiService';
@@ -38,7 +39,11 @@ const WordCard: React.FC<WordCardProps> = ({ word }) => {
   };
 
   return (
-    <div className="p-4 bg-base-200 dark:bg-dark-base-200 rounded-xl border border-base-300 dark:border-dark-base-300 shadow-md relative group transition-colors duration-300">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-4 bg-base-200 dark:bg-dark-base-200 rounded-xl border border-base-300 dark:border-dark-base-300 shadow-md relative group transition-colors duration-300"
+    >
       <button
         onClick={() => deleteWord(word.id)}
         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600"
@@ -101,7 +106,7 @@ const WordCard: React.FC<WordCardProps> = ({ word }) => {
       </div>
       <p className="mt-2 text-gray-700 dark:text-gray-300">{word.definition}</p>
       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 italic">"{word.example}"</p>
-    </div>
+    </motion.div>
   );
 };
 
