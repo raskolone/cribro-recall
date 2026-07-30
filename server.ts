@@ -7,7 +7,8 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
 
 async function generateContentWithRetry(aiClient: any, contents: any, config: any, customModels?: string[]) {
-  const models = customModels || ['gemini-3.6-flash', 'gemini-3.1-pro-preview'];
+  // Try DeepSeek first, then Gemini
+  const models = customModels || ['deepseek-chat', 'gemini-3.6-flash', 'gemini-3.1-pro-preview'];
   let lastError;
   
   for (const model of models) {
@@ -16,28 +17,55 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
       try {
         console.log(`[Server] Attempting generation with ${model}... (retries left: ${retries})`);
         
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error("Request timed out after 60 seconds")), 60000);
-        });
-        
-        const apiCall = aiClient.models.generateContent({
-          model,
-          contents,
-          config
-        });
-        
-        const response = await Promise.race([apiCall, timeoutPromise]);
-        return response;
+        if (model.startsWith('deepseek')) {
+           const apiKey = process.env.DEEPSEEK_API_KEY;
+           if (!apiKey) {
+             console.warn("[Server] DEEPSEEK_API_KEY not configured, skipping model");
+             throw new Error("DEEPSEEK_API_KEY not configured");
+           }
+           
+           const prompt = contents.parts ? contents.parts.find((p: any) => p.text)?.text : (typeof contents === 'string' ? contents : contents[0]?.text);
+           
+           const response = await fetch("https://api.deepseek.com/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+              model: model,
+              messages: [{ role: "user", content: prompt }],
+              temperature: config.temperature || 0.7
+            })
+           });
+
+           if (!response.ok) throw new Error(`DeepSeek API error: ${response.statusText}`);
+           const data = await response.json();
+           return { text: data.choices?.[0]?.message?.content || "" };
+        } else {
+            const timeoutPromise = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error("Request timed out after 60 seconds")), 60000);
+            });
+            
+            const apiCall = aiClient.models.generateContent({
+              model,
+              contents,
+              config
+            });
+            
+            const response = await Promise.race([apiCall, timeoutPromise]);
+            return response;
+        }
       } catch (err: any) {
         console.warn(`[Server] Model ${model} failed:`, err?.status || err?.message);
         lastError = err;
         
         if (err?.message?.includes("timed out")) {
           break; // Next model immediately on timeout
-        } else if (String(err?.status) === "429" && err?.message?.includes("Quota exceeded for metric")) {
+        } else if (String(err?.status) === "429" || err?.message?.includes("Quota exceeded") || err?.message?.includes("429")) {
           console.warn("[Server] Quota exceeded, switching model immediately");
           break; // Next model immediately
-        } else if (String(err?.status) === "503" || String(err?.status) === "429" || err?.message?.includes("503") || err?.message?.includes("429")) {
+        } else if (String(err?.status) === "503" || err?.message?.includes("503")) {
           retries--;
           if (retries > 0) {
             console.log(`[Server] Waiting before retry...`);

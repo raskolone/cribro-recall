@@ -48,9 +48,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       const snapshot = await getDocs(q);
       const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as UserWithId)
         .filter(u => u.username !== 'Demo User' && u.username !== 'Demo User (Offline)');
-      
-      usersList.forEach(u => console.log('User:', u.firstName, u.lastName, u.id));
-
       usersList.sort((a, b) => {
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -770,48 +767,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   };
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [changePasswordError, setChangePasswordError] = useState('');
-  const handleGenerateBeginnerSet = async () => {
-    const beginnerWords = [
-      "apple", "banana", "book", "car", "cat", "chair", "child", "city", "class", "clock",
-      "coffee", "computer", "day", "dog", "door", "drink", "eat", "egg", "family", "father",
-      "fish", "food", "friend", "game", "girl", "go", "good", "happy", "hello", "house",
-      "job", "key", "kitchen", "know", "light", "love", "man", "money", "morning", "mother",
-      "name", "night", "open", "people", "play", "school", "see", "speak", "table", "time",
-      "water", "work", "world", "write", "yes"
-    ];
-
-    const setId = `set-beginner-${Date.now()}`;
-    const setDocRef = doc(db, 'sets', setId);
-    
-    const setData = {
-      id: setId,
-      title: 'Podstawy Angielskiego',
-      description: 'Zestaw dla początkujących. Prompt dla AI: Generuj podstawowe zwroty w języku angielskim, takie jak pytanie o pracę, o drogę i tak dalej.',
-      aiPrompt: 'Generuj podstawowe zwroty w języku angielskim, takie jak pytanie o pracę, o drogę i tak dalej.',
-      cardCount: beginnerWords.length,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isPublic: true
-    };
-
-    const batch = writeBatch(db);
-    batch.set(setDocRef, setData);
-
-    beginnerWords.forEach((word, idx) => {
-      const cardId = `card-${setId}-${idx}`;
-      const cardRef = doc(db, `sets/${setId}/flashcards`, cardId);
-      batch.set(cardRef, {
-        id: cardId,
-        setId: setId,
-        english: word,
-        polish: '',
-        createdAt: new Date().toISOString()
-      });
-    });
-
-    await batch.commit();
-    showToast('Wygenerowano zestaw podstawy angielskiego!');
-  };
   const [isLessonVocabulary, setIsLessonVocabulary] = useState(false);
   const [lessonDate, setLessonDate] = useState(new Date().toISOString().split('T')[0]);
   const [lessonTopic, setLessonTopic] = useState('');
@@ -1021,9 +976,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       {activeTab === null ? (
         <div className="space-y-6">
           <div className="flex justify-end gap-2 mb-4">
-            <button onClick={handleGenerateBeginnerSet} className="px-4 py-2 bg-purple-500/20 text-purple-400 border border-purple-500/50 rounded-lg text-sm font-bold hover:bg-purple-500/30 transition-colors">
-              {i18n.t("📚 Nowy zestaw: Podstawy")}
-            </button>
             <button onClick={() => setShowAIModal(true)} className="px-4 py-2 bg-base-200/50 text-primary border border-primary/50 rounded-lg text-sm font-bold hover:bg-primary/10 transition-colors">
               {i18n.t("✨ AI Lesson Generator")}
             </button>

@@ -339,16 +339,15 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
   const MAX_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: CRITICAL: You MUST break the sentence into individual words and randomly shuffle them completely. Do NOT group words into logical phrases, chunks, or pairs. The exercise must be a pure scrambled-word puzzle, ensuring words are fully mixed and not semi-ordered.";
+      const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: 1) If the target sentence has FEWER THAN 8 words (< 8 words): split into mostly SINGLE WORDS or small pairs (e.g. phrasal verbs 'look up', prepositions 'in the'). 2) If the target sentence has 8 OR MORE WORDS (>= 8 words): group into LARGER logical phrase chunks (2-4 words per chunk, e.g. 'I decided to go', 'to the grocery store', 'after work'). Limit long sentences to 3 to 5 chunks maximum so it is achievable and serves as a good warmup before typing.";
       
       const preferredModels = [
-        'gemini-3.1-flash-lite',
         'gemini-3.5-flash-lite',
         'gemini-2.5-flash-lite',
-        'deepseek-chat',
-        'deepseek-reasoner',
         'gemini-3.5-flash',
-        'gemini-3.6-flash'
+        'gemini-3.6-flash',
+        'deepseek-chat',
+        'deepseek-reasoner'
       ];
       const geminiConfig = {
         responseMimeType: "application/json",
@@ -484,7 +483,7 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
     try {
       const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.";
       
-      const preferredModels = ['deepseek-reasoner'];
+      const preferredModels = PREFERRED_AI_MODELS;
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: evaluationResultSchema,

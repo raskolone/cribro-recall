@@ -755,7 +755,7 @@ const Dashboard: React.FC = () => {
     }
 
     return (
-      <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">
+      <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)] bg-base-100">
         {showOnboarding && <OnboardingOverlay onComplete={handleCompleteOnboarding} language={language} />}
 
         <GoogleLinkBanner />
@@ -854,7 +854,7 @@ const Dashboard: React.FC = () => {
         isDesktopCollapsed={isDesktopCollapsed}
         onToggleCollapse={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
       />
-      <main className={`flex-1 overflow-y-auto pb-24 md:pb-8 ${(!isTeacherGlobal && view === 'dashboard') || view === 'ai-generator' ? 'p-0 sm:p-6 lg:p-8' : 'p-4 sm:p-6 lg:p-8'}`}>
+      <main className={`flex-1 overflow-y-auto pb-24 md:pb-8 bg-base-100 ${(!isTeacherGlobal && view === 'dashboard') || view === 'ai-generator' ? 'p-0 sm:p-6 lg:p-8' : 'p-4 sm:p-6 lg:p-8'}`}>
         <header className={`relative z-40 flex-col md:flex-row md:justify-between items-center mb-6 p-4 rounded-2xl liquid-glass-card gap-4 ${(!isTeacherGlobal && view === 'dashboard') || view === 'ai-generator' ? 'hidden md:flex' : 'flex'}`}>
           <div className="w-full flex items-center justify-between md:justify-start gap-4">
             <button 
