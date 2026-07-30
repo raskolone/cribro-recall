@@ -847,6 +847,49 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
   app.get("/api/tts", handleTTS);
   app.post("/api/tts", handleTTS);
 
+  // --- DEEPSEEK API PROXIES ---
+  app.post("/api/deepseek/generate", requireFirebaseAuth, async (req, res) => {
+    try {
+      const apiKey = process.env.DEEPSEEK_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: 'DEEPSEEK_API_KEY not configured.' });
+      }
+
+      const { prompt, systemInstruction } = req.body;
+      if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
+
+      const response = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [
+            ...(systemInstruction ? [{ role: "system", content: systemInstruction }] : []),
+            { role: "user", content: prompt }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.7
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("DeepSeek API error:", errorText);
+        return res.status(response.status).json({ error: `DeepSeek Error: ${response.statusText}`, details: errorText });
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || "";
+      res.json({ text: content });
+    } catch (error: any) {
+      console.error('DeepSeek generation error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return app;
 }
 

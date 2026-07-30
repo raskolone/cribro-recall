@@ -90,11 +90,25 @@ const generateContentWithFallback = async (params: any) => {
   throw lastError;
 };
 
+const callDeepSeek = async (prompt: string, systemInstruction: string) => {
+  const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+  const res = await fetch('/api/deepseek/generate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ prompt, systemInstruction })
+  });
 
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(`DeepSeek API error: ${res.status} - ${errorData.error || res.statusText}`);
+  }
 
-
-
-
+  const data = await res.json();
+  return data.text;
+};
 
 const vocabularySchema = {
   type: Type.ARRAY,
@@ -261,14 +275,10 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
   const MAX_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const config = {
-        systemInstruction: "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: The goal of this exercise is just to familiarize the user with the material, so split the sentence into LONGER chunks (2-5 words per chunk). Do NOT split into single words. Keep logical phrases together (e.g., 'I have been', 'to the store'). For sentences above 10 words, divide them into a MAXIMUM of 5 chunks.",
-        responseMimeType: "application/json",
-        responseSchema: sentenceGeneratorSchema,
-      };
+      const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: The goal of this exercise is just to familiarize the user with the material, so split the sentence into LONGER chunks (2-5 words per chunk). Do NOT split into single words. Keep logical phrases together (e.g., 'I have been', 'to the store'). For sentences above 10 words, divide them into a MAXIMUM of 5 chunks.";
       
-      const response = await generateContentWithFallback({ contents: finalPrompt, config });
-      let jsonText = extractJSON(response?.text || "");
+      const responseText = await callDeepSeek(finalPrompt, systemInstruction);
+      let jsonText = extractJSON(responseText || "");
       let parsedRaw: any = null;
       try {
         parsedRaw = JSON.parse(jsonText);
@@ -361,13 +371,9 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
   const MAX_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const config = {
-        systemInstruction: "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.",
-        responseMimeType: "application/json",
-        responseSchema: evaluationResultSchema,
-      };
-      const response = await generateContentWithFallback({ contents: fullPrompt, config, preferredModels: ['gemini-3.1-pro-preview', 'gemini-3.1-flash'] });
-      let jsonText = extractJSON(response?.text || "");
+      const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.";
+      const responseText = await callDeepSeek(fullPrompt, systemInstruction);
+      let jsonText = extractJSON(responseText || "");
       let parsedRaw: any = null;
       try {
         parsedRaw = JSON.parse(jsonText);
