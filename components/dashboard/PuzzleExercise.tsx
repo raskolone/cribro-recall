@@ -437,20 +437,20 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks,
                 initial={{ opacity: 0, scale: 0.8, y: 15 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ type: "spring", stiffness: 350, damping: 22, delay: i * 0.04 }}
-                className="relative group inline-block"
+                className="relative group inline-block m-1.5"
               >
+                <div className="absolute -inset-0.5 bg-primary/30 blur rounded-xl opacity-70 animate-pulse"></div>
                 <button
                   id={tile.id}
                   type="button"
                   onClick={(e) => handleTileClick(tile, e)}
                   disabled={isCompleted}
-                  className={`pr-8 pl-4 py-2.5 rounded-xl font-bold text-sm md:text-base shadow-lg backdrop-blur-md border z-10 transition-all duration-300 relative overflow-hidden
+                  className={`pr-8 pl-4 py-3 rounded-xl font-bold text-base shadow-lg z-10 transition-all duration-300 relative overflow-hidden
                     ${isError 
                       ? 'bg-red-500 text-white border-red-400 shadow-[0_0_25px_rgba(239,68,68,0.9)] scale-105 animate-shake' 
-                      : `${tile.colorClass} hover:scale-110 hover:-translate-y-1.5 hover:shadow-[0_12px_28px_rgba(0,0,0,0.5)] cursor-pointer active:scale-95`
+                      : `${tile.colorClass} hover:scale-105 cursor-pointer active:scale-95`
                     }`}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 opacity-0 group-hover:opacity-100 group-hover:animate-shine pointer-events-none" />
                   {tile.text}
                 </button>
                 <button

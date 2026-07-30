@@ -298,6 +298,36 @@ const Dashboard: React.FC = () => {
   const [practiceView, setPracticeView] = useState<PracticeView>(null);
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches[0].clientX < 30) { // Only detect swipe from left edge
+        setTouchStart(e.touches[0].clientX);
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (touchStart !== null && e.touches[0].clientX - touchStart > 50) { // If swiped to the right
+          setIsSidebarOpen(true);
+          setTouchStart(null);
+      }
+    };
+    
+    const handleTouchEnd = () => {
+        setTouchStart(null);
+    }
+
+    document.addEventListener('touchstart', handleTouchStart);
+    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchend', handleTouchEnd);
+    
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [touchStart]);
   const [showOnboarding, setShowOnboarding] = useState(false);
   
   useEffect(() => {
