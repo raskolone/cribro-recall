@@ -1009,6 +1009,12 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
       let userAiPromptStr = user?.aiPrompt || "Brak dodatkowych wskazówek";
       
       let finalGenPrompt = customGenPrompt;
+      finalGenPrompt += `\n\n- CHUNKING: Generate sentences and split them into puzzle chunks based on student's proficiency level (${level}).
+  - For A1/A2: Split into many, smaller chunks (more puzzle pieces).
+  - For B1/B2: Split into moderate chunks.
+  - For C1/C2: Split into fewer, larger chunks.
+  Return the chunks as an array of strings in a JSON field named "puzzleChunks".`;
+
       if (selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0) {
          const combinedSentences = selectedGrammarTopics.map(t => `--- ${t.name} ---\n${t.sentences}`).join('\n\n');
          finalGenPrompt += `\n\n[TŁUMACZENIA - GRAMATYKA (CRITICAL REGION)]: Zignoruj globalne wytyczne poziomu kursanta. Wygeneruj zdania adekwatne do podanych przykładów z bazy. Używaj konstrukcji gramatycznych z przykładów. Przykłady z bazy:\n${combinedSentences}`;
@@ -2971,6 +2977,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     puzzleChunks={exercises[activeSentenceIndex].puzzleChunks}
                     level={level}
                     currentAnswer={studentAnswers[activeSentenceIndex] || ''}
+                    onNext={handleNext}
                     onAnswerChange={(ans) => {
                       handleAnswerChange(activeSentenceIndex, ans);
                       if (ans === exercises[activeSentenceIndex].englishTranslation) {

@@ -114,6 +114,7 @@ interface PuzzleExerciseProps {
   level: string;
   currentAnswer: string;
   onAnswerChange: (answer: string) => void;
+  onNext?: () => void;
 }
 
 const TILE_COLORS = [
@@ -132,7 +133,7 @@ interface TileData {
   colorClass: string;
 }
 
-const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks, level, currentAnswer, onAnswerChange }) => {
+const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks, level, currentAnswer, onAnswerChange, onNext }) => {
   const [tiles, setTiles] = useState<TileData[]>([]);
   const [selectedTiles, setSelectedTiles] = useState<TileData[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -233,6 +234,11 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks,
     const semanticChunking = (sentence: string): string[] => {
       const words = sentence.trim().split(/\s+/);
       
+      const levelFactor = {
+          'A1': 2, 'A2': 2, 'B1': 3, 'B2': 4, 'C1': 5, 'C2': 6
+      };
+      const maxChunkSize = (levelFactor as any)[level] || 3;
+
       const dontBreakAfter = new Set([
         'the', 'a', 'an', 'my', 'your', 'his', 'her', 'our', 'their', 'this', 'that', 'these', 'those',
         'of', 'very', 'not', 'no', 'to', 'in', 'on', 'at', 'with', 'about', 'by', 'from', 'as', 'into', 'like', 'for'
@@ -242,29 +248,6 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks,
         'up', 'down', 'out', 'in', 'on', 'off', 'over', 'away', 'back', 'through', 'along', 'forward'
       ]);
 
-      // Rule 1: Wypowiedzi do 8 słów - rozkładamy na pojedyncze słowa, ew. łącząc w pary przyimki/czasowniki frazowe
-      if (words.length <= 8) {
-        const shortChunks: string[] = [];
-        for (let i = 0; i < words.length; i++) {
-          const word = words[i];
-          const cleanWord = word.replace(/[^a-zA-Z]/g, '').toLowerCase();
-          const nextWord = i < words.length - 1 ? words[i + 1] : null;
-          const cleanNextWord = nextWord ? nextWord.replace(/[^a-zA-Z]/g, '').toLowerCase() : '';
-
-          if (dontBreakAfter.has(cleanWord) && nextWord) {
-            shortChunks.push(`${word} ${nextWord}`);
-            i++;
-          } else if (phrasalVerbParticles.has(cleanNextWord) && i < words.length - 1) {
-            shortChunks.push(`${word} ${nextWord}`);
-            i++;
-          } else {
-            shortChunks.push(word);
-          }
-        }
-        return shortChunks;
-      }
-
-      // Rule 2: Zdania powyżej 8 słów - budujemy większe fragmenty (2-4 słowa), tak żeby było ok. 3-5 klocków
       const chunks: string[] = [];
       let currentChunk: string[] = [];
       
@@ -293,8 +276,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks,
           shouldBreak = false;
         } else if (phrasalVerbParticles.has(cleanNextWord)) {
           shouldBreak = false;
-        } else if (currentChunk.length >= 3) {
-          // Dla długich zdań staramy się trzymać klocki po 3 słowa
+        } else if (currentChunk.length >= maxChunkSize) {
           shouldBreak = true;
         } else if (phraseStarters.has(cleanNextWord) && currentChunk.length >= 2) {
           shouldBreak = true;
@@ -491,11 +473,17 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks,
           initial={{ opacity: 0, y: 20, scale: 0.8 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="text-center text-primary font-bold text-3xl drop-shadow-[0_0_25px_rgba(114,240,180,0.8)] pt-4"
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          onDragEnd={(event, info) => {
+            if (Math.abs(info.offset.x) > 50 && onNext) {
+                onNext();
+            }
+          }}
+          className="text-center text-primary font-bold text-3xl drop-shadow-[0_0_25px_rgba(114,240,180,0.8)] pt-4 cursor-grab active:cursor-grabbing touch-pan-x"
         >
-          
-                            {i18n.t("Świetnie! Całe zdanie ułożone.")}
-                          </motion.div>
+          {i18n.t("Świetnie! Całe zdanie ułożone. Przesuń, by przejść dalej.")}
+        </motion.div>
       )}
 
       {isCompleted && (
