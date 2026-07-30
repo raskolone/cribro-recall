@@ -7,7 +7,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
 
 async function generateContentWithRetry(aiClient: any, contents: any, config: any, customModels?: string[]) {
-  const models = customModels || ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash'];
+  const models = customModels || ['gemini-3.6-flash', 'gemini-3.1-pro-preview'];
   let lastError;
   
   for (const model of models) {
@@ -361,6 +361,20 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
         responseMimeType: 'application/json',
         responseSchema: schema,
         temperature: 0.4
+      });
+
+      // Krok 2: Weryfikacja spójności logicznej testu
+      const verificationPrompt = `Przeanalizuj poniższe wygenerowane zadania testowe w formacie JSON:
+${response.text}
+
+TWOJE ZADANIE: Sprawdź spójność logiczną i sens wygenerowanych pytań. Upewnij się, że zadania i odpowiedzi są naturalne, poprawne merytorycznie i nie zawierają sztucznego, robotycznego języka.
+Jeśli to konieczne, popraw treść, aby była w 100% poprawna i praktyczna z punktu widzenia nauczania języka angielskiego.
+Zwróć skorygowany wynik WYŁĄCZNIE jako poprawną tablicę JSON, zachowując dokładnie tę samą strukturę.`;
+
+      response = await generateContentWithRetry(ai, [{ text: verificationPrompt }], {
+        responseMimeType: 'application/json',
+        responseSchema: schema,
+        temperature: 0.3
       });
         
       
@@ -855,8 +869,25 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
         return res.status(500).json({ error: 'DEEPSEEK_API_KEY not configured.' });
       }
 
-      const { prompt, systemInstruction } = req.body;
+      const { prompt, systemInstruction, model } = req.body;
       if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
+
+      const targetModel = model || "deepseek-chat";
+      const isReasoner = targetModel === 'deepseek-reasoner';
+
+      const bodyPayload: any = {
+        model: targetModel,
+        messages: [
+          ...(systemInstruction && !isReasoner ? [{ role: "system", content: systemInstruction }] : []),
+          // For reasoner, system prompts might be ignored or less effective, but we can prepend it to user prompt if it's reasoner
+          { role: "user", content: (isReasoner && systemInstruction ? systemInstruction + "\n\n" : "") + prompt }
+        ],
+        temperature: isReasoner ? 0.6 : 0.7
+      };
+
+      if (!isReasoner) {
+        bodyPayload.response_format = { type: "json_object" };
+      }
 
       const response = await fetch("https://api.deepseek.com/chat/completions", {
         method: "POST",
@@ -864,15 +895,7 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
           "Content-Type": "application/json",
           "Authorization": `Bearer ${apiKey}`
         },
-        body: JSON.stringify({
-          model: "deepseek-chat",
-          messages: [
-            ...(systemInstruction ? [{ role: "system", content: systemInstruction }] : []),
-            { role: "user", content: prompt }
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.7
-        })
+        body: JSON.stringify(bodyPayload)
       });
 
       if (!response.ok) {

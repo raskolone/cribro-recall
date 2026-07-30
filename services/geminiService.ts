@@ -60,7 +60,7 @@ const getAI = () => {
 };
 
 const generateContentWithFallback = async (params: any) => {
-  const models = params.preferredModels || ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash'];
+  const models = params.preferredModels || ['gemini-3.6-flash', 'gemini-3.1-pro-preview'];
   const { preferredModels, ...apiParams } = params;
   let lastError;
   for (const model of models) {
@@ -90,7 +90,7 @@ const generateContentWithFallback = async (params: any) => {
   throw lastError;
 };
 
-const callDeepSeek = async (prompt: string, systemInstruction: string) => {
+const callDeepSeek = async (prompt: string, systemInstruction: string, model: string = "deepseek-chat") => {
   const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
   const res = await fetch('/api/deepseek/generate', {
     method: 'POST',
@@ -98,7 +98,7 @@ const callDeepSeek = async (prompt: string, systemInstruction: string) => {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     },
-    body: JSON.stringify({ prompt, systemInstruction })
+    body: JSON.stringify({ prompt, systemInstruction, model })
   });
 
   if (!res.ok) {
@@ -108,6 +108,40 @@ const callDeepSeek = async (prompt: string, systemInstruction: string) => {
 
   const data = await res.json();
   return data.text;
+};
+
+const generateTextWithUnifiedFallback = async (
+  prompt: string,
+  systemInstruction: string,
+  preferredModels: string[],
+  geminiConfig?: any
+): Promise<{ text: string, modelUsed: string }> => {
+  let lastError;
+  for (const model of preferredModels) {
+    try {
+      console.log(`Attempting generation with ${model}...`);
+      
+      if (model.startsWith('deepseek')) {
+        const text = await callDeepSeek(prompt, systemInstruction, model);
+        return { text, modelUsed: model };
+      } else {
+        const config = {
+          ...geminiConfig,
+          systemInstruction,
+        };
+        const response = await generateContentWithFallback({ 
+          contents: prompt, 
+          config, 
+          preferredModels: [model] 
+        });
+        return { text: response?.text || "", modelUsed: model };
+      }
+    } catch (error: any) {
+      console.warn(`Model ${model} failed:`, error?.message || error);
+      lastError = error;
+    }
+  }
+  throw lastError;
 };
 
 const vocabularySchema = {
@@ -277,7 +311,36 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
     try {
       const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: The goal of this exercise is just to familiarize the user with the material, so split the sentence into LONGER chunks (2-5 words per chunk). Do NOT split into single words. Keep logical phrases together (e.g., 'I have been', 'to the store'). For sentences above 10 words, divide them into a MAXIMUM of 5 chunks.";
       
-      const responseText = await callDeepSeek(finalPrompt, systemInstruction);
+      const preferredModels = ['deepseek-chat', 'gemini-3.6-flash', 'gemini-3.1-pro-preview'];
+      const geminiConfig = {
+        responseMimeType: "application/json",
+        responseSchema: sentenceGeneratorSchema,
+      };
+
+      let fallbackRes1 = await generateTextWithUnifiedFallback(
+        finalPrompt,
+        systemInstruction,
+        preferredModels,
+        geminiConfig
+      );
+      let responseText = fallbackRes1.text;
+
+      // Krok 2: Weryfikacja i poprawa logiczna
+      const verificationPrompt = `Przeanalizuj poniższe wygenerowane zdania w formacie JSON:
+${responseText}
+
+TWOJE ZADANIE: Sprawdź spójność logiczną i sens zdania. Upewnij się, że zdania są naturalne, a nie robotyczne czy sztuczne. Dzięki temu umożliwi to uczenie się przez skojarzenia faktów.
+Jeśli to konieczne, popraw zdania (zarówno polskie, jak i angielskie), aby brzmiały jak najbardziej naturalnie i logicznie.
+Zwróć skorygowany wynik WYŁĄCZNIE jako poprawny obiekt JSON, zachowując dokładnie tę samą strukturę (klucze).`;
+
+      let fallbackRes2 = await generateTextWithUnifiedFallback(
+        verificationPrompt,
+        systemInstruction,
+        preferredModels,
+        geminiConfig
+      );
+      responseText = fallbackRes2.text;
+
       let jsonText = extractJSON(responseText || "");
       let parsedRaw: any = null;
       try {
@@ -372,7 +435,22 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.";
-      const responseText = await callDeepSeek(fullPrompt, systemInstruction);
+      
+      const preferredModels = ['deepseek-v4-pro', 'deepseek-reasoner', 'deepseek-chat', 'gemini-3.1-pro-preview', 'gemini-3.6-flash'];
+      const geminiConfig = {
+        responseMimeType: "application/json",
+        responseSchema: evaluationResultSchema,
+      };
+
+      const fallbackRes = await generateTextWithUnifiedFallback(
+        fullPrompt,
+        systemInstruction,
+        preferredModels,
+        geminiConfig
+      );
+      const responseText = fallbackRes.text;
+      const modelUsed = fallbackRes.modelUsed;
+
       let jsonText = extractJSON(responseText || "");
       let parsedRaw: any = null;
       try {
@@ -410,7 +488,8 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
           ? item.is_correct
           : (typeof item.isCorrect === 'boolean' ? item.isCorrect : calculatedScore >= 75);
 
-        const feedback = item.feedback || item.explanation || (isCorrect ? 'Świetne, naturalne tłumaczenie!' : 'Sprawdź sugerowane poprawki.');
+        const baseFeedback = item.feedback || item.explanation || (isCorrect ? 'Świetne, naturalne tłumaczenie!' : 'Sprawdź sugerowane poprawki.');
+        const feedback = `${baseFeedback}\n\n(Oceniono przez: ${modelUsed})`;
         const suggested = item.suggested_better_version || item.correctTranslation || ex.englishTranslation;
 
         return {
@@ -729,11 +808,25 @@ Dla "fill_in_blank":
 }`;
 
   try {
-    const response = await generateContentWithFallback({ contents: prompt, config: {
-        responseMimeType: "application/json",
-      } });
+    const systemInstruction = "Jesteś zaawansowanym asystentem lektora języka angielskiego. Skupiasz się na poprawności merytorycznej i dostarczasz poprawny JSON.";
+    const preferredModels = ['deepseek-chat', 'gemini-3.6-flash', 'gemini-3.1-pro-preview'];
+    const geminiConfig = {
+      responseMimeType: "application/json",
+    };
 
-    let jsonText = extractJSON(response?.text || "");
+    let fallbackRes1 = await generateTextWithUnifiedFallback(prompt, systemInstruction, preferredModels, geminiConfig);
+    let responseText = fallbackRes1.text;
+
+    const verificationPrompt = `Przeanalizuj poniższe wygenerowane ćwiczenie w formacie JSON:
+${responseText}
+
+TWOJE ZADANIE: Sprawdź spójność logiczną i sens wygenerowanych treści. Upewnij się, że są naturalne, logiczne i poprawne językowo, unikając sztucznego lub robotycznego języka. W razie potrzeby popraw je, tak aby ułatwiały uczenie się przez skojarzenia.
+Zwróć skorygowany wynik WYŁĄCZNIE jako poprawny obiekt JSON, zachowując dokładnie taką samą strukturę.`;
+
+    let fallbackRes2 = await generateTextWithUnifiedFallback(verificationPrompt, systemInstruction, preferredModels, geminiConfig);
+    responseText = fallbackRes2.text;
+
+    let jsonText = extractJSON(responseText || "");
     return JSON.parse(jsonText);
   } catch (error) {
     console.error("Error generating dynamic exercise:", error);

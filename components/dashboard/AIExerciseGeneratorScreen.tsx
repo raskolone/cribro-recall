@@ -493,7 +493,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [exerciseFormat, setExerciseFormat] = useState<'typing' | 'puzzle' | 'test' | 'speaking'>('puzzle');
   const [isLessonSelectorOpen, setIsLessonSelectorOpen] = useState(false);
   const [previewVocabSet, setPreviewVocabSet] = useState<VocabularySet | null>(null);
-  const [selectedGrammarTopic, setSelectedGrammarTopic] = useState<any>(null);
+  const [selectedGrammarTopics, setSelectedGrammarTopics] = useState<any[]>([]);
   const [expandedGrammarLevel, setExpandedGrammarLevel] = useState<number | null>(null);
 
   const [timeLimit, setTimeLimit] = useState<number>(3); // minutes
@@ -969,8 +969,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
       let userAiPromptStr = user?.aiPrompt || "Brak dodatkowych wskazówek";
       
       let finalGenPrompt = customGenPrompt;
-      if (selectedSetId === 'grammar' && selectedGrammarTopic && selectedGrammarTopic.sentences) {
-         finalGenPrompt += `\n\n[TŁUMACZENIA - GRAMATYKA (CRITICAL REGION)]: Zignoruj globalne wytyczne poziomu kursanta. Wygeneruj zdania adekwatne do podanych przykładów z bazy. Używaj konstrukcji gramatycznych z przykładów. Przykłady z bazy:\n${selectedGrammarTopic.sentences}`;
+      if (selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0) {
+         const combinedSentences = selectedGrammarTopics.map(t => `--- ${t.name} ---\n${t.sentences}`).join('\n\n');
+         finalGenPrompt += `\n\n[TŁUMACZENIA - GRAMATYKA (CRITICAL REGION)]: Zignoruj globalne wytyczne poziomu kursanta. Wygeneruj zdania adekwatne do podanych przykładów z bazy. Używaj konstrukcji gramatycznych z przykładów. Przykłady z bazy:\n${combinedSentences}`;
       }
       if (additionalInstructions.trim().length > 0) {
         finalGenPrompt += '\n\nDODATKOWE INSTRUKCJE OD NAUCZYCIELA: ' + additionalInstructions;
@@ -1632,7 +1633,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         </button>
                         <div className="mt-2 px-2 text-[10px] text-gray-400 font-medium whitespace-pre-wrap leading-relaxed">
                           {selectedSetId === 'basket' ? (language === 'pl' ? `Wybrano: Koszyk słówek (Mix ${basketWords.length} słów z lekcji)` : `Selected: Basket (${basketWords.length} words)`) :
-                           selectedSetId === 'grammar' && selectedGrammarTopic ? (language === 'pl' ? `Gramatyka ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}` : `Grammar ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}`) :
+                           selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0 ? (language === 'pl' ? `Gramatyka: ${selectedGrammarTopics.map(t => t.name).join(', ')}` : `Grammar: ${selectedGrammarTopics.map(t => t.name).join(', ')}`) :
                            selectedSetId === 'all' && selectedLessonIds.length === 0 ? (language === 'pl' ? 'Wybrano: Wszystkie słówka (Mix)' : 'Selected: All vocab') : 
                            selectedSetId === 'lessons' || selectedLessonIds.length > 0 ? (language === 'pl' ? `Wybrane lekcje: ${vocabularySets.filter(s => selectedLessonIds.includes(s.id)).map(s => s.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()).join(', ')}` : `Selected lessons: ${selectedLessonIds.length}`) : 
                            specialTasks.find(t => 'special-task-' + t.id === selectedSetId) ? (language === 'pl' ? 'Wybrano: Zadanie specjalne' : 'Selected: Special Task') : ''}
@@ -1847,7 +1848,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       </button>
                       <div className="mt-2 px-2 text-[10px] text-gray-400 font-medium whitespace-pre-wrap leading-relaxed">
                         {selectedSetId === 'basket' ? (language === 'pl' ? `Wybrano: Koszyk słówek (Mix ${basketWords.length} słów z lekcji)` : `Selected: Basket (${basketWords.length} words)`) :
-                         selectedSetId === 'grammar' && selectedGrammarTopic ? (language === 'pl' ? `Gramatyka ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}` : `Grammar ${selectedGrammarTopic.chapterIndex + 1} - ${selectedGrammarTopic.name}`) :
+                         selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0 ? (language === 'pl' ? `Gramatyka: ${selectedGrammarTopics.map(t => t.name).join(', ')}` : `Grammar: ${selectedGrammarTopics.map(t => t.name).join(', ')}`) :
                          selectedSetId === 'all' && selectedLessonIds.length === 0 ? (language === 'pl' ? 'Wybrano: Wszystkie słówka (Mix)' : 'Selected: All vocab') : 
                          selectedSetId === 'lessons' || selectedLessonIds.length > 0 ? (language === 'pl' ? `Wybrane lekcje: ${vocabularySets.filter(s => selectedLessonIds.includes(s.id)).map(s => s.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()).join(', ')}` : `Selected lessons: ${selectedLessonIds.length}`) : 
                          specialTasks.find(t => 'special-task-' + t.id === selectedSetId) ? (language === 'pl' ? 'Wybrano: Zadanie specjalne' : 'Selected: Special Task') : ''}
@@ -2111,7 +2112,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                             <div className="pt-2 pl-4 space-y-2">
                                               {chapter.topics.map((topic: any, tIdx: number) => {
                                                 const hasSentences = (topic.sentences || "").trim().length > 0;
-                                                const isSelected = selectedSetId === 'grammar' && selectedGrammarTopic?.id === topic.id;
+                                                const isSelected = selectedSetId === 'grammar' && selectedGrammarTopics.some(t => t.id === topic.id);
                                                 return (
                                                   <label 
                                                     key={topic.id || tIdx} 
@@ -2120,18 +2121,24 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                                     }`}
                                                   >
                                                     <input 
-                                                      type="radio" 
-                                                      name="mobileSourceModal"
+                                                      type="checkbox" 
+                                                      name={`mobileSourceModal-${topic.id}`}
                                                       disabled={!hasSentences}
                                                       checked={isSelected}
                                                       onChange={() => {
                                                         if (hasSentences) {
                                                           setSelectedSetId('grammar');
-                                                          setSelectedGrammarTopic({ ...topic, chapterIndex: cIdx });
                                                           setSelectedLessonIds([]);
+                                                          setSelectedGrammarTopics(prev => {
+                                                            if (prev.find(t => t.id === topic.id)) {
+                                                              return prev.filter(t => t.id !== topic.id);
+                                                            } else {
+                                                              return [...prev, { ...topic, chapterIndex: cIdx }];
+                                                            }
+                                                          });
                                                         }
                                                       }}
-                                                      className="w-4 h-4 text-emerald-400 focus:ring-emerald-400 rounded-full border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
+                                                      className="w-4 h-4 text-emerald-400 focus:ring-emerald-400 rounded-sm border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
                                                     />
                                                     <div className="flex flex-col">
                                                       <span className={`text-sm font-semibold ${isSelected ? 'text-emerald-400' : 'text-gray-300'}`}>
