@@ -47,8 +47,11 @@ const MatchExercise: React.FC<MatchExerciseProps> = ({ words, onExit, onComplete
   const [wrongAttempts, setWrongAttempts] = useState<Set<string>>(new Set());
   
   const playAudio = async (text: string) => {
+    const audio = new Audio();
+    audio.play().catch(() => {});
     try {
-      const audio = await generateSpeech(text, 'en-US');
+      const generatedAudio = await generateSpeech(text, 'en-US');
+      audio.src = generatedAudio.src;
       await audio.play();
     } catch (e) {
       console.error(e);

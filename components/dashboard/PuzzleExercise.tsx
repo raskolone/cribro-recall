@@ -205,8 +205,11 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, displaySenten
   const playAudio = async (text: string, lang: 'en-US' | 'en-GB' = 'en-US') => {
     if (!text) return;
     setIsPlayingAudio(true);
+    const audio = new Audio();
+    audio.play().catch(() => {});
     try {
-      const audio = await generateSpeech(text, lang);
+      const generatedAudio = await generateSpeech(text, lang);
+      audio.src = generatedAudio.src;
       audio.onended = () => setIsPlayingAudio(false);
       audio.onerror = () => setIsPlayingAudio(false);
       await audio.play();

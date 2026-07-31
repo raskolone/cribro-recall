@@ -1,4 +1,7 @@
-function decode(base64: string): Uint8Array {
+const fs = require('fs');
+let code = fs.readFileSync('utils/audioUtils.ts', 'utf8');
+
+const newCode = `function decode(base64: string): Uint8Array {
   const binaryString = atob(base64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
@@ -65,3 +68,6 @@ export const playAudio = async (base64Audio: string) => {
     console.error("Failed to play audio:", error);
   }
 };
+`;
+
+fs.writeFileSync('utils/audioUtils.ts', newCode);

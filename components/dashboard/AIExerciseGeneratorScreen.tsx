@@ -601,8 +601,13 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const handlePlaySentenceAudio = async (text: string, lang: string, index: number) => {
     if (playingAudioIndex === index) return;
     setPlayingAudioIndex(index);
+    
+    const audio = new Audio();
+    audio.play().catch(() => {});
+
     try {
-      const audio = await generateSpeech(text, lang as any);
+      const generatedAudio = await generateSpeech(text, lang as any);
+      audio.src = generatedAudio.src;
       audio.onended = () => {
         setPlayingAudioIndex(null);
       };

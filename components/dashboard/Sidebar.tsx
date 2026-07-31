@@ -5,7 +5,7 @@ import { ExerciseType } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Database, LogOut, Bug } from 'lucide-react';
-import { collection, collectionGroup, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, collectionGroup, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 
 interface SidebarProps {
@@ -109,6 +109,16 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
   }, [currentView]);
 
   const handleNavigate = (view: any) => {
+    if (view === 'flashcard-sets' && user?.hasNewVocabulary) {
+      if (user?.id) {
+        updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
+      }
+    }
+    if (view === 'lesson-history' && user?.hasNewLesson) {
+      if (user?.id) {
+        updateDoc(doc(db, 'users', user.id), { hasNewLesson: false }).catch(console.error);
+      }
+    }
     onNavigate(view);
     onClose();
   };

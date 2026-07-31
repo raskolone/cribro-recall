@@ -88,15 +88,15 @@ const Dashboard: React.FC = () => {
         sloganContainerRef.current.className = `font-bold ${currentSlogan.color}`;
         
         gsap.fromTo(sloganContainerRef.current,
-          { opacity: 0, x: 50 },
-          { opacity: 1, x: 0, duration: 0.5, ease: 'power2.out' }
+          { opacity: 0, x: window.innerWidth },
+          { opacity: 1, x: 0, duration: 0.8, ease: 'power2.out' }
         );
       }
       
       currentIndex = (currentIndex + 1) % slogans.length;
     };
     animateSlogan();
-    const interval = setInterval(animateSlogan, 15000); // Change slogan every 15 seconds
+    const interval = setInterval(animateSlogan, 10000); // Change slogan every 10 seconds
     
     return () => clearInterval(interval);
   }, [language, user?.streakCount, words, difficultWords, dueWords]);
@@ -158,7 +158,7 @@ const Dashboard: React.FC = () => {
         onClose={() => setIsSidebarOpen(false)}
       />
       <main className="flex-1 overflow-y-auto">
-        <header className="p-4 bg-base-100 border-b border-white/10 flex items-center gap-4">
+        <header className="p-4 bg-base-100 border-b border-white/10 flex items-center gap-4 overflow-hidden">
           <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2 text-content-muted hover:text-white transition-colors">
             <Menu size={24} />
           </button>

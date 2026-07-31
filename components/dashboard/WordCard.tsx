@@ -5,7 +5,7 @@ import { Word } from '../../types';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { getAudioPronunciation } from '../../services/geminiService';
 import { generateSpeech } from '../../services/elevenLabsService';
-import { playAudio } from '../../utils/audioUtils';
+import { playAudio, unlockAudioContext } from '../../utils/audioUtils';
 import { VOICE_CONFIG } from '../../constants';
 import PronunciationMic from '../ui/PronunciationMic';
 import i18n from "i18next";
@@ -21,11 +21,24 @@ const WordCard: React.FC<WordCardProps> = ({ word }) => {
   const handlePlayAudio = async (variant: string) => {
     if (isPlaying) return;
     setIsPlaying(variant);
+    
+    // iOS Workaround
+    let nativeAudio: HTMLAudioElement | null = null;
+    if (word.language === 'English') {
+      nativeAudio = new Audio();
+      nativeAudio.play().catch(() => {});
+    } else {
+      unlockAudioContext();
+    }
+    
     try {
       if (word.language === 'English') {
         const accent = variant === 'American' ? 'en-US' : 'en-GB';
-        const audio = await generateSpeech(word.word, accent);
-        await audio.play();
+        const generatedAudio = await generateSpeech(word.word, accent);
+        if (nativeAudio) {
+           nativeAudio.src = generatedAudio.src;
+           await nativeAudio.play();
+        }
       } else {
         const voice = VOICE_CONFIG[word.language];
         const audio = await getAudioPronunciation(word.word, voice);
