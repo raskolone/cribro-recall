@@ -117,10 +117,8 @@ const Dashboard: React.FC = () => {
     if (view === 'flashcard-sets') {
       return <React.Suspense fallback={<div>Loading...</div>}><FlashcardSetsScreen onStudySet={() => {}} onEditSet={() => {}} onStatsSet={() => {}} onPresentSet={() => {}} /></React.Suspense>;
     }
-    if (view === 'flashcard-study' && activeSetId) {
-      // Find initial mode from a state variable if we want, or pass via some context, 
-      // but activeSetId is just a string. Let's add activeStudyMode state.
-      return <React.Suspense fallback={<div>Loading...</div>}><FlashcardStudyScreen setId={activeSetId} initialMode={(window as any)._initialStudyMode} onBack={() => setView('dashboard')} /></React.Suspense>;
+    if (view === 'flashcard-study') {
+      return <React.Suspense fallback={<div>Loading...</div>}><FlashcardStudyScreen setId={activeSetId || ''} initialMode={(window as any)._initialStudyMode} onBack={() => setView('dashboard')} onNavigate={(v) => setView(v as View)} /></React.Suspense>;
     }
     if (view === 'settings') {
       return <React.Suspense fallback={<div>Loading...</div>}><SettingsScreen /></React.Suspense>;

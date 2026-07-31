@@ -135,8 +135,8 @@ export const PREFERRED_AI_MODELS = [
 ];
 
 export const formatAIModelName = (model?: string): string => {
-  if (!model) return 'DeepSeek Pro (R1)';
-  if (model.includes('deepseek-reasoner')) return 'DeepSeek Pro (R1)';
+  if (!model) return 'DeepSeek v4 Pro';
+  if (model.includes('deepseek-reasoner') || model.includes('deepseekv4-pro')) return 'DeepSeek v4 Pro';
   if (model.includes('deepseek-chat') || model.includes('deepseek')) return 'DeepSeek Lite (V3)';
   if (model.includes('gemini-3.5-flash-lite') || model.includes('gemini-2.5-flash-lite')) return 'Gemini 3.5 Flash Lite';
   if (model.includes('gemini-3.6') || model.includes('gemini-3.5') || model.includes('gemini-3.1') || model.includes('gemini')) return 'Gemini AI';
@@ -502,7 +502,8 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
     try {
       const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.";
       
-      const preferredModels = PREFERRED_AI_MODELS;
+      // Force DeepSeek v4 Pro (reasoner) as the absolute primary choice for evaluation with advanced reasoning
+      const preferredModels = ['deepseek-reasoner', 'deepseek-chat', 'gemini-3.1-pro-preview', 'gemini-3.6-flash'];
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: evaluationResultSchema,

@@ -810,8 +810,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     // If multiple selected, we just pass the first one for now (or a combined set if possible).
     // The Dashboard needs to support initialMode.
     const setIdToUse = selectedSetId === 'lessons' && selectedLessonIds.length > 0 ? selectedLessonIds[0] : (selectedSetId === 'grammar' ? null : selectedSetId);
-    if (setIdToUse && onChangeView) {
-      onChangeView('flashcard-study', { setId: setIdToUse, initialMode: type });
+    if (onChangeView) {
+      onChangeView('flashcard-study', { setId: setIdToUse || '', initialMode: type });
     } else {
       onStartPractice?.(type, mode1, mode2);
     }

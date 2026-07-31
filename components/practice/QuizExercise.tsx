@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { Word } from '../../types';
 import Button from '../ui/Button';
+import TTSButtons from '../flashcards/TTSButtons';
 
 import { useVocabulary } from '../../context/VocabularyContext';
 import i18n from "i18next";
@@ -114,14 +115,18 @@ const QuizExercise: React.FC<QuizExerciseProps> = ({ words, onExit, onComplete }
             }
 
             return (
-              <button
-                key={option}
-                onClick={() => handleAnswer(option)}
-                disabled={!!selectedAnswer}
-                className={`w-full p-4 rounded-lg border-2 text-center transition-colors duration-200 disabled:cursor-not-allowed ${buttonClass}`}
-              >
-                {option}
-              </button>
+              <div key={option} className="relative">
+                <button
+                  onClick={() => handleAnswer(option)}
+                  disabled={!!selectedAnswer}
+                  className={`w-full p-4 pr-12 rounded-lg border-2 text-center transition-colors duration-200 disabled:cursor-not-allowed ${buttonClass}`}
+                >
+                  {option}
+                </button>
+                <div className="absolute top-1/2 right-2 -translate-y-1/2">
+                  <TTSButtons text={option} />
+                </div>
+              </div>
             );
           })}
         </div>

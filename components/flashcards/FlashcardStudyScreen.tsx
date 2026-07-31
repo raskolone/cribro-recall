@@ -15,12 +15,13 @@ interface FlashcardStudyScreenProps {
   setId: string;
   initialMode?: StudyMode;
   onBack: () => void;
+  onNavigate?: (view: string) => void;
   onStartAIPractice?: () => void;
 }
 
 type StudyMode = 'flashcards' | 'quiz' | 'writing' | 'matching' | 'intro' | null;
 
-const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, initialMode = null, onBack, onStartAIPractice }) => {
+const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, initialMode = null, onBack, onNavigate, onStartAIPractice }) => {
   const { sets, getFlashcards, saveSession } = useFlashcards();
   const { t, language } = useLanguage();
   const [set, setSet] = useState<FlashcardSet | null>(null);
@@ -46,6 +47,10 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
 
 
   useEffect(() => {
+    if (!setId) {
+      setIsLoading(false);
+      return;
+    }
     const currentSet = sets.find(s => s.id === setId);
     if (currentSet) {
       setSet(currentSet);
@@ -62,6 +67,30 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
 
   if (isLoading) {
     return <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+
+  if (!setId) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 mt-12 bg-base-200/50 rounded-3xl max-w-lg mx-auto text-center border border-white/10">
+        <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-3xl mb-6">
+          🗂️
+        </div>
+        <h2 className="text-2xl font-bold mb-4">{language === 'pl' ? 'Nie wybrano źródła' : 'No source selected'}</h2>
+        <p className="text-content-muted mb-8 text-sm leading-relaxed">
+          {language === 'pl' 
+            ? 'Aby rozpocząć ćwiczenie (fiszki, dopasowanie), wybierz najpierw materiał w zakładce słownictwa, z którego chcesz się uczyć.' 
+            : 'To start an exercise (flashcards, matching), please select the material you want to study from the vocabulary tab first.'}
+        </p>
+        <div className="flex gap-4">
+          <Button variant="secondary" onClick={onBack}>
+            {language === 'pl' ? 'Wróć' : 'Back'}
+          </Button>
+          <Button className="bg-primary text-black font-bold" onClick={() => onNavigate && onNavigate('flashcard-sets')}>
+            {language === 'pl' ? 'Przejdź do Słownictwa' : 'Go to Vocabulary'}
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   if (cards.length === 0) {
@@ -1062,14 +1091,17 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, show
           return (
             <Card 
               key={item.id}
-              className={`h-24 md:h-32 p-3 flex items-center justify-center text-center cursor-pointer transition-all duration-200 select-none touch-manipulation ${
+              className={`relative h-24 md:h-32 p-3 flex items-center justify-center text-center cursor-pointer transition-all duration-200 select-none touch-manipulation ${
                 isSelected ? 'border-primary bg-primary/10 scale-105 shadow-lg shadow-primary/20' : 
                 isWrong ? 'border-red-500 bg-red-500/10 animate-shake' : 
                 'hover:border-base-300 hover:bg-base-200/50'
               }`}
               onClick={() => handleItemClick(item)}
             >
-              <span className="font-medium text-sm md:text-lg leading-tight line-clamp-3" dangerouslySetInnerHTML={{ __html: item.text }} />
+              <div className="absolute top-1 right-1" onClick={(e) => e.stopPropagation()}>
+                <TTSButtons text={item.text} />
+              </div>
+              <span className="font-medium text-sm md:text-lg leading-tight line-clamp-3 mt-4" dangerouslySetInnerHTML={{ __html: item.text }} />
             </Card>
           );
         })}

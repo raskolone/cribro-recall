@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { Word } from '../../types';
 import Button from '../ui/Button';
+import TTSButtons from '../flashcards/TTSButtons';
 
 import { useVocabulary } from '../../context/VocabularyContext';
 import i18n from "i18next";
@@ -105,7 +106,10 @@ const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit
   return (
     <div className="p-4 max-w-3xl mx-auto">
        <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">{i18n.t("Fill in the Blank")}</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-bold">{i18n.t("Fill in the Blank")}</h2>
+          <TTSButtons text={currentWord.example.replace(currentWord.word, 'blank')} />
+        </div>
         <p className="font-semibold text-content-muted">
            
                              {i18n.t("Progress:")} {Math.min(currentIndex + 1, practiceQueue.length)} / {practiceQueue.length} <span className="ml-4 text-white">{i18n.t("Score:")} {score}</span>
