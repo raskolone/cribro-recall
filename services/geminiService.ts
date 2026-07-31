@@ -169,10 +169,10 @@ export const PREFERRED_AI_MODELS = [
   'openai/gpt-4o',
   'openai/gpt-4-turbo',
   'openai/gpt-4',
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',
   'deepseek-chat',
-  'deepseek-reasoner'
+  'deepseek-reasoner',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash'
 ];
 
 export const formatAIModelName = (model?: string): string => {
