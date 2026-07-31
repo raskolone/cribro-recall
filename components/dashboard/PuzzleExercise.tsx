@@ -513,8 +513,8 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, displaySenten
               className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-base-300 hover:bg-base-200 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               title={i18n.t("Wymowa brytyjska")}
             >
-              <span className="text-xl">🇬🇧</span>
-              <span className="font-bold text-sm">BrE</span>
+              <Volume2 className="w-4 h-4 text-emerald-400" />
+              <span className="font-bold text-sm">BrE (UK)</span>
             </button>
             <button
               onClick={() => playSentence('en-US')}
@@ -522,8 +522,8 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, displaySenten
               className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-base-300 hover:bg-base-200 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               title={i18n.t("Wymowa amerykańska")}
             >
-              <span className="text-xl">🇺🇸</span>
-              <span className="font-bold text-sm">AmE</span>
+              <Volume2 className="w-4 h-4 text-cyan-400" />
+              <span className="font-bold text-sm">AmE (US)</span>
             </button>
           </div>
         </motion.div>

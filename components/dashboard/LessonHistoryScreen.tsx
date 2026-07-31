@@ -6,6 +6,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { LessonRecord, PracticeLog } from '../../types';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import TTSButtons from '../flashcards/TTSButtons';
 import { Calendar, Tag, Sparkles, X, FileText, Clock, Search, BookOpen, AlertCircle, ArrowLeft, LayoutGrid, List, ChevronRight } from 'lucide-react';
 import Markdown from 'react-markdown';
 import gsap from 'gsap';
@@ -447,7 +448,10 @@ const LessonHistoryScreen: React.FC = () => {
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                      {getVocabList(selectedLesson.vocabularyText).map((item, i) => (
                        <div key={i} className="flex flex-col p-3 rounded-xl liquid-glass-tile border border-white/5">
-                         <span className="font-bold text-white text-base">{item.word}</span>
+                         <div className="flex items-center justify-between gap-2">
+                           <span className="font-bold text-white text-base">{item.word}</span>
+                           <TTSButtons text={item.word} />
+                         </div>
                          {item.translation && (
                            <span className="text-secondary text-sm font-medium">{item.translation}</span>
                          )}

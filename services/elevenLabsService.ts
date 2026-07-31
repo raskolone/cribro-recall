@@ -1,15 +1,15 @@
 export type Accent = 'en-US' | 'en-GB' | 'AmE' | 'BrE';
 
 export const ELEVENLABS_VOICES = {
-  'en-US': "S9WrLrqYPJzmQyWPWbZ5",
-  'en-GB': "NbkKnEAZ7Bqw4EAkVEaz",
-  'AmE': "S9WrLrqYPJzmQyWPWbZ5",
-  'BrE': "NbkKnEAZ7Bqw4EAkVEaz",
+  'en-US': "pqHfZKP75CvOlQylNhV4", // Bill (US, spokojny, lektor)
+  'en-GB': "JBFqnCBsd6RMkjVDRZzb", // George (GB, spokojny, lektor)
+  'AmE': "pqHfZKP75CvOlQylNhV4",
+  'BrE': "JBFqnCBsd6RMkjVDRZzb",
 } as const;
 
 export const DEFAULT_VOICE_SETTINGS = {
-  stability: 0.85, // Opanowany, stabilny i spokojny lektor
-  similarity_boost: 0.88, // Wyrazista i poprawna dykcja
+  stability: 0.95, // Bardzo wysoka stabilność (lektorski, spokojny ton)
+  similarity_boost: 0.90, // Wyrazista i poprawna dykcja
   style: 0.0,
   use_speaker_boost: true
 };

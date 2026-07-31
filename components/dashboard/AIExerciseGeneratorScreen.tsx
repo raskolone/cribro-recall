@@ -1624,7 +1624,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[170px] ${
                                 exerciseFormat === 'puzzle' 
                                   ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.45)] scale-[1.02]' 
-                                  : 'bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-emerald-500/70 hover:shadow-[0_0_25px_rgba(16,185,129,0.3)] hover:-translate-y-1'
+                                  : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.15)] hover:border-emerald-500/70 hover:shadow-[0_0_35px_rgba(16,185,129,0.35)] hover:-translate-y-1'
                               }`}
                             >
                               <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -1658,7 +1658,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[170px] ${
                                 exerciseFormat === 'typing' 
                                   ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-cyan-400 shadow-[0_0_35px_rgba(6,182,212,0.45)] scale-[1.02]' 
-                                  : 'bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-cyan-500/70 hover:shadow-[0_0_25px_rgba(6,182,212,0.3)] hover:-translate-y-1'
+                                  : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:border-cyan-500/70 hover:shadow-[0_0_35px_rgba(6,182,212,0.35)] hover:-translate-y-1'
                               }`}
                             >
                               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -1692,7 +1692,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             <button
                               type="button"
                               onClick={() => handleStartOtherPractice('flashcards')}
-                              className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-purple-500/70 hover:shadow-[0_0_30px_rgba(168,85,247,0.35)] hover:-translate-y-1 text-left min-h-[110px]"
+                              className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.15)] hover:border-purple-500/70 hover:shadow-[0_0_35px_rgba(168,85,247,0.35)] hover:-translate-y-1 text-left min-h-[110px]"
                             >
                               <div className="flex items-center justify-between w-full z-10">
                                 <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-lg group-hover/card:scale-110 transition-transform shadow-[0_0_10px_rgba(168,85,247,0.2)]">
@@ -1716,7 +1716,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             <button
                               type="button"
                               onClick={() => handleStartOtherPractice('match')}
-                              className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-amber-500/70 hover:shadow-[0_0_30px_rgba(245,158,11,0.35)] hover:-translate-y-1 text-left min-h-[110px]"
+                              className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.15)] hover:border-amber-500/70 hover:shadow-[0_0_35px_rgba(245,158,11,0.35)] hover:-translate-y-1 text-left min-h-[110px]"
                             >
                               <div className="flex items-center justify-between w-full z-10">
                                 <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-lg group-hover/card:scale-110 transition-transform shadow-[0_0_10px_rgba(245,158,11,0.2)]">
@@ -1932,7 +1932,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             className={`w-full group/card relative text-left rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[180px] ${
                               exerciseFormat === 'puzzle'
                                 ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.45)] scale-[1.02]'
-                                : 'bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-emerald-500/70 hover:shadow-[0_0_25px_rgba(16,185,129,0.3)] hover:-translate-y-1'
+                                : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.15)] hover:border-emerald-500/70 hover:shadow-[0_0_35px_rgba(16,185,129,0.35)] hover:-translate-y-1'
                             }`}
                           >
                             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -1966,7 +1966,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             className={`w-full group/card relative text-left rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[180px] ${
                               exerciseFormat === 'typing'
                                 ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-cyan-400 shadow-[0_0_35px_rgba(6,182,212,0.45)] scale-[1.02]'
-                                : 'bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-cyan-500/70 hover:shadow-[0_0_25px_rgba(6,182,212,0.3)] hover:-translate-y-1'
+                                : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:border-cyan-500/70 hover:shadow-[0_0_35px_rgba(6,182,212,0.35)] hover:-translate-y-1'
                             }`}
                           >
                             <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -2000,7 +2000,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <button
                             type="button"
                             onClick={() => handleStartOtherPractice('flashcards')}
-                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-purple-500/70 hover:shadow-[0_0_30px_rgba(168,85,247,0.35)] hover:-translate-y-1 text-left min-h-[115px]"
+                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.15)] hover:border-purple-500/70 hover:shadow-[0_0_35px_rgba(168,85,247,0.35)] hover:-translate-y-1 text-left min-h-[115px]"
                           >
                             <div className="flex items-center justify-between w-full z-10">
                               <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-xl group-hover/card:scale-110 transition-transform shadow-[0_0_10px_rgba(168,85,247,0.2)]">
@@ -2024,7 +2024,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <button
                             type="button"
                             onClick={() => handleStartOtherPractice('match')}
-                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0a0e17]/80 backdrop-blur-md border border-white/10 hover:border-amber-500/70 hover:shadow-[0_0_30px_rgba(245,158,11,0.35)] hover:-translate-y-1 text-left min-h-[115px]"
+                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.15)] hover:border-amber-500/70 hover:shadow-[0_0_35px_rgba(245,158,11,0.35)] hover:-translate-y-1 text-left min-h-[115px]"
                           >
                             <div className="flex items-center justify-between w-full z-10">
                               <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xl group-hover/card:scale-110 transition-transform shadow-[0_0_10px_rgba(245,158,11,0.2)]">
@@ -2931,8 +2931,12 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                            dangerouslySetInnerHTML={{ __html: singleEvaluationResults[activeSentenceIndex].highlighted_better_version || singleEvaluationResults[activeSentenceIndex].correctTranslation }}
                          />
                          <div className="flex items-center justify-center gap-1.5 shrink-0 bg-black/30 p-1 rounded-md mt-2">
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-US')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("🇺🇸 Amerykański")} disabled={isPlayingAudio}>🇺🇸</button>
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-GB')} className={`text-lg hover:scale-110 transition-transform ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("🇬🇧 Brytyjski")} disabled={isPlayingAudio}>🇬🇧</button>
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-US')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 text-cyan-400 text-xs font-bold transition-all ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("Wymowa amerykańska")} disabled={isPlayingAudio}>
+  <Volume2 className="w-3.5 h-3.5" /> AmE
+</button>
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-GB')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 text-emerald-400 text-xs font-bold transition-all ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("Wymowa brytyjska")} disabled={isPlayingAudio}>
+  <Volume2 className="w-3.5 h-3.5" /> BrE
+</button>
 
                          </div>
                        </div>

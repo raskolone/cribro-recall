@@ -857,7 +857,10 @@ export default function TopicDatabaseScreen() {
                                   else setCart(prev => prev.filter(item => item.id !== w.id));
                                 }} 
                               />
-                              <span className="font-bold text-emerald-400 w-1/2">{w.english}</span>
+                              <div className="flex items-center justify-between w-1/2 pr-2">
+                                <span className="font-bold text-emerald-400">{w.english}</span>
+                                <TTSButtons text={w.english} />
+                              </div>
                               <span className="text-content-muted w-1/2">{w.polish || '—'}</span>
                             </div>
                           );
@@ -932,9 +935,12 @@ export default function TopicDatabaseScreen() {
                   </button>
                 </div>
 
-                <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">
-                  {idiom.english}
-                </h3>
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">
+                    {idiom.english}
+                  </h3>
+                  <TTSButtons text={idiom.english} />
+                </div>
                 <p className="text-sm font-semibold text-purple-400">
                   {idiom.polish}
                 </p>
@@ -1011,9 +1017,12 @@ export default function TopicDatabaseScreen() {
                   </button>
                 </div>
 
-                <h3 className="text-xl font-extrabold text-white group-hover:text-cyan-300 transition-colors">
-                  {item.verb}
-                </h3>
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-xl font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                    {item.verb}
+                  </h3>
+                  <TTSButtons text={item.verb} />
+                </div>
                 <p className="text-sm font-semibold text-cyan-400">
                   {item.polish}
                 </p>
