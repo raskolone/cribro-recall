@@ -809,11 +809,6 @@ Zwróć wynik jako JSON z poniższymi polami:
   app.post('/api/gemini/grade-test', requireFirebaseAuth, async (req, res) => {
     try {
       const { testTitle, questions, studentAnswers } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured. Please set GEMINI_API_KEY or API_KEY in environment variables.' });
-      
-      const ai = new GoogleGenAI({ apiKey });
-      
       const prompt = `Jesteś nauczycielem języka angielskiego. Sprawdź odpowiedzi ucznia w teście o tytule "${testTitle}".
 Oto pytania i odpowiedzi ucznia:
 ${questions.map((q: any, index: number) => {
@@ -833,7 +828,48 @@ Zwróć JSON z polami:
 - feedback (string, Twój szczegółowy feedback dla ucznia, z wylistowanymi błędami i poradami)
 `;
 
-            const response = await generateContentWithRetry(ai, prompt, {
+      const deepseekKey = process.env.DEEPSEEK_API_KEY;
+      if (deepseekKey) {
+        for (const dsModel of ['deepseek-reasoner', 'deepseek-chat']) {
+          try {
+            const isReasoner = dsModel === 'deepseek-reasoner';
+            const dsRes = await fetch("https://api.deepseek.com/chat/completions", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${deepseekKey}`
+              },
+              body: JSON.stringify({
+                model: dsModel,
+                messages: [
+                  { role: "system", content: "Jesteś nauczycielem języka angielskiego. Zwróć wyłącznie poprawny JSON z polami score (number) i feedback (string)." },
+                  { role: "user", content: prompt }
+                ],
+                temperature: isReasoner ? 0.6 : 0.7
+              })
+            });
+            if (dsRes.ok) {
+              const dsData = await dsRes.json();
+              const textContent = dsData.choices?.[0]?.message?.content || "";
+              const match = textContent.match(/\{[\s\S]*\}/);
+              if (match) {
+                const parsed = JSON.parse(match[0]);
+                if (typeof parsed.score === 'number' && typeof parsed.feedback === 'string') {
+                  return res.json(parsed);
+                }
+              }
+            }
+          } catch (dsErr) {
+            console.warn(`DeepSeek ${dsModel} grade-test failed:`, dsErr);
+          }
+        }
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured. Please set GEMINI_API_KEY or API_KEY in environment variables.' });
+      
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await generateContentWithRetry(ai, prompt, {
         responseMimeType: 'application/json',
         responseSchema: {
           type: Type.OBJECT,

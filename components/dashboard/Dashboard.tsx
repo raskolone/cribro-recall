@@ -19,9 +19,10 @@ import { ExerciseType } from '../../types';
 import Button from '../ui/Button';
 import { ChevronDown, Sparkles, Menu } from 'lucide-react';
 import MobileTopMenu from './MobileTopMenu';
+import AssignedTasks from './AssignedTasks';
 import i18n from "i18next";
 
-type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats';
+type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats' | 'homework';
 
 import AdminPanel from '../admin/AdminPanel';
 import StudentStatsScreen from './StudentStatsScreen';
@@ -133,6 +134,9 @@ const Dashboard: React.FC = () => {
     if (view === 'flashcard-study') {
       return <FlashcardStudyScreen setId={activeSetId || ''} initialMode={(window as any)._initialStudyMode} onBack={() => setView('dashboard')} onNavigate={(v) => setView(v as View)} />;
     }
+    if (view === 'homework') {
+      return <AssignedTasks onStudySet={() => {}} />;
+    }
     if (view === 'settings') {
       return <SettingsScreen />;
     }
@@ -180,17 +184,7 @@ const Dashboard: React.FC = () => {
         }}
       />
       <main className="flex-1 overflow-y-auto">
-        <header className="p-4 bg-base-100 border-b border-white/10 flex items-center gap-4 overflow-hidden">
-          <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2 text-content-muted hover:text-white transition-colors">
-            <Menu size={24} />
-          </button>
-          <div ref={sloganContainerRef} className="text-primary font-bold flex-1 text-center md:text-left">
-            {slogan}
-          </div>
-        </header>
         {renderContent()}
-
-
       </main>
       <AdminMessageModal />
     </div>

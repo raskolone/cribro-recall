@@ -1382,14 +1382,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
       {/* GLOBAL MOBILE HEADER */}
       <div className="md:hidden pt-6 pb-2 px-6 flex items-center justify-between bg-transparent z-40">
-        <button 
-          onClick={onOpenSidebar}
-          className="p-2 -ml-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
+        <div className="w-8" />
         <h2 className="text-xl font-bold text-white flex items-center justify-center gap-2">
           {step === 'setup' ? (language === 'pl' ? 'Czas na trening' : 'Time for training') : 
            step === 'practice' ? (language === 'pl' ? 'Ćwiczenie' : 'Practice') :
@@ -1643,8 +1636,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               onClick={() => setExerciseFormat('puzzle')}
                               className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[170px] ${
                                 exerciseFormat === 'puzzle' 
-                                  ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.45)] scale-[1.02]' 
-                                  : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.15)] hover:border-emerald-500/70 hover:shadow-[0_0_35px_rgba(16,185,129,0.35)] hover:-translate-y-1'
+                                  ? 'bg-[#0c1424] border-2 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.45)] scale-[1.02]' 
+                                  : 'bg-[#0e1626] border-2 border-emerald-500/40 shadow-md hover:border-emerald-500/80 hover:-translate-y-1'
                               }`}
                             >
                               <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -1677,8 +1670,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               onClick={() => setExerciseFormat('typing')}
                               className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[170px] ${
                                 exerciseFormat === 'typing' 
-                                  ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-cyan-400 shadow-[0_0_35px_rgba(6,182,212,0.45)] scale-[1.02]' 
-                                  : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:border-cyan-500/70 hover:shadow-[0_0_35px_rgba(6,182,212,0.35)] hover:-translate-y-1'
+                                  ? 'bg-[#0c1424] border-2 border-cyan-400 shadow-[0_0_35px_rgba(6,182,212,0.45)] scale-[1.02]' 
+                                  : 'bg-[#0e1626] border-2 border-cyan-500/40 shadow-md hover:border-cyan-500/80 hover:-translate-y-1'
                               }`}
                             >
                               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -1712,7 +1705,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             <button
                               type="button"
                               onClick={() => handleStartOtherPractice('flashcards')}
-                              className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.15)] hover:border-purple-500/70 hover:shadow-[0_0_35px_rgba(168,85,247,0.35)] hover:-translate-y-1 text-left min-h-[110px]"
+                              className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0e1626] border-2 border-purple-500/40 shadow-md hover:border-purple-500/80 hover:-translate-y-1 text-left min-h-[110px]"
                             >
                               <div className="flex items-center justify-between w-full z-10">
                                 <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-lg group-hover/card:scale-110 transition-transform shadow-[0_0_10px_rgba(168,85,247,0.2)]">
@@ -1736,7 +1729,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             <button
                               type="button"
                               onClick={() => handleStartOtherPractice('match')}
-                              className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.15)] hover:border-amber-500/70 hover:shadow-[0_0_35px_rgba(245,158,11,0.35)] hover:-translate-y-1 text-left min-h-[110px]"
+                              className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer bg-[#0e1626] border-2 border-amber-500/40 shadow-md hover:border-amber-500/80 hover:-translate-y-1 text-left min-h-[110px]"
                             >
                               <div className="flex items-center justify-between w-full z-10">
                                 <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-lg group-hover/card:scale-110 transition-transform shadow-[0_0_10px_rgba(245,158,11,0.2)]">
@@ -1756,12 +1749,12 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         </div>
                       </div>
 
-                      {/* Źródło Słownictwa - Wąski Pasek z wybranymi pod spodem */}
-                      <div className="w-full space-y-2.5">
+                      {/* Źródło Słownictwa - Wąski Pasek z ramką */}
+                      <div className="w-full space-y-2.5 bg-[#0e1626] border-2 border-slate-700/80 p-4 rounded-3xl shadow-md">
                         <button
                           type="button"
                           onClick={() => setIsLessonSelectorOpen(true)}
-                          className="w-full group relative flex items-center justify-between px-4 py-3 rounded-2xl bg-[#0c1017]/90 backdrop-blur-md border border-white/10 hover:border-emerald-500/60 shadow-[0_8px_25px_rgba(0,0,0,0.4)] hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] transition-all duration-300 cursor-pointer overflow-hidden text-left"
+                          className="w-full group relative flex items-center justify-between px-4 py-3 rounded-2xl bg-[#070b12] border border-white/20 hover:border-emerald-500/60 shadow-[0_4px_15px_rgba(0,0,0,0.4)] hover:shadow-[0_0_20px_rgba(16,185,129,0.25)] transition-all duration-300 cursor-pointer overflow-hidden text-left"
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                           
@@ -1792,7 +1785,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         </button>
 
                         {/* Wybrane pozycje pod spodem */}
-                        <div className="flex flex-wrap items-center gap-1.5 px-1">
+                        <div className="flex flex-wrap items-center gap-1.5 px-1 pt-1">
                           {selectedSetId === 'basket' ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
                               <ShoppingBag className="w-3 h-3 text-emerald-400" />
@@ -1824,16 +1817,16 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       </div>
 
                       {/* Section 3: ILOŚĆ ZDAŃ */}
-                      <div>
-                        <div className="flex items-center justify-between mb-4">
-                          <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+                      <div className="bg-[#0e1626] border-2 border-slate-700/80 p-4 rounded-3xl shadow-md space-y-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                             {language === 'pl' ? 'Ilość zdań' : 'Sentences amount'}
                           </label>
-                          <span className="text-3xl font-black text-white font-mono leading-none">
+                          <span className="text-2xl font-black text-white font-mono leading-none">
                             {numSentences}
                           </span>
                         </div>
-                        <div className="bg-[#121824] border border-primary/20 rounded-2xl p-5 space-y-4 animate-pulsar-soft">
+                        <div className="bg-[#070b12] border border-white/10 rounded-2xl p-4 space-y-3">
                           <input
                             type="range"
                             min="1"
@@ -1844,7 +1837,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               setNumSentences(parseInt(e.target.value));
                               playSliderSound();
                             }}
-                            className="w-full h-2 bg-[#202b3c] rounded-lg appearance-none cursor-pointer accent-emerald-400 focus:outline-none"
+                            className="w-full h-2 bg-[#1a2536] rounded-lg appearance-none cursor-pointer accent-emerald-400 focus:outline-none"
                           />
                         </div>
                       </div>
@@ -2064,123 +2057,132 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       </div>
                     </div>
 
-                    {/* Źródło Słownictwa - Wąski Pasek z wybranymi pozycjami pod spodem */}
-                    <div className="w-full space-y-3">
-                      <button
-                        type="button"
-                        onClick={() => setIsLessonSelectorOpen(true)}
-                        className="w-full group relative flex items-center justify-between px-5 py-3.5 rounded-2xl bg-[#0c1017]/90 backdrop-blur-md border border-white/10 hover:border-emerald-500/60 shadow-[0_8px_25px_rgba(0,0,0,0.4)] hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] transition-all duration-300 cursor-pointer overflow-hidden text-left"
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                        
-                        <div className="flex items-center gap-3 z-10">
-                          <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                            {selectedSetId === 'basket' ? <ShoppingBag className="w-4.5 h-4.5" /> : <BookOpen className="w-4.5 h-4.5" />}
+                    {/* Źródło Słownictwa & Ilość Zdań w Siatce 2-kolumnowej na Tablecie/Desktopie */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+                      {/* Źródło Słownictwa */}
+                      <div className="w-full space-y-3 bg-[#0e1626] border-2 border-slate-700/80 p-4 rounded-3xl shadow-md flex flex-col justify-between">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                              {language === 'pl' ? 'Źródło materiału' : 'Material Source'}
+                            </label>
                           </div>
-                          <span className="text-base font-serif font-bold text-white group-hover:text-emerald-300 transition-colors">
-                            {language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary Source'}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsLessonSelectorOpen(true)}
+                            className="w-full group relative flex items-center justify-between px-4 py-3 rounded-2xl bg-[#070b12] border border-white/20 hover:border-emerald-500/60 shadow-[0_4px_15px_rgba(0,0,0,0.4)] hover:shadow-[0_0_20px_rgba(16,185,129,0.25)] transition-all duration-300 cursor-pointer overflow-hidden text-left"
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                            
+                            <div className="flex items-center gap-3 z-10">
+                              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                                {selectedSetId === 'basket' ? <ShoppingBag className="w-4.5 h-4.5" /> : <BookOpen className="w-4.5 h-4.5" />}
+                              </div>
+                              <span className="text-sm font-serif font-bold text-white group-hover:text-emerald-300 transition-colors">
+                                {language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary Source'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 z-10 shrink-0">
+                              {basketWords.length > 0 && (
+                                <span 
+                                  onClick={(e) => { e.stopPropagation(); setIsBasketModalOpen(true); }}
+                                  className="text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1 hover:scale-105 transition-transform shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                                >
+                                  <ShoppingBag className="w-3.5 h-3.5" />
+                                  <span>{basketWords.length}</span>
+                                </span>
+                              )}
+                              <div className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-400 group-hover:bg-emerald-500 group-hover:text-black transition-all flex items-center gap-1">
+                                <span>{language === 'pl' ? 'Wybierz' : 'Select'}</span>
+                                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                              </div>
+                            </div>
+                          </button>
                         </div>
 
-                        <div className="flex items-center gap-2.5 z-10 shrink-0">
-                          {basketWords.length > 0 && (
-                            <span 
-                              onClick={(e) => { e.stopPropagation(); setIsBasketModalOpen(true); }}
-                              className="text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 rounded-full flex items-center gap-1.5 hover:scale-105 transition-transform shadow-[0_0_10px_rgba(16,185,129,0.2)]"
-                            >
-                              <ShoppingBag className="w-3.5 h-3.5" />
-                              <span>{language === 'pl' ? `Koszyk (${basketWords.length})` : `Basket (${basketWords.length})`}</span>
+                        {/* Lista wybranych pozycji pod spodem */}
+                        <div className="flex flex-wrap items-center gap-1.5 px-1 pt-1">
+                          {selectedSetId === 'basket' ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+                              <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
+                              {language === 'pl' ? `Koszyk Słówek (${basketWords.length} słów)` : `Word Basket (${basketWords.length} words)`}
                             </span>
-                          )}
-                          <div className="px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-400 group-hover:bg-emerald-500 group-hover:text-black transition-all flex items-center gap-1">
-                            <span>{language === 'pl' ? 'Wybierz' : 'Select'}</span>
-                            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                          </div>
-                        </div>
-                      </button>
-
-                      {/* Lista wybranych pozycji pod spodem */}
-                      <div className="flex flex-wrap items-center gap-2 px-1">
-                        {selectedSetId === 'basket' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
-                            <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
-                            {language === 'pl' ? `Koszyk Słówek (${basketWords.length} słów)` : `Word Basket (${basketWords.length} words)`}
-                          </span>
-                        ) : selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0 ? (
-                          selectedGrammarTopics.map((topic, i) => (
-                            <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
-                              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                              {topic.name}
-                            </span>
-                          ))
-                        ) : selectedLessonIds.length > 0 ? (
-                          vocabularySets
-                            .filter(s => selectedLessonIds.includes(s.id))
-                            .map((set, i) => (
+                          ) : selectedSetId === 'grammar' && selectedGrammarTopics && selectedGrammarTopics.length > 0 ? (
+                            selectedGrammarTopics.map((topic, i) => (
                               <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
-                                <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
-                                {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                                {topic.name}
                               </span>
                             ))
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-gray-400">
-                            <BookOpen className="w-3.5 h-3.5 text-gray-400" />
-                            {language === 'pl' ? 'Wszystkie Słówka (Mix z Zasobów)' : 'All Vocabulary (Mix)'}
+                          ) : selectedLessonIds.length > 0 ? (
+                            vocabularySets
+                              .filter(s => selectedLessonIds.includes(s.id))
+                              .map((set, i) => (
+                                <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+                                  <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                                  {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
+                                </span>
+                              ))
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-gray-400">
+                              <BookOpen className="w-3.5 h-3.5 text-gray-400" />
+                              {language === 'pl' ? 'Wszystkie Słówka (Mix z Zasobów)' : 'All Vocabulary (Mix)'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* SECTION 3: ILOŚĆ ZDAŃ */}
+                      <div className="bg-[#0e1626] border-2 border-slate-700/80 p-4 rounded-3xl shadow-md space-y-3 flex flex-col justify-between">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                            {language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}
+                          </label>
+                          <span className="text-2xl font-black text-white font-mono leading-none">
+                            {numSentences}
                           </span>
-                        )}
-                      </div>
-                    </div>
+                        </div>
 
-                    {/* SECTION 3: ILOŚĆ ZDAŃ */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                          {language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}
-                        </label>
-                        <span className="text-3xl font-black text-white font-mono leading-none">
-                          {numSentences}
-                        </span>
-                      </div>
+                        <div className="bg-[#070b12] border border-white/10 rounded-2xl p-3.5 space-y-3">
+                          <input
+                            type="range"
+                            min="1"
+                            max="25"
+                            step="1"
+                            value={numSentences}
+                            onChange={(e) => {
+                              setNumSentences(parseInt(e.target.value));
+                              playSliderSound();
+                            }}
+                            className="w-full h-2 bg-[#1a2536] rounded-lg appearance-none cursor-pointer accent-emerald-400 focus:outline-none"
+                          />
 
-                      <div className="bg-[#121824] border border-primary/20 rounded-2xl p-5 space-y-4 animate-pulsar-soft">
-                        <input
-                          type="range"
-                          min="1"
-                          max="25"
-                          step="1"
-                          value={numSentences}
-                          onChange={(e) => {
-                            setNumSentences(parseInt(e.target.value));
-                            playSliderSound();
-                          }}
-                          className="w-full h-2 bg-[#202b3c] rounded-lg appearance-none cursor-pointer accent-emerald-400 focus:outline-none"
-                        />
-
-                        <div className="grid grid-cols-4 gap-2.5 pt-1">
-                          {[5, 10, 15, 20].map((val) => (
-                            <button
-                              key={val}
-                              type="button"
-                              onClick={() => {
-                                setNumSentences(val);
-                                playSliderSound();
-                              }}
-                              className={`py-2.5 rounded-xl font-bold text-sm transition-all duration-200 ${
-                                numSentences === val
-                                  ? 'bg-[#283548] border border-white/20 text-white shadow-inner'
-                                  : 'bg-[#18212e] border border-white/5 text-gray-400 hover:text-white hover:bg-[#1f2b3c]'
-                              }`}
-                            >
-                              {val}
-                            </button>
-                          ))}
-
+                          <div className="grid grid-cols-4 gap-2 pt-0.5">
+                            {[5, 10, 15, 20].map((val) => (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => {
+                                  setNumSentences(val);
+                                  playSliderSound();
+                                }}
+                                className={`py-1.5 rounded-xl font-bold text-xs transition-all duration-200 ${
+                                  numSentences === val
+                                    ? 'bg-[#283548] border border-white/20 text-white shadow-inner'
+                                    : 'bg-[#18212e] border border-white/5 text-gray-400 hover:text-white hover:bg-[#1f2b3c]'
+                                }`}
+                              >
+                                {val}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
 
                     {/* SECTION 4: GENERATE BUTTON */}
-                    <div className="pt-2">
+                    <div className="pt-1">
                       <AILoadingButton
                         onClick={() => handleGenerate(false)}
                         isLoading={isLoading}

@@ -159,8 +159,22 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     return cleaned || set.lessonDate || formatDisplayDate(set.createdAt) || (language === 'pl' ? 'Zestaw słówek' : 'Word Set');
   };
 
-  const lessonSets = useMemo(() => sets.filter(s => s.isLessonVocabulary), [sets]);
-  const otherSets = useMemo(() => sets.filter(s => !s.isLessonVocabulary), [sets]);
+  const sortedSets = useMemo(() => {
+    return [...sets].sort((a, b) => {
+      // Sort by date descending (newest first)
+      const dateA = a.createdAt ? (typeof a.createdAt === 'string' ? new Date(a.createdAt).getTime() : (a.createdAt.toMillis ? a.createdAt.toMillis() : 0)) : 0;
+      const dateB = b.createdAt ? (typeof b.createdAt === 'string' ? new Date(b.createdAt).getTime() : (b.createdAt.toMillis ? b.createdAt.toMillis() : 0)) : 0;
+      
+      // Group: lessons first (1), others second (2)
+      const groupA = a.isLessonVocabulary ? 1 : 2;
+      const groupB = b.isLessonVocabulary ? 1 : 2;
+      
+      if (groupA !== groupB) return groupA - groupB;
+      return dateB - dateA;
+    });
+  }, [sets]);
+  const lessonSets = sortedSets.filter(s => s.isLessonVocabulary);
+  const otherSets = sortedSets.filter(s => !s.isLessonVocabulary);
 
   const renderLessonSetRow = (set: FlashcardSet, index: number) => {
     const cleanTitle = getSetCleanTitle(set);

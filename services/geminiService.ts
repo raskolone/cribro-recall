@@ -487,10 +487,12 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
     try {
       const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.";
       
-      // DeepSeek models only for sentence evaluation
+      // Priority: DeepSeek (deepseek-reasoner / 4 pro, then deepseek-chat), with fallback to available Gemini models
       const preferredModels = [
+        'deepseek-reasoner',
         'deepseek-chat',
-        'deepseek-reasoner'
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite'
       ];
       const geminiConfig = {
         responseMimeType: "application/json",

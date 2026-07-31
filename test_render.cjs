@@ -1,16 +1,19 @@
-const puppeteer = require('puppeteer');
+require('@babel/register')({
+  presets: ['@babel/preset-env', '@babel/preset-react', '@babel/preset-typescript'],
+  extensions: ['.js', '.jsx', '.ts', '.tsx']
+});
+const React = require('react');
+const ReactDOMServer = require('react-dom/server');
 
-(async () => {
-  const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
-  const page = await browser.newPage();
-  
-  page.on('console', msg => console.log('PAGE LOG:', msg.text()));
-  page.on('pageerror', error => console.log('PAGE ERROR:', error.message));
-  
-  await page.goto('http://localhost:3000', { waitUntil: 'networkidle2' });
-  
-  const content = await page.evaluate(() => document.body.innerHTML);
-  console.log('HTML CONTENT:', content.substring(0, 500));
-  
-  await browser.close();
-})();
+// Mock out some stuff
+global.window = { _initialStudyMode: undefined, location: { search: '' } };
+global.document = { getElementById: () => null };
+global.localStorage = { getItem: () => null, setItem: () => {} };
+
+try {
+  const App = require('./components/dashboard/Dashboard').default;
+  const html = ReactDOMServer.renderToString(React.createElement(App));
+  console.log("Rendered successfully");
+} catch (e) {
+  console.error("RENDER ERROR:", e);
+}

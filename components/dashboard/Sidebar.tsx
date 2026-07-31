@@ -24,6 +24,7 @@ import {
   Library, 
   History, 
   ClipboardList, 
+  BookOpen,
   Settings, 
   ShieldAlert, 
   BarChart2, 
@@ -224,10 +225,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           
           <NavLink 
             id="tour-flashcards" 
-            className={user?.hasNewVocabulary ? "!bg-emerald-500/20 !text-emerald-300 !border-emerald-500/60 shadow-[0_0_25px_rgba(16,185,129,0.4)] animate-pulse font-extrabold" : ""}
+            className=""
             icon={
               <div className="relative">
-                <Library size={20} className={user?.hasNewVocabulary ? "text-emerald-400 animate-pulse drop-shadow-[0_0_10px_rgba(16,185,129,0.9)] scale-110" : ""} />
+                <Library size={20} />
               </div>
             }
             isCollapsed={isDesktopCollapsed} 
@@ -237,16 +238,30 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               {language === 'pl' ? 'Moje słownictwo' : 'My Word Lists'}
           </NavLink>
 
+          <NavLink 
+            id="tour-homework" 
+            icon={
+              <div className="relative">
+                <BookOpen size={20} />
+              </div>
+            }
+            isCollapsed={isDesktopCollapsed} 
+            onClick={() => handleNavigate('homework')} 
+            isActive={currentView === 'homework'}
+          >
+              {language === 'pl' ? 'Praca domowa' : 'Homework'}
+          </NavLink>
+
           <NavLink id="tour-stats" icon={<BarChart2 size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate(isTeacher ? 'admin-stats' : 'student-stats')} isActive={currentView === 'student-stats' || currentView === 'admin-stats'}>
               {language === 'pl' ? 'Statystyki' : 'Statistics'}
           </NavLink>
 
           <NavLink 
             id="tour-history" 
-            className={user?.hasNewLesson ? "!bg-emerald-500/20 !text-emerald-300 !border-emerald-500/60 shadow-[0_0_25px_rgba(16,185,129,0.4)] animate-pulse font-extrabold" : ""}
+            className=""
             icon={
               <div className="relative">
-                <History size={20} className={user?.hasNewLesson ? "text-emerald-400 animate-pulse drop-shadow-[0_0_10px_rgba(16,185,129,0.9)] scale-110" : ""} />
+                <History size={20} />
               </div>
             } 
             isCollapsed={isDesktopCollapsed} 
