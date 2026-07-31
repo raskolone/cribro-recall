@@ -8,7 +8,8 @@ import { collection, getDocs, query, orderBy, limit, addDoc, where, documentId, 
 import { db } from '../../firebase';
 import { getDoc } from 'firebase/firestore';
 import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, logMistakesToFirebase, formatAIModelName } from '../../services/geminiService';
-import { generateSpeech } from '../../services/elevenLabsService';
+import { generateSpeech, createSpeechAudio, formatTextForTTS } from '../../services/elevenLabsService';
+import TTSButtons from '../flashcards/TTSButtons';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog } from '../../types';
 import { getVocabularySetsForStudent, markVocabularySetAsUsed } from '../../services/lessonRecord';
 import Card from '../ui/Card';
@@ -598,27 +599,39 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
   const [playingAudioIndex, setPlayingAudioIndex] = useState<number | null>(null);
 
-  const handlePlaySentenceAudio = async (text: string, lang: string, index: number) => {
-    if (playingAudioIndex === index) return;
+  const handlePlaySentenceAudio = (text: string, lang: string, index: number) => {
+    if (!text) return;
     setPlayingAudioIndex(index);
-    
-    const audio = new Audio();
-    audio.play().catch(() => {});
+    const audio = createSpeechAudio(text, lang as any);
 
-    try {
-      const generatedAudio = await generateSpeech(text, lang as any);
-      audio.src = generatedAudio.src;
-      audio.onended = () => {
-        setPlayingAudioIndex(null);
-      };
-      audio.onerror = () => {
-        setPlayingAudioIndex(null);
-      };
-      await audio.play();
-    } catch (err) {
-      console.error(err);
-      setPlayingAudioIndex(null);
-    }
+    const handleStop = () => setPlayingAudioIndex(null);
+    audio.onended = handleStop;
+    audio.onerror = () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(formatTextForTTS(text));
+        utterance.lang = lang === 'en-GB' || lang === 'BrE' ? 'en-GB' : 'en-US';
+        utterance.onend = handleStop;
+        utterance.onerror = handleStop;
+        window.speechSynthesis.speak(utterance);
+      } else {
+        handleStop();
+      }
+    };
+
+    audio.play().catch(err => {
+      console.warn("Mobile HTML5 audio play error:", err);
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(formatTextForTTS(text));
+        utterance.lang = lang === 'en-GB' || lang === 'BrE' ? 'en-GB' : 'en-US';
+        utterance.onend = handleStop;
+        utterance.onerror = handleStop;
+        window.speechSynthesis.speak(utterance);
+      } else {
+        handleStop();
+      }
+    });
   };
 
   const [activeSentenceIndex, setActiveSentenceIndex] = useState<number>(0);
@@ -1088,23 +1101,39 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
   // Submit and grade translations with Gemini
   
-  const playAudio = async (text: string, lang: string) => {
+  const playAudio = (text: string, lang: string) => {
     if (!text) return;
     setIsPlayingAudio(true);
-    
-    const audio = new Audio();
-    audio.play().catch(() => {});
+    const audio = createSpeechAudio(text, lang as any);
 
-    try {
-      const generatedAudio = await generateSpeech(text, lang as any);
-      audio.src = generatedAudio.src;
-      audio.onended = () => setIsPlayingAudio(false);
-      audio.onerror = () => setIsPlayingAudio(false);
-      await audio.play();
-    } catch (error) {
-      console.error('Audio playback error:', error);
-      setIsPlayingAudio(false);
-    }
+    const handleStop = () => setIsPlayingAudio(false);
+    audio.onended = handleStop;
+    audio.onerror = () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(formatTextForTTS(text));
+        utterance.lang = lang === 'en-GB' || lang === 'BrE' ? 'en-GB' : 'en-US';
+        utterance.onend = handleStop;
+        utterance.onerror = handleStop;
+        window.speechSynthesis.speak(utterance);
+      } else {
+        handleStop();
+      }
+    };
+
+    audio.play().catch(err => {
+      console.warn("Mobile HTML5 audio play error:", err);
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(formatTextForTTS(text));
+        utterance.lang = lang === 'en-GB' || lang === 'BrE' ? 'en-GB' : 'en-US';
+        utterance.onend = handleStop;
+        utterance.onerror = handleStop;
+        window.speechSynthesis.speak(utterance);
+      } else {
+        handleStop();
+      }
+    });
   };
 
   const handleEvaluateSingle = async () => {

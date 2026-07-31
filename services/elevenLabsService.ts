@@ -58,79 +58,33 @@ export function getVoiceId(accent: Accent | string = 'en-US'): string {
  * }
  * Returns an HTMLAudioElement ready for playback.
  */
+export function getTTSUrl(
+  text: string,
+  accent: Accent | string = 'en-US'
+): string {
+  const formattedText = formatTextForTTS(text);
+  const selectedVoiceId = getVoiceId(accent);
+  return `/api/tts?text=${encodeURIComponent(formattedText)}&accent=${encodeURIComponent(accent)}&voice_id=${encodeURIComponent(selectedVoiceId)}`;
+}
+
+/**
+ * Creates an HTMLAudioElement pointing directly to the streaming /api/tts proxy endpoint.
+ * Calling .play() on this returned object inside a click/tap event handler guarantees
+ * mobile Safari/Chrome playback authorization.
+ */
+export function createSpeechAudio(
+  text: string,
+  accent: Accent | string = 'en-US'
+): HTMLAudioElement {
+  const url = getTTSUrl(text, accent);
+  return new Audio(url);
+}
+
 export async function generateSpeech(
   text: string,
   accent: Accent | string = 'en-US'
 ): Promise<HTMLAudioElement> {
-  const formattedText = formatTextForTTS(text);
-  if (!formattedText) {
-    throw new Error('Empty text provided for speech generation');
-  }
-
-  const selectedVoiceId = getVoiceId(accent);
-  const endpoint = `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`;
-
-  const requestBody = {
-    text: formattedText,
-    model_id: MODEL_ID,
-    voice_settings: DEFAULT_VOICE_SETTINGS
-  };
-
-  // 1. Try client-side direct request if ELEVENLABS_API_KEY is available in browser env
-  const apiKey = (import.meta as any).env?.VITE_ELEVENLABS_API_KEY || (process as any).env?.ELEVENLABS_API_KEY;
-
-  if (apiKey) {
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Accept': 'audio/mpeg',
-          'xi-api-key': apiKey,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (response.ok) {
-        const audioBlob = await response.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        return new Audio(audioUrl);
-      } else {
-        console.warn(`Direct ElevenLabs API returned ${response.status}, trying server proxy.`);
-      }
-    } catch (err) {
-      console.warn('Direct ElevenLabs request failed, trying server proxy:', err);
-    }
-  }
-
-  // 2. Try POST to server endpoint /api/tts which proxies ElevenLabs
-  try {
-    const proxyResponse = await fetch('/api/tts', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        text: formattedText,
-        accent: accent,
-        voice_id: selectedVoiceId
-      })
-    });
-
-    if (proxyResponse.ok) {
-      const audioBlob = await proxyResponse.blob();
-      if (audioBlob.size > 0) {
-        const audioUrl = URL.createObjectURL(audioBlob);
-        return new Audio(audioUrl);
-      }
-    }
-  } catch (proxyErr) {
-    console.warn('Server proxy POST /api/tts failed:', proxyErr);
-  }
-
-  // 3. Fallback GET /api/tts
-  const fallbackUrl = `/api/tts?text=${encodeURIComponent(formattedText)}&lang=${encodeURIComponent(accent)}`;
-  return new Audio(fallbackUrl);
+  return createSpeechAudio(text, accent);
 }
 
 /**
@@ -140,31 +94,42 @@ export async function getSpeechBlob(
   text: string,
   accent: Accent | string = 'en-US'
 ): Promise<Blob> {
-  const audio = await generateSpeech(text, accent);
-  const response = await fetch(audio.src);
+  const url = getTTSUrl(text, accent);
+  const response = await fetch(url);
   return await response.blob();
 }
 
 /**
- * Returns a Object URL (blob:...) containing the audio for the given text and accent.
+ * Returns an Object URL containing the audio for the given text and accent.
  */
 export async function getSpeechUrl(
   text: string,
   accent: Accent | string = 'en-US'
 ): Promise<string> {
-  const audio = await generateSpeech(text, accent);
-  return audio.src;
+  return getTTSUrl(text, accent);
 }
 
 /**
- * Generates and plays the speech immediately.
+ * Generates and plays ElevenLabs speech immediately with mobile tap support and Web Speech fallback.
  */
 export async function playSpeech(
   text: string,
   accent: Accent | string = 'en-US'
 ): Promise<HTMLAudioElement> {
-  const audio = await generateSpeech(text, accent);
-  await audio.play();
+  const formattedText = formatTextForTTS(text);
+  const audio = createSpeechAudio(text, accent);
+  
+  try {
+    await audio.play();
+  } catch (err) {
+    console.warn("Audio play error, using Web Speech API fallback:", err);
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(formattedText);
+      utterance.lang = (accent === 'en-GB' || accent === 'BrE') ? 'en-GB' : 'en-US';
+      window.speechSynthesis.speak(utterance);
+    }
+  }
   return audio;
 }
 
@@ -174,6 +139,8 @@ export default {
   MODEL_ID,
   formatTextForTTS,
   getVoiceId,
+  getTTSUrl,
+  createSpeechAudio,
   generateSpeech,
   getSpeechBlob,
   getSpeechUrl,

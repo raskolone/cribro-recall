@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Volume2 } from 'lucide-react';
 import i18n from "i18next";
-import { generateSpeech } from '../../services/elevenLabsService';
+import { createSpeechAudio, formatTextForTTS } from '../../services/elevenLabsService';
 
 interface TTSButtonsProps {
   text: string;
@@ -11,24 +11,43 @@ const TTSButtons: React.FC<TTSButtonsProps> = ({ text }) => {
   const [isPlaying, setIsPlaying] = useState<string | null>(null);
   const cleanText = text.replace(/<[^>]+>/g, '').trim();
 
-  const playTTS = async (e: React.MouseEvent, lang: 'en-US' | 'en-GB') => {
+  const playTTS = (e: React.MouseEvent, lang: 'en-US' | 'en-GB') => {
     e.stopPropagation();
     if (!cleanText) return;
     
     setIsPlaying(lang);
-    const audio = new Audio();
-    audio.play().catch(() => {});
-    
-    try {
-      const generatedAudio = await generateSpeech(cleanText, lang);
-      audio.src = generatedAudio.src;
-      audio.onended = () => setIsPlaying(null);
-      audio.onerror = () => setIsPlaying(null);
-      await audio.play();
-    } catch (err) {
-      console.warn("Audio playback failed:", err);
-      setIsPlaying(null);
-    }
+    const audio = createSpeechAudio(cleanText, lang);
+
+    const handleStop = () => setIsPlaying(null);
+
+    audio.onended = handleStop;
+    audio.onerror = () => {
+      // Web Speech fallback
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(formatTextForTTS(cleanText));
+        utterance.lang = lang === 'en-GB' ? 'en-GB' : 'en-US';
+        utterance.onend = handleStop;
+        utterance.onerror = handleStop;
+        window.speechSynthesis.speak(utterance);
+      } else {
+        handleStop();
+      }
+    };
+
+    audio.play().catch((err) => {
+      console.warn("Direct HTML5 audio playback error on mobile, falling back to Web Speech:", err);
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(formatTextForTTS(cleanText));
+        utterance.lang = lang === 'en-GB' ? 'en-GB' : 'en-US';
+        utterance.onend = handleStop;
+        utterance.onerror = handleStop;
+        window.speechSynthesis.speak(utterance);
+      } else {
+        handleStop();
+      }
+    });
   };
 
   return (

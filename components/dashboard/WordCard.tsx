@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { Word } from '../../types';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { getAudioPronunciation } from '../../services/geminiService';
-import { generateSpeech } from '../../services/elevenLabsService';
+import { playSpeech, createSpeechAudio } from '../../services/elevenLabsService';
 import { playAudio, unlockAudioContext } from '../../utils/audioUtils';
 import { VOICE_CONFIG } from '../../constants';
 import PronunciationMic from '../ui/PronunciationMic';
@@ -22,24 +22,12 @@ const WordCard: React.FC<WordCardProps> = ({ word }) => {
     if (isPlaying) return;
     setIsPlaying(variant);
     
-    // iOS Workaround
-    let nativeAudio: HTMLAudioElement | null = null;
-    if (word.language === 'English') {
-      nativeAudio = new Audio();
-      nativeAudio.play().catch(() => {});
-    } else {
-      unlockAudioContext();
-    }
-    
     try {
       if (word.language === 'English') {
         const accent = variant === 'American' ? 'en-US' : 'en-GB';
-        const generatedAudio = await generateSpeech(word.word, accent);
-        if (nativeAudio) {
-           nativeAudio.src = generatedAudio.src;
-           await nativeAudio.play();
-        }
+        await playSpeech(word.word, accent);
       } else {
+        unlockAudioContext();
         const voice = VOICE_CONFIG[word.language];
         const audio = await getAudioPronunciation(word.word, voice);
         await playAudio(audio);
