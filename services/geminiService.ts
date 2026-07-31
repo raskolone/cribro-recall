@@ -129,15 +129,18 @@ const callDeepSeek = async (prompt: string, systemInstruction: string, model: st
 
 export const PREFERRED_AI_MODELS = [
   'deepseek-chat',
-  'deepseek-reasoner'
+  'deepseek-reasoner',
+  'gemini-2.5-flash',
+  'gemini-1.5-flash'
 ];
 
 export const formatAIModelName = (model?: string): string => {
   if (!model) return 'DeepSeek Lite (V3)';
   if (model.includes('deepseek-reasoner') || model.includes('deepseekv4-pro')) return 'DeepSeek Pro (R1)';
   if (model.includes('deepseek-chat') || model.includes('deepseek')) return 'DeepSeek Lite (V3)';
-  if (model.includes('gemini-2.5-flash-lite') || model.includes('gemini-1.5-flash-lite')) return 'Gemini Flash Lite';
-  if (model.includes('gemini')) return 'Gemini 2.5 Flash';
+  if (model.includes('gemini-2.5-flash')) return 'Gemini 2.5 Flash';
+  if (model.includes('gemini-1.5-flash')) return 'Gemini 1.5 Flash';
+  if (model.includes('gemini')) return 'Gemini Flash';
   return model;
 };
 
@@ -149,26 +152,45 @@ const generateTextWithUnifiedFallback = async (
   onModelAttempt?: (model: string) => void
 ): Promise<{ text: string, modelUsed: string }> => {
   let lastError;
-  const filteredModels = preferredModels.filter(m => m.startsWith('deepseek'));
-  const modelsToTry = filteredModels.length > 0 ? filteredModels : ['deepseek-chat', 'deepseek-reasoner'];
   
-  for (const model of modelsToTry) {
+  for (const model of preferredModels) {
     try {
       console.log(`Attempting generation with ${model}...`);
       if (onModelAttempt) {
         onModelAttempt(model);
       }
       
-      const text = await callDeepSeek(prompt, systemInstruction, model);
-      if (text) {
-        return { text, modelUsed: model };
+      if (model.startsWith('deepseek')) {
+        const text = await callDeepSeek(prompt, systemInstruction, model);
+        if (text) {
+          return { text, modelUsed: model };
+        }
+      } else if (model.startsWith('gemini')) {
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("Request timed out after 60 seconds")), 60000);
+        });
+        
+        const apiCall = getAI().models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            systemInstruction,
+            ...(geminiConfig || {})
+          }
+        });
+
+        const response: any = await Promise.race([apiCall, timeoutPromise]);
+        const text = response?.text;
+        if (text) {
+          return { text, modelUsed: model };
+        }
       }
     } catch (error: any) {
       console.warn(`Model ${model} failed:`, error?.message || error);
       lastError = error;
     }
   }
-  throw lastError || new Error("All DeepSeek models failed without providing an error message.");
+  throw lastError || new Error("All DeepSeek and Gemini fallback models failed.");
 };
 
 const vocabularySchema = {
@@ -347,10 +369,7 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
     try {
       const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: 1) If the target sentence has FEWER THAN 8 words (< 8 words): split into mostly SINGLE WORDS or small pairs (e.g. phrasal verbs 'look up', prepositions 'in the'). 2) If the target sentence has 8 OR MORE WORDS (>= 8 words): group into LARGER logical phrase chunks (2-4 words per chunk, e.g. 'I decided to go', 'to the grocery store', 'after work'). Limit long sentences to 3 to 5 chunks maximum so it is achievable and serves as a good warmup before typing.";
       
-      const preferredModels = [
-        'deepseek-chat',
-        'deepseek-reasoner'
-      ];
+      const preferredModels = PREFERRED_AI_MODELS;
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: sentenceGeneratorSchema,
@@ -488,12 +507,7 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
       const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.";
       
       // Priority: DeepSeek (deepseek-reasoner / 4 pro, then deepseek-chat), with fallback to available Gemini models
-      const preferredModels = [
-        'deepseek-reasoner',
-        'deepseek-chat',
-        'gemini-2.5-flash',
-        'gemini-2.5-flash-lite'
-      ];
+      const preferredModels = PREFERRED_AI_MODELS;
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: evaluationResultSchema,
@@ -897,10 +911,7 @@ Dla "fill_in_blank":
 
   try {
     const systemInstruction = "Jesteś zaawansowanym asystentem lektora języka angielskiego. Skupiasz się na poprawności merytorycznej i dostarczasz poprawny JSON.";
-    const preferredModels = [
-      'deepseek-chat',
-      'deepseek-reasoner'
-    ];
+    const preferredModels = PREFERRED_AI_MODELS;
     const geminiConfig = {
       responseMimeType: "application/json",
     };
