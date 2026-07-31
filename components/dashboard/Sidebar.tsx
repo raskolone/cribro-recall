@@ -187,7 +187,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               {language === 'pl' ? 'Moje słownictwo' : 'My Word Lists'}
           </NavLink>
 
-          <NavLink id="tour-stats" icon={<BarChart2 size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('student-stats')} isActive={currentView === 'student-stats'}>
+          <NavLink id="tour-stats" icon={<BarChart2 size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate(isTeacher ? 'admin-stats' : 'student-stats')} isActive={currentView === 'student-stats' || currentView === 'admin-stats'}>
               {language === 'pl' ? 'Statystyki' : 'Statistics'}
           </NavLink>
 

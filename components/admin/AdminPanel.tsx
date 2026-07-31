@@ -15,7 +15,7 @@ import Card from '../ui/Card';
 import Button from '../ui/Button';
 import AdminTestGenerator from './AdminTestGenerator';
 import AllTestsTeacherView from './AllTestsTeacherView';
-import TeacherDashboardActivity from './TeacherDashboardActivity';
+
 import TeacherDashboardStats from './TeacherDashboardStats';
 import TeacherSpecialTaskModal from './TeacherSpecialTaskModal';
 import AssignVocabularyModal from './AssignVocabularyModal';
@@ -1016,7 +1016,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </div>
 
           {/* Single Glass Box: Ogólne statystyki kursantów */}
-          <TeacherDashboardActivity users={users} />
+          
 
           {/* Student List & Search/Filter */}
           <div className="space-y-4 mt-6">

@@ -27,6 +27,7 @@ const AdminPanel = React.lazy(() => import('../admin/AdminPanel'));
 const StudentStatsScreen = React.lazy(() => import('./StudentStatsScreen'));
 const LessonHistoryScreen = React.lazy(() => import('./LessonHistoryScreen'));
 const StudentTestsScreen = React.lazy(() => import('../tests/StudentTestsScreen'));
+const AdminStatsScreen = React.lazy(() => import('../admin/AdminStatsScreen'));
 const FlashcardSetsScreen = React.lazy(() => import('../flashcards/FlashcardSetsScreen'));
 const SettingsScreen = React.lazy(() => import('../settings/SettingsScreen'));
 const TopicDatabaseScreen = React.lazy(() => import('../admin/TopicDatabaseScreen'));
@@ -102,6 +103,9 @@ const Dashboard: React.FC = () => {
   const renderContent = () => {
     if (view === 'student-stats') {
         return <React.Suspense fallback={<div>Loading...</div>}><StudentStatsScreen /></React.Suspense>;
+    }
+    if (view === 'admin-stats') {
+        return <React.Suspense fallback={<div>Loading...</div>}><AdminStatsScreen /></React.Suspense>;
     }
     if (view === 'lesson-history') {
       return <React.Suspense fallback={<div>Loading...</div>}><LessonHistoryScreen /></React.Suspense>;
