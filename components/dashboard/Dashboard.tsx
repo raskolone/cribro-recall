@@ -23,16 +23,16 @@ import i18n from "i18next";
 
 type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats';
 
-const AdminPanel = React.lazy(() => import('../admin/AdminPanel'));
-const StudentStatsScreen = React.lazy(() => import('./StudentStatsScreen'));
-const LessonHistoryScreen = React.lazy(() => import('./LessonHistoryScreen'));
-const StudentTestsScreen = React.lazy(() => import('../tests/StudentTestsScreen'));
-const AdminStatsScreen = React.lazy(() => import('../admin/AdminStatsScreen'));
-const FlashcardSetsScreen = React.lazy(() => import('../flashcards/FlashcardSetsScreen'));
-const SettingsScreen = React.lazy(() => import('../settings/SettingsScreen'));
-const TopicDatabaseScreen = React.lazy(() => import('../admin/TopicDatabaseScreen'));
-const FlashcardStudyScreen = React.lazy(() => import('../flashcards/FlashcardStudyScreen'));
-const AdminDebuggingScreen = React.lazy(() => import('../admin/AdminDebuggingScreen'));
+import AdminPanel from '../admin/AdminPanel';
+import StudentStatsScreen from './StudentStatsScreen';
+import LessonHistoryScreen from './LessonHistoryScreen';
+import StudentTestsScreen from '../tests/StudentTestsScreen';
+import AdminStatsScreen from '../admin/AdminStatsScreen';
+import FlashcardSetsScreen from '../flashcards/FlashcardSetsScreen';
+import SettingsScreen from '../settings/SettingsScreen';
+import TopicDatabaseScreen from '../admin/TopicDatabaseScreen';
+import FlashcardStudyScreen from '../flashcards/FlashcardStudyScreen';
+import AdminDebuggingScreen from '../admin/AdminDebuggingScreen';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -103,34 +103,34 @@ const Dashboard: React.FC = () => {
 
   const renderContent = () => {
     if (view === 'student-stats') {
-        return <React.Suspense fallback={<div>Loading...</div>}><StudentStatsScreen /></React.Suspense>;
+        return <StudentStatsScreen />;
     }
     if (view === 'admin-stats') {
-        return <React.Suspense fallback={<div>Loading...</div>}><AdminStatsScreen /></React.Suspense>;
+        return <AdminStatsScreen />;
     }
     if (view === 'lesson-history') {
-      return <React.Suspense fallback={<div>Loading...</div>}><LessonHistoryScreen /></React.Suspense>;
+      return <LessonHistoryScreen />;
     }
     if (view === 'tests') {
-      return <React.Suspense fallback={<div>Loading...</div>}><StudentTestsScreen onBack={() => setView('dashboard')} /></React.Suspense>;
+      return <StudentTestsScreen onBack={() => setView('dashboard')} />;
     }
     if (view === 'flashcard-sets') {
-      return <React.Suspense fallback={<div>Loading...</div>}><FlashcardSetsScreen onStudySet={() => {}} onEditSet={() => {}} onStatsSet={() => {}} onPresentSet={() => {}} /></React.Suspense>;
+      return <FlashcardSetsScreen onStudySet={() => {}} onEditSet={() => {}} onStatsSet={() => {}} onPresentSet={() => {}} />;
     }
     if (view === 'flashcard-study') {
-      return <React.Suspense fallback={<div>Loading...</div>}><FlashcardStudyScreen setId={activeSetId || ''} initialMode={(window as any)._initialStudyMode} onBack={() => setView('dashboard')} onNavigate={(v) => setView(v as View)} /></React.Suspense>;
+      return <FlashcardStudyScreen setId={activeSetId || ''} initialMode={(window as any)._initialStudyMode} onBack={() => setView('dashboard')} onNavigate={(v) => setView(v as View)} />;
     }
     if (view === 'settings') {
-      return <React.Suspense fallback={<div>Loading...</div>}><SettingsScreen /></React.Suspense>;
+      return <SettingsScreen />;
     }
     if (view === 'topic-database') {
-      return <React.Suspense fallback={<div>Loading...</div>}><TopicDatabaseScreen /></React.Suspense>;
+      return <TopicDatabaseScreen />;
     }
     if (view === 'admin-debugging') {
-      return <React.Suspense fallback={<div>Loading...</div>}><AdminDebuggingScreen onBack={() => setView('dashboard')} /></React.Suspense>;
+      return <AdminDebuggingScreen onBack={() => setView('dashboard')} />;
     }
     if (view === 'admin' || (isTeacher && view === 'dashboard')) {
-      return <React.Suspense fallback={<div>Loading...</div>}><AdminPanel /></React.Suspense>;
+      return <AdminPanel />;
     }
     return <AIExerciseGeneratorScreen 
       onChangeView={(newView, extra) => {

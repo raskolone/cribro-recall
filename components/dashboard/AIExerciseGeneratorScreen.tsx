@@ -338,7 +338,7 @@ const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?
         <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
         <span>
           {language === 'pl' ? 'Wysyłam zapytanie do: ' : 'Sending query to: '}
-          <strong className="text-white font-bold">{formatAIModelName(currentModel || 'deepseek-reasoner')}</strong>
+          <strong className="text-white font-bold">{formatAIModelName(currentModel || 'deepseek-chat')}</strong>
         </span>
       </div>
     </div>
@@ -589,7 +589,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   // Loading & error states
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
-  const [activeGeneratingModel, setActiveGeneratingModel] = useState<string>('deepseek-reasoner');
+  const [activeGeneratingModel, setActiveGeneratingModel] = useState<string>('deepseek-chat');
   const [error, setError] = useState<string | null>(null);
   const [debugLogs, setDebugLogs] = useState<string>('');
   const addLog = (msg: string) => { console.log(msg); setDebugLogs(prev => prev + "\n" + msg); };

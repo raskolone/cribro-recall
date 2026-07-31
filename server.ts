@@ -7,8 +7,8 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
 
 async function generateContentWithRetry(aiClient: any, contents: any, config: any, customModels?: string[]) {
-  // Try DeepSeek first, then Gemini
-  const models = customModels || ['deepseek-chat', 'gemini-3.6-flash', 'gemini-3.1-pro-preview'];
+  // Try DeepSeek first, then Gemini Flash Lite
+  const models = customModels || ['deepseek-chat', 'deepseek-reasoner', 'gemini-2.5-flash-lite', 'gemini-1.5-flash-lite', 'gemini-2.5-flash'];
   let lastError;
   
   for (const model of models) {
