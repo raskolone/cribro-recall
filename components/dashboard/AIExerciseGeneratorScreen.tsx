@@ -1039,6 +1039,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
         studentProfileContext, 
         practiceMode === 'time' ? 10 : numSentences, 
         pastExercisesContext, 
+        weaknessesListStr,
         selectedSetId === 'grammar',
         (model) => setActiveGeneratingModel(model)
       );

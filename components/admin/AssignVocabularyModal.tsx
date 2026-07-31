@@ -6,6 +6,7 @@ import Button from '../ui/Button';
 import { db } from '../../firebase';
 import { collection, getDocs, doc, writeBatch, query, orderBy } from 'firebase/firestore';
 import { cleanVocabularyTopic } from '../../utils/vocabulary';
+import AddResourceModal from './AddResourceModal';
 
 interface WordItem {
   id: string;
@@ -64,6 +65,7 @@ export default function AssignVocabularyModal({
   const [selectedWords, setSelectedWords] = useState<Record<string, WordItem>>({});
   const [customTitle, setCustomTitle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAddResourceModalOpen, setIsAddResourceModalOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -310,6 +312,9 @@ export default function AssignVocabularyModal({
           {/* Controls Bar */}
           <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
             {/* Search Input */}
+            <Button onClick={() => setIsAddResourceModalOpen(true)} className="bg-primary text-black font-bold shrink-0">
+                <Sparkles size={16} className="mr-2" /> Wygeneruj zestaw (AI)
+              </Button>
             <div className="relative w-full sm:w-80">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted" size={16} />
               <input

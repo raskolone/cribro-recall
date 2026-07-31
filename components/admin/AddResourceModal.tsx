@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, Loader2 } from 'lucide-react';
 import Button from '../ui/Button';
 import { addDoc, collection, doc, setDoc } from 'firebase/firestore';
@@ -53,7 +53,7 @@ Tekst od nauczyciela:
 ${rawText}`;
 
       const result = await ai.models.generateContent({
-        model: 'gemini-3.5-flash-lite',
+        model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
           responseMimeType: "application/json",
