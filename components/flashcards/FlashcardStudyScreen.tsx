@@ -1052,7 +1052,7 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, show
         {items.map((item) => {
           if (item.isMatched) {
             return (
-              <div key={item.id} className="h-32 rounded-xl border-2 border-dashed border-green-500/30 bg-green-500/5 opacity-50 transition-all duration-500" />
+              <div key={item.id} className="h-24 md:h-32 rounded-xl border-2 border-dashed border-green-500/30 bg-green-500/5 opacity-50 transition-all duration-500" />
             );
           }
           
@@ -1062,14 +1062,14 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, show
           return (
             <Card 
               key={item.id}
-              className={`h-32 flex items-center justify-center text-center cursor-pointer transition-all duration-200 select-none ${
+              className={`h-24 md:h-32 p-3 flex items-center justify-center text-center cursor-pointer transition-all duration-200 select-none touch-manipulation ${
                 isSelected ? 'border-primary bg-primary/10 scale-105 shadow-lg shadow-primary/20' : 
                 isWrong ? 'border-red-500 bg-red-500/10 animate-shake' : 
                 'hover:border-base-300 hover:bg-base-200/50'
               }`}
               onClick={() => handleItemClick(item)}
             >
-              <span className="font-medium text-lg" dangerouslySetInnerHTML={{ __html: item.text }} />
+              <span className="font-medium text-sm md:text-lg leading-tight line-clamp-3" dangerouslySetInnerHTML={{ __html: item.text }} />
             </Card>
           );
         })}

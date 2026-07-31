@@ -17,7 +17,7 @@ import { useVocabulary } from '../../context/VocabularyContext';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { ExerciseType } from '../../types';
 import Button from '../ui/Button';
-import { ChevronDown, Sparkles } from 'lucide-react';
+import { ChevronDown, Sparkles, Menu } from 'lucide-react';
 import MobileTopMenu from './MobileTopMenu';
 import i18n from "i18next";
 
@@ -31,6 +31,7 @@ const AdminStatsScreen = React.lazy(() => import('../admin/AdminStatsScreen'));
 const FlashcardSetsScreen = React.lazy(() => import('../flashcards/FlashcardSetsScreen'));
 const SettingsScreen = React.lazy(() => import('../settings/SettingsScreen'));
 const TopicDatabaseScreen = React.lazy(() => import('../admin/TopicDatabaseScreen'));
+const FlashcardStudyScreen = React.lazy(() => import('../flashcards/FlashcardStudyScreen'));
 const AdminDebuggingScreen = React.lazy(() => import('../admin/AdminDebuggingScreen'));
 
 const Dashboard: React.FC = () => {
@@ -95,7 +96,7 @@ const Dashboard: React.FC = () => {
       currentIndex = (currentIndex + 1) % slogans.length;
     };
     animateSlogan();
-    const interval = setInterval(animateSlogan, 5000); // Change slogan every 5 seconds
+    const interval = setInterval(animateSlogan, 15000); // Change slogan every 15 seconds
     
     return () => clearInterval(interval);
   }, [language, user?.streakCount, words, difficultWords, dueWords]);
@@ -116,6 +117,11 @@ const Dashboard: React.FC = () => {
     if (view === 'flashcard-sets') {
       return <React.Suspense fallback={<div>Loading...</div>}><FlashcardSetsScreen onStudySet={() => {}} onEditSet={() => {}} onStatsSet={() => {}} onPresentSet={() => {}} /></React.Suspense>;
     }
+    if (view === 'flashcard-study' && activeSetId) {
+      // Find initial mode from a state variable if we want, or pass via some context, 
+      // but activeSetId is just a string. Let's add activeStudyMode state.
+      return <React.Suspense fallback={<div>Loading...</div>}><FlashcardStudyScreen setId={activeSetId} initialMode={(window as any)._initialStudyMode} onBack={() => setView('dashboard')} /></React.Suspense>;
+    }
     if (view === 'settings') {
       return <React.Suspense fallback={<div>Loading...</div>}><SettingsScreen /></React.Suspense>;
     }
@@ -128,7 +134,18 @@ const Dashboard: React.FC = () => {
     if (view === 'admin' || (isTeacher && view === 'dashboard')) {
       return <React.Suspense fallback={<div>Loading...</div>}><AdminPanel /></React.Suspense>;
     }
-    return <AIExerciseGeneratorScreen />;
+    return <AIExerciseGeneratorScreen 
+      onChangeView={(newView, extra) => {
+        if (extra && extra.setId) setActiveSetId(extra.setId);
+        if (extra && extra.initialMode) {
+          (window as any)._initialStudyMode = extra.initialMode === 'match' ? 'matching' : extra.initialMode;
+        }
+        setView(newView as View);
+      }}
+      onStartPractice={(type, mode1, mode2) => {
+        // Fallback or specific logic if needed
+      }}
+    />;
   };
 
   return (
@@ -141,11 +158,13 @@ const Dashboard: React.FC = () => {
         onClose={() => setIsSidebarOpen(false)}
       />
       <main className="flex-1 overflow-y-auto">
-        <header className="p-4 bg-base-100 border-b border-white/10 flex justify-between items-center">
-          <div ref={sloganContainerRef} className="text-primary font-bold">
+        <header className="p-4 bg-base-100 border-b border-white/10 flex items-center gap-4">
+          <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2 text-content-muted hover:text-white transition-colors">
+            <Menu size={24} />
+          </button>
+          <div ref={sloganContainerRef} className="text-primary font-bold flex-1 text-center md:text-left">
             {slogan}
           </div>
-          <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2">Menu</button>
         </header>
         {renderContent()}
 

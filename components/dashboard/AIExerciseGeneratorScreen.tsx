@@ -800,7 +800,16 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         }
       });
     }
-    onStartPractice?.(type, mode1, mode2);
+    
+    // Instead of using onStartPractice which does nothing, we switch view to flashcards.
+    // If multiple selected, we just pass the first one for now (or a combined set if possible).
+    // The Dashboard needs to support initialMode.
+    const setIdToUse = selectedSetId === 'lessons' && selectedLessonIds.length > 0 ? selectedLessonIds[0] : (selectedSetId === 'grammar' ? null : selectedSetId);
+    if (setIdToUse && onChangeView) {
+      onChangeView('flashcard-study', { setId: setIdToUse, initialMode: type });
+    } else {
+      onStartPractice?.(type, mode1, mode2);
+    }
   };
 
   // Generate exercises using Gemini
@@ -1077,8 +1086,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
   const playAudio = async (text: string, lang: string) => {
     if (!text) return;
     setIsPlayingAudio(true);
+    
+    const audio = new Audio();
+    audio.play().catch(() => {});
+
     try {
-      const audio = await generateSpeech(text, lang as any);
+      const generatedAudio = await generateSpeech(text, lang as any);
+      audio.src = generatedAudio.src;
       audio.onended = () => setIsPlayingAudio(false);
       audio.onerror = () => setIsPlayingAudio(false);
       await audio.play();
@@ -2846,8 +2860,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
               {/* Polish Sentence */}
               {exerciseFormat !== 'puzzle' && (
-                <div className="text-base sm:text-lg font-bold text-white tracking-tight leading-relaxed">
-                  {exercises[activeSentenceIndex].polishSentence}
+                <div className="w-full bg-[#18212e] border border-white/10 rounded-2xl p-5 shadow-[inset_0_2px_15px_rgba(0,0,0,0.5)] mb-2">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight leading-relaxed text-center">
+                    {exercises[activeSentenceIndex].polishSentence}
+                  </div>
                 </div>
               )}
 
@@ -2873,9 +2889,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               )}
 
               {/* Student answer field */}
-              <div className="w-full space-y-2 mt-2 pt-3 border-t border-white/5 flex flex-col items-center">
+              <div className="w-full space-y-3 mt-4 pt-4 border-t border-white/5 flex flex-col items-center">
                 {exerciseFormat !== 'puzzle' && (
-                  <label className="block text-xs font-semibold text-content-muted/80 text-center w-full">
+                  <label className="block text-sm font-bold text-emerald-400/80 text-center w-full uppercase tracking-widest">
                     {language === 'pl' ? 'Twoje tłumaczenie na angielski:' : 'Your translation to English:'}
                   </label>
                 )}

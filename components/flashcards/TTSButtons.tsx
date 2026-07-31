@@ -16,8 +16,12 @@ const TTSButtons: React.FC<TTSButtonsProps> = ({ text }) => {
     if (!cleanText) return;
     
     setIsPlaying(lang);
+    const audio = new Audio();
+    audio.play().catch(() => {});
+    
     try {
-      const audio = await generateSpeech(cleanText, lang);
+      const generatedAudio = await generateSpeech(cleanText, lang);
+      audio.src = generatedAudio.src;
       audio.onended = () => setIsPlaying(null);
       audio.onerror = () => setIsPlaying(null);
       await audio.play();

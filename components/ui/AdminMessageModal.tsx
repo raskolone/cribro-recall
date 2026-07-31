@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquare, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteField } from 'firebase/firestore';
 import { db } from '../../firebase';
 import Button from './Button';
 
@@ -13,6 +13,13 @@ const AdminMessageModal: React.FC = () => {
 
   useEffect(() => {
     if (user?.adminMessage) {
+      try {
+        const dismissed = JSON.parse(localStorage.getItem('dismissed_admin_messages') || '[]');
+        if (dismissed.includes(user.adminMessage.createdAt)) {
+          setIsVisible(false);
+          return;
+        }
+      } catch(e) {}
       setIsVisible(true);
     } else {
       setIsVisible(false);
@@ -22,9 +29,17 @@ const AdminMessageModal: React.FC = () => {
   const handleDismiss = async () => {
     if (!user || !user.id || !user.adminMessage) return;
     setIsDismissing(true);
+    
+    // Save locally immediately to prevent re-showing
+    try {
+      const dismissed = JSON.parse(localStorage.getItem('dismissed_admin_messages') || '[]');
+      dismissed.push(user.adminMessage.createdAt);
+      localStorage.setItem('dismissed_admin_messages', JSON.stringify(dismissed));
+    } catch(e) {}
+    
     try {
       const userRef = doc(db, 'users', user.id);
-      await updateDoc(userRef, { adminMessage: null });
+      await updateDoc(userRef, { adminMessage: deleteField() });
       setIsVisible(false);
     } catch (e) {
       console.error("Failed to dismiss admin message", e);

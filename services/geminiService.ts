@@ -246,10 +246,10 @@ const sentenceGeneratorSchema = {
           english_sentence: { type: Type.STRING, description: "Clean, natural English sentence." },
           polish_translation: { type: Type.STRING, description: "Naturalne polskie tłumaczenie." },
           target_word_used: { type: Type.STRING, description: "The single target word used in this sentence." },
-          hint: { type: Type.STRING, description: "A subtle hint in Polish, e.g. suggesting a grammar structure or vocabulary clue." },
+          hint: { type: Type.STRING, description: "Krótka podpowiedź po polsku. MUSI zawierać kluczowe/trudne słówka z tego zdania w języku angielskim oraz wskazówkę gramatyczną (np. jakiego czasu użyć)." },
           puzzleChunks: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of sentence chunks for the warmup exercise. Keep phrases logical (e.g. phrasal verbs together, don't split very short words)." }
         },
-        required: ['english_sentence', 'polish_translation', 'puzzleChunks']
+        required: ['english_sentence', 'polish_translation', 'hint', 'puzzleChunks']
       }
     }
   },
@@ -321,6 +321,7 @@ RULES FOR SENTENCE GENERATION:
 - GRAMMAR & STYLE: Use modern, natural English. Avoid academic, bizarre, or forced phrasing. The Polish translation MUST also be perfectly natural.
 - VARIETY: Use diverse sentence structures (mix conditionals, modal verbs, different tenses, and sentence lengths).
 - LOGIC & REALISM: Sentences MUST be practical, logical, and make total sense in real-world communication. Do NOT forcefully weave random student profile keywords or hobbies into a sentence if it makes the sentence illogical, weird, or artificial. Practical usability is the absolute highest priority.
+- HINT REQUIREMENT: Pole \`hint\` musi ZAWSZE zawierać kluczowe trudne słowa z danego zdania (angielskie) wraz z tłumaczeniem, plus krótką wskazówkę co do użytej struktury gramatycznej.
 - ANTI-REPETITION (CRITICAL): Do NOT generate sentences that are structurally identical or extremely similar to the sentences listed in PAST EXERCISES. The user should learn to understand the language dynamically, not memorize specific sentence structures by heart. Create new contexts, subjects, and scenarios.\n- ANTI-REPETITION & CONTEXT (CRITICAL): Jeśli uczeń kontynuuje ćwiczenie (ćwiczy dłużej), kategorycznie NIE powtarzaj tych samych ani podobnych zdań, które znajdują się w PAST EXERCISES. Buduj zupełnie nowe, świeże scenariusze i konteksty, ale utrzymaj docelowe słownictwo.
 - LEARNING FROM MISTAKES: Jeśli dostarczono sekcję [STUDENT MISTAKES], skup się na wygenerowaniu zdań, które ćwiczą trudne dla ucznia obszary (np. błędnie użyte słowa lub konstrukcje gramatyczne). Zdania muszą pokazywać wyraźny, życiowy kontekst poprawnego użycia, aby uczeń zrozumiał błąd i mógł się poprawić.
 
