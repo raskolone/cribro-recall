@@ -7,7 +7,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
 
 async function generateContentWithRetry(aiClient: any, contents: any, config: any, customModels?: string[]) {
-  const models = customModels || ['deepseek-chat', 'deepseek-reasoner', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+  const models = customModels || ['deepseek-chat', 'deepseek-reasoner', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
   let lastError;
   
   for (const model of models) {

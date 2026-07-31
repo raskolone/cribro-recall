@@ -130,16 +130,15 @@ const callDeepSeek = async (prompt: string, systemInstruction: string, model: st
 export const PREFERRED_AI_MODELS = [
   'deepseek-chat',
   'deepseek-reasoner',
-  'gemini-2.5-flash',
-  'gemini-1.5-flash'
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite'
 ];
 
 export const formatAIModelName = (model?: string): string => {
   if (!model) return 'DeepSeek Lite (V3)';
   if (model.includes('deepseek-reasoner') || model.includes('deepseekv4-pro')) return 'DeepSeek Pro (R1)';
   if (model.includes('deepseek-chat') || model.includes('deepseek')) return 'DeepSeek Lite (V3)';
-  if (model.includes('gemini-2.5-flash')) return 'Gemini 2.5 Flash';
-  if (model.includes('gemini-1.5-flash')) return 'Gemini 1.5 Flash';
+  if (model.includes('gemini-2.0') || model.includes('gemini-2.5') || model.includes('gemini-1.5')) return 'Gemini 2.0 Flash';
   if (model.includes('gemini')) return 'Gemini Flash';
   return model;
 };
@@ -742,7 +741,7 @@ export const generateImageForTerm = async (term: string, context?: string): Prom
   
   try {
     const response = await getAI().models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.0-flash",
       contents: { parts: [{ text: prompt }] },
       config: {
         imageConfig: {
@@ -1045,7 +1044,7 @@ export const generateHomework = async (topic: string, summary: string, words: st
 export const getAudioPronunciation = async (text: string, language: string): Promise<string> => {
   try {
     const response = await getAI().models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.0-flash",
       contents: [{ parts: [{ text: text }] }],
       config: {
         responseModalities: [Modality.AUDIO],
