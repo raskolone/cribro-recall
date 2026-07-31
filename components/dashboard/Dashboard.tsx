@@ -17,7 +17,6 @@ import { useFlashcards } from '../../context/FlashcardContext';
 import { ExerciseType } from '../../types';
 import Button from '../ui/Button';
 import { ChevronDown, Sparkles } from 'lucide-react';
-import NewVocabularyModal from './NewVocabularyModal';
 import MobileTopMenu from './MobileTopMenu';
 import i18n from "i18next";
 
@@ -52,20 +51,7 @@ const Dashboard: React.FC = () => {
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [isExerciseActive, setIsExerciseActive] = useState(false);
 
-  const [isNewVocabModalOpen, setIsNewVocabModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (user?.hasNewLesson || user?.hasNewVocabulary) {
-      setIsNewVocabModalOpen(true);
-    }
-  }, [user?.hasNewLesson, user?.hasNewVocabulary]);
-
-  const handleCloseVocabModal = () => {
-    setIsNewVocabModalOpen(false);
-    if (user?.id) {
-      updateDoc(doc(db, 'users', user.id), { hasNewLesson: false, hasNewVocabulary: false }).catch(console.error);
-    }
-  };
 
   const sloganContainerRef = useRef<HTMLDivElement>(null);
   
@@ -157,14 +143,6 @@ const Dashboard: React.FC = () => {
         </header>
         {renderContent()}
 
-        <NewVocabularyModal 
-          isOpen={isNewVocabModalOpen}
-          onClose={handleCloseVocabModal}
-          onViewHistory={() => {
-            handleCloseVocabModal();
-            setView('lesson-history');
-          }}
-        />
 
       </main>
     </div>
