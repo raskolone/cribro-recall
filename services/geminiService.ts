@@ -167,6 +167,10 @@ const callDeepSeek = async (prompt: string, systemInstruction: string, model: st
 export const PREFERRED_AI_MODELS = [
   'openai/gpt-4o-mini',
   'openai/gpt-4o',
+  'openai/gpt-4-turbo',
+  'openai/gpt-4',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
   'deepseek-chat',
   'deepseek-reasoner'
 ];
@@ -175,9 +179,13 @@ export const formatAIModelName = (model?: string): string => {
   if (!model) return 'OpenAI (GPT-4o mini)';
   if (model.includes('gpt-4o-mini')) return 'OpenAI (GPT-4o mini)';
   if (model.includes('gpt-4o')) return 'OpenAI (GPT-4o)';
+  if (model.includes('gpt-4-turbo')) return 'OpenAI (GPT-4 Turbo)';
+  if (model.includes('gpt-4')) return 'OpenAI (GPT-4)';
   if (model.includes('deepseek-reasoner') || model.includes('deepseekv4-pro')) return 'DeepSeek Pro (R1)';
   if (model.includes('deepseek-chat') || model.includes('deepseek')) return 'DeepSeek Lite (V3)';
-  if (model.includes('gemini-2.0') || model.includes('gemini-2.5') || model.includes('gemini-1.5')) return 'Gemini 2.0 Flash';
+  if (model.includes('gemini-2.5')) return 'Gemini 2.5 Flash';
+  if (model.includes('gemini-2.0')) return 'Gemini 2.0 Flash';
+  if (model.includes('gemini-1.5')) return 'Gemini 1.5 Flash';
   if (model.includes('gemini')) return 'Gemini Flash';
   return model;
 };
