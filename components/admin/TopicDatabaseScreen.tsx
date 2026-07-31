@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import AddResourceModal from './AddResourceModal';
+import TTSButtons from '../flashcards/TTSButtons';
 import i18n from "i18next";
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc, getDocs, collection } from 'firebase/firestore';
@@ -310,6 +312,9 @@ export default function TopicDatabaseScreen() {
   
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [dbIdioms, setDbIdioms] = useState<IdiomItem[]>([]);
+  const [dbPhrasals, setDbPhrasals] = useState<PhrasalVerbItem[]>([]);
+  const [isAddResourceModalOpen, setIsAddResourceModalOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -330,6 +335,17 @@ export default function TopicDatabaseScreen() {
       });
 
       const allVocabSets: any[] = [];
+
+      // Fetch global idioms
+      const idiomsSnap = await getDocs(collection(db, 'global_idioms'));
+      const fetchedIdioms = idiomsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as IdiomItem));
+      setDbIdioms(fetchedIdioms);
+
+      // Fetch global phrasals
+      const phrasalsSnap = await getDocs(collection(db, 'global_phrasals'));
+      const fetchedPhrasals = phrasalsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as PhrasalVerbItem));
+      setDbPhrasals(fetchedPhrasals);
+
 
       // Custom sets in 'sets' collection
       const setsSnap = await getDocs(collection(db, 'sets'));
@@ -459,7 +475,8 @@ export default function TopicDatabaseScreen() {
     return matchName || matchStudent || matchWord;
   });
 
-  const filteredIdioms = IDIOMS_DATABASE.filter(item => {
+  const ALL_IDIOMS = [...IDIOMS_DATABASE, ...dbIdioms];
+  const filteredIdioms = ALL_IDIOMS.filter(item => {
     if (!idiomsSearchQuery.trim()) return true;
     const q = idiomsSearchQuery.toLowerCase();
     return (
@@ -470,7 +487,8 @@ export default function TopicDatabaseScreen() {
     );
   });
 
-  const filteredPhrasals = PHRASAL_VERBS_DATABASE.filter(item => {
+  const ALL_PHRASALS = [...PHRASAL_VERBS_DATABASE, ...dbPhrasals];
+  const filteredPhrasals = ALL_PHRASALS.filter(item => {
     if (!phrasalSearchQuery.trim()) return true;
     const q = phrasalSearchQuery.toLowerCase();
     return (
@@ -491,10 +509,20 @@ export default function TopicDatabaseScreen() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-24">
+      <AddResourceModal
+        isOpen={isAddResourceModalOpen}
+        onClose={() => setIsAddResourceModalOpen(false)}
+        onSuccess={() => {
+          fetchData();
+        }}
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
+            <Button onClick={() => setIsAddResourceModalOpen(true)} className="bg-primary text-black font-bold shadow-lg shadow-primary/20 flex">
+              <Sparkles size={18} className="mr-2" /> Dodaj nowe zasoby
+            </Button>
             {selectedSection && (
               <button
                 onClick={() => setSelectedSection(null)}
@@ -889,7 +917,7 @@ export default function TopicDatabaseScreen() {
               <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 font-bold">
                 <MessageSquareQuote size={20} />
               </div>
-              <h2 className="text-lg font-bold text-white">Idiomy Angielskie ({IDIOMS_DATABASE.length})</h2>
+              <h2 className="text-lg font-bold text-white">Idiomy Angielskie ({ALL_IDIOMS.length})</h2>
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -971,7 +999,7 @@ export default function TopicDatabaseScreen() {
               <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold">
                 <Zap size={20} />
               </div>
-              <h2 className="text-lg font-bold text-white">Phrasal Verbs ({PHRASAL_VERBS_DATABASE.length})</h2>
+              <h2 className="text-lg font-bold text-white">Phrasal Verbs ({ALL_PHRASALS.length})</h2>
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">

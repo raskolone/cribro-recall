@@ -6,6 +6,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import Sidebar from './Sidebar';
 import ConfirmModal from '../ui/ConfirmModal';
 import BugReporter from '../ui/BugReporter';
+import AdminMessageModal from '../ui/AdminMessageModal';
 import AIExerciseGeneratorScreen from './AIExerciseGeneratorScreen';
 
 import StudentNotifications from './StudentNotifications';
@@ -130,7 +131,8 @@ const Dashboard: React.FC = () => {
     <div className="flex h-screen bg-base-100">
       <Sidebar 
         currentView={view} 
-        onNavigate={(newView) => setView(newView)} 
+        onNavigate={(newView) => setView(newView)}
+        onStartPractice={(exercise) => console.log('start practice', exercise)} 
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
@@ -145,6 +147,7 @@ const Dashboard: React.FC = () => {
 
 
       </main>
+      <AdminMessageModal />
     </div>
   );
 };

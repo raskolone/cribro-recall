@@ -1,36 +1,77 @@
 const fs = require('fs');
-let code = fs.readFileSync('components/admin/TopicDatabaseScreen.tsx', 'utf-8');
+let code = fs.readFileSync('components/admin/TopicDatabaseScreen.tsx', 'utf8');
 
-const target = `const DEFAULT_CHAPTERS: GrammarChapter[] = Array.from({ length: 6 }, (_, chapterIndex) => ({
-  id: \`chapter-\${chapterIndex + 1}\`,
-  name: \`Gramatyka \${chapterIndex + 1}\`,
-  topics: getTopicsForChapter(chapterIndex).map((topicName, topicIndex) => {
-    return {
-      id: \`chapter-\${chapterIndex + 1}-topic-\${topicIndex + 1}\`,
-      name: topicName,
-      sentences: \`Wykorzystaj przykłady zdań z danego rozdziału np. \${topicName} i wygeneruj podobne zdania na tym samym poziomie\`
-    };
-  })
-}));`;
-
-const replacement = `const DEFAULT_CHAPTERS: GrammarChapter[] = [
-  {
-    id: 'chapter-grammar',
-    name: 'Gramatyka',
-    topics: Array.from({ length: 6 }, (_, chapterIndex) => 
-      getTopicsForChapter(chapterIndex).map((topicName, topicIndex) => ({
-        id: \`chapter-\${chapterIndex + 1}-topic-\${topicIndex + 1}\`,
-        name: \`[Gramatyka \${chapterIndex + 1}] \${topicName}\`,
-        sentences: \`Wykorzystaj przykłady zdań z danego rozdziału np. \${topicName} i wygeneruj podobne zdania na tym samym poziomie\`
-      }))
-    ).flat()
-  }
-];`;
-
-if (code.includes(target)) {
-    code = code.replace(target, replacement);
-    fs.writeFileSync('components/admin/TopicDatabaseScreen.tsx', code);
-    console.log("Patched TopicDatabaseScreen.tsx (Merged Grammar)");
-} else {
-    console.log("Target not found");
+// import AddResourceModal
+if (!code.includes("AddResourceModal")) {
+  code = code.replace(
+    "import Button from '../ui/Button';",
+    "import Button from '../ui/Button';\nimport AddResourceModal from './AddResourceModal';"
+  );
 }
+
+// Add states for db idioms, db phrasals, and modal open
+if (!code.includes("const [isAddResourceModalOpen")) {
+  code = code.replace(
+    "const [isLoading, setIsLoading] = useState(true);",
+    "const [isLoading, setIsLoading] = useState(true);\n  const [dbIdioms, setDbIdioms] = useState<IdiomItem[]>([]);\n  const [dbPhrasals, setDbPhrasals] = useState<PhrasalVerbItem[]>([]);\n  const [isAddResourceModalOpen, setIsAddResourceModalOpen] = useState(false);"
+  );
+}
+
+// Update fetchData
+if (!code.includes("global_idioms")) {
+  const fetchInsert = `
+      // Fetch global idioms
+      const idiomsSnap = await getDocs(collection(db, 'global_idioms'));
+      const fetchedIdioms = idiomsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as IdiomItem));
+      setDbIdioms(fetchedIdioms);
+
+      // Fetch global phrasals
+      const phrasalsSnap = await getDocs(collection(db, 'global_phrasals'));
+      const fetchedPhrasals = phrasalsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as PhrasalVerbItem));
+      setDbPhrasals(fetchedPhrasals);
+`;
+  code = code.replace(
+    /const allVocabSets: any\[\] = \[\];/,
+    "const allVocabSets: any[] = [];\n" + fetchInsert
+  );
+}
+
+// Combine idioms and phrasals
+code = code.replace(
+  /const filteredIdioms = IDIOMS_DATABASE\.filter/,
+  "const ALL_IDIOMS = [...IDIOMS_DATABASE, ...dbIdioms];\n  const filteredIdioms = ALL_IDIOMS.filter"
+);
+
+code = code.replace(
+  /const filteredPhrasals = PHRASAL_VERBS_DATABASE\.filter/,
+  "const ALL_PHRASALS = [...PHRASAL_VERBS_DATABASE, ...dbPhrasals];\n  const filteredPhrasals = ALL_PHRASALS.filter"
+);
+
+// Update count lengths
+code = code.replace(/\{IDIOMS_DATABASE\.length\}/g, "{ALL_IDIOMS.length}");
+code = code.replace(/\{PHRASAL_VERBS_DATABASE\.length\}/g, "{ALL_PHRASALS.length}");
+
+// Add the "Dodaj nowe zasoby" button
+// Add it inside the top right of the header
+const headerTarget = `<div className="flex items-center gap-3">
+            {selectedSection && (`;
+const headerReplacement = `<div className="flex items-center gap-3">
+            <Button onClick={() => setIsAddResourceModalOpen(true)} className="bg-primary text-black font-bold shadow-lg shadow-primary/20 hidden sm:flex">
+              <Sparkles size={18} className="mr-2" /> Dodaj nowe zasoby
+            </Button>
+            {selectedSection && (`;
+code = code.replace(headerTarget, headerReplacement);
+
+// Render the modal
+const modalTarget = `    <div className="max-w-6xl mx-auto space-y-8 pb-24">`;
+const modalReplacement = `    <div className="max-w-6xl mx-auto space-y-8 pb-24">
+      <AddResourceModal
+        isOpen={isAddResourceModalOpen}
+        onClose={() => setIsAddResourceModalOpen(false)}
+        onSuccess={() => {
+          fetchData();
+        }}
+      />`;
+code = code.replace(modalTarget, modalReplacement);
+
+fs.writeFileSync('components/admin/TopicDatabaseScreen.tsx', code);

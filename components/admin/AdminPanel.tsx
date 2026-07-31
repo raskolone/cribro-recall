@@ -624,6 +624,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     return password.split('').sort(() => 0.5 - Math.random()).join('');
   };
 
+
+  const handleSendMessage = async () => {
+    if (!selectedUser || !messageText.trim()) return;
+    setIsSendingMessage(true);
+    try {
+      const userRef = doc(db, 'users', selectedUser.id);
+      const newMessage = {
+        title: messageTitle || 'Wiadomość',
+        text: messageText,
+        createdAt: new Date().toISOString()
+      };
+      await updateDoc(userRef, { adminMessage: newMessage });
+      
+      const updated = { ...selectedUser, adminMessage: newMessage };
+      setSelectedUser(updated);
+      setUsers(users.map(u => u.id === updated.id ? updated : u));
+      
+      showToast('Wiadomość została wysłana.');
+      setShowMessageModal(false);
+      setMessageText('');
+    } catch (e: any) {
+      alert('Błąd podczas wysyłania: ' + e.message);
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
   const handleChangePassword = async (e: any) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!selectedUser) return;
@@ -756,6 +783,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [isCreatingStudent, setIsCreatingStudent] = useState(false);
   const [createStudentError, setCreateStudentError] = useState('');
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [messageTitle, setMessageTitle] = useState('Wiadomość od nauczyciela');
+  const [messageText, setMessageText] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [newPasswordForUser, setNewPasswordForUser] = useState('');
   const [toastMessage, setToastMessage] = useState<{text: string, id: number} | null>(null);
   const showToast = (text: string) => {
@@ -1667,6 +1698,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                           
                                                                                                     {i18n.t("Zmień hasło")}
                                                                                                   </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setMessageTitle('Wiadomość od nauczyciela');
+                            setMessageText('');
+                            setShowMessageModal(true);
+                          }}
+                        >
+                          Wyślij wiadomość
+                        </Button>
                         {selectedUser?.tempPassword && (
                           <Button
                             variant="secondary"
@@ -2307,6 +2349,42 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         </div>
       )}
 
+
+      {/* Send Message Modal */}
+      {showMessageModal && (
+        <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <Card className="w-full shadow-2xl border-primary/20">
+              <h3 className="text-xl font-bold mb-4">Wyślij wiadomość do {selectedUser?.firstName || selectedUser?.username}</h3>
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-content-muted mb-1">Tytuł wiadomości</label>
+                  <input
+                    type="text"
+                    value={messageTitle}
+                    onChange={(e) => setMessageTitle(e.target.value)}
+                    className="w-full bg-base-300 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-content-muted mb-1">Treść wiadomości</label>
+                  <textarea
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    rows={4}
+                    className="w-full bg-base-300 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary resize-none"
+                    placeholder="Wpisz treść wiadomości..."
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button variant="secondary" onClick={() => setShowMessageModal(false)}>Anuluj</Button>
+                <Button onClick={handleSendMessage} isLoading={isSendingMessage} disabled={!messageText.trim()}>Wyślij</Button>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
 {/* Change Password Modal */}
       {showChangePasswordModal && (
         <div ref={changePasswordModalAnim.overlayRef} className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">

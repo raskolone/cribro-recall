@@ -21,6 +21,38 @@ const LessonHistoryScreen: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedLesson, setSelectedLesson] = useState<LessonRecord | null>(null);
   const [selectedLog, setSelectedLog] = useState<PracticeLog | null>(null);
+
+  const isRecentLesson = (lesson: LessonRecord) => {
+    if (!lesson || (!lesson.createdAt && !lesson.date)) return false;
+    let checkedLessons: string[] = [];
+    try {
+      checkedLessons = JSON.parse(localStorage.getItem('checked_lessons') || '[]');
+    } catch(e) {}
+    if (checkedLessons.includes(lesson.id)) return false;
+    
+    const dateStr = lesson.createdAt || lesson.date;
+    const date = typeof dateStr === 'string' ? new Date(dateStr) : ((dateStr as any).toDate ? (dateStr as any).toDate() : new Date());
+    if (isNaN(date.getTime())) return false;
+    const diffDays = Math.ceil(Math.abs(Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDays <= 2;
+  };
+
+  const handleLessonSelect = (lesson: LessonRecord) => {
+    setSelectedLesson(lesson);
+    try {
+      const local = JSON.parse(localStorage.getItem('checked_lessons') || '[]');
+      if (!local.includes(lesson.id)) {
+        localStorage.setItem('checked_lessons', JSON.stringify([...local, lesson.id]));
+      }
+    } catch(e) {}
+    
+    if (user?.hasNewLesson && user?.id) {
+       import('firebase/firestore').then(({ doc, updateDoc }) => {
+         updateDoc(doc(db, 'users', user.id), { hasNewLesson: false }).catch(console.error);
+       });
+    }
+  };
+
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -205,8 +237,8 @@ const LessonHistoryScreen: React.FC = () => {
               return (
                 <div
                   key={lesson.id}
-                  onClick={() => setSelectedLesson(lesson)}
-                  className="bg-[#0a0e17] border border-white/10 hover:border-emerald-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_36px_rgba(16,185,129,0.25)] rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 relative overflow-hidden group cursor-pointer hover:-translate-y-1.5 min-h-[220px]"
+                  onClick={() => handleLessonSelect(lesson)}
+                  className={`bg-[#0a0e17] hover:border-emerald-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_36px_rgba(16,185,129,0.25)] rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 relative overflow-hidden group cursor-pointer hover:-translate-y-1.5 min-h-[220px] ${isRecentLesson(lesson) ? 'border-emerald-500/80 animate-pulse drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-white/10'}`}
                 >
                   {/* Glass & Shiny Effects */}
                   <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -214,6 +246,11 @@ const LessonHistoryScreen: React.FC = () => {
 
                   <div>
                     {/* Top Row: Lesson Number Badge & Date Pill */}
+                    {isRecentLesson(lesson) && (
+                      <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500 text-black font-extrabold text-[10px] uppercase rounded-bl-xl z-20">
+                        {language === 'pl' ? 'Nowe' : 'New'}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between mb-4 relative z-10">
                       <span className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono font-black text-sm flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-black transition-all shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]">
                         #{lessonNumber}
@@ -265,8 +302,8 @@ const LessonHistoryScreen: React.FC = () => {
               return (
               <Card 
                 key={lesson.id} 
-                onClick={() => setSelectedLesson(lesson)}
-                className="p-4 cursor-pointer hover:border-emerald-500/50 transition-colors liquid-glass-tile group flex items-center justify-between"
+                onClick={() => handleLessonSelect(lesson)}
+                className={`p-4 cursor-pointer hover:border-emerald-500/50 transition-colors group flex items-center justify-between rounded-xl border ${isRecentLesson(lesson) ? 'border-emerald-500/80 animate-pulse bg-emerald-500/10' : 'border-white/10 bg-base-200/50'}`}
               >
                   <div className="flex items-center gap-4 pr-4">
                     <div className="w-12 h-12 flex-shrink-0 bg-emerald-500/10 text-emerald-400 font-mono font-bold rounded-xl flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-black transition-colors">

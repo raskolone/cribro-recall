@@ -1,4 +1,7 @@
 const fs = require('fs');
-let content = fs.readFileSync('types.ts', 'utf8');
-content = content.replace(/hasNewVocabulary\?: boolean;/, 'hasNewVocabulary?: boolean;\n  hasNewLesson?: boolean;');
-fs.writeFileSync('types.ts', content);
+let code = fs.readFileSync('types.ts', 'utf8');
+code = code.replace(
+  "hasNewLesson?: boolean;",
+  "hasNewLesson?: boolean;\n  adminMessage?: { title: string; text: string; createdAt: string; } | null;"
+);
+fs.writeFileSync('types.ts', code);

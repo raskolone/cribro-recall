@@ -39,6 +39,19 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
   }, []);
 
   const handlePreviewSet = async (setId: string) => {
+    try {
+      const local = JSON.parse(localStorage.getItem('checked_sets') || '[]');
+      if (!local.includes(setId)) {
+        localStorage.setItem('checked_sets', JSON.stringify([...local, setId]));
+      }
+    } catch(e) {}
+    
+    if (user?.hasNewVocabulary && user?.id) {
+       import('firebase/firestore').then(({ doc, updateDoc }) => {
+         import('../../firebase').then(m => updateDoc(doc(m.db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error));
+       });
+    }
+
     setPreviewSetId(setId);
     setIsLoadingPreview(true);
     try {

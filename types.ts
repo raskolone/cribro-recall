@@ -23,6 +23,7 @@ export interface User {
   level?: string;
   hasNewVocabulary?: boolean;
   hasNewLesson?: boolean;
+  adminMessage?: { title: string; text: string; createdAt: string; } | null;
   description?: string;
   aiPrompt?: string;
   isSuspended?: boolean;

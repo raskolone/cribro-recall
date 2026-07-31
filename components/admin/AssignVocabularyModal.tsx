@@ -241,6 +241,8 @@ export default function AssignVocabularyModal({
         batch.set(doc(db, `users/${targetUser.id}/wordSets/${newSetId}/flashcards/${cardId}`), cardData);
       });
 
+            // Set hasNewVocabulary flag for the target student
+      batch.update(doc(db, `users/${targetUser.id}`), { hasNewVocabulary: true });
       await batch.commit();
 
       alert(`Pomyślnie przypisano zestaw (${selectedWordsList.length} słówek) do kursanta ${targetUser.firstName || targetUser.username}!`);
