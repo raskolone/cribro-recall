@@ -51,6 +51,22 @@ const Dashboard: React.FC = () => {
   const [slogan, setSlogan] = useState('');
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [isExerciseActive, setIsExerciseActive] = useState(false);
+
+  const [isNewVocabModalOpen, setIsNewVocabModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (user?.hasNewLesson || user?.hasNewVocabulary) {
+      setIsNewVocabModalOpen(true);
+    }
+  }, [user?.hasNewLesson, user?.hasNewVocabulary]);
+
+  const handleCloseVocabModal = () => {
+    setIsNewVocabModalOpen(false);
+    if (user?.id) {
+      updateDoc(doc(db, 'users', user.id), { hasNewLesson: false, hasNewVocabulary: false }).catch(console.error);
+    }
+  };
+
   const sloganContainerRef = useRef<HTMLDivElement>(null);
   
   // Slogan logic refactored
@@ -140,6 +156,16 @@ const Dashboard: React.FC = () => {
           <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2">Menu</button>
         </header>
         {renderContent()}
+
+        <NewVocabularyModal 
+          isOpen={isNewVocabModalOpen}
+          onClose={handleCloseVocabModal}
+          onViewHistory={() => {
+            handleCloseVocabModal();
+            setView('lesson-history');
+          }}
+        />
+
       </main>
     </div>
   );

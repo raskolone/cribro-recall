@@ -60,13 +60,23 @@ const getAI = () => {
 };
 
 const generateContentWithFallback = async (params: any) => {
-  const models = params.preferredModels || ['gemini-3.6-flash', 'gemini-3.1-pro-preview'];
+  const models = params.preferredModels || PREFERRED_AI_MODELS;
   const { preferredModels, ...apiParams } = params;
+
   let lastError;
   for (const model of models) {
     try {
       console.log(`Attempting generation with ${model}...`);
       
+      if (model.startsWith('deepseek')) {
+         const promptText = typeof apiParams.contents === 'string' ? apiParams.contents : 
+                            (Array.isArray(apiParams.contents) ? apiParams.contents.map((c: any) => c.text || JSON.stringify(c)).join('\n') : JSON.stringify(apiParams.contents));
+         const sysInst = apiParams.config?.systemInstruction || "You are a helpful AI assistant.";
+         
+         const text = await callDeepSeek(promptText, sysInst, model);
+         return { text };
+      }
+
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error("Request timed out after 60 seconds")), 60000);
       });
@@ -84,7 +94,6 @@ const generateContentWithFallback = async (params: any) => {
       if (e?.message?.includes("timed out")) continue;
       if (String(e?.status) === "404" || String(e?.status) === "503" || String(e?.status) === "429" || e?.message?.includes("503") || e?.message?.includes("429")) continue;
       if (String(e?.status) === "400" && e?.message?.includes("not found")) continue;
-      // Allow it to fall back on 400 as well, it might be a schema mismatch that another model handles better
       continue;
     }
   }
@@ -322,6 +331,8 @@ Number of Sentences: ${numSentences}`;
 
   const finalPrompt = `${masterPrompt}${studentContextBlock}${customBlock}
 
+CRITICAL RULE: The field \`polish_translation\` MUST NEVER be in English. It MUST be the Polish translation. Do NOT output English in the polish_translation field.
+
 OUTPUT FORMAT (Strict JSON):
 Return ONLY a valid JSON object matching this schema. No markdown, no extra conversational text:
 {
@@ -372,6 +383,8 @@ ${responseText}
 
 TWOJE ZADANIE: Sprawdź spójność logiczną i sens zdania. Upewnij się, że zdania są naturalne, a nie robotyczne czy sztuczne. Dzięki temu umożliwi to uczenie się przez skojarzenia faktów.
 Jeśli to konieczne, popraw zdania (zarówno polskie, jak i angielskie), aby brzmiały jak najbardziej naturalnie i logicznie.
+PAMIĘTAJ: Pole \`polish_translation\` (lub \`polishSentence\`) MUSI być ZAWSZE po polsku. Pole \`english_sentence\` (lub \`englishTranslation\`) MUSI być ZAWSZE po angielsku. Upewnij się, że nie pozamieniałeś języków miejscami!
+
 Zwróć skorygowany wynik WYŁĄCZNIE jako poprawny obiekt JSON, zachowując dokładnie tę samą strukturę (klucze).`;
 
       let fallbackRes2 = await generateTextWithUnifiedFallback(
@@ -598,17 +611,10 @@ export const generateTest = async (
   driveFile?: { id: string, mimeType: string, token: string },
   typeCounts?: Record<string, number>
 ): Promise<any[]> => {
-  
   const user = auth.currentUser;
   const token = user ? await user.getIdToken() : '';
   
-  const res = await fetch('/api/gemini/generate-test', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify({
+  const payload = {
       level,
       testTitle,
       scope,
@@ -621,7 +627,36 @@ export const generateTest = async (
       typeCounts,
       fileData,
       driveFile
-    })
+    };
+
+  // Try DeepSeek first if no files attached
+  if (!fileData && !driveFile) {
+    try {
+      console.log('Attempting generateTest via DeepSeek...');
+      const resDs = await fetch('/api/deepseek/generate-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      if (resDs.ok) {
+         const data = await resDs.json();
+         return data.questions;
+      }
+    } catch (e) {
+      console.warn('DeepSeek test generation failed, falling back to Gemini', e);
+    }
+  }
+
+  const res = await fetch('/api/gemini/generate-test', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(payload)
   });
   
   if (!res.ok) {
