@@ -7,7 +7,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
 
 async function generateContentWithRetry(aiClient: any, contents: any, config: any, customModels?: string[]) {
-  const models = customModels || ['deepseek-chat', 'deepseek-reasoner', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+  const models = customModels || ['openai/gpt-4o-mini', 'openai/gpt-4o', 'deepseek-chat', 'deepseek-reasoner'];
   let lastError;
   
   for (const model of models) {
@@ -16,15 +16,70 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
       try {
         console.log(`[Server] Attempting generation with ${model}... (retries left: ${retries})`);
         
-        if (model.startsWith('deepseek')) {
+        let promptText = "";
+        if (typeof contents === 'string') {
+          promptText = contents;
+        } else if (Array.isArray(contents)) {
+          promptText = contents.map((c: any) => {
+            if (typeof c === 'string') return c;
+            if (c.text) return c.text;
+            if (c.inlineData) return "[Załączono plik, który nie może być bezpośrednio przetworzony jako tekst]";
+            return JSON.stringify(c);
+          }).join('\n');
+        } else if (contents && contents.parts) {
+          promptText = contents.parts.map((p: any) => {
+            if (typeof p === 'string') return p;
+            if (p.text) return p.text;
+            if (p.inlineData) return "[Załączono plik, który nie może być bezpośrednio przetworzony jako tekst]";
+            return JSON.stringify(p);
+          }).join('\n');
+        } else if (contents && typeof contents === 'object' && contents.text) {
+          promptText = contents.text;
+        } else {
+          promptText = JSON.stringify(contents);
+        }
+
+        const sysInst = config?.systemInstruction || "";
+
+        if (model.startsWith('openai')) {
+           const apiKey = process.env.OPENAI_API_KEY;
+           if (!apiKey) {
+             console.warn("[Server] OPENAI_API_KEY not configured, skipping model");
+             throw new Error("OPENAI_API_KEY not configured");
+           }
+           
+           const targetModel = model.replace('openai/', '');
+           const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+              model: targetModel,
+              messages: [
+                ...(sysInst ? [{ role: "system", content: sysInst }] : []),
+                { role: "user", content: promptText }
+              ],
+              temperature: config?.temperature || 0.7
+            })
+           });
+
+           if (!response.ok) {
+             const errText = await response.text();
+             throw new Error(`OpenAI API error: ${response.statusText} - ${errText}`);
+           }
+           const data = await response.json();
+           return { text: data.choices?.[0]?.message?.content || "" };
+
+        } else if (model.startsWith('deepseek')) {
            const apiKey = process.env.DEEPSEEK_API_KEY;
            if (!apiKey) {
              console.warn("[Server] DEEPSEEK_API_KEY not configured, skipping model");
              throw new Error("DEEPSEEK_API_KEY not configured");
            }
            
-           const prompt = contents.parts ? contents.parts.find((p: any) => p.text)?.text : (typeof contents === 'string' ? contents : contents[0]?.text);
-           
+           const isReasoner = model === 'deepseek-reasoner';
            const response = await fetch("https://api.deepseek.com/chat/completions", {
             method: "POST",
             headers: {
@@ -33,8 +88,11 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
             },
             body: JSON.stringify({
               model: model,
-              messages: [{ role: "user", content: prompt }],
-              temperature: config.temperature || 0.7
+              messages: [
+                ...(sysInst && !isReasoner ? [{ role: "system", content: sysInst }] : []),
+                { role: "user", content: (isReasoner && sysInst ? sysInst + "\n\n" : "") + promptText }
+              ],
+              temperature: isReasoner ? 0.6 : (config?.temperature || 0.7)
             })
            });
 
@@ -1038,63 +1096,193 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
   app.get("/api/tts", handleTTS);
   app.post("/api/tts", handleTTS);
 
-  // --- DEEPSEEK API PROXIES ---
-  app.post("/api/deepseek/generate", optionalFirebaseAuth, async (req, res) => {
+  // --- OPENAI API PROXIES ---
+  app.post("/api/openai/generate", optionalFirebaseAuth, async (req, res) => {
     try {
-      const apiKey = process.env.DEEPSEEK_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({ error: 'DEEPSEEK_API_KEY not configured.' });
-      }
-
       const { prompt, systemInstruction, model } = req.body;
       if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
 
-      const preferredModels = model 
-        ? [model, model === 'deepseek-reasoner' ? 'deepseek-chat' : 'deepseek-reasoner']
-        : ['deepseek-chat', 'deepseek-reasoner'];
+      const openaiKey = process.env.OPENAI_API_KEY;
+      if (!openaiKey) {
+        return res.status(500).json({ error: 'No OpenAI API key configured (OPENAI_API_KEY is missing).' });
+      }
+
+      const targetModel = model || 'gpt-4o-mini';
+
+      const bodyPayload: any = {
+        model: targetModel,
+        messages: [
+          ...(systemInstruction ? [{ role: "system", content: systemInstruction }] : []),
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.7
+      };
+
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openaiKey}`
+        },
+        body: JSON.stringify(bodyPayload)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || "";
+        if (content) {
+          return res.json({ text: content, modelUsed: targetModel });
+        } else {
+          return res.status(500).json({ error: 'Empty response from OpenAI' });
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('OpenAI API error:', errorText);
+        return res.status(response.status).json({ error: errorText });
+      }
+    } catch (err: any) {
+      console.error('OpenAI exception:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- DEEPSEEK / OPENROUTER / GROQ API PROXIES ---
+  app.post("/api/deepseek/generate", optionalFirebaseAuth, async (req, res) => {
+    try {
+      const { prompt, systemInstruction, model } = req.body;
+      if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
+
+      const deepseekKey = process.env.DEEPSEEK_API_KEY || 'sk-9cd552056ba845e69ad063d53200fbcd';
+      const openrouterKey = process.env.OPENROUTER_API_KEY;
+      const groqKey = process.env.GROQ_API_KEY;
+
+      if (!deepseekKey && !openrouterKey && !groqKey) {
+        return res.status(500).json({ error: 'No AI provider API key configured (DEEPSEEK_API_KEY, OPENROUTER_API_KEY, or GROQ_API_KEY).' });
+      }
 
       let lastErrorText = '';
-      for (const targetModel of preferredModels) {
+
+      // 1. Try Direct DeepSeek API if key available
+      if (deepseekKey) {
+        const preferredModels = model 
+          ? [model, model === 'deepseek-reasoner' ? 'deepseek-chat' : 'deepseek-reasoner']
+          : ['deepseek-chat', 'deepseek-reasoner'];
+
+        for (const targetModel of preferredModels) {
+          try {
+            const isReasoner = targetModel === 'deepseek-reasoner';
+            const bodyPayload: any = {
+              model: targetModel,
+              messages: [
+                ...(systemInstruction && !isReasoner ? [{ role: "system", content: systemInstruction }] : []),
+                { role: "user", content: (isReasoner && systemInstruction ? systemInstruction + "\n\n" : "") + prompt }
+              ],
+              temperature: isReasoner ? 0.6 : 0.7
+            };
+
+            const response = await fetch("https://api.deepseek.com/chat/completions", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${deepseekKey}`
+              },
+              body: JSON.stringify(bodyPayload)
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              const content = data.choices?.[0]?.message?.content || "";
+              if (content) {
+                return res.json({ text: content, modelUsed: targetModel });
+              }
+            } else {
+              lastErrorText = await response.text();
+              console.warn(`DeepSeek Direct (${targetModel}) failed [${response.status}]:`, lastErrorText);
+            }
+          } catch (mErr: any) {
+            console.warn(`DeepSeek model ${targetModel} exception:`, mErr?.message);
+            lastErrorText = mErr?.message || String(mErr);
+          }
+        }
+      }
+
+      // 2. Try OpenRouter API if key available
+      if (openrouterKey) {
         try {
-          const isReasoner = targetModel === 'deepseek-reasoner';
           const bodyPayload: any = {
-            model: targetModel,
+            model: "deepseek/deepseek-chat",
             messages: [
-              ...(systemInstruction && !isReasoner ? [{ role: "system", content: systemInstruction }] : []),
-              { role: "user", content: (isReasoner && systemInstruction ? systemInstruction + "\n\n" : "") + prompt }
-            ],
-            temperature: isReasoner ? 0.6 : 0.7
+              ...(systemInstruction ? [{ role: "system", content: systemInstruction }] : []),
+              { role: "user", content: prompt }
+            ]
           };
 
-          const response = await fetch("https://api.deepseek.com/chat/completions", {
+          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${apiKey}`
+              "Authorization": `Bearer ${openrouterKey}`,
+              "HTTP-Referer": "https://cribro-recall.app",
+              "X-Title": "Cribro Recall"
             },
             body: JSON.stringify(bodyPayload)
           });
 
-          if (!response.ok) {
+          if (response.ok) {
+            const data = await response.json();
+            const content = data.choices?.[0]?.message?.content || "";
+            if (content) {
+              return res.json({ text: content, modelUsed: "openrouter/deepseek-chat" });
+            }
+          } else {
             lastErrorText = await response.text();
-            console.warn(`DeepSeek model ${targetModel} error:`, lastErrorText);
-            continue;
+            console.warn(`OpenRouter failed [${response.status}]:`, lastErrorText);
           }
-
-          const data = await response.json();
-          const content = data.choices?.[0]?.message?.content || "";
-          if (content) {
-            return res.json({ text: content, modelUsed: targetModel });
-          }
-        } catch (mErr: any) {
-          console.warn(`DeepSeek model ${targetModel} exception:`, mErr?.message);
-          lastErrorText = mErr?.message || String(mErr);
+        } catch (orErr: any) {
+          console.warn("OpenRouter exception:", orErr?.message);
+          lastErrorText = orErr?.message || String(orErr);
         }
       }
 
-      return res.status(500).json({ error: 'All DeepSeek models failed', details: lastErrorText });
+      // 3. Try Groq API if key available
+      if (groqKey) {
+        try {
+          const bodyPayload: any = {
+            model: "llama-3.3-70b-versatile",
+            messages: [
+              ...(systemInstruction ? [{ role: "system", content: systemInstruction }] : []),
+              { role: "user", content: prompt }
+            ]
+          };
+
+          const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${groqKey}`
+            },
+            body: JSON.stringify(bodyPayload)
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const content = data.choices?.[0]?.message?.content || "";
+            if (content) {
+              return res.json({ text: content, modelUsed: "groq/llama-3.3-70b" });
+            }
+          } else {
+            lastErrorText = await response.text();
+            console.warn(`Groq failed [${response.status}]:`, lastErrorText);
+          }
+        } catch (gErr: any) {
+          console.warn("Groq exception:", gErr?.message);
+          lastErrorText = gErr?.message || String(gErr);
+        }
+      }
+
+      return res.status(500).json({ error: 'Primary AI providers (DeepSeek / OpenRouter / Groq) failed', details: lastErrorText });
     } catch (error: any) {
-      console.error('DeepSeek generation error:', error);
+      console.error('AI provider proxy error:', error);
       res.status(500).json({ error: error.message });
     }
   });

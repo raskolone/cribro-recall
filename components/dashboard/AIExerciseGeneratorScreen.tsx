@@ -643,6 +643,35 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     }
   }, [step, onExerciseStateChange]);
   const [vocabularySets, setVocabularySets] = useState<VocabularySet[]>([]);
+
+  // Practice Setup Modal states
+  const [practiceSetupOpen, setPracticeSetupOpen] = useState(false);
+  const [practiceSetupType, setPracticeSetupType] = useState<'flashcards' | 'match' | 'quiz' | 'intro' | 'fill-in-the-blank' | null>(null);
+  const [setupSelectedSource, setSetupSelectedSource] = useState<string>(''); // 'basket' or lesson set ID
+  const [setupWords, setSetupWords] = useState<BasketWordItem[]>([]);
+  const [setupCheckedWordIds, setSetupCheckedWordIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!practiceSetupOpen || !setupSelectedSource) return;
+
+    let wordsList: BasketWordItem[] = [];
+    if (setupSelectedSource === 'basket') {
+      wordsList = basketWords;
+    } else {
+      const selectedSet = vocabularySets.find(s => s.id === setupSelectedSource);
+      if (selectedSet && selectedSet.vocabularyText) {
+        wordsList = selectedSet.vocabularyText
+          .split(/[\n;]+/)
+          .map(line => line.trim())
+          .filter(line => line.length > 0)
+          .map(line => parseLineToWordItem(line, selectedSet.topic));
+      }
+    }
+
+    setSetupWords(wordsList);
+    // By default, check all words
+    setSetupCheckedWordIds(new Set(wordsList.map(w => w.id)));
+  }, [setupSelectedSource, practiceSetupOpen, basketWords, vocabularySets]);
   const [specialTasks, setSpecialTasks] = useState<any[]>([]);
   const [isLessonsExpanded, setIsLessonsExpanded] = useState<boolean>(false);
   const [isCustomSetsExpanded, setIsCustomSetsExpanded] = useState<boolean>(false);
@@ -804,7 +833,128 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     }
   };
 
+  const syncWordsToFirestoreSet = async (items: BasketWordItem[], title: string) => {
+    if (!user?.id || items.length === 0) return null;
+    const setId = `set-custom-practice-${user.id}`;
+    const setRef = doc(db, `sets/${setId}`);
+    
+    await setDoc(setRef, {
+      userId: user.id,
+      title: title,
+      description: language === 'pl' ? `Wybrane pojęcia (${items.length})` : `Selected terms (${items.length})`,
+      isPublic: false,
+      cardCount: items.length,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      isCustomPracticeSet: true
+    });
+
+    const batch = writeBatch(db);
+    for (let i = 0; i < 150; i++) {
+      const cardRef = doc(db, `sets/${setId}/flashcards/card-${i}`);
+      batch.delete(cardRef);
+    }
+    
+    items.forEach((item, index) => {
+      const cardRef = doc(db, `sets/${setId}/flashcards/card-${index}`);
+      batch.set(cardRef, {
+        position: index,
+        term: item.term,
+        definition: item.definition || '',
+        termLanguage: 'English',
+        definitionLanguage: 'Polish'
+      });
+    });
+    await batch.commit();
+    return setId;
+  };
+
+  const handleStartPracticeWithConfig = async () => {
+    if (!practiceSetupType || !setupSelectedSource) return;
+
+    const selectedWords = setupWords.filter(w => setupCheckedWordIds.has(w.id));
+    if (selectedWords.length === 0) {
+      alert(language === 'pl' ? 'Wybierz co najmniej jedno słowo!' : 'Please select at least one word!');
+      return;
+    }
+
+    if (practiceSetupType === 'match' && selectedWords.length < 2) {
+      alert(language === 'pl' ? 'Gra w dopasowywanie wymaga co najmniej 2 słówek!' : 'Matching game requires at least 2 words!');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      if (user?.id && setupSelectedSource !== 'basket') {
+        const set = vocabularySets.find(s => s.id === setupSelectedSource);
+        if (set && set.used === false) {
+          set.used = true;
+          markVocabularySetAsUsed(user.id, setupSelectedSource).catch(console.error);
+        }
+      }
+
+      const isAllSelected = selectedWords.length === setupWords.length;
+      if (isAllSelected && setupSelectedSource !== 'basket') {
+        if (onChangeView) {
+          onChangeView('flashcard-study', { 
+            setId: setupSelectedSource, 
+            initialMode: practiceSetupType === 'match' ? 'matching' : practiceSetupType 
+          });
+        } else {
+          onStartPractice?.(practiceSetupType);
+        }
+        setPracticeSetupOpen(false);
+        return;
+      }
+
+      const customTitle = setupSelectedSource === 'basket'
+        ? (language === 'pl' ? 'Wybrane z Koszyka' : 'Selected from Basket')
+        : `${vocabularySets.find(s => s.id === setupSelectedSource)?.title || 'Lekcja'} (${language === 'pl' ? 'Wybrane' : 'Selected'})`;
+
+      const customSetId = await syncWordsToFirestoreSet(selectedWords, customTitle);
+      if (customSetId) {
+        if (onChangeView) {
+          onChangeView('flashcard-study', { 
+            setId: customSetId, 
+            initialMode: practiceSetupType === 'match' ? 'matching' : practiceSetupType 
+          });
+        } else {
+          onStartPractice?.(practiceSetupType);
+        }
+      }
+    } catch (err) {
+      console.error("Error launching practice with configuration:", err);
+    } finally {
+      setIsLoading(false);
+      setPracticeSetupOpen(false);
+    }
+  };
+
   const handleStartOtherPractice = (type: any, mode1?: boolean, mode2?: boolean) => {
+    if (type === 'flashcards' || type === 'match' || type === 'quiz' || type === 'intro' || type === 'fill-in-the-blank') {
+      setPracticeSetupType(type);
+      
+      let initialSource = '';
+      if (selectedSetId === 'basket' && basketWords.length > 0) {
+        initialSource = 'basket';
+      } else if (selectedLessonIds.length > 0) {
+        initialSource = selectedLessonIds[0];
+      } else if (vocabularySets.length > 0) {
+        initialSource = vocabularySets[0].id;
+      } else if (basketWords.length > 0) {
+        initialSource = 'basket';
+      }
+
+      if (!initialSource) {
+        alert(language === 'pl' ? 'Wybierz najpierw źródło słownictwa lub dodaj słówka do koszyka!' : 'Select a vocabulary source or add words to the basket first!');
+        return;
+      }
+
+      setSetupSelectedSource(initialSource);
+      setPracticeSetupOpen(true);
+      return;
+    }
+
     if (selectedSetId === 'basket') {
       handleStartBasketPractice(type);
       return;
@@ -819,9 +969,6 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       });
     }
     
-    // Instead of using onStartPractice which does nothing, we switch view to flashcards.
-    // If multiple selected, we just pass the first one for now (or a combined set if possible).
-    // The Dashboard needs to support initialMode.
     const setIdToUse = selectedSetId === 'lessons' && selectedLessonIds.length > 0 ? selectedLessonIds[0] : (selectedSetId === 'grammar' ? null : selectedSetId);
     if (onChangeView) {
       onChangeView('flashcard-study', { setId: setIdToUse || '', initialMode: type });
@@ -2594,6 +2741,196 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                     className="flex-1 py-3.5 rounded-xl bg-[#10b981] text-black font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                                   >
                                     {language === 'pl' ? 'Gotowe' : 'Done'}
+                                  </button>
+                                </div>
+                              </motion.div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        {/* Modal: Practice Configuration Setup */}
+                        <AnimatePresence>
+                          {practiceSetupOpen && (
+                            <motion.div key="practice-setup-modal"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="fixed inset-0 z-[130] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+                            >
+                              <motion.div
+                                initial={{ y: 20, opacity: 0, scale: 0.95 }}
+                                animate={{ y: 0, opacity: 1, scale: 1 }}
+                                exit={{ y: 20, opacity: 0, scale: 0.95 }}
+                                className="bg-[#0f1522] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85vh]"
+                              >
+                                {/* Header */}
+                                <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xl ${
+                                      practiceSetupType === 'match' 
+                                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' 
+                                        : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                                    }`}>
+                                      {practiceSetupType === 'match' ? '🧩' : '🗂️'}
+                                    </div>
+                                    <div>
+                                      <h3 className="text-lg font-bold text-white">
+                                        {language === 'pl' ? 'Skonfiguruj zadanie' : 'Configure Exercise'}
+                                      </h3>
+                                      <p className="text-xs text-gray-400">
+                                        {practiceSetupType === 'match' 
+                                          ? (language === 'pl' ? 'Gra w dopasowywanie pojęć' : 'Vocabulary matching game')
+                                          : (language === 'pl' ? 'Nauka i testowanie z fiszkami' : 'Learn and test with flashcards')}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <button 
+                                    onClick={() => setPracticeSetupOpen(false)}
+                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                                  >
+                                    <X className="w-5 h-5" />
+                                  </button>
+                                </div>
+
+                                {/* Step 1: Source Selection */}
+                                <div className="space-y-2 mb-4">
+                                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
+                                    {language === 'pl' ? '1. Wybierz lekcję / źródło' : '1. Choose lesson / source'}
+                                  </label>
+                                  <div className="relative">
+                                    <select
+                                      value={setupSelectedSource}
+                                      onChange={(e) => setSetupSelectedSource(e.target.value)}
+                                      className="w-full bg-[#18212e] text-white border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 appearance-none pr-10"
+                                    >
+                                      {basketWords.length > 0 && (
+                                        <option value="basket">
+                                          🧺 {language === 'pl' ? `Koszyk Słówek (${basketWords.length})` : `Vocabulary Basket (${basketWords.length})`}
+                                        </option>
+                                      )}
+                                      {vocabularySets.map((set, idx) => {
+                                        const lessonNumber = vocabularySets.length - idx;
+                                        return (
+                                          <option key={set.id} value={set.id}>
+                                            📚 {set.title || (language === 'pl' ? `Lekcja ${lessonNumber}` : `Lesson ${lessonNumber}`)} ({set.itemCount} {language === 'pl' ? 'słówek' : 'words'})
+                                          </option>
+                                        );
+                                      })}
+                                    </select>
+                                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                                      <ChevronDown className="w-4 h-4" />
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Step 2: Words list with select all / deselect all */}
+                                <div className="flex-1 flex flex-col min-h-0 space-y-2 mb-6">
+                                  <div className="flex justify-between items-center">
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                      {language === 'pl' 
+                                        ? `2. Wybierz słówka (${setupCheckedWordIds.size} z ${setupWords.length})` 
+                                        : `2. Select words (${setupCheckedWordIds.size} of ${setupWords.length})`}
+                                    </label>
+                                    <div className="flex gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => setSetupCheckedWordIds(new Set(setupWords.map(w => w.id)))}
+                                        className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg transition-colors border border-emerald-500/20"
+                                      >
+                                        {language === 'pl' ? 'Zaznacz wszystkie' : 'Select all'}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSetupCheckedWordIds(new Set())}
+                                        className="text-[10px] font-bold text-gray-400 bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg transition-colors border border-white/10"
+                                      >
+                                        {language === 'pl' ? 'Odznacz wszystkie' : 'Deselect all'}
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Scrollable list of words with checkboxes */}
+                                  <div className="flex-1 overflow-y-auto custom-scrollbar border border-white/5 rounded-2xl bg-[#0b0f19] p-2 space-y-1 max-h-[300px]">
+                                    {setupWords.length === 0 ? (
+                                      <div className="text-center py-8 text-gray-500 text-sm">
+                                        {language === 'pl' ? 'Brak słówek w wybranym źródle' : 'No words in the selected source'}
+                                      </div>
+                                    ) : (
+                                      setupWords.map((word) => {
+                                        const isChecked = setupCheckedWordIds.has(word.id);
+                                        const accentClass = practiceSetupType === 'match' 
+                                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' 
+                                          : 'bg-purple-500/10 border-purple-500/30 text-purple-300';
+                                        
+                                        const checkColor = practiceSetupType === 'match' ? 'accent-amber-500' : 'accent-purple-500';
+
+                                        return (
+                                          <label
+                                            key={word.id}
+                                            className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all cursor-pointer ${
+                                              isChecked
+                                                ? `${accentClass}`
+                                                : 'bg-white/[0.01] border-white/5 text-gray-400 hover:border-white/10 hover:bg-white/[0.03]'
+                                            }`}
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={isChecked}
+                                              onChange={() => {
+                                                const newChecked = new Set(setupCheckedWordIds);
+                                                if (newChecked.has(word.id)) {
+                                                  newChecked.delete(word.id);
+                                                } else {
+                                                  newChecked.add(word.id);
+                                                }
+                                                setSetupCheckedWordIds(newChecked);
+                                              }}
+                                              className={`w-4 h-4 rounded border-white/20 bg-black/40 focus:ring-0 ${checkColor} cursor-pointer`}
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                              <span className={`font-semibold text-xs block ${isChecked ? 'text-white' : 'text-gray-300'}`}>{word.term}</span>
+                                              {word.definition && (
+                                                <span className="text-[11px] text-gray-400 block truncate">{word.definition}</span>
+                                              )}
+                                            </div>
+                                          </label>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Actions Footer */}
+                                <div className="flex gap-3 pt-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPracticeSetupOpen(false)}
+                                    className="flex-1 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-bold text-sm border border-white/10 transition-colors"
+                                  >
+                                    {language === 'pl' ? 'Anuluj' : 'Cancel'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleStartPracticeWithConfig}
+                                    disabled={setupCheckedWordIds.size === 0 || isLoading}
+                                    className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 text-black ${
+                                      setupCheckedWordIds.size === 0 || isLoading
+                                        ? 'bg-gray-700 text-gray-500 cursor-not-allowed border-none'
+                                        : practiceSetupType === 'match'
+                                          ? 'bg-amber-400 hover:bg-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
+                                          : 'bg-purple-500 hover:bg-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.3)]'
+                                    }`}
+                                  >
+                                    {isLoading ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <Play className="w-4 h-4 fill-current" />
+                                    )}
+                                    <span>
+                                      {language === 'pl' 
+                                        ? `Graj (${setupCheckedWordIds.size} sł.)` 
+                                        : `Play (${setupCheckedWordIds.size} w.)`}
+                                    </span>
                                   </button>
                                 </div>
                               </motion.div>

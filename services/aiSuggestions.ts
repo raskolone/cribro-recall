@@ -1,16 +1,6 @@
-import { GoogleGenAI } from '@google/genai';
+import { generateTextWithUnifiedFallback } from './geminiService';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-
-// Initialize Gemini API lazily
-let aiInstance: GoogleGenAI | null = null;
-const getAI = () => {
-  if (!aiInstance) {
-    const key = process.env.GEMINI_API_KEY || process.env.API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.VITE_API_KEY || '';
-    aiInstance = new GoogleGenAI({ apiKey: key });
-  }
-  return aiInstance;
-};
 
 export interface SuggestionRequest {
   action: 'autocomplete' | 'define';
@@ -59,22 +49,15 @@ export const getAISuggestions = async (req: SuggestionRequest): Promise<Suggesti
     const sourceLangName = getLangName(req.source_language);
     const targetLangName = getLangName(req.target_language);
 
-    // 2. Call Gemini API
+    // 2. Call AI
     if (req.action === 'autocomplete') {
       const prompt = `You are a helpful language learning assistant. The user is creating a flashcard set titled "${req.context || 'Vocabulary'}". 
 They have typed "${req.term}" in ${sourceLangName}. 
 Provide up to 5 autocomplete suggestions or related terms in ${sourceLangName} that start with or are closely related to "${req.term}".
 Return ONLY a JSON array of strings. No markdown formatting, no explanations.`;
 
-      const response = await getAI().models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: prompt,
-        config: {
-          temperature: 0.3,
-        }
-      });
-
-      const text = response.text || '[]';
+      const res = await generateTextWithUnifiedFallback(prompt, "You are a helpful assistant.", undefined, { temperature: 0.3 });
+      const text = res.text || '[]';
       try {
         const suggestions = JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
         return { suggestions: Array.isArray(suggestions) ? suggestions.slice(0, 5) : [], cached: false };
@@ -89,15 +72,8 @@ Return ONLY a JSON array of strings. No markdown formatting, no explanations.`;
 Provide a clear, concise translation or definition for the term "${req.term}" from ${sourceLangName} to ${targetLangName}.
 Return ONLY the translated term or short definition as a plain string. No quotes, no explanations.`;
 
-      const response = await getAI().models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: prompt,
-        config: {
-          temperature: 0.1,
-        }
-      });
-
-      const definition = (response.text || '').trim();
+      const res = await generateTextWithUnifiedFallback(prompt, "You are a helpful assistant.", undefined, { temperature: 0.1 });
+      const definition = (res.text || '').trim();
 
       // Save to cache
       if (definition) {

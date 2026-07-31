@@ -68,11 +68,21 @@ const generateContentWithFallback = async (params: any) => {
     try {
       console.log(`Attempting generation with ${model}...`);
       
+      const promptText = typeof apiParams.contents === 'string' ? apiParams.contents : 
+                         (Array.isArray(apiParams.contents) ? apiParams.contents.map((c: any) => {
+                           if (typeof c === 'string') return c;
+                           if (c.text) return c.text;
+                           if (c.inlineData) return "[Załączono plik, który nie może być bezpośrednio przetworzony jako tekst]";
+                           return JSON.stringify(c);
+                         }).join('\n') : JSON.stringify(apiParams.contents));
+      const sysInst = apiParams.config?.systemInstruction || "You are a helpful AI assistant.";
+
+      if (model.startsWith('openai')) {
+         const text = await callOpenAI(promptText, sysInst, model.replace('openai/', ''));
+         return { text };
+      }
+
       if (model.startsWith('deepseek')) {
-         const promptText = typeof apiParams.contents === 'string' ? apiParams.contents : 
-                            (Array.isArray(apiParams.contents) ? apiParams.contents.map((c: any) => c.text || JSON.stringify(c)).join('\n') : JSON.stringify(apiParams.contents));
-         const sysInst = apiParams.config?.systemInstruction || "You are a helpful AI assistant.";
-         
          const text = await callDeepSeek(promptText, sysInst, model);
          return { text };
       }
@@ -98,6 +108,33 @@ const generateContentWithFallback = async (params: any) => {
     }
   }
   throw lastError;
+};
+
+const callOpenAI = async (prompt: string, systemInstruction: string, model: string = "gpt-4o-mini") => {
+  const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+  const res = await fetch('/api/openai/generate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ prompt, systemInstruction, model })
+  });
+
+  if (!res.ok) {
+    let errorText = res.statusText;
+    try {
+      const errorData = await res.json();
+      errorText = errorData.error || errorText;
+    } catch {
+      const rawText = await res.text().catch(() => '');
+      errorText = rawText ? `Raw: ${rawText.substring(0, 100)}` : errorText;
+    }
+    throw new Error(`OpenAI API error: ${res.status} - ${errorText}`);
+  }
+
+  const data = await res.json();
+  return data.text;
 };
 
 const callDeepSeek = async (prompt: string, systemInstruction: string, model: string = "deepseek-chat") => {
@@ -128,14 +165,16 @@ const callDeepSeek = async (prompt: string, systemInstruction: string, model: st
 };
 
 export const PREFERRED_AI_MODELS = [
+  'openai/gpt-4o-mini',
+  'openai/gpt-4o',
   'deepseek-chat',
-  'deepseek-reasoner',
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite'
+  'deepseek-reasoner'
 ];
 
 export const formatAIModelName = (model?: string): string => {
-  if (!model) return 'DeepSeek Lite (V3)';
+  if (!model) return 'OpenAI (GPT-4o mini)';
+  if (model.includes('gpt-4o-mini')) return 'OpenAI (GPT-4o mini)';
+  if (model.includes('gpt-4o')) return 'OpenAI (GPT-4o)';
   if (model.includes('deepseek-reasoner') || model.includes('deepseekv4-pro')) return 'DeepSeek Pro (R1)';
   if (model.includes('deepseek-chat') || model.includes('deepseek')) return 'DeepSeek Lite (V3)';
   if (model.includes('gemini-2.0') || model.includes('gemini-2.5') || model.includes('gemini-1.5')) return 'Gemini 2.0 Flash';
@@ -143,7 +182,7 @@ export const formatAIModelName = (model?: string): string => {
   return model;
 };
 
-const generateTextWithUnifiedFallback = async (
+export const generateTextWithUnifiedFallback = async (
   prompt: string,
   systemInstruction: string,
   preferredModels: string[] = PREFERRED_AI_MODELS,
@@ -159,7 +198,12 @@ const generateTextWithUnifiedFallback = async (
         onModelAttempt(model);
       }
       
-      if (model.startsWith('deepseek')) {
+      if (model.startsWith('openai')) {
+        const text = await callOpenAI(prompt, systemInstruction, model.replace('openai/', ''));
+        if (text) {
+          return { text, modelUsed: model };
+        }
+      } else if (model.startsWith('deepseek')) {
         const text = await callDeepSeek(prompt, systemInstruction, model);
         if (text) {
           return { text, modelUsed: model };
@@ -189,7 +233,7 @@ const generateTextWithUnifiedFallback = async (
       lastError = error;
     }
   }
-  throw lastError || new Error("All DeepSeek and Gemini fallback models failed.");
+  throw lastError || new Error("All OpenAI and DeepSeek fallback models failed.");
 };
 
 const vocabularySchema = {

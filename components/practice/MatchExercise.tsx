@@ -19,7 +19,7 @@ interface MatchCard {
 }
 
 import { useVocabulary } from '../../context/VocabularyContext';
-import { generateSpeech } from '../../services/elevenLabsService';
+import { playSpeech } from '../../services/elevenLabsService';
 import i18n from "i18next";
 
 interface MatchExerciseProps {
@@ -47,12 +47,8 @@ const MatchExercise: React.FC<MatchExerciseProps> = ({ words, onExit, onComplete
   const [wrongAttempts, setWrongAttempts] = useState<Set<string>>(new Set());
   
   const playAudio = async (text: string) => {
-    const audio = new Audio();
-    audio.play().catch(() => {});
     try {
-      const generatedAudio = await generateSpeech(text, 'en-US');
-      audio.src = generatedAudio.src;
-      await audio.play();
+      await playSpeech(text, 'en-US');
     } catch (e) {
       console.error(e);
     }

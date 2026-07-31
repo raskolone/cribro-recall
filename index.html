@@ -16,6 +16,55 @@
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/favicon.svg" />
 
+    <script>
+      // Safe globals for browser compatibility
+      window.process = window.process || { env: {} };
+      window.global = window;
+
+      // Uncaught Error Reporter Overlay to prevent blank screens
+      window.addEventListener('error', function(event) {
+        showErrorOverlay(event.error || new Error(event.message));
+      });
+      window.addEventListener('unhandledrejection', function(event) {
+        showErrorOverlay(event.reason || new Error('Unhandled promise rejection'));
+      });
+
+      function showErrorOverlay(err) {
+        const root = document.getElementById('root');
+        if (root && root.innerHTML.trim() !== '') return; // React has already rendered or handled it
+        
+        let overlay = document.getElementById('dev-error-overlay');
+        if (!overlay) {
+          overlay = document.createElement('div');
+          overlay.id = 'dev-error-overlay';
+          overlay.style.position = 'fixed';
+          overlay.style.top = '0';
+          overlay.style.left = '0';
+          overlay.style.width = '100vw';
+          overlay.style.height = '100vh';
+          overlay.style.backgroundColor = '#0c0f1a';
+          overlay.style.color = '#f87171';
+          overlay.style.fontFamily = 'monospace';
+          overlay.style.padding = '40px';
+          overlay.style.boxSizing = 'border-box';
+          overlay.style.zIndex = '999999';
+          overlay.style.overflow = 'auto';
+          overlay.innerHTML = `
+            <div style="max-width: 800px; margin: 0 auto; background: #1a1e30; border: 1px solid #ef4444; border-radius: 12px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+              <h2 style="color: #ef4444; margin-top: 0; font-size: 20px; border-bottom: 1px solid rgba(239, 68, 68, 0.2); padding-bottom: 12px;">🚨 Application Initialization Error</h2>
+              <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">A runtime error occurred before the application could render. See details below:</p>
+              <pre id="error-stack" style="background: #0f1220; color: #f87171; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin: 20px 0; border: 1px solid rgba(255,255,255,0.05);"></pre>
+              <button onclick="window.location.reload()" style="background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; font-family: sans-serif; transition: background 0.2s;">Reload Page</button>
+            </div>
+          `;
+          document.body.appendChild(overlay);
+        }
+        const stackElement = document.getElementById('error-stack');
+        if (stackElement) {
+          stackElement.innerText = err && err.stack ? err.stack : String(err);
+        }
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@700&family=DM+Mono:wght@500&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">

@@ -4,7 +4,7 @@ import { X, Sparkles, Loader2 } from 'lucide-react';
 import Button from '../ui/Button';
 import { addDoc, collection, doc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { getAI } from '../../services/geminiService';
+import { generateTextWithUnifiedFallback } from '../../services/geminiService';
 
 interface AddResourceModalProps {
   isOpen: boolean;
@@ -23,7 +23,6 @@ const AddResourceModal: React.FC<AddResourceModalProps> = ({ isOpen, onClose, on
     setError(null);
 
     try {
-      const ai = getAI();
       const prompt = `Jesteś asystentem nauczyciela angielskiego. Otrzymasz surowy tekst (słownictwo, idiomy lub czasowniki złożone).
 Twoim zadaniem jest sformatowanie ich do ujednoliconego formatu JSON.
 Rozpoznaj typ materiału:
@@ -52,15 +51,10 @@ Pamiętaj o zamknięciu JSONa. Zwróć tylko czysty kod JSON, żadnych znacznik�
 Tekst od nauczyciela:
 ${rawText}`;
 
-      const result = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-        }
-      });
-      
-      let parsed = JSON.parse(result.text || "{}");
+      const res = await generateTextWithUnifiedFallback(prompt, "You are a helpful assistant.");
+      const rawResText = res.text || "{}";
+      const cleanedJsonText = rawResText.replace(/```json/g, '').replace(/```/g, '').trim();
+      let parsed = JSON.parse(cleanedJsonText);
       
       // Save to Firebase based on type
       if (parsed.type === 'vocabulary') {

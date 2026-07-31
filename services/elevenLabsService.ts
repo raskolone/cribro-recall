@@ -67,6 +67,43 @@ export function getTTSUrl(
   return `/api/tts?text=${encodeURIComponent(formattedText)}&accent=${encodeURIComponent(accent)}&voice_id=${encodeURIComponent(selectedVoiceId)}`;
 }
 
+let sharedAudioPlayer: HTMLAudioElement | null = null;
+
+export function getSharedAudioPlayer(): HTMLAudioElement {
+  if (typeof window === 'undefined') return new Audio();
+  if (!sharedAudioPlayer) {
+    sharedAudioPlayer = new Audio();
+    // Pre-load a tiny silent 1-second WAV file to safely initialize on mobile
+    sharedAudioPlayer.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+    sharedAudioPlayer.load();
+  }
+  return sharedAudioPlayer;
+}
+
+export function unlockMobileAudio() {
+  const player = getSharedAudioPlayer();
+  if (player) {
+    player.play().then(() => {
+      player.pause();
+    }).catch((e) => {
+      console.warn("Shared audio context pre-unlock bypassed or blocked:", e);
+    });
+  }
+}
+
+// Add event listeners on initial file load to unlock on first user click/touch
+if (typeof window !== 'undefined') {
+  const unlock = () => {
+    unlockMobileAudio();
+    window.removeEventListener('click', unlock);
+    window.removeEventListener('touchstart', unlock);
+    window.removeEventListener('mousedown', unlock);
+  };
+  window.addEventListener('click', unlock);
+  window.addEventListener('touchstart', unlock);
+  window.addEventListener('mousedown', unlock);
+}
+
 /**
  * Creates an HTMLAudioElement pointing directly to the streaming /api/tts proxy endpoint.
  * Calling .play() on this returned object inside a click/tap event handler guarantees
@@ -77,7 +114,9 @@ export function createSpeechAudio(
   accent: Accent | string = 'en-US'
 ): HTMLAudioElement {
   const url = getTTSUrl(text, accent);
-  return new Audio(url);
+  const audio = getSharedAudioPlayer();
+  audio.src = url;
+  return audio;
 }
 
 export async function generateSpeech(
