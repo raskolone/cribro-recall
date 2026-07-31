@@ -14,6 +14,7 @@ interface SidebarProps {
   onStartPractice: (exercise: ExerciseType) => void;
   isOpen: boolean;
   onClose: () => void;
+  onOpen?: () => void;
   isDesktopCollapsed?: boolean;
   onToggleCollapse?: () => void;
 }
@@ -58,7 +59,7 @@ const NavLink: React.FC<{
   </button>
 );
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPractice, isOpen, onClose, isDesktopCollapsed = false, onToggleCollapse }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPractice, isOpen, onClose, onOpen, isDesktopCollapsed = false, onToggleCollapse }) => {
   const [practiceOpen, setPracticeOpen] = useState(false);
   const { user, logout } = useAuth();
   const navRef = useRef<HTMLDivElement>(null);
@@ -138,27 +139,66 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
         />
       )}
       
+      {/* Floating mobile edge handle button to open sidebar when closed */}
+      {!isOpen && (
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof onOpen === 'function') {
+              onOpen();
+            }
+          }}
+          className="fixed left-0 top-20 z-40 md:hidden flex items-center justify-center p-2.5 bg-base-200/90 backdrop-blur-md border border-l-0 border-white/20 text-primary rounded-r-xl shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:bg-primary/10 hover:border-primary/40 transition-all duration-300 active:scale-95 group"
+          title={language === 'pl' ? 'Otwórz menu' : 'Open menu'}
+          aria-label={language === 'pl' ? 'Otwórz menu' : 'Open menu'}
+        >
+          <ChevronRight className="w-5 h-5 text-primary transition-transform group-hover:translate-x-0.5 animate-pulse" />
+        </button>
+      )}
+
       <aside 
-        className={`fixed inset-y-0 left-0 h-full w-[280px] z-50 liquid-glass-panel !rounded-none !border-0 !border-r !border-white/10 flex flex-col transform transition-transform duration-300 ease-in-out md:relative md:h-screen flex-shrink-0 ${
+        className={`fixed inset-y-0 left-0 h-full w-[280px] z-50 liquid-glass-panel !rounded-none !border-0 !border-r !border-white/10 flex flex-col transform transition-all duration-300 ease-in-out md:relative md:h-screen flex-shrink-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         } ${isDesktopCollapsed ? 'md:w-20' : 'md:w-64'}`}
       >
+        {/* Aesthetic Side Arrow Button for minimalization / expand */}
+        <button
+          type="button"
+          onClick={() => {
+            if (window.innerWidth < 768) {
+              onClose();
+            } else if (onToggleCollapse) {
+              onToggleCollapse();
+            }
+          }}
+          className="absolute -right-3.5 top-7 z-50 flex items-center justify-center w-7 h-7 rounded-full bg-base-200/95 backdrop-blur-md border border-white/20 text-content-muted hover:text-primary shadow-[0_0_15px_rgba(0,0,0,0.6)] hover:shadow-[0_0_15px_rgba(114,240,180,0.4)] hover:border-primary/50 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer group"
+          title={
+            isDesktopCollapsed
+              ? (language === 'pl' ? 'Rozwiń menu' : 'Expand sidebar')
+              : (language === 'pl' ? 'Zwiń menu' : 'Collapse sidebar')
+          }
+          aria-label={
+            isDesktopCollapsed
+              ? (language === 'pl' ? 'Rozwiń menu' : 'Expand sidebar')
+              : (language === 'pl' ? 'Zwiń menu' : 'Collapse sidebar')
+          }
+        >
+          <span className="flex items-center justify-center transition-transform duration-300">
+            {isDesktopCollapsed ? (
+              <ChevronRight className="w-4 h-4 text-primary group-hover:translate-x-0.5" />
+            ) : (
+              <ChevronLeft className="w-4 h-4 text-primary group-hover:-translate-x-0.5" />
+            )}
+          </span>
+        </button>
+
         <div className={`p-4 md:p-6 flex items-center ${isDesktopCollapsed ? 'justify-between md:justify-center' : 'justify-between'} border-b border-base-300 mb-6`}>
-          <div className={`${isDesktopCollapsed ? 'md:hidden' : 'block'}`}>
-            <BrandLogo className="text-xl" showTagline={false} isCollapsed={false} />
+          <div>
+            <BrandLogo className="text-xl" showTagline={false} isCollapsed={isDesktopCollapsed} />
           </div>
           
-          <div className="flex items-center">
-            {onToggleCollapse && (
-              <button 
-                onClick={onToggleCollapse}
-                className="hidden md:flex p-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5 transition-colors"
-                title={isDesktopCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              >
-                <Menu className="h-6 w-6" />
-              </button>
-            )}
-            <button onClick={onClose} className="md:hidden p-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5 transition-colors">
+          <div className="flex items-center md:hidden">
+            <button onClick={onClose} className="p-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5 transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>

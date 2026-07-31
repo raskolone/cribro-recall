@@ -7,8 +7,8 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
 
 async function generateContentWithRetry(aiClient: any, contents: any, config: any, customModels?: string[]) {
-  // Try DeepSeek first, then Gemini Flash Lite
-  const models = customModels || ['deepseek-chat', 'deepseek-reasoner', 'gemini-2.5-flash-lite', 'gemini-1.5-flash-lite', 'gemini-2.5-flash'];
+  // DeepSeek models only
+  const models = customModels || ['deepseek-chat', 'deepseek-reasoner'];
   let lastError;
   
   for (const model of models) {
@@ -122,6 +122,23 @@ export async function createApp() {
   const adminAuth = getAuth(adminApp);
 
   // Authentication Middlewares
+  async function optionalFirebaseAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      const idToken = authHeader.slice(7).trim();
+      if (idToken && idToken !== 'null' && idToken !== 'undefined') {
+        try {
+          const decodedToken = await adminAuth.verifyIdToken(idToken);
+          (req as any).userUid = decodedToken.uid;
+          (req as any).userEmail = decodedToken.email;
+        } catch (err: any) {
+          console.warn('Optional auth token verification failed:', err.message);
+        }
+      }
+    }
+    next();
+  }
+
   async function requireFirebaseAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
@@ -987,7 +1004,7 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
   app.post("/api/tts", handleTTS);
 
   // --- DEEPSEEK API PROXIES ---
-  app.post("/api/deepseek/generate", requireFirebaseAuth, async (req, res) => {
+  app.post("/api/deepseek/generate", optionalFirebaseAuth, async (req, res) => {
     try {
       const apiKey = process.env.DEEPSEEK_API_KEY;
       if (!apiKey) {
@@ -997,42 +1014,50 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
       const { prompt, systemInstruction, model } = req.body;
       if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
 
-      const targetModel = model || "deepseek-chat";
-      const isReasoner = targetModel === 'deepseek-reasoner';
+      const preferredModels = model 
+        ? [model, model === 'deepseek-reasoner' ? 'deepseek-chat' : 'deepseek-reasoner']
+        : ['deepseek-chat', 'deepseek-reasoner'];
 
-      const bodyPayload: any = {
-        model: targetModel,
-        messages: [
-          ...(systemInstruction && !isReasoner ? [{ role: "system", content: systemInstruction }] : []),
-          // For reasoner, system prompts might be ignored or less effective, but we can prepend it to user prompt if it's reasoner
-          { role: "user", content: (isReasoner && systemInstruction ? systemInstruction + "\n\n" : "") + prompt }
-        ],
-        temperature: isReasoner ? 0.6 : 0.7
-      };
+      let lastErrorText = '';
+      for (const targetModel of preferredModels) {
+        try {
+          const isReasoner = targetModel === 'deepseek-reasoner';
+          const bodyPayload: any = {
+            model: targetModel,
+            messages: [
+              ...(systemInstruction && !isReasoner ? [{ role: "system", content: systemInstruction }] : []),
+              { role: "user", content: (isReasoner && systemInstruction ? systemInstruction + "\n\n" : "") + prompt }
+            ],
+            temperature: isReasoner ? 0.6 : 0.7
+          };
 
-      if (!isReasoner) {
-        // DeepSeek is often unstable with response_format, we can rely on standard prompt instruction.
-        // bodyPayload.response_format = { type: "json_object" };
+          const response = await fetch("https://api.deepseek.com/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(bodyPayload)
+          });
+
+          if (!response.ok) {
+            lastErrorText = await response.text();
+            console.warn(`DeepSeek model ${targetModel} error:`, lastErrorText);
+            continue;
+          }
+
+          const data = await response.json();
+          const content = data.choices?.[0]?.message?.content || "";
+          if (content) {
+            return res.json({ text: content, modelUsed: targetModel });
+          }
+        } catch (mErr: any) {
+          console.warn(`DeepSeek model ${targetModel} exception:`, mErr?.message);
+          lastErrorText = mErr?.message || String(mErr);
+        }
       }
 
-      const response = await fetch("https://api.deepseek.com/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(bodyPayload)
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("DeepSeek API error:", errorText);
-        return res.status(response.status).json({ error: `DeepSeek Error: ${response.statusText}`, details: errorText });
-      }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || "";
-      res.json({ text: content });
+      return res.status(500).json({ error: 'All DeepSeek models failed', details: lastErrorText });
     } catch (error: any) {
       console.error('DeepSeek generation error:', error);
       res.status(500).json({ error: error.message });

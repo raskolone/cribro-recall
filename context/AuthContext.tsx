@@ -29,7 +29,7 @@ interface AuthContextType {
   linkGoogleAccount: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -82,6 +82,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setIsAuthReady(true);
           }, (err) => {
             console.error("User snapshot error:", err);
+            const fallbackEmail = firebaseUser.email || '';
+            setUser({
+              id: firebaseUser.uid,
+              username: firebaseUser.displayName || (fallbackEmail ? fallbackEmail.split('@')[0] : 'User'),
+              email: fallbackEmail,
+              role: fallbackEmail === 'maciej.wyrozumski@gmail.com' ? 'admin' : 'user'
+            });
             setIsAuthReady(true);
           });
 
@@ -102,8 +109,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     });
 
+    const fallbackTimeout = setTimeout(() => {
+      setIsAuthReady(true);
+    }, 2500);
+
     return () => {
       unsubscribe();
+      clearTimeout(fallbackTimeout);
       if (userUnsub) userUnsub();
     };
   }, []);

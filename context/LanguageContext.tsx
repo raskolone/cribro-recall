@@ -118,9 +118,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage, t }}>
-      <div key={language} style={{ display: 'contents' }}>
-        {children}
-      </div>
+      {children}
     </LanguageContext.Provider>
   );
 };

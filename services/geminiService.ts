@@ -129,18 +129,15 @@ const callDeepSeek = async (prompt: string, systemInstruction: string, model: st
 
 export const PREFERRED_AI_MODELS = [
   'deepseek-chat',
-  'deepseek-reasoner',
-  'gemini-2.5-flash-lite',
-  'gemini-1.5-flash-lite',
-  'gemini-2.5-flash'
+  'deepseek-reasoner'
 ];
 
 export const formatAIModelName = (model?: string): string => {
   if (!model) return 'DeepSeek Lite (V3)';
   if (model.includes('deepseek-reasoner') || model.includes('deepseekv4-pro')) return 'DeepSeek Pro (R1)';
   if (model.includes('deepseek-chat') || model.includes('deepseek')) return 'DeepSeek Lite (V3)';
-  if (model.includes('gemini-2.5-flash-lite') || model.includes('gemini-1.5-flash-lite') || model.includes('gemini-3.5-flash-lite')) return 'Gemini Flash Lite';
-  if (model.includes('gemini')) return 'Gemini Flash Lite';
+  if (model.includes('gemini-2.5-flash-lite') || model.includes('gemini-1.5-flash-lite')) return 'Gemini Flash Lite';
+  if (model.includes('gemini')) return 'Gemini 2.5 Flash';
   return model;
 };
 
@@ -152,34 +149,26 @@ const generateTextWithUnifiedFallback = async (
   onModelAttempt?: (model: string) => void
 ): Promise<{ text: string, modelUsed: string }> => {
   let lastError;
-  for (const model of preferredModels) {
+  const filteredModels = preferredModels.filter(m => m.startsWith('deepseek'));
+  const modelsToTry = filteredModels.length > 0 ? filteredModels : ['deepseek-chat', 'deepseek-reasoner'];
+  
+  for (const model of modelsToTry) {
     try {
       console.log(`Attempting generation with ${model}...`);
       if (onModelAttempt) {
         onModelAttempt(model);
       }
       
-      if (model.startsWith('deepseek')) {
-        const text = await callDeepSeek(prompt, systemInstruction, model);
+      const text = await callDeepSeek(prompt, systemInstruction, model);
+      if (text) {
         return { text, modelUsed: model };
-      } else {
-        const config = {
-          ...geminiConfig,
-          systemInstruction,
-        };
-        const response = await generateContentWithFallback({ 
-          contents: prompt, 
-          config, 
-          preferredModels: [model] 
-        });
-        return { text: response?.text || "", modelUsed: model };
       }
     } catch (error: any) {
       console.warn(`Model ${model} failed:`, error?.message || error);
       lastError = error;
     }
   }
-  throw lastError || new Error("All models failed without providing an error message.");
+  throw lastError || new Error("All DeepSeek models failed without providing an error message.");
 };
 
 const vocabularySchema = {
@@ -360,10 +349,7 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
       
       const preferredModels = [
         'deepseek-chat',
-        'deepseek-reasoner',
-        'gemini-2.5-flash-lite',
-        'gemini-1.5-flash-lite',
-        'gemini-2.5-flash'
+        'deepseek-reasoner'
       ];
       const geminiConfig = {
         responseMimeType: "application/json",
@@ -501,13 +487,10 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
     try {
       const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.";
       
-      // Force DeepSeek Pro (reasoner) as primary for evaluation, with DeepSeek Lite fallback, then Gemini Flash Lite
+      // DeepSeek models only for sentence evaluation
       const preferredModels = [
-        'deepseek-reasoner',
         'deepseek-chat',
-        'gemini-2.5-flash-lite',
-        'gemini-1.5-flash-lite',
-        'gemini-2.5-flash'
+        'deepseek-reasoner'
       ];
       const geminiConfig = {
         responseMimeType: "application/json",
@@ -743,7 +726,7 @@ export const generateImageForTerm = async (term: string, context?: string): Prom
   
   try {
     const response = await getAI().models.generateContent({
-      model: "gemini-3.1-flash-lite-image",
+      model: "gemini-2.5-flash",
       contents: { parts: [{ text: prompt }] },
       config: {
         imageConfig: {
@@ -914,10 +897,7 @@ Dla "fill_in_blank":
     const systemInstruction = "Jesteś zaawansowanym asystentem lektora języka angielskiego. Skupiasz się na poprawności merytorycznej i dostarczasz poprawny JSON.";
     const preferredModels = [
       'deepseek-chat',
-      'deepseek-reasoner',
-      'gemini-2.5-flash-lite',
-      'gemini-1.5-flash-lite',
-      'gemini-2.5-flash'
+      'deepseek-reasoner'
     ];
     const geminiConfig = {
       responseMimeType: "application/json",
@@ -1052,7 +1032,7 @@ export const generateHomework = async (topic: string, summary: string, words: st
 export const getAudioPronunciation = async (text: string, language: string): Promise<string> => {
   try {
     const response = await getAI().models.generateContent({
-      model: "gemini-3.1-flash-tts-preview",
+      model: "gemini-2.5-flash",
       contents: [{ parts: [{ text: text }] }],
       config: {
         responseModalities: [Modality.AUDIO],

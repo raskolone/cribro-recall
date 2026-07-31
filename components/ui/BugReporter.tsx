@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState, useEffect, useContext } from 'react';
+import { AuthContext } from '../../context/AuthContext';
 import { Bug, X, AlertCircle } from 'lucide-react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -11,7 +11,8 @@ interface BugReporterProps {
 }
 
 const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError }) => {
-  const { user } = useAuth();
+  const auth = useContext(AuthContext);
+  const user = auth?.user;
   const [isOpen, setIsOpen] = useState(!!errorContext);
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);

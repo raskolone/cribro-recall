@@ -50,6 +50,13 @@ const Dashboard: React.FC = () => {
     }
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [slogan, setSlogan] = useState('');
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [isExerciseActive, setIsExerciseActive] = useState(false);
@@ -80,17 +87,23 @@ const Dashboard: React.FC = () => {
     });
     let currentIndex = 0;
     const animateSlogan = () => {
+      if (slogans.length === 0) return;
       const currentSlogan = slogans[currentIndex];
-      setSlogan(currentSlogan.text);
+      if (!currentSlogan) return;
+      setSlogan(currentSlogan.text || '');
       
       if (sloganContainerRef.current) {
         // Apply color
-        sloganContainerRef.current.className = `font-bold ${currentSlogan.color}`;
+        sloganContainerRef.current.className = `font-bold ${currentSlogan.color || 'text-primary'}`;
         
-        gsap.fromTo(sloganContainerRef.current,
-          { opacity: 0, x: window.innerWidth },
-          { opacity: 1, x: 0, duration: 0.8, ease: 'power2.out' }
-        );
+        try {
+          gsap.fromTo(sloganContainerRef.current,
+            { opacity: 0, x: 20 },
+            { opacity: 1, x: 0, duration: 0.8, ease: 'power2.out' }
+          );
+        } catch (e) {
+          console.warn('GSAP animation error:', e);
+        }
       }
       
       currentIndex = (currentIndex + 1) % slogans.length;
@@ -154,6 +167,17 @@ const Dashboard: React.FC = () => {
         onStartPractice={(exercise) => console.log('start practice', exercise)} 
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        onOpen={() => setIsSidebarOpen(true)}
+        isDesktopCollapsed={isDesktopCollapsed}
+        onToggleCollapse={() => {
+          setIsDesktopCollapsed(prev => {
+            const next = !prev;
+            try {
+              localStorage.setItem('sidebar_collapsed', String(next));
+            } catch (e) {}
+            return next;
+          });
+        }}
       />
       <main className="flex-1 overflow-y-auto">
         <header className="p-4 bg-base-100 border-b border-white/10 flex items-center gap-4 overflow-hidden">
