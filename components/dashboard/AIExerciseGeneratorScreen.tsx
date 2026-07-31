@@ -2838,17 +2838,18 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
             <div className="space-y-3 relative z-10 flex flex-col items-center text-center">
               <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-mono font-bold mx-auto">
-                
-                                                      {i18n.t("Zdanie")} {activeSentenceIndex + 1}
+                {i18n.t("Zdanie")} {activeSentenceIndex + 1}
               </div>
 
               {/* Polish Sentence */}
-              <div className="text-base sm:text-lg font-bold text-white tracking-tight leading-relaxed">
-                {exercises[activeSentenceIndex].polishSentence}
-              </div>
+              {exerciseFormat !== 'puzzle' && (
+                <div className="text-base sm:text-lg font-bold text-white tracking-tight leading-relaxed">
+                  {exercises[activeSentenceIndex].polishSentence}
+                </div>
+              )}
 
               {/* Optional hint toggle */}
-              {exercises[activeSentenceIndex].hint && (
+              {exercises[activeSentenceIndex].hint && exerciseFormat !== 'puzzle' && (
                 <div className="w-full">
                   <button
                     type="button"
@@ -2863,7 +2864,6 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   {showHints[activeSentenceIndex] && (
                     <div className="mt-1.5 mx-auto bg-amber-500/[0.04] border border-amber-500/15 rounded-xl p-3 text-xs text-amber-400 animate-fade-in-up max-w-lg">
                       {exercises[activeSentenceIndex].hint}
-
                     </div>
                   )}
                 </div>
@@ -2871,9 +2871,11 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
               {/* Student answer field */}
               <div className="w-full space-y-2 mt-2 pt-3 border-t border-white/5 flex flex-col items-center">
-                <label className="block text-xs font-semibold text-content-muted/80 text-center w-full">
-                  {language === 'pl' ? 'Twoje tłumaczenie na angielski:' : 'Your translation to English:'}
-                </label>
+                {exerciseFormat !== 'puzzle' && (
+                  <label className="block text-xs font-semibold text-content-muted/80 text-center w-full">
+                    {language === 'pl' ? 'Twoje tłumaczenie na angielski:' : 'Your translation to English:'}
+                  </label>
+                )}
                 
                 {evaluationStatuses[activeSentenceIndex] === 'evaluated' && singleEvaluationResults[activeSentenceIndex] ? (
                   <div className="space-y-3 w-full text-center flex flex-col items-center">
@@ -2974,6 +2976,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                 {exerciseFormat === 'puzzle' ? (
                   <PuzzleExercise 
                     sentence={exercises[activeSentenceIndex].englishTranslation}
+                    displaySentence={exercises[activeSentenceIndex].polishSentence}
                     puzzleChunks={exercises[activeSentenceIndex].puzzleChunks}
                     level={level}
                     currentAnswer={studentAnswers[activeSentenceIndex] || ''}

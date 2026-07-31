@@ -186,12 +186,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
             icon={
               <div className="relative">
                 <History size={20} className={(user?.hasNewLesson || user?.hasNewVocabulary) ? "text-emerald-400 animate-pulse drop-shadow-[0_0_10px_rgba(16,185,129,0.9)] scale-110" : ""} />
-                {(user?.hasNewLesson || user?.hasNewVocabulary) && (
-                  <span className="absolute -top-2 -right-2 flex h-5 w-5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-90"></span>
-                    <span className="relative inline-flex rounded-full h-5 w-5 bg-emerald-500 border-2 border-black items-center justify-center text-[8px] font-black text-black shadow-[0_0_12px_rgba(16,185,129,0.9)]">N</span>
-                  </span>
-                )}
               </div>
             } 
             isCollapsed={isDesktopCollapsed} 

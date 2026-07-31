@@ -294,7 +294,7 @@ export const generateTranslationExercises = async (
 ): Promise<TranslationExercise[]> => {
   const shortLesson = lessonContext ? `\n\n[LESSON / TOPIC CONTEXT]:\n${lessonContext.substring(0, 1000)}` : '';
   const shortProfile = studentProfileContext ? `\n\n[STUDENT SPECIFIC INSTRUCTIONS & PROFILE]:\n${studentProfileContext}` : '';
-  const shortPast = pastExercisesContext ? `\n\n[PAST EXERCISES TO AVOID REPEATS]:\n${pastExercisesContext.substring(0, 600)}` : '';
+  const shortPast = pastExercisesContext ? `\n\n[PAST EXERCISES TO AVOID REPEATS]:\n${pastExercisesContext.substring(0, 5000)}` : '';
 
   const masterPrompt = `ROLE:
 You are an expert English Language Content Creator specializing in adaptive, personalized language practice.
@@ -310,6 +310,7 @@ RULES FOR SENTENCE GENERATION:
 - GRAMMAR & STYLE: Use modern, natural English. Avoid academic, bizarre, or forced phrasing. The Polish translation MUST also be perfectly natural.
 - VARIETY: Use diverse sentence structures (mix conditionals, modal verbs, different tenses, and sentence lengths).
 - LOGIC & REALISM: Sentences MUST be practical, logical, and make total sense in real-world communication. Do NOT forcefully weave random student profile keywords or hobbies into a sentence if it makes the sentence illogical, weird, or artificial. Practical usability is the absolute highest priority.
+- ANTI-REPETITION (CRITICAL): Do NOT generate sentences that are structurally identical or extremely similar to the sentences listed in PAST EXERCISES. The user should learn to understand the language dynamically, not memorize specific sentence structures by heart. Create new contexts, subjects, and scenarios.
 
 INPUT FORMAT:
 Target Vocabulary List: ${words.length > 0 ? words.join(', ') : 'General level-appropriate vocabulary'}
@@ -342,12 +343,13 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
       const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: 1) If the target sentence has FEWER THAN 8 words (< 8 words): split into mostly SINGLE WORDS or small pairs (e.g. phrasal verbs 'look up', prepositions 'in the'). 2) If the target sentence has 8 OR MORE WORDS (>= 8 words): group into LARGER logical phrase chunks (2-4 words per chunk, e.g. 'I decided to go', 'to the grocery store', 'after work'). Limit long sentences to 3 to 5 chunks maximum so it is achievable and serves as a good warmup before typing.";
       
       const preferredModels = [
-        'gemini-3.5-flash-lite',
-        'gemini-2.5-flash-lite',
-        'gemini-3.5-flash',
-        'gemini-3.6-flash',
         'deepseek-chat',
-        'deepseek-reasoner'
+        'deepseek-reasoner',
+        'gemini-3.6-flash',
+        'gemini-3.5-flash',
+        'gemini-3.1-pro-preview',
+        'gemini-3.5-flash-lite',
+        'gemini-2.5-flash-lite'
       ];
       const geminiConfig = {
         responseMimeType: "application/json",

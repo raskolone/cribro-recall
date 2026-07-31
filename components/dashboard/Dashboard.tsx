@@ -7,7 +7,7 @@ import Sidebar from './Sidebar';
 import ConfirmModal from '../ui/ConfirmModal';
 import BugReporter from '../ui/BugReporter';
 import AIExerciseGeneratorScreen from './AIExerciseGeneratorScreen';
-import StudentStatsScreen from './StudentStatsScreen';
+
 import StudentNotifications from './StudentNotifications';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -23,22 +23,30 @@ import i18n from "i18next";
 
 type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats';
 
+const AdminPanel = React.lazy(() => import('../admin/AdminPanel'));
+const StudentStatsScreen = React.lazy(() => import('./StudentStatsScreen'));
+const LessonHistoryScreen = React.lazy(() => import('./LessonHistoryScreen'));
+const StudentTestsScreen = React.lazy(() => import('../tests/StudentTestsScreen'));
+const FlashcardSetsScreen = React.lazy(() => import('../flashcards/FlashcardSetsScreen'));
+const SettingsScreen = React.lazy(() => import('../settings/SettingsScreen'));
+const TopicDatabaseScreen = React.lazy(() => import('../admin/TopicDatabaseScreen'));
+const AdminDebuggingScreen = React.lazy(() => import('../admin/AdminDebuggingScreen'));
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const { sets } = useFlashcards();
   const { words, difficultWords, dueWords, frequency, lastPractice, lastRevisionDate } = useVocabulary();
   const { language } = useLanguage();
+  const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
   
   const [view, setView] = useState<View>(() => {
     const isMobile = window.innerWidth < 768;
-    const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
     if (isTeacher) {
-      return isMobile ? 'ai-generator' : 'admin';
+      return isMobile ? 'ai-generator' : 'dashboard';
     } else {
-      return 'ai-generator';
+      return 'dashboard';
     }
   });
-
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [slogan, setSlogan] = useState('');
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
@@ -62,11 +70,9 @@ const Dashboard: React.FC = () => {
       baseSlogans.push('Every word matters.');
       baseSlogans.push('Success is the sum of small efforts.');
     }
-
     baseSlogans.forEach((text, i) => {
       slogans.push({ text, color: colors[i % colors.length] });
     });
-
     let currentIndex = 0;
     const animateSlogan = () => {
       const currentSlogan = slogans[currentIndex];
@@ -84,7 +90,6 @@ const Dashboard: React.FC = () => {
       
       currentIndex = (currentIndex + 1) % slogans.length;
     };
-
     animateSlogan();
     const interval = setInterval(animateSlogan, 5000); // Change slogan every 5 seconds
     
@@ -92,9 +97,29 @@ const Dashboard: React.FC = () => {
   }, [language, user?.streakCount, words, difficultWords, dueWords]);
 
   const renderContent = () => {
-    // Simplified renderContent for brevity, focusing on Stats removal
     if (view === 'student-stats') {
-        return <StudentStatsScreen />;
+        return <React.Suspense fallback={<div>Loading...</div>}><StudentStatsScreen /></React.Suspense>;
+    }
+    if (view === 'lesson-history') {
+      return <React.Suspense fallback={<div>Loading...</div>}><LessonHistoryScreen /></React.Suspense>;
+    }
+    if (view === 'tests') {
+      return <React.Suspense fallback={<div>Loading...</div>}><StudentTestsScreen onBack={() => setView('dashboard')} /></React.Suspense>;
+    }
+    if (view === 'flashcard-sets') {
+      return <React.Suspense fallback={<div>Loading...</div>}><FlashcardSetsScreen onStudySet={() => {}} onEditSet={() => {}} onStatsSet={() => {}} onPresentSet={() => {}} /></React.Suspense>;
+    }
+    if (view === 'settings') {
+      return <React.Suspense fallback={<div>Loading...</div>}><SettingsScreen /></React.Suspense>;
+    }
+    if (view === 'topic-database') {
+      return <React.Suspense fallback={<div>Loading...</div>}><TopicDatabaseScreen /></React.Suspense>;
+    }
+    if (view === 'admin-debugging') {
+      return <React.Suspense fallback={<div>Loading...</div>}><AdminDebuggingScreen onBack={() => setView('dashboard')} /></React.Suspense>;
+    }
+    if (view === 'admin' || (isTeacher && view === 'dashboard')) {
+      return <React.Suspense fallback={<div>Loading...</div>}><AdminPanel /></React.Suspense>;
     }
     return <AIExerciseGeneratorScreen />;
   };

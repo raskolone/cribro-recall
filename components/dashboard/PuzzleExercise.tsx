@@ -110,6 +110,7 @@ const CuteMascot = ({ state }: { state: 'idle' | 'happy' | 'error' | 'thinking' 
 
 interface PuzzleExerciseProps {
   sentence: string;
+  displaySentence?: string;
   puzzleChunks?: string[];
   level: string;
   currentAnswer: string;
@@ -133,7 +134,7 @@ interface TileData {
   colorClass: string;
 }
 
-const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks, level, currentAnswer, onAnswerChange, onNext }) => {
+const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, displaySentence, puzzleChunks, level, currentAnswer, onAnswerChange, onNext }) => {
   const [tiles, setTiles] = useState<TileData[]>([]);
   const [selectedTiles, setSelectedTiles] = useState<TileData[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -375,7 +376,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, puzzleChunks,
       >
         <h3 className="text-content-muted text-sm uppercase tracking-widest mb-2">{i18n.t("Przetłumacz zdanie")}</h3>
         <p className="text-3xl font-bold text-white leading-tight">
-          {sentence}
+          {displaySentence || sentence}
         </p>
       </motion.div>
       
