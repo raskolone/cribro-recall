@@ -44,9 +44,10 @@ service cloud.firestore {
     }
     
     function isAdmin() {
+      
       return isAuthenticated() &&
         (
-          ('email' in request.auth.token && request.auth.token.email == "maciej.wyrozumski@gmail.com") ||
+          ('email' in request.auth.token && (request.auth.token.email == "maciej.wyrozumski@gmail.com" || request.auth.token.email == "marta.lukaszczyk@gmail.com")) ||
           (
             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'admin_student', 'teacher']
@@ -201,7 +202,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) && ((request.resource.data.role == 'user') || ('email' in request.auth.token && request.auth.token.email == "maciej.wyrozumski@gmail.com") || isAdmin());
+      allow create: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) && ((request.resource.data.role == 'user') || ('email' in request.auth.token && (request.auth.token.email == "maciej.wyrozumski@gmail.com" || request.auth.token.email == "marta.lukaszczyk@gmail.com")) || isAdmin());
       allow update: if (isOwner(userId) || isAdmin()) && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(["loginCount", "lastLoginDate", "streakCount", "lastStreakDate", "username", "photoURL", "firstName", "lastName", "level", "description", "requirePasswordChange"]) || isAdmin());
       allow delete: if isAdmin();
 
