@@ -166,11 +166,6 @@ const callDeepSeek = async (prompt: string, systemInstruction: string, model: st
 
 export const PREFERRED_AI_MODELS = [
   'openai/gpt-4o-mini',
-  'openai/gpt-4o',
-  'openai/gpt-4-turbo',
-  'openai/gpt-4',
-  'deepseek-chat',
-  'deepseek-reasoner',
   'gemini-2.5-flash',
   'gemini-2.0-flash'
 ];
@@ -688,27 +683,6 @@ export const generateTest = async (
       fileData,
       driveFile
     };
-
-  // Try DeepSeek first if no files attached
-  if (!fileData && !driveFile) {
-    try {
-      console.log('Attempting generateTest via DeepSeek...');
-      const resDs = await fetch('/api/deepseek/generate-test', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-      if (resDs.ok) {
-         const data = await resDs.json();
-         return data.questions;
-      }
-    } catch (e) {
-      console.warn('DeepSeek test generation failed, falling back to Gemini', e);
-    }
-  }
 
   const res = await fetch('/api/gemini/generate-test', {
     method: 'POST',

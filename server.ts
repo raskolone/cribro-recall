@@ -9,15 +9,11 @@ import { GoogleGenAI, Type } from "@google/genai";
 async function generateContentWithRetry(aiClient: any, contents: any, config: any, customModels?: string[]) {
   const models = customModels || [
     'openai/gpt-4o-mini',
-    'openai/gpt-4o',
-    'openai/gpt-4-turbo',
-    'openai/gpt-4',
-    'deepseek-chat',
-    'deepseek-reasoner',
     'gemini-2.5-flash',
     'gemini-2.0-flash'
   ];
   let lastError;
+  const errors: string[] = [];
   
   for (const model of models) {
     let retries = 3;
@@ -70,7 +66,8 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
                 ...(sysInst ? [{ role: "system", content: sysInst }] : []),
                 { role: "user", content: promptText }
               ],
-              temperature: config?.temperature || 0.7
+              temperature: config?.temperature || 0.7,
+              ...(config?.responseMimeType === 'application/json' && config?.responseSchema?.type === Type.OBJECT ? { response_format: { type: "json_object" } } : {})
             })
            });
 
@@ -123,12 +120,14 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
             return response;
         }
       } catch (err: any) {
-        console.warn(`[Server] Model ${model} failed:`, err?.status || err?.message);
+        const errorMsg = err?.status ? `${err.status} - ${err.message}` : err?.message || String(err);
+        errors.push(`[${model}] ${errorMsg}`);
+        console.warn(`[Server] Model ${model} failed:`, errorMsg);
         lastError = err;
         
         if (err?.message?.includes("timed out")) {
           break; // Next model immediately on timeout
-        } else if (String(err?.status) === "429" || err?.message?.includes("Quota exceeded") || err?.message?.includes("429")) {
+        } else if (String(err?.status) === "429" || err?.message?.toLowerCase().includes("quota") || err?.message?.includes("429") || err?.message?.toLowerCase().includes("too many requests")) {
           console.warn("[Server] Quota exceeded, switching model immediately");
           break; // Next model immediately
         } else if (String(err?.status) === "503" || err?.message?.includes("503")) {
@@ -146,7 +145,8 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
       }
     }
   }
-  throw lastError;
+  
+  throw new Error(`All models failed.\nDetails:\n${errors.join('\n')}`);
 }
 
 
@@ -588,9 +588,11 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawną tablicę JSON, zachowując 
       
       let parsed = [];
       try {
-        parsed = JSON.parse(response.text || '[]');
+        let cleanText = response.text || '[]';
+        cleanText = cleanText.replace(/^```json\n?/g, '').replace(/```$/g, '').trim();
+        parsed = JSON.parse(cleanText);
       } catch (e) {
-        return res.status(500).json({ error: 'Failed to parse AI response' });
+        return res.status(500).json({ error: `Failed to parse AI response: ${response.text}` });
       }
       
       return res.json({ questions: parsed });
