@@ -136,7 +136,8 @@ const callOpenAI = async (prompt: string, systemInstruction: string, model: stri
         { role: "system", content: systemInstruction || "You are a helpful assistant." },
         { role: "user", content: prompt }
       ],
-      temperature: 0.7
+      temperature: 0.7,
+      response_format: { type: "json_object" }
     });
 
     console.log("Odpowiedź OpenAI odebrana pomyślnie.");
@@ -147,31 +148,10 @@ const callOpenAI = async (prompt: string, systemInstruction: string, model: stri
   }
 };
 
+import { generateDeepSeekResponse } from './deepseekService';
+
 const callDeepSeek = async (prompt: string, systemInstruction: string, model: string = "deepseek-chat") => {
-  const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
-  const res = await fetch('/api/deepseek/generate', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify({ prompt, systemInstruction, model })
-  });
-
-  if (!res.ok) {
-    let errorText = res.statusText;
-    try {
-      const errorData = await res.json();
-      errorText = errorData.error || errorText;
-    } catch {
-      const rawText = await res.text().catch(() => '');
-      errorText = rawText ? `Raw: ${rawText.substring(0, 100)}` : errorText;
-    }
-    throw new Error(`DeepSeek API error: ${res.status} - ${errorText}`);
-  }
-
-  const data = await res.json();
-  return data.text;
+  return await generateDeepSeekResponse(prompt, systemInstruction);
 };
 
 export const PREFERRED_AI_MODELS = [
@@ -558,7 +538,28 @@ ${evalStudentContext ? `[STUDENT CONTEXT]:\n${evalStudentContext}` : ''}
 ${strictnessPrompt ? `[ADDITIONAL EVALUATION INSTRUCTIONS]:\n${strictnessPrompt}` : ''}
 
 OUTPUT FORMAT (Strict JSON):
-Return ONLY a valid JSON object matching the requested schema with an array "evaluations".`;
+Return ONLY a valid JSON object matching this schema. No markdown, no extra conversational text:
+{
+  "evaluations": [
+    {
+      "polishSentence": "Polish text",
+      "correctTranslation": "English text",
+      "studentAnswer": "Student text",
+      "isCorrect": true/false,
+      "score": 0-100,
+      "explanation": "Brief explanation",
+      "suggested_better_version": "Better translation",
+      "feedbackSyntax": "Syntax feedback",
+      "feedbackVocab": "Vocab feedback",
+      "feedbackRule": "Rule feedback",
+      "breakdown": {
+        "meaning_score": 0-40,
+        "grammar_score": 0-40,
+        "vocabulary_score": 0-20
+      }
+    }
+  ]
+}`;
 
   const MAX_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -566,7 +567,7 @@ Return ONLY a valid JSON object matching the requested schema with an array "eva
       const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.";
       
       // Priority: DeepSeek (deepseek-reasoner / 4 pro, then deepseek-chat), with fallback to available Gemini models
-      const preferredModels = PREFERRED_AI_MODELS;
+      const preferredModels = ['openai/gpt-4o-mini'];
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: evaluationResultSchema,

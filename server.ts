@@ -1071,32 +1071,16 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
             return res.send(Buffer.from(audioBuffer));
           } else {
             const errorText = await response.text();
-            console.warn(`ElevenLabs API returned ${response.status}: ${errorText}, falling back to Google TTS`);
+            console.error(`ElevenLabs API returned ${response.status}: ${errorText}`);
+            throw new Error(`ElevenLabs API error: ${response.status}`);
           }
         } catch (elError) {
-          console.warn('ElevenLabs request failed, falling back to Google TTS:', elError);
+          console.error('ElevenLabs request failed:', elError);
+          throw elError;
         }
+      } else {
+        throw new Error('ElevenLabs API key is missing. Ensure VITE_ELEVENLABS_API_KEY is configured.');
       }
-
-      // Fallback to Google Translate TTS
-      const googleTranslateUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(formattedText)}&tl=${lang.startsWith('en') ? 'en' : (lang === 'pl' ? 'pl' : lang)}&client=tw-ob`;
-      
-      const response = await fetch(googleTranslateUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Google Translate TTS error: ${response.status}`);
-      }
-      
-      const audioBuffer = await response.arrayBuffer();
-      res.set({
-        'Content-Type': 'audio/mpeg',
-        'Cache-Control': 'public, max-age=31536000'
-      });
-      res.send(Buffer.from(audioBuffer));
     } catch (error: any) {
       console.error('TTS error:', error);
       res.status(500).json({ error: error.message });

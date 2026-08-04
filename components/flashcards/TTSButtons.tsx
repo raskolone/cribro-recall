@@ -22,31 +22,12 @@ const TTSButtons: React.FC<TTSButtonsProps> = ({ text }) => {
 
     audio.onended = handleStop;
     audio.onerror = () => {
-      // Web Speech fallback
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(formatTextForTTS(cleanText));
-        utterance.lang = lang === 'en-GB' ? 'en-GB' : 'en-US';
-        utterance.onend = handleStop;
-        utterance.onerror = handleStop;
-        window.speechSynthesis.speak(utterance);
-      } else {
-        handleStop();
-      }
+      console.error("ElevenLabs audio streaming error.");
+      handleStop();
     };
-
     audio.play().catch((err) => {
-      console.warn("Direct HTML5 audio playback error on mobile, falling back to Web Speech:", err);
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(formatTextForTTS(cleanText));
-        utterance.lang = lang === 'en-GB' ? 'en-GB' : 'en-US';
-        utterance.onend = handleStop;
-        utterance.onerror = handleStop;
-        window.speechSynthesis.speak(utterance);
-      } else {
-        handleStop();
-      }
+      console.error("Direct HTML5 audio playback error on mobile (ElevenLabs):", err);
+      handleStop();
     });
   };
 

@@ -603,34 +603,17 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     if (!text) return;
     setPlayingAudioIndex(index);
     const audio = createSpeechAudio(text, lang as any);
-
     const handleStop = () => setPlayingAudioIndex(null);
     audio.onended = handleStop;
+    
     audio.onerror = () => {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(formatTextForTTS(text));
-        utterance.lang = lang === 'en-GB' || lang === 'BrE' ? 'en-GB' : 'en-US';
-        utterance.onend = handleStop;
-        utterance.onerror = handleStop;
-        window.speechSynthesis.speak(utterance);
-      } else {
-        handleStop();
-      }
+      console.error("ElevenLabs audio streaming error.");
+      handleStop();
     };
-
+    
     audio.play().catch(err => {
-      console.warn("Mobile HTML5 audio play error:", err);
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(formatTextForTTS(text));
-        utterance.lang = lang === 'en-GB' || lang === 'BrE' ? 'en-GB' : 'en-US';
-        utterance.onend = handleStop;
-        utterance.onerror = handleStop;
-        window.speechSynthesis.speak(utterance);
-      } else {
-        handleStop();
-      }
+      console.error("Mobile HTML5 audio play error (ElevenLabs):", err);
+      handleStop();
     });
   };
 
@@ -1252,34 +1235,17 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
     if (!text) return;
     setIsPlayingAudio(true);
     const audio = createSpeechAudio(text, lang as any);
-
     const handleStop = () => setIsPlayingAudio(false);
     audio.onended = handleStop;
+    
     audio.onerror = () => {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(formatTextForTTS(text));
-        utterance.lang = lang === 'en-GB' || lang === 'BrE' ? 'en-GB' : 'en-US';
-        utterance.onend = handleStop;
-        utterance.onerror = handleStop;
-        window.speechSynthesis.speak(utterance);
-      } else {
-        handleStop();
-      }
+      console.error("ElevenLabs audio streaming error.");
+      handleStop();
     };
-
+    
     audio.play().catch(err => {
-      console.warn("Mobile HTML5 audio play error:", err);
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(formatTextForTTS(text));
-        utterance.lang = lang === 'en-GB' || lang === 'BrE' ? 'en-GB' : 'en-US';
-        utterance.onend = handleStop;
-        utterance.onerror = handleStop;
-        window.speechSynthesis.speak(utterance);
-      } else {
-        handleStop();
-      }
+      console.error("Mobile HTML5 audio play error (ElevenLabs):", err);
+      handleStop();
     });
   };
 

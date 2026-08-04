@@ -274,26 +274,26 @@ service cloud.firestore {
     }
 
     match /specialTasks/{taskId} {
-      allow read: if request.auth != null && (resource.data.studentId == request.auth.uid || isAdmin());
-      allow create: if request.auth != null && (request.resource.data.studentId == request.auth.uid || isAdmin());
-      allow update: if request.auth != null && (resource.data.studentId == request.auth.uid || isAdmin());
+      allow read: if request.auth != null && (isAdmin() || resource.data.studentId == request.auth.uid);
+      allow create: if request.auth != null && (isAdmin() || request.resource.data.studentId == request.auth.uid);
+      allow update: if request.auth != null && (isAdmin() || resource.data.studentId == request.auth.uid);
       allow delete: if request.auth != null && isAdmin();
     }
 
     match /vocabulary/{vocabId} {
-      allow read: if request.auth != null && (resource.data.studentId == request.auth.uid || isAdmin());
+      allow read: if request.auth != null && (isAdmin() || resource.data.studentId == request.auth.uid);
       // For create/update, we validate studentId is set to the user or it's an admin
-      allow create, update: if request.auth != null && (request.resource.data.studentId == request.auth.uid || isAdmin());
-      allow delete: if request.auth != null && (resource.data.studentId == request.auth.uid || isAdmin());
+      allow create, update: if request.auth != null && (isAdmin() || request.resource.data.studentId == request.auth.uid);
+      allow delete: if request.auth != null && (isAdmin() || resource.data.studentId == request.auth.uid);
     }
 
     match /sets/{setId} {
       allow read: if request.auth != null 
-        && (resource.data.userId == request.auth.uid || resource.data.isPublic == true || isAdmin());
+        && (isAdmin() || resource.data.userId == request.auth.uid || resource.data.isPublic == true);
       allow create: if request.auth != null 
-        && (request.resource.data.userId == request.auth.uid || isAdmin());
+        && (isAdmin() || request.resource.data.userId == request.auth.uid);
       allow update, delete: if request.auth != null 
-        && (resource.data.userId == request.auth.uid || isAdmin());
+        && (isAdmin() || resource.data.userId == request.auth.uid);
       
       match /flashcards/{cardId} {
         allow read: if request.auth != null;

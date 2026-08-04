@@ -161,13 +161,8 @@ export async function playSpeech(
   try {
     await audio.play();
   } catch (err) {
-    console.warn("Audio play error, using Web Speech API fallback:", err);
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(formattedText);
-      utterance.lang = (accent === 'en-GB' || accent === 'BrE') ? 'en-GB' : 'en-US';
-      window.speechSynthesis.speak(utterance);
-    }
+    console.error("Audio play error:", err);
+    // Explicitly removed SpeechSynthesis fallback to force ElevenLabs usage
   }
   return audio;
 }
