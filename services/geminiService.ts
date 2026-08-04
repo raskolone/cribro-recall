@@ -101,6 +101,9 @@ const generateContentWithFallback = async (params: any) => {
     } catch (e: any) {
       console.warn(`Model ${model} failed:`, e?.status || e?.message);
       lastError = e;
+      if (e?.message === 'Missing VITE_OPENAI_API_KEY') {
+        throw e;
+      }
       if (e?.message?.includes("timed out")) continue;
       if (String(e?.status) === "404" || String(e?.status) === "503" || String(e?.status) === "429" || e?.message?.includes("503") || e?.message?.includes("429")) continue;
       if (String(e?.status) === "400" && e?.message?.includes("not found")) continue;
@@ -110,31 +113,38 @@ const generateContentWithFallback = async (params: any) => {
   throw lastError;
 };
 
-const callOpenAI = async (prompt: string, systemInstruction: string, model: string = "gpt-4o-mini") => {
-  const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
-  const res = await fetch('/api/openai/generate', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify({ prompt, systemInstruction, model })
-  });
+import OpenAI from "openai";
 
-  if (!res.ok) {
-    let errorText = res.statusText;
-    try {
-      const errorData = await res.json();
-      errorText = errorData.error || errorText;
-    } catch {
-      const rawText = await res.text().catch(() => '');
-      errorText = rawText ? `Raw: ${rawText.substring(0, 100)}` : errorText;
-    }
-    throw new Error(`OpenAI API error: ${res.status} - ${errorText}`);
+const callOpenAI = async (prompt: string, systemInstruction: string, model: string = "gpt-4o-mini") => {
+  const apiKey = (import.meta as any).env?.VITE_OPENAI_API_KEY;
+  if (!apiKey) {
+    console.error("Brak VITE_OPENAI_API_KEY w środowisku!");
+    throw new Error("Missing VITE_OPENAI_API_KEY");
   }
 
-  const data = await res.json();
-  return data.text;
+  const openai = new OpenAI({
+    apiKey: apiKey,
+    dangerouslyAllowBrowser: true
+  });
+
+  console.log("Wysyłam zapytanie do OpenAI (gpt-4o-mini)...");
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini", // always hardcoded to gpt-4o-mini
+      messages: [
+        { role: "system", content: systemInstruction || "You are a helpful assistant." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7
+    });
+
+    console.log("Odpowiedź OpenAI odebrana pomyślnie.");
+    return response.choices[0].message.content;
+  } catch (error) {
+    console.error("Błąd wywołania OpenAI:", error);
+    throw error;
+  }
 };
 
 const callDeepSeek = async (prompt: string, systemInstruction: string, model: string = "deepseek-chat") => {
@@ -234,6 +244,9 @@ export const generateTextWithUnifiedFallback = async (
     } catch (error: any) {
       console.warn(`Model ${model} failed:`, error?.message || error);
       lastError = error;
+      if (error?.message === 'Missing VITE_OPENAI_API_KEY') {
+        throw error;
+      }
     }
   }
   throw lastError || new Error("All OpenAI and DeepSeek fallback models failed.");
