@@ -339,7 +339,7 @@ const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?
         <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
         <span>
           {language === 'pl' ? 'Wysyłam zapytanie do: ' : 'Sending query to: '}
-          <strong className="text-white font-bold">{formatAIModelName(currentModel || 'deepseek-chat')}</strong>
+          <strong className="text-white font-bold">{formatAIModelName(currentModel || 'openai/gpt-4o-mini')}</strong>
         </span>
       </div>
     </div>

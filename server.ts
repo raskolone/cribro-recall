@@ -1,3 +1,38 @@
+
+async function callOpenAIServerFallback(prompt, system, schema) {
+  const openaiKey = process.env.VITE_OPENAI_API_KEY;
+  if (openaiKey) {
+    try {
+      console.log("[Server] Attempting OpenAI GPT model...");
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openaiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: system || "You are a helpful assistant." },
+            { role: "user", content: prompt }
+          ],
+          response_format: schema ? { type: "json_object" } : { type: "text" },
+          temperature: 0.7
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.choices[0].message.content;
+      } else {
+        console.warn("[Server] OpenAI request failed:", await res.text());
+      }
+    } catch(e) {
+      console.warn("[Server] OpenAI error:", e);
+    }
+  }
+  return null;
+}
+
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
@@ -436,7 +471,8 @@ app.post('/api/gemini/generate-test', requireFirebaseAdmin, async (req, res) => 
       const apiKey = process.env.VITE_GEMINI_API_KEY;
       if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured. Please set VITE_GEMINI_API_KEY in environment variables.' });
       
-      const ai = new GoogleGenAI({ apiKey });
+      
+  const ai = new GoogleGenAI({ apiKey });
       
       let typeBreakdownInstruction = '';
       if (typeCounts && typeof typeCounts === 'object' && Object.keys(typeCounts).length > 0) {
@@ -896,46 +932,9 @@ Zwróć JSON z polami:
 - feedback (string, Twój szczegółowy feedback dla ucznia, z wylistowanymi błędami i poradami)
 `;
 
-      const deepseekKey = process.env.VITE_DEEPSEEK_API_KEY;
-      if (deepseekKey) {
-        for (const dsModel of ['deepseek-reasoner', 'deepseek-chat']) {
-          try {
-            const isReasoner = dsModel === 'deepseek-reasoner';
-            const dsRes = await fetch("https://api.deepseek.com/chat/completions", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${deepseekKey}`
-              },
-              body: JSON.stringify({
-                model: dsModel,
-                messages: [
-                  { role: "system", content: "Jesteś nauczycielem języka angielskiego. Zwróć wyłącznie poprawny JSON z polami score (number) i feedback (string)." },
-                  { role: "user", content: prompt }
-                ],
-                temperature: isReasoner ? 0.6 : 0.7
-              })
-            });
-            if (dsRes.ok) {
-              const dsData = await dsRes.json();
-              const textContent = dsData.choices?.[0]?.message?.content || "";
-              const match = textContent.match(/\{[\s\S]*\}/);
-              if (match) {
-                const parsed = JSON.parse(match[0]);
-                if (typeof parsed.score === 'number' && typeof parsed.feedback === 'string') {
-                  return res.json(parsed);
-                }
-              }
-            }
-          } catch (dsErr) {
-            console.warn(`DeepSeek ${dsModel} grade-test failed:`, dsErr);
-          }
-        }
-      }
-
-      const apiKey = process.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured. Please set VITE_GEMINI_API_KEY in environment variables.' });
       
+      const apiKey = process.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: "Gemini API key not configured." });
       const ai = new GoogleGenAI({ apiKey });
       const response = await generateContentWithRetry(ai, prompt, {
         responseMimeType: 'application/json',
