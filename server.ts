@@ -47,10 +47,10 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
         const sysInst = config?.systemInstruction || "";
 
         if (model.startsWith('openai')) {
-           const apiKey = process.env.OPENAI_API_KEY;
+           const apiKey = process.env.VITE_OPENAI_API_KEY;
            if (!apiKey) {
-             console.warn("[Server] OPENAI_API_KEY not configured, skipping model");
-             throw new Error("OPENAI_API_KEY not configured");
+             console.warn("[Server] VITE_OPENAI_API_KEY not configured, skipping model");
+             throw new Error("VITE_OPENAI_API_KEY not configured");
            }
            
            const targetModel = model.replace('openai/', '');
@@ -79,10 +79,10 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
            return { text: data.choices?.[0]?.message?.content || "" };
 
         } else if (model.startsWith('deepseek')) {
-           const apiKey = process.env.DEEPSEEK_API_KEY;
+           const apiKey = process.env.VITE_DEEPSEEK_API_KEY;
            if (!apiKey) {
-             console.warn("[Server] DEEPSEEK_API_KEY not configured, skipping model");
-             throw new Error("DEEPSEEK_API_KEY not configured");
+             console.warn("[Server] VITE_DEEPSEEK_API_KEY not configured, skipping model");
+             throw new Error("VITE_DEEPSEEK_API_KEY not configured");
            }
            
            const isReasoner = model === 'deepseek-reasoner';
@@ -337,8 +337,8 @@ export async function createApp() {
   app.post('/api/deepseek/generate-test', requireFirebaseAdmin, async (req, res) => {
     try {
       const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, typeCounts, fileData, driveFile } = req.body;
-      const apiKey = process.env.DEEPSEEK_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: 'DEEPSEEK_API_KEY not configured.' });
+      const apiKey = process.env.VITE_DEEPSEEK_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: 'VITE_DEEPSEEK_API_KEY not configured.' });
       
       let typeBreakdownInstruction = '';
       if (typeCounts && typeof typeCounts === 'object' && Object.keys(typeCounts).length > 0) {
@@ -433,8 +433,8 @@ Zwróć format jako:
 app.post('/api/gemini/generate-test', requireFirebaseAdmin, async (req, res) => {
     try {
       const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, typeCounts, fileData, driveFile } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured. Please set GEMINI_API_KEY or API_KEY in environment variables.' });
+      const apiKey = process.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured. Please set VITE_GEMINI_API_KEY in environment variables.' });
       
       const ai = new GoogleGenAI({ apiKey });
       
@@ -609,9 +609,9 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawną tablicę JSON, zachowując 
         return res.status(400).json({ error: 'Missing textContent, pdfBase64 or driveFile' });
       }
       
-      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+      const apiKey = process.env.VITE_GEMINI_API_KEY;
       if (!apiKey) {
-        return res.status(500).json({ error: 'Gemini API key not configured. Please set GEMINI_API_KEY or API_KEY in environment variables.' });
+        return res.status(500).json({ error: 'Gemini API key not configured. Please set VITE_GEMINI_API_KEY in environment variables.' });
       }
       const ai = new GoogleGenAI({ apiKey });
       
@@ -749,9 +749,9 @@ Bądź dokładny. Wykorzystaj całą dostępną treść, nie pomijaj lekcji.`;
         return res.status(400).json({ error: 'Missing notes, pdfBase64 or driveFile' });
       }
       
-      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+      const apiKey = process.env.VITE_GEMINI_API_KEY;
       if (!apiKey) {
-        return res.status(500).json({ error: 'Gemini API key not configured. Please set GEMINI_API_KEY or API_KEY in environment variables.' });
+        return res.status(500).json({ error: 'Gemini API key not configured. Please set VITE_GEMINI_API_KEY in environment variables.' });
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -896,7 +896,7 @@ Zwróć JSON z polami:
 - feedback (string, Twój szczegółowy feedback dla ucznia, z wylistowanymi błędami i poradami)
 `;
 
-      const deepseekKey = process.env.DEEPSEEK_API_KEY;
+      const deepseekKey = process.env.VITE_DEEPSEEK_API_KEY;
       if (deepseekKey) {
         for (const dsModel of ['deepseek-reasoner', 'deepseek-chat']) {
           try {
@@ -933,8 +933,8 @@ Zwróć JSON z polami:
         }
       }
 
-      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured. Please set GEMINI_API_KEY or API_KEY in environment variables.' });
+      const apiKey = process.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured. Please set VITE_GEMINI_API_KEY in environment variables.' });
       
       const ai = new GoogleGenAI({ apiKey });
       const response = await generateContentWithRetry(ai, prompt, {
@@ -960,8 +960,8 @@ Zwróć JSON z polami:
   app.post('/api/gemini/student-stats-summary', requireFirebaseAuth, async (req, res) => {
     try {
       const { stats, logsSummary, language } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured. Please set GEMINI_API_KEY or API_KEY in environment variables.' });
+      const apiKey = process.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured. Please set VITE_GEMINI_API_KEY in environment variables.' });
       
       const ai = new GoogleGenAI({ apiKey });
       
@@ -1040,7 +1040,7 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
         voiceId = "S9WrLrqYPJzmQyWPWbZ5"; // en-US / AmE
       }
 
-      const elevenLabsKey = process.env.ELEVENLABS_API_KEY;
+      const elevenLabsKey = process.env.VITE_ELEVENLABS_API_KEY;
       
       if (elevenLabsKey) {
         try {
@@ -1113,9 +1113,9 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
       const { prompt, systemInstruction, model } = req.body;
       if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
 
-      const openaiKey = process.env.OPENAI_API_KEY;
+      const openaiKey = process.env.VITE_OPENAI_API_KEY;
       if (!openaiKey) {
-        return res.status(500).json({ error: 'No OpenAI API key configured (OPENAI_API_KEY is missing).' });
+        return res.status(500).json({ error: 'No OpenAI API key configured (VITE_OPENAI_API_KEY is missing).' });
       }
 
       const targetModel = model || 'gpt-4o-mini';
@@ -1163,12 +1163,12 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
       const { prompt, systemInstruction, model } = req.body;
       if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
 
-      const deepseekKey = process.env.DEEPSEEK_API_KEY || 'sk-9cd552056ba845e69ad063d53200fbcd';
-      const openrouterKey = process.env.OPENROUTER_API_KEY;
-      const groqKey = process.env.GROQ_API_KEY;
+      const deepseekKey = process.env.VITE_DEEPSEEK_API_KEY || 'sk-9cd552056ba845e69ad063d53200fbcd';
+      const openrouterKey = process.env.VITE_OPENROUTER_API_KEY;
+      const groqKey = process.env.VITE_GROQ_API_KEY;
 
       if (!deepseekKey && !openrouterKey && !groqKey) {
-        return res.status(500).json({ error: 'No AI provider API key configured (DEEPSEEK_API_KEY, OPENROUTER_API_KEY, or GROQ_API_KEY).' });
+        return res.status(500).json({ error: 'No AI provider API key configured (VITE_DEEPSEEK_API_KEY, VITE_OPENROUTER_API_KEY, or VITE_GROQ_API_KEY).' });
       }
 
       let lastErrorText = '';
