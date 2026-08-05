@@ -40,6 +40,16 @@ import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
+import { createRequire } from "node:module";
+
+const nativeRequire = createRequire(import.meta.url);
+let pdfParse: any;
+try {
+  const loadedPdf = nativeRequire("pdf-parse");
+  pdfParse = typeof loadedPdf === "function" ? loadedPdf : (loadedPdf.default || loadedPdf);
+} catch (e) {
+  console.warn("Failed to load pdf-parse:", e);
+}
 
 async function generateContentWithRetry(aiClient: any, contents: any, config: any, customModels?: string[]) {
   const models = customModels || [
@@ -63,16 +73,19 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
           promptText = contents.map((c: any) => {
             if (typeof c === 'string') return c;
             if (c.text) return c.text;
+            if (c.parts && Array.isArray(c.parts)) {
+              return c.parts.map((p: any) => (typeof p === 'string' ? p : p.text || '')).join('\n');
+            }
             if (c.inlineData) return "[Załączono plik, który nie może być bezpośrednio przetworzony jako tekst]";
-            return JSON.stringify(c);
-          }).join('\n');
-        } else if (contents && contents.parts) {
+            return typeof c === 'object' ? JSON.stringify(c) : String(c);
+          }).filter(Boolean).join('\n');
+        } else if (contents && contents.parts && Array.isArray(contents.parts)) {
           promptText = contents.parts.map((p: any) => {
             if (typeof p === 'string') return p;
             if (p.text) return p.text;
             if (p.inlineData) return "[Załączono plik, który nie może być bezpośrednio przetworzony jako tekst]";
-            return JSON.stringify(p);
-          }).join('\n');
+            return typeof p === 'object' ? JSON.stringify(p) : String(p);
+          }).filter(Boolean).join('\n');
         } else if (contents && typeof contents === 'object' && contents.text) {
           promptText = contents.text;
         } else {
@@ -89,26 +102,39 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
            }
            
            const targetModel = model.replace('openai/', '');
+           const isJsonMode = config?.responseMimeType === 'application/json';
+
+           let finalPrompt = promptText;
+           if (isJsonMode && !finalPrompt.toLowerCase().includes('json') && !sysInst.toLowerCase().includes('json')) {
+             finalPrompt += '\n\nReturn output in valid JSON format.';
+           }
+
+           const bodyPayload: any = {
+             model: targetModel,
+             messages: [
+               ...(sysInst ? [{ role: "system", content: sysInst }] : []),
+               { role: "user", content: finalPrompt }
+             ],
+             temperature: config?.temperature !== undefined ? config.temperature : 0.7
+           };
+
+           if (isJsonMode) {
+             bodyPayload.response_format = { type: "json_object" };
+           }
+
            const response = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${apiKey}`
             },
-            body: JSON.stringify({
-              model: targetModel,
-              messages: [
-                ...(sysInst ? [{ role: "system", content: sysInst }] : []),
-                { role: "user", content: promptText }
-              ],
-              temperature: config?.temperature || 0.7,
-              ...(config?.responseMimeType === 'application/json' && config?.responseSchema?.type === Type.OBJECT ? { response_format: { type: "json_object" } } : {})
-            })
+            body: JSON.stringify(bodyPayload)
            });
 
            if (!response.ok) {
              const errText = await response.text();
-             throw new Error(`OpenAI API error: ${response.statusText} - ${errText}`);
+             console.error(`[Server] OpenAI API Error [${response.status}]:`, errText);
+             throw new Error(`OpenAI API error (${response.status}): ${errText}`);
            }
            const data = await response.json();
            return { text: data.choices?.[0]?.message?.content || "" };
@@ -640,7 +666,7 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawną tablicę JSON, zachowując 
 
   app.post('/api/gemini/import-lessons-batch', requireFirebaseAdmin, async (req, res) => {
     try {
-      const { textContent, pdfBase64, driveFile, students } = req.body;
+      const { textContent, pdfBase64, driveFile, students, targetStudentId, targetStudentName } = req.body;
       if (!textContent && !pdfBase64 && !driveFile) {
         return res.status(400).json({ error: 'Missing textContent, pdfBase64 or driveFile' });
       }
@@ -657,41 +683,60 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawną tablicę JSON, zachowując 
             ? students.map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name || s.username || ''} | Poziom: ${s.level || ''} | Opis: ${s.description || ''}`).join('\n')
             : 'Brak bazy kursantów');
 
-      let contents: any[] = [];
-      
-      if (driveFile) {
-        const url = driveFile.mimeType === 'application/pdf' 
-          ? `https://www.googleapis.com/drive/v3/files/${driveFile.id}?alt=media`
-          : `https://www.googleapis.com/drive/v3/files/${driveFile.id}/export?mimeType=text/plain`;
-          
-        const res = await fetch(url, { headers: { Authorization: `Bearer ${driveFile.token}` } });
-        if (!res.ok) throw new Error("Failed to fetch from Google Drive: " + await res.text());
-        
-        if (driveFile.mimeType === 'application/pdf') {
-            const arrayBuffer = await res.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-            contents = [{
-              role: 'user',
-              parts: [
-                {
-                  inlineData: {
-                    data: buffer.toString('base64'),
-                    mimeType: 'application/pdf'
-                  }
-                },
-                { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z historią lekcji. Przeanalizuj go.` }
-              ]
-            }];
-        } else {
-            const text = await res.text();
-            contents = [{
-              role: 'user',
-              parts: [
-                { text: `Baza kursantów:\n${studentsListStr}\n\nTreść historii lekcji (Google Docs / Text):\n${text}` }
-              ]
-            }];
+      let parsedDocText = textContent || '';
+      let isPdfFallbackNeeded = false;
+
+      // Extract text from PDF using pdf-parse if pdfBase64 is provided
+      if (pdfBase64) {
+        try {
+          const rawB64 = pdfBase64.split(',')[1] || pdfBase64;
+          const pdfBuffer = Buffer.from(rawB64, 'base64');
+          const pdfData = await pdfParse(pdfBuffer);
+          if (pdfData && pdfData.text && pdfData.text.trim().length > 10) {
+            parsedDocText = (parsedDocText ? parsedDocText + '\n\n' : '') + pdfData.text;
+          } else {
+            isPdfFallbackNeeded = true;
+          }
+        } catch (pdfErr) {
+          console.warn('pdf-parse failed, falling back to multi-modal PDF upload:', pdfErr);
+          isPdfFallbackNeeded = true;
         }
-      } else if (pdfBase64) {
+      }
+
+      if (driveFile) {
+        try {
+          const url = driveFile.mimeType === 'application/pdf' 
+            ? `https://www.googleapis.com/drive/v3/files/${driveFile.id}?alt=media`
+            : `https://www.googleapis.com/drive/v3/files/${driveFile.id}/export?mimeType=text/plain`;
+            
+          const driveRes = await fetch(url, { headers: { Authorization: `Bearer ${driveFile.token}` } });
+          if (!driveRes.ok) throw new Error("Failed to fetch from Google Drive: " + await driveRes.text());
+          
+          if (driveFile.mimeType === 'application/pdf') {
+            const arrayBuffer = await driveRes.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            try {
+              const drivePdfData = await pdfParse(buffer);
+              if (drivePdfData && drivePdfData.text) {
+                parsedDocText = (parsedDocText ? parsedDocText + '\n\n' : '') + drivePdfData.text;
+              } else {
+                isPdfFallbackNeeded = true;
+              }
+            } catch (e) {
+              isPdfFallbackNeeded = true;
+            }
+          } else {
+            const driveText = await driveRes.text();
+            parsedDocText = (parsedDocText ? parsedDocText + '\n\n' : '') + driveText;
+          }
+        } catch (dErr) {
+          console.warn('Drive file processing error:', dErr);
+        }
+      }
+
+      let contents: any[] = [];
+
+      if (isPdfFallbackNeeded && pdfBase64) {
         contents = [{
           role: 'user',
           parts: [
@@ -701,42 +746,48 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawną tablicę JSON, zachowując 
                 mimeType: 'application/pdf'
               }
             },
-            { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z historią lekcji. Przeanalizuj go.` }
+            { text: `Baza kursantów:\n${studentsListStr}\n\nPrzeanalizuj powyzszy plik PDF z historią lekcji.` }
           ]
         }];
       } else {
         contents = [{
           role: 'user',
           parts: [
-            { text: `Baza kursantów:\n${studentsListStr}\n\nTreść historii lekcji (Google Docs / Text):\n${textContent}` }
+            { text: `Baza kursantów:\n${studentsListStr}\n\nTreść dokumentu/notatek z historią lekcji:\n${parsedDocText}` }
           ]
         }];
       }
 
       const sysInstruction = `# Cel
-Na podstawie dostarczonego pliku PDF lub tekstu zawierającego historię lekcji jednego lub wielu kursantów, DOKŁADNIE wyodrębnij wszystkie poszczególne lekcje.
-Plik może zawierać wiele lekcji ułożonych chronologicznie lub według numerów. Twoim zadaniem jest znalezienie KAŻDEJ lekcji i wyciągnięcie z niej maksimum informacji.
+Jesteś precyzyjnym asystentem nauczyciela języka angielskiego. Twoim zadaniem jest przeanalizowanie tekstu/dokumentu zawierającego historię lekcji jednego lub wielu kursantów i wyodrębnienie WYŁĄCZNIE DOKŁADNYCH lekcji w strukturze JSON.
 
-# Zanim wygenerujesz
-1. Zidentyfikuj kursanta lub kursantów (studentIds / studentId) dla KAŻDEJ lekcji na podstawie podanej bazy kursantów (imienia, nazwiska lub opisu widocznego w pliku). Jeśli lekcja jest dla grupy kursantów, dopasuj wszystkich w podanej tablicy studentIds.
-2. Podziel dokument na logiczne bloki odpowiadające pojedynczym lekcjom.
-3. Przeanalizuj inteligentnie każdą lekcję i przypisz jej fragmenty do odpowiednich kategorii w systemie.
+# BARDZO WAŻNE ZASADY ANALIZY I PRZYPISYWANIA:
 
-# Wygeneruj wynik w formacie JSON
-Zwróć wynik jako JSON z tablicą obiektów o polu "lessons". Każdy obiekt lekcji musi zawierać szczegółowe dane:
-- date (string): Data lekcji w formacie YYYY-MM-DD. Poszukaj daty w tekście (np. "12 marca", "12.03.2024"). Jeśli absolutnie brak, wygeneruj dzisiejszą.
-- studentId (string): ID wybranego głównego kursanta dopasowanego z bazy.
-- studentIds (array of strings): Lista ID wszystkich dopasowanych kursantów dla danej lekcji (np. przy zajęciach grupowych).
-- lessonTopic (string): Krótki temat lekcji (max 50 znaków), wywnioskowany z treści.
-- revisionNotes (string): Główne notatki, zagadnienia gramatyczne i tematy poruszane na lekcji.
-- vocabularyText (string): Wyodrębnione nowe słówka, zwroty i ich tłumaczenia (najlepiej w formie 'angielski - polski').
-- studentSpeaking (string): O czym mówił kursant, jakich argumentów używał, jego opinie (np. 'Mówił o swoich wakacjach w Hiszpanii...').
-- thingsToImprove (string): Błędy gramatyczne, wymowa, rzeczy do poprawy na przyszłość.
-- suggestedFollowUp (string): Zadanie domowe, sugestie co zrobić na następnej lekcji.
+1. AKTYWNY KURSANT (ZAKŁADKA / PROFIL):
+${targetStudentId ? `Głównym kursantem jest: ${targetStudentName || targetStudentId} (ID: "${targetStudentId}"). Jeśli plik zawiera historię lekcji tego kursanta lub nie precyzuje innego konkretnego nazwiska z bazy, KAŻDEJ wyodrębnionej lekcji przypisz ten studentId: "${targetStudentId}".` : 'Dopasuj kursanta na podstawie nazwiska/imienia z dokumentu i podanej bazy.'}
 
-Bądź dokładny. Wykorzystaj całą dostępną treść, nie pomijaj lekcji.`;
+2. NAGŁÓWKI DAT (date):
+- PRZEANALIZUJ nagłówki i daty przy każdej lekcji w pliku (np. "12.03.2024", "12 marca 2024", "2024-03-12", "Lekcja z dnia 15/01/2024", "10.05.2023").
+- Przekonwertuj każdą datę do standardowego formatu YYYY-MM-DD (np. "2024-03-12").
+- BEZWZGLĘDNIE ZACHOWAJ oryginalną datę każdej lekcji z pliku! ZABRONIONE jest zastępowanie istniejącej w pliku daty dzisiejszą datą. Tylko w przypadku całkowitego braku jakiejkolwiek daty w sekcji danej lekcji podaj dzisiejszą datę.
 
-            const schema = {
+3. NAZWY TEMATÓW LEKCJI (lessonTopic):
+- BEZWZGLĘDNA ZASADA: Jeśli w pliku/dokumentach znajduje się nazwa lub temat lekcji (np. "Temat: Rozmowa kwalifikacyjna", "Topic: Present Perfect vs Past Simple", "Grammar: First Conditional", "Business English: Negotiations"), UŻYJ DOKŁADNIE TEJ NAZWY TEMATU Z PLIKU!
+- NIE WYMYŚLAJ nowych nazw tematów, NIE PARAFRAZUJ ani NIE MODYFIKUJ nazwy tematu, jeśli jest ona podana w pliku!
+- Twórz/generuj nazwę tematu TYLKO WTEDY, gdy w sekcji lekcji w pliku absolutnie NIE podano żadnego tematu ani tytułu.
+
+4. POZOSTAŁE POLA KAŻDEJ LEKCJI:
+- studentId (string): ID wybranego dopasowanego kursanta.
+- studentIds (array of strings): Lista ID wszystkich dopasowanych kursantów dla danej lekcji.
+- revisionNotes (string): Omówione zagadnienia, teoria, notatki z lekcji.
+- vocabularyText (string): Wyodrębnione słówka i zwroty w formacie "słowo_angielskie - polskie_tłumaczenie" (każde w osobnej linii).
+- studentSpeaking (string): Uwagi dotyczące wypowiedzi kursanta, jego opinie, tematy na które się wypowiadał.
+- thingsToImprove (string): Wskazówki, błędy gramatyczne, wymowa i rzeczy do poprawy.
+- suggestedFollowUp (string): Praca domowa, ćwiczenia i zalecenia na przyszłość.
+
+Przeanalizuj CAŁĄ treść dokładnie i nie pomijaj żadnej lekcji. Zwróć wyłącznie poprawny obiekt JSON z tablicą "lessons".`;
+
+      const schema = {
         type: Type.OBJECT,
         properties: {
           lessons: {
@@ -754,26 +805,32 @@ Bądź dokładny. Wykorzystaj całą dostępną treść, nie pomijaj lekcji.`;
                 thingsToImprove: { type: Type.STRING },
                 suggestedFollowUp: { type: Type.STRING },
               },
-              required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText"]
+              required: ["date", "studentId", "lessonTopic", "revisionNotes", "vocabularyText"]
             }
           }
         },
         required: ["lessons"]
       };
       
-      let response = await generateContentWithRetry(ai, contents, {
-        systemInstruction: sysInstruction,
-        responseMimeType: "application/json",
-        responseSchema: schema
-      });
+      let response = await generateContentWithRetry(
+        ai, 
+        contents, 
+        {
+          systemInstruction: sysInstruction,
+          responseMimeType: "application/json",
+          responseSchema: schema,
+          temperature: 0.2
+        },
+        ['openai/gpt-4o-mini', 'gemini-2.5-flash', 'gemini-2.0-flash']
+      );
 
       const responseText = response.text;
-      if (!responseText) throw new Error("No response from Gemini");
+      if (!responseText) throw new Error("No response from AI model");
       
       const json = JSON.parse(responseText);
       res.json(json);
     } catch (error: any) {
-      console.error(error);
+      console.error('Error in import-lessons-batch:', error);
       res.status(500).json({ error: error.message });
     }
   });

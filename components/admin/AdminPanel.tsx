@@ -356,18 +356,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       try {
         const studentsStr = mapStudents().map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n');
         const fallbackStudentId = selectedUser?.id || '';
-        
-        const data = await generateBulkLessonSummary('', base64, studentsStr);
+        const targetStudentName = selectedUser ? (`${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.username) : '';
+
+        const data = await generateBulkLessonSummary('', base64, studentsStr, fallbackStudentId, targetStudentName);
 
         if (data?.lessons && Array.isArray(data.lessons) && data.lessons.length > 0) {
           const lessonsWithStudent = data.lessons.map((l: any) => {
-            const ids = l.studentIds && Array.isArray(l.studentIds) && l.studentIds.length > 0
+            let ids = l.studentIds && Array.isArray(l.studentIds) && l.studentIds.length > 0
               ? l.studentIds
-              : (l.studentId ? [l.studentId] : (fallbackStudentId ? [fallbackStudentId] : []));
+              : (l.studentId ? [l.studentId] : []);
+            if (fallbackStudentId && (ids.length === 0 || !users.some(u => ids.includes(u.id)))) {
+              ids = [fallbackStudentId];
+            }
             return {
               ...l,
-              studentId: ids[0] || '',
-              studentIds: ids
+              studentId: ids[0] || fallbackStudentId || '',
+              studentIds: ids.length > 0 ? ids : (fallbackStudentId ? [fallbackStudentId] : [])
             };
           });
 
@@ -403,17 +407,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     try {
       const studentsStr = mapStudents().map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n');
       const fallbackStudentId = selectedUser?.id || '';
-      const data = await generateBulkLessonSummary(rawMeetingNotes, '', studentsStr);
+      const targetStudentName = selectedUser ? (`${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.username) : '';
+
+      const data = await generateBulkLessonSummary(rawMeetingNotes, '', studentsStr, fallbackStudentId, targetStudentName);
 
       if (data?.lessons && Array.isArray(data.lessons) && data.lessons.length > 0) {
         const lessonsWithStudent = data.lessons.map((l: any) => {
-          const ids = l.studentIds && Array.isArray(l.studentIds) && l.studentIds.length > 0
+          let ids = l.studentIds && Array.isArray(l.studentIds) && l.studentIds.length > 0
             ? l.studentIds
-            : (l.studentId ? [l.studentId] : (fallbackStudentId ? [fallbackStudentId] : []));
+            : (l.studentId ? [l.studentId] : []);
+          if (fallbackStudentId && (ids.length === 0 || !users.some(u => ids.includes(u.id)))) {
+            ids = [fallbackStudentId];
+          }
           return {
             ...l,
-            studentId: ids[0] || '',
-            studentIds: ids
+            studentId: ids[0] || fallbackStudentId || '',
+            studentIds: ids.length > 0 ? ids : (fallbackStudentId ? [fallbackStudentId] : [])
           };
         });
 
@@ -441,23 +450,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     setIsGenerating(true);
     setBulkSummaryError('');
     try {
-      
       if (driveFile) {
         throw new Error("Direct Drive file fetching is not supported in client-side mode yet. Please upload PDF or paste text.");
       }
       const studentsStr = mapStudents().map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n');
-      const data = await generateBulkLessonSummary(notes || '', pdfBase64 || '', studentsStr);
+      const fallbackStudentId = selectedUser?.id || '';
+      const targetStudentName = selectedUser ? (`${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.username) : '';
 
-      
+      const data = await generateBulkLessonSummary(notes || '', pdfBase64 || '', studentsStr, fallbackStudentId, targetStudentName);
+
       if (data.lessons && Array.isArray(data.lessons)) {
         const lessonsWithStudents = data.lessons.map((l: any) => {
-          const ids = l.studentIds && Array.isArray(l.studentIds) && l.studentIds.length > 0
+          let ids = l.studentIds && Array.isArray(l.studentIds) && l.studentIds.length > 0
             ? l.studentIds
             : (l.studentId ? [l.studentId] : []);
+          if (fallbackStudentId && (ids.length === 0 || !users.some(u => ids.includes(u.id)))) {
+            ids = [fallbackStudentId];
+          }
           return {
             ...l,
-            studentId: ids[0] || '',
-            studentIds: ids
+            studentId: ids[0] || fallbackStudentId || '',
+            studentIds: ids.length > 0 ? ids : (fallbackStudentId ? [fallbackStudentId] : [])
           };
         });
         setBulkPreviewLessons(lessonsWithStudents);
@@ -794,10 +807,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             fetchUserLogsAndStats(user.id);
           }
         }
-      } else {
-        setSelectedUser(null);
-        setPracticeLogs([]);
-        setLessonRecords([]);
       }
     }
   }, [users, initialSelectedUserId]);
@@ -2026,35 +2035,42 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <div className="flex justify-end gap-3">
               <Button variant="ghost" onClick={() => setShowAIModal(false)}>{i18n.t("Anuluj")}</Button>
               <Button onClick={handleGenerateFromNotes} isLoading={isGenerating} disabled={!rawMeetingNotes.trim()}>
-                
-                                                  {i18n.t("Generuj wpis z lekcji")}
-                                                </Button>
+                {i18n.t("Generuj wpis z lekcji")}
+              </Button>
             </div>
           </div>
         </div>
-          </div>
+      </div>
       )}
 
-      
       {/* Bulk Import Modal */}
       {showBulkModal && (
         <div ref={bulkModalAnim.overlayRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
           <div ref={bulkModalAnim.contentRef} className="w-full max-w-4xl my-auto">
             <div className="bg-base-100 p-6 rounded-xl border border-white/10 shadow-2xl relative">
-            <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-               <span className="text-primary">📦</span>  {i18n.t("Bulk Import (Wiele lekcji)")}
-                                          </h3>
+            <h3 className="text-2xl font-bold mb-2 flex items-center gap-2">
+               <span className="text-primary">📦</span> {i18n.t("Bulk Import (Wiele lekcji)")}
+            </h3>
             <p className="text-base text-content-muted mb-4">
-               
-                                             {i18n.t("Wklej treść historii lekcji z dokuemntu lub załącz plik, aby AI podzieliło go na osobne wpisy i przypisało do kursantów.")}
-                                          </p>
+               {i18n.t("Wklej treść historii lekcji z dokumentu lub załącz plik, aby AI (GPT-4o mini) podzieliło go na osobne wpisy i przypisało do kursantów.")}
+            </p>
+
+            {selectedUser && (
+              <div className="bg-primary/10 border border-primary/20 text-primary p-3 rounded-lg mb-4 text-xs font-semibold flex items-center gap-2">
+                <span>👤</span>
+                <span>
+                  {i18n.t("Importujesz historię lekcji bezpośrednio w zakładce kursanta:")}{" "}
+                  <strong className="underline underline-offset-2">{`${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.username}</strong>
+                  {i18n.t(". Lekcje zostaną automatycznie przypisane do niego.")}
+                </span>
+              </div>
+            )}
             
             <div className="flex gap-3 mb-4">
               <Button onClick={() => fetchDriveFiles('bulk')} variant="secondary" className="flex-1 flex justify-center items-center gap-2">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 15.02 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                
-                                                  {i18n.t("Google Drive")}
-                                                </Button>
+                {i18n.t("Google Drive")}
+              </Button>
               <div className="flex-1 relative">
                 <input type="file" accept=".pdf" onChange={(e) => handlePdfUpload(e, 'bulk')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                 <Button variant="secondary" className="w-full pointer-events-none">{i18n.t("Załaduj plik PDF")}</Button>
@@ -2068,7 +2084,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <textarea
               value={bulkNotes}
               onChange={e => setBulkNotes(e.target.value)}
-              className="w-full bg-base-200 border border-white/10 rounded-lg p-4 text-white h-[50vh] mb-4 font-mono text-sm leading-relaxed"
+              className="w-full bg-base-200 border border-white/10 rounded-lg p-4 text-white h-[45vh] mb-4 font-mono text-sm leading-relaxed"
               placeholder={i18n.t("Wklej tutaj historię lekcji z Google Docs / plain text...")}
             />
             <div className="flex justify-end gap-3">
@@ -2077,9 +2093,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 if (!bulkNotes.trim()) return;
                 generateBulkSummary({ notes: bulkNotes });
               }} isLoading={isGenerating} disabled={!bulkNotes.trim()}>
-                
-                                                  {i18n.t("Generuj wpisy")}
-                                                </Button>
+                {i18n.t("Generuj wpisy (GPT-4o mini)")}
+              </Button>
             </div>
           </div>
         </div>
@@ -2092,103 +2107,172 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         <div ref={bulkPreviewModalAnim.overlayRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
           <div ref={bulkPreviewModalAnim.contentRef} className="w-full max-w-4xl my-auto">
             <div className="bg-base-100 p-6 rounded-xl border border-white/10 shadow-2xl relative">
-            <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-               <span className="text-primary">✨</span>  {i18n.t("Podgląd zaimportowanych lekcji")}
-                                          </h3>
-            <p className="text-base text-content-muted mb-6">
-               
-                                             {i18n.t("Sprawdź zaimportowane lekcje. Możesz rozwinąć każdą z nich, aby zobaczyć szczegóły.")}
-                                          </p>
+            <h3 className="text-2xl font-bold mb-2 flex items-center gap-2">
+               <span className="text-primary">✨</span> {i18n.t("Podgląd zaimportowanych lekcji")}
+            </h3>
+            <p className="text-sm text-content-muted mb-4">
+               {i18n.t("Przejrzyj lub zmodyfikuj wyodrębnione daty i tematy. Możesz kliknąć kartę, aby edytować notatki, słówka i przypisać kursantów.")}
+            </p>
+
+            {selectedUser && (
+              <div className="bg-primary/10 border border-primary/20 text-primary p-2.5 rounded-lg mb-4 text-xs font-semibold flex items-center gap-2">
+                <span>👤</span>
+                <span>
+                  {i18n.t("Lekcje zostaną domyślnie dodane do konta:")}{" "}
+                  <strong>{`${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.username}</strong>
+                </span>
+              </div>
+            )}
             
-            <div className="space-y-4 max-h-[50vh] overflow-y-auto mb-6 pr-2">
+            <div className="space-y-4 max-h-[55vh] overflow-y-auto mb-6 pr-2">
               {bulkPreviewLessons.map((lesson, idx) => {
-                const student = users.find(u => u.id === lesson.studentId);
                 const isExpanded = expandedBulkIndex === idx;
                 return (
-                  <Card key={idx} className="bg-base-200/50 hover:bg-base-200 transition-colors border border-white/5 cursor-pointer p-0 overflow-hidden" onClick={() => setExpandedBulkIndex(isExpanded ? null : idx)}>
-                    <div className="p-4 flex items-center justify-between">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                           <span className="font-mono text-xs text-primary px-2 py-0.5 rounded bg-primary/10">{lesson.date}</span>
-                           <h4 className="font-bold text-lg">{lesson.lessonTopic || 'Brak tematu'}</h4>
+                  <Card key={idx} className="bg-base-200/60 border border-white/10 p-0 overflow-hidden">
+                    <div className="p-4 flex flex-col gap-3">
+                      <div className="flex flex-col md:flex-row items-start md:items-center gap-3 w-full">
+                        <div className="flex items-center gap-2 shrink-0">
+                          <label className="text-xs text-content-muted font-bold">{i18n.t("Data:")}</label>
+                          <input
+                            type="date"
+                            value={lesson.date || ''}
+                            onChange={(e) => {
+                              const newLessons = [...bulkPreviewLessons];
+                              newLessons[idx] = { ...newLessons[idx], date: e.target.value };
+                              setBulkPreviewLessons(newLessons);
+                            }}
+                            className="font-mono text-xs bg-base-300 text-primary border border-primary/40 rounded px-2 py-1 font-semibold focus:outline-none focus:border-primary"
+                          />
                         </div>
-                        <div className="text-sm text-content-muted flex items-center gap-2 flex-wrap mt-1">
-                          <svg className="w-4 h-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                          <span className="text-xs text-content-muted">{i18n.t("Kursant(ci)")}:</span>
-                          {users.map(u => {
-                            const currentIds = lesson.studentIds && lesson.studentIds.length > 0
-                              ? lesson.studentIds
-                              : (lesson.studentId ? [lesson.studentId] : []);
-                            const isAssigned = currentIds.includes(u.id);
-                            const fullName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username;
-                            return (
-                              <button
-                                key={u.id}
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const updatedIds = isAssigned
-                                    ? currentIds.filter((id: string) => id !== u.id)
-                                    : [...currentIds, u.id];
-                                  const updatedLessons = [...bulkPreviewLessons];
-                                  updatedLessons[idx] = {
-                                    ...updatedLessons[idx],
-                                    studentId: updatedIds[0] || '',
-                                    studentIds: updatedIds
-                                  };
-                                  setBulkPreviewLessons(updatedLessons);
-                                }}
-                                className={`text-xs px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 ${
-                                  isAssigned 
-                                    ? 'bg-primary/20 border-primary/50 text-white font-semibold' 
-                                    : 'bg-base-300/40 border-white/10 text-content-muted/60 hover:text-white hover:bg-white/10'
-                                }`}
-                              >
-                                <span>{isAssigned ? '✓' : '+'}</span>
-                                <span>{fullName}</span>
-                              </button>
-                            );
-                          })}
+                        <div className="flex-1 w-full flex items-center gap-2">
+                          <label className="text-xs text-content-muted font-bold shrink-0">{i18n.t("Temat:")}</label>
+                          <input
+                            type="text"
+                            value={lesson.lessonTopic || ''}
+                            onChange={(e) => {
+                              const newLessons = [...bulkPreviewLessons];
+                              newLessons[idx] = { ...newLessons[idx], lessonTopic: e.target.value };
+                              setBulkPreviewLessons(newLessons);
+                            }}
+                            placeholder={i18n.t("Temat lekcji z dokumentu...")}
+                            className="font-bold text-sm bg-base-300 text-white border border-white/10 rounded px-2.5 py-1 flex-1 focus:outline-none focus:border-primary"
+                          />
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedBulkIndex(isExpanded ? null : idx)}
+                          className="text-xs text-primary hover:underline flex items-center gap-1 font-semibold shrink-0 self-end md:self-center"
+                        >
+                          <span>{isExpanded ? i18n.t("Zwiń szczegóły") : i18n.t("Edytuj / Rozwiń")}</span>
+                          <svg className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
                       </div>
-                      <div className="text-content-muted">
-                         <svg className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                         </svg>
+
+                      <div className="text-xs text-content-muted flex items-center gap-2 flex-wrap pt-1 border-t border-white/5">
+                        <svg className="w-4 h-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                        <span className="font-semibold text-content-muted">{i18n.t("Przypisani kursanci")}:</span>
+                        {users.map(u => {
+                          const currentIds = lesson.studentIds && lesson.studentIds.length > 0
+                            ? lesson.studentIds
+                            : (lesson.studentId ? [lesson.studentId] : []);
+                          const isAssigned = currentIds.includes(u.id);
+                          const fullName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username;
+                          return (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={() => {
+                                const updatedIds = isAssigned
+                                  ? currentIds.filter((id: string) => id !== u.id)
+                                  : [...currentIds, u.id];
+                                const updatedLessons = [...bulkPreviewLessons];
+                                updatedLessons[idx] = {
+                                  ...updatedLessons[idx],
+                                  studentId: updatedIds[0] || '',
+                                  studentIds: updatedIds
+                                };
+                                setBulkPreviewLessons(updatedLessons);
+                              }}
+                              className={`text-xs px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 ${
+                                isAssigned 
+                                  ? 'bg-primary/20 border-primary/50 text-white font-semibold' 
+                                  : 'bg-base-300/40 border-white/10 text-content-muted/60 hover:text-white hover:bg-white/10'
+                              }`}
+                            >
+                              <span>{isAssigned ? '✓' : '+'}</span>
+                              <span>{fullName}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
+
                     {isExpanded && (
-                      <div className="p-4 pt-0 border-t border-white/5 bg-base-200/30 text-sm space-y-4 mt-2">
-                        {lesson.revisionNotes && (
+                      <div className="p-4 pt-2 border-t border-white/10 bg-base-200/80 text-sm space-y-3">
+                        <div>
+                          <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("Notatki z lekcji")}</div>
+                          <textarea
+                            value={lesson.revisionNotes || ''}
+                            onChange={(e) => {
+                              const newLessons = [...bulkPreviewLessons];
+                              newLessons[idx] = { ...newLessons[idx], revisionNotes: e.target.value };
+                              setBulkPreviewLessons(newLessons);
+                            }}
+                            className="w-full bg-base-300 border border-white/10 rounded p-2 text-white text-xs min-h-[70px] leading-relaxed"
+                          />
+                        </div>
+                        <div>
+                          <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("Wyodrębnione Słówka (angielski - polski)")}</div>
+                          <textarea
+                            value={lesson.vocabularyText || ''}
+                            onChange={(e) => {
+                              const newLessons = [...bulkPreviewLessons];
+                              newLessons[idx] = { ...newLessons[idx], vocabularyText: e.target.value };
+                              setBulkPreviewLessons(newLessons);
+                            }}
+                            className="w-full bg-base-300 border border-white/10 rounded p-2 text-white font-mono text-xs min-h-[70px] leading-relaxed"
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
-                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("Notatki")}</div>
-                            <div className="text-white whitespace-pre-wrap">{lesson.revisionNotes}</div>
+                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("Wypowiedzi kursanta")}</div>
+                            <textarea
+                              value={lesson.studentSpeaking || ''}
+                              onChange={(e) => {
+                                const newLessons = [...bulkPreviewLessons];
+                                newLessons[idx] = { ...newLessons[idx], studentSpeaking: e.target.value };
+                                setBulkPreviewLessons(newLessons);
+                              }}
+                              className="w-full bg-base-300 border border-white/10 rounded p-2 text-white text-xs min-h-[50px]"
+                            />
                           </div>
-                        )}
-                        {lesson.vocabularyText && (
                           <div>
-                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("Słówka")}</div>
-                            <div className="text-white font-mono whitespace-pre-wrap">{lesson.vocabularyText}</div>
+                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("Do poprawy / Błędy")}</div>
+                            <textarea
+                              value={lesson.thingsToImprove || ''}
+                              onChange={(e) => {
+                                const newLessons = [...bulkPreviewLessons];
+                                newLessons[idx] = { ...newLessons[idx], thingsToImprove: e.target.value };
+                                setBulkPreviewLessons(newLessons);
+                              }}
+                              className="w-full bg-base-300 border border-white/10 rounded p-2 text-white text-xs min-h-[50px]"
+                            />
                           </div>
-                        )}
-                        {lesson.studentSpeaking && (
-                          <div>
-                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("O czym mówił kursant")}</div>
-                            <div className="text-white whitespace-pre-wrap">{lesson.studentSpeaking}</div>
-                          </div>
-                        )}
-                        {lesson.thingsToImprove && (
-                          <div>
-                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("Do poprawy")}</div>
-                            <div className="text-white whitespace-pre-wrap">{lesson.thingsToImprove}</div>
-                          </div>
-                        )}
-                        {lesson.suggestedFollowUp && (
-                          <div>
-                            <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("Zadanie / Następna lekcja")}</div>
-                            <div className="text-white whitespace-pre-wrap">{lesson.suggestedFollowUp}</div>
-                          </div>
-                        )}
+                        </div>
+                        <div>
+                          <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("Zadanie domowe / Sugestie")}</div>
+                          <textarea
+                            value={lesson.suggestedFollowUp || ''}
+                            onChange={(e) => {
+                              const newLessons = [...bulkPreviewLessons];
+                              newLessons[idx] = { ...newLessons[idx], suggestedFollowUp: e.target.value };
+                              setBulkPreviewLessons(newLessons);
+                            }}
+                            className="w-full bg-base-300 border border-white/10 rounded p-2 text-white text-xs min-h-[50px]"
+                          />
+                        </div>
                       </div>
                     )}
                   </Card>
@@ -2199,8 +2283,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <div className="flex justify-end gap-3">
               <Button variant="ghost" onClick={() => setShowBulkPreviewModal(false)}>{i18n.t("Anuluj")}</Button>
               <Button onClick={handleSaveBulkLessons} isLoading={isGenerating}>
-                
-                                                  {i18n.t("Zapisz wszystkie (")}{bulkPreviewLessons.length})
+                {i18n.t("Zapisz wszystkie (")}{bulkPreviewLessons.length})
               </Button>
             </div>
           </div>

@@ -693,6 +693,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [practiceMode, setPracticeMode] = useState<'fixed' | 'time'>('fixed');
   const [exerciseFormat, setExerciseFormat] = useState<'typing' | 'puzzle' | 'test' | 'speaking'>('puzzle');
   const [isLessonSelectorOpen, setIsLessonSelectorOpen] = useState(false);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [previewVocabSet, setPreviewVocabSet] = useState<VocabularySet | null>(null);
   const [selectedGrammarTopics, setSelectedGrammarTopics] = useState<any[]>([]);
   const [expandedGrammarLevel, setExpandedGrammarLevel] = useState<number | null>(null);
@@ -2107,7 +2108,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-emerald-500/0 via-emerald-500/40 to-emerald-500/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
                           <button
                             type="button"
-                            onClick={() => setExerciseFormat('puzzle')}
+                            onClick={() => {
+                              setExerciseFormat('puzzle');
+                              setIsConfigModalOpen(true);
+                            }}
                             className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[160px] ${
                               exerciseFormat === 'puzzle'
                                 ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.45)] scale-[1.01]'
@@ -2139,7 +2143,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-cyan-500/0 via-cyan-500/40 to-cyan-500/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
                           <button
                             type="button"
-                            onClick={() => setExerciseFormat('typing')}
+                            onClick={() => {
+                              setExerciseFormat('typing');
+                              setIsConfigModalOpen(true);
+                            }}
                             className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[160px] ${
                               exerciseFormat === 'typing'
                                 ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-cyan-400 shadow-[0_0_35px_rgba(6,182,212,0.45)] scale-[1.01]'
@@ -2217,8 +2224,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       </div>
                     </div>
 
-                    {/* LOWER SECTION: EXPANDED BARS (ŹRÓDŁO MATERIAŁU & ILOŚĆ ZDAŃ STACKED VERTICALLY) */}
-                    <div className="flex flex-col gap-4 w-full">
+                    {/* LOWER SECTION: EXPANDED BARS (ŹRÓDŁO MATERIAŁU & ILOŚĆ ZDAŃ STACKED VERTICALLY - DESKTOP ONLY) */}
+                    <div className="hidden sm:flex flex-col gap-4 w-full">
                       {/* Bar 1: Źródło materiału */}
                       <div className="w-full bg-[#0e1626] border-2 border-slate-700/80 p-4 rounded-3xl shadow-md space-y-3">
                         <div className="flex items-center justify-between">
@@ -2342,8 +2349,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       </div>
                     </div>
 
-                    {/* GENERATE BUTTON */}
-                    <div className="pt-2">
+                    {/* GENERATE BUTTON (DESKTOP ONLY) */}
+                    <div className="hidden sm:block pt-2">
                       <AILoadingButton
                         onClick={() => handleGenerate(false)}
                         isLoading={isLoading}
@@ -2360,6 +2367,222 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       </AILoadingButton>
                     </div>
                   </div>
+
+                  {/* Exercise Configuration Menu Modal (Mobile & Tile Click) */}
+                  <AnimatePresence>
+                    {isConfigModalOpen && (
+                      <motion.div
+                        key="exercise-config-modal"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
+                        onClick={() => setIsConfigModalOpen(false)}
+                      >
+                        <motion.div
+                          initial={{ y: '100%' }}
+                          animate={{ y: 0 }}
+                          exit={{ y: '100%' }}
+                          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="bg-[#0b101d] border border-white/15 w-full max-w-lg rounded-t-[2.5rem] sm:rounded-3xl p-5 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[92vh]"
+                        >
+                          {/* Header */}
+                          <div className="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border ${
+                                exerciseFormat === 'puzzle'
+                                  ? 'bg-emerald-500/20 border-emerald-400 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                                  : 'bg-cyan-500/20 border-cyan-400 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)]'
+                              }`}>
+                                {exerciseFormat === 'puzzle' ? (
+                                  <LayoutGrid className="w-5 h-5" />
+                                ) : (
+                                  <Keyboard className="w-5 h-5" />
+                                )}
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
+                                  {exerciseFormat === 'puzzle'
+                                    ? (language === 'pl' ? 'Układanka' : 'Puzzle')
+                                    : (language === 'pl' ? 'Prawdziwe Wyzwanie' : 'Real Challenge')}
+                                </h3>
+                                <p className="text-xs text-gray-400">
+                                  {language === 'pl' ? 'Konfiguracja treningu' : 'Training setup'}
+                                </p>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setIsConfigModalOpen(false)}
+                              className="p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+
+                          {/* Format Switcher Selector */}
+                          <div className="py-3 border-b border-white/10 flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setExerciseFormat('puzzle')}
+                              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                exerciseFormat === 'puzzle'
+                                  ? 'bg-emerald-500/20 border border-emerald-400 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                                  : 'bg-white/5 border border-white/10 text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              <LayoutGrid className="w-3.5 h-3.5" />
+                              <span>{language === 'pl' ? 'Układanka' : 'Puzzle'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setExerciseFormat('typing')}
+                              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                exerciseFormat === 'typing'
+                                  ? 'bg-cyan-500/20 border border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                                  : 'bg-white/5 border border-white/10 text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              <Keyboard className="w-3.5 h-3.5" />
+                              <span>{language === 'pl' ? 'Wpisywanie' : 'Typing'}</span>
+                            </button>
+                          </div>
+
+                          {/* Scrollable Content */}
+                          <div className="overflow-y-auto space-y-4 py-4 my-1 pr-1 custom-scrollbar flex-1">
+                            {/* Section 1: Źródło materiału */}
+                            <div className="bg-[#121929] border border-white/10 p-4 rounded-2xl space-y-3">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                  {language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary Source'}
+                                </label>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setIsLessonSelectorOpen(true)}
+                                className="w-full group relative flex items-center justify-between px-4 py-3 rounded-xl bg-[#080d16] border border-white/20 hover:border-emerald-500/60 shadow-md transition-all cursor-pointer text-left"
+                              >
+                                <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
+                                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                                    {selectedSetId === 'basket' ? <ShoppingBag className="w-4 h-4" /> : <BookOpen className="w-4 h-4" />}
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-xs font-bold text-white truncate">
+                                      {language === 'pl' ? 'Źródło materiału' : 'Material Source'}
+                                    </span>
+                                    <span className="text-[11px] text-gray-400 truncate">
+                                      {selectedSetId === 'basket' ? (
+                                        language === 'pl' ? `Koszyk słówek (${basketWords.length})` : `Word Basket (${basketWords.length})`
+                                      ) : selectedLessonIds.length > 0 ? (
+                                        `${selectedLessonIds.length} ${language === 'pl' ? 'wybranych lekcji' : 'selected lessons'}`
+                                      ) : (
+                                        language === 'pl' ? 'Słownictwo ogólne: miks i koszyk' : 'General vocabulary mix'
+                                      )}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-xs font-bold text-emerald-400 hover:bg-emerald-500 hover:text-black transition-all flex items-center gap-1 shrink-0">
+                                  <span>{language === 'pl' ? 'Wybierz' : 'Select'}</span>
+                                  <ChevronRight className="w-3.5 h-3.5" />
+                                </div>
+                              </button>
+
+                              {/* Chips list */}
+                              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                {selectedSetId === 'basket' ? (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                                    <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
+                                    {language === 'pl' ? `Koszyk Słówek (${basketWords.length} słów)` : `Word Basket (${basketWords.length} words)`}
+                                  </span>
+                                ) : selectedLessonIds.length > 0 ? (
+                                  vocabularySets
+                                    .filter(s => selectedLessonIds.includes(s.id))
+                                    .map((set, i) => (
+                                      <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                                        <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                                        {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
+                                      </span>
+                                    ))
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-gray-400">
+                                    <BookOpen className="w-3.5 h-3.5 text-gray-400" />
+                                    {language === 'pl' ? 'Słownictwo Ogólne: Miks i Koszyk' : 'General Vocabulary Mix'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Section 2: Ilość zadań */}
+                            <div className="bg-[#121929] border border-white/10 p-4 rounded-2xl space-y-3">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                  {language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}
+                                </label>
+                                <span className="text-2xl font-black text-white font-mono leading-none">
+                                  {numSentences}
+                                </span>
+                              </div>
+
+                              <div className="bg-[#080d16] border border-white/10 rounded-xl p-3 space-y-3">
+                                <input
+                                  type="range"
+                                  min="1"
+                                  max="25"
+                                  step="1"
+                                  value={numSentences}
+                                  onChange={(e) => setNumSentences(parseInt(e.target.value))}
+                                  className="w-full h-2 bg-[#1a2536] rounded-lg appearance-none cursor-pointer accent-emerald-400 focus:outline-none"
+                                />
+
+                                <div className="grid grid-cols-4 gap-2">
+                                  {[5, 10, 15, 20].map((val) => (
+                                    <button
+                                      key={val}
+                                      type="button"
+                                      onClick={() => setNumSentences(val)}
+                                      className={`py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                                        numSentences === val
+                                          ? 'bg-[#283548] border border-white/20 text-white shadow-inner'
+                                          : 'bg-[#18212e] border border-white/5 text-gray-400 hover:text-white'
+                                      }`}
+                                    >
+                                      {val}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Footer: Generate Button */}
+                          <div className="pt-3 border-t border-white/10 shrink-0">
+                            <AILoadingButton
+                              onClick={() => {
+                                setIsConfigModalOpen(false);
+                                handleGenerate(false);
+                              }}
+                              isLoading={isLoading}
+                              loadingText={language === 'pl' ? 'AI przygotowuje ćwiczenie...' : 'AI is preparing...'}
+                              className="w-full py-4 px-6 rounded-2xl border border-emerald-500/50 bg-gradient-to-r from-emerald-950/90 via-[#132c25] to-emerald-950/90 hover:from-emerald-900 hover:to-emerald-900 text-white font-bold text-base flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(16,185,129,0.3)] transition-all cursor-pointer"
+                            >
+                              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse shrink-0" />
+                              <span>
+                                {language === 'pl'
+                                  ? `Wygeneruj ${numSentences === 1 ? '1 zdanie' : numSentences >= 2 && numSentences <= 4 ? `${numSentences} zdania` : `${numSentences} zdań`}`
+                                  : `Generate ${numSentences} ${numSentences === 1 ? 'sentence' : 'sentences'}`}
+                              </span>
+                              <ArrowRight className="w-5 h-5 text-emerald-400" />
+                            </AILoadingButton>
+                          </div>
+                        </motion.div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {/* Vocabulary Source Selection Modal */}
                   <AnimatePresence>

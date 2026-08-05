@@ -1321,7 +1321,9 @@ Zwróć WYŁĄCZNIE poprawny obiekt JSON o następującej strukturze:
 export const generateBulkLessonSummary = async (
   notes: string,
   pdfBase64: string,
-  studentsStr: string
+  studentsStr: string,
+  targetStudentId?: string,
+  targetStudentName?: string
 ) => {
   try {
     const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
@@ -1334,7 +1336,9 @@ export const generateBulkLessonSummary = async (
       body: JSON.stringify({
         textContent: notes,
         pdfBase64,
-        students: studentsStr
+        students: studentsStr,
+        targetStudentId,
+        targetStudentName
       })
     });
     if (res.ok) {
@@ -1344,25 +1348,33 @@ export const generateBulkLessonSummary = async (
     console.warn("Backend bulk lesson summary failed, attempting fallback...", backendErr);
   }
 
-  const promptText = `Jako asystent nauczyciela języka angielskiego, przeanalizuj notatki zawierające opisy wielu lekcji (lub załączony dokument) i przygotuj zbiorcze podsumowanie dla każdej rozpoznanej lekcji/ucznia w formacie JSON.
+  const promptText = `Jako asystent nauczyciela języka angielskiego, przeanalizuj notatki/dokument zawierające opisy lekcji i przygotuj zbiorcze podsumowanie w formacie JSON.
 
-Lista dostępnych uczniów (wybierz studentId najbardziej pasującego ucznia dla każdej lekcji):
+${targetStudentId ? `AKTYWNY KURSANT: ${targetStudentName || targetStudentId} (ID: ${targetStudentId}). Jeśli lekcje nie wskazują inaczej, przypisz je do tego kursanta.` : ''}
+
+Lista dostępnych uczniów w systemie:
 ${studentsStr}
 
-${notes ? `Zbiorcze notatki:\n${notes}` : ''}
+ZASADY BARDZO WAŻNE:
+1. DATY: Przeanalizuj nagłówki dat w dokumencie/notatkach i przekonwertuj na YYYY-MM-DD. BEZWZGLĘDNIE ZACHOWAJ oryginalną datę lekcji z pliku! ZABRONIONE jest zastępowanie istniejącej daty dzisiejszą datą.
+2. TEMATY LEKCJI: Jeśli w tekście podano temat lub tytuł lekcji, UŻYJ DOKŁADNIE TEGO TEKSTU dla "lessonTopic". Nie wymyślaj własnych tematów, jeśli w pliku podano konkretny temat!
+3. DANE LEKCJI: Wyciągnij opisy,notatki, słówka (angielski - polski) i zwroty.
+
+${notes ? `Treść notatek:\n${notes}` : ''}
 
 Zwróć WYŁĄCZNIE poprawny obiekt JSON o strukturze:
 {
   "lessons": [
     {
-      "studentId": "ID ucznia dopasowane z listy uczniów",
-      "date": "YYYY-MM-DD (jeśli jest w notatce) lub dzisiejsza data",
-      "lessonTopic": "Tytuł/Temat lekcji",
+      "studentId": "${targetStudentId || 'ID ucznia z listy'}",
+      "studentIds": ["${targetStudentId || 'ID ucznia'}"],
+      "date": "YYYY-MM-DD (dokładna data z pliku)",
+      "lessonTopic": "Dokładna nazwa tematu z pliku",
       "revisionNotes": "Podsumowanie omówionych zagadnień",
-      "vocabularyText": "Słówka z lekcji w formacie: angielskie_słowo - polskie_tłumaczenie (każde w nowej linii)",
-      "studentSpeaking": "Uwagi odnośnie wypowiedzi ucznia",
+      "vocabularyText": "Słówka w formacie: angielski - polski",
+      "studentSpeaking": "Uwagi o wypowiedzi kursanta",
       "thingsToImprove": "Obszary do poprawy",
-      "suggestedFollowUp": "Sugerowana praca domowa/dalsze kroki"
+      "suggestedFollowUp": "Praca domowa / zalecenia"
     }
   ]
 }`;
@@ -1381,6 +1393,7 @@ Zwróć WYŁĄCZNIE poprawny obiekt JSON o strukturze:
 
     const response = await generateContentWithFallback({
       contents,
+      preferredModels: ['openai/gpt-4o-mini', 'gemini-2.5-flash', 'gemini-2.0-flash'],
       config: {
         responseMimeType: "application/json",
       }
