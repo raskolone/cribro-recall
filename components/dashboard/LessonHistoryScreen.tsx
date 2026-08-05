@@ -582,7 +582,37 @@ const LessonHistoryScreen: React.FC = () => {
                 )}
               </div>
 
-              {selectedLog.exercisesData && (
+              {Array.isArray(selectedLog.sentences) && selectedLog.sentences.length > 0 ? (
+                <div className="space-y-3 pt-4">
+                  <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-primary" />
+                    {language === 'pl' ? 'Wygenerowane zdania i odpowiedzi' : 'Generated Sentences & Answers'}
+                  </h3>
+                  <div className="space-y-3">
+                    {selectedLog.sentences.map((s: any, idx: number) => (
+                      <div key={idx} className="p-4 rounded-xl liquid-glass-tile border border-white/10 space-y-2 text-sm">
+                        <div className="font-bold text-white flex items-center gap-2">
+                          <span className="text-primary font-mono text-xs">#{idx + 1}</span>
+                          <span>{s.polishTranslation || s.polish_translation}</span>
+                        </div>
+                        <div className="text-emerald-400 text-xs font-mono">
+                          EN: {s.englishSentence || s.english_sentence}
+                        </div>
+                        {s.studentAnswer && (
+                          <div className="text-blue-300 text-xs bg-blue-500/10 p-2 rounded-lg border border-blue-500/20">
+                            <strong>{language === 'pl' ? 'Twoja odpowiedź:' : 'Your answer:'}</strong> "{s.studentAnswer}"
+                          </div>
+                        )}
+                        {s.feedback && (
+                          <div className="text-amber-300 text-xs bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+                            <strong>{language === 'pl' ? 'Komentarz AI / Błędy:' : 'AI Feedback:'}</strong> {s.feedback}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : selectedLog.exercisesData && (
                 <div className="space-y-3 pt-4">
                   <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-primary" />

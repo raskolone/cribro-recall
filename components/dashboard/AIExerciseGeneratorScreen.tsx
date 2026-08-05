@@ -11,7 +11,19 @@ import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, 
 import { generateSpeech, createSpeechAudio, formatTextForTTS } from '../../services/elevenLabsService';
 import TTSButtons from '../flashcards/TTSButtons';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog } from '../../types';
+
+export interface CachedExerciseSet {
+  id: string;
+  timestamp: string;
+  sourceId: string;
+  sourceTitle: string;
+  level: string;
+  numSentences: number;
+  exercises: TranslationExercise[];
+  createdAt: number;
+}
 import { getVocabularySetsForStudent, markVocabularySetAsUsed } from '../../services/lessonRecord';
+import { GENERAL_VOCABULARY_SETS, LEVEL_GROUPS } from '../../data/generalVocabulary';
 import Card from '../ui/Card';
 import PuzzleExercise from './PuzzleExercise';
 import Button from '../ui/Button';
@@ -44,7 +56,7 @@ import {
   Puzzle,
   Target,
   Layers,
-  Shuffle, X, Eye, Flame,
+  Shuffle, X, Eye, Flame, Globe, History, Database,
   CheckCircle2, LayoutGrid, Mic, AlertCircle,
   Plus, Minus, ShoppingBag, Trash2, Check
 } from 'lucide-react';
@@ -394,25 +406,64 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
   const [translatedSentencesCount, setTranslatedSentencesCount] = useState<number>(user?.translatedSentencesCount || 0);
 
-  // Vocabulary Basket State
-  const [basketWords, setBasketWords] = useState<BasketWordItem[]>(() => {
-    try {
-      const saved = (function(){ try { return localStorage.getItem('ai_vocab_basket'); } catch(e) { return null; } })();
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Per-user Vocabulary Basket & Exercise Cache Keys
+  const userBasketKey = user?.id ? `ai_vocab_basket_${user.id}` : 'ai_vocab_basket_guest';
+  const userCacheKey = user?.id ? `ai_exercise_cache_${user.id}` : 'ai_exercise_cache_guest';
+
+  const [basketWords, setBasketWords] = useState<BasketWordItem[]>([]);
+  const [cachedExercises, setCachedExercises] = useState<CachedExerciseSet[]>([]);
+  const [isCacheModalOpen, setIsCacheModalOpen] = useState<boolean>(false);
+
+  // General Vocabulary Tab & Accordion States
+  const [isGeneralVocabTabOpen, setIsGeneralVocabTabOpen] = useState<boolean>(true);
+  const [expandedGenLevelGroup, setExpandedGenLevelGroup] = useState<string | null>('a1_a2');
 
   const [isBasketModalOpen, setIsBasketModalOpen] = useState(false);
 
+  // Sync basket and cache per user profile
   useEffect(() => {
     try {
-      (function(){ try { localStorage.setItem('ai_vocab_basket', JSON.stringify(basketWords)); } catch(e) {} })();
+      let savedBasket = localStorage.getItem(userBasketKey);
+      if (!savedBasket && user?.id) {
+        // Legacy fallback migration
+        const legacy = localStorage.getItem('ai_vocab_basket');
+        if (legacy) {
+          savedBasket = legacy;
+          localStorage.setItem(userBasketKey, legacy);
+        }
+      }
+      setBasketWords(savedBasket ? JSON.parse(savedBasket) : []);
+    } catch {
+      setBasketWords([]);
+    }
+
+    try {
+      const savedCache = localStorage.getItem(userCacheKey);
+      setCachedExercises(savedCache ? JSON.parse(savedCache) : []);
+    } catch {
+      setCachedExercises([]);
+    }
+  }, [user?.id, userBasketKey, userCacheKey]);
+
+  // Persist basket
+  useEffect(() => {
+    if (!userBasketKey) return;
+    try {
+      localStorage.setItem(userBasketKey, JSON.stringify(basketWords));
     } catch (e) {
       console.error(e);
     }
-  }, [basketWords]);
+  }, [basketWords, userBasketKey]);
+
+  // Persist cache
+  useEffect(() => {
+    if (!userCacheKey) return;
+    try {
+      localStorage.setItem(userCacheKey, JSON.stringify(cachedExercises));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [cachedExercises, userCacheKey]);
 
   const toggleBasketWord = (wordItem: BasketWordItem) => {
     const normKey = wordItem.term.trim().toLowerCase();
@@ -649,6 +700,16 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     let wordsList: BasketWordItem[] = [];
     if (setupSelectedSource === 'basket') {
       wordsList = basketWords;
+    } else if (setupSelectedSource.startsWith('gen-')) {
+      const genSet = GENERAL_VOCABULARY_SETS.find(s => s.id === setupSelectedSource);
+      if (genSet) {
+        wordsList = genSet.words.map(w => ({
+          id: w.id,
+          term: w.english,
+          definition: w.polish,
+          setTopic: genSet.title
+        }));
+      }
     } else {
       const selectedSet = vocabularySets.find(s => s.id === setupSelectedSource);
       if (selectedSet && selectedSet.vocabularyText) {
@@ -1079,13 +1140,17 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         fetchPromises.push((async () => {
           try {
             const practiceLogsRef = collection(db, `users/${user.id}/practiceLogs`);
-            const qPL = query(practiceLogsRef, orderBy('date', 'desc'), limit(3));
+            const qPL = query(practiceLogsRef, orderBy('date', 'desc'), limit(25));
             const plSnapshot = await getDocs(qPL);
             const plList = plSnapshot.docs.map(doc => doc.data() as PracticeLog);
             
             const pastExercises = plList.map((pl, index) => {
-              if (pl.exercisesData) {
-                return `Session ${index + 1} (${new Date(pl.date).toLocaleDateString()}): ${pl.exercisesData}`;
+              const dateStr = pl.date ? new Date(pl.date).toLocaleDateString() : '';
+              if (Array.isArray(pl.sentences) && pl.sentences.length > 0) {
+                const sStr = pl.sentences.map((s: any) => `"${s.englishSentence || s.english_sentence || ''}" (${s.polishTranslation || s.polish_translation || ''})`).join('; ');
+                return `Session ${index + 1} (${dateStr}): ${sStr}`;
+              } else if (typeof pl.exercisesData === 'string' && pl.exercisesData) {
+                return `Session ${index + 1} (${dateStr}): ${pl.exercisesData}`;
               }
               return null;
             }).filter(Boolean);
@@ -1135,6 +1200,12 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
               const matchedVocab = vocabularySets.find(s => `vocab-${s.id}` === selectedSetId);
               if (matchedVocab && matchedVocab.vocabularyText) {
                  const items = matchedVocab.vocabularyText.split(/[\n,;]+/).map(i => i.trim()).filter(i => i.length > 0);
+                 wordsToUse = Array.from(new Set(items)).sort(() => 0.5 - Math.random()).slice(0, 20);
+              }
+            } else if (selectedSetId.startsWith('gen-')) {
+              const matchedGenSet = GENERAL_VOCABULARY_SETS.find(s => s.id === selectedSetId);
+              if (matchedGenSet) {
+                 const items = matchedGenSet.words.map(w => w.polish ? `${w.english} (${w.polish})` : w.english);
                  wordsToUse = Array.from(new Set(items)).sort(() => 0.5 - Math.random()).slice(0, 20);
               }
             } else {
@@ -2568,6 +2639,141 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                     <div className="text-center text-sm text-gray-400 py-8">Brak lekcji</div>
                                   )}
                                   
+                                   {/* SŁOWNICTWO OGÓLNE (OSOBNA ZAKŁADKA / AKORDEON OTWIERANY JAK GRAMATYKA) */}
+                                   <div className="h-px w-full bg-white/10 my-4"></div>
+                                   <div className="mb-2">
+                                     <div 
+                                       className="flex items-center justify-between p-4 rounded-2xl bg-[#18212e] border border-emerald-500/30 cursor-pointer hover:bg-white/5 transition-colors"
+                                       onClick={() => setIsGeneralVocabTabOpen(!isGeneralVocabTabOpen)}
+                                     >
+                                       <div className="flex items-center gap-3">
+                                         <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
+                                           🌐
+                                         </div>
+                                         <div>
+                                           <h4 className="text-base font-semibold text-white">
+                                             {language === 'pl' ? 'Słownictwo Ogólne' : 'General Vocabulary'}
+                                           </h4>
+                                           <span className="text-xs text-emerald-400">
+                                             {language === 'pl' ? '3 Poziomy Zaawansowania (A1 - C2)' : '3 Proficiency Levels (A1 - C2)'}
+                                           </span>
+                                         </div>
+                                       </div>
+                                       <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isGeneralVocabTabOpen ? 'rotate-180' : ''}`} />
+                                     </div>
+
+                                     <AnimatePresence>
+                                       {isGeneralVocabTabOpen && (
+                                         <motion.div
+                                           initial={{ height: 0, opacity: 0 }}
+                                           animate={{ height: 'auto', opacity: 1 }}
+                                           exit={{ height: 0, opacity: 0 }}
+                                           className="overflow-hidden"
+                                         >
+                                           <div className="pt-3 space-y-3 pl-2">
+                                             {LEVEL_GROUPS.map((group) => {
+                                               const isGroupExpanded = expandedGenLevelGroup === group.key;
+                                               const groupSets = GENERAL_VOCABULARY_SETS.filter(s => s.levelGroup === group.key);
+                                               
+                                               return (
+                                                 <div key={group.key} className="rounded-2xl border border-white/10 bg-[#121927] overflow-hidden">
+                                                   {/* Rozwijany Nagłówek Poziomu */}
+                                                   <div 
+                                                     className="flex items-center justify-between p-3.5 cursor-pointer hover:bg-white/5 transition-colors"
+                                                     onClick={() => setExpandedGenLevelGroup(isGroupExpanded ? null : group.key)}
+                                                   >
+                                                     <div className="flex items-center gap-2.5">
+                                                       <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${group.badgeClass}`}>
+                                                         {group.levels}
+                                                       </span>
+                                                       <span className="text-sm font-bold text-gray-200">{group.name}</span>
+                                                     </div>
+                                                     <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isGroupExpanded ? 'rotate-180' : ''}`} />
+                                                   </div>
+
+                                                   {/* Rozwinięta Lista Kategorii Słownictwa w danym Poziomie */}
+                                                   <AnimatePresence>
+                                                     {isGroupExpanded && (
+                                                       <motion.div
+                                                         initial={{ height: 0, opacity: 0 }}
+                                                         animate={{ height: 'auto', opacity: 1 }}
+                                                         exit={{ height: 0, opacity: 0 }}
+                                                         className="overflow-hidden bg-black/20 p-3 pt-1 space-y-2 border-t border-white/5"
+                                                       >
+                                                         <p className="text-[11px] text-gray-400 mb-2 italic px-1">{group.description}</p>
+                                                         {groupSets.map((gSet) => {
+                                                           const isSelected = selectedSetId === gSet.id;
+                                                           return (
+                                                             <label
+                                                               key={gSet.id}
+                                                               className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                                                                 isSelected
+                                                                   ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                                                                   : 'bg-[#18212e] border-white/5 hover:border-white/10'
+                                                               }`}
+                                                             >
+                                                               <input
+                                                                 type="radio"
+                                                                 name="vocabSourceRadio"
+                                                                 checked={isSelected}
+                                                                 onChange={() => {
+                                                                   setSelectedSetId(gSet.id);
+                                                                   setSelectedLessonIds([]);
+                                                                 }}
+                                                                 className="w-4 h-4 text-emerald-400 focus:ring-emerald-400 rounded-full border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
+                                                               />
+                                                               <div className="flex-1 flex flex-col min-w-0">
+                                                                 <div className="flex items-center gap-2">
+                                                                   <span className={`text-xs font-bold ${isSelected ? 'text-emerald-400' : 'text-white'} truncate`}>{gSet.title}</span>
+                                                                   <span className="text-[10px] font-mono bg-white/10 text-emerald-300 px-1.5 py-0.5 rounded">
+                                                                     {gSet.words.length} słówek
+                                                                   </span>
+                                                                 </div>
+                                                                 <span className="text-[11px] text-gray-400 truncate">{gSet.description}</span>
+                                                               </div>
+                                                               <button
+                                                                 type="button"
+                                                                 onClick={(e) => {
+                                                                   e.preventDefault();
+                                                                   e.stopPropagation();
+                                                                   setPreviewVocabSet({
+                                                                     id: gSet.id,
+                                                                     studentId: 'all',
+                                                                     lessonRecordId: '',
+                                                                     title: gSet.title,
+                                                                     date: new Date().toISOString(),
+                                                                     topic: gSet.title,
+                                                                     vocabularyText: gSet.words.map(w => `${w.english} - ${w.polish}`).join('\n'),
+                                                                     itemCount: gSet.words.length,
+                                                                     status: 'ready',
+                                                                     source: 'lesson_record',
+                                                                     createdAt: new Date().toISOString(),
+                                                                     updatedAt: new Date().toISOString()
+                                                                   });
+                                                                 }}
+                                                                 className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-emerald-400 hover:text-emerald-300 transition-colors flex-shrink-0 flex items-center gap-1 text-xs font-semibold"
+                                                               >
+                                                                 <Eye className="w-3.5 h-3.5" />
+                                                                 <span className="hidden sm:inline">{language === 'pl' ? 'Podgląd' : 'Preview'}</span>
+                                                               </button>
+                                                             </label>
+                                                           );
+                                                         })}
+                                                       </motion.div>
+                                                     )}
+                                                   </AnimatePresence>
+                                                 </div>
+                                               );
+                                             })}
+                                           </div>
+                                         </motion.div>
+                                       )}
+                                     </AnimatePresence>
+                                   </div>
+
+
+
+
 <div className="h-px w-full bg-white/10 my-4"></div>
 <h4 className="text-sm font-bold text-gray-400 px-2 mb-2 uppercase tracking-wider">{language === 'pl' ? 'Mix' : 'Mix'}</h4>
 {/* Option to select "All" */}
@@ -2856,12 +3062,28 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                           🧺 {language === 'pl' ? `Koszyk Słówek (${basketWords.length})` : `Vocabulary Basket (${basketWords.length})`}
                                         </option>
                                       )}
-                                      {vocabularySets.map((set, idx) => {
-                                        const lessonNumber = vocabularySets.length - idx;
+                                      {vocabularySets.length > 0 && (
+                                        <optgroup label={language === 'pl' ? "Zestawy z Lekcji Kursantów" : "Student Lesson Sets"}>
+                                          {vocabularySets.map((set, idx) => {
+                                            const lessonNumber = vocabularySets.length - idx;
+                                            return (
+                                              <option key={set.id} value={set.id}>
+                                                📚 {set.title || (language === 'pl' ? `Lekcja ${lessonNumber}` : `Lesson ${lessonNumber}`)} ({set.itemCount} {language === 'pl' ? 'słówek' : 'words'})
+                                              </option>
+                                            );
+                                          })}
+                                        </optgroup>
+                                      )}
+                                      {LEVEL_GROUPS.map(group => {
+                                        const groupSets = GENERAL_VOCABULARY_SETS.filter(s => s.levelGroup === group.key);
                                         return (
-                                          <option key={set.id} value={set.id}>
-                                            📚 {set.title || (language === 'pl' ? `Lekcja ${lessonNumber}` : `Lesson ${lessonNumber}`)} ({set.itemCount} {language === 'pl' ? 'słówek' : 'words'})
-                                          </option>
+                                          <optgroup key={group.key} label={`🌐 Słownictwo Ogólne: ${group.name} (${group.levels})`}>
+                                            {groupSets.map(gSet => (
+                                              <option key={gSet.id} value={gSet.id}>
+                                                [{gSet.levelBadge}] {gSet.title} ({gSet.words.length} słówek)
+                                              </option>
+                                            ))}
+                                          </optgroup>
                                         );
                                       })}
                                     </select>

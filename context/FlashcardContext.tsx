@@ -3,6 +3,8 @@ import { FlashcardSet, Flashcard, StudySession, SessionResult, AISuggestionCache
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, writeBatch, getDocs, getDoc, where, orderBy, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
+import { GENERAL_VOCABULARY_SETS } from '../data/generalVocabulary';
+import { logMistakesToFirebase } from '../services/geminiService';
 
 interface FlashcardContextType {
   sets: FlashcardSet[];
@@ -192,6 +194,25 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   const getFlashcards = async (setId: string) => {
+    if (setId.startsWith('gen-')) {
+      const genSet = GENERAL_VOCABULARY_SETS.find(s => s.id === setId);
+      if (genSet) {
+        return genSet.words.map((w, idx) => ({
+          id: w.id || `gen_card_${idx}`,
+          setId: setId,
+          term: w.english,
+          termLanguage: 'en',
+          definition: w.polish || '',
+          definitionLanguage: 'pl',
+          position: idx,
+          masteryLevel: 0,
+          nextReview: Date.now(),
+          imageUrl: null
+        } as unknown as Flashcard));
+      }
+      return [];
+    }
+
     if (!userId) return [];
     
     if (setId.startsWith('lesson_')) {
@@ -308,6 +329,8 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
       const matchedSet = sets.find(s => s.id === sessionData.setId);
       const setDisplayName = matchedSet ? matchedSet.title : (sessionData.setId || 'Fiszki');
       
+      const failedCardIds = results.filter(r => r.isCorrect === false && r.flashcardId).map(r => r.flashcardId as string);
+
       batch.set(logRef, {
         exerciseType: exType,
         exerciseFormat: 'flashcards',
@@ -317,10 +340,29 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
         totalWords: sessionData.totalCards || 0,
         testName: setDisplayName,
         setDisplayName: setDisplayName,
-        exercisesData: `Zestaw fiszek: ${setDisplayName} (${sessionData.totalCards || 0} kart)`
+        exercisesData: `Zestaw fiszek: ${setDisplayName} (${sessionData.totalCards || 0} kart, poprawne: ${sessionData.correctCount || 0})`
       });
       
       await batch.commit();
+
+      if (failedCardIds.length > 0 && sessionData.setId) {
+        try {
+          const cardsSnap = await getDocs(collection(db, `sets/${sessionData.setId}/flashcards`));
+          const mistakesList: string[] = [];
+          cardsSnap.docs.forEach(docSnap => {
+            if (failedCardIds.includes(docSnap.id)) {
+              const d = docSnap.data();
+              if (d.term) mistakesList.push(`Fiszka: ${d.term} (${d.definition || ''})`);
+            }
+          });
+          if (mistakesList.length > 0) {
+            await logMistakesToFirebase(userId, mistakesList);
+          }
+        } catch (mErr) {
+          console.warn("Could not log flashcard mistakes to weaknesses:", mErr);
+        }
+      }
+
       if (updateUserStreak) {
         updateUserStreak().catch(console.error);
       }

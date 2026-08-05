@@ -19,8 +19,9 @@ import AllTestsTeacherView from './AllTestsTeacherView';
 import TeacherDashboardStats from './TeacherDashboardStats';
 import TeacherSpecialTaskModal from './TeacherSpecialTaskModal';
 import AssignVocabularyModal from './AssignVocabularyModal';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Download, Printer, FileText, CheckCircle2 } from 'lucide-react';
 import i18n from "i18next";
+import html2pdf from 'html2pdf.js';
 
 interface UserWithId extends User {
   id: string;
@@ -760,6 +761,35 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [selectedSetIdToAssign, setSelectedSetIdToAssign] = useState('');
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const pdfExportContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleExportLessonsToPDF = async () => {
+    if (!selectedUser || !pdfExportContainerRef.current) return;
+    setIsExportingPDF(true);
+    try {
+      const studentFullName = selectedUser.displayName || selectedUser.name || `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.email || 'Kursant';
+      const cleanFileName = `Historia_Lekcji_${studentFullName.replace(/[^a-zA-Z0-9ąĆęŁńÓśŹŻĄĆĘŁŃÓŚŹŻ]/g, '_')}.pdf`;
+      
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: cleanFileName,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      await html2pdf().set(opt).from(pdfExportContainerRef.current).save();
+      showToast("Pomyślnie wyeksportowano historię lekcji do PDF!");
+    } catch (err: any) {
+      console.error("PDF Export error:", err);
+      showToast("Wystąpił błąd podczas eksportowania pliku PDF.");
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   // GSAP animation for modals
   const useModalGSAP = (isOpen: boolean | string | null | object) => {
     const overlayRef = useRef<HTMLDivElement>(null);
@@ -1363,18 +1393,24 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           {activeTab === 'history' && (
             <div className="space-y-8">
               <div>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <h3 className="text-lg font-bold">{i18n.t("Historia lekcji")}</h3>
-                  <div className="flex gap-2">
-                    
+                  <div className="flex flex-wrap gap-2">
+                    <Button 
+                      size="sm" 
+                      onClick={handleExportLessonsToPDF} 
+                      disabled={isExportingPDF}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 shadow-sm font-bold"
+                    >
+                      <Download className="w-4 h-4" />
+                      {isExportingPDF ? 'Generowanie PDF...' : 'Eksportuj do PDF'}
+                    </Button>
                     <Button size="sm" variant="secondary" onClick={() => setShowAIModal(true)}>
-                      
-                                                                                        {i18n.t("✨ AI Lesson Summary")}
-                                                                                      </Button>
+                      {i18n.t("✨ AI Lesson Summary")}
+                    </Button>
                     <Button size="sm" variant="secondary" onClick={() => setShowBulkModal(true)}>
-                      
-                                                                                        {i18n.t("📦 Bulk Import (AI)")}
-                                                                                      </Button>
+                      {i18n.t("📦 Bulk Import (AI)")}
+                    </Button>
                     <Button size="sm" onClick={() => openLessonRecordModal('edit')}>{i18n.t("Dodaj wpis")}</Button>
                   </div>
                 </div>
@@ -2598,6 +2634,145 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Hidden Printable Container for PDF Export */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '800px' }}>
+        <div ref={pdfExportContainerRef} style={{ backgroundColor: '#ffffff', color: '#0f172a', padding: '36px', fontFamily: 'Arial, sans-serif' }}>
+          {/* Document Header */}
+          <div style={{ borderBottom: '3px solid #059669', paddingBottom: '16px', marginBottom: '24px' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#047857', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Raport Historii Lekcji i Postępów
+            </h1>
+            <div style={{ marginTop: '12px', fontSize: '14px', lineHeight: '1.6', color: '#334155' }}>
+              <div><strong>Imię i nazwisko kursanta:</strong> {selectedUser?.displayName || selectedUser?.name || `${selectedUser?.firstName || ''} ${selectedUser?.lastName || ''}`.trim() || selectedUser?.email || 'Kursant'}</div>
+              <div><strong>Email:</strong> {selectedUser?.email || '-'}</div>
+              {selectedUser?.level && <div><strong>Poziom językowy:</strong> {selectedUser.level}</div>}
+              <div><strong>Data wygenerowania raportu:</strong> {new Date().toLocaleDateString('pl-PL')}</div>
+            </div>
+          </div>
+
+          {/* Section 1: Wykaz Lekcji */}
+          <div style={{ marginBottom: '28px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#0f172a', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', marginBottom: '16px' }}>
+              Historia Lekcji ({lessonRecords.length})
+            </h2>
+
+            {lessonRecords.length === 0 ? (
+              <p style={{ fontStyle: 'italic', color: '#64748b' }}>Brak wpisów lekcyjnych dla tego kursanta.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {lessonRecords.slice().sort((a, b) => new Date(a.date || a.createdAt).getTime() - new Date(b.date || b.createdAt).getTime()).map((rec, idx) => (
+                  <div key={rec.id || idx} style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '16px', backgroundColor: '#f8fafc', pageBreakInside: 'avoid' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
+                      <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#047857' }}>
+                        Lekcja #{idx + 1}: {rec.topic}
+                      </span>
+                      <span style={{ fontSize: '12px', fontFamily: 'monospace', color: '#64748b', fontWeight: 'bold' }}>
+                        {rec.date ? new Date(rec.date).toLocaleDateString('pl-PL') : ''}
+                      </span>
+                    </div>
+
+                    {rec.vocabularyText && (
+                      <div style={{ marginBottom: '10px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#475569', textTransform: 'uppercase' }}>Słownictwo i frazy:</div>
+                        <div style={{ fontSize: '13px', color: '#1e293b', whiteSpace: 'pre-wrap', backgroundColor: '#ffffff', padding: '8px', borderRadius: '4px', border: '1px solid #e2e8f0', marginTop: '4px' }}>
+                          {rec.vocabularyText}
+                        </div>
+                      </div>
+                    )}
+
+                    {rec.lessonSummary && (
+                      <div style={{ marginBottom: '10px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#475569', textTransform: 'uppercase' }}>Podsumowanie lekcji:</div>
+                        <div style={{ fontSize: '13px', color: '#1e293b', whiteSpace: 'pre-wrap', marginTop: '2px' }}>
+                          {rec.lessonSummary}
+                        </div>
+                      </div>
+                    )}
+
+                    {rec.studentSpeaking && (
+                      <div style={{ marginBottom: '10px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#2563eb', textTransform: 'uppercase' }}>O czym mówił kursant:</div>
+                        <div style={{ fontSize: '13px', color: '#1e293b', whiteSpace: 'pre-wrap', marginTop: '2px' }}>
+                          {rec.studentSpeaking}
+                        </div>
+                      </div>
+                    )}
+
+                    {rec.thingsToImprove && (
+                      <div style={{ marginBottom: '10px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#dc2626', textTransform: 'uppercase' }}>Zagadnienia do poprawy (błędy):</div>
+                        <div style={{ fontSize: '13px', color: '#991b1b', backgroundColor: '#fef2f2', padding: '8px', borderRadius: '4px', border: '1px solid #fecaca', marginTop: '4px', whiteSpace: 'pre-wrap' }}>
+                          {rec.thingsToImprove}
+                        </div>
+                      </div>
+                    )}
+
+                    {rec.suggestedFollowUp && (
+                      <div>
+                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#d97706', textTransform: 'uppercase' }}>Zadanie domowe / Sugestie:</div>
+                        <div style={{ fontSize: '13px', color: '#1e293b', marginTop: '2px', whiteSpace: 'pre-wrap' }}>
+                          {rec.suggestedFollowUp}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Historia Ćwiczeń i Zdań z Aplikacji */}
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#0f172a', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', marginBottom: '16px' }}>
+              Historia Ćwiczeń Aplikacyjnych i Zdań z AI ({practiceLogs.length})
+            </h2>
+
+            {practiceLogs.length === 0 ? (
+              <p style={{ fontStyle: 'italic', color: '#64748b' }}>Brak zarejestrowanych sesji ćwiczeniowych w aplikacji.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {practiceLogs.slice().sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((log, idx) => (
+                  <div key={log.id || idx} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px', backgroundColor: '#ffffff', pageBreakInside: 'avoid' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#047857' }}>
+                        Sesja #{idx + 1}: {log.exerciseType === 'ai_translation' ? 'Trening Zdań z AI (Prawdziwe Wyzwanie)' : log.exerciseType === 'flashcards' ? 'Fiszki' : log.exerciseType} {log.exerciseFormat ? `(${log.exerciseFormat})` : ''}
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>
+                        {new Date(log.date).toLocaleString('pl-PL')}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '12px', color: '#334155', marginBottom: '8px' }}>
+                      {log.setDisplayName && <div><strong>Zestaw:</strong> {log.setDisplayName}</div>}
+                      {log.score !== undefined && <div><strong>Wynik:</strong> {log.score}%</div>}
+                      {log.wordsUsed && log.wordsUsed.length > 0 && <div><strong>Wykorzystane słówka:</strong> {log.wordsUsed.join(', ')}</div>}
+                    </div>
+
+                    {Array.isArray(log.sentences) && log.sentences.length > 0 ? (
+                      <div style={{ marginTop: '8px', borderTop: '1px solid #f1f5f9', paddingTop: '8px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#475569', textTransform: 'uppercase', marginBottom: '4px' }}>Wygenerowane zdania i odpowiedzi ucznia:</div>
+                        {log.sentences.map((s: any, sIdx: number) => (
+                          <div key={sIdx} style={{ fontSize: '12px', marginBottom: '6px', backgroundColor: '#f8fafc', padding: '6px 8px', borderRadius: '4px', border: '1px solid #f1f5f9' }}>
+                            <div style={{ color: '#0f172a', fontWeight: 'bold' }}>{sIdx + 1}. PL: {s.polishTranslation || s.polish_translation}</div>
+                            <div style={{ color: '#047857' }}>EN (Poprawne): {s.englishSentence || s.english_sentence}</div>
+                            {s.studentAnswer && <div style={{ color: '#2563eb' }}>Odpowiedź ucznia: "{s.studentAnswer}"</div>}
+                            {s.feedback && <div style={{ color: '#d97706', fontSize: '11px', marginTop: '2px' }}>Komentarz AI / Poprawki: {s.feedback}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : typeof log.exercisesData === 'string' && log.exercisesData ? (
+                      <div style={{ fontSize: '12px', color: '#475569', backgroundColor: '#f8fafc', padding: '6px 8px', borderRadius: '4px', marginTop: '6px' }}>
+                        {log.exercisesData}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

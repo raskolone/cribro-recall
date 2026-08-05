@@ -15,6 +15,7 @@ import { doc, getDoc, setDoc, getDocs, collection, writeBatch } from 'firebase/f
 import { useAuth } from '../../context/AuthContext';
 import { parseVocabularyText } from './AssignVocabularyModal';
 import { cleanVocabularyTopic } from '../../utils/vocabulary';
+import { GENERAL_VOCABULARY_SETS, LEVEL_GROUPS, GeneralVocabSet } from '../../data/generalVocabulary';
 
 interface GrammarTopic {
   id: string;
@@ -301,6 +302,8 @@ export default function TopicDatabaseScreen() {
   const [chapters, setChapters] = useState<GrammarChapter[]>(DEFAULT_CHAPTERS);
   const [vocabularySets, setVocabularySets] = useState<any[]>([]);
   const [vocabSearchQuery, setVocabSearchQuery] = useState('');
+  const [vocabCategory, setVocabCategory] = useState<'student_lessons' | 'general'>('student_lessons');
+  const [selectedUserAssignMap, setSelectedUserAssignMap] = useState<Record<string, string>>({});
   
   const [idiomsSearchQuery, setIdiomsSearchQuery] = useState('');
   const [phrasalSearchQuery, setPhrasalSearchQuery] = useState('');
@@ -879,13 +882,17 @@ export default function TopicDatabaseScreen() {
 
       {/* SECTION 2: BAZA SŁOWNICTWA */}
       {selectedSection === 'vocabulary' && (
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Top Bar with Header & Search */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-base-200/50 p-4 rounded-2xl border border-white/10 backdrop-blur-xl">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold">
                 <Layers size={20} />
               </div>
-              <h2 className="text-lg font-bold text-white">Baza Słownictwa ({vocabularySets.length} Zestawów)</h2>
+              <div>
+                <h2 className="text-lg font-bold text-white leading-tight">Baza Słownictwa</h2>
+                <p className="text-xs text-content-muted">Przeglądaj zestawy z lekcji oraz zasoby ogólne</p>
+              </div>
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -893,10 +900,10 @@ export default function TopicDatabaseScreen() {
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted" size={16} />
                 <input
                   type="text"
-                  placeholder="Szukaj po lekcji, słówku lub kursancie..."
+                  placeholder="Szukaj po nazwie, słówku lub kursancie..."
                   value={vocabSearchQuery}
                   onChange={e => setVocabSearchQuery(e.target.value)}
-                  className="w-full bg-base-200/80 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder:text-content-muted focus:border-emerald-500/50 outline-none"
+                  className="w-full bg-base-200/80 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder:text-content-muted focus:border-emerald-500/50 outline-none transition-all"
                 />
               </div>
 
@@ -909,9 +916,49 @@ export default function TopicDatabaseScreen() {
             </div>
           </div>
 
+          {/* Category Tabs: Zestawy z Lekcji vs Słownictwo Ogólne */}
+          <div className="flex flex-wrap items-center gap-2 p-1.5 bg-black/40 rounded-2xl border border-white/10 backdrop-blur-md">
+            <button
+              onClick={() => setVocabCategory('student_lessons')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                vocabCategory === 'student_lessons'
+                  ? 'bg-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                  : 'text-content-muted hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <BookOpen size={16} />
+              Zestawy z Lekcji Kursantów
+              <span className={`text-xs px-2 py-0.5 rounded-full font-mono ${
+                vocabCategory === 'student_lessons' ? 'bg-black/20 text-black' : 'bg-white/10 text-white'
+              }`}>
+                {filteredVocabSets.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setVocabCategory('general')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                vocabCategory === 'general'
+                  ? 'bg-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                  : 'text-content-muted hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Layers size={16} />
+              Słownictwo Ogólne (3 Poziomy)
+              <span className={`text-xs px-2 py-0.5 rounded-full font-mono ${
+                vocabCategory === 'general' ? 'bg-black/20 text-black' : 'bg-white/10 text-white'
+              }`}>
+                {GENERAL_VOCABULARY_SETS.length}
+              </span>
+            </button>
+          </div>
+
+          {/* Cart banner if words selected */}
           {cart.length > 0 && (
-            <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 px-4 py-2.5 rounded-xl">
-              <span className="text-xs font-bold text-emerald-400 font-mono">{cart.length} słówek wybranych w koszyku</span>
+            <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 px-4 py-2.5 rounded-xl backdrop-blur-md">
+              <span className="text-xs font-bold text-emerald-400 font-mono">
+                {cart.length} słówek wybranych w koszyku
+              </span>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="secondary" onClick={() => setCart([])}>Wyczyść</Button>
                 <Button size="sm" onClick={() => {
@@ -926,94 +973,259 @@ export default function TopicDatabaseScreen() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredVocabSets.map((vSet: any) => (
-              <Card key={vSet.id} className="p-0 overflow-hidden liquid-glass-tile border-white/10 flex flex-col justify-between h-full">
-                <div className="p-4 flex flex-col h-full gap-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold shrink-0">
-                      <Layers size={18} />
-                    </div>
-                    <span className="text-[10px] bg-white/10 text-content-muted px-2 py-0.5 rounded uppercase tracking-widest text-right line-clamp-1">
-                      {vSet.studentName}
-                    </span>
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-bold text-lg text-white leading-tight mb-1 line-clamp-2">{vSet.name}</h3>
-                    <span className="text-xs text-emerald-400 font-mono font-bold">{vSet.words?.length || 0} słówek</span>
-                  </div>
-                  
-                  <div className="mt-auto pt-4 border-t border-white/5 space-y-3">
-                    <select 
-                      id={`select-${vSet.id}`} 
-                      className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-sm text-white outline-none focus:border-emerald-500/50"
-                    >
-                      <option value="">Wybierz kursanta...</option>
-                      {allUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    </select>
-                    
-                    <Button 
-                      onClick={() => handleAssignSetToUser(vSet, (document.getElementById(`select-${vSet.id}`) as HTMLSelectElement)?.value)} 
-                      className="w-full bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-black border border-emerald-500/30 transition-all font-bold"
-                    >
-                      <Sparkles size={16} className="mr-2" />
-                      Przypisz zestaw
-                    </Button>
-                    
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => setExpandedVocabSetId(expandedVocabSetId === vSet.id ? null : vSet.id)}
-                      className="w-full text-xs text-content-muted"
-                    >
-                      {expandedVocabSetId === vSet.id ? 'Ukryj słówka' : 'Pokaż słówka'}
-                    </Button>
-                  </div>
-                </div>
+          {/* CATEGORY 1: ZESTAWY Z LEKCJI KURSANTÓW (COMPACT LIST VIEW) */}
+          {vocabCategory === 'student_lessons' && (
+            <div className="space-y-3">
+              {filteredVocabSets.map((vSet: any) => {
+                const isExpanded = expandedVocabSetId === vSet.id;
+                const assignedUserId = selectedUserAssignMap[vSet.id] || '';
 
-                <AnimatePresence>
-                  {expandedVocabSetId === vSet.id && (
-                    <motion.div 
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="border-t border-white/10 bg-base-200/30 overflow-hidden"
-                    >
-                      <div className="p-4 space-y-2 max-h-[40vh] overflow-y-auto custom-scrollbar">
-                        {vSet.words.map((w: any, idx: number) => {
-                          const isCartChecked = cart.some(item => item.id === w.id);
-                          return (
-                            <div key={idx} className="flex items-center gap-3 text-sm p-2 rounded-lg bg-base-100/30 hover:bg-base-100/60">
-                              <input 
-                                type="checkbox" 
-                                className="checkbox checkbox-xs checkbox-emerald" 
-                                checked={isCartChecked} 
-                                onChange={(e) => {
-                                  if (e.target.checked) setCart(prev => [...prev, w]);
-                                  else setCart(prev => prev.filter(item => item.id !== w.id));
-                                }} 
-                              />
-                              <div className="flex items-center justify-between w-1/2 pr-2">
-                                <span className="font-bold text-emerald-400">{w.english}</span>
-                                <TTSButtons text={w.english} />
-                              </div>
-                              <span className="text-content-muted w-1/2">{w.polish || '—'}</span>
-                            </div>
-                          );
-                        })}
+                return (
+                  <Card key={vSet.id} className="p-0 overflow-hidden liquid-glass-tile border-white/10 transition-all hover:border-white/20">
+                    <div className="p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      {/* Left: Set info */}
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold shrink-0">
+                          <BookOpen size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <h3 className="font-bold text-base text-white truncate">{vSet.name}</h3>
+                            <span className="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-bold">
+                              {vSet.words?.length || 0} słówek
+                            </span>
+                            <span className="text-[10px] bg-white/10 text-content-muted px-2 py-0.5 rounded uppercase tracking-wider">
+                              {vSet.studentName}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Card>
-            ))}
 
-            {filteredVocabSets.length === 0 && (
-              <div className="text-center p-12 bg-base-200/30 rounded-2xl border border-white/5 text-content-muted">
-                Brak zapisanych zestawów słownictwa.
-              </div>
-            )}
-          </div>
+                      {/* Right: Actions & Student Selector */}
+                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
+                        <select
+                          value={assignedUserId}
+                          onChange={(e) => setSelectedUserAssignMap(prev => ({ ...prev, [vSet.id]: e.target.value }))}
+                          className="bg-black/50 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-emerald-500/50 max-w-[180px]"
+                        >
+                          <option value="">Wybierz kursanta...</option>
+                          {allUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                        </select>
+
+                        <button
+                          onClick={() => handleAssignSetToUser(vSet, assignedUserId)}
+                          disabled={!assignedUserId}
+                          className={`text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all ${
+                            assignedUserId
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500 hover:text-black cursor-pointer'
+                              : 'bg-white/5 text-content-muted border border-white/5 cursor-not-allowed'
+                          }`}
+                        >
+                          <Sparkles size={14} />
+                          Przypisz
+                        </button>
+
+                        <button
+                          onClick={() => setExpandedVocabSetId(isExpanded ? null : vSet.id)}
+                          className="text-xs text-content-muted hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-all flex items-center gap-1 font-semibold"
+                        >
+                          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          {isExpanded ? 'Ukryj' : 'Pokaż słówka'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expandable Words Table */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="border-t border-white/10 bg-black/40 overflow-hidden"
+                        >
+                          <div className="p-4 space-y-2 max-h-[350px] overflow-y-auto custom-scrollbar">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {vSet.words.map((w: any, idx: number) => {
+                                const isCartChecked = cart.some(item => item.id === w.id || (item.english === w.english && item.polish === w.polish));
+                                return (
+                                  <div key={idx} className="flex items-center gap-3 text-xs p-2.5 rounded-xl bg-base-100/40 hover:bg-base-100/70 border border-white/5">
+                                    <input
+                                      type="checkbox"
+                                      className="checkbox checkbox-xs checkbox-emerald rounded"
+                                      checked={isCartChecked}
+                                      onChange={(e) => {
+                                        if (e.target.checked) setCart(prev => [...prev, w]);
+                                        else setCart(prev => prev.filter(item => item.id !== w.id && item.english !== w.english));
+                                      }}
+                                    />
+                                    <div className="flex-1 flex items-center justify-between min-w-0 pr-1">
+                                      <span className="font-bold text-emerald-400 truncate">{w.english}</span>
+                                      <TTSButtons text={w.english} />
+                                    </div>
+                                    <span className="text-content-muted truncate max-w-[50%]">{w.polish || '—'}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </Card>
+                );
+              })}
+
+              {filteredVocabSets.length === 0 && (
+                <div className="text-center p-12 bg-base-200/30 rounded-2xl border border-white/5 text-content-muted">
+                  Brak zapisanych zestawów z lekcji kursantów.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* CATEGORY 2: SŁOWNICTWO OGÓLNE (PODZIELONE NA 3 POZIOMY) */}
+          {vocabCategory === 'general' && (
+            <div className="space-y-6">
+              {LEVEL_GROUPS.map((group) => {
+                // Filter general sets belonging to this level group
+                const groupSets = GENERAL_VOCABULARY_SETS.filter(s => s.levelGroup === group.key).filter(s => {
+                  if (!vocabSearchQuery.trim()) return true;
+                  const q = vocabSearchQuery.toLowerCase();
+                  return (
+                    s.title.toLowerCase().includes(q) ||
+                    s.description.toLowerCase().includes(q) ||
+                    s.words.some(w => w.english.toLowerCase().includes(q) || w.polish.toLowerCase().includes(q))
+                  );
+                });
+
+                return (
+                  <div key={group.key} className="space-y-3">
+                    {/* Level Section Header */}
+                    <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-base-200/60 border border-white/10 backdrop-blur-md">
+                      <span className={`text-xs font-mono font-bold px-3 py-1 rounded-lg border ${group.badgeClass}`}>
+                        Poziom {group.levels}
+                      </span>
+                      <div>
+                        <h3 className="font-bold text-base text-white">{group.name}</h3>
+                        <p className="text-xs text-content-muted">{group.description}</p>
+                      </div>
+                      <span className="ml-auto text-xs font-mono text-content-muted bg-white/5 px-2.5 py-1 rounded-lg border border-white/5 shrink-0">
+                        {groupSets.length} zestawów
+                      </span>
+                    </div>
+
+                    {/* List of sets in this level group */}
+                    <div className="space-y-2.5">
+                      {groupSets.map((gSet) => {
+                        const isExpanded = expandedVocabSetId === gSet.id;
+                        const assignedUserId = selectedUserAssignMap[gSet.id] || '';
+
+                        return (
+                          <Card key={gSet.id} className="p-0 overflow-hidden liquid-glass-tile border-white/10 transition-all hover:border-white/20">
+                            <div className="p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                              {/* Left: Title & Description */}
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className={`w-9 h-9 rounded-xl border flex items-center justify-center font-bold text-xs shrink-0 ${group.badgeClass}`}>
+                                  {gSet.levelBadge}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className="font-bold text-base text-white">{gSet.title}</h4>
+                                    <span className="text-[10px] font-mono font-bold bg-white/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded">
+                                      {gSet.words.length} słówek
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-content-muted truncate mt-0.5">{gSet.description}</p>
+                                </div>
+                              </div>
+
+                              {/* Right: Actions */}
+                              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
+                                <select
+                                  value={assignedUserId}
+                                  onChange={(e) => setSelectedUserAssignMap(prev => ({ ...prev, [gSet.id]: e.target.value }))}
+                                  className="bg-black/50 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-emerald-500/50 max-w-[180px]"
+                                >
+                                  <option value="">Wybierz kursanta...</option>
+                                  {allUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                </select>
+
+                                <button
+                                  onClick={() => handleAssignSetToUser({ name: gSet.title, words: gSet.words }, assignedUserId)}
+                                  disabled={!assignedUserId}
+                                  className={`text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all ${
+                                    assignedUserId
+                                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500 hover:text-black cursor-pointer'
+                                      : 'bg-white/5 text-content-muted border border-white/5 cursor-not-allowed'
+                                  }`}
+                                >
+                                  <Sparkles size={14} />
+                                  Przypisz
+                                </button>
+
+                                <button
+                                  onClick={() => setExpandedVocabSetId(isExpanded ? null : gSet.id)}
+                                  className="text-xs text-content-muted hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-all flex items-center gap-1 font-semibold"
+                                >
+                                  {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                  {isExpanded ? 'Ukryj' : 'Pokaż słówka'}
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Expandable Words Table */}
+                            <AnimatePresence>
+                              {isExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  className="border-t border-white/10 bg-black/40 overflow-hidden"
+                                >
+                                  <div className="p-4 space-y-2 max-h-[350px] overflow-y-auto custom-scrollbar">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                      {gSet.words.map((w: any, idx: number) => {
+                                        const isCartChecked = cart.some(item => item.id === w.id || item.english === w.english);
+                                        return (
+                                          <div key={idx} className="flex items-center gap-3 text-xs p-2.5 rounded-xl bg-base-100/40 hover:bg-base-100/70 border border-white/5">
+                                            <input
+                                              type="checkbox"
+                                              className="checkbox checkbox-xs checkbox-emerald rounded"
+                                              checked={isCartChecked}
+                                              onChange={(e) => {
+                                                if (e.target.checked) setCart(prev => [...prev, w]);
+                                                else setCart(prev => prev.filter(item => item.id !== w.id && item.english !== w.english));
+                                              }}
+                                            />
+                                            <div className="flex-1 flex items-center justify-between min-w-0 pr-1">
+                                              <span className="font-bold text-emerald-400 truncate">{w.english}</span>
+                                              <TTSButtons text={w.english} />
+                                            </div>
+                                            <span className="text-content-muted truncate max-w-[50%]">{w.polish || '—'}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </Card>
+                        );
+                      })}
+
+                      {groupSets.length === 0 && (
+                        <div className="text-center p-6 bg-base-200/20 rounded-xl border border-white/5 text-content-muted text-xs">
+                          Brak zestawów pasujących do kryteriów wyszukiwania w tym poziomie.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

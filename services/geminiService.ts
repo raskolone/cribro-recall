@@ -860,19 +860,38 @@ export const getUserWeaknesses = async (userId: string): Promise<string> => {
   }
   try {
     const weaknessesRef = collection(db, `users/${userId}/weaknesses`);
-    const q = query(weaknessesRef, orderBy('frequency', 'desc'), limit(5));
+    const q = query(weaknessesRef, orderBy('frequency', 'desc'), limit(15));
     const snapshot = await getDocs(q);
     
-    if (snapshot.empty) {
+    let userDocWeaknesses: string[] = [];
+    try {
+      const userSnap = await getDoc(doc(db, `users/${userId}`));
+      if (userSnap.exists()) {
+        const uData = userSnap.data();
+        if (Array.isArray(uData.frequentErrors) && uData.frequentErrors.length > 0) {
+          userDocWeaknesses = uData.frequentErrors;
+        }
+      }
+    } catch (e) {
+      // Ignore user doc read errors
+    }
+
+    if (snapshot.empty && userDocWeaknesses.length === 0) {
       return "Brak zidentyfikowanych błędów.";
     }
 
-    const weaknesses = snapshot.docs.map(doc => {
+    const collectionWeaknesses = snapshot.docs.map(doc => {
       const data = doc.data();
-      return `Błąd: ${data.name || doc.id} - ${data.description || 'Brak opisu'}`;
+      return `- Błąd/Problem: "${data.name || doc.id}" (częstość: ${data.frequency || 1}) ${data.description ? `[Kontekst: ${data.description}]` : ''}`;
     });
 
-    return weaknesses.join('\n');
+    const additionalFromDoc = userDocWeaknesses
+      .filter(err => !snapshot.docs.some(d => d.data()?.name?.toLowerCase() === err.toLowerCase()))
+      .map(err => `- Częsty błąd z profilu: "${err}"`);
+
+    const allWeaknessesList = [...collectionWeaknesses, ...additionalFromDoc];
+
+    return allWeaknessesList.join('\n');
   } catch (error: any) {
     if (error?.code === 'permission-denied') {
       console.warn("Permission denied fetching weaknesses:", error.message);
@@ -1010,16 +1029,40 @@ ${text}`;
 export const logMistakesToFirebase = async (userId: string, mistakes: string[]) => {
   if (!userId || userId === 'demo-id' || !mistakes || mistakes.length === 0) return;
   try {
+    const cleanMistakes: string[] = [];
     for (const mistake of mistakes) {
-      if (!mistake || mistake.trim() === '') continue;
+      if (!mistake || typeof mistake !== 'string' || mistake.trim() === '') continue;
       const cleanName = mistake.trim();
-      const safeId = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+      cleanMistakes.push(cleanName);
+      const safeId = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 50);
+      if (!safeId) continue;
+
       const mistakeRef = doc(db, `users/${userId}/weaknesses`, safeId);
       const snap = await getDoc(mistakeRef);
       if (snap.exists()) {
-        await updateDoc(mistakeRef, { frequency: increment(1) });
+        await updateDoc(mistakeRef, { 
+          frequency: increment(1),
+          lastOccurred: new Date().toISOString()
+        });
       } else {
-        await setDoc(mistakeRef, { name: cleanName, frequency: 1, description: 'Zidentyfikowane przez AI podczas ćwiczeń.' });
+        await setDoc(mistakeRef, { 
+          name: cleanName, 
+          frequency: 1, 
+          description: 'Zidentyfikowane przez AI podczas ćwiczeń tłumaczeniowych / fiszek.',
+          lastOccurred: new Date().toISOString()
+        });
+      }
+    }
+
+    // Also update frequentErrors array on user profile doc
+    if (cleanMistakes.length > 0) {
+      const userRef = doc(db, 'users', userId);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const uData = userSnap.data();
+        const existingErrors: string[] = Array.isArray(uData.frequentErrors) ? uData.frequentErrors : [];
+        const merged = Array.from(new Set([...cleanMistakes, ...existingErrors])).slice(0, 30);
+        await updateDoc(userRef, { frequentErrors: merged });
       }
     }
   } catch (error) {
