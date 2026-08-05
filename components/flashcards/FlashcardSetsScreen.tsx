@@ -103,7 +103,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
         mastery[set.id] = 0;
       } else {
         const recentSessions = setSessions.sort((a, b) => b.completedAt?.toMillis() - a.completedAt?.toMillis()).slice(0, 3);
-        const avgScore = recentSessions.reduce((acc, s) => acc + s.scorePercent, 0) / recentSessions.length;
+        const avgScore = recentSessions.reduce((acc, s) => acc + (s.scorePercent || 0), 0) / recentSessions.length;
         mastery[set.id] = Math.round(avgScore);
       }
     });
@@ -174,7 +174,8 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     });
   }, [sets]);
   const lessonSets = sortedSets.filter(s => s.isLessonVocabulary);
-  const otherSets = sortedSets.filter(s => !s.isLessonVocabulary);
+  const otherSets = sortedSets.filter(s => !s.isLessonVocabulary && !s.isGeneral);
+  const generalSets = sortedSets.filter(s => s.isGeneral);
 
   const renderLessonSetRow = (set: FlashcardSet, index: number) => {
     const cleanTitle = getSetCleanTitle(set);

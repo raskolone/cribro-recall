@@ -10,6 +10,8 @@ export interface User {
   email: string;
   role: 'admin' | 'user' | 'teacher';
   photoURL?: string;
+  displayName?: string;
+  name?: string;
   streakCount?: number;
   translatedSentencesCount?: number;
   requirePasswordChange?: boolean;
@@ -69,6 +71,7 @@ export interface PracticeHistory {
 }
 
 export interface PracticeLog {
+  sentences?: any[];
   id: string;
   exerciseType: ExerciseType;
   date: string;
@@ -97,6 +100,7 @@ export interface FlashcardSet {
   updatedAt: any; // Timestamp
   assignedByTeacher?: boolean;
   isLessonVocabulary?: boolean;
+  isGeneral?: boolean;
   lessonNumber?: number;
   lessonDate?: string;
   lessonTopic?: string;

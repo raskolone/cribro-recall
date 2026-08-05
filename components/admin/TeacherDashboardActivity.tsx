@@ -72,21 +72,28 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
                 if (data.date) {
                   const logDate = new Date(data.date);
                   if (!isNaN(logDate.getTime())) {
-                    const isTest = (data.exerciseType as string) === 'test' || Boolean(data.testName);
+                    const isTest = (data.exerciseType as string) === 'test' || Boolean(data.testName?.toLowerCase().includes('test'));
+                    const isActivity = (data.exerciseType as string) === 'Aktywność';
+                    const actType = isTest ? 'test' : (isActivity ? 'login' : 'practice');
                     const scoreText = data.score !== undefined && data.totalWords
                       ? `${data.score}/${data.totalWords}`
                       : (data.score !== undefined ? `${data.score}%` : undefined);
 
+                    let titleStr = data.testName ? `Test: ${data.testName}` : `Ćwiczenie: ${data.exerciseType || 'Trening słówek'}`;
+                    if (isActivity) {
+                      titleStr = 'Aktywność: Wejście na konto';
+                    }
+
                     allActs.push({
                       id: `log-${u.id}-${docSnap.id}`,
-                      type: isTest ? 'test' : 'practice',
+                      type: actType,
                       userId: u.id,
                       userName,
                       userEmail: u.email || u.username,
                       photoURL: u.photoURL,
                       timestamp: logDate,
                       dateStr: logDate.toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'medium' }),
-                      title: data.testName ? `Test: ${data.testName}` : `Ćwiczenie: ${data.exerciseType || 'Trening słówek'}`,
+                      title: titleStr,
                       details: data.isRevisionMode ? 'Tryb powtórki' : undefined,
                       score: scoreText
                     });

@@ -37,9 +37,31 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
     let currentDbSets: FlashcardSet[] = [];
     let currentLessonSets: FlashcardSet[] = [];
 
+    
+    const generalSets = GENERAL_VOCABULARY_SETS.map(gs => ({
+      id: gs.id,
+      userId: 'system',
+      title: gs.title,
+      description: gs.description,
+      language: 'en',
+      flashcards: gs.words.map(w => ({
+        id: w.id,
+        front: w.english,
+        back: w.polish,
+        isMastered: false
+      })),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      sourceType: 'ai',
+      isGeneral: true,
+      levelGroup: gs.levelGroup,
+      levelBadge: gs.levelBadge,
+    } as any));
+
     const updateMergedSets = () => {
-      setSets([...currentDbSets, ...currentLessonSets]);
+      setSets([...currentDbSets, ...currentLessonSets, ...generalSets]);
     };
+
 
     const setsRef = collection(db, 'sets');
     const q = query(setsRef, where('userId', '==', userId));

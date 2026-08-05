@@ -1,0 +1,33 @@
+--- components/dashboard/Dashboard.tsx
++++ components/dashboard/Dashboard.tsx
+@@ -5,7 +5,7 @@
+ import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
+ import Sidebar from './Sidebar';
+ import ConfirmModal from '../ui/ConfirmModal';
+ import BugReporter from '../ui/BugReporter';
+ import AdminMessageModal from '../ui/AdminMessageModal';
+ import AIExerciseGeneratorScreen from './AIExerciseGeneratorScreen';
+ 
+@@ -67,6 +67,23 @@
+ 
+   const sloganContainerRef = useRef<HTMLDivElement>(null);
+   
++  // Record account entry activity
++  useEffect(() => {
++    if (user?.id) {
++      const hasLogged = sessionStorage.getItem('activity_logged_' + user.id);
++      if (!hasLogged) {
++        const logRef = collection(db, `users/${user.id}/practiceLogs`);
++        addDoc(logRef, {
++          date: new Date().toISOString(),
++          exerciseType: 'Aktywność',
++          testName: 'Zalogowanie / Wejście na konto',
++          exercisesData: 'Rejestracja wejścia na konto',
++        }).catch(console.error);
++        sessionStorage.setItem('activity_logged_' + user.id, 'true');
++      }
++    }
++  }, [user?.id]);
++
+   // Slogan logic refactored
+   useEffect(() => {

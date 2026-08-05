@@ -406,6 +406,12 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
   const [translatedSentencesCount, setTranslatedSentencesCount] = useState<number>(user?.translatedSentencesCount || 0);
 
+  useEffect(() => {
+    if (user?.translatedSentencesCount !== undefined) {
+      setTranslatedSentencesCount(user.translatedSentencesCount);
+    }
+  }, [user?.translatedSentencesCount]);
+
   // Per-user Vocabulary Basket & Exercise Cache Keys
   const userBasketKey = user?.id ? `ai_vocab_basket_${user.id}` : 'ai_vocab_basket_guest';
   const userCacheKey = user?.id ? `ai_exercise_cache_${user.id}` : 'ai_exercise_cache_guest';
@@ -1668,7 +1674,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
   };
 
   const averageScore = evaluationResults.length > 0
-    ? Math.round(evaluationResults.reduce((acc, r) => acc + r.score, 0) / evaluationResults.length)
+    ? Math.round(evaluationResults.reduce((acc, r) => acc + (r?.score || 0), 0) / evaluationResults.length)
     : 0;
 
   return (

@@ -771,7 +771,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       const studentFullName = selectedUser.displayName || selectedUser.name || `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.email || 'Kursant';
       const cleanFileName = `Historia_Lekcji_${studentFullName.replace(/[^a-zA-Z0-9ąĆęŁńÓśŹŻĄĆĘŁŃÓŚŹŻ]/g, '_')}.pdf`;
       
-      const opt = {
+      const opt: any = {
         margin: [10, 10, 10, 10],
         filename: cleanFileName,
         image: { type: 'jpeg' as const, quality: 0.98 },
@@ -1464,7 +1464,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         {practiceLogs.map(log => {
                           let scorePercent = null;
                           if (log.score !== undefined) {
-                            scorePercent = (log.score <= 1 && log.score > 0) ? Math.round(log.score * 100) : Math.round(log.score);
+                            const scoreNum = Number(log.score) || 0;
+                            scorePercent = (scoreNum <= 1 && scoreNum > 0) ? Math.round(scoreNum * 100) : Math.round(scoreNum);
                           }
                           
                           return (

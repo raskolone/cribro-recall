@@ -201,26 +201,28 @@ const StudentStatsScreen: React.FC = () => {
     // Collect distinct local dates
     const dateMap = new Map<string, number>();
     logs.forEach(l => {
-      totalScoreSum += (l.score || 0);
+      if ((l.exerciseType as string) === 'Aktywność') return;
+      totalScoreSum += (Number(l.score) || 0);
 
       // Count sentences
-      let count = 0;
-      if (Array.isArray(l.exercisesData)) {
-        count = l.exercisesData.length;
-      } else if (typeof l.exercisesData === 'string') {
-        if (l.exercisesData.includes(' | ')) {
-          count = l.exercisesData.split(' | ').length;
-        } else {
-          try {
-            const parsed = JSON.parse(l.exercisesData);
-            if (Array.isArray(parsed)) count = parsed.length;
-          } catch {}
+      if (l.exerciseType === 'ai_translation') {
+        let count = 0;
+        if (l.totalWords) {
+          count = l.totalWords;
+        } else if (Array.isArray(l.exercisesData)) {
+          count = l.exercisesData.length;
+        } else if (typeof l.exercisesData === 'string') {
+          if (l.exercisesData.includes(' | ')) {
+            count = l.exercisesData.split(' | ').length;
+          } else {
+            try {
+              const parsed = JSON.parse(l.exercisesData);
+              if (Array.isArray(parsed)) count = parsed.length;
+            } catch {}
+          }
         }
-      } else if (Array.isArray(l.detailedFeedback)) {
-        count = l.detailedFeedback.length;
+        totalSentences += count;
       }
-      if (!count) count = l.totalWords || 1;
-      totalSentences += count;
 
       const dateKey = getLocalDateKey(l.date);
       if (dateKey) {
@@ -228,7 +230,8 @@ const StudentStatsScreen: React.FC = () => {
       }
     });
 
-    const averageScore = logs.length > 0 ? Math.round(totalScoreSum / logs.length) : 0;
+    const validLogs = logs.filter(l => (l.exerciseType as string) !== 'Aktywność');
+    const averageScore = validLogs.length > 0 ? Math.round(totalScoreSum / validLogs.length) : 0;
 
     // Calculate streaks using calendar dates
     const dateKeys = Array.from(dateMap.keys()).sort(); // ascending YYYY-MM-DD
@@ -292,7 +295,7 @@ const StudentStatsScreen: React.FC = () => {
     }
 
     return {
-      totalExercises: logs.length,
+      totalExercises: validLogs.length,
       averageScore,
       totalWords: totalSentences,
       currentStreak,

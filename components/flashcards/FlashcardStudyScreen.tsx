@@ -242,7 +242,7 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
 };
 
 // --- Flashcards Mode Component ---
-const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm }: any) => {
+const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language}: any) => {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const cardContainerRef = useRef<HTMLDivElement>(null);
@@ -495,7 +495,12 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
             {t('flashcards.score').replace('{correct}', correctCount.toString()).replace('{total}', cards.length.toString())}
           </p>
         </Card>
-        <Button onClick={onBack} className="w-full">{t('flashcards.back')}</Button>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
+          <Button onClick={onBack} variant="secondary" className="flex-1">{t('flashcards.back')}</Button>
+          <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards' }); }} className="flex-1">
+            {language === 'pl' ? 'Przećwicz w zdaniach' : 'Practice in sentences'}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -621,7 +626,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
 };
 
 // --- Quiz Mode Component ---
-const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm }: any) => {
+const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language}: any) => {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [options, setOptions] = useState<string[]>([]);
@@ -704,7 +709,12 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
             {t('flashcards.score').replace('{correct}', correctCount.toString()).replace('{total}', cards.length.toString())}
           </p>
         </Card>
-        <Button onClick={onBack} className="w-full">{t('flashcards.back')}</Button>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
+          <Button onClick={onBack} variant="secondary" className="flex-1">{t('flashcards.back')}</Button>
+          <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards' }); }} className="flex-1">
+            {language === 'pl' ? 'Przećwicz w zdaniach' : 'Practice in sentences'}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -807,7 +817,7 @@ const stripHtml = (html: string) => {
   return tmp.textContent || tmp.innerText || '';
 };
 
-const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm }: any) => {
+const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language}: any) => {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [input, setInput] = useState('');
@@ -880,7 +890,12 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
             {t('flashcards.score').replace('{correct}', correctCount.toString()).replace('{total}', cards.length.toString())}
           </p>
         </Card>
-        <Button onClick={onBack} className="w-full">{t('flashcards.back')}</Button>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
+          <Button onClick={onBack} variant="secondary" className="flex-1">{t('flashcards.back')}</Button>
+          <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards' }); }} className="flex-1">
+            {language === 'pl' ? 'Przećwicz w zdaniach' : 'Practice in sentences'}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -955,7 +970,7 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
 };
 
 // --- Matching Mode Component ---
-const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm }: any) => {
+const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language}: any) => {
   const [items, setItems] = useState<{ id: string; text: string; type: 'term' | 'definition'; flashcardId: string; isMatched: boolean }[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [wrongPair, setWrongPair] = useState<[string, string] | null>(null);
@@ -1056,7 +1071,12 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, show
                                 {i18n.t("Mistakes:")} {mistakes}
           </p>
         </Card>
-        <Button onClick={onBack} className="w-full">{t('flashcards.back')}</Button>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
+          <Button onClick={onBack} variant="secondary" className="flex-1">{t('flashcards.back')}</Button>
+          <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards' }); }} className="flex-1">
+            {language === 'pl' ? 'Przećwicz w zdaniach' : 'Practice in sentences'}
+          </Button>
+        </div>
       </div>
     );
   }

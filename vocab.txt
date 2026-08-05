@@ -1,0 +1,2237 @@
+Baza słownictwa
+   Zasada pracy: słownictwo jest uporządkowane według użyteczności komunikacyjnej i poziomów CEFR.
+   A1–A2 — fundamenty codziennej komunikacji
+1. Żywienie i posiłki
+bread — chleb
+milk — mleko
+water — woda
+coffee — kawa
+tea — herbata
+meat — mięso
+fish — ryba
+chicken — kurczak
+rice — ryż
+pasta — makaron
+potato — ziemniak
+vegetable — warzywo
+fruit — owoc
+apple — jabłko
+banana — banan
+breakfast — śniadanie
+lunch — lunch
+dinner — obiad
+hungry — głodny
+thirsty — spragniony
+egg — jajko
+cheese — ser
+butter — masło
+soup — zupa
+salad — sałatka
+sugar — cukier
+salt — sól
+bottle — butelka
+bowl — miska
+delicious — pyszny
+2. Sytuacje codzienne i rutyna
+wake up — budzić się
+get up — wstawać
+wash — myć się
+shower — brać prysznic
+get dressed — ubierać się
+have breakfast — jeść śniadanie
+leave home — wychodzić z domu
+go to work — iść do pracy
+go to school — iść do szkoły
+start — zaczynać
+finish — kończyć
+come home — wracać do domu
+cook — gotować
+clean — sprzątać
+relax — odpoczywać
+watch TV — oglądać telewizję
+read — czytać
+go shopping — iść na zakupy
+go to bed — iść spać
+sleep — spać
+brush my teeth — myć zęby
+make the bed — ścielić łóżko
+have a break — robić sobie przerwę
+take the bus — jechać autobusem
+walk the dog — wyprowadzać psa
+do homework — odrabiać pracę domową
+have a bath — brać kąpiel
+make dinner — przygotowywać obiad
+check email — sprawdzać pocztę
+meet friends — spotykać się ze znajomymi
+3. Rodzina i relacje
+family — rodzina
+mother — matka
+father — ojciec
+parent — rodzic
+sister — siostra
+brother — brat
+husband — mąż
+wife — żona
+partner — partner
+son — syn
+daughter — córka
+child — dziecko
+grandmother — babcia
+grandfather — dziadek
+aunt — ciocia
+uncle — wujek
+cousin — kuzyn lub kuzynka
+friend — przyjaciel lub przyjaciółka
+married — w związku małżeńskim
+single — singiel lub singielka
+nephew — siostrzeniec lub bratanek
+niece — siostrzenica lub bratanica
+grandchild — wnuk lub wnuczka
+grandparents — dziadkowie
+stepfather — ojczym
+stepmother — macocha
+twin — bliźniak lub bliźniaczka
+neighbour — sąsiad lub sąsiadka
+boyfriend — chłopak
+girlfriend — dziewczyna
+4. Dom i mieszkanie
+house — dom
+flat — mieszkanie
+room — pokój
+kitchen — kuchnia
+bathroom — łazienka
+bedroom — sypialnia
+living room — salon
+door — drzwi
+window — okno
+wall — ściana
+floor — podłoga
+table — stół
+chair — krzesło
+bed — łóżko
+sofa — kanapa
+wardrobe — szafa
+fridge — lodówka
+cooker — kuchenka
+garden — ogród
+balcony — balkon
+stairs — schody
+roof — dach
+ceiling — sufit
+carpet — dywan
+shelf — półka
+desk — biurko
+lamp — lampa
+mirror — lustro
+shower — prysznic
+washing machine — pralka
+5. Samochód i podstawowy transport
+car — samochód
+bus — autobus
+train — pociąg
+bicycle — rower
+motorbike — motocykl
+taxi — taksówka
+road — droga
+street — ulica
+station — stacja
+stop — przystanek
+ticket — bilet
+driver — kierowca
+passenger — pasażer
+wheel — koło
+door — drzwi
+seat — siedzenie
+petrol — benzyna
+traffic — ruch uliczny
+drive — prowadzić
+park — parkować
+airport — lotnisko
+platform — peron
+bus stop — przystanek autobusowy
+underground — metro
+tram — tramwaj
+van — furgonetka
+lorry — ciężarówka
+helmet — kask
+journey — podróż
+turn left — skręcić w lewo
+6. Zakupy i pieniądze
+shop — sklep
+supermarket — supermarket
+market — targ
+price — cena
+money — pieniądze
+cash — gotówka
+card — karta płatnicza
+coin — moneta
+change — reszta
+customer — klient
+buy — kupować
+pay — płacić
+sell — sprzedawać
+cost — kosztować
+cheap — tani
+expensive — drogi
+open — otwarty
+closed — zamknięty
+receipt — paragon
+shopping bag — torba na zakupy
+size — rozmiar
+colour — kolor
+shop assistant — sprzedawca
+sale — wyprzedaż
+offer — oferta
+wallet — portfel
+checkout — kasa
+try on — przymierzać
+spend — wydawać
+return — zwracać
+7. Miasto i podstawowe miejsca
+city — duże miasto
+town — miasto
+village — wieś
+street — ulica
+road — droga
+square — plac
+park — park
+shop — sklep
+bank — bank
+post office — poczta
+hospital — szpital
+school — szkoła
+restaurant — restauracja
+café — kawiarnia
+hotel — hotel
+station — dworzec
+cinema — kino
+library — biblioteka
+police station — komisariat policji
+pharmacy — apteka
+church — kościół
+bridge — most
+swimming pool — basen
+sports centre — centrum sportowe
+shopping centre — centrum handlowe
+bakery — piekarnia
+butcher’s — sklep mięsny
+car park — parking
+bus station — dworzec autobusowy
+traffic lights — światła drogowe
+8. Czas, daty i pogoda
+time — czas
+day — dzień
+week — tydzień
+month — miesiąc
+year — rok
+morning — poranek
+afternoon — popołudnie
+evening — wieczór
+night — noc
+today — dzisiaj
+tomorrow — jutro
+yesterday — wczoraj
+Monday — poniedziałek
+weekend — weekend
+spring — wiosna
+summer — lato
+autumn — jesień
+winter — zima
+sunny — słonecznie
+rainy — deszczowo
+hour — godzina
+minute — minuta
+date — data
+calendar — kalendarz
+early — wcześnie
+late — późno
+cloudy — pochmurno
+windy — wietrznie
+warm — ciepło
+cold — zimno
+9. Praca i szkoła
+job — praca
+work — pracować
+office — biuro
+company — firma
+boss — szef
+worker — pracownik
+teacher — nauczyciel
+student — uczeń lub student
+school — szkoła
+classroom — sala lekcyjna
+lesson — lekcja
+book — książka
+notebook — zeszyt
+pen — długopis
+computer — komputer
+meeting — spotkanie
+start — zaczynać
+finish — kończyć
+study — uczyć się
+learn — nauczyć się
+manager — kierownik
+secretary — sekretarz lub sekretarka
+customer — klient
+uniform — mundurek
+break — przerwa
+question — pytanie
+answer — odpowiedź
+exam — egzamin
+practice — ćwiczenie
+project — projekt
+10. Zdrowie i ciało
+head — głowa
+face — twarz
+eye — oko
+ear — ucho
+nose — nos
+mouth — usta
+tooth — ząb
+neck — szyja
+arm — ramię
+hand — dłoń
+finger — palec
+leg — noga
+foot — stopa
+back — plecy
+stomach — brzuch
+doctor — lekarz
+nurse — pielęgniarz lub pielęgniarka
+hospital — szpital
+ill — chory
+healthy — zdrowy
+shoulder — bark
+chest — klatka piersiowa
+knee — kolano
+elbow — łokieć
+heart — serce
+skin — skóra
+medicine — lekarstwo
+headache — ból głowy
+cold — przeziębienie
+temperature — temperatura
+11. Ubrania i wygląd
+shirt — koszula
+T-shirt — koszulka
+trousers — spodnie
+jeans — dżinsy
+dress — sukienka
+skirt — spódnica
+jacket — kurtka
+coat — płaszcz
+shoes — buty
+boots — kozaki
+socks — skarpetki
+hat — czapka
+bag — torba
+glasses — okulary
+wear — nosić
+tall — wysoki
+short — niski
+young — młody
+old — stary
+beautiful — piękny
+sweater — sweter
+shorts — krótkie spodenki
+belt — pasek
+scarf — szalik
+gloves — rękawiczki
+trainers — buty sportowe
+size — rozmiar
+thin — szczupły
+fat — gruby
+curly — kręcone
+12. Hobby, sport i czas wolny
+hobby — hobby
+sport — sport
+football — piłka nożna
+tennis — tenis
+swimming — pływanie
+cycling — jazda na rowerze
+running — bieganie
+walking — spacery
+music — muzyka
+film — film
+book — książka
+game — gra
+dance — taniec
+cook — gotować
+draw — rysować
+paint — malować
+play — grać
+watch — oglądać
+listen — słuchać
+travel — podróżować
+basketball — koszykówka
+volleyball — siatkówka
+gym — siłownia
+guitar — gitara
+photography — fotografia
+gardening — ogrodnictwo
+shopping — zakupy
+meet friends — spotykać się ze znajomymi
+go out — wychodzić
+have fun — dobrze się bawić
+13. Podróże i wakacje
+holiday — wakacje
+trip — wycieczka
+journey — podróż
+travel — podróżować
+tourist — turysta
+hotel — hotel
+room — pokój
+airport — lotnisko
+plane — samolot
+train — pociąg
+bus — autobus
+ticket — bilet
+passport — paszport
+suitcase — walizka
+map — mapa
+beach — plaża
+mountain — góra
+sea — morze
+visit — odwiedzać
+stay — zatrzymać się
+booking — rezerwacja
+flight — lot
+gate — bramka
+boarding pass — karta pokładowa
+guide — przewodnik
+campsite — kemping
+hostel — hostel
+swimming pool — basen
+take photos — robić zdjęcia
+go sightseeing — zwiedzać
+14. Komunikacja i technologia
+phone — telefon
+mobile — telefon komórkowy
+computer — komputer
+laptop — laptop
+tablet — tablet
+screen — ekran
+keyboard — klawiatura
+mouse — mysz
+internet — internet
+website — strona internetowa
+email — e-mail
+message — wiadomość
+photo — zdjęcie
+video — film
+call — dzwonić
+click — kliknąć
+open — otworzyć
+close — zamknąć
+send — wysłać
+download — pobrać
+printer — drukarka
+document — dokument
+file — plik
+folder — folder
+button — przycisk
+battery — bateria
+charger — ładowarka
+online — w internecie
+log in — zalogować się
+turn off — wyłączyć
+15. Emocje i podstawowe opinie
+happy — szczęśliwy
+sad — smutny
+angry — zły
+tired — zmęczony
+afraid — przestraszony
+worried — zmartwiony
+excited — podekscytowany
+surprised — zaskoczony
+bored — znudzony
+calm — spokojny
+love — kochać
+like — lubić
+dislike — nie lubić
+hate — nienawidzić
+want — chcieć
+need — potrzebować
+think — myśleć
+feel — czuć
+good — dobry
+bad — zły
+lonely — samotny
+friendly — przyjazny
+kind — miły
+funny — zabawny
+shy — nieśmiały
+serious — poważny
+interesting — interesujący
+favourite — ulubiony
+agree — zgadzać się
+sorry — przepraszam
+16. Natura, zwierzęta i środowisko
+animal — zwierzę
+dog — pies
+cat — kot
+bird — ptak
+horse — koń
+fish — ryba
+tree — drzewo
+flower — kwiat
+grass — trawa
+forest — las
+river — rzeka
+lake — jezioro
+sea — morze
+mountain — góra
+sky — niebo
+sun — słońce
+moon — księżyc
+rain — deszcz
+snow — śnieg
+weather — pogoda
+farm — gospodarstwo rolne
+field — pole
+island — wyspa
+beach — plaża
+plant — roślina
+duck — kaczka
+cow — krowa
+sheep — owca
+insect — owad
+world — świat
+17. Usługi i sprawy na mieście
+bank — bank
+post office — poczta
+pharmacy — apteka
+hairdresser — fryzjer
+garage — warsztat samochodowy
+police station — komisariat policji
+hospital — szpital
+dentist — dentysta
+hotel — hotel
+restaurant — restauracja
+café — kawiarnia
+library — biblioteka
+ticket office — kasa biletowa
+appointment — umówiona wizyta
+form — formularz
+queue — kolejka
+book — rezerwować
+collect — odebrać
+repair — naprawić
+order — zamówić
+parcel — paczka
+stamp — znaczek
+letter — list
+bank card — karta bankowa
+cash machine — bankomat
+menu — menu
+bill — rachunek
+haircut — strzyżenie
+check-up — badanie kontrolne
+service — usługa
+18. Bezpieczeństwo i nagłe sytuacje
+help — pomoc
+police — policja
+fire — pożar
+ambulance — karetka
+accident — wypadek
+danger — niebezpieczeństwo
+safe — bezpieczny
+careful — ostrożny
+emergency — nagły wypadek
+hospital — szpital
+doctor — lekarz
+hurt — zraniony
+pain — ból
+lost — zgubiony
+stop — zatrzymać się
+call — zadzwonić
+wait — czekać
+leave — odejść
+run — uciekać
+warning — ostrzeżenie
+first aid — pierwsza pomoc
+firefighter — strażak
+smoke — dym
+broken — złamany
+bleeding — krwawienie
+sick — chory
+phone number — numer telefonu
+address — adres
+be careful — uważać
+get help — uzyskać pomoc
+19. Gotowanie i sprzęt kuchenny
+cook — gotować
+bake — piec
+boil — gotować we wrzątku
+fry — smażyć
+cut — kroić
+wash — myć
+mix — mieszać
+add — dodawać
+kitchen — kuchnia
+cooker — kuchenka
+oven — piekarnik
+microwave — mikrofalówka
+fridge — lodówka
+freezer — zamrażarka
+pan — patelnia
+pot — garnek
+knife — nóż
+spoon — łyżka
+plate — talerz
+cup — filiżanka
+teaspoon — łyżeczka
+fork — widelec
+bowl — miska
+glass — szklanka
+recipe — przepis
+ingredient — składnik
+open — otwierać
+serve — podawać
+taste — próbować
+prepare — przygotowywać
+20. Dzieci i edukacja
+baby — niemowlę
+child — dziecko
+boy — chłopiec
+girl — dziewczynka
+parent — rodzic
+family — rodzina
+school — szkoła
+teacher — nauczyciel
+student — uczeń
+class — klasa
+lesson — lekcja
+homework — praca domowa
+test — sprawdzian
+book — książka
+pencil — ołówek
+learn — uczyć się
+read — czytać
+write — pisać
+play — bawić się
+grow — rosnąć
+kindergarten — przedszkole
+playground — plac zabaw
+subject — przedmiot
+maths — matematyka
+English — angielski
+break — przerwa
+question — pytanie
+answer — odpowiedź
+draw — rysować
+practise — ćwiczyć
+21. Kultura i media
+music — muzyka
+song — piosenka
+film — film
+cinema — kino
+television — telewizja
+radio — radio
+book — książka
+story — historia
+newspaper — gazeta
+magazine — czasopismo
+picture — obrazek
+photo — zdjęcie
+art — sztuka
+museum — muzeum
+theatre — teatr
+actor — aktor
+singer — piosenkarz lub piosenkarka
+writer — pisarz lub pisarka
+watch — oglądać
+listen — słuchać
+concert — koncert
+programme — program
+news — wiadomości
+cartoon — kreskówka
+comedy — komedia
+painting — obraz
+camera — aparat
+library card — karta biblioteczna
+famous — sławny
+interesting — interesujący
+22. Telefon, internet i media społecznościowe
+phone — telefon
+smartphone — smartfon
+app — aplikacja
+internet — internet
+Wi-Fi — Wi-Fi
+password — hasło
+account — konto
+profile — profil
+message — wiadomość
+email — e-mail
+photo — zdjęcie
+video — film
+post — post
+comment — komentarz
+like — polubienie
+share — udostępniać
+follow — obserwować
+search — szukać
+upload — przesłać
+download — pobrać
+username — nazwa użytkownika
+link — link
+web page — strona internetowa
+chat — czat
+emoji — emoji
+online — online
+offline — offline
+delete — usunąć
+save — zapisać
+click on — kliknąć
+23. Święta i wydarzenia
+birthday — urodziny
+wedding — ślub
+party — przyjęcie
+holiday — święto
+Christmas — Boże Narodzenie
+Easter — Wielkanoc
+New Year — Nowy Rok
+present — prezent
+card — kartka
+cake — ciasto
+candle — świeczka
+guest — gość
+invitation — zaproszenie
+music — muzyka
+dance — taniec
+celebrate — świętować
+meet — spotkać się
+invite — zaprosić
+arrive — przybyć
+leave — wyjść
+graduation — ukończenie szkoły
+concert — koncert
+festival — festiwal
+picnic — piknik
+barbecue — grill
+fireworks — fajerwerki
+congratulations — gratulacje
+welcome — witaj
+surprise — niespodzianka
+have a party — urządzić przyjęcie
+24. Opisy ludzi, rzeczy i miejsc
+big — duży
+small — mały
+long — długi
+short — krótki
+tall — wysoki
+low — niski
+old — stary
+young — młody
+new — nowy
+good — dobry
+bad — zły
+beautiful — piękny
+ugly — brzydki
+clean — czysty
+dirty — brudny
+easy — łatwy
+difficult — trudny
+quiet — cichy
+noisy — hałaśliwy
+busy — ruchliwy
+heavy — ciężki
+light — lekki
+fast — szybki
+slow — wolny
+hot — gorący
+cold — zimny
+friendly — przyjazny
+modern — nowoczesny
+far — daleko
+near — blisko
+B1–B2 — samodzielność i precyzja
+1. Żywienie i posiłki
+ingredient — składnik
+dish — danie
+meal — posiłek
+recipe — przepis
+flavour — smak
+spicy — pikantny
+bitter — gorzki
+sour — kwaśny
+fresh — świeży
+frozen — mrożony
+healthy — zdrowy
+balanced diet — zbilansowana dieta
+portion — porcja
+snack — przekąska
+appetite — apetyt
+vegetarian — wegetariański
+dairy — nabiał
+seafood — owoce morza
+takeaway — jedzenie na wynos
+processed food — żywność przetworzona
+nutritious — pożywny
+low-fat — niskotłuszczowy
+raw — surowy
+ripe — dojrzały
+homemade — domowej roboty
+food allergy — alergia pokarmowa
+main course — danie główne
+side dish — dodatek do dania
+serve — podawać
+waste food — marnować jedzenie
+2. Sytuacje codzienne i rutyna
+daily routine — codzienna rutyna
+household chore — obowiązek domowy
+commute — dojeżdżać do pracy lub szkoły
+schedule — harmonogram
+appointment — umówione spotkanie
+run errands — załatwiać sprawy
+get ready — przygotować się
+be in a hurry — spieszyć się
+take a break — zrobić sobie przerwę
+work out — ćwiczyć
+tidy up — posprzątać
+do the laundry — zrobić pranie
+oversleep — zaspać
+manage time — zarządzać czasem
+concentrate — koncentrować się
+postpone — przełożyć na później
+arrange — zorganizować
+attend — uczestniczyć
+deal with — zajmować się
+get used to — przyzwyczaić się do
+stick to a routine — trzymać się rutyny
+catch up — nadrobić zaległości
+make arrangements — poczynić ustalenia
+keep busy — mieć ciągle zajęcie
+have time off — mieć wolne
+multitask — wykonywać kilka zadań jednocześnie
+set an alarm — ustawić budzik
+miss an appointment — nie stawić się na umówione spotkanie
+carry out a task — wykonać zadanie
+make a habit of — wyrobić sobie nawyk
+3. Rodzina i relacje
+relative — krewny lub krewna
+relationship — relacja
+generation — pokolenie
+childhood — dzieciństwo
+teenager — nastolatek lub nastolatka
+adult — osoba dorosła
+couple — para
+marriage — małżeństwo
+divorce — rozwód
+get along — dobrze się dogadywać
+argue — kłócić się
+support — wspierać
+trust — ufać
+respect — szanować
+raise a child — wychowywać dziecko
+take after — być podobnym do
+look after — opiekować się
+close friend — bliski przyjaciel lub bliska przyjaciółka
+acquaintance — znajomy lub znajoma
+family gathering — spotkanie rodzinne
+single parent — samotny rodzic
+immediate family — najbliższa rodzina
+household member — domownik lub domowniczka
+bring up — wychowywać
+fall out — pokłócić się
+make up — pogodzić się
+rely on — polegać na
+have something in common — mieć coś wspólnego
+keep in touch — utrzymywać kontakt
+lose touch — stracić kontakt
+4. Dom i mieszkanie
+property — nieruchomość
+apartment block — blok mieszkalny
+neighbourhood — okolica
+rent — wynajmować
+landlord — właściciel wynajmowanego mieszkania
+tenant — najemca lub najemczyni
+mortgage — kredyt hipoteczny
+household — gospodarstwo domowe
+furniture — meble
+appliance — sprzęt gospodarstwa domowego
+central heating — centralne ogrzewanie
+storage — miejsce do przechowywania
+renovate — remontować
+repair — naprawiać
+decorate — urządzać wnętrze
+move in — wprowadzić się
+move out — wyprowadzić się
+spacious — przestronny
+comfortable — wygodny
+nearby — w pobliżu
+detached house — dom wolnostojący
+semi-detached house — bliźniak
+terraced house — dom szeregowy
+extension — dobudówka
+security system — system alarmowy
+maintenance — konserwacja
+do up — wyremontować
+settle in — zadomowić się
+share a flat — dzielić mieszkanie
+fully furnished — w pełni umeblowany
+5. Samochód i podstawowy transport
+vehicle — pojazd
+engine — silnik
+brakes — hamulce
+tyre — opona
+steering wheel — kierownica
+boot — bagażnik
+bonnet — maska samochodu
+fuel — paliwo
+motorway — autostrada
+crossroads — skrzyżowanie
+traffic jam — korek uliczny
+speed limit — ograniczenie prędkości
+driving licence — prawo jazdy
+public transport — transport publiczny
+commute — dojeżdżać do pracy lub szkoły
+overtake — wyprzedzać
+reverse — cofać
+break down — zepsuć się
+get stuck — utknąć
+give way — ustąpić pierwszeństwa
+gear — bieg
+clutch — sprzęgło
+indicator — kierunkowskaz
+windscreen — przednia szyba
+seat belt — pas bezpieczeństwa
+parking space — miejsce parkingowe
+pedestrian crossing — przejście dla pieszych
+roadworks — roboty drogowe
+refuel — zatankować
+miss a turn — przegapić skręt
+6. Zakupy i pieniądze
+budget — budżet
+discount — zniżka
+bargain — okazja cenowa
+refund — zwrot pieniędzy
+exchange — wymiana towaru
+brand — marka
+product — produkt
+purchase — zakup
+payment — płatność
+debit card — karta debetowa
+bank account — konto bankowe
+afford — móc sobie pozwolić na
+borrow — pożyczać od kogoś
+lend — pożyczać komuś
+save up — odkładać pieniądze
+waste money — marnować pieniądze
+compare prices — porównywać ceny
+out of stock — niedostępny w magazynie
+good value — wart swojej ceny
+online shopping — zakupy internetowe
+income — dochód
+expense — wydatek
+savings — oszczędności
+loan — pożyczka
+credit card — karta kredytowa
+delivery charge — opłata za dostawę
+consumer — konsument lub konsumentka
+advertise — reklamować
+shop around — porównywać oferty w różnych sklepach
+place an order — złożyć zamówienie
+7. Miasto i podstawowe miejsca
+neighbourhood — okolica
+district — dzielnica
+suburb — przedmieście
+city centre — centrum miasta
+pedestrian area — strefa dla pieszych
+pavement — chodnik
+crossing — przejście dla pieszych
+roundabout — rondo
+landmark — charakterystyczny punkt
+public space — przestrzeń publiczna
+facilities — obiekty i udogodnienia
+housing estate — osiedle mieszkaniowe
+rush hour — godziny szczytu
+crowded — zatłoczony
+convenient — dogodny
+lively — tętniący życiem
+peaceful — spokojny
+locate — zlokalizować
+explore — zwiedzać
+get around — poruszać się po mieście
+public transport network — sieć transportu publicznego
+town hall — ratusz
+industrial area — dzielnica przemysłowa
+green space — teren zielony
+cycle lane — ścieżka rowerowa
+underpass — przejście podziemne
+skyscraper — wieżowiec
+commuter — osoba dojeżdżająca do pracy
+urban — miejski
+within walking distance — w zasięgu krótkiego spaceru
+8. Czas, daty i pogoda
+deadline — termin wykonania
+period — okres
+occasion — okazja
+century — wiek
+decade — dekada
+season — pora roku
+forecast — prognoza
+temperature — temperatura
+climate — klimat
+heatwave — fala upałów
+storm — burza
+thunder — grzmot
+lightning — błyskawica
+shower — przelotny deszcz
+freezing — mroźny
+humid — wilgotny
+mild — łagodny
+changeable — zmienny
+on time — punktualnie
+in advance — z wyprzedzeniem
+schedule — harmonogram
+duration — czas trwania
+temporary — tymczasowy
+permanent — stały
+annual — coroczny
+monthly — miesięczny
+weather warning — ostrzeżenie pogodowe
+heavy rain — ulewny deszcz
+strong wind — silny wiatr
+clear up — rozpogodzić się
+9. Praca i szkoła
+career — kariera
+profession — zawód
+employee — pracownik lub pracowniczka
+employer — pracodawca
+colleague — współpracownik lub współpracowniczka
+salary — pensja
+qualification — kwalifikacja
+experience — doświadczenie
+responsibility — obowiązek
+task — zadanie
+deadline — termin wykonania
+apply for — ubiegać się o
+interview — rozmowa kwalifikacyjna
+get promoted — dostać awans
+resign — zrezygnować z pracy
+attend a course — uczęszczać na kurs
+take an exam — zdawać egzamin
+hand in — oddać pracę
+make progress — robić postępy
+achieve a goal — osiągnąć cel
+contract — umowa
+shift — zmiana w pracy
+training — szkolenie
+department — dział
+supervisor — przełożony lub przełożona
+workload — ilość pracy
+earn a living — zarabiać na życie
+meet a deadline — dotrzymać terminu
+gain experience — zdobywać doświadczenie
+be responsible for — odpowiadać za
+10. Zdrowie i ciało
+symptom — objaw
+treatment — leczenie
+illness — choroba
+injury — uraz
+infection — infekcja
+allergy — alergia
+medicine — lek
+prescription — recepta
+operation — operacja
+recovery — powrót do zdrowia
+blood pressure — ciśnienie krwi
+headache — ból głowy
+sore throat — ból gardła
+cough — kaszel
+fever — gorączka
+get better — poczuć się lepiej
+pass out — zemdleć
+prevent — zapobiegać
+examine — badać
+make an appointment — umówić wizytę
+condition — schorzenie
+mental health — zdrowie psychiczne
+side effect — skutek uboczny
+medical advice — porada medyczna
+health check — badanie kontrolne
+heal — goić się
+suffer from — cierpieć na
+come down with — zachorować na
+keep fit — dbać o kondycję
+balanced lifestyle — zrównoważony styl życia
+11. Ubrania i wygląd
+appearance — wygląd
+outfit — strój
+formal — formalny
+casual — codzienny
+fashionable — modny
+old-fashioned — staromodny
+comfortable — wygodny
+tight — obcisły
+loose — luźny
+plain — gładki
+patterned — wzorzysty
+striped — w paski
+checked — w kratę
+fit — pasować rozmiarem
+suit — pasować do osoby
+match — pasować do siebie
+get changed — przebrać się
+dress up — ubrać się elegancko
+well-dressed — dobrze ubrany
+second-hand — używany
+material — materiał
+cotton — bawełna
+wool — wełna
+leather — skóra
+sleeve — rękaw
+collar — kołnierzyk
+smart — elegancki
+stylish — stylowy
+go with — pasować do
+wear out — zużyć się
+12. Hobby, sport i czas wolny
+leisure — czas wolny
+pastime — sposób spędzania wolnego czasu
+exercise — ćwiczenia fizyczne
+fitness — sprawność fizyczna
+competition — zawody
+opponent — przeciwnik lub przeciwniczka
+teammate — osoba z drużyny
+coach — trener lub trenerka
+referee — sędzia sportowy
+tournament — turniej
+score — wynik
+train — trenować
+take part — brać udział
+win — wygrać
+lose — przegrać
+improve — poprawiać się
+be keen on — bardzo lubić
+give up — zrezygnować
+join a club — zapisać się do klubu
+outdoor activity — aktywność na świeżym powietrzu
+achievement — osiągnięcie
+champion — mistrz lub mistrzyni
+participant — uczestnik lub uczestniczka
+league — liga
+match — mecz
+draw — zremisować
+beat — pokonać
+keep active — pozostawać aktywnym
+work on a skill — pracować nad umiejętnością
+have a go — spróbować
+13. Podróże i wakacje
+destination — cel podróży
+accommodation — zakwaterowanie
+reservation — rezerwacja
+departure — odjazd lub odlot
+arrival — przyjazd lub przylot
+flight — lot
+boarding pass — karta pokładowa
+luggage — bagaż
+sightseeing — zwiedzanie
+guided tour — wycieczka z przewodnikiem
+travel insurance — ubezpieczenie podróżne
+public transport — transport publiczny
+delayed — opóźniony
+cancelled — odwołany
+abroad — za granicą
+book in advance — rezerwować z wyprzedzeniem
+check in — zameldować się
+check out — wymeldować się
+set off — wyruszyć
+get away — wyjechać na wypoczynek
+route — trasa
+cruise — rejs wycieczkowy
+resort — kurort
+local cuisine — lokalna kuchnia
+travel guide — przewodnik turystyczny
+currency — waluta
+customs — odprawa celna
+miss a flight — spóźnić się na lot
+go backpacking — podróżować z plecakiem
+take a day trip — wybrać się na jednodniową wycieczkę
+14. Komunikacja i technologia
+device — urządzenie
+software — oprogramowanie
+hardware — sprzęt komputerowy
+application — aplikacja
+network — sieć
+connection — połączenie
+file — plik
+folder — folder
+attachment — załącznik
+data — dane
+update — aktualizacja
+install — instalować
+log in — zalogować się
+sign up — zarejestrować się
+back up — wykonać kopię zapasową
+browse — przeglądać internet
+stream — transmitować strumieniowo
+charge — ładować
+crash — zawiesić się
+user-friendly — łatwy w obsłudze
+database — baza danych
+storage — pamięć masowa
+operating system — system operacyjny
+settings — ustawienia
+account — konto
+access — dostęp
+connect — podłączyć
+disconnect — odłączyć
+scan — skanować
+run out of battery — rozładować się
+15. Emocje i podstawowe opinie
+confident — pewny siebie
+disappointed — rozczarowany
+embarrassed — zawstydzony
+frustrated — sfrustrowany
+grateful — wdzięczny
+guilty — mający poczucie winy
+jealous — zazdrosny
+nervous — zdenerwowany
+proud — dumny
+relieved — odczuwający ulgę
+satisfied — zadowolony
+upset — zdenerwowany lub smutny
+attitude — nastawienie
+impression — wrażenie
+point of view — punkt widzenia
+agree — zgadzać się
+disagree — nie zgadzać się
+prefer — woleć
+complain — skarżyć się
+appreciate — doceniać
+anxious — zaniepokojony
+annoyed — poirytowany
+confused — zdezorientowany
+delighted — zachwycony
+enthusiastic — pełen entuzjazmu
+optimistic — optymistyczny
+pessimistic — pesymistyczny
+sympathetic — współczujący
+regret — żałować
+make up your mind — zdecydować się
+16. Natura, zwierzęta i środowisko
+environment — środowisko
+wildlife — dzika przyroda
+species — gatunek
+habitat — siedlisko
+landscape — krajobraz
+coast — wybrzeże
+valley — dolina
+waterfall — wodospad
+pollution — zanieczyszczenie
+climate change — zmiana klimatu
+global warming — globalne ocieplenie
+recycle — poddawać recyklingowi
+waste — odpady
+protect — chronić
+conserve — zachowywać i chronić
+endangered — zagrożony wyginięciem
+natural resource — zasób naturalny
+renewable energy — energia odnawialna
+drought — susza
+flood — powódź
+ecosystem — ekosystem
+carbon emissions — emisje dwutlenku węgla
+energy consumption — zużycie energii
+household waste — odpady z gospodarstw domowych
+air quality — jakość powietrza
+eco-friendly — przyjazny dla środowiska
+sustainable — zrównoważony
+reduce — ograniczać
+reuse — używać ponownie
+protect wildlife — chronić dziką przyrodę
+17. Usługi i sprawy na mieście
+customer service — obsługa klienta
+council office — urząd miejski
+delivery — dostawa
+maintenance — konserwacja
+complaint — skarga
+enquiry — zapytanie
+application form — formularz wniosku
+identification — dokument tożsamości
+document — dokument
+fee — opłata
+appointment — umówiona wizyta
+reservation — rezerwacja
+insurance — ubezpieczenie
+claim — roszczenie ubezpieczeniowe
+register — zarejestrować
+renew — przedłużyć ważność
+cancel — anulować
+report a problem — zgłosić problem
+fill in — wypełnić
+sort out — rozwiązać
+public service — usługa publiczna
+helpline — infolinia
+provider — usługodawca
+booking reference — numer rezerwacji
+terms and conditions — regulamin
+proof of address — potwierdzenie adresu
+make an enquiry — złożyć zapytanie
+request a refund — poprosić o zwrot pieniędzy
+confirm a booking — potwierdzić rezerwację
+deal with a complaint — rozpatrzyć skargę
+18. Bezpieczeństwo i nagłe sytuacje
+first aid — pierwsza pomoc
+injury — uraz
+victim — ofiara
+rescue — akcja ratunkowa
+theft — kradzież
+crime — przestępstwo
+suspect — podejrzany lub podejrzana
+witness — świadek
+fire alarm — alarm przeciwpożarowy
+emergency exit — wyjście awaryjne
+safety rule — zasada bezpieczeństwa
+protective equipment — sprzęt ochronny
+report — zgłosić
+warn — ostrzec
+avoid — unikać
+escape — uciec
+evacuate — ewakuować
+call for help — wezwać pomoc
+remain calm — zachować spokój
+take precautions — zachować środki ostrożności
+hazard — zagrożenie
+risk — ryzyko
+damage — uszkodzenie
+security — ochrona
+break-in — włamanie
+road accident — wypadek drogowy
+medical emergency — nagły przypadek medyczny
+protect — chronić
+injure — zranić
+follow instructions — postępować zgodnie z instrukcjami
+19. Gotowanie i sprzęt kuchenny
+chop — posiekać
+slice — pokroić w plastry
+peel — obrać
+grate — zetrzeć na tarce
+stir — mieszać
+pour — nalać
+roast — piec
+grill — grillować
+steam — gotować na parze
+season — doprawić
+saucepan — rondel
+frying pan — patelnia
+baking tray — blacha do pieczenia
+chopping board — deska do krojenia
+whisk — trzepaczka
+kettle — czajnik
+blender — blender
+dishwasher — zmywarka
+measuring cup — miarka kuchenna
+kitchen scales — waga kuchenna
+preheat — wstępnie rozgrzać
+melt — roztopić
+drain — odcedzić
+beat — ubijać
+blend — zmiksować
+mixture — mieszanka
+dough — ciasto
+spice — przyprawa
+ovenproof dish — naczynie żaroodporne
+recipe instructions — instrukcje w przepisie
+20. Dzieci i edukacja
+upbringing — wychowanie
+nursery — żłobek
+primary school — szkoła podstawowa
+secondary school — szkoła średnia
+pupil — uczeń lub uczennica
+curriculum — program nauczania
+subject — przedmiot
+grade — ocena
+mark — ocena
+assignment — zadanie
+project — projekt
+skill — umiejętność
+behaviour — zachowanie
+discipline — dyscyplina
+encourage — zachęcać
+develop — rozwijać
+revise — powtarzać materiał
+graduate — ukończyć szkołę lub studia
+pay attention — uważać
+fall behind — pozostawać w tyle
+education system — system edukacji
+state school — szkoła publiczna
+private school — szkoła prywatna
+school-leaver — absolwent lub absolwentka szkoły
+degree — stopień naukowy
+certificate — świadectwo
+learning difficulty — trudność w uczeniu się
+develop a skill — rozwijać umiejętność
+meet a requirement — spełnić wymaganie
+skip a lesson — opuścić lekcję
+21. Kultura i media
+culture — kultura
+tradition — tradycja
+exhibition — wystawa
+performance — przedstawienie
+audience — publiczność
+plot — fabuła
+character — postać
+review — recenzja
+documentary — film dokumentalny
+broadcast — transmisja
+headline — nagłówek
+article — artykuł
+journalist — dziennikarz lub dziennikarka
+publisher — wydawca
+author — autor lub autorka
+director — reżyser lub reżyserka
+entertain — bawić
+recommend — polecać
+be based on — być opartym na
+take place — odbywać się
+genre — gatunek
+novel — powieść
+fiction — literatura piękna
+non-fiction — literatura faktu
+episode — odcinek
+series — serial
+media coverage — relacje medialne
+release — premiera
+publish — publikować
+perform live — występować na żywo
+22. Telefon, internet i media społecznościowe
+notification — powiadomienie
+privacy — prywatność
+security — bezpieczeństwo
+follower — osoba obserwująca
+content — treść
+platform — platforma
+livestream — transmisja na żywo
+subscription — subskrypcja
+news feed — aktualności
+direct message — wiadomość prywatna
+hashtag — hashtag
+viral — wiralowy
+online identity — tożsamość internetowa
+screen time — czas przed ekranem
+block — zablokować
+mute — wyciszyć
+tag — oznaczyć
+scroll — przewijać
+go online — połączyć się z internetem
+protect your data — chronić swoje dane
+social network — sieć społecznościowa
+privacy policy — polityka prywatności
+personal information — dane osobowe
+spam — spam
+scam — oszustwo
+source — źródło
+manage an account — zarządzać kontem
+report content — zgłosić treść
+reset a password — zresetować hasło
+go viral — stać się popularnym w sieci
+23. Święta i wydarzenia
+celebration — uroczystość
+ceremony — ceremonia
+anniversary — rocznica
+reception — przyjęcie
+festival — festiwal
+tradition — tradycja
+custom — zwyczaj
+venue — miejsce wydarzenia
+host — gospodarz lub gospodyni
+guest — gość
+invitation — zaproszenie
+decoration — dekoracja
+catering — catering
+entertainment — atrakcje rozrywkowe
+speech — przemówienie
+congratulate — pogratulować
+attend — uczestniczyć
+organise — organizować
+take place — odbywać się
+dress code — zasady dotyczące stroju
+fundraising event — wydarzenie charytatywne
+award ceremony — ceremonia wręczenia nagród
+opening ceremony — ceremonia otwarcia
+live performance — występ na żywo
+participant — uczestnik lub uczestniczka
+organiser — organizator lub organizatorka
+programme — program
+book a venue — zarezerwować miejsce wydarzenia
+send invitations — wysłać zaproszenia
+make a toast — wznieść toast
+24. Opisy ludzi, rzeczy i miejsc
+attractive — atrakcyjny
+ordinary — zwyczajny
+unusual — nietypowy
+impressive — imponujący
+disappointing — rozczarowujący
+reliable — niezawodny
+practical — praktyczny
+suitable — odpowiedni
+valuable — cenny
+affordable — przystępny cenowo
+spacious — przestronny
+narrow — wąski
+remote — odległy
+urban — miejski
+rural — wiejski
+crowded — zatłoczony
+peaceful — spokojny; cichy (o miejscu)
+well-known — dobrze znany
+easy-going — wyluzowany
+determined — zdeterminowany
+ambitious — ambitny
+patient — cierpliwy
+sensitive — wrażliwy
+honest — uczciwy
+generous — hojny
+selfish — samolubny
+efficient — wydajny
+high-quality — wysokiej jakości
+breathtaking — zapierający dech w piersiach
+isolated — odizolowany
+C1 — niuanse, styl i profesjonalna komunikacja
+1. Żywienie i posiłki
+cuisine — kuchnia (tradycja kulinarna)
+delicacy — przysmak
+nourishment — pożywienie; odżywienie
+nutritional value — wartość odżywcza
+dietary requirement — wymóg żywieniowy
+consumption — spożycie
+intake — dzienne spożycie; przyjmowana ilość
+organic produce — ekologiczne produkty rolne
+seasonal produce — produkty sezonowe
+locally sourced — pozyskiwany lokalnie
+sustainable farming — zrównoważone rolnictwo
+preservatives — konserwanty
+additives — dodatki do żywności
+refined sugar — cukier rafinowany
+wholesome — pełnowartościowy i zdrowy
+savoury — wytrawny
+succulent — soczysty i kruchy
+bland — mdły
+overcooked — rozgotowany; zbyt długo gotowany
+acquire a taste for — z czasem polubić smak czegoś
+gastronomy — gastronomia; sztuka kulinarna
+palate — podniebienie; wyczucie smaku
+culinary tradition — tradycja kulinarna
+food insecurity — brak bezpieczeństwa żywnościowego
+ethical consumption — etyczna konsumpcja
+plant-based diet — dieta oparta na produktach roślinnych
+ultra-processed food — żywność wysokoprzetworzona
+mouth-watering — apetyczny; aż ślinka cieknie
+rich in nutrients — bogaty w składniki odżywcze
+cut down on — ograniczyć spożycie czegoś
+2. Sytuacje codzienne i rutyna
+mundane — przyziemny; monotonny
+habitual — nawykowy; zwyczajowy
+hectic — gorączkowy; bardzo intensywny
+time-consuming — czasochłonny
+productivity — produktywność
+obligation — zobowiązanie; obowiązek
+commitment — podjęte zobowiązanie
+prioritise — ustalać priorytety
+streamline — usprawnić; uprościć proces
+allocate time — przydzielić czas
+maintain a routine — utrzymywać stały rytm dnia
+strike a balance — znaleźć właściwą równowagę
+meet a deadline — dotrzymać terminu
+fall behind schedule — mieć opóźnienie względem harmonogramu
+keep on top of — mieć coś stale pod kontrolą
+put off — odkładać na później
+wind down — wyciszyć się; zwolnić tempo
+fit something in — wygospodarować czas na coś
+be snowed under — być zawalonym pracą
+break the habit — zerwać z nawykiem
+relentless routine — nieustępliwa, wyczerpująca rutyna
+work-life balance — równowaga między pracą a życiem prywatnym
+competing priorities — konkurujące ze sobą priorytety
+mental load — obciążenie psychiczne związane z pamiętaniem i planowaniem
+procrastination — prokrastynacja; odkładanie działania
+sustain productivity — utrzymać produktywność
+establish a pattern — wypracować stały schemat
+disrupt a routine — zakłócić rutynę
+carve out time — świadomie wygospodarować czas
+be pressed for time — mieć bardzo mało czasu
+3. Rodzina i relacje
+kinship — pokrewieństwo; więzy rodzinne
+upbringing — wychowanie
+sibling rivalry — rywalizacja między rodzeństwem
+extended family — dalsza rodzina
+family dynamics — dynamika relacji rodzinnych
+mutual respect — wzajemny szacunek
+emotional support — wsparcie emocjonalne
+commitment — zaangażowanie w relację
+attachment — przywiązanie emocjonalne
+compatibility — zgodność charakterów
+intimacy — bliskość emocjonalna
+conflict — konflikt
+reconciliation — pojednanie
+estrangement — wyobcowanie; zerwanie bliskich relacji
+compromise — kompromis
+nurture — pielęgnować relację lub rozwój
+confide in — zwierzyć się komuś
+drift apart — stopniowo oddalić się od siebie
+stand by someone — wspierać kogoś w trudnej sytuacji
+maintain boundaries — utrzymywać zdrowe granice
+interpersonal relationship — relacja międzyludzka
+caregiver — opiekun osoby zależnej
+domestic responsibility — obowiązek domowy
+generational divide — przepaść pokoleniowa
+emotional bond — więź emocjonalna
+dysfunctional relationship — dysfunkcyjna relacja
+resolve a conflict — rozwiązać konflikt
+build rapport — zbudować nić porozumienia
+be on good terms — pozostawać w dobrych stosunkach
+turn to someone — zwrócić się do kogoś po wsparcie
+4. Dom i mieszkanie
+premises — lokal; teren należący do obiektu
+residence — miejsce zamieszkania; rezydencja
+dwelling — lokal mieszkalny
+tenancy — najem; stosunek najmu
+lease — umowa najmu lub dzierżawy
+deposit — kaucja
+utility bill — rachunek za media
+property market — rynek nieruchomości
+estate agent — pośrednik nieruchomości
+refurbishment — gruntowna renowacja
+insulation — izolacja budynku
+ventilation — wentylacja
+structural damage — uszkodzenie konstrukcyjne
+energy-efficient — energooszczędny
+residential area — dzielnica mieszkaniowa
+cramped — ciasny; przepełniony
+deteriorate — ulegać pogorszeniu technicznemu
+maintain — utrzymywać w dobrym stanie
+convert — adaptować budynek do innego celu
+relocate — przenieść się w inne miejsce
+housing shortage — niedobór mieszkań
+affordable housing — mieszkalnictwo dostępne cenowo
+planning permission — pozwolenie planistyczne na inwestycję
+building regulations — przepisy budowlane
+property valuation — wycena nieruchomości
+maintenance cost — koszt utrzymania i konserwacji
+open-plan living — mieszkanie z otwartym układem pomieszczeń
+restore a property — odrestaurować nieruchomość
+meet housing standards — spełniać standardy mieszkaniowe
+be structurally sound — być w dobrym stanie konstrukcyjnym
+5. Samochód i podstawowy transport
+emissions — emisje spalin
+congestion — zatłoczenie dróg
+infrastructure — infrastruktura transportowa
+roadworthiness — zdatność pojazdu do ruchu
+maintenance — konserwacja; obsługa techniczna
+fuel efficiency — efektywność paliwowa
+electric vehicle — pojazd elektryczny
+charging point — punkt ładowania
+autonomous vehicle — pojazd autonomiczny
+collision — kolizja
+breakdown — awaria pojazdu
+insurance premium — składka ubezpieczeniowa
+traffic regulations — przepisy ruchu drogowego
+reckless driving — brawurowa, niebezpieczna jazda
+commute — regularny dojazd do pracy
+accelerate — przyspieszać
+decelerate — zwalniać
+navigate — wyznaczać trasę; poruszać się według trasy
+pull over — zjechać na pobocze i zatrzymać się
+swerve — gwałtownie skręcić, omijając przeszkodę
+public transport provision — dostępność i organizacja transportu publicznego
+sustainable mobility — zrównoważona mobilność
+traffic flow — płynność ruchu
+road safety — bezpieczeństwo drogowe
+vehicle inspection — badanie techniczne pojazdu
+carbon-neutral transport — transport neutralny klimatycznie
+tailback — długi korek uliczny
+commuter belt — strefa podmiejska osób dojeżdżających do pracy
+change lanes — zmienić pas ruchu
+lose control of a vehicle — stracić panowanie nad pojazdem
+6. Zakupy i pieniądze
+consumer — konsument
+retailer — sprzedawca detaliczny
+expenditure — wydatki; nakłady finansowe
+transaction — transakcja
+instalment — rata
+interest rate — stopa procentowa
+household income — dochód gospodarstwa domowego
+disposable income — dochód rozporządzalny
+purchasing power — siła nabywcza
+financial commitment — zobowiązanie finansowe
+impulse purchase — zakup pod wpływem impulsu
+misleading advertising — reklama wprowadzająca w błąd
+consumer rights — prawa konsumenta
+cost-effective — opłacalny; efektywny kosztowo
+overpriced — zawyżony cenowo
+economical — oszczędny w eksploatacji
+reimburse — zwrócić poniesione koszty
+accumulate debt — narastać w długi
+make ends meet — wiązać koniec z końcem
+live within your means — żyć na miarę swoich możliwości finansowych
+financial literacy — kompetencje finansowe
+consumer behaviour — zachowania konsumenckie
+market value — wartość rynkowa
+credit rating — ocena zdolności kredytowej
+outstanding balance — pozostałe saldo do spłaty
+hidden charge — ukryta opłata
+price comparison — porównanie cen
+ethical consumerism — etyczny konsumpcjonizm
+repay a loan — spłacić pożyczkę lub kredyt
+fall into debt — popaść w długi
+7. Miasto i podstawowe miejsca
+urbanisation — urbanizacja
+infrastructure — infrastruktura miejska
+municipality — gmina; władze miejskie
+metropolitan area — obszar metropolitalny
+residential district — dzielnica mieszkaniowa
+commercial district — dzielnica handlowo-biznesowa
+outskirts — obrzeża miasta
+redevelopment — przebudowa i ponowne zagospodarowanie
+public amenities — ogólnodostępne udogodnienia miejskie
+accessibility — dostępność
+pedestrianisation — przekształcenie obszaru w strefę pieszą
+congestion — zatłoczenie komunikacyjne
+overcrowding — nadmierne zagęszczenie ludności
+deprived area — obszar dotknięty deprywacją społeczną
+vibrant — tętniący życiem
+run-down — zaniedbany; podupadły
+densely populated — gęsto zaludniony
+well-connected — dobrze skomunikowany
+preserve — zachować i chronić
+regenerate — zrewitalizować
+urban sprawl — niekontrolowane rozlewanie się miasta
+city planning — planowanie miejskie
+mixed-use development — zabudowa wielofunkcyjna
+public realm — wspólna przestrzeń publiczna
+local community — społeczność lokalna
+housing density — gęstość zabudowy mieszkaniowej
+social deprivation — deprywacja społeczna
+revitalise an area — ożywić i zrewitalizować obszar
+improve accessibility — poprawić dostępność
+preserve heritage — chronić dziedzictwo
+8. Czas, daty i pogoda
+chronology — chronologia
+timeframe — ramy czasowe
+duration — czas trwania
+interval — przedział czasowy
+frequency — częstotliwość
+long-term — długoterminowy
+short-lived — krótkotrwały
+imminent — nieuchronnie zbliżający się
+overdue — opóźniony; po terminie
+simultaneous — jednoczesny
+unpredictable — nieprzewidywalny
+severe weather — groźne zjawiska pogodowe
+extreme temperatures — skrajne temperatury
+torrential rain — ulewny deszcz
+prolonged drought — długotrwała susza
+weather pattern — układ pogodowy
+atmospheric conditions — warunki atmosferyczne
+deteriorate — pogarszać się
+fluctuate — ulegać wahaniom
+subside — stopniowo słabnąć
+seasonal variation — zmienność sezonowa
+long-range forecast — prognoza długoterminowa
+adverse conditions — niekorzystne warunki
+unseasonably warm — nietypowo ciepły jak na porę roku
+below-average rainfall — opady poniżej średniej
+weather disruption — zakłócenia spowodowane pogodą
+occur periodically — występować okresowo
+coincide with — zbiegać się w czasie z
+be subject to change — podlegać zmianom
+at short notice — z niewielkim wyprzedzeniem
+9. Praca i szkoła
+workforce — siła robocza; ogół pracowników
+occupation — zawód; zajęcie
+recruitment — rekrutacja
+candidate — kandydat
+expertise — specjalistyczna wiedza i doświadczenie
+competence — kompetencja
+workload — obciążenie pracą
+appraisal — ocena okresowa pracownika
+promotion prospects — perspektywy awansu
+job security — stabilność zatrudnienia
+workplace culture — kultura organizacyjna miejsca pracy
+professional development — rozwój zawodowy
+academic achievement — osiągnięcie akademickie
+assessment — ocena wiedzy lub kompetencji
+vocational training — kształcenie zawodowe
+collaborate — współpracować
+delegate — delegować zadania
+supervise — nadzorować
+pursue a career — rozwijać karierę zawodową
+take initiative — wykazać inicjatywę
+employment prospects — perspektywy zatrudnienia
+remuneration — wynagrodzenie
+staff turnover — rotacja pracowników
+performance review — okresowa ocena wyników pracy
+transferable skill — umiejętność przydatna w różnych rolach
+leadership role — rola przywódcza
+academic rigour — rygor akademicki
+assume responsibility — wziąć na siebie odpowiedzialność
+meet expectations — spełnić oczekiwania
+enhance employability — zwiększyć swoją atrakcyjność na rynku pracy
+10. Zdrowie i ciało
+diagnosis — diagnoza
+disorder — zaburzenie
+chronic condition — schorzenie przewlekłe
+acute pain — ostry ból
+immune system — układ odpornościowy
+side effect — działanie niepożądane
+deficiency — niedobór
+rehabilitation — rehabilitacja
+wellbeing — dobrostan
+mental health — zdrowie psychiczne
+healthcare provision — dostępność i świadczenie opieki zdrowotnej
+medical practitioner — lekarz praktykujący
+undergo treatment — poddać się leczeniu
+prescribe — przepisać lek lub terapię
+alleviate — złagodzić objawy lub ból
+deteriorate — pogorszyć się
+recover from — dojść do zdrowia po
+be prone to — mieć skłonność do
+rule out — wykluczyć rozpoznanie
+take preventive measures — podjąć działania zapobiegawcze
+underlying condition — choroba podstawowa
+medical intervention — interwencja medyczna
+health inequality — nierówność w zdrowiu i dostępie do opieki
+life expectancy — średnia długość życia
+misdiagnosis — błędna diagnoza
+adverse reaction — niepożądana reakcja organizmu
+screening programme — program badań przesiewowych
+manage symptoms — kontrolować objawy
+respond to treatment — reagować na leczenie
+maintain wellbeing — dbać o utrzymanie dobrostanu
+11. Ubrania i wygląd
+attire — strój, zwłaszcza formalny
+garment — część garderoby
+fabric — tkanina; materiał
+textile — wyrób włókienniczy
+accessory — dodatek do stroju
+dress code — zasady dotyczące ubioru
+designer label — marka projektanta
+fast fashion — szybka moda
+sustainable fashion — zrównoważona moda
+ethical production — etyczna produkcja
+tailored — dopasowany krawiecko
+flattering — podkreślający atuty sylwetki
+sophisticated — wyrafinowany i elegancki
+understated — dyskretny; nienachalnie elegancki
+scruffy — niechlujny
+worn-out — znoszony; zużyty
+durable — trwały
+versatile — uniwersalny; wszechstronny
+coordinate — zestawiać elementy stroju
+alter — przerobić ubranie krawiecko
+craftsmanship — kunszt wykonania
+wardrobe staple — podstawowy, ponadczasowy element garderoby
+garment industry — przemysł odzieżowy
+natural fibre — włókno naturalne
+synthetic fibre — włókno syntetyczne
+bespoke clothing — odzież szyta na miarę
+timeless — ponadczasowy
+ill-fitting — źle dopasowany
+make a statement — wyrażać mocny komunikat strojem
+adhere to a dress code — przestrzegać zasad ubioru
+12. Hobby, sport i czas wolny
+recreation — rekreacja
+pursuit — zajęcie rozwijane z zaangażowaniem
+endurance — wytrzymałość długotrwała
+stamina — kondycja i wytrzymałość fizyczna
+performance — wynik lub poziom sportowy
+championship — mistrzostwa
+spectator — widz sportowy
+sportsmanship — postawa fair play
+commitment — zaangażowanie
+discipline — samodyscyplina
+competitive edge — przewaga nad konkurentami
+leisure industry — branża czasu wolnego
+sedentary lifestyle — siedzący tryb życia
+exhilarating — niezwykle ekscytujący
+demanding — wymagający
+pursue an interest — rozwijać zainteresowanie
+take up a hobby — zacząć uprawiać hobby
+hone a skill — doskonalić umiejętność
+push your limits — przekraczać własne granice
+unwind — odprężyć się
+personal fulfilment — osobiste spełnienie
+creative outlet — twórczy sposób wyrażania siebie
+physical exertion — wysiłek fizyczny
+peak performance — szczytowa forma
+recreational facility — obiekt rekreacyjny
+team spirit — duch zespołowy
+master a technique — opanować technikę
+derive pleasure from — czerpać przyjemność z
+commit yourself to — w pełni zaangażować się w
+excel at — wyróżniać się w; być znakomitym w
+13. Podróże i wakacje
+itinerary — plan podróży
+excursion — wycieczka krajoznawcza
+hospitality — gościnność; branża hotelarsko-gastronomiczna
+tourism industry — branża turystyczna
+peak season — szczyt sezonu
+off-season — okres poza sezonem
+package holiday — zorganizowane wakacje w pakiecie
+cultural immersion — zanurzenie w lokalnej kulturze
+sustainable tourism — turystyka zrównoważona
+tourist attraction — atrakcja turystyczna
+travel restrictions — ograniczenia w podróżowaniu
+customs regulations — przepisy celne
+stopover — postój lub przesiadka w podróży
+remote destination — odległy cel podróży
+picturesque — malowniczy
+overcrowded — nadmiernie zatłoczony
+venture off the beaten track — zapuścić się poza utarte szlaki
+travel light — podróżować z niewielkim bagażem
+soak up the atmosphere — chłonąć atmosferę miejsca
+broaden your horizons — poszerzać horyzonty
+responsible travel — odpowiedzialne podróżowanie
+ecotourism — ekoturystyka
+heritage site — obiekt dziedzictwa kulturowego
+local economy — lokalna gospodarka
+travel disruption — zakłócenia w podróży
+visitor experience — doświadczenie odwiedzających
+authentic experience — autentyczne doświadczenie
+minimise your impact — ograniczyć swój negatywny wpływ
+embrace local culture — otworzyć się na lokalną kulturę
+navigate unfamiliar surroundings — odnaleźć się w nieznanym otoczeniu
+14. Komunikacja i technologia
+digital literacy — kompetencje cyfrowe
+artificial intelligence — sztuczna inteligencja
+algorithm — algorytm
+cybersecurity — cyberbezpieczeństwo
+data breach — naruszenie ochrony danych
+encryption — szyfrowanie
+cloud computing — przetwarzanie w chmurze
+automation — automatyzacja
+innovation — innowacja
+interface — interfejs
+compatibility — kompatybilność
+bandwidth — przepustowość łącza
+infrastructure — infrastruktura technologiczna
+malfunction — usterka; nieprawidłowe działanie
+obsolete — przestarzały technologicznie
+sophisticated — zaawansowany technologicznie
+implement — wdrożyć
+integrate — zintegrować
+troubleshoot — diagnozować i usuwać usterki
+safeguard — zabezpieczać
+machine learning — uczenie maszynowe
+digital transformation — transformacja cyfrowa
+facial recognition — rozpoznawanie twarzy
+privacy concern — obawa dotycząca prywatności
+system vulnerability — luka w zabezpieczeniach systemu
+technological advancement — postęp technologiczny
+interoperability — interoperacyjność systemów
+decentralised — zdecentralizowany
+deploy a system — wdrożyć system do działania
+disrupt an industry — radykalnie zmienić model działania branży
+15. Emocje i podstawowe opinie
+apprehensive — pełen obaw
+bewildered — kompletnie zdezorientowany
+devastated — zdruzgotany
+resentful — rozgoryczony; żywiący urazę
+overwhelmed — przytłoczony
+content — zadowolony i spokojny
+compassionate — współczujący
+indifferent — obojętny
+reluctant — niechętny
+sceptical — sceptyczny
+perception — postrzeganie
+conviction — silne przekonanie
+bias — stronniczość; uprzedzenie poznawcze
+assumption — założenie przyjęte bez dowodu
+perspective — perspektywa; punkt widzenia
+acknowledge — uznać lub przyznać istnienie czegoś
+empathise — wczuć się w czyjąś sytuację
+justify — uzasadnić
+object to — sprzeciwić się
+come to terms with — pogodzić się z czymś trudnym
+emotional resilience — odporność emocjonalna
+self-awareness — samoświadomość
+inner conflict — konflikt wewnętrzny
+mixed feelings — mieszane uczucia
+deeply held belief — głęboko zakorzenione przekonanie
+objective judgement — obiektywny osąd
+convey an emotion — wyrazić lub przekazać emocję
+suppress your feelings — tłumić swoje uczucia
+challenge an assumption — zakwestionować założenie
+voice concern — wyrazić zaniepokojenie
+16. Natura, zwierzęta i środowisko
+biodiversity — różnorodność biologiczna
+ecosystem — ekosystem
+conservation — ochrona przyrody
+deforestation — wylesianie
+habitat loss — utrata siedlisk
+carbon footprint — ślad węglowy
+greenhouse gas — gaz cieplarniany
+fossil fuel — paliwo kopalne
+renewable resource — zasób odnawialny
+sustainability — zrównoważony rozwój
+environmental impact — wpływ na środowisko
+ecological balance — równowaga ekologiczna
+endangered species — gatunek zagrożony wyginięciem
+natural disaster — klęska żywiołowa
+contaminate — skazić
+deplete — wyczerpywać zasoby
+preserve — zachować i chronić
+restore — odtworzyć środowisko lub siedlisko
+mitigate — łagodzić negatywne skutki
+tackle climate change — przeciwdziałać zmianie klimatu
+environmental degradation — degradacja środowiska
+resource depletion — wyczerpywanie zasobów
+ecological crisis — kryzys ekologiczny
+conservation effort — działanie na rzecz ochrony przyrody
+net-zero emissions — zerowe emisje netto
+circular economy — gospodarka o obiegu zamkniętym
+environmental legislation — prawodawstwo środowiskowe
+offset emissions — kompensować emisje
+curb pollution — ograniczyć zanieczyszczenie
+reverse biodiversity loss — odwrócić proces utraty bioróżnorodności
+17. Usługi i sprawy na mieście
+public administration — administracja publiczna
+local authority — organ samorządu lokalnego
+service provider — usługodawca
+eligibility — uprawnienie po spełnieniu warunków
+documentation — wymagana dokumentacja
+procedure — procedura
+regulation — przepis; regulacja
+bureaucracy — biurokracja
+waiting time — czas oczekiwania
+service charge — opłata za usługę
+terms and conditions — warunki świadczenia usługi
+consumer protection — ochrona konsumentów
+lodge a complaint — złożyć formalną skargę
+submit an application — złożyć wniosek
+process a request — rozpatrzyć wniosek lub zgłoszenie
+issue a permit — wydać zezwolenie
+verify identity — zweryfikować tożsamość
+resolve a dispute — rozstrzygnąć spór
+comply with — zastosować się do
+be entitled to — być uprawnionym do
+statutory service — usługa świadczona z mocy prawa
+regulatory body — organ regulacyjny
+administrative burden — obciążenie administracyjne
+public consultation — konsultacje społeczne
+service accessibility — dostępność usług
+official correspondence — korespondencja urzędowa
+meet the criteria — spełnić kryteria
+appeal a decision — odwołać się od decyzji
+obtain authorisation — uzyskać zezwolenie
+escalate a complaint — przekazać skargę na wyższy szczebel
+18. Bezpieczeństwo i nagłe sytuacje
+hazard — czynnik stwarzający zagrożenie
+threat — zagrożenie
+precaution — środek ostrożności
+vulnerability — podatność na zagrożenie
+emergency response — reagowanie kryzysowe
+evacuation procedure — procedura ewakuacyjna
+risk assessment — ocena ryzyka
+safety measure — środek bezpieczeństwa
+security breach — naruszenie zabezpieczeń
+natural disaster — klęska żywiołowa
+casualty — osoba poszkodowana lub ofiara
+first responder — członek służb jako pierwszy na miejscu zdarzenia
+protective gear — wyposażenie ochronne
+surveillance — nadzór i monitoring
+detect — wykryć
+prevent — zapobiec
+intervene — interweniować
+withstand — wytrzymać działanie zagrożenia
+seek shelter — szukać schronienia
+pose a risk — stwarzać ryzyko
+contingency plan — plan awaryjny
+disaster preparedness — przygotowanie na wypadek katastrofy
+critical infrastructure — infrastruktura krytyczna
+occupational hazard — zagrożenie zawodowe
+security protocol — procedura bezpieczeństwa
+imminent danger — bezpośrednie zagrożenie
+assess a threat — ocenić zagrożenie
+trigger an alarm — uruchomić alarm
+minimise exposure — ograniczyć narażenie
+ensure compliance — zapewnić zgodność z przepisami
+19. Gotowanie i sprzęt kuchenny
+marinate — marynować
+simmer — gotować na małym ogniu
+sauté — krótko podsmażać
+whisk — ubijać trzepaczką
+knead — wyrabiać ciasto
+dice — kroić w kostkę
+mince — drobno siekać lub mielić
+drizzle — skropić cienkim strumieniem
+sprinkle — posypać
+garnish — udekorować potrawę
+seasoning — przyprawienie; mieszanka przypraw
+cookware — naczynia do gotowania
+utensils — przybory kuchenne
+food processor — robot kuchenny
+non-stick pan — patelnia z powłoką nieprzywierającą
+casserole dish — naczynie do zapiekania
+airtight container — szczelny pojemnik
+tender — kruchy i miękki
+crispy — chrupiący
+finely chopped — drobno posiekany
+caramelise — karmelizować
+blanch — blanszować
+poach — gotować delikatnie w płynie bez wrzenia
+reduce a sauce — odparować i zagęścić sos
+infuse — nasycić aromatem
+ferment — fermentować
+food preparation — przygotowanie żywności
+cooking technique — technika kulinarna
+finely diced — pokrojony w drobną kostkę
+season to taste — doprawić do smaku
+20. Dzieci i edukacja
+child development — rozwój dziecka
+early childhood — wczesne dzieciństwo
+adolescence — okres dojrzewania
+cognitive ability — zdolność poznawcza
+emotional maturity — dojrzałość emocjonalna
+literacy — umiejętność czytania i pisania
+numeracy — umiejętność posługiwania się liczbami
+learning outcome — efekt uczenia się
+educational attainment — poziom osiągnięć edukacyjnych
+compulsory education — obowiązek szkolny
+higher education — szkolnictwo wyższe
+tuition fee — opłata za naukę
+scholarship — stypendium
+inclusive education — edukacja włączająca
+curriculum reform — reforma programu nauczania
+foster independence — wspierać samodzielność
+acquire knowledge — zdobywać wiedzę
+fulfil potential — w pełni wykorzystać swój potencjał
+evaluate progress — oceniać postępy
+address special needs — odpowiadać na specjalne potrzeby
+pedagogical approach — podejście pedagogiczne
+educational policy — polityka oświatowa
+academic performance — wyniki w nauce
+learning environment — środowisko uczenia się
+student engagement — zaangażowanie uczniów
+critical thinking — myślenie krytyczne
+standardised testing — standaryzowane testowanie
+widen participation — poszerzać dostęp do edukacji
+bridge the attainment gap — zmniejszyć różnice w osiągnięciach edukacyjnych
+facilitate learning — ułatwiać proces uczenia się
+21. Kultura i media
+cultural heritage — dziedzictwo kulturowe
+contemporary art — sztuka współczesna
+performing arts — sztuki performatywne
+literary work — dzieło literackie
+mass media — środki masowego przekazu
+press coverage — relacje prasowe
+editorial — artykuł redakcyjny
+commentary — komentarz analityczny
+censorship — cenzura
+freedom of expression — wolność wypowiedzi
+public broadcaster — nadawca publiczny
+media bias — stronniczość mediów
+critical acclaim — uznanie krytyków
+compelling narrative — porywająca narracja
+thought-provoking — skłaniający do refleksji
+portray — przedstawiać lub portretować
+interpret — interpretować
+convey — przekazywać znaczenie lub emocje
+distort — zniekształcać
+raise awareness — zwiększać świadomość
+media outlet — redakcja lub kanał medialny
+investigative journalism — dziennikarstwo śledcze
+public discourse — debata publiczna
+cultural representation — reprezentacja kulturowa
+intellectual property — własność intelektualna
+artistic expression — ekspresja artystyczna
+editorial stance — linia redakcyjna
+shape public perception — kształtować opinię społeczną
+receive widespread acclaim — zdobyć powszechne uznanie
+challenge convention — podważać utarte konwencje
+22. Telefon, internet i media społecznościowe
+digital footprint — ślad cyfrowy
+personal data — dane osobowe
+privacy settings — ustawienia prywatności
+misinformation — nieumyślnie rozpowszechniana fałszywa informacja
+disinformation — celowo rozpowszechniana dezinformacja
+content moderation — moderowanie treści
+online harassment — nękanie w internecie
+cyberbullying — cyberprzemoc
+echo chamber — bańka informacyjna wzmacniająca te same poglądy
+influencer marketing — marketing influencerski
+targeted advertising — reklama targetowana
+user engagement — zaangażowanie użytkowników
+addictive design — projektowanie sprzyjające uzależnieniu
+viral content — treść rozprzestrzeniająca się wirusowo
+authenticate — uwierzytelnić
+encrypt — zaszyfrować
+verify a source — zweryfikować źródło
+breach privacy — naruszyć prywatność
+manipulate public opinion — manipulować opinią publiczną
+regulate platforms — regulować działalność platform
+algorithmic bias — stronniczość algorytmiczna
+data harvesting — masowe pozyskiwanie danych
+identity theft — kradzież tożsamości
+information overload — przeciążenie informacyjne
+digital wellbeing — dobrostan cyfrowy
+platform governance — zasady zarządzania platformami
+online anonymity — anonimowość w internecie
+spread false information — rozpowszechniać fałszywe informacje
+exercise caution — zachować ostrożność
+hold platforms accountable — pociągać platformy do odpowiedzialności
+23. Święta i wydarzenia
+commemoration — uroczyste upamiętnienie
+observance — obchody święta lub tradycji
+festivity — uroczystość świąteczna
+milestone — przełomowe wydarzenie
+formal occasion — formalna uroczystość
+cultural tradition — tradycja kulturowa
+religious ceremony — ceremonia religijna
+annual gathering — coroczne spotkanie
+public holiday — święto państwowe; dzień ustawowo wolny
+community event — wydarzenie lokalnej społeczności
+organiser — organizator
+participant — uczestnik
+sponsorship — sponsoring
+publicity — rozgłos i działania promocyjne
+logistical arrangement — ustalenie logistyczne
+mark an anniversary — uczcić rocznicę
+honour a tradition — uszanować tradycję
+host a reception — wydać oficjalne przyjęcie
+deliver a speech — wygłosić przemówienie
+cater for guests — zapewnić gościom catering
+civic celebration — uroczystość miejska lub obywatelska
+solemn ceremony — podniosła ceremonia
+traditional observance — tradycyjne obchody
+official reception — oficjalne przyjęcie
+large-scale event — wydarzenie na dużą skalę
+cultural significance — znaczenie kulturowe
+event management — zarządzanie wydarzeniami
+commemorate an occasion — upamiętnić wydarzenie
+draw a crowd — przyciągnąć tłum
+coordinate logistics — koordynować logistykę
+24. Opisy ludzi, rzeczy i miejsc
+meticulous — skrupulatny; drobiazgowy
+resilient — odporny psychicznie; zdolny szybko się podnieść
+resourceful — zaradny; pomysłowy
+outspoken — otwarcie wyrażający swoje poglądy
+reserved — powściągliwy
+considerate — troskliwy i liczący się z innymi
+assertive — asertywny
+charismatic — charyzmatyczny
+conventional — konwencjonalny; tradycyjny
+distinctive — charakterystyczny; wyróżniający się
+exceptional — wyjątkowy; ponadprzeciętny
+mediocre — przeciętny; mierny
+compelling — niezwykle przekonujący lub fascynujący
+versatile — wszechstronny; uniwersalny
+sustainable — zrównoważony i możliwy do utrzymania
+deteriorated — podupadły; w pogorszonym stanie
+secluded — ustronny; odosobniony
+breathtaking — zapierający dech w piersiach
+densely populated — gęsto zaludniony
+aesthetically pleasing — estetyczny; przyjemny dla oka
+conscientious — sumienny
+perceptive — spostrzegawczy; przenikliwy
+level-headed — opanowany i rozsądny
+open-minded — otwarty na odmienne poglądy
+principled — kierujący się zasadami
+innovative — innowacyjny
+substandard — poniżej wymaganego standardu
+imposing — okazały; budzący respekt
+unspoilt — nieskażony; zachowany w naturalnym stanie
+architecturally significant — istotny pod względem architektonicznym

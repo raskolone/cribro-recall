@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import gsap from 'gsap';
 import { auth, db } from '../../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
 import Sidebar from './Sidebar';
 import ConfirmModal from '../ui/ConfirmModal';
 import BugReporter from '../ui/BugReporter';
@@ -67,6 +67,24 @@ const Dashboard: React.FC = () => {
 
   const sloganContainerRef = useRef<HTMLDivElement>(null);
   
+  // Record account entry activity
+  useEffect(() => {
+    if (user?.id) {
+      const hasLogged = sessionStorage.getItem('activity_logged_' + user.id);
+      if (!hasLogged) {
+        const logRef = collection(db, `users/${user.id}/practiceLogs`);
+        addDoc(logRef, {
+          date: new Date().toISOString(),
+          exerciseType: 'Aktywność',
+          isRevisionMode: false,
+          testName: 'Zalogowanie / Wejście na konto',
+          exercisesData: 'Rejestracja wejścia na konto',
+        }).catch(console.error);
+        sessionStorage.setItem('activity_logged_' + user.id, 'true');
+      }
+    }
+  }, [user?.id]);
+
   // Slogan logic refactored
   useEffect(() => {
     const slogans: { text: string; color: string }[] = [];
@@ -133,7 +151,10 @@ const Dashboard: React.FC = () => {
       return <FlashcardSetsScreen onStudySet={() => {}} onEditSet={() => {}} onStatsSet={() => {}} onPresentSet={() => {}} />;
     }
     if (view === 'flashcard-study') {
-      return <FlashcardStudyScreen setId={activeSetId || ''} initialMode={(window as any)._initialStudyMode} onBack={() => setView('dashboard')} onNavigate={(v) => setView(v as View)} />;
+      return <FlashcardStudyScreen setId={activeSetId || ''} initialMode={(window as any)._initialStudyMode} onBack={() => setView('dashboard')} onNavigate={(v: any, extra?: any) => {
+        if (extra && extra.setId) setActiveSetId(extra.setId);
+        setView(v as View);
+      }} />;
     }
     if (view === 'homework') {
       return <HomeworkScreen />;

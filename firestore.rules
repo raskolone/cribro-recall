@@ -123,7 +123,8 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['id', 'username', 'role', 'email', 'photoURL', 'streakCount', 'lastStreakDate', 'createdAt', 'loginCount', 'lastLoginDate', 'firstName', 'lastName', 'level', 'description', 'requirePasswordChange', 'tempPassword', 'tempPasswordLogins', 'isSuspended', 'onboardingCompleted', 'hasNewVocabulary', 'hasNewLesson', 'dismissedNotifications', 'translatedSentencesCount', 'aiPrompt']) &&
+      return hasOnlyAllowedFields(['id', 'username', 'role', 'email', 'photoURL', 'streakCount', 'lastStreakDate', 'createdAt', 'loginCount', 'lastLoginDate', 'firstName', 'lastName', 'level', 'description', 'requirePasswordChange', 'tempPassword', 'tempPasswordLogins', 'isSuspended', 'onboardingCompleted', 'hasNewVocabulary', 'hasNewLesson', 'dismissedNotifications', 'translatedSentencesCount', 'aiPrompt', 'frequentErrors']) &&
+             (!('frequentErrors' in data) || data.frequentErrors is list) &&
              validStringLength('username', 1, 100) &&
              validStringLength('email', 0, 100) &&
              data.role in ['admin', 'user', 'admin_student'] &&
@@ -155,7 +156,15 @@ service cloud.firestore {
              isValidDateString(data.date) &&
              data.isRevisionMode is bool &&
              (!( 'score' in data ) || data.score is number) &&
-             (!( 'totalWords' in data ) || data.totalWords is number);
+             (!( 'totalWords' in data ) || data.totalWords is number) &&
+             (!( 'exercisesData' in data ) || data.exercisesData is string) &&
+             (!( 'detailedFeedback' in data ) || data.detailedFeedback is string) &&
+             (!( 'wordsUsed' in data ) || data.wordsUsed is list) &&
+             (!( 'testName' in data ) || data.testName is string) &&
+             (!( 'setDisplayName' in data ) || data.setDisplayName is string) &&
+             (!( 'practiceMode' in data ) || data.practiceMode is string) &&
+             (!( 'selectedSetId' in data ) || data.selectedSetId is string) &&
+             (!( 'exerciseFormat' in data ) || data.exerciseFormat is string);
     }
 
     function isValidLessonRecord(data) {
@@ -202,7 +211,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) && ((request.resource.data.role == 'user') || ('email' in request.auth.token && (request.auth.token.email == "maciej.wyrozumski@gmail.com" || request.auth.token.email == "marta.lukaszczyk@gmail.com")) || isAdmin());
-      allow update: if (isOwner(userId) || isAdmin()) && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(["loginCount", "lastLoginDate", "streakCount", "lastStreakDate", "username", "photoURL", "firstName", "lastName", "level", "description", "requirePasswordChange"]) || isAdmin());
+      allow update: if (isOwner(userId) || isAdmin()) && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(["loginCount", "lastLoginDate", "streakCount", "lastStreakDate", "username", "photoURL", "firstName", "lastName", "level", "description", "requirePasswordChange", "hasNewVocabulary", "hasNewLesson", "dismissedNotifications", "translatedSentencesCount", "aiPrompt", "frequentErrors", "tempPassword", "tempPasswordLogins", "onboardingCompleted"]) || isAdmin());
       allow delete: if isAdmin();
 
       match /words/{wordId} {
