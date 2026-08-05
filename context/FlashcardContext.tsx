@@ -105,6 +105,19 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
             const title = cleanTopic || data.date || 'Bez tematu';
             const lessonNum = totalDocs - index;
 
+            const parsedFlashcards = vocabList.map((line: string, idx: number) => {
+              const { word, translation } = parseVocabularyLine(line);
+              return {
+                id: `card_lesson_${doc.id}_${idx}`,
+                front: word,
+                back: translation || '',
+                term: word,
+                definition: translation || '',
+                position: idx,
+                masteryLevel: 0
+              };
+            });
+
             lessonSets.push({
                 id: `lesson_${doc.id}`,
                 userId: userId,
@@ -117,7 +130,8 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
                 isLessonVocabulary: true,
                 lessonNumber: lessonNum,
                 lessonDate: data.date,
-                lessonTopic: cleanTopic
+                lessonTopic: cleanTopic,
+                flashcards: parsedFlashcards as any
             });
         }
       });

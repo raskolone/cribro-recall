@@ -14,9 +14,10 @@ interface FlashcardSetsScreenProps {
   onEditSet: (setId: string) => void;
   onStatsSet: (setId: string) => void;
   onPresentSet?: (setId: string) => void;
+  onNavigate?: (view: string, extra?: any) => void;
 }
 
-const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, onEditSet, onStatsSet, onPresentSet }) => {
+const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, onEditSet, onStatsSet, onPresentSet, onNavigate }) => {
   const { sets, createSet, deleteSet, sessions } = useFlashcards();
   const { user } = useAuth();
   const { t, language } = useLanguage();
@@ -91,6 +92,32 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     }
   };
 
+  // Helper to safely get timestamp milliseconds
+  const getSafeMillis = (val: any): number => {
+    if (!val) return 0;
+    if (typeof val.toMillis === 'function') return val.toMillis();
+    if (typeof val.toDate === 'function') return val.toDate().getTime();
+    if (val instanceof Date) return val.getTime();
+    if (typeof val === 'number') return isNaN(val) ? 0 : val;
+    if (typeof val === 'string') {
+      const parsed = new Date(val).getTime();
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+
+  const getSafeDate = (val: any): Date | null => {
+    if (!val) return null;
+    if (typeof val.toDate === 'function') return val.toDate();
+    if (val instanceof Date) return val;
+    if (typeof val === 'number') return new Date(val);
+    if (typeof val === 'string') {
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    return null;
+  };
+
   // Calculate global stats
   const totalCards = useMemo(() => sets.reduce((acc, set) => acc + set.cardCount, 0), [sets]);
   
@@ -102,9 +129,10 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
       if (setSessions.length === 0) {
         mastery[set.id] = 0;
       } else {
-        const recentSessions = setSessions.sort((a, b) => b.completedAt?.toMillis() - a.completedAt?.toMillis()).slice(0, 3);
-        const avgScore = recentSessions.reduce((acc, s) => acc + (s.scorePercent || 0), 0) / recentSessions.length;
-        mastery[set.id] = Math.round(avgScore);
+        const recentSessions = [...setSessions].sort((a, b) => getSafeMillis(b.completedAt) - getSafeMillis(a.completedAt)).slice(0, 3);
+        const scores = recentSessions.map(s => (s.scorePercent !== undefined && s.scorePercent !== null && !isNaN(Number(s.scorePercent)) ? Number(s.scorePercent) : 0));
+        const avgScore = scores.reduce((acc, val) => acc + val, 0) / (scores.length || 1);
+        mastery[set.id] = isNaN(avgScore) ? 0 : Math.round(avgScore);
       }
     });
     return mastery;
@@ -118,8 +146,8 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
       if (setSessions.length === 0) {
         last[set.id] = null;
       } else {
-        const mostRecent = setSessions.sort((a, b) => b.completedAt?.toMillis() - a.completedAt?.toMillis())[0];
-        last[set.id] = mostRecent.completedAt?.toDate() || null;
+        const mostRecent = [...setSessions].sort((a, b) => getSafeMillis(b.completedAt) - getSafeMillis(a.completedAt))[0];
+        last[set.id] = getSafeDate(mostRecent?.completedAt);
       }
     });
     return last;
@@ -227,8 +255,13 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
         
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Button size="sm" onClick={() => onStudySet(set.id)} disabled={set.cardCount === 0} className="flex-1 sm:flex-none">
-            {t('flashcards.study')}
+            🎴 {t('flashcards.study')}
           </Button>
+          {onNavigate && (
+            <Button size="sm" variant="secondary" onClick={() => onNavigate('ai-generator', { setId: set.id })} className="flex-1 sm:flex-none border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20">
+              ✨ {language === 'pl' ? 'Ćwicz w zdaniach' : 'Practice in sentences'}
+            </Button>
+          )}
           <Button size="sm" variant="secondary" onClick={() => onStatsSet(set.id)} className="flex-1 sm:flex-none">
             {language === 'pl' ? 'Statystyki' : 'Stats'}
           </Button>
@@ -287,12 +320,12 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           <div className="space-y-1.5 mb-2">
             <div className="flex justify-between text-xs font-medium">
               <span className="text-content-muted">{language === 'pl' ? 'Opanowanie' : 'Mastery'}</span>
-              <span className={setMastery[set.id] >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{setMastery[set.id]}%</span>
+              <span className={(setMastery[set.id] || 0) >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{setMastery[set.id] || 0}%</span>
             </div>
             <div className="w-full bg-base-300 h-1.5 rounded-full overflow-hidden">
               <div 
-                className={`h-full transition-all duration-500 ${setMastery[set.id] >= 80 ? 'bg-green-400' : 'bg-primary'}`}
-                style={{ width: `${setMastery[set.id]}%` }}
+                className={`h-full transition-all duration-500 ${(setMastery[set.id] || 0) >= 80 ? 'bg-green-400' : 'bg-primary'}`}
+                style={{ width: `${Math.min(100, Math.max(0, setMastery[set.id] || 0))}%` }}
               />
             </div>
           </div>
@@ -304,15 +337,26 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             onClick={() => onStudySet(set.id)}
             disabled={set.cardCount === 0}
           >
-            {t('flashcards.study')}
+            🎴 {t('flashcards.study')}
           </Button>
-          <Button 
-            variant="secondary" 
-            className="flex-[1_1_auto]"
-            onClick={() => onEditSet(set.id)}
-          >
-            {t('flashcards.edit')}
-          </Button>
+          {onNavigate && (
+            <Button 
+              variant="secondary"
+              className="flex-[1_1_auto] border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
+              onClick={() => onNavigate('ai-generator', { setId: set.id })}
+            >
+              ✨ {language === 'pl' ? 'Ćwicz w zdaniach' : 'Practice'}
+            </Button>
+          )}
+          {!set.isGeneral && (
+            <Button 
+              variant="secondary" 
+              className="flex-[1_1_auto]"
+              onClick={() => onEditSet(set.id)}
+            >
+              {t('flashcards.edit')}
+            </Button>
+          )}
           <Button 
             variant="secondary" 
             className="flex-[1_1_auto]"
@@ -330,13 +374,15 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
               ▶ {language === 'pl' ? 'Prezentuj' : 'Present'}
             </Button>
           )}
-          <Button 
-            variant="danger" 
-            className="flex-[0_0_auto] px-3"
-            onClick={() => setSetToDelete(set.id)}
-          >
-            🗑
-          </Button>
+          {!set.isGeneral && (
+            <Button 
+              variant="danger" 
+              className="flex-[0_0_auto] px-3"
+              onClick={() => setSetToDelete(set.id)}
+            >
+              🗑
+            </Button>
+          )}
         </div>
       </Card>
     );
@@ -371,7 +417,9 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             {language === 'pl' ? 'Średnie opanowanie' : 'Avg Mastery'}
           </div>
           <div className="text-4xl font-black text-green-400">
-            {sets.length > 0 ? Math.round((Object.values(setMastery) as number[]).reduce((a: number, b: number) => a + b, 0) / sets.length) : 0}%
+            {sets.length > 0 
+              ? Math.round((Object.values(setMastery) as number[]).reduce((a: number, b: number) => a + (isNaN(b) ? 0 : b), 0) / sets.length) 
+              : 0}%
           </div>
         </Card>
       </div>

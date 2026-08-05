@@ -145,7 +145,21 @@ const Dashboard: React.FC = () => {
         return <AdminStatsScreen />;
     }
     if (view === 'lesson-history') {
-      return <LessonHistoryScreen />;
+      return (
+        <LessonHistoryScreen 
+          onStudySet={(setId) => {
+            setActiveSetId(setId);
+            (window as any)._initialStudyMode = 'flashcards';
+            setView('flashcard-study');
+          }}
+          onNavigate={(v: any, extra?: any) => {
+            if (extra && (extra.setId || extra.activeSetId)) {
+              setActiveSetId(extra.setId || extra.activeSetId);
+            }
+            setView(v as View);
+          }}
+        />
+      );
     }
     if (view === 'tests') {
       return <StudentTestsScreen onBack={() => setView('dashboard')} />;
@@ -170,6 +184,12 @@ const Dashboard: React.FC = () => {
             setActiveSetId(setId);
             setView('presentation');
           }} 
+          onNavigate={(v: any, extra?: any) => {
+            if (extra && (extra.setId || extra.activeSetId)) {
+              setActiveSetId(extra.setId || extra.activeSetId);
+            }
+            setView(v as View);
+          }}
         />
       );
     }

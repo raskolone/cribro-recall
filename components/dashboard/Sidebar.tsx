@@ -43,20 +43,28 @@ const NavLink: React.FC<{
   isActive: boolean;
   icon?: React.ReactNode;
   isCollapsed?: boolean;
+  badge?: React.ReactNode;
   className?: string;
   children: React.ReactNode;
-}> = ({ id, onClick, isActive, icon, isCollapsed, className = '', children }) => (
+}> = ({ id, onClick, isActive, icon, isCollapsed, badge, className = '', children }) => (
   <button id={id}
     onClick={onClick}
     title={isCollapsed ? (typeof children === 'string' ? children : undefined) : undefined}
-    className={`group relative z-10 hover:z-20 w-full flex items-center ${isCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border ${isActive ? 'bg-primary/10 border-primary/20 text-primary shadow-[0_0_15px_rgba(114,240,180,0.15)]' : 'text-content-muted border-transparent hover:bg-white/5 hover:border-white/10 hover:text-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]'} active:scale-[0.98] ${className}`}
+    className={`group relative z-10 hover:z-20 w-full flex items-center justify-between ${isCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border ${isActive ? 'bg-primary/10 border-primary/20 text-primary shadow-[0_0_15px_rgba(114,240,180,0.15)]' : 'text-content-muted border-transparent hover:bg-white/5 hover:border-white/10 hover:text-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]'} active:scale-[0.98] ${className}`}
   >
-    {icon && (
-      <div className={`flex items-center justify-center transition-transform duration-300 ${isCollapsed ? 'mr-3 md:mr-0' : 'mr-3'} group-hover:scale-110 group-hover:text-primary ${isActive ? 'scale-110 text-primary' : ''}`}>
-        {icon}
+    <div className="flex items-center min-w-0">
+      {icon && (
+        <div className={`flex items-center justify-center transition-transform duration-300 ${isCollapsed ? 'mr-3 md:mr-0' : 'mr-3'} group-hover:scale-110 group-hover:text-primary ${isActive ? 'scale-110 text-primary' : ''}`}>
+          {icon}
+        </div>
+      )}
+      <span className={`transition-all duration-300 group-hover:translate-x-0.5 truncate ${isCollapsed ? 'md:hidden' : 'block'}`}>{children}</span>
+    </div>
+    {!isCollapsed && badge && (
+      <div className="ml-2 flex-shrink-0 md:block hidden">
+        {badge}
       </div>
     )}
-    <span className={`transition-all duration-300 group-hover:translate-x-0.5 ${isCollapsed ? 'md:hidden' : 'block'}`}>{children}</span>
   </button>
 );
 
@@ -119,6 +127,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
     if (view === 'lesson-history' && user?.hasNewLesson) {
       if (user?.id) {
         updateDoc(doc(db, 'users', user.id), { hasNewLesson: false }).catch(console.error);
+      }
+    }
+    if (view === 'homework' && user?.hasNewHomework) {
+      if (user?.id) {
+        updateDoc(doc(db, 'users', user.id), { hasNewHomework: false }).catch(console.error);
       }
     }
     onNavigate(view);
@@ -225,31 +238,58 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           
           <NavLink 
             id="tour-flashcards" 
-            className=""
+            className={user?.hasNewVocabulary ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.2)]" : ""}
             icon={
               <div className="relative">
-                <Library size={20} />
+                <Library size={20} className={user?.hasNewVocabulary ? "text-emerald-400 animate-pulse" : ""} />
+                {user?.hasNewVocabulary && (
+                  <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border border-black shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                  </span>
+                )}
               </div>
             }
+            badge={user?.hasNewVocabulary ? (
+              <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 rounded-full animate-pulse font-extrabold uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                {language === 'pl' ? 'NOWE' : 'NEW'}
+              </span>
+            ) : undefined}
             isCollapsed={isDesktopCollapsed} 
             onClick={() => handleNavigate('flashcard-sets')} 
             isActive={currentView === 'flashcard-sets'}
           >
+            <span className={user?.hasNewVocabulary ? "text-emerald-300 font-extrabold" : ""}>
               {language === 'pl' ? 'Moje słownictwo' : 'My Word Lists'}
+            </span>
           </NavLink>
 
           <NavLink 
             id="tour-homework" 
+            className={user?.hasNewHomework ? "border-purple-500/40 bg-purple-500/10 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.2)]" : ""}
             icon={
               <div className="relative">
-                <BookOpen size={20} />
+                <BookOpen size={20} className={user?.hasNewHomework ? "text-purple-400 animate-pulse" : ""} />
+                {user?.hasNewHomework && (
+                  <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-purple-500 border border-black shadow-[0_0_8px_rgba(168,85,247,0.8)]"></span>
+                  </span>
+                )}
               </div>
             }
+            badge={user?.hasNewHomework ? (
+              <span className="text-[10px] px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/50 rounded-full animate-pulse font-extrabold uppercase tracking-wider shadow-[0_0_10px_rgba(168,85,247,0.3)]">
+                {language === 'pl' ? 'NOWE' : 'NEW'}
+              </span>
+            ) : undefined}
             isCollapsed={isDesktopCollapsed} 
             onClick={() => handleNavigate('homework')} 
             isActive={currentView === 'homework'}
           >
+            <span className={user?.hasNewHomework ? "text-purple-300 font-extrabold" : ""}>
               {language === 'pl' ? 'Praca domowa' : 'Homework'}
+            </span>
           </NavLink>
 
           <NavLink id="tour-stats" icon={<BarChart2 size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate(isTeacher ? 'admin-stats' : 'student-stats')} isActive={currentView === 'student-stats' || currentView === 'admin-stats'}>
@@ -258,17 +298,30 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
 
           <NavLink 
             id="tour-history" 
-            className=""
+            className={user?.hasNewLesson ? "border-amber-500/40 bg-amber-500/10 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.2)]" : ""}
             icon={
               <div className="relative">
-                <History size={20} />
+                <History size={20} className={user?.hasNewLesson ? "text-amber-400 animate-pulse" : ""} />
+                {user?.hasNewLesson && (
+                  <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-500 border border-black shadow-[0_0_8px_rgba(245,158,11,0.8)]"></span>
+                  </span>
+                )}
               </div>
             } 
+            badge={user?.hasNewLesson ? (
+              <span className="text-[10px] px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/50 rounded-full animate-pulse font-extrabold uppercase tracking-wider shadow-[0_0_10px_rgba(245,158,11,0.3)]">
+                {language === 'pl' ? 'NOWA' : 'NEW'}
+              </span>
+            ) : undefined}
             isCollapsed={isDesktopCollapsed} 
             onClick={() => handleNavigate('lesson-history')} 
             isActive={currentView === 'lesson-history'}
           >
+            <span className={user?.hasNewLesson ? "text-amber-300 font-extrabold" : ""}>
               {language === 'pl' ? 'Historia lekcji' : 'Lesson History'}
+            </span>
           </NavLink>
           <NavLink 
             icon={

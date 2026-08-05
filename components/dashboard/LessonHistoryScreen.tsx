@@ -11,7 +11,12 @@ import { Calendar, Tag, Sparkles, X, FileText, Clock, Search, BookOpen, AlertCir
 import Markdown from 'react-markdown';
 import gsap from 'gsap';
 
-const LessonHistoryScreen: React.FC = () => {
+interface LessonHistoryScreenProps {
+  onStudySet?: (setId: string) => void;
+  onNavigate?: (view: string, extra?: any) => void;
+}
+
+const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, onNavigate }) => {
   const { user } = useAuth();
   const { language } = useLanguage();
   const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
@@ -348,7 +353,21 @@ const LessonHistoryScreen: React.FC = () => {
                   {/* Bottom Footer Action */}
                   <div className="flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:text-emerald-300 mt-5 pt-3 border-t border-white/5 relative z-10">
                     <span>{language === 'pl' ? 'Zobacz notatki' : 'View notes'}</span>
-                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform text-emerald-400" />
+                    <div className="flex items-center gap-2">
+                      {vocabCount > 0 && onStudySet && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onStudySet(`lesson_${lesson.id}`);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-black font-bold transition-all border border-emerald-500/30 flex items-center gap-1 text-[11px] shadow-sm"
+                          title={language === 'pl' ? 'Generuj / Ucz się fiszek z tej lekcji' : 'Study flashcards from this lesson'}
+                        >
+                          <span>🎴</span> {language === 'pl' ? 'Fiszki' : 'Flashcards'}
+                        </button>
+                      )}
+                      <ChevronRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform text-emerald-400" />
+                    </div>
                   </div>
                 </div>
               );
@@ -556,6 +575,48 @@ const LessonHistoryScreen: React.FC = () => {
 
               {selectedLesson.vocabularyText && getVocabList(selectedLesson.vocabularyText).length > 0 && (
                 <div className="space-y-4 pt-4">
+                   <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+                     <div>
+                       <div className="font-bold text-white text-base flex items-center gap-2">
+                         <span>🎴</span> {language === 'pl' ? 'Ćwiczenia ze słownictwa z tej lekcji' : 'Vocabulary exercises from this lesson'}
+                       </div>
+                       <p className="text-xs text-content-muted mt-0.5">
+                         {language === 'pl' 
+                           ? 'Rozpocznij naukę fiszek lub przejdź do generowania zdań AI z tych słów.' 
+                           : 'Start studying flashcards or generate AI sentences with these words.'}
+                       </p>
+                     </div>
+                     <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                       {onStudySet && (
+                         <Button 
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             const lId = selectedLesson.id;
+                             setSelectedLesson(null);
+                             onStudySet(`lesson_${lId}`);
+                           }}
+                           className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold flex-1 sm:flex-none shadow-md"
+                         >
+                           🎴 {language === 'pl' ? 'Generuj / Ucz się Fiszek' : 'Study Flashcards'}
+                         </Button>
+                       )}
+                       {onNavigate && (
+                         <Button 
+                           variant="secondary"
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             const lId = selectedLesson.id;
+                             setSelectedLesson(null);
+                             onNavigate('ai-generator', { setId: `lesson_${lId}` });
+                           }}
+                           className="flex-1 sm:flex-none border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
+                         >
+                           ✨ {language === 'pl' ? 'Przećwicz w zdaniach AI' : 'Practice in AI Sentences'}
+                         </Button>
+                       )}
+                     </div>
+                   </div>
+
                    <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
                      <Tag className="w-4 h-4 text-secondary" />
                      {language === 'pl' ? 'Nowe Słownictwo' : 'New Vocabulary'}

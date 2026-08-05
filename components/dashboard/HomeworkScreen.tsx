@@ -126,7 +126,10 @@ export const HomeworkScreen: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [user?.id, isTeacher]);
+    if (user?.hasNewHomework && user?.id) {
+      updateDoc(doc(db, 'users', user.id), { hasNewHomework: false }).catch(console.error);
+    }
+  }, [user?.id, isTeacher, user?.hasNewHomework]);
 
   // Set default title when type changes
   useEffect(() => {
@@ -248,6 +251,7 @@ export const HomeworkScreen: React.FC = () => {
         };
 
         await addDoc(collection(db, 'specialTasks'), taskData);
+        await updateDoc(doc(db, 'users', stId), { hasNewHomework: true });
       }
 
       alert('Praca domowa została pomyślnie przypisana!');

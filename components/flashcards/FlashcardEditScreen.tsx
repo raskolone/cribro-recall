@@ -522,8 +522,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
         <div>
           <div className="flex items-center gap-4 mb-2">
             <button onClick={onBack} className="text-content-muted hover:text-white transition-colors">
-              
-                                        {i18n.t("&larr;")} {language === 'pl' ? 'Wróć' : 'Back'}
+              ← {language === 'pl' ? 'Wróć' : 'Back'}
             </button>
             <h1 className="text-2xl font-bold">
               {set?.title ? (language === 'pl' ? 'Edytuj zestaw' : 'Edit set') : (language === 'pl' ? 'Stwórz nowy zestaw fiszek' : 'Create new flashcard set')}

@@ -130,7 +130,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         totalSentencesCount += count;
       });
 
-      const avgScore = validLogsCount > 0 ? Math.round(totalScoreSum / validLogsCount) : 0;
+      const calcAvg = validLogsCount > 0 ? Math.round(totalScoreSum / validLogsCount) : 0;
+      const avgScore = isNaN(calcAvg) ? 0 : calcAvg;
 
       let totalVocabCount = 0;
       let difficultVocabCount = 0;
@@ -510,6 +511,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
           });
           
           await updateDoc(doc(db, 'users', sId), {
+             hasNewLesson: true,
              hasNewVocabulary: true
           });
           savedCount++;
@@ -564,6 +566,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
           createdAt: new Date().toISOString()
         });
       });
+
+      batch.update(doc(db, 'users', selectedUser.id), { hasNewVocabulary: true });
 
       await batch.commit();
       setShowAssignModal(false);
@@ -635,6 +639,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
             suggestedFollowUp: lessonFormSuggestedFollowUp
           });
           await updateDoc(doc(db, 'users', sId), {
+             hasNewLesson: true,
              hasNewVocabulary: true
           });
         }
@@ -653,6 +658,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
           });
           
           await updateDoc(doc(db, 'users', sId), {
+             hasNewLesson: true,
              hasNewVocabulary: true
           });
         }

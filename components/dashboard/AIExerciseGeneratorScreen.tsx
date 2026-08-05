@@ -56,7 +56,7 @@ import {
   Puzzle,
   Target,
   Layers,
-  Shuffle, X, Eye, Flame, Globe, History, Database,
+  Shuffle, X, Eye, Flame, Globe, History, Database, Lock,
   CheckCircle2, LayoutGrid, Mic, AlertCircle,
   Plus, Minus, ShoppingBag, Trash2, Check
 } from 'lucide-react';
@@ -735,6 +735,16 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       setLevel(user.level);
     }
   }, [user?.level]);
+
+  useEffect(() => {
+    if (initialSetId) {
+      setSelectedSetId(initialSetId);
+      if (initialSetId.startsWith('lesson_') || initialSetId.startsWith('vocab-')) {
+        const cleanId = initialSetId.replace(/^(lesson_|vocab-|set-)/, '');
+        setSelectedLessonIds([cleanId]);
+      }
+    }
+  }, [initialSetId]);
 
   // App states
   const [exercises, setExercises] = useState<TranslationExercise[]>([]);
@@ -1657,7 +1667,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
     setTimeLeft(null);
 
     if (user && results.length > 0) {
-      const score = Math.round(results.reduce((acc, r) => acc + (r?.score || 0), 0) / results.length);
+      const rawAvg = results.reduce((acc, r) => acc + (r?.score || 0), 0) / results.length;
+      const score = isNaN(rawAvg) ? 0 : Math.round(rawAvg);
       const exercisesDetails = results.map((r) => {
         if (r.explanation === 'Ułożono poprawnie.') {
            return `${r.polishSentence} -> ${r.studentAnswer} [UKŁADANKA - Wymagane powtórzenie przez samodzielne Wpisywanie]`;
@@ -1789,9 +1800,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
     setShowHints(updated);
   };
 
-  const averageScore = evaluationResults.length > 0
+  const calcAvg = evaluationResults.length > 0
     ? Math.round(evaluationResults.reduce((acc, r) => acc + (r?.score || 0), 0) / evaluationResults.length)
     : 0;
+  const averageScore = isNaN(calcAvg) ? 0 : calcAvg;
 
   return (
     <div className="relative">
@@ -2072,8 +2084,29 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           </span>
                         )}
                         {user?.hasNewLesson && (
-                          <span className="text-[11px] px-2.5 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full animate-pulse cursor-default whitespace-nowrap font-semibold shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+                          <span 
+                            onClick={() => {
+                              if (onChangeView) onChangeView('lesson-history');
+                              if (user?.id) {
+                                updateDoc(doc(db, 'users', user.id), { hasNewLesson: false }).catch(console.error);
+                              }
+                            }}
+                            className="text-[11px] px-2.5 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full animate-pulse cursor-pointer hover:bg-amber-500/30 transition-colors whitespace-nowrap font-semibold shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                          >
                             {language === 'pl' ? 'nowa lekcja' : 'new lesson'}
+                          </span>
+                        )}
+                        {user?.hasNewHomework && (
+                          <span 
+                            onClick={() => {
+                              if (onChangeView) onChangeView('homework');
+                              if (user?.id) {
+                                updateDoc(doc(db, 'users', user.id), { hasNewHomework: false }).catch(console.error);
+                              }
+                            }}
+                            className="text-[11px] px-2.5 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/40 rounded-full animate-pulse cursor-pointer hover:bg-purple-500/30 transition-colors whitespace-nowrap font-semibold shadow-[0_0_10px_rgba(168,85,247,0.2)]"
+                          >
+                            {language === 'pl' ? 'nowa praca domowa' : 'new homework'}
                           </span>
                         )}
                       </div>
@@ -3158,31 +3191,45 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   </div>
                                 </div>
 
-                                {/* Step 2: Words list with select all / deselect all */}
+                                {/* Step 2: Words list */}
                                 <div className="flex-1 flex flex-col min-h-0 space-y-2 mb-6">
                                   <div className="flex justify-between items-center">
                                     <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                                      {language === 'pl' 
-                                        ? `2. Wybierz słówka (${setupCheckedWordIds.size} z ${setupWords.length})` 
-                                        : `2. Select words (${setupCheckedWordIds.size} of ${setupWords.length})`}
+                                      {practiceSetupType === 'flashcards' 
+                                        ? (language === 'pl' ? `2. Słówka w zestawie (${setupWords.length} słówek - Cała kategoria)` : `2. Words in set (${setupWords.length} words - Full category)`)
+                                        : (language === 'pl' ? `2. Wybierz słówka (${setupCheckedWordIds.size} z ${setupWords.length})` : `2. Select words (${setupCheckedWordIds.size} of ${setupWords.length})`)}
                                     </label>
-                                    <div className="flex gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => setSetupCheckedWordIds(new Set(setupWords.map(w => w.id)))}
-                                        className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg transition-colors border border-emerald-500/20"
-                                      >
-                                        {language === 'pl' ? 'Zaznacz wszystkie' : 'Select all'}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setSetupCheckedWordIds(new Set())}
-                                        className="text-[10px] font-bold text-gray-400 bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg transition-colors border border-white/10"
-                                      >
-                                        {language === 'pl' ? 'Odznacz wszystkie' : 'Deselect all'}
-                                      </button>
-                                    </div>
+                                    {practiceSetupType === 'flashcards' ? (
+                                      <span className="text-[10px] font-bold text-purple-300 bg-purple-500/15 border border-purple-500/30 px-2.5 py-1 rounded-lg">
+                                        {language === 'pl' ? 'Kategoria w całości' : 'Full category'}
+                                      </span>
+                                    ) : (
+                                      <div className="flex gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => setSetupCheckedWordIds(new Set(setupWords.map(w => w.id)))}
+                                          className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg transition-colors border border-emerald-500/20"
+                                        >
+                                          {language === 'pl' ? 'Zaznacz wszystkie' : 'Select all'}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setSetupCheckedWordIds(new Set())}
+                                          className="text-[10px] font-bold text-gray-400 bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg transition-colors border border-white/10"
+                                        >
+                                          {language === 'pl' ? 'Odznacz wszystkie' : 'Deselect all'}
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
+
+                                  {practiceSetupType === 'flashcards' && (
+                                    <p className="text-[11px] text-purple-300/90 bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5">
+                                      🎴 {language === 'pl' 
+                                        ? 'Fiszki realizujesz jako pełną kategorię (zestaw). Wszystkie słówka są automatycznie dołączone.' 
+                                        : 'Flashcards are studied as a complete category set. All words are automatically included.'}
+                                    </p>
+                                  )}
 
                                   {/* Scrollable list of words with checkboxes */}
                                   <div className="flex-1 overflow-y-auto custom-scrollbar border border-white/5 rounded-2xl bg-[#0b0f19] p-2 space-y-1 max-h-[300px]">
@@ -3202,7 +3249,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                         return (
                                           <label
                                             key={word.id}
-                                            className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all cursor-pointer ${
+                                            className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${
+                                              practiceSetupType === 'flashcards' ? 'cursor-default opacity-90' : 'cursor-pointer'
+                                            } ${
                                               isChecked
                                                 ? `${accentClass}`
                                                 : 'bg-white/[0.01] border-white/5 text-gray-400 hover:border-white/10 hover:bg-white/[0.03]'
@@ -3211,7 +3260,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                             <input
                                               type="checkbox"
                                               checked={isChecked}
+                                              disabled={practiceSetupType === 'flashcards'}
                                               onChange={() => {
+                                                if (practiceSetupType === 'flashcards') return;
                                                 const newChecked = new Set(setupCheckedWordIds);
                                                 if (newChecked.has(word.id)) {
                                                   newChecked.delete(word.id);
@@ -3220,7 +3271,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                                 }
                                                 setSetupCheckedWordIds(newChecked);
                                               }}
-                                              className={`w-4 h-4 rounded border-white/20 bg-black/40 focus:ring-0 ${checkColor} cursor-pointer`}
+                                              className={`w-4 h-4 rounded border-white/20 bg-black/40 focus:ring-0 ${checkColor} ${
+                                                practiceSetupType === 'flashcards' ? 'cursor-default opacity-80' : 'cursor-pointer'
+                                              }`}
                                             />
                                             <div className="flex-1 min-w-0">
                                               <span className={`font-semibold text-xs block ${isChecked ? 'text-white' : 'text-gray-300'}`}>{word.term}</span>

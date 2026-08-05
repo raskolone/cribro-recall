@@ -231,7 +231,8 @@ const StudentStatsScreen: React.FC = () => {
     });
 
     const validLogs = logs.filter(l => (l.exerciseType as string) !== 'Aktywność');
-    const averageScore = validLogs.length > 0 ? Math.round(totalScoreSum / validLogs.length) : 0;
+    const rawAvg = validLogs.length > 0 ? totalScoreSum / validLogs.length : 0;
+    const averageScore = isNaN(rawAvg) ? 0 : Math.round(rawAvg);
 
     // Calculate streaks using calendar dates
     const dateKeys = Array.from(dateMap.keys()).sort(); // ascending YYYY-MM-DD

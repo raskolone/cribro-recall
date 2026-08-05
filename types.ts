@@ -25,6 +25,7 @@ export interface User {
   level?: string;
   hasNewVocabulary?: boolean;
   hasNewLesson?: boolean;
+  hasNewHomework?: boolean;
   adminMessage?: { title: string; text: string; createdAt: string; } | null;
   description?: string;
   aiPrompt?: string;

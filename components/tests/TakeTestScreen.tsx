@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { StudentTest } from '../../types';
 import { gradeTest } from '../../services/geminiService';
 import Card from '../ui/Card';
@@ -94,6 +95,7 @@ const SentenceListTask: React.FC<{
 
 const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
   const { user, updateUserStreak } = useAuth();
+  const { language } = useLanguage();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [confirmModalState, setConfirmModalState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({
     isOpen: false,
@@ -230,9 +232,8 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
     <div className="max-w-3xl mx-auto space-y-6 pb-12">
       <div className="flex items-center justify-between mb-8">
         <button onClick={onBack} className="text-content-muted hover:text-white flex items-center gap-2">
-          
-                            {i18n.t("&larr; Wróć")}
-                          </button>
+          ← {language === 'pl' ? 'Wróć' : 'Back'}
+        </button>
         <h1 className="text-2xl font-bold">{test.title}</h1>
       </div>
 

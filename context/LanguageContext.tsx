@@ -46,6 +46,10 @@ const translations = {
     'flashcards.complete': 'Session Complete!',
     'flashcards.score': 'You got {correct} out of {total} correct.',
     'flashcards.emptySet': 'This set has no cards.',
+    'flashcards.confirmQuitTitle': 'Quit Session',
+    'flashcards.confirmQuit': 'Are you sure you want to quit the session?',
+    'common.cancel': 'Cancel',
+    'common.confirm': 'Confirm',
   },
   pl: {
     'nav.creator': 'O Twórcy Aplikacji',
@@ -84,6 +88,10 @@ const translations = {
     'flashcards.complete': 'Sesja Zakończona!',
     'flashcards.score': 'Masz {correct} z {total} poprawnych odpowiedzi.',
     'flashcards.emptySet': 'Ten zestaw nie ma fiszek.',
+    'flashcards.confirmQuitTitle': 'Zakończ Sesję',
+    'flashcards.confirmQuit': 'Czy na pewno chcesz zakończyć sesję?',
+    'common.cancel': 'Anuluj',
+    'common.confirm': 'Potwierdź',
   }
 };
 
@@ -113,7 +121,13 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   };
 
   const t = (key: string): string => {
-    return translations[language][key as keyof typeof translations['en']] || i18n.t(key);
+    const directVal = translations[language][key as keyof typeof translations['en']];
+    if (directVal) return directVal;
+    
+    const i18nVal = i18n.t(key);
+    if (i18nVal && i18nVal !== key) return i18nVal;
+    
+    return '';
   };
 
   return (

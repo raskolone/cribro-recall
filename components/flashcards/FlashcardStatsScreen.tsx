@@ -94,8 +94,7 @@ const FlashcardStatsScreen: React.FC<FlashcardStatsScreenProps> = ({ setId, onBa
     <div className="max-w-5xl mx-auto space-y-8 pb-12">
       <div className="flex items-center justify-between">
         <button onClick={onBack} className="text-content-muted hover:text-white flex items-center gap-2">
-          
-                            {i18n.t("&larr;")} {language === 'pl' ? 'Wróć' : 'Back'}
+          ← {language === 'pl' ? 'Wróć' : 'Back'}
         </button>
         <h2 className="text-2xl font-bold">{set?.title} - {language === 'pl' ? 'Statystyki' : 'Statistics'}</h2>
       </div>

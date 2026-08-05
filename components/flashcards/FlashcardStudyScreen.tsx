@@ -157,8 +157,7 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
           <button onClick={onBack} className="text-content-muted hover:text-white flex items-center gap-2">
-            
-                                {i18n.t("&larr;")} {language === 'pl' ? 'Wróć do zestawu' : 'Back to set'}
+            ← {language === 'pl' ? 'Wróć do zestawu' : 'Back to set'}
           </button>
           <h2 className="text-2xl font-bold">{set?.title}</h2>
         </div>
@@ -256,13 +255,13 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
       message={confirmModalState.message}
       onConfirm={confirmModalState.onConfirm}
       onCancel={closeConfirm}
-      confirmText={t('flashcards.quit') || 'Zakończ'}
-      cancelText={t('common.cancel') || 'Anuluj'}
+      confirmText={t('flashcards.quit') || (language === 'pl' ? 'Zakończ' : 'Quit')}
+      cancelText={t('common.cancel') || (language === 'pl' ? 'Anuluj' : 'Cancel')}
     />
   );
 
   if (selectedMode === 'intro') {
-    return <>{renderModal()}<IntroMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} onBack={() => setSelectedMode(null)} t={t} /></>;
+    return <>{renderModal()}<IntroMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} onBack={() => setSelectedMode(null)} t={t} language={language} /></>;
   }
 
   if (selectedMode === 'quiz') {
@@ -368,7 +367,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
           mode: 'flashcards',
           totalCards: cards.length,
           correctCount,
-          scorePercent: Math.round((correctCount / cards.length) * 100)
+          scorePercent: cards.length > 0 ? Math.round((correctCount / cards.length) * 100) : 0
         }, newResults);
       }
     };
@@ -534,7 +533,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
 
   if (isFinished) {
     const correctCount = results.filter(r => r.isCorrect).length;
-    const score = Math.round((correctCount / cards.length) * 100);
+    const score = cards.length > 0 ? Math.round((correctCount / cards.length) * 100) : 0;
     
     return (
       <div className="max-w-2xl mx-auto text-center space-y-8">
@@ -650,8 +649,8 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
       </div>
 
       <div className="flex justify-between md:hidden px-4">
-         <button onClick={handlePrev} disabled={currentIndex === 0} className={`p-2 ${currentIndex === 0 ? 'opacity-30' : ''}`}>{i18n.t("&larr; Poprzednia")}</button>
-         <button onClick={handleNext} disabled={currentIndex === cards.length - 1} className={`p-2 ${currentIndex === cards.length - 1 ? 'opacity-30' : ''}`}>{i18n.t("Następna &rarr;")}</button>
+         <button onClick={handlePrev} disabled={currentIndex === 0} className={`p-2 ${currentIndex === 0 ? 'opacity-30' : ''}`}>← {language === 'pl' ? 'Poprzednia' : 'Previous'}</button>
+         <button onClick={handleNext} disabled={currentIndex === cards.length - 1} className={`p-2 ${currentIndex === cards.length - 1 ? 'opacity-30' : ''}`}>{language === 'pl' ? 'Następna' : 'Next'} →</button>
       </div>
 
       {isFlipped ? (
@@ -738,7 +737,7 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
           mode: 'quiz',
           totalCards: cards.length,
           correctCount,
-          scorePercent: Math.round((correctCount / cards.length) * 100)
+          scorePercent: cards.length > 0 ? Math.round((correctCount / cards.length) * 100) : 0
         }, newResults);
       }
     }, correct ? 1000 : 2000); // Wait longer if wrong to show correct answer
@@ -748,7 +747,7 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
 
   if (isFinished) {
     const correctCount = results.filter(r => r.isCorrect).length;
-    const score = Math.round((correctCount / cards.length) * 100);
+    const score = cards.length > 0 ? Math.round((correctCount / cards.length) * 100) : 0;
     
     return (
       <div className="max-w-2xl mx-auto text-center space-y-8">
@@ -919,7 +918,7 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
           mode: 'writing',
           totalCards: cards.length,
           correctCount,
-          scorePercent: Math.round((correctCount / cards.length) * 100)
+          scorePercent: cards.length > 0 ? Math.round((correctCount / cards.length) * 100) : 0
         }, newResults);
       }
     }, isCorrect ? 1000 : 3000); // Wait longer if wrong to show correct answer
@@ -929,7 +928,7 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
 
   if (isFinished) {
     const correctCount = results.filter(r => r.isCorrect).length;
-    const score = Math.round((correctCount / cards.length) * 100);
+    const score = cards.length > 0 ? Math.round((correctCount / cards.length) * 100) : 0;
     
     return (
       <div className="max-w-2xl mx-auto text-center space-y-8">
@@ -1135,12 +1134,11 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, show
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <button onClick={() => { showConfirm(
-            t('flashcards.confirmQuitTitle') || 'Zakończ', 
-            t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?', 
+            t('flashcards.confirmQuitTitle') || (language === 'pl' ? 'Zakończ Sesję' : 'Quit Session'), 
+            t('flashcards.confirmQuit') || (language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję?' : 'Are you sure you want to quit the session?'), 
             () => { closeConfirm(); onBack(); }
           ); }} className="text-content-muted hover:text-white flex items-center gap-2">
-          
-                            {i18n.t("&larr;")} {t('flashcards.quit')}
+          ← {t('flashcards.quit') || (language === 'pl' ? 'Zakończ' : 'Quit')}
         </button>
         <div className="font-mono text-xl font-bold">
           {elapsedTime}s
@@ -1181,7 +1179,7 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, show
 };
 
 // --- Intro Mode Component ---
-const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm }: any) => {
+const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm, language }: any) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isReversed, setIsReversed] = useState(false);
@@ -1208,12 +1206,11 @@ const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm }: any) => {
     <div className="max-w-3xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <button onClick={() => { showConfirm(
-            t('flashcards.confirmQuitTitle') || 'Zakończ', 
-            t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?', 
+            t('flashcards.confirmQuitTitle') || (language === 'pl' ? 'Zakończ Sesję' : 'Quit Session'), 
+            t('flashcards.confirmQuit') || (language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję?' : 'Are you sure you want to quit the session?'), 
             () => { closeConfirm(); onBack(); }
           ); }} className="text-content-muted hover:text-white flex items-center gap-2">
-          
-                            {i18n.t("&larr;")} {t('flashcards.quit')}
+          ← {t('flashcards.quit') || (language === 'pl' ? 'Zakończ' : 'Quit')}
         </button>
         <div className="font-mono text-sm">
           {currentIndex + 1} / {cards.length}
@@ -1223,7 +1220,7 @@ const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm }: any) => {
       <div className="w-full bg-base-300 h-2 rounded-full overflow-hidden">
         <div 
           className="bg-secondary h-full transition-all duration-300"
-          style={{ width: `${((currentIndex + 1) / cards.length) * 100}%` }}
+          style={{ width: `${cards.length > 0 ? Math.min(100, Math.max(0, ((currentIndex + 1) / cards.length) * 100)) : 0}%` }}
         />
       </div>
 
@@ -1253,9 +1250,8 @@ const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm }: any) => {
 
       <div className="flex justify-between mt-8">
         <Button variant="secondary" onClick={handlePrev} disabled={currentIndex === 0}>
-          
-                            {i18n.t("&larr; Previous")}
-                          </Button>
+          ← {language === 'pl' ? 'Poprzednia' : 'Previous'}
+        </Button>
         <Button onClick={handleNext}>
           {currentIndex === cards.length - 1 ? 'Finish' : 'Next \u2192'}
         </Button>

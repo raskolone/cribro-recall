@@ -434,5 +434,9 @@
   "e.g., Words for my upcoming trip to Paris": "e.g., Words for my upcoming trip to Paris",
   "Przeczytaj zdanie": "Read the sentence",
   "Wymowa brytyjska": "British pronunciation",
-  "Wymowa amerykańska": "American pronunciation"
+  "Wymowa amerykańska": "American pronunciation",
+  "flashcards.confirmQuitTitle": "Quit Session",
+  "flashcards.confirmQuit": "Are you sure you want to quit the session?",
+  "common.cancel": "Cancel",
+  "common.confirm": "Confirm"
 }
