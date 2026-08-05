@@ -641,8 +641,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       const setId = await syncBasketToFirestoreSet(basketWords);
       if (setId && onChangeView) {
         onChangeView('flashcard-study', { 
-          activeSetId: setId, 
-          practiceView: { type: 'exercise', exercise: type } 
+          setId: setId, 
+          initialMode: type === 'match' ? 'matching' : type 
         });
       } else {
         onStartPractice?.(type);
@@ -803,8 +803,14 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     let wordsList: BasketWordItem[] = [];
     if (setupSelectedSource === 'basket') {
       wordsList = basketWords;
-    } else if (setupSelectedSource.startsWith('gen-')) {
-      const genSet = GENERAL_VOCABULARY_SETS.find(s => s.id === setupSelectedSource);
+    } else {
+      const cleanSource = setupSelectedSource.replace(/^vocab-/, '').replace(/^set-/, '');
+      const genSet = GENERAL_VOCABULARY_SETS.find(s => 
+        s.id === setupSelectedSource || 
+        s.id === cleanSource || 
+        `gen-${s.id}` === setupSelectedSource || 
+        s.id === `gen-${cleanSource}`
+      );
       if (genSet) {
         wordsList = genSet.words.map(w => ({
           id: w.id,
@@ -812,15 +818,15 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
           definition: w.polish,
           setTopic: genSet.title
         }));
-      }
-    } else {
-      const selectedSet = vocabularySets.find(s => s.id === setupSelectedSource);
-      if (selectedSet && selectedSet.vocabularyText) {
-        wordsList = selectedSet.vocabularyText
-          .split(/[\n;]+/)
-          .map(line => line.trim())
-          .filter(line => line.length > 0)
-          .map(line => parseLineToWordItem(line, selectedSet.topic));
+      } else {
+        const selectedSet = vocabularySets.find(s => s.id === setupSelectedSource || s.id === cleanSource);
+        if (selectedSet && selectedSet.vocabularyText) {
+          wordsList = selectedSet.vocabularyText
+            .split(/[\n;]+/)
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+            .map(line => parseLineToWordItem(line, selectedSet.topic));
+        }
       }
     }
 
@@ -1093,6 +1099,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       let initialSource = '';
       if (selectedSetId === 'basket' && basketWords.length > 0) {
         initialSource = 'basket';
+      } else if (selectedSetId && selectedSetId !== 'all' && selectedSetId !== 'grammar') {
+        initialSource = selectedSetId;
       } else if (selectedLessonIds.length > 0) {
         initialSource = selectedLessonIds[0];
       } else if (vocabularySets.length > 0) {
@@ -1728,14 +1736,16 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
   const handleProceedToTrueChallenge = () => {
     setExerciseFormat('typing');
-    const puzzleSentences = exercises.map(e => e.englishTranslation).join(' | ');
-    const override = `WYMÓG SPECJALNY: Uczeń właśnie ukończył układankę z tymi zdaniami: [${puzzleSentences}]. Wygeneruj nowe zdania, które są PODOBNE tematycznie i używają podobnych struktur gramatycznych, ale SĄ INNE (nie kopiuj ich). To ma być "prawdziwe wyzwanie" gdzie uczeń samodzielnie tłumaczy nowe zdania.`;
-    setExercises([]);
-    setStudentAnswers([]);
-    setActiveSentenceIndex(0);
-    setEvaluationStatuses({});
-    setSingleEvaluationResults({});
-    handleGenerate(false, override);
+    if (exercises && exercises.length > 0) {
+      setStudentAnswers(new Array(exercises.length).fill(''));
+      setShowHints(new Array(exercises.length).fill(false));
+      setActiveSentenceIndex(0);
+      setEvaluationStatuses({});
+      setSingleEvaluationResults({});
+      setStep('practice');
+    } else {
+      handleGenerate(false);
+    }
   };
 
   const handleMaybeLater = () => {

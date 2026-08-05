@@ -30,9 +30,12 @@ import LessonHistoryScreen from './LessonHistoryScreen';
 import StudentTestsScreen from '../tests/StudentTestsScreen';
 import AdminStatsScreen from '../admin/AdminStatsScreen';
 import FlashcardSetsScreen from '../flashcards/FlashcardSetsScreen';
+import FlashcardStudyScreen from '../flashcards/FlashcardStudyScreen';
+import FlashcardEditScreen from '../flashcards/FlashcardEditScreen';
+import FlashcardStatsScreen from '../flashcards/FlashcardStatsScreen';
+import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
 import SettingsScreen from '../settings/SettingsScreen';
 import TopicDatabaseScreen from '../admin/TopicDatabaseScreen';
-import FlashcardStudyScreen from '../flashcards/FlashcardStudyScreen';
 import HomeworkScreen from './HomeworkScreen';
 import AdminDebuggingScreen from '../admin/AdminDebuggingScreen';
 
@@ -148,13 +151,65 @@ const Dashboard: React.FC = () => {
       return <StudentTestsScreen onBack={() => setView('dashboard')} />;
     }
     if (view === 'flashcard-sets') {
-      return <FlashcardSetsScreen onStudySet={() => {}} onEditSet={() => {}} onStatsSet={() => {}} onPresentSet={() => {}} />;
+      return (
+        <FlashcardSetsScreen 
+          onStudySet={(setId) => {
+            setActiveSetId(setId);
+            (window as any)._initialStudyMode = 'flashcards';
+            setView('flashcard-study');
+          }} 
+          onEditSet={(setId) => {
+            setActiveSetId(setId);
+            setView('flashcard-edit');
+          }} 
+          onStatsSet={(setId) => {
+            setActiveSetId(setId);
+            setView('flashcard-stats');
+          }} 
+          onPresentSet={(setId) => {
+            setActiveSetId(setId);
+            setView('presentation');
+          }} 
+        />
+      );
     }
     if (view === 'flashcard-study') {
       return <FlashcardStudyScreen setId={activeSetId || ''} initialMode={(window as any)._initialStudyMode} onBack={() => setView('dashboard')} onNavigate={(v: any, extra?: any) => {
-        if (extra && extra.setId) setActiveSetId(extra.setId);
+        if (extra && (extra.setId || extra.activeSetId)) setActiveSetId(extra.setId || extra.activeSetId);
+        if (extra && extra.initialMode) {
+          (window as any)._initialStudyMode = extra.initialMode === 'match' ? 'matching' : extra.initialMode;
+        }
         setView(v as View);
       }} />;
+    }
+    if (view === 'flashcard-edit') {
+      return (
+        <FlashcardEditScreen 
+          setId={activeSetId || ''} 
+          onBack={() => setView('flashcard-sets')} 
+          onStudy={(setId) => {
+            setActiveSetId(setId);
+            (window as any)._initialStudyMode = 'flashcards';
+            setView('flashcard-study');
+          }} 
+        />
+      );
+    }
+    if (view === 'flashcard-stats') {
+      return (
+        <FlashcardStatsScreen 
+          setId={activeSetId || ''} 
+          onBack={() => setView('flashcard-sets')} 
+        />
+      );
+    }
+    if (view === 'presentation') {
+      return (
+        <FlashcardPresentationScreen 
+          setId={activeSetId || ''} 
+          onBack={() => setView('flashcard-sets')} 
+        />
+      );
     }
     if (view === 'homework') {
       return <HomeworkScreen />;
@@ -173,7 +228,7 @@ const Dashboard: React.FC = () => {
     }
     return <AIExerciseGeneratorScreen 
       onChangeView={(newView, extra) => {
-        if (extra && extra.setId) setActiveSetId(extra.setId);
+        if (extra && (extra.setId || extra.activeSetId)) setActiveSetId(extra.setId || extra.activeSetId);
         if (extra && extra.initialMode) {
           (window as any)._initialStudyMode = extra.initialMode === 'match' ? 'matching' : extra.initialMode;
         }

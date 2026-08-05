@@ -6,6 +6,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { Flashcard, FlashcardSet } from '../../types';
+import { GENERAL_VOCABULARY_SETS } from '../../data/generalVocabulary';
 import PronunciationMic from '../ui/PronunciationMic';
 import TTSButtons from './TTSButtons';
 import ConfirmModal from '../ui/ConfirmModal';
@@ -47,6 +48,12 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
 
 
   useEffect(() => {
+    if (initialMode) {
+      setSelectedMode(initialMode === ('match' as any) ? 'matching' : initialMode);
+    }
+  }, [initialMode]);
+
+  useEffect(() => {
     if (!setId) {
       setIsLoading(false);
       return;
@@ -54,6 +61,49 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
     const currentSet = sets.find(s => s.id === setId);
     if (currentSet) {
       setSet(currentSet);
+    } else {
+      const cleanGenId = setId.replace(/^vocab-/, '').replace(/^set-/, '');
+      const genSet = GENERAL_VOCABULARY_SETS.find(s => 
+        s.id === setId || 
+        s.id === cleanGenId || 
+        `gen-${s.id}` === setId || 
+        s.id === `gen-${cleanGenId}` ||
+        s.id === setId.replace(/^gen-/, '')
+      );
+      if (genSet) {
+        setSet({
+          id: genSet.id,
+          userId: 'system',
+          title: genSet.title,
+          description: genSet.description,
+          isPublic: true,
+          cardCount: genSet.words.length,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isGeneral: true
+        });
+      } else if (setId === 'basket') {
+        setSet({
+          id: 'basket',
+          userId: 'local',
+          title: language === 'pl' ? 'Mój Koszyk Słówek' : 'My Word Basket',
+          description: language === 'pl' ? 'Wybrane słówka dodane do koszyka' : 'Selected words in basket',
+          isPublic: false,
+          cardCount: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+      } else {
+        setSet({
+          id: setId,
+          userId: 'user',
+          title: language === 'pl' ? 'Zestaw Słówek' : 'Word Set',
+          isPublic: false,
+          cardCount: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+      }
     }
     
     const loadCards = async () => {
@@ -63,7 +113,7 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
     };
     
     loadCards();
-  }, [setId, sets, getFlashcards]);
+  }, [setId, sets, getFlashcards, language]);
 
   if (isLoading) {
     return <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;

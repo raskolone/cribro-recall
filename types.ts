@@ -98,6 +98,7 @@ export interface FlashcardSet {
   cardCount: number;
   words?: any[];
   cards?: any[];
+  flashcards?: any[];
   createdAt: any; // Timestamp
   updatedAt: any; // Timestamp
   assignedByTeacher?: boolean;

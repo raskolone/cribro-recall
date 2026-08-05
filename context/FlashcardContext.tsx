@@ -216,48 +216,49 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   const getFlashcards = async (setId: string) => {
-    if (setId.startsWith('gen-')) {
-      const genSet = GENERAL_VOCABULARY_SETS.find(s => s.id === setId);
-      if (genSet) {
-        return genSet.words.map((w, idx) => ({
-          id: w.id || `gen_card_${idx}`,
-          setId: setId,
-          term: w.english,
-          termLanguage: 'en',
-          definition: w.polish || '',
-          definitionLanguage: 'pl',
-          position: idx,
-          masteryLevel: 0,
-          nextReview: Date.now(),
-          imageUrl: null
-        } as unknown as Flashcard));
-      }
-      return [];
+    if (!setId) return [];
+
+    const cleanId = setId.replace(/^lesson_/, '').replace(/^vocab-/, '').replace(/^set-/, '');
+
+    // 1. Check GENERAL_VOCABULARY_SETS first (with flexible ID matching)
+    const genSet = GENERAL_VOCABULARY_SETS.find(s => 
+      s.id === setId || 
+      s.id === cleanId || 
+      `gen-${s.id}` === setId || 
+      s.id === `gen-${cleanId}` ||
+      s.id === setId.replace(/^gen-/, '')
+    );
+
+    if (genSet) {
+      return genSet.words.map((w, idx) => ({
+        id: w.id || `gen_card_${idx}`,
+        setId: genSet.id,
+        term: w.english,
+        termLanguage: 'en',
+        definition: w.polish || '',
+        definitionLanguage: 'pl',
+        position: idx,
+        masteryLevel: 0,
+        nextReview: Date.now(),
+        imageUrl: null
+      } as unknown as Flashcard));
     }
 
-    if (!userId) return [];
-    
-    if (setId.startsWith('lesson_')) {
-      const lessonId = setId.replace('lesson_', '');
+    // 2. Check Basket
+    if (setId === 'basket' || cleanId === 'basket') {
       try {
-        const lessonRef = doc(db, `users/${userId}/lessonRecords`, lessonId);
-        const lessonSnap = await getDoc(lessonRef);
-        if (lessonSnap.exists()) {
-          const lessonData = lessonSnap.data();
-          if (lessonData.vocabularyText) {
-            let rawLines: string[] = [];
-            if (lessonData.vocabularyText.includes('\n')) {
-              rawLines = lessonData.vocabularyText.split('\n');
-            } else {
-              rawLines = lessonData.vocabularyText.split(/[,;]+/);
-            }
-            const vocabList = rawLines.map((i: string) => i.trim()).filter((i: string) => i.length > 0).map(parseVocabularyLine);
-            return vocabList.map((item: any, idx: number) => ({
-              id: `card_${idx}`,
-              setId: setId,
-              term: item.word,
+        const uId = userId || auth.currentUser?.uid;
+        const userBasketKey = uId ? `basketWords_${uId}` : 'basketWords';
+        const saved = localStorage.getItem(userBasketKey) || localStorage.getItem('basketWords');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.map((item: any, idx: number) => ({
+              id: `basket_card_${idx}`,
+              setId: 'basket',
+              term: item.term || item.word || '',
               termLanguage: 'en',
-              definition: item.translation || '',
+              definition: item.definition || item.translation || '',
               definitionLanguage: 'pl',
               position: idx,
               masteryLevel: 0,
@@ -266,21 +267,149 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
             } as unknown as Flashcard));
           }
         }
-      } catch (error) {
-        console.error('Error fetching lesson vocabulary:', error);
+      } catch (e) {
+        console.warn('Error fetching basket flashcards:', e);
       }
-      return [];
     }
 
-    try {
-      const cardsRef = collection(db, `sets/${setId}/flashcards`);
-      const q = query(cardsRef, orderBy('position', 'asc'));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Flashcard));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.GET, `sets/${setId}/flashcards`);
-      return [];
+    // 3. Check loaded sets in context state
+    const matchInLoadedSets = sets.find(s => 
+      s.id === setId || 
+      s.id === cleanId || 
+      s.id === `set-${cleanId}` || 
+      s.id === `vocab-${cleanId}` ||
+      s.id === `lesson_${cleanId}`
+    );
+
+    if (matchInLoadedSets) {
+      if (Array.isArray(matchInLoadedSets.flashcards) && matchInLoadedSets.flashcards.length > 0) {
+        return matchInLoadedSets.flashcards.map((f: any, idx: number) => ({
+          id: f.id || `card_${idx}`,
+          setId: matchInLoadedSets.id,
+          term: f.front || f.term || '',
+          termLanguage: f.termLanguage || 'en',
+          definition: f.back || f.definition || '',
+          definitionLanguage: f.definitionLanguage || 'pl',
+          position: idx,
+          masteryLevel: 0,
+          nextReview: Date.now(),
+          imageUrl: f.imageUrl || null
+        } as unknown as Flashcard));
+      }
     }
+
+    if (!userId) return [];
+
+    // 4. Handle 'all' or 'lessons'
+    if (setId === 'all' || setId === 'lessons') {
+      try {
+        const allCards: Flashcard[] = [];
+        const lessonsRef = collection(db, `users/${userId}/lessonRecords`);
+        const qLessons = query(lessonsRef);
+        const lessonSnaps = await getDocs(qLessons);
+        lessonSnaps.docs.forEach((d) => {
+          const lData = d.data();
+          if (lData.vocabularyText) {
+            const rawLines = lData.vocabularyText.includes('\n') ? lData.vocabularyText.split('\n') : lData.vocabularyText.split(/[,;]+/);
+            const vocabList = rawLines.map((i: string) => i.trim()).filter((i: string) => i.length > 0).map(parseVocabularyLine);
+            vocabList.forEach((item: any, idx: number) => {
+              if (item.word) {
+                allCards.push({
+                  id: `all_${d.id}_${idx}`,
+                  setId: setId,
+                  term: item.word,
+                  termLanguage: 'en',
+                  definition: item.translation || '',
+                  definitionLanguage: 'pl',
+                  position: allCards.length,
+                  masteryLevel: 0,
+                  nextReview: Date.now(),
+                  imageUrl: null
+                } as unknown as Flashcard);
+              }
+            });
+          }
+        });
+
+        const setsRef = collection(db, 'sets');
+        const qSets = query(setsRef, where('userId', '==', userId));
+        const setSnaps = await getDocs(qSets);
+        for (const sDoc of setSnaps.docs) {
+          const cardsRef = collection(db, `sets/${sDoc.id}/flashcards`);
+          const cSnap = await getDocs(cardsRef);
+          cSnap.docs.forEach(cDoc => {
+            const cd = cDoc.data();
+            if (cd.term) {
+              allCards.push({
+                id: cDoc.id,
+                setId: setId,
+                term: cd.term,
+                termLanguage: cd.termLanguage || 'en',
+                definition: cd.definition || '',
+                definitionLanguage: cd.definitionLanguage || 'pl',
+                position: allCards.length,
+                masteryLevel: cd.masteryLevel || 0,
+                nextReview: Date.now(),
+                imageUrl: cd.imageUrl || null
+              } as unknown as Flashcard);
+            }
+          });
+        }
+
+        if (allCards.length > 0) return allCards;
+      } catch (e) {
+        console.warn('Error fetching all/lessons flashcards:', e);
+      }
+    }
+
+    // 5. Try finding in lessonRecords
+    try {
+      const lessonRef = doc(db, `users/${userId}/lessonRecords`, cleanId);
+      const lessonSnap = await getDoc(lessonRef);
+      if (lessonSnap.exists()) {
+        const lessonData = lessonSnap.data();
+        if (lessonData.vocabularyText) {
+          let rawLines: string[] = [];
+          if (lessonData.vocabularyText.includes('\n')) {
+            rawLines = lessonData.vocabularyText.split('\n');
+          } else {
+            rawLines = lessonData.vocabularyText.split(/[,;]+/);
+          }
+          const vocabList = rawLines.map((i: string) => i.trim()).filter((i: string) => i.length > 0).map(parseVocabularyLine);
+          return vocabList.map((item: any, idx: number) => ({
+            id: `card_${idx}`,
+            setId: setId,
+            term: item.word,
+            termLanguage: 'en',
+            definition: item.translation || '',
+            definitionLanguage: 'pl',
+            position: idx,
+            masteryLevel: 0,
+            nextReview: Date.now(),
+            imageUrl: null
+          } as unknown as Flashcard));
+        }
+      }
+    } catch (error) {
+      console.warn('Error checking lessonRecord for vocab:', error);
+    }
+
+    // 6. Try fetching from sets subcollection
+    const idCandidates = Array.from(new Set([setId, cleanId, `set-${cleanId}`, `vocab-${cleanId}`, `set-custom-practice-${userId}`]));
+    for (const candId of idCandidates) {
+      try {
+        const cardsRef = collection(db, `sets/${candId}/flashcards`);
+        const q = query(cardsRef, orderBy('position', 'asc'));
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Flashcard));
+        }
+      } catch (error) {
+        // continue trying
+      }
+    }
+
+    return [];
   };
 
   const saveFlashcards = async (setId: string, cards: Partial<Flashcard>[]) => {

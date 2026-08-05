@@ -40,13 +40,12 @@ import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
-import { createRequire } from "node:module";
-
-const nativeRequire = createRequire(import.meta.url);
 let pdfParse: any;
 try {
-  const loadedPdf = nativeRequire("pdf-parse");
-  pdfParse = typeof loadedPdf === "function" ? loadedPdf : (loadedPdf.default || loadedPdf);
+  const loadedPdf = typeof require !== "undefined" ? require("pdf-parse") : null;
+  if (loadedPdf) {
+    pdfParse = typeof loadedPdf === "function" ? loadedPdf : (loadedPdf.default || loadedPdf);
+  }
 } catch (e) {
   console.warn("Failed to load pdf-parse:", e);
 }
