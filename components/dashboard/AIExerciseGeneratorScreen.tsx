@@ -503,25 +503,33 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
   useEffect(() => {
     if (user?.id) {
-      if (user.translatedSentencesCount !== undefined) {
-        setTranslatedSentencesCount(user.translatedSentencesCount);
-      } else {
-        getDocs(collection(db, `users/${user.id}/practiceLogs`)).then(snapshot => {
-          let total = 0;
-          snapshot.forEach(docSnap => {
-            const data = docSnap.data();
-            if (data.detailedFeedback && Array.isArray(data.detailedFeedback)) {
-              total += data.detailedFeedback.length;
+      getDocs(collection(db, `users/${user.id}/practiceLogs`)).then(snapshot => {
+        let total = 0;
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data.detailedFeedback && Array.isArray(data.detailedFeedback)) {
+            total += data.detailedFeedback.length;
+          } else if (data.exercisesData) {
+            if (Array.isArray(data.exercisesData)) {
+              total += data.exercisesData.length;
+            } else if (typeof data.exercisesData === 'string' && data.exercisesData.includes(' | ')) {
+              total += data.exercisesData.split(' | ').length;
             } else if (data.totalWords) {
               total += data.totalWords;
+            } else {
+              total += 1;
             }
-          });
-          setTranslatedSentencesCount(total);
+          } else if (data.totalWords) {
+            total += data.totalWords;
+          }
+        });
+        setTranslatedSentencesCount(total);
+        if (user.translatedSentencesCount !== total) {
           updateDoc(doc(db, 'users', user.id), { translatedSentencesCount: total }).catch(console.error);
-        }).catch(console.error);
-      }
+        }
+      }).catch(console.error);
     }
-  }, [user?.id, user?.translatedSentencesCount]);
+  }, [user?.id]);
 
   // Settings states
   const [activeTab, setActiveTab] = useState<'ai' | 'other'>('ai');
@@ -591,6 +599,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
   const [activeGeneratingModel, setActiveGeneratingModel] = useState<string>('deepseek-chat');
+  const [lastUsedWords, setLastUsedWords] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [debugLogs, setDebugLogs] = useState<string>('');
   const addLog = (msg: string) => { console.log(msg); setDebugLogs(prev => prev + "\n" + msg); };
@@ -1111,6 +1120,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                 return;
               }
               wordsToUse = basketWords.map(w => w.definition ? `${w.term} (${w.definition})` : w.term);
+              wordsToUse = wordsToUse.sort(() => 0.5 - Math.random()).slice(0, 20);
             } else if (selectedSetId === 'lessons' || selectedLessonIds.length > 0) {
               const selectedSets = vocabularySets.filter(s => selectedLessonIds.includes(s.id));
               const allWords: string[] = [];
@@ -1120,12 +1130,12 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                   allWords.push(...items);
                 }
               });
-              wordsToUse = Array.from(new Set(allWords)).slice(0, 15);
+              wordsToUse = Array.from(new Set(allWords)).sort(() => 0.5 - Math.random()).slice(0, 20);
             } else if (selectedSetId.startsWith('vocab-')) {
               const matchedVocab = vocabularySets.find(s => `vocab-${s.id}` === selectedSetId);
               if (matchedVocab && matchedVocab.vocabularyText) {
                  const items = matchedVocab.vocabularyText.split(/[\n,;]+/).map(i => i.trim()).filter(i => i.length > 0);
-                 wordsToUse = Array.from(new Set(items)); // AI analyzes all vocabulary from lesson
+                 wordsToUse = Array.from(new Set(items)).sort(() => 0.5 - Math.random()).slice(0, 20);
               }
             } else {
               let setsToProcess: FlashcardSet[] = [];
@@ -1141,7 +1151,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
               const allCards = allCardsLists.flat();
               
               // Pick unique words/terms
-              wordsToUse = Array.from(new Set(allCards.map(c => c.term))).slice(0, 15);
+              wordsToUse = Array.from(new Set(allCards.map(c => c.term))).sort(() => 0.5 - Math.random()).slice(0, 20);
             }
           } catch (e) {
             console.warn("Could not fetch flashcards for wordsToUse", e);
@@ -1188,6 +1198,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
         .replace(/\$\{weaknessesList(?: \|\| "[^"]+")?\}/g, weaknessesListStr);
 
       addLog('Calling generateTranslationExercises');
+      setLastUsedWords(wordsToUse);
       const generated = await generateTranslationExercises(
         level, 
         wordsToUse, 
@@ -1302,6 +1313,52 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
     const handleFinishAll = async () => {
     if (exerciseFormat === 'puzzle') {
+      if (user?.id) {
+        let setDisplayName = 'Trening ogólny';
+        if (selectedSetId === 'all') setDisplayName = 'Cały materiał';
+        else if (selectedSetId.startsWith('vocab-')) {
+           const vs = vocabularySets.find(s => `vocab-${s.id}` === selectedSetId);
+           if (vs) setDisplayName = (vs as any).name || vs.title;
+        } else {
+           const vs = vocabularySets.find(s => `set-${s.id}` === selectedSetId || s.id === selectedSetId);
+           if (vs) setDisplayName = (vs as any).name || vs.title;
+        }
+
+        const exercisesDetails = exercises.map(e => `${e.polishSentence} -> ${e.englishTranslation}`).join(' | ');
+
+        const logData: any = {
+          exerciseType: 'ai_translation',
+          exerciseFormat: 'puzzle',
+          date: new Date().toISOString(),
+          isRevisionMode: false,
+          score: 100,
+          totalWords: exercises.length,
+          exercisesData: exercisesDetails,
+          practiceMode: practiceMode,
+          selectedSetId: selectedSetId,
+          setDisplayName: setDisplayName,
+          wordsUsed: lastUsedWords
+        };
+        if (testName) logData.testName = testName;
+
+        try {
+          await addDoc(collection(db, `users/${user.id}/practiceLogs`), logData);
+          const newSentencesCount = (translatedSentencesCount || user?.translatedSentencesCount || 0) + exercises.length;
+          setTranslatedSentencesCount(newSentencesCount);
+          await updateDoc(doc(db, 'users', user.id), { translatedSentencesCount: newSentencesCount });
+          if (updateUserStreak) {
+            updateUserStreak().catch(console.error);
+          }
+          if (selectedSetId?.startsWith('special-task-')) {
+             const taskId = selectedSetId.replace('special-task-', '');
+             import('firebase/firestore').then(({ doc, updateDoc }) => {
+                updateDoc(doc(db, 'specialTasks', taskId), { status: 'completed' });
+             });
+          }
+        } catch (e) {
+          console.warn("Could not save puzzle practice log:", e);
+        }
+      }
       setStep('puzzle-success');
       return;
     }
@@ -1429,6 +1486,20 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
         feedbackRule: r?.feedbackRule || ''
       }));
 
+      // Determine set display name
+      let setDisplayName = 'Nieznany zestaw';
+      if (selectedSetId === 'basket') setDisplayName = 'Koszyk Słówek';
+      else if (selectedSetId === 'grammar') setDisplayName = 'Gramatyka';
+      else if (selectedSetId === 'lessons') setDisplayName = 'Słówka z lekcji';
+      else if (selectedSetId.startsWith('vocab-')) {
+         const vs = vocabularySets.find(s => `vocab-${s.id}` === selectedSetId);
+         if (vs) setDisplayName = (vs as any).name || vs.title;
+      } else if (selectedSetId === 'all') setDisplayName = 'Cały materiał';
+      else {
+         const vs = vocabularySets.find(s => `set-${s.id}` === selectedSetId || s.id === selectedSetId);
+         if (vs) setDisplayName = (vs as any).name || vs.title;
+      }
+
       const logData: any = {
         exerciseType: 'ai_translation',
         date: new Date().toISOString(),
@@ -1436,7 +1507,12 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
         score: score,
         totalWords: results.length,
         exercisesData: exercisesDetails,
-        detailedFeedback: detailedFeedback
+        detailedFeedback: detailedFeedback,
+        exerciseFormat: exerciseFormat,
+        practiceMode: practiceMode,
+        selectedSetId: selectedSetId,
+        setDisplayName: setDisplayName,
+        wordsUsed: lastUsedWords
       };
       if (testName) logData.testName = testName;
       
@@ -1485,6 +1561,12 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
     setExercises([]);
     setStudentAnswers([]);
     setTimeLeft(null);
+    setActiveSentenceIndex(0);
+    setEvaluationStatuses({});
+    setSingleEvaluationResults({});
+    if (onExerciseStateChange) {
+      onExerciseStateChange(false);
+    }
   };
 
   const handleNext = () => {
@@ -3512,8 +3594,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
       {/* PUZZLE SUCCESS STEP */}
       
 {step === 'puzzle-success' && (
-        <div className="max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[50vh] space-y-6 animate-fade-in-up">
-          <div className="relative w-48 h-48 flex items-center justify-center mb-6">
+        <div className="max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[50vh] space-y-6 animate-fade-in-up relative z-10">
+          <div className="relative w-48 h-48 flex items-center justify-center mb-6 pointer-events-none">
             {/* Explosion of puzzle pieces */}
             {Array.from({ length: 16 }).map((_, i) => (
               <motion.div
@@ -3527,7 +3609,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   rotate: Math.random() * 720 - 360
                 }}
                 transition={{ duration: 1.5 + Math.random() * 0.5, ease: "easeOut" }}
-                className={`absolute w-8 h-8 rounded-md mix-blend-screen ${['bg-emerald-400', 'bg-teal-400', 'bg-cyan-400', 'bg-green-300'][i % 4]}`}
+                className={`absolute w-8 h-8 rounded-md mix-blend-screen pointer-events-none ${['bg-emerald-400', 'bg-teal-400', 'bg-cyan-400', 'bg-green-300'][i % 4]}`}
                 style={{ clipPath: 'polygon(10% 0, 90% 0, 100% 10%, 100% 90%, 90% 100%, 10% 100%, 0 90%, 0 10%)' }}
               />
             ))}
@@ -3537,14 +3619,14 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               initial={{ scale: 0, opacity: 1 }}
               animate={{ scale: 4, opacity: 0 }}
               transition={{ duration: 1, ease: "easeOut" }}
-              className="absolute inset-0 rounded-full border-4 border-emerald-400/60"
+              className="absolute inset-0 rounded-full border-4 border-emerald-400/60 pointer-events-none"
             />
 
             <motion.div 
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: "spring", bounce: 0.6, duration: 1 }}
-              className="w-28 h-28 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-3xl flex items-center justify-center relative z-10 shadow-[0_0_60px_rgba(52,211,153,0.8)] backdrop-blur-xl border border-white/30"
+              className="w-28 h-28 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-3xl flex items-center justify-center relative z-10 shadow-[0_0_60px_rgba(52,211,153,0.8)] backdrop-blur-xl border border-white/30 pointer-events-auto"
             >
               <Puzzle className="w-14 h-14 text-black/90 drop-shadow-lg" />
             </motion.div>
@@ -3561,7 +3643,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-4 w-full max-w-sm mt-4">
+          <div className="flex flex-col items-center gap-4 w-full max-w-sm mt-4 relative z-20 pointer-events-auto">
             <AILoadingButton 
               onClick={handleProceedToTrueChallenge} 
               isLoading={isLoading}
@@ -3575,8 +3657,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
             </AILoadingButton>
             
             <button 
+              type="button"
               onClick={handleMaybeLater} 
-              className="text-sm font-medium text-content-muted hover:text-white transition-colors py-2 px-4"
+              className="relative z-30 cursor-pointer text-sm font-medium text-content-muted hover:text-white transition-colors py-2 px-4 hover:underline"
             >
               {language === 'pl' ? 'Może później' : 'Maybe later'}
             </button>

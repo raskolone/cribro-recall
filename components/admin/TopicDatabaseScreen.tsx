@@ -369,12 +369,16 @@ export default function TopicDatabaseScreen() {
   
   const fetchData = async () => {
     setIsLoading(true);
+    const usersMap: Record<string, string> = {};
+    const usersList: any[] = [];
+    let usersDocs: any[] = [];
+
+    // 1. Fetch users
     try {
-      // 1. Fetch vocabulary sets from all users
+      console.log("Fetching users...");
       const usersSnap = await getDocs(collection(db, 'users'));
-      const usersMap: Record<string, string> = {};
-      const usersList = [];
-      usersSnap.docs.forEach(d => {
+      usersDocs = usersSnap.docs;
+      usersDocs.forEach(d => {
         const uData = d.data();
         const name = (uData.firstName || uData.lastName)
           ? `${uData.firstName || ''} ${uData.lastName || ''}`.trim()
@@ -385,77 +389,110 @@ export default function TopicDatabaseScreen() {
         }
       });
       setAllUsers(usersList);
+      console.log("Users fetched.");
+    } catch (e) {
+      console.warn("Could not fetch users list:", e);
+    }
 
-      const allVocabSets: any[] = [];
+    const allVocabSets: any[] = [];
 
-      // Fetch global idioms
+    // 2. Fetch global idioms
+    try {
+      console.log("Fetching idioms...");
       const idiomsSnap = await getDocs(collection(db, 'global_idioms'));
+      console.log("Idioms fetched.");
       const fetchedIdioms = idiomsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as IdiomItem));
       setDbIdioms(fetchedIdioms);
+    } catch (e) {
+      console.warn("Could not fetch global idioms:", e);
+    }
 
-      // Fetch global phrasals
+    // 3. Fetch global phrasals
+    try {
+      console.log("Fetching phrasals...");
       const phrasalsSnap = await getDocs(collection(db, 'global_phrasals'));
+      console.log("Phrasals fetched.");
       const fetchedPhrasals = phrasalsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as PhrasalVerbItem));
       setDbPhrasals(fetchedPhrasals);
+    } catch (e) {
+      console.warn("Could not fetch global phrasals:", e);
+    }
 
-
-      // Custom sets in 'sets' collection
+    // 4. Custom sets in 'sets' collection
+    try {
+      console.log("Fetching sets...");
       const setsSnap = await getDocs(collection(db, 'sets'));
+      console.log("Sets fetched.");
       for (const setDoc of setsSnap.docs) {
         const data = setDoc.data();
         const setId = setDoc.id;
-        const cardsSnap = await getDocs(collection(db, `sets/${setId}/flashcards`));
-        const words = cardsSnap.docs.map((cd, idx) => {
-          const cData = cd.data();
-          return {
-            id: cd.id || `card-${idx}`,
-            english: cData.english || cData.term || '',
-            polish: cData.polish || cData.definition || ''
-          };
-        }).filter(w => w.english.trim().length > 0);
+        try {
+          const cardsSnap = await getDocs(collection(db, `sets/${setId}/flashcards`));
+          const words = cardsSnap.docs.map((cd, idx) => {
+            const cData = cd.data();
+            return {
+              id: cd.id || `card-${idx}`,
+              english: cData.english || cData.term || '',
+              polish: cData.polish || cData.definition || ''
+            };
+          }).filter(w => w.english.trim().length > 0);
 
-        if (words.length > 0) {
-          allVocabSets.push({
-            id: `set-${setId}`,
-            name: data.title || 'Zestaw słówek',
-            studentName: usersMap[data.userId] || 'System / Admin',
-            type: 'set',
-            words
-          });
+          if (words.length > 0) {
+            allVocabSets.push({
+              id: `set-${setId}`,
+              name: data.title || 'Zestaw słówek',
+              studentName: usersMap[data.userId] || 'System / Admin',
+              type: 'set',
+              words
+            });
+          }
+        } catch (cardErr) {
+          console.warn(`Could not fetch flashcards for set ${setId}:`, cardErr);
         }
       }
+    } catch (e) {
+      console.warn("Could not fetch sets:", e);
+    }
 
-      // Lesson records from users
-      for (const userDoc of usersSnap.docs) {
+    // 5. Lesson records from users
+    if (usersDocs.length > 0) {
+      for (const userDoc of usersDocs) {
         const userId = userDoc.id;
-        const studentName = usersMap[userId];
-        const lessonsSnap = await getDocs(collection(db, `users/${userId}/lessonRecords`));
-        
-        lessonsSnap.docs.forEach((lDoc) => {
-          const lData = lDoc.data();
-          if (lData.vocabularyText && lData.vocabularyText.trim().length > 0) {
-            const words = parseVocabularyText(lData.vocabularyText);
-            if (words.length > 0) {
-              const cleanedTopic = cleanVocabularyTopic(lData.topic);
-              const title = cleanedTopic || `Lekcja z dnia ${lData.date || ''}`;
-              
-              allVocabSets.push({
-                id: `lesson-${lDoc.id}`,
-                name: title,
-                studentName: studentName,
-                type: 'lesson',
-                words
-              });
+        const studentName = usersMap[userId] || 'Kursant';
+        try {
+          const lessonsSnap = await getDocs(collection(db, `users/${userId}/lessonRecords`));
+          lessonsSnap.docs.forEach((lDoc) => {
+            const lData = lDoc.data();
+            if (lData.vocabularyText && lData.vocabularyText.trim().length > 0) {
+              const words = parseVocabularyText(lData.vocabularyText);
+              if (words.length > 0) {
+                const cleanedTopic = cleanVocabularyTopic(lData.topic);
+                const title = cleanedTopic || `Lekcja z dnia ${lData.date || ''}`;
+                
+                allVocabSets.push({
+                  id: `lesson-${lDoc.id}`,
+                  name: title,
+                  studentName: studentName,
+                  type: 'lesson',
+                  words
+                });
+              }
             }
-          }
-        });
+          });
+        } catch (lErr) {
+          console.warn(`Could not fetch lesson records for user ${userId}:`, lErr);
+        }
       }
+    }
 
-      setVocabularySets(allVocabSets);
+    setVocabularySets(allVocabSets);
 
-      // 2. Fetch Grammar Chapters from system/topic_database
+    // 6. Fetch Grammar Chapters from system/topic_database
+    try {
+      console.log("Fetching topic database...");
       const docRef = doc(db, 'system', 'topic_database');
       const snap = await getDoc(docRef);
+      console.log("Topic database fetched.");
       if (snap.exists() && snap.data().chapters) {
         const fetched = snap.data().chapters as GrammarChapter[];
         setChapters(prevChapters => prevChapters.map(chapter => {

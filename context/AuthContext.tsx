@@ -68,13 +68,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               const email = firebaseUser.email || '';
               const role = email === 'maciej.wyrozumski@gmail.com' ? 'admin' : 'user';
               
-              const newUser: User = {
+              const newUser: any = {
                 id: firebaseUser.uid,
                 username: defaultName,
                 email: email,
-                role: role,
-                photoURL: firebaseUser.photoURL || undefined
+                role: role
               };
+              if (firebaseUser.photoURL) newUser.photoURL = firebaseUser.photoURL;
               
               setDoc(userDocRef, newUser).catch(console.error);
               setUser(newUser);
@@ -170,7 +170,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const result = await linkWithPopup(auth.currentUser, provider);
       if (result.user && result.user.photoURL) {
         const userDocRef = doc(db, 'users', result.user.uid);
-        await updateDoc(userDocRef, { photoURL: result.user.photoURL });
+        if (result.user.photoURL !== undefined) {
+          await updateDoc(userDocRef, { photoURL: result.user.photoURL });
+        }
         setUser(prev => prev ? { ...prev, photoURL: result.user.photoURL } : null);
       }
     } catch (error) {
@@ -304,7 +306,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         lastDate.setHours(0, 0, 0, 0);
         
         const diffTime = Math.abs(today.getTime() - lastDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
 
         if (diffDays === 0) {
           // Already practiced today, don't increment, but maybe still show confetti if they want

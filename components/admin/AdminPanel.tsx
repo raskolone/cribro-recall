@@ -1426,19 +1426,36 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       </thead>
                       <tbody className="divide-y divide-white/5">
                         {practiceLogs.map(log => {
-                          const percentage = log.score !== undefined && log.totalWords !== undefined && log.totalWords > 0
-                            ? Math.round((log.score / log.totalWords) * 100) 
-                            : null
+                          let scorePercent = null;
+                          if (log.score !== undefined) {
+                            scorePercent = (log.score <= 1 && log.score > 0) ? Math.round(log.score * 100) : Math.round(log.score);
+                          }
                           
                           return (
                           <tr key={log.id} className="cursor-pointer liquid-glass-hover">
                             <td className="p-3 whitespace-nowrap">{new Date(log.date).toLocaleString()}</td>
-                            <td className="p-3 capitalize">{log.exerciseType}</td>
-                            <td className="p-3 line-clamp-1">{/* No setName in practice log */}</td>
-                            <td className="p-3 text-right">
-                              {log.score !== undefined && log.totalWords !== undefined ? (
-                                <span className={log.score / log.totalWords >= 0.8 ? 'text-primary' : log.score / log.totalWords >= 0.5 ? 'text-amber-500' : 'text-red-500'}>
-                                  {log.score} / {log.totalWords} ({Math.round(log.score / log.totalWords * 100)}%)
+                            <td className="p-3 capitalize">
+                               <div className="flex items-center gap-2">
+                                  {log.exerciseType}
+                                  {log.exerciseFormat && (
+                                     <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] rounded border border-emerald-500/20">{log.exerciseFormat}</span>
+                                  )}
+                               </div>
+                            </td>
+                            <td className="p-3">
+                              <div className="flex flex-col">
+                                <span>{log.setDisplayName || '-'}</span>
+                                {log.wordsUsed && log.wordsUsed.length > 0 && (
+                                  <span className="text-[10px] text-content-muted mt-0.5 line-clamp-1" title={log.wordsUsed.join(', ')}>
+                                    {log.wordsUsed.join(', ')}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3 text-right font-mono font-medium">
+                              {scorePercent !== null ? (
+                                <span className={scorePercent >= 80 ? 'text-primary font-bold' : scorePercent >= 50 ? 'text-amber-400' : 'text-red-400'}>
+                                  {scorePercent}% {log.totalWords ? `(${log.totalWords} el.)` : ''}
                                 </span>
                               ) : '-'}
                             </td>

@@ -183,6 +183,7 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
     try {
       const taskData = {
         studentId: user.id,
+        type: 'translation',
         title: `Zadanie specjalne - ${new Date().toLocaleDateString()}`,
         createdAt: serverTimestamp(),
         status: 'pending',

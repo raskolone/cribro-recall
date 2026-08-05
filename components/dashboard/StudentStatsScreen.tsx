@@ -208,10 +208,14 @@ const StudentStatsScreen: React.FC = () => {
       if (Array.isArray(l.exercisesData)) {
         count = l.exercisesData.length;
       } else if (typeof l.exercisesData === 'string') {
-        try {
-          const parsed = JSON.parse(l.exercisesData);
-          if (Array.isArray(parsed)) count = parsed.length;
-        } catch {}
+        if (l.exercisesData.includes(' | ')) {
+          count = l.exercisesData.split(' | ').length;
+        } else {
+          try {
+            const parsed = JSON.parse(l.exercisesData);
+            if (Array.isArray(parsed)) count = parsed.length;
+          } catch {}
+        }
       } else if (Array.isArray(l.detailedFeedback)) {
         count = l.detailedFeedback.length;
       }

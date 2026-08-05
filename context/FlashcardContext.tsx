@@ -25,7 +25,7 @@ const FlashcardContext = createContext<FlashcardContextType | undefined>(undefin
 export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [sets, setSets] = useState<FlashcardSet[]>([]);
   const [sessions, setSessions] = useState<StudySession[]>([]);
-  const { user } = useAuth();
+  const { user, updateUserStreak } = useAuth();
   const userId = auth.currentUser?.uid;
 
   useEffect(() => {
@@ -305,17 +305,25 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
       
       // Determine exercise type
       let exType = sessionData.mode || 'flashcards';
+      const matchedSet = sets.find(s => s.id === sessionData.setId);
+      const setDisplayName = matchedSet ? matchedSet.title : (sessionData.setId || 'Fiszki');
       
       batch.set(logRef, {
         exerciseType: exType,
+        exerciseFormat: 'flashcards',
         date: new Date().toISOString(),
         isRevisionMode: false,
         score: sessionData.scorePercent || 0,
         totalWords: sessionData.totalCards || 0,
-        testName: sessionData.setId || 'Flashcard Set'
+        testName: setDisplayName,
+        setDisplayName: setDisplayName,
+        exercisesData: `Zestaw fiszek: ${setDisplayName} (${sessionData.totalCards || 0} kart)`
       });
       
       await batch.commit();
+      if (updateUserStreak) {
+        updateUserStreak().catch(console.error);
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'sessions');
     }

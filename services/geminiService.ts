@@ -154,11 +154,7 @@ const callDeepSeek = async (prompt: string, systemInstruction: string, model: st
   return await generateDeepSeekResponse(prompt, systemInstruction);
 };
 
-export const PREFERRED_AI_MODELS = [
-  'openai/gpt-4o-mini',
-  'gemini-2.5-flash',
-  'gemini-2.0-flash'
-];
+export const PREFERRED_AI_MODELS = ['openai/gpt-4o-mini'];
 
 export const formatAIModelName = (model?: string): string => {
   if (!model) return 'OpenAI (GPT-4o mini)';
@@ -1078,6 +1074,112 @@ export const generateHomework = async (topic: string, summary: string, words: st
   } catch (error) {
     console.error("Error generating homework:", error);
     throw new Error("Failed to generate homework.");
+  }
+};
+
+export const generateErrorCorrectionExercises = async (
+  level: string,
+  topicOrWords?: string,
+  numSentences: number = 5,
+  customPrompt?: string
+): Promise<Array<{ incorrectSentence: string; correctSentence: string; explanation: string; hint: string }>> => {
+  const prompt = `ROLE:
+Jesteś doświadczonym nauczycielem języka angielskiego.
+
+ZADANIE:
+Wygeneruj ${numSentences} zdań po angielsku na poziomie ${level || 'B1-B2'}, w których celowo umieszczono powszechny błąd (gramatyczny, leksykalny, szyku wyrazów lub ortograficzny).
+
+${topicOrWords ? `TEMAT / SŁOWNICTWO: ${topicOrWords}` : ''}
+${customPrompt ? `DODATKOWE INSTRUKCJE OD NAUCZYCIELA: ${customPrompt}` : ''}
+
+Dla każdego zdania przygotuj:
+1. "incorrectSentence": Błędne zdanie po angielsku.
+2. "correctSentence": Poprawne zdanie po angielsku.
+3. "explanation": Krótkie wytłumaczenie po polsku, dlaczego to był błąd i jaka reguła tu obowiązuje.
+4. "hint": Wskazówka po polsku pomagająca uczniowi nakierować na błąd.
+
+Zwróć wynik WYŁĄCZNIE jako poprawny obiekt JSON o strukturze:
+{
+  "exercises": [
+    {
+      "incorrectSentence": "She don't like coffee.",
+      "correctSentence": "She doesn't like coffee.",
+      "explanation": "W 3. osobie liczby pojedynczej czasu Present Simple używamy przeczenia 'doesn't', a nie 'don't'.",
+      "hint": "Zwróć uwagę na przeczenie w 3. osobie l. pojedynczej."
+    }
+  ]
+}`;
+
+  try {
+    const response = await generateContentWithFallback({ contents: prompt });
+    const text = response?.text || '';
+    const jsonText = extractJSON(text);
+    const parsed = JSON.parse(jsonText);
+    if (parsed && Array.isArray(parsed.exercises)) {
+      return parsed.exercises;
+    }
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    return [];
+  } catch (err) {
+    console.error("Error generating error correction exercises:", err);
+    throw new Error("Nie udało się wygenerować zdań z błędami.");
+  }
+};
+
+export const evaluateErrorCorrectionSentence = async (
+  incorrectSentence: string,
+  correctSentence: string,
+  studentAnswer: string
+): Promise<{ isCorrect: boolean; score: number; explanation: string; suggestedVersion: string }> => {
+  if (!studentAnswer || !studentAnswer.trim()) {
+    return {
+      isCorrect: false,
+      score: 0,
+      explanation: "Brak odpowiedzi.",
+      suggestedVersion: correctSentence
+    };
+  }
+
+  const prompt = `Sprawdź, czy uczeń poprawnie poprawił błędne zdanie w języku angielskim.
+
+Błędne zdanie: "${incorrectSentence}"
+Wzorcowa poprawka: "${correctSentence}"
+Odpowiedź ucznia: "${studentAnswer}"
+
+ZADANIE:
+Oceń odpowiedź ucznia (punktacja 0-100%, flaga isCorrect, wyjaśnienie po polsku i sugerowana poprawna wersja). 
+Jeśli odpowiedź ucznia jest poprawną gramatycznie i znaczeniowo wersją bez błędu (nawet jeśli różni się drobnym szczegółem od wzorca, np. "does not" zamiast "doesn't"), uznaj ją za w pełni poprawną (isCorrect: true, score: 100).
+
+Zwróć czysty JSON:
+{
+  "isCorrect": true,
+  "score": 100,
+  "explanation": "Świetnie! Poprawnie zmieniono 'don't' na 'doesn't'.",
+  "suggestedVersion": "${correctSentence}"
+}`;
+
+  try {
+    const response = await generateContentWithFallback({ contents: prompt });
+    const jsonText = extractJSON(response?.text || '');
+    const parsed = JSON.parse(jsonText);
+    return {
+      isCorrect: parsed.isCorrect ?? false,
+      score: parsed.score ?? 0,
+      explanation: parsed.explanation || '',
+      suggestedVersion: parsed.suggestedVersion || correctSentence
+    };
+  } catch (err) {
+    const cleanStudent = studentAnswer.trim().toLowerCase().replace(/[.,!?]/g, '');
+    const cleanCorrect = correctSentence.trim().toLowerCase().replace(/[.,!?]/g, '');
+    const isExact = cleanStudent === cleanCorrect;
+    return {
+      isCorrect: isExact,
+      score: isExact ? 100 : 0,
+      explanation: isExact ? 'Poprawna odpowiedź!' : `Wzorcowa odpowiedź: ${correctSentence}`,
+      suggestedVersion: correctSentence
+    };
   }
 };
 

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { StudentTest } from '../../types';
@@ -93,7 +93,7 @@ const SentenceListTask: React.FC<{
 };
 
 const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
-  const { user } = useAuth();
+  const { user, updateUserStreak } = useAuth();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [confirmModalState, setConfirmModalState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({
     isOpen: false,
@@ -150,6 +150,29 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
         teacherRead: false,
         completedAt: new Date().toISOString()
       });
+
+      // Also record in practiceLogs for student history & statistics
+      try {
+        const logId = `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const logRef = doc(db, `users/${user.id}/practiceLogs/${logId}`);
+        await setDoc(logRef, {
+          exerciseType: 'test',
+          exerciseFormat: 'test',
+          date: new Date().toISOString(),
+          isRevisionMode: false,
+          score: gradeResult.score ?? 0,
+          totalWords: test.questions ? test.questions.length : 1,
+          testName: test.title || 'Test',
+          setDisplayName: test.title || 'Test',
+          exercisesData: `Test: ${test.title} (${gradeResult.score ?? 0}%)`
+        });
+        if (updateUserStreak) {
+          updateUserStreak().catch(console.error);
+        }
+      } catch (logErr) {
+        console.warn("Could not save test to practiceLogs:", logErr);
+      }
+
       setGradingResult(gradeResult);
       setSubmitted(true);
     } catch (err) {

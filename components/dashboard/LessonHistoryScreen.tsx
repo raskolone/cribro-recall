@@ -143,6 +143,21 @@ const LessonHistoryScreen: React.FC = () => {
     return rawLines.map(i => i.trim()).filter(i => i.length > 0).map(parseVocabularyLine);
   };
 
+  const parseExercisesData = (data: any): string[] => {
+    if (!data) return [];
+    if (Array.isArray(data)) {
+      return data.map(item => typeof item === 'string' ? item : (item.polishSentence ? `${item.polishSentence} -> ${item.englishTranslation || item.correctTranslation || ''}` : JSON.stringify(item)));
+    }
+    if (typeof data === 'string') {
+      try {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) return parseExercisesData(parsed);
+      } catch {}
+      return data.split(' | ');
+    }
+    return [String(data)];
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-24 relative">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -353,14 +368,21 @@ const LessonHistoryScreen: React.FC = () => {
                <div 
                  key={log.id} 
                  onClick={() => setSelectedLog(log)}
-                 className="liquid-glass-tile p-4 rounded-xl border border-white/5 flex items-center justify-between cursor-pointer hover:border-primary/50 hover:liquid-glass-tile/80 transition-colors group"
+                 className="liquid-glass-tile p-4 rounded-xl border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between cursor-pointer hover:border-primary/50 hover:liquid-glass-tile/80 transition-colors group gap-4"
                >
-                 <div className="flex flex-col gap-1">
+                 <div className="flex flex-col gap-2">
                    <div className="flex items-center gap-2">
-                     <span className="font-bold text-white text-base group-hover:text-primary transition-colors">
+                     <span className="font-bold text-white text-base group-hover:text-primary transition-colors flex items-center gap-2">
                        {log.exerciseType === 'ai_translation' ? (language === 'pl' ? 'Trening z AI' : 'AI Translation') : 
                         log.exerciseType === 'flashcards' ? (language === 'pl' ? 'Fiszki' : 'Flashcards') : 
                         log.exerciseType}
+                       {log.exerciseFormat && (
+                         <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-xs font-mono font-medium text-emerald-400">
+                           {log.exerciseFormat === 'puzzle' ? (language === 'pl' ? 'Układanka' : 'Puzzle') : 
+                            log.exerciseFormat === 'typing' ? (language === 'pl' ? 'Wpisywanie' : 'Typing') : 
+                            log.exerciseFormat}
+                         </span>
+                       )}
                      </span>
                      {log.isRevisionMode && (
                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-500">
@@ -368,13 +390,25 @@ const LessonHistoryScreen: React.FC = () => {
                        </span>
                      )}
                    </div>
-                   <div className="text-xs text-content-muted font-mono flex items-center gap-1.5">
+                   <div className="text-xs text-content-muted font-mono flex items-center gap-1.5 flex-wrap">
                      <Calendar className="w-3 h-3" />
                      {new Date(log.date).toLocaleString()}
+                     {log.setDisplayName && (
+                       <>
+                         <span className="opacity-50 text-[10px]">•</span>
+                         <BookOpen className="w-3 h-3" />
+                         <span className="text-teal-300/80">{log.setDisplayName}</span>
+                       </>
+                     )}
                    </div>
+                   {log.wordsUsed && log.wordsUsed.length > 0 && (
+                     <div className="text-xs text-content-muted mt-1 max-w-xl">
+                       <strong>{language === 'pl' ? 'Wykorzystane słownictwo:' : 'Vocabulary used:'}</strong> {log.wordsUsed.join(', ')}
+                     </div>
+                   )}
                  </div>
                  
-                 <div className="flex gap-4 text-sm font-mono text-right">
+                 <div className="flex gap-4 text-sm font-mono text-right shrink-0">
                    {log.totalWords && (
                      <div>
                        <div className="text-content-muted text-[10px] uppercase">{language === 'pl' ? 'Słów/Zdań' : 'Items'}</div>
@@ -556,7 +590,7 @@ const LessonHistoryScreen: React.FC = () => {
                   </h3>
                   <div className="liquid-glass-tile border border-white/5 rounded-2xl p-4">
                     <ul className="list-disc pl-5 space-y-2 text-sm text-gray-300">
-                      {selectedLog.exercisesData.split(' | ').map((ex, idx) => (
+                      {parseExercisesData(selectedLog.exercisesData).map((ex, idx) => (
                         <li key={idx} className="leading-relaxed">{ex}</li>
                       ))}
                     </ul>

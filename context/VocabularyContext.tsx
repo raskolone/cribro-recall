@@ -24,7 +24,11 @@ interface VocabularyContextType {
   setFrequency: (freq: RevisionFrequency) => Promise<void>;
   lastPractice: PracticeHistory | null;
   lastRevisionDate: string | null;
-  savePracticeHistory: (exerciseType: ExerciseType, isRevisionMode: boolean) => Promise<void>;
+  savePracticeHistory: (
+    exerciseType: ExerciseType, 
+    isRevisionMode: boolean, 
+    details?: { score?: number; totalWords?: number; setDisplayName?: string; exercisesData?: string }
+  ) => Promise<void>;
 }
 
 const VocabularyContext = createContext<VocabularyContextType | undefined>(undefined);
@@ -35,7 +39,7 @@ export const VocabularyProvider: React.FC<{ children: ReactNode }> = ({ children
   const [frequency, setFrequencyState] = useState<RevisionFrequency>('Daily');
   const [lastPractice, setLastPractice] = useState<PracticeHistory | null>(null);
   const [lastRevisionDate, setLastRevisionDate] = useState<string | null>(null);
-  const { user } = useAuth(); // Assume we can get user here to check if it's a mocked Demo
+  const { user, updateUserStreak } = useAuth(); // Assume we can get user here to check if it's a mocked Demo
   const userId = auth.currentUser?.uid;
 
   useEffect(() => {
@@ -250,7 +254,11 @@ export const VocabularyProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   };
 
-  const savePracticeHistory = async (exerciseType: ExerciseType, isRevisionMode: boolean) => {
+  const savePracticeHistory = async (
+    exerciseType: ExerciseType, 
+    isRevisionMode: boolean,
+    details?: { score?: number; totalWords?: number; setDisplayName?: string; exercisesData?: string }
+  ) => {
     if (!userId) return;
     try {
       const now = new Date().toISOString();
@@ -260,9 +268,18 @@ export const VocabularyProvider: React.FC<{ children: ReactNode }> = ({ children
       const logRef = doc(db, `users/${userId}/practiceLogs/${logId}`);
       await setDoc(logRef, {
         exerciseType,
+        exerciseFormat: exerciseType,
         date: now,
-        isRevisionMode
+        isRevisionMode,
+        score: details?.score ?? 100,
+        totalWords: details?.totalWords ?? 0,
+        setDisplayName: details?.setDisplayName || 'Słownictwo',
+        exercisesData: details?.exercisesData || 'Słownictwo'
       });
+      
+      if (updateUserStreak) {
+        updateUserStreak().catch(console.error);
+      }
       
       // Update settings SECOND (if it fails, at least log is saved)
       try {

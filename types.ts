@@ -78,6 +78,11 @@ export interface PracticeLog {
   testName?: string;
   exercisesData?: TranslationEvaluationResult[] | string | any;
   detailedFeedback?: TranslationEvaluationResult[] | any[];
+  exerciseFormat?: string;
+  practiceMode?: string;
+  selectedSetId?: string;
+  setDisplayName?: string;
+  wordsUsed?: string[];
 }
 
 // New Flashcard Module Types
@@ -234,13 +239,32 @@ export interface TestQuestion {
   puzzleChunks?: string[];
 }
 
+export interface ErrorCorrectionExercise {
+  incorrectSentence: string;
+  correctSentence: string;
+  explanation?: string;
+  hint?: string;
+}
+
+export type HomeworkType = 'translation' | 'find_errors';
+
 export interface SpecialTask {
   id?: string;
   studentId: string;
+  studentName?: string;
+  assignedBy?: string;
   title: string;
+  type?: HomeworkType;
+  instructions?: string;
   createdAt: string;
-  status: 'pending' | 'completed';
-  sentences: TranslationExercise[];
+  dueDate?: string;
+  status: 'pending' | 'submitted' | 'completed' | 'graded';
+  sentences: any[];
+  studentAnswers?: Record<number, string> | Record<string, string>;
+  evaluationResults?: any[];
+  submittedAt?: string;
+  teacherFeedback?: string;
+  grade?: number;
 }
 
 export interface StudentTest {

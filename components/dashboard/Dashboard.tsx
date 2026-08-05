@@ -33,6 +33,7 @@ import FlashcardSetsScreen from '../flashcards/FlashcardSetsScreen';
 import SettingsScreen from '../settings/SettingsScreen';
 import TopicDatabaseScreen from '../admin/TopicDatabaseScreen';
 import FlashcardStudyScreen from '../flashcards/FlashcardStudyScreen';
+import HomeworkScreen from './HomeworkScreen';
 import AdminDebuggingScreen from '../admin/AdminDebuggingScreen';
 
 const Dashboard: React.FC = () => {
@@ -135,7 +136,7 @@ const Dashboard: React.FC = () => {
       return <FlashcardStudyScreen setId={activeSetId || ''} initialMode={(window as any)._initialStudyMode} onBack={() => setView('dashboard')} onNavigate={(v) => setView(v as View)} />;
     }
     if (view === 'homework') {
-      return <AssignedTasks onStudySet={() => {}} />;
+      return <HomeworkScreen />;
     }
     if (view === 'settings') {
       return <SettingsScreen />;

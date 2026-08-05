@@ -1,30 +1,35 @@
 const fs = require('fs');
-let code = fs.readFileSync('components/dashboard/AIExerciseGeneratorScreen.tsx', 'utf8');
+let code = fs.readFileSync('components/admin/TopicDatabaseScreen.tsx', 'utf8');
 
-// Ensure doc, getDoc imports
-if (!code.includes("doc, getDoc") && !code.includes("getDoc, doc")) {
-    code = code.replace(/import \{ collection, getDocs/, "import { doc, getDoc, collection, getDocs");
-}
+code = code.replace("const usersSnap = await getDocs(collection(db, 'users'));", 
+`console.log("Fetching users...");
+const usersSnap = await getDocs(collection(db, 'users'));
+console.log("Users fetched.");`);
 
-const useEffectToAdd = `
-  useEffect(() => {
-    const fetchTopics = async () => {
-      setIsLoadingTopics(true);
-      try {
-        const docRef = doc(db, 'system', 'topic_database');
-        const snap = await getDoc(docRef);
-        if (snap.exists() && snap.data().chapters) {
-          setGrammarChapters(snap.data().chapters);
-        }
-      } catch (err) {
-        console.error("Error fetching grammar topics", err);
-      } finally {
-        setIsLoadingTopics(false);
-      }
-    };
-    fetchTopics();
-  }, []);
-`;
+code = code.replace("const idiomsSnap = await getDocs(collection(db, 'global_idioms'));",
+`console.log("Fetching idioms...");
+const idiomsSnap = await getDocs(collection(db, 'global_idioms'));
+console.log("Idioms fetched.");`);
 
-code = code.replace(/  useEffect\(\(\) => \{\s*if \(user\?\.id\) \{/, useEffectToAdd + "\n  useEffect(() => {\n    if (user?.id) {");
-fs.writeFileSync('components/dashboard/AIExerciseGeneratorScreen.tsx', code);
+code = code.replace("const phrasalsSnap = await getDocs(collection(db, 'global_phrasals'));",
+`console.log("Fetching phrasals...");
+const phrasalsSnap = await getDocs(collection(db, 'global_phrasals'));
+console.log("Phrasals fetched.");`);
+
+code = code.replace("const setsSnap = await getDocs(collection(db, 'sets'));",
+`console.log("Fetching sets...");
+const setsSnap = await getDocs(collection(db, 'sets'));
+console.log("Sets fetched.");`);
+
+code = code.replace("const lessonsSnap = await getDocs(collection(db, \`users/\${userId}/lessonRecords\`));",
+`console.log("Fetching lesson records for user", userId);
+const lessonsSnap = await getDocs(collection(db, \`users/\${userId}/lessonRecords\`));
+console.log("Lesson records fetched for user", userId);`);
+
+code = code.replace("const docRef = doc(db, 'system', 'topic_database');\n      const snap = await getDoc(docRef);",
+`console.log("Fetching topic database...");
+const docRef = doc(db, 'system', 'topic_database');
+const snap = await getDoc(docRef);
+console.log("Topic database fetched.");`);
+
+fs.writeFileSync('components/admin/TopicDatabaseScreen.tsx', code);
