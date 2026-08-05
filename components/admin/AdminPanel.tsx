@@ -3,7 +3,7 @@ import { countVocabularyItems, buildVocabularySetTitle } from '../../utils/vocab
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { motion, AnimatePresence } from 'motion/react';
-import { collection, getDocs, doc, deleteDoc, query, orderBy, setDoc, writeBatch, updateDoc, addDoc, where } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, deleteDoc, query, orderBy, setDoc, writeBatch, updateDoc, addDoc, where } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
 import { User, PracticeLog, FlashcardSet, LessonRecord } from '../../types';
 import { useFlashcards } from '../../context/FlashcardContext';
@@ -64,6 +64,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
 
   const fetchUserLogsAndStats = async (userId: string) => {
     try {
+      // Fetch fresh User doc to get latest loginCount and lastLoginDate
+      try {
+        const uDoc = await getDoc(doc(db, 'users', userId));
+        if (uDoc.exists()) {
+          const freshData = { id: uDoc.id, ...uDoc.data() } as UserWithId;
+          setSelectedUser(prev => prev && prev.id === userId ? { ...prev, ...freshData } : freshData);
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...freshData } : u));
+        }
+      } catch (e) {}
+
       // Fetch Lesson Records
       const lessonsQ = query(collection(db, `users/${userId}/lessonRecords`));
       const lessonsSnapshot = await getDocs(lessonsQ);
@@ -78,30 +88,73 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       logsList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setPracticeLogs(logsList);
 
-      // Fetch User's Flashcard Sets (now we fetch wordSets inside user doc)
+      let fetchedSets: FlashcardSet[] = [];
+      // Fetch User's Flashcard Sets
       try {
         const setsQ = query(collection(db, `users/${userId}/wordSets`));
         const setsSnapshot = await getDocs(setsQ);
-        const setsList = setsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FlashcardSet));
-        setsList.sort((a, b) => new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt).getTime() - new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt).getTime());
-        setUserSets(setsList);
+        fetchedSets = setsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FlashcardSet));
+        fetchedSets.sort((a, b) => new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt).getTime() - new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt).getTime());
+        setUserSets(fetchedSets);
       } catch(e) { console.error("Error fetching sets", e); }
 
+      let fetchedTasks: any[] = [];
       try {
         const tasksQ = query(collection(db, 'specialTasks'), where('studentId', '==', userId));
         const tasksSnapshot = await getDocs(tasksQ);
-        const tasksList = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-        tasksList.sort((a, b) => new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt).getTime() - new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt).getTime());
-        setSpecialTasks(tasksList);
+        fetchedTasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        fetchedTasks.sort((a, b) => new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt).getTime() - new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt).getTime());
+        setSpecialTasks(fetchedTasks);
       } catch(e) { console.error("Error fetching special tasks", e); }
 
+      // Dynamic real stats calculation
+      let totalSentencesCount = 0;
+      let totalScoreSum = 0;
+      let validLogsCount = 0;
 
-      // Setup a basic stats aggregate based on practice logs
-      // A more complex aggregation could happen server side, but this is simple enough for now.
+      logsList.forEach(l => {
+        if ((l.exerciseType as string) === 'Aktywność') return;
+        validLogsCount++;
+        totalScoreSum += (Number(l.score) || 0);
+
+        let count = 0;
+        if (l.totalWords) {
+          count = l.totalWords;
+        } else if (Array.isArray(l.exercisesData)) {
+          count = l.exercisesData.length;
+        } else if (Array.isArray((l as any).detailedFeedback)) {
+          count = (l as any).detailedFeedback.length;
+        } else if (typeof l.exercisesData === 'string' && l.exercisesData) {
+          count = l.exercisesData.split(' | ').length;
+        }
+        totalSentencesCount += count;
+      });
+
+      const avgScore = validLogsCount > 0 ? Math.round(totalScoreSum / validLogsCount) : 0;
+
+      let totalVocabCount = 0;
+      let difficultVocabCount = 0;
+
+      fetchedSets.forEach(set => {
+        if (Array.isArray(set.words)) {
+          totalVocabCount += set.words.length;
+          set.words.forEach((w: any) => {
+            if (w.status === 'difficult' || w.difficulty === 'hard' || w.isDifficult) {
+              difficultVocabCount++;
+            }
+          });
+        }
+      });
+
+      const finalSentencesCount = Math.max(totalSentencesCount, selectedUser?.translatedSentencesCount || 0);
+
       setUserStats({
-        totalWords: 120, // Example mock if no real stats collection exists
-        difficultWords: 15,
-        masteryCount: 85
+        totalTasks: validLogsCount,
+        totalSentences: finalSentencesCount,
+        averageScore: avgScore,
+        totalWords: totalVocabCount || finalSentencesCount,
+        difficultWords: difficultVocabCount,
+        masteryCount: avgScore
       });
     } catch (e: any) {
       console.error('Error fetching logs and stats:', e);
@@ -753,7 +806,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [lessonRecords, setLessonRecords] = useState<LessonRecord[]>([]);
   const [userSets, setUserSets] = useState<FlashcardSet[]>([]);
   const [specialTasks, setSpecialTasks] = useState<any[]>([]);
-  const [userStats, setUserStats] = useState<{ totalWords: number; difficultWords: number; masteryCount: number } | null>(null);
+  const [userStats, setUserStats] = useState<{ totalWords: number; difficultWords: number; masteryCount: number; totalTasks?: number; totalSentences?: number; averageScore?: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigningSet, setIsAssigningSet] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -1359,33 +1412,42 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 <div ref={tabContentRef}>
           {activeTab === 'stats' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
                 <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
                   <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Ilość Logowań")}</div>
-                  <div className="text-4xl font-display font-bold text-white">{selectedUser.loginCount || 0}</div>
+                  <div className="text-4xl font-display font-bold text-white">{selectedUser.loginCount || (selectedUser.lastLoginDate ? 1 : 0)}</div>
                 </div>
                 <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
                   <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Ostatnie Logowanie")}</div>
-                  <div className="text-2xl font-display font-bold text-primary">{selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString() : 'Nigdy'}</div>
+                  <div className="text-lg font-display font-bold text-emerald-400">
+                    {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Nigdy'}
+                  </div>
+                </div>
+                <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
+                  <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Wykonane Zadania")}</div>
+                  <div className="text-4xl font-display font-bold text-cyan-400">{userStats?.totalTasks || 0}</div>
+                </div>
+                <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
+                  <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Przetłumaczone Zdania")}</div>
+                  <div className="text-4xl font-display font-bold text-emerald-400">{userStats?.totalSentences || 0}</div>
                 </div>
               </div>
-              {userStats ? (
+
+              {userStats && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                   <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
-                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Słowa ogółem")}</div>
+                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Średni Wynik")}</div>
+                    <div className="text-4xl font-display font-bold text-emerald-400">{userStats.averageScore}%</div>
+                  </div>
+                  <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
+                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Słownictwo Ogółem")}</div>
                     <div className="text-4xl font-display font-bold text-white">{userStats.totalWords}</div>
                   </div>
                   <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
-                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Opanowane")}</div>
-                    <div className="text-4xl font-display font-bold text-primary">{userStats.masteryCount}%</div>
-                  </div>
-                  <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
-                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Trudne słowa")}</div>
+                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Trudne Słowa")}</div>
                     <div className="text-4xl font-display font-bold text-amber-500">{userStats.difficultWords}</div>
                   </div>
                 </div>
-              ) : (
-                <div className="text-center p-8 bg-base-200/50 rounded-2xl border border-white/5 text-content-muted">{i18n.t("Brak statystyk do wyświetlenia.")}</div>
               )}
             </div>
           )}

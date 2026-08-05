@@ -158,6 +158,53 @@ const LessonHistoryScreen: React.FC = () => {
     return [String(data)];
   };
 
+  const getNormalizedDetails = (log: PracticeLog) => {
+    if (!log) return [];
+    if (Array.isArray((log as any).detailedFeedback) && (log as any).detailedFeedback.length > 0) {
+      return (log as any).detailedFeedback.map((item: any) => ({
+        polish: item.polishSentence || item.polish || '',
+        english: item.correctTranslation || item.englishTranslation || item.english || '',
+        studentAnswer: item.studentAnswer || '',
+        explanation: item.explanation || item.feedbackRule || item.feedbackVocab || '',
+        isCorrect: item.isCorrect,
+        score: item.score
+      }));
+    }
+    if (Array.isArray(log.sentences) && log.sentences.length > 0) {
+      return log.sentences.map((s: any) => ({
+        polish: s.polishTranslation || s.polish_translation || s.polishSentence || '',
+        english: s.englishSentence || s.english_sentence || s.englishTranslation || '',
+        studentAnswer: s.studentAnswer || '',
+        explanation: s.feedback || s.explanation || '',
+        isCorrect: s.isCorrect,
+        score: s.score
+      }));
+    }
+    if (Array.isArray(log.exercisesData) && log.exercisesData.length > 0) {
+      return log.exercisesData.map((ex: any) => {
+        if (typeof ex === 'string') {
+          const parts = ex.split(' -> ');
+          return { polish: parts[0] || ex, english: parts[1] || '', studentAnswer: '', explanation: '' };
+        }
+        return {
+          polish: ex.polishSentence || ex.polish || '',
+          english: ex.correctTranslation || ex.englishTranslation || ex.english || '',
+          studentAnswer: ex.studentAnswer || '',
+          explanation: ex.explanation || '',
+          isCorrect: ex.isCorrect,
+          score: ex.score
+        };
+      });
+    }
+    if (typeof log.exercisesData === 'string' && log.exercisesData) {
+      return log.exercisesData.split(' | ').map(itemStr => {
+        const parts = itemStr.split(' -> ');
+        return { polish: parts[0] || itemStr, english: parts[1] || '', studentAnswer: '', explanation: '' };
+      });
+    }
+    return [];
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-24 relative">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -582,51 +629,52 @@ const LessonHistoryScreen: React.FC = () => {
                 )}
               </div>
 
-              {Array.isArray(selectedLog.sentences) && selectedLog.sentences.length > 0 ? (
-                <div className="space-y-3 pt-4">
-                  <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-primary" />
-                    {language === 'pl' ? 'Wygenerowane zdania i odpowiedzi' : 'Generated Sentences & Answers'}
-                  </h3>
-                  <div className="space-y-3">
-                    {selectedLog.sentences.map((s: any, idx: number) => (
-                      <div key={idx} className="p-4 rounded-xl liquid-glass-tile border border-white/10 space-y-2 text-sm">
-                        <div className="font-bold text-white flex items-center gap-2">
-                          <span className="text-primary font-mono text-xs">#{idx + 1}</span>
-                          <span>{s.polishTranslation || s.polish_translation}</span>
-                        </div>
-                        <div className="text-emerald-400 text-xs font-mono">
-                          EN: {s.englishSentence || s.english_sentence}
-                        </div>
-                        {s.studentAnswer && (
-                          <div className="text-blue-300 text-xs bg-blue-500/10 p-2 rounded-lg border border-blue-500/20">
-                            <strong>{language === 'pl' ? 'Twoja odpowiedź:' : 'Your answer:'}</strong> "{s.studentAnswer}"
+              {(() => {
+                const details = getNormalizedDetails(selectedLog);
+                if (details.length > 0) {
+                  return (
+                    <div className="space-y-3 pt-4">
+                      <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-emerald-400" />
+                        {language === 'pl' ? 'Wykonane tłumaczenia i ćwiczenia' : 'Completed Translations & Exercises'}
+                      </h3>
+                      <div className="space-y-3">
+                        {details.map((item, idx) => (
+                          <div key={idx} className="p-4 rounded-xl liquid-glass-tile border border-white/10 space-y-2 text-sm">
+                            <div className="font-bold text-white flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-emerald-400 font-mono text-xs">#{idx + 1}</span>
+                                <span>{item.polish}</span>
+                              </div>
+                              {item.score !== undefined && (
+                                <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${item.score >= 80 ? 'bg-green-500/20 text-green-400' : item.score >= 50 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>
+                                  {item.score}%
+                                </span>
+                              )}
+                            </div>
+                            {item.english && (
+                              <div className="text-emerald-300 text-xs font-mono">
+                                EN: {item.english}
+                              </div>
+                            )}
+                            {item.studentAnswer && (
+                              <div className="text-blue-300 text-xs bg-blue-500/10 p-2.5 rounded-lg border border-blue-500/20">
+                                <strong>{language === 'pl' ? 'Twoja odpowiedź:' : 'Your answer:'}</strong> "{item.studentAnswer}"
+                              </div>
+                            )}
+                            {item.explanation && (
+                              <div className="text-amber-300 text-xs bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
+                                <strong>{language === 'pl' ? 'Komentarz / Błędy:' : 'Feedback:'}</strong> {item.explanation}
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {s.feedback && (
-                          <div className="text-amber-300 text-xs bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
-                            <strong>{language === 'pl' ? 'Komentarz AI / Błędy:' : 'AI Feedback:'}</strong> {s.feedback}
-                          </div>
-                        )}
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              ) : selectedLog.exercisesData && (
-                <div className="space-y-3 pt-4">
-                  <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-primary" />
-                    {language === 'pl' ? 'Przećwiczone elementy' : 'Practiced items'}
-                  </h3>
-                  <div className="liquid-glass-tile border border-white/5 rounded-2xl p-4">
-                    <ul className="list-disc pl-5 space-y-2 text-sm text-gray-300">
-                      {parseExercisesData(selectedLog.exercisesData).map((ex, idx) => (
-                        <li key={idx} className="leading-relaxed">{ex}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              )}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
           </div>
         </div>

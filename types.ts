@@ -96,6 +96,8 @@ export interface FlashcardSet {
   description?: string;
   isPublic: boolean;
   cardCount: number;
+  words?: any[];
+  cards?: any[];
   createdAt: any; // Timestamp
   updatedAt: any; // Timestamp
   assignedByTeacher?: boolean;

@@ -48,6 +48,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           
+          // Trigger login stats update for new browser session
+          updateLoginStats(firebaseUser.uid, false).catch(console.error);
+
           userUnsub = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
               let data = docSnap.data();
@@ -124,7 +127,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-      await updateLoginStats(result.user.uid);
+      await updateLoginStats(result.user.uid, true);
     } catch (error: any) {
       if (error?.code !== 'auth/popup-closed-by-user' && error?.code !== 'auth/cancelled-popup-request') {
         console.error('Login failed:', error);
@@ -135,18 +138,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loginWithEmail = async (email: string, pass: string) => {
     const result = await signInWithEmailAndPassword(auth, email, pass);
-    await updateLoginStats(result.user.uid);
+    await updateLoginStats(result.user.uid, true);
   };
 
-  const updateLoginStats = async (uid: string) => {
+  const updateLoginStats = async (uid: string, force: boolean = false) => {
     try {
+      const sessionKey = `session_logged_${uid}`;
+      let alreadyLogged = false;
+      try {
+        alreadyLogged = !!sessionStorage.getItem(sessionKey);
+      } catch (e) {}
+
+      if (!force && alreadyLogged) {
+        return;
+      }
+
+      try {
+        sessionStorage.setItem(sessionKey, 'true');
+      } catch (e) {}
+
       const userRef = doc(db, 'users', uid);
       const userDoc = await getDoc(userRef);
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        const currentCount = typeof userData.loginCount === 'number' ? userData.loginCount : 0;
+        const nowIso = new Date().toISOString();
         await updateDoc(userRef, {
-          loginCount: (userData.loginCount || 0) + 1,
-          lastLoginDate: new Date().toISOString(),
+          loginCount: currentCount + 1,
+          lastLoginDate: nowIso,
           ...(userData.requirePasswordChange ? { tempPasswordLogins: (userData.tempPasswordLogins || 0) + 1 } : {})
         });
       }

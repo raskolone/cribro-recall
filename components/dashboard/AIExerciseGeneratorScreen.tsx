@@ -1498,6 +1498,14 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
         }
 
         const exercisesDetails = exercises.map(e => `${e.polishSentence} -> ${e.englishTranslation}`).join(' | ');
+        const puzzleFeedback = exercises.map(e => ({
+          polishSentence: e.polishSentence || '',
+          studentAnswer: e.englishTranslation || '',
+          correctTranslation: e.englishTranslation || '',
+          isCorrect: true,
+          score: 100,
+          explanation: 'Układanka zdań ułożona poprawnie.'
+        }));
 
         const logData: any = {
           exerciseType: 'ai_translation',
@@ -1507,6 +1515,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
           score: 100,
           totalWords: exercises.length,
           exercisesData: exercisesDetails,
+          detailedFeedback: puzzleFeedback,
           practiceMode: practiceMode,
           selectedSetId: selectedSetId,
           setDisplayName: setDisplayName,
