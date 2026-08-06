@@ -483,7 +483,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                        <div className="font-bold text-white">{log.totalWords}</div>
                      </div>
                    )}
-                   {log.score !== undefined && (
+                   {log.score !== undefined && log.score !== null && !isNaN(Number(log.score)) && (
                      <div>
                        <div className="text-content-muted text-[10px] uppercase">{language === 'pl' ? 'Wynik' : 'Score'}</div>
                        <div className={`font-bold ${log.score >= 80 ? 'text-green-400' : log.score >= 50 ? 'text-amber-500' : 'text-red-400'}`}>
@@ -682,7 +682,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                     <div className="font-bold text-2xl text-white">{selectedLog.totalWords}</div>
                   </div>
                 )}
-                {selectedLog.score !== undefined && (
+                {selectedLog.score !== undefined && selectedLog.score !== null && !isNaN(Number(selectedLog.score)) && (
                   <div className="liquid-glass-tile p-4 rounded-xl flex-1 text-center border border-white/5">
                     <div className="text-content-muted text-[10px] uppercase mb-1">{language === 'pl' ? 'Wynik' : 'Score'}</div>
                     <div className={`font-bold text-2xl ${selectedLog.score >= 80 ? 'text-green-400' : selectedLog.score >= 50 ? 'text-amber-500' : 'text-red-400'}`}>
@@ -709,9 +709,9 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                                 <span className="text-emerald-400 font-mono text-xs">#{idx + 1}</span>
                                 <span>{item.polish}</span>
                               </div>
-                              {item.score !== undefined && (
-                                <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${item.score >= 80 ? 'bg-green-500/20 text-green-400' : item.score >= 50 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>
-                                  {item.score}%
+                              {item.score !== undefined && item.score !== null && !isNaN(Number(item.score)) && (
+                                <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${Number(item.score) >= 80 ? 'bg-green-500/20 text-green-400' : Number(item.score) >= 50 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>
+                                  {Number(item.score)}%
                                 </span>
                               )}
                             </div>

@@ -2647,7 +2647,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
                                   for (const item of sortedItems) {
                                     for (const sId of targetStudentIds) {
-                                      await createLessonRecordWithVocabularySet({
+                                      const { lessonRecordId } = await createLessonRecordWithVocabularySet({
                                         studentId: sId,
                                         date: item.record.date,
                                         topic: item.record.topic || 'Bez tematu',
@@ -2657,6 +2657,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                         thingsToImprove: item.record.thingsToImprove || '',
                                         suggestedFollowUp: item.record.suggestedFollowUp || ''
                                       });
+
+                                      if (item.record.vocabularyText && item.record.vocabularyText.trim().length > 0) {
+                                        await syncFlashcardSetForLesson(
+                                          lessonRecordId,
+                                          sId,
+                                          item.record.date,
+                                          item.record.topic || 'Bez tematu',
+                                          item.record.vocabularyText
+                                        );
+                                      }
                                       
                                       await updateDoc(doc(db, 'users', sId), {
                                         hasNewLesson: true,

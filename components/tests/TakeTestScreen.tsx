@@ -140,13 +140,14 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
         console.warn("AI grading error, proceeding with answers saved:", aiErr);
       }
       
+      const scoreToSave = (gradeResult.score !== undefined && gradeResult.score !== null && !isNaN(Number(gradeResult.score))) ? Number(gradeResult.score) : 0;
       const newAttemptsUsed = (test.attemptsUsed || 0) + 1;
       
       const testRef = doc(db, `users/${user.id}/tests`, test.id);
       await updateDoc(testRef, {
         status: 'graded',
         studentAnswers: answers,
-        score: gradeResult.score,
+        score: scoreToSave,
         aiFeedback: gradeResult.feedback,
         attemptsUsed: newAttemptsUsed,
         teacherRead: false,
@@ -162,11 +163,11 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
           exerciseFormat: 'test',
           date: new Date().toISOString(),
           isRevisionMode: false,
-          score: gradeResult.score ?? 0,
+          score: scoreToSave,
           totalWords: test.questions ? test.questions.length : 1,
           testName: test.title || 'Test',
           setDisplayName: test.title || 'Test',
-          exercisesData: `Test: ${test.title} (${gradeResult.score ?? 0}%)`
+          exercisesData: `Test: ${test.title} (${scoreToSave}%)`
         });
         if (updateUserStreak) {
           updateUserStreak().catch(console.error);
@@ -175,7 +176,7 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
         console.warn("Could not save test to practiceLogs:", logErr);
       }
 
-      setGradingResult(gradeResult);
+      setGradingResult({ score: scoreToSave, feedback: gradeResult.feedback });
       setSubmitted(true);
     } catch (err) {
       console.error(err);
