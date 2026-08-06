@@ -4,7 +4,7 @@ import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, writeBatch, getDocs, getDoc, where, orderBy, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { GENERAL_VOCABULARY_SETS } from '../data/generalVocabulary';
-import { logMistakesToFirebase } from '../services/geminiService';
+import { logMistakesToFirebase, generateFlashcardsFromTopicWithGPT } from '../services/geminiService';
 
 interface FlashcardContextType {
   sets: FlashcardSet[];
@@ -232,7 +232,14 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
   const getFlashcards = async (setId: string) => {
     if (!setId) return [];
 
-    const cleanId = setId.replace(/^lesson_/, '').replace(/^vocab-/, '').replace(/^set-/, '');
+    const currentUid = auth.currentUser?.uid || user?.id;
+    if (!currentUid) return [];
+
+    const cleanId = setId
+      .replace(/^lesson_/, '')
+      .replace(/^vocab-/, '')
+      .replace(/^set-/, '')
+      .replace(/^generated-/, '');
 
     // 1. Check GENERAL_VOCABULARY_SETS first (with flexible ID matching)
     const genSet = GENERAL_VOCABULARY_SETS.find(s => 
@@ -261,8 +268,7 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
     // 2. Check Basket
     if (setId === 'basket' || cleanId === 'basket') {
       try {
-        const uId = userId || auth.currentUser?.uid;
-        const userBasketKey = uId ? `basketWords_${uId}` : 'basketWords';
+        const userBasketKey = currentUid ? `basketWords_${currentUid}` : 'basketWords';
         const saved = localStorage.getItem(userBasketKey) || localStorage.getItem('basketWords');
         if (saved) {
           const parsed = JSON.parse(saved);
@@ -291,8 +297,10 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
       s.id === setId || 
       s.id === cleanId || 
       s.id === `set-${cleanId}` || 
+      s.id === `set-lesson-${cleanId}` ||
       s.id === `vocab-${cleanId}` ||
-      s.id === `lesson_${cleanId}`
+      s.id === `lesson_${cleanId}` ||
+      s.id === `generated-${cleanId}`
     );
 
     if (matchInLoadedSets) {
@@ -312,13 +320,41 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
     }
 
-    if (!userId) return [];
+    if (!currentUid) return [];
 
     // 4. Handle 'all' or 'lessons'
     if (setId === 'all' || setId === 'lessons') {
       try {
         const allCards: Flashcard[] = [];
-        const lessonsRef = collection(db, `users/${userId}/lessonRecords`);
+        
+        // Fetch from student's vocabularySets first
+        const userVocabSetsRef = collection(db, `users/${currentUid}/vocabularySets`);
+        const vocabSnaps = await getDocs(userVocabSetsRef);
+        vocabSnaps.docs.forEach((d) => {
+          const vData = d.data();
+          if (vData.vocabularyText) {
+            const rawLines = vData.vocabularyText.includes('\n') ? vData.vocabularyText.split('\n') : vData.vocabularyText.split(/[,;]+/);
+            const vocabList = rawLines.map((i: string) => i.trim()).filter((i: string) => i.length > 0).map(parseVocabularyLine);
+            vocabList.forEach((item: any, idx: number) => {
+              if (item.word) {
+                allCards.push({
+                  id: `v_${d.id}_${idx}`,
+                  setId: setId,
+                  term: item.word,
+                  termLanguage: 'en',
+                  definition: item.translation || '',
+                  definitionLanguage: 'pl',
+                  position: allCards.length,
+                  masteryLevel: 0,
+                  nextReview: Date.now(),
+                  imageUrl: null
+                } as unknown as Flashcard);
+              }
+            });
+          }
+        });
+
+        const lessonsRef = collection(db, `users/${currentUid}/lessonRecords`);
         const qLessons = query(lessonsRef);
         const lessonSnaps = await getDocs(qLessons);
         lessonSnaps.docs.forEach((d) => {
@@ -346,7 +382,7 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
         });
 
         const setsRef = collection(db, 'sets');
-        const qSets = query(setsRef, where('userId', '==', userId));
+        const qSets = query(setsRef, where('userId', '==', currentUid));
         const setSnaps = await getDocs(qSets);
         for (const sDoc of setSnaps.docs) {
           const cardsRef = collection(db, `sets/${sDoc.id}/flashcards`);
@@ -376,40 +412,91 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
     }
 
-    // 5. Try finding in lessonRecords
+    // 5. Check student's vocabularySets collection for exact doc ID match
+    let foundTopic = '';
     try {
-      const lessonRef = doc(db, `users/${userId}/lessonRecords`, cleanId);
-      const lessonSnap = await getDoc(lessonRef);
-      if (lessonSnap.exists()) {
-        const lessonData = lessonSnap.data();
-        if (lessonData.vocabularyText) {
-          let rawLines: string[] = [];
-          if (lessonData.vocabularyText.includes('\n')) {
-            rawLines = lessonData.vocabularyText.split('\n');
-          } else {
-            rawLines = lessonData.vocabularyText.split(/[,;]+/);
+      const vocabCandidates = [setId, cleanId, `generated-${cleanId}`];
+      for (const cand of vocabCandidates) {
+        const vRef = doc(db, `users/${currentUid}/vocabularySets`, cand);
+        const vSnap = await getDoc(vRef);
+        if (vSnap.exists()) {
+          const vData = vSnap.data();
+          foundTopic = vData.topic || vData.title || '';
+          if (vData.vocabularyText) {
+            const rawLines = vData.vocabularyText.includes('\n') ? vData.vocabularyText.split('\n') : vData.vocabularyText.split(/[,;]+/);
+            const vocabList = rawLines.map((i: string) => i.trim()).filter((i: string) => i.length > 0).map(parseVocabularyLine);
+            const parsedCards = vocabList.filter(item => item.word).map((item: any, idx: number) => ({
+              id: `vcard_${idx}`,
+              setId: setId,
+              term: item.word,
+              termLanguage: 'en',
+              definition: item.translation || '',
+              definitionLanguage: 'pl',
+              position: idx,
+              masteryLevel: 0,
+              nextReview: Date.now(),
+              imageUrl: null
+            } as unknown as Flashcard));
+            if (parsedCards.length > 0) return parsedCards;
+          } else if (Array.isArray(vData.words) && vData.words.length > 0) {
+            return vData.words.map((w: any, idx: number) => ({
+              id: w.id || `vword_${idx}`,
+              setId: setId,
+              term: w.term || w.english || w.word || '',
+              termLanguage: 'en',
+              definition: w.definition || w.polish || w.translation || '',
+              definitionLanguage: 'pl',
+              position: idx,
+              masteryLevel: 0,
+              nextReview: Date.now(),
+              imageUrl: null
+            } as unknown as Flashcard));
           }
-          const vocabList = rawLines.map((i: string) => i.trim()).filter((i: string) => i.length > 0).map(parseVocabularyLine);
-          return vocabList.map((item: any, idx: number) => ({
-            id: `card_${idx}`,
-            setId: setId,
-            term: item.word,
-            termLanguage: 'en',
-            definition: item.translation || '',
-            definitionLanguage: 'pl',
-            position: idx,
-            masteryLevel: 0,
-            nextReview: Date.now(),
-            imageUrl: null
-          } as unknown as Flashcard));
+        }
+      }
+    } catch (e) {
+      console.warn('Error checking vocabularySets for doc:', e);
+    }
+
+    // 6. Check student's lessonRecords
+    try {
+      const lessonCandidates = [cleanId, setId];
+      for (const cand of lessonCandidates) {
+        const lessonRef = doc(db, `users/${currentUid}/lessonRecords`, cand);
+        const lessonSnap = await getDoc(lessonRef);
+        if (lessonSnap.exists()) {
+          const lessonData = lessonSnap.data();
+          if (!foundTopic) foundTopic = lessonData.topic || '';
+          if (lessonData.vocabularyText) {
+            let rawLines: string[] = [];
+            if (lessonData.vocabularyText.includes('\n')) {
+              rawLines = lessonData.vocabularyText.split('\n');
+            } else {
+              rawLines = lessonData.vocabularyText.split(/[,;]+/);
+            }
+            const vocabList = rawLines.map((i: string) => i.trim()).filter((i: string) => i.length > 0).map(parseVocabularyLine);
+            const parsedCards = vocabList.filter(item => item.word).map((item: any, idx: number) => ({
+              id: `card_${idx}`,
+              setId: setId,
+              term: item.word,
+              termLanguage: 'en',
+              definition: item.translation || '',
+              definitionLanguage: 'pl',
+              position: idx,
+              masteryLevel: 0,
+              nextReview: Date.now(),
+              imageUrl: null
+            } as unknown as Flashcard));
+            if (parsedCards.length > 0) return parsedCards;
+          }
         }
       }
     } catch (error) {
       console.warn('Error checking lessonRecord for vocab:', error);
     }
 
-    // 6. Try fetching from sets subcollection
-    const idCandidates = Array.from(new Set([setId, cleanId, `set-${cleanId}`, `vocab-${cleanId}`, `set-custom-practice-${userId}`]));
+    // 7. Try fetching from sets subcollection
+    const idCandidates = Array.from(new Set([setId, cleanId, `set-${cleanId}`, `set-lesson-${cleanId}`, `vocab-${cleanId}`, `set-custom-practice-${currentUid}`]));
     for (const candId of idCandidates) {
       try {
         const cardsRef = collection(db, `sets/${candId}/flashcards`);
@@ -420,6 +507,31 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
         }
       } catch (error) {
         // continue trying
+      }
+    }
+
+    // 8. AI Generation with GPT-4o mini if we have a topic name or if requested
+    if (foundTopic || setId.startsWith('topic-') || cleanId.length > 3) {
+      const topicToUse = foundTopic || cleanId.replace(/_/g, ' ');
+      try {
+        console.log(`Generating flashcards with GPT-4o mini for topic: ${topicToUse}`);
+        const generatedItems = await generateFlashcardsFromTopicWithGPT(topicToUse, 10, 'en', 'pl');
+        if (generatedItems && generatedItems.length > 0) {
+          return generatedItems.map((item: any, idx: number) => ({
+            id: `ai_card_${idx}`,
+            setId: setId,
+            term: item.term || item.word || '',
+            termLanguage: 'en',
+            definition: item.definition || item.translation || '',
+            definitionLanguage: 'pl',
+            position: idx,
+            masteryLevel: 0,
+            nextReview: Date.now(),
+            imageUrl: null
+          } as unknown as Flashcard));
+        }
+      } catch (e) {
+        console.warn('AI generation of flashcards failed:', e);
       }
     }
 

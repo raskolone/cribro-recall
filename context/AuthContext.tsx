@@ -31,6 +31,45 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper to format local date keys (YYYY-MM-DD)
+const getLocalDateKey = (dateInput: any): string => {
+  try {
+    if (!dateInput) return '';
+    let d: Date;
+    if (typeof dateInput.toDate === 'function') {
+      d = dateInput.toDate();
+    } else if (dateInput instanceof Date) {
+      d = dateInput;
+    } else if (typeof dateInput === 'string' || typeof dateInput === 'number') {
+      d = new Date(dateInput);
+    } else if (dateInput.seconds !== undefined) {
+      d = new Date(dateInput.seconds * 1000);
+    } else {
+      d = new Date(dateInput);
+    }
+
+    if (isNaN(d.getTime())) return '';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } catch {
+    return '';
+  }
+};
+
+// Helper to calculate calendar days between two dates in a timezone-safe manner
+const getDaysBetween = (date1: string | Date, date2: string | Date): number => {
+  const key1 = getLocalDateKey(date1);
+  const key2 = getLocalDateKey(date2);
+  if (!key1 || !key2) return 999;
+  
+  const d1 = new Date(key1 + 'T12:00:00');
+  const d2 = new Date(key2 + 'T12:00:00');
+  const diffTime = Math.abs(d2.getTime() - d1.getTime());
+  return Math.round(diffTime / (1000 * 60 * 60 * 24));
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -65,6 +104,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 data.role = 'admin';
                 updateDoc(userDocRef, { role: 'admin' }).catch(() => {});
               }
+
+              // Check if streak is broken (more than 1 day since last practice)
+              if (data.streakCount && data.streakCount > 0) {
+                if (data.lastStreakDate) {
+                  const diff = getDaysBetween(data.lastStreakDate, new Date());
+                  if (diff > 1) {
+                    // Streak is broken! Reset to 0
+                    updateDoc(userDocRef, { streakCount: 0 }).catch(console.error);
+                    data.streakCount = 0;
+                  }
+                } else {
+                  // No last streak date, reset streak to 0 just in case
+                  updateDoc(userDocRef, { streakCount: 0 }).catch(console.error);
+                  data.streakCount = 0;
+                }
+              }
+
               setUser({ id: firebaseUser.uid, ...data } as User);
             } else {
               const defaultName = firebaseUser.isAnonymous ? 'Demo User' : (firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User'));
@@ -312,7 +368,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     try {
       const today = new Date();
-      today.setHours(0, 0, 0, 0); // Normalize to start of day
       const todayStr = today.toISOString();
       const currentStreak = user.streakCount || 0;
       
@@ -321,11 +376,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // Check if they already practiced today
       if (user.lastStreakDate) {
-        const lastDate = new Date(user.lastStreakDate);
-        lastDate.setHours(0, 0, 0, 0);
-        
-        const diffTime = Math.abs(today.getTime() - lastDate.getTime());
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
+        const diffDays = getDaysBetween(user.lastStreakDate, today);
 
         if (diffDays === 0) {
           // Already practiced today, don't increment, but maybe still show confetti if they want

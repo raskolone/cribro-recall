@@ -503,7 +503,14 @@ export const HomeworkScreen: React.FC = () => {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => setActiveTask(null)}
+              onClick={() => {
+                const msg = language === 'pl' 
+                  ? 'Czy na pewno chcesz zakończyć to zadanie i wrócić do głównego panelu zadań? Twój niezapisany postęp zostanie utracony.' 
+                  : 'Are you sure you want to end this task and return to the main homework panel? Your unsaved progress will be lost.';
+                if (window.confirm(msg)) {
+                  setActiveTask(null);
+                }
+              }}
               className="flex items-center gap-1 text-xs"
             >
               <X size={16} /> Zamknij

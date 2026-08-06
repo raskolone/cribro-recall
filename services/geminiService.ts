@@ -757,6 +757,45 @@ Return a JSON array of objects.`;
   }
 };
 
+export const generateFlashcardsFromTopicWithGPT = async (
+  topic: string,
+  count: number = 10,
+  termLang: string = 'en',
+  defLang: string = 'pl'
+): Promise<any[]> => {
+  const prompt = `Jesteś ekspertem dydaktyki języka angielskiego. Wygeneruj zestaw ${count} przydatnych fiszek słów/zwrotów na temat: "${topic}".
+Język pojęć (term): ${termLang} (np. po angielsku)
+Język definicji/tłumaczeń (definition): ${defLang} (np. po polsku)
+
+Dla każdego słówka/zwrotu podaj:
+1. term: słówko lub zwrot w języku docelowym (${termLang})
+2. definition: polskie tłumaczenie lub krótka definicja (${defLang})
+3. contextSentence: proste, naturalne zdanie przykładowe po angielsku (${termLang})
+
+Zwróć WYŁĄCZNIE tablicowy obiekt JSON, w którym każdy element to obiekt o kluczach: "term", "definition", "contextSentence".`;
+
+  const sysInst = "Jesteś asystentem AI tworzącym zestawy fiszek w formacie JSON dla modelu gpt-4o-mini.";
+
+  try {
+    const text = await callOpenAI(prompt, sysInst, "gpt-4o-mini");
+    const jsonText = extractJSON(text || "");
+    const parsed = JSON.parse(jsonText);
+    const list = Array.isArray(parsed) ? parsed : (parsed.flashcards || parsed.words || parsed.items || []);
+    return list;
+  } catch (err) {
+    console.warn("GPT-4o-mini direct call failed, trying fallback:", err);
+    try {
+      const resp = await generateContentWithFallback({ contents: prompt, config: { systemInstruction: sysInst } });
+      const jsonText = extractJSON(resp?.text || "");
+      const parsed = JSON.parse(jsonText);
+      return Array.isArray(parsed) ? parsed : (parsed.flashcards || parsed.words || parsed.items || []);
+    } catch (e2) {
+      console.error("Failed to generate flashcards from topic with AI:", e2);
+      return [];
+    }
+  }
+};
+
 export const generateContextSentence = async (term: string, termLang: string): Promise<string> => {
   const prompt = `Write a short, clear, and natural example sentence using the following term.
 Term: "${term}"

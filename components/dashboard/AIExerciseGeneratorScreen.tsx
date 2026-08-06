@@ -28,7 +28,6 @@ import Card from '../ui/Card';
 import PuzzleExercise from './PuzzleExercise';
 import Button from '../ui/Button';
 import ConfirmModal from '../ui/ConfirmModal';
-import MobileTopMenu from './MobileTopMenu';
 import { motion, AnimatePresence } from 'motion/react';
 import {    
   Sparkles, 
@@ -814,7 +813,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     if (setupSelectedSource === 'basket') {
       wordsList = basketWords;
     } else {
-      const cleanSource = setupSelectedSource.replace(/^vocab-/, '').replace(/^set-/, '');
+      const cleanSource = setupSelectedSource.replace(/^vocab-/, '').replace(/^set-/, '').replace(/^generated-/, '');
       const genSet = GENERAL_VOCABULARY_SETS.find(s => 
         s.id === setupSelectedSource || 
         s.id === cleanSource || 
@@ -829,13 +828,28 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
           setTopic: genSet.title
         }));
       } else {
-        const selectedSet = vocabularySets.find(s => s.id === setupSelectedSource || s.id === cleanSource);
-        if (selectedSet && selectedSet.vocabularyText) {
-          wordsList = selectedSet.vocabularyText
-            .split(/[\n;]+/)
-            .map(line => line.trim())
-            .filter(line => line.length > 0)
-            .map(line => parseLineToWordItem(line, selectedSet.topic));
+        const selectedSet = vocabularySets.find(s => 
+          s.id === setupSelectedSource || 
+          s.id === cleanSource || 
+          s.id === `generated-${cleanSource}` || 
+          s.lessonRecordId === cleanSource ||
+          s.lessonRecordId === setupSelectedSource
+        );
+        if (selectedSet) {
+          if (selectedSet.vocabularyText) {
+            wordsList = selectedSet.vocabularyText
+              .split(/[\n;]+/)
+              .map(line => line.trim())
+              .filter(line => line.length > 0)
+              .map(line => parseLineToWordItem(line, selectedSet.topic));
+          } else if ((selectedSet as any).words && Array.isArray((selectedSet as any).words)) {
+            wordsList = (selectedSet as any).words.map((w: any, idx: number) => ({
+              id: w.id || `word_${idx}`,
+              term: w.term || w.english || w.word || '',
+              definition: w.definition || w.polish || w.translation || '',
+              setTopic: selectedSet.topic
+            }));
+          }
         }
       }
     }
@@ -1810,24 +1824,27 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
       {/* Pulsar effect for the whole screen area */}
 
       {/* GLOBAL MOBILE HEADER */}
-      <div className="md:hidden pt-6 pb-2 px-6 flex items-center justify-between bg-transparent z-40">
+      <div className="md:hidden pt-4 pb-2 px-6 flex items-center justify-between bg-transparent z-40">
         <div className="w-8" />
         <h2 className="text-xl font-bold text-white flex items-center justify-center gap-2">
-          {step === 'setup' ? (language === 'pl' ? 'Czas na trening' : 'Time for training') : 
+          {step === 'setup' ? '' : 
            step === 'practice' ? (language === 'pl' ? 'Ćwiczenie' : 'Practice') :
            step === 'results' ? (language === 'pl' ? 'Wyniki' : 'Results') : 
            (language === 'pl' ? 'Sukces' : 'Success')}
         </h2>
         <div className="flex items-center gap-2">
-          {step === 'practice' && (
+          {step === 'practice' ? (
             <button
               onClick={() => {
                 showConfirm(
                   language === 'pl' ? 'Zakończ trening' : 'End session',
-                  language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję nauki? Dotychczasowe odpowiedzi zostaną ocenione.' : 'Are you sure you want to end this study session? Your answers will be evaluated.',
+                  language === 'pl' ? 'Czy na pewno chcesz zakończyć trening i wrócić do panelu głównego? Twój postęp nie zostanie zapisany.' : 'Are you sure you want to end training and return to the main panel? Your progress will not be saved.',
                   () => {
                     closeConfirm();
-                    handleFinishAll();
+                    setStep('setup');
+                    setExercises([]);
+                    setStudentAnswers([]);
+                    setTimeLeft(null);
                   }
                 );
               }}
@@ -1835,47 +1852,11 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
             >
               <X className="w-6 h-6" />
             </button>
-          )}
-          {onChangeView ? (
-            <MobileTopMenu 
-              currentView="dashboard" 
-              onChangeView={onChangeView}
-              isExerciseActive={step === 'practice' || step === 'results'}
-              onConfirmEndSession={(onEnd) => {
-                showConfirm(
-                  language === 'pl' ? 'Zakończ trening' : 'End session',
-                  language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję nauki? Dotychczasowe odpowiedzi zostaną ocenione.' : 'Are you sure you want to end this study session? Your answers will be evaluated.',
-                  () => {
-                    closeConfirm();
-                    onEnd();
-                  }
-                );
-              }}
-            />
           ) : (
-            <div className="w-10" />
+            <div className="w-8" />
           )}
         </div>
       </div>
-
-      {step === 'setup' && (
-        <div className="md:hidden px-6 pt-1 pb-3 flex flex-col gap-2 border-b border-white/10">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0 animate-pulse" />
-              {language === 'pl' 
-                ? `Przetłumaczyłeś już ${translatedSentencesCount} zdań. Świetna robota!` 
-                : `You translated ${translatedSentencesCount} sentences. Great job!`}
-            </p>
-            <div className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 rounded-xl shrink-0">
-              <Flame className="w-4 h-4 text-amber-400 fill-amber-300" />
-              <span className="text-xs font-bold text-amber-300">
-                {user?.streakCount || 0}d
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
 
       <AnimatePresence>
         {(isLoading || isEvaluating || isGeneratingMore) && (
@@ -1920,18 +1901,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                 }
                 showConfirm(
                   language === 'pl' ? 'Zakończ trening' : 'End session',
-                  language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję nauki? Dotychczasowe odpowiedzi zostaną ocenione.' : 'Are you sure you want to end this study session? Your answers will be evaluated.',
+                  language === 'pl' ? 'Czy na pewno chcesz zakończyć trening i wrócić do panelu głównego? Twój postęp nie zostanie zapisany.' : 'Are you sure you want to end training and return to the main panel? Your progress will not be saved.',
                   () => {
                     closeConfirm();
-                    const hasAnswers = studentAnswers.some(ans => ans?.trim());
-                    if (hasAnswers) {
-                      handleFinishAll();
-                    } else {
-                      setStep('setup');
-                      setExercises([]);
-                      setStudentAnswers([]);
-                      setTimeLeft(null);
-                    }
+                    setStep('setup');
+                    setExercises([]);
+                    setStudentAnswers([]);
+                    setTimeLeft(null);
                   }
                 );
               }}
@@ -2040,13 +2016,59 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   <>
 
                   <div className="space-y-6 animate-fade-in-up p-4 sm:p-6">
-                    {/* Centered Header Section with Streak Counter in Top Right */}
-                    <div className="relative flex flex-col items-center justify-center text-center pb-6 border-b border-white/10">
+                    {/* Centered Header Section with Streak Counter */}
+                    <div className="flex flex-col items-center justify-center text-center pb-6 border-b border-white/10 gap-3">
                       
-                      {/* Streak Counter & Badges in Top Right Corner */}
-                      <div className="absolute right-0 top-0 flex flex-col items-end gap-1.5 z-10">
+                      {/* Top Bar: Notifications on Left, Streak Counter on Right */}
+                      <div className="w-full flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {user?.hasNewVocabulary && !isBannerDismissed && (
+                            <span 
+                              onClick={() => {
+                                setSelectedSetId('lessons');
+                                if (vocabularySets.length > 0 && selectedLessonIds.length === 0) {
+                                  setSelectedLessonIds([vocabularySets[0].id]);
+                                }
+                                setIsBannerDismissed(true);
+                                if (user?.id) {
+                                  updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
+                                }
+                              }}
+                              className="text-[11px] px-2.5 py-0.5 bg-primary/20 text-primary border border-primary/40 rounded-full animate-pulse cursor-pointer hover:bg-primary/30 transition-colors whitespace-nowrap font-semibold shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                            >
+                              {language === 'pl' ? 'nowe słówka' : 'new vocab'}
+                            </span>
+                          )}
+                          {user?.hasNewLesson && (
+                            <span 
+                              onClick={() => {
+                                if (onChangeView) onChangeView('lesson-history');
+                                if (user?.id) {
+                                  updateDoc(doc(db, 'users', user.id), { hasNewLesson: false }).catch(console.error);
+                                }
+                              }}
+                              className="text-[11px] px-2.5 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full animate-pulse cursor-pointer hover:bg-amber-500/30 transition-colors whitespace-nowrap font-semibold shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                            >
+                              {language === 'pl' ? 'nowa lekcja' : 'new lesson'}
+                            </span>
+                          )}
+                          {user?.hasNewHomework && (
+                            <span 
+                              onClick={() => {
+                                if (onChangeView) onChangeView('homework');
+                                if (user?.id) {
+                                  updateDoc(doc(db, 'users', user.id), { hasNewHomework: false }).catch(console.error);
+                                }
+                              }}
+                              className="text-[11px] px-2.5 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/40 rounded-full animate-pulse cursor-pointer hover:bg-purple-500/30 transition-colors whitespace-nowrap font-semibold shadow-[0_0_10px_rgba(168,85,247,0.2)]"
+                            >
+                              {language === 'pl' ? 'nowa praca domowa' : 'new homework'}
+                            </span>
+                          )}
+                        </div>
+
                         {/* Streak Counter Badge */}
-                        <div className="flex items-center gap-2 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-red-500/15 border border-amber-500/30 px-3 py-1.5 rounded-2xl shadow-[0_0_15px_rgba(245,158,11,0.15)] shrink-0">
+                        <div className="flex items-center gap-2 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-red-500/15 border border-amber-500/30 px-3 py-1.5 rounded-2xl shadow-[0_0_15px_rgba(245,158,11,0.15)] shrink-0 ml-auto">
                           <div className="p-1 rounded-lg bg-gradient-to-tr from-amber-500 to-orange-500 text-slate-950 font-black shadow-[0_0_8px_rgba(245,158,11,0.5)]">
                             <Flame className="w-4 h-4 text-slate-950 fill-amber-200 animate-bounce" />
                           </div>
@@ -2054,7 +2076,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             {user?.streakCount ? (
                               <>
                                 <span className="text-amber-400 font-bold">{user.streakCount}</span>
-                                <span className="hidden sm:inline text-[11px] text-amber-200/90 font-semibold">
+                                <span className="text-[11px] text-amber-200/90 font-semibold">
                                   {language === 'pl' ? (user.streakCount === 1 ? 'dzień' : 'dni') : (user.streakCount === 1 ? 'day' : 'days')}
                                 </span>
                                 <span>🔥</span>
@@ -2064,56 +2086,11 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             )}
                           </div>
                         </div>
-
-                        {/* Notifications underneath Streak Counter */}
-                        {user?.hasNewVocabulary && !isBannerDismissed && (
-                          <span 
-                            onClick={() => {
-                              setSelectedSetId('lessons');
-                              if (vocabularySets.length > 0 && selectedLessonIds.length === 0) {
-                                setSelectedLessonIds([vocabularySets[0].id]);
-                              }
-                              setIsBannerDismissed(true);
-                              if (user?.id) {
-                                updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
-                              }
-                            }}
-                            className="text-[11px] px-2.5 py-0.5 bg-primary/20 text-primary border border-primary/40 rounded-full animate-pulse cursor-pointer hover:bg-primary/30 transition-colors whitespace-nowrap font-semibold shadow-[0_0_10px_rgba(16,185,129,0.2)]"
-                          >
-                            {language === 'pl' ? 'nowe słówka' : 'new vocab'}
-                          </span>
-                        )}
-                        {user?.hasNewLesson && (
-                          <span 
-                            onClick={() => {
-                              if (onChangeView) onChangeView('lesson-history');
-                              if (user?.id) {
-                                updateDoc(doc(db, 'users', user.id), { hasNewLesson: false }).catch(console.error);
-                              }
-                            }}
-                            className="text-[11px] px-2.5 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full animate-pulse cursor-pointer hover:bg-amber-500/30 transition-colors whitespace-nowrap font-semibold shadow-[0_0_10px_rgba(245,158,11,0.2)]"
-                          >
-                            {language === 'pl' ? 'nowa lekcja' : 'new lesson'}
-                          </span>
-                        )}
-                        {user?.hasNewHomework && (
-                          <span 
-                            onClick={() => {
-                              if (onChangeView) onChangeView('homework');
-                              if (user?.id) {
-                                updateDoc(doc(db, 'users', user.id), { hasNewHomework: false }).catch(console.error);
-                              }
-                            }}
-                            className="text-[11px] px-2.5 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/40 rounded-full animate-pulse cursor-pointer hover:bg-purple-500/30 transition-colors whitespace-nowrap font-semibold shadow-[0_0_10px_rgba(168,85,247,0.2)]"
-                          >
-                            {language === 'pl' ? 'nowa praca domowa' : 'new homework'}
-                          </span>
-                        )}
                       </div>
 
                       {/* Centered Heading with Declined Name */}
-                      <div className="space-y-1.5 max-w-md mx-auto pt-2 sm:pt-0 pr-20 sm:pr-24">
-                        <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                      <div className="space-y-1.5 max-w-lg mx-auto text-center w-full pt-1">
+                        <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight text-center">
                           {(() => {
                             const rawName = user?.firstName || (user?.displayName || user?.name || user?.email || '').split(' ')[0] || '';
                             const inflectedName = getPolishVocative(rawName);
@@ -2801,12 +2778,12 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                                 }}
                                                 className="w-4 h-4 text-emerald-400 focus:ring-emerald-400 rounded border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
                                               />
-                                              <div className="flex-1 flex flex-col min-w-0">
-                                                <span className="text-xs font-semibold leading-tight flex items-center flex-wrap gap-1">
-                                                  <span className="text-[10px] font-mono bg-white/10 px-1.5 py-0.5 rounded text-emerald-300 border border-white/5">L{lessonNumber}</span>
-                                                  <span className={`${isSelected ? 'text-white' : 'text-gray-300'} truncate`}>
-                                                    {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
-                                                  </span>
+                                              <div className="flex-1 flex flex-col min-w-0 gap-0.5">
+                                                <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+                                                  Lesson {lessonNumber}
+                                                </span>
+                                                <span className={`text-xs font-semibold leading-relaxed ${isSelected ? 'text-white' : 'text-gray-300'} break-words`}>
+                                                  {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
                                                 </span>
                                               </div>
                                               <button
@@ -3166,7 +3143,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                             const lessonNumber = vocabularySets.length - idx;
                                             return (
                                               <option key={set.id} value={set.id}>
-                                                📚 {set.title || (language === 'pl' ? `Lekcja ${lessonNumber}` : `Lesson ${lessonNumber}`)} ({set.itemCount} {language === 'pl' ? 'słówek' : 'words'})
+                                                📚 Lesson {lessonNumber}: {set.topic ? set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim() : set.title} ({set.itemCount} {language === 'pl' ? 'słówek' : 'words'})
                                               </option>
                                             );
                                           })}

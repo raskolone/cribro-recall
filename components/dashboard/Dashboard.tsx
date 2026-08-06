@@ -18,7 +18,6 @@ import { useFlashcards } from '../../context/FlashcardContext';
 import { ExerciseType } from '../../types';
 import Button from '../ui/Button';
 import { ChevronDown, Sparkles, Menu } from 'lucide-react';
-import MobileTopMenu from './MobileTopMenu';
 import AssignedTasks from './AssignedTasks';
 import i18n from "i18next";
 
@@ -194,13 +193,21 @@ const Dashboard: React.FC = () => {
       );
     }
     if (view === 'flashcard-study') {
-      return <FlashcardStudyScreen setId={activeSetId || ''} initialMode={(window as any)._initialStudyMode} onBack={() => setView('dashboard')} onNavigate={(v: any, extra?: any) => {
-        if (extra && (extra.setId || extra.activeSetId)) setActiveSetId(extra.setId || extra.activeSetId);
-        if (extra && extra.initialMode) {
-          (window as any)._initialStudyMode = extra.initialMode === 'match' ? 'matching' : extra.initialMode;
-        }
-        setView(v as View);
-      }} />;
+      return <FlashcardStudyScreen 
+        setId={activeSetId || ''} 
+        initialMode={(window as any)._initialStudyMode} 
+        onBack={() => setView('dashboard')} 
+        onNavigate={(v: any, extra?: any) => {
+          if (extra && (extra.setId || extra.activeSetId)) setActiveSetId(extra.setId || extra.activeSetId);
+          if (extra && extra.initialMode) {
+            (window as any)._initialStudyMode = extra.initialMode === 'match' ? 'matching' : extra.initialMode;
+          }
+          setView(v as View);
+        }} 
+        onStartAIPractice={() => {
+          setView('ai-generator');
+        }}
+      />;
     }
     if (view === 'flashcard-edit') {
       return (
@@ -247,6 +254,7 @@ const Dashboard: React.FC = () => {
       return <AdminPanel />;
     }
     return <AIExerciseGeneratorScreen 
+      initialSetId={activeSetId}
       onChangeView={(newView, extra) => {
         if (extra && (extra.setId || extra.activeSetId)) setActiveSetId(extra.setId || extra.activeSetId);
         if (extra && extra.initialMode) {

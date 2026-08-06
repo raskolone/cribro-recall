@@ -36,6 +36,60 @@ export function parseVocabularyTextToCards(vocabularyText: string) {
   });
 }
 
+export async function syncFlashcardSetForLesson(
+  lessonRecordId: string,
+  studentId: string,
+  date: string,
+  topic: string,
+  vocabularyText: string
+) {
+  if (!vocabularyText || vocabularyText.trim().length === 0) {
+    return;
+  }
+
+  try {
+    const flashcardSetId = `set-lesson-${lessonRecordId}`;
+    const cards = parseVocabularyTextToCards(vocabularyText);
+    const title = buildVocabularySetTitle(date, topic);
+
+    const flashcardSetRef = doc(db, `sets/${flashcardSetId}`);
+    await setDoc(flashcardSetRef, {
+      userId: studentId,
+      title: title,
+      description: `Słownictwo z lekcji: ${date}`,
+      isPublic: false,
+      cardCount: cards.length,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      assignedByTeacher: true,
+      isLessonVocabulary: true,
+      lessonTopic: topic,
+      lessonDate: date
+    }, { merge: true });
+
+    // Re-create the subcollection cards by deleting old ones and writing new ones
+    const cardsRef = collection(db, `sets/${flashcardSetId}/flashcards`);
+    const existingSnapshot = await getDocs(cardsRef);
+    const batch = writeBatch(db);
+    
+    // Delete existing cards
+    existingSnapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    
+    // Add new cards
+    cards.forEach((card, index) => {
+      const cardRef = doc(db, `sets/${flashcardSetId}/flashcards/card-${index}`);
+      batch.set(cardRef, card);
+    });
+
+    await batch.commit();
+    console.log(`Successfully synced flashcard set for lesson ${lessonRecordId}`);
+  } catch (e) {
+    console.warn("Could not sync flashcard set for lesson:", e);
+  }
+}
+
 export async function createLessonRecordWithVocabularySet(input: {
   studentId: string;
   date: string;
@@ -108,35 +162,13 @@ export async function createLessonRecordWithVocabularySet(input: {
 
   // 4. Extract vocabulary as a dedicated FlashcardSet
   if (input.vocabularyText && input.vocabularyText.trim().length > 0) {
-    try {
-      const flashcardSetId = `set-lesson-${Date.now()}`;
-      const cards = parseVocabularyTextToCards(input.vocabularyText);
-      const flashcardSetRef = doc(db, `sets/${flashcardSetId}`);
-      await setDoc(flashcardSetRef, {
-        userId: input.studentId,
-        title: title,
-        description: `Słownictwo z lekcji: ${input.date}`,
-        isPublic: false,
-        cardCount: cards.length,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        assignedByTeacher: true,
-        isLessonVocabulary: true,
-        lessonTopic: input.topic,
-        lessonDate: input.date
-      });
-
-      if (cards.length > 0) {
-        const batch = writeBatch(db);
-        cards.forEach((card, index) => {
-          const cardRef = doc(db, `sets/${flashcardSetId}/flashcards/card-${index}`);
-          batch.set(cardRef, card);
-        });
-        await batch.commit();
-      }
-    } catch (e) {
-      console.warn("Could not create flashcard set for lesson:", e);
-    }
+    await syncFlashcardSetForLesson(
+      lessonRecordId,
+      input.studentId,
+      input.date,
+      input.topic,
+      input.vocabularyText
+    );
   }
 
   return { lessonRecordId, vocabularySetId };

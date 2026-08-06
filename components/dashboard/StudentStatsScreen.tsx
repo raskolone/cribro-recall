@@ -279,12 +279,12 @@ const StudentStatsScreen: React.FC = () => {
 
       if (anchorDateMs !== null) {
         let activeCount = 0;
-        let checkMs = anchorDateMs;
+        const checkDate = new Date(anchorDateMs);
         while (true) {
-          const key = getLocalDateKey(new Date(checkMs));
+          const key = getLocalDateKey(checkDate);
           if (setOfDates.has(key)) {
             activeCount++;
-            checkMs -= 86400000;
+            checkDate.setDate(checkDate.getDate() - 1);
           } else {
             break;
           }
@@ -307,14 +307,22 @@ const StudentStatsScreen: React.FC = () => {
   // Sync user doc streak and translated sentences count if out of sync
   useEffect(() => {
     if (user?.id && !isLoading) {
-      const needsStreakUpdate = user.streakCount !== stats.currentStreak;
+      // Only update user's streak if the calculated streak is higher (or if user.streakCount is undefined/null/invalid)
+      const isStreakHigher = typeof user.streakCount !== 'number' || stats.currentStreak > user.streakCount;
+      const needsStreakUpdate = isStreakHigher;
       const needsSentencesUpdate = user.translatedSentencesCount !== stats.totalWords;
 
       if (needsStreakUpdate || needsSentencesUpdate) {
-        updateDoc(doc(db, 'users', user.id), {
-          streakCount: stats.currentStreak,
-          translatedSentencesCount: stats.totalWords
-        }).catch(err => console.error("Error syncing stats to user doc:", err));
+        const updatePayload: any = {};
+        if (needsStreakUpdate) {
+          updatePayload.streakCount = stats.currentStreak;
+        }
+        if (needsSentencesUpdate) {
+          updatePayload.translatedSentencesCount = stats.totalWords;
+        }
+
+        updateDoc(doc(db, 'users', user.id), updatePayload)
+          .catch(err => console.error("Error syncing stats to user doc:", err));
       }
     }
   }, [user?.id, isLoading, stats.currentStreak, stats.totalWords, user?.streakCount, user?.translatedSentencesCount]);

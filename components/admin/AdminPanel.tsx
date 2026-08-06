@@ -1,4 +1,4 @@
-import { createLessonRecordWithVocabularySet } from '../../services/lessonRecord';
+import { createLessonRecordWithVocabularySet, syncFlashcardSetForLesson } from '../../services/lessonRecord';
 import { countVocabularyItems, buildVocabularySetTitle } from '../../utils/vocabulary';
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
@@ -623,6 +623,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
               itemCount: countVocabularyItems(lessonFormWords),
               updatedAt: new Date().toISOString()
            });
+        }
+
+        if (lessonFormWords && lessonFormWords.trim().length > 0) {
+          await syncFlashcardSetForLesson(
+            editingRecordId,
+            primaryStudentId,
+            lessonFormDate,
+            lessonFormTopic,
+            lessonFormWords
+          );
         }
 
         // If additional students were selected during edit, create record for them too
