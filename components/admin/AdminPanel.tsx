@@ -1,4 +1,4 @@
-import { createLessonRecordWithVocabularySet, syncFlashcardSetForLesson } from '../../services/lessonRecord';
+import { createLessonRecordWithVocabularySet, syncFlashcardSetForLesson, getLessonRecordsForStudent, deleteLessonRecord } from '../../services/lessonRecord';
 import { countVocabularyItems, buildVocabularySetTitle } from '../../utils/vocabulary';
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
@@ -115,11 +115,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       logsList.forEach(l => {
         if ((l.exerciseType as string) === 'Aktywność') return;
         validLogsCount++;
-        totalScoreSum += (Number(l.score) || 0);
+        
+        const scoreVal = Number(l.score);
+        totalScoreSum += isNaN(scoreVal) ? 0 : scoreVal;
 
         let count = 0;
-        if (l.totalWords) {
-          count = l.totalWords;
+        if (l.totalWords !== undefined && l.totalWords !== null) {
+          const wNum = Number(l.totalWords);
+          count = isNaN(wNum) ? 0 : wNum;
         } else if (Array.isArray(l.exercisesData)) {
           count = l.exercisesData.length;
         } else if (Array.isArray((l as any).detailedFeedback)) {
@@ -127,7 +130,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         } else if (typeof l.exercisesData === 'string' && l.exercisesData) {
           count = l.exercisesData.split(' | ').length;
         }
-        totalSentencesCount += count;
+        totalSentencesCount += isNaN(count) ? 0 : count;
       });
 
       const calcAvg = validLogsCount > 0 ? Math.round(totalScoreSum / validLogsCount) : 0;
@@ -687,6 +690,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       setIsSavingLessonRecord(false);
     }
   };
+
+  const handleDeleteLessonRecord = async (record: LessonRecord) => {
+    if (!selectedUser) return;
+    if (!window.confirm(`Czy na pewno chcesz usunąć lekcję "${record.topic}" z dnia ${record.date}? Operacja jest nieodwracalna.`)) {
+      return;
+    }
+    try {
+      await deleteLessonRecord(selectedUser.id, record);
+      showToast("Lekcja została usunięta.");
+      fetchUserLogsAndStats(selectedUser.id);
+      if (viewingRecord?.id === record.id) {
+        setShowLessonRecordModal(false);
+      }
+    } catch (e: any) {
+      alert("Błąd podczas usuwania lekcji: " + e.message);
+    }
+  };
   const generateStrongPassword = () => {
     const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     const lowercase = "abcdefghijklmnopqrstuvwxyz";
@@ -923,6 +943,47 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [lessonFormSuggestedFollowUp, setLessonFormSuggestedFollowUp] = useState('');
   const [lessonRecordModalMode, setLessonRecordModalMode] = useState<'view' | 'edit'>('view');
   
+  // Lesson Database clone States
+  const [allLessonsDatabase, setAllLessonsDatabase] = useState<{record: LessonRecord; studentName: string; studentId: string}[]>([]);
+  const [isLoadingLessonsDb, setIsLoadingLessonsDb] = useState(false);
+  const [lessonsDbSearch, setLessonsDbSearch] = useState('');
+  const [activeLessonFormTab, setActiveLessonFormTab] = useState<'manual' | 'database'>('manual');
+  const [selectedDbLessonKeys, setSelectedDbLessonKeys] = useState<string[]>([]);
+
+  const fetchAllUsersLessons = async () => {
+    setIsLoadingLessonsDb(true);
+    try {
+      const fetchedLessons: {record: LessonRecord; studentName: string; studentId: string}[] = [];
+      await Promise.all(users.map(async (u) => {
+        try {
+          const records = await getLessonRecordsForStudent(u.id);
+          const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username;
+          records.forEach(rec => {
+            fetchedLessons.push({
+              record: rec,
+              studentName: name,
+              studentId: u.id
+            });
+          });
+        } catch (err) {
+          console.warn(`Could not fetch lessons for user ${u.id}:`, err);
+        }
+      }));
+      fetchedLessons.sort((a, b) => new Date(b.record.date).getTime() - new Date(a.record.date).getTime());
+      setAllLessonsDatabase(fetchedLessons);
+    } catch (err) {
+      console.error("Error fetching all users lessons:", err);
+    } finally {
+      setIsLoadingLessonsDb(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showLessonRecordModal && activeLessonFormTab === 'database' && allLessonsDatabase.length === 0) {
+      fetchAllUsersLessons();
+    }
+  }, [showLessonRecordModal, activeLessonFormTab, allLessonsDatabase.length]);
+  
   // AI Modal State
   const [showAIModal, setShowAIModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -958,6 +1019,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
   const openLessonRecordModal = (mode: 'view' | 'edit', record?: LessonRecord, preserveData: boolean = false) => {
     setLessonRecordModalMode(mode);
+    setActiveLessonFormTab('manual');
+    setLessonsDbSearch('');
+    setSelectedDbLessonKeys([]);
     if (record) {
       setEditingRecordId(record.id);
       setViewingRecord(record);
@@ -1509,15 +1573,27 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         className="relative group cursor-pointer p-4 rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5"
                         onClick={() => openLessonRecordModal('view', record)}
                       >
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); openLessonRecordModal('edit', record); }}
-                          className="absolute top-1/2 -translate-y-1/2 right-4 p-2 bg-base-100 rounded-lg text-content-muted hover:text-primary hover:bg-base-200 transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
-                        <div className="flex items-center gap-4 pr-12">
+                        <div className="absolute top-1/2 -translate-y-1/2 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); openLessonRecordModal('edit', record); }}
+                            className="p-2 bg-base-100 rounded-lg text-content-muted hover:text-primary hover:bg-base-200 transition-colors"
+                            title="Edytuj lekcję"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleDeleteLessonRecord(record); }}
+                            className="p-2 bg-base-100 rounded-lg text-content-muted hover:text-red-500 hover:bg-base-200 transition-colors"
+                            title="Usuń lekcję"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-4 pr-24">
                           <div className="w-12 h-12 flex-shrink-0 bg-primary/10 text-primary font-mono font-bold rounded-lg flex items-center justify-center">
                             #{lessonRecords.length - index}
                           </div>
@@ -2314,173 +2390,414 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             {lessonRecordModalMode === 'edit' ? (
               <Card className="w-full shadow-2xl border-primary/20">
                 <h3 className="text-xl font-bold mb-4">{editingRecordId ? 'Edytuj lekcję' : 'Dodaj nową lekcję'}</h3>
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-bold text-content-muted">
-                        {i18n.t("Kursant / Kursanci (zajęcia indywidualne lub grupowe)")}
-                      </label>
-                      <div className="flex gap-2">
-                        <button 
-                          type="button" 
-                          onClick={() => {
-                            const allIds = users.map(u => u.id);
-                            setLessonFormStudentIds(allIds);
-                            if (allIds.length > 0) setLessonFormStudentId(allIds[0]);
-                          }}
-                          className="text-xs text-primary hover:underline font-medium"
-                        >
-                          {i18n.t("Zaznacz wszystkich")}
-                        </button>
-                        <span className="text-white/20">|</span>
-                        <button 
-                          type="button" 
-                          onClick={() => {
-                            setLessonFormStudentIds([]);
-                            setLessonFormStudentId('');
-                          }}
-                          className="text-xs text-content-muted hover:text-white hover:underline font-medium"
-                        >
-                          {i18n.t("Wyczyść")}
-                        </button>
+                
+                {/* Tab Selector */}
+                {!editingRecordId && (
+                  <div className="flex gap-2 mb-6 p-1 bg-base-300 rounded-lg w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setActiveLessonFormTab('manual')}
+                      className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${
+                        activeLessonFormTab === 'manual'
+                          ? 'bg-primary text-black shadow-md'
+                          : 'text-content-muted hover:text-white'
+                      }`}
+                    >
+                      Ręczny wpis
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveLessonFormTab('database')}
+                      className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${
+                        activeLessonFormTab === 'database'
+                          ? 'bg-primary text-black shadow-md'
+                          : 'text-content-muted hover:text-white'
+                      }`}
+                    >
+                      Baza gotowych lekcji innych kursantów
+                    </button>
+                  </div>
+                )}
+
+                {activeLessonFormTab === 'manual' ? (
+                  <>
+                    <div className="space-y-4 mb-6">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-sm font-bold text-content-muted">
+                            {i18n.t("Kursant / Kursanci (zajęcia indywidualne lub grupowe)")}
+                          </label>
+                          <div className="flex gap-2">
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                const allIds = users.map(u => u.id);
+                                setLessonFormStudentIds(allIds);
+                                if (allIds.length > 0) setLessonFormStudentId(allIds[0]);
+                              }}
+                              className="text-xs text-primary hover:underline font-medium"
+                            >
+                              {i18n.t("Zaznacz wszystkich")}
+                            </button>
+                            <span className="text-white/20">|</span>
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                setLessonFormStudentIds([]);
+                                setLessonFormStudentId('');
+                              }}
+                              className="text-xs text-content-muted hover:text-white hover:underline font-medium"
+                            >
+                              {i18n.t("Wyczyść")}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="bg-base-200/90 border border-primary/20 rounded-xl p-3 max-h-[160px] overflow-y-auto space-y-1.5 custom-scrollbar mb-2">
+                          {users.length === 0 ? (
+                            <div className="text-xs text-content-muted p-2">{i18n.t("Brak dostępnych kursantów")}</div>
+                          ) : (
+                            users.map(u => {
+                              const isSelected = lessonFormStudentIds.includes(u.id);
+                              const fullName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username;
+                              return (
+                                <label 
+                                  key={u.id}
+                                  className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${
+                                    isSelected 
+                                      ? 'bg-primary/20 border border-primary/40 text-white font-medium' 
+                                      : 'hover:bg-white/5 border border-transparent text-content-muted'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <input 
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => {
+                                        let newIds: string[];
+                                        if (isSelected) {
+                                          newIds = lessonFormStudentIds.filter(id => id !== u.id);
+                                        } else {
+                                          newIds = [...lessonFormStudentIds, u.id];
+                                        }
+                                        setLessonFormStudentIds(newIds);
+                                        setLessonFormStudentId(newIds[0] || '');
+                                      }}
+                                      className="checkbox checkbox-primary checkbox-xs rounded"
+                                    />
+                                    <span>{fullName}</span>
+                                  </div>
+                                  {u.level && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-base-300 text-content-muted font-mono">
+                                      {u.level}
+                                    </span>
+                                  )}
+                                </label>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        {lessonFormStudentIds.length > 0 && (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs px-2.5 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary font-bold">
+                              {lessonFormStudentIds.length === 1 
+                                ? i18n.t("1 kursant (lekcja indywidualna)") 
+                                : `${lessonFormStudentIds.length} ${i18n.t("kursantów (zajęcia grupowe)")}`
+                              }
+                            </span>
+                            <span className="text-xs text-content-muted truncate max-w-full">
+                              {users
+                                .filter(u => lessonFormStudentIds.includes(u.id))
+                                .map(u => `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username)
+                                .join(', ')}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Data")}</label>
+                          <input 
+                            type="date" 
+                            value={lessonFormDate} 
+                            onChange={e => setLessonFormDate(e.target.value)}
+                            className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Temat")}</label>
+                          <input 
+                            type="text" 
+                            value={lessonFormTopic} 
+                            onChange={e => setLessonFormTopic(e.target.value)}
+                            className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white"
+                            placeholder={i18n.t("Np. Present Perfect vs Past Simple")}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Revision Notes")}</label>
+                        <textarea 
+                          value={lessonFormSummary} 
+                          onChange={e => setLessonFormSummary(e.target.value)}
+                          className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
+                          placeholder={i18n.t("Zapis z lekcji...")}
+                          rows={5}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Kursant — o czym mówił")}</label>
+                        <textarea 
+                          value={lessonFormStudentSpeaking} 
+                          onChange={e => setLessonFormStudentSpeaking(e.target.value)}
+                          className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
+                          rows={5}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Słownictwo & Wymowa (Vocabulary & Pronunciation)")}</label>
+                        <textarea 
+                          value={lessonFormWords} 
+                          onChange={e => setLessonFormWords(e.target.value)}
+                          className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white font-mono text-sm min-h-[120px] resize-y"
+                          placeholder={i18n.t("apple - jabłko&#10;banana - banan")}
+                          rows={5}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Things to Improve")}</label>
+                        <textarea 
+                          value={lessonFormThingsToImprove} 
+                          onChange={e => setLessonFormThingsToImprove(e.target.value)}
+                          className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
+                          rows={5}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Suggested follow-up")}</label>
+                        <textarea 
+                          value={lessonFormSuggestedFollowUp} 
+                          onChange={e => setLessonFormSuggestedFollowUp(e.target.value)}
+                          className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
+                          rows={5}
+                        />
                       </div>
                     </div>
-
-                    <div className="bg-base-200/90 border border-primary/20 rounded-xl p-3 max-h-[160px] overflow-y-auto space-y-1.5 custom-scrollbar mb-2">
-                      {users.length === 0 ? (
-                        <div className="text-xs text-content-muted p-2">{i18n.t("Brak dostępnych kursantów")}</div>
-                      ) : (
-                        users.map(u => {
-                          const isSelected = lessonFormStudentIds.includes(u.id);
-                          const fullName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username;
-                          return (
-                            <label 
-                              key={u.id}
-                              className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${
-                                isSelected 
-                                  ? 'bg-primary/20 border border-primary/40 text-white font-medium' 
-                                  : 'hover:bg-white/5 border border-transparent text-content-muted'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 text-sm">
-                                <input 
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => {
-                                    let newIds: string[];
-                                    if (isSelected) {
-                                      newIds = lessonFormStudentIds.filter(id => id !== u.id);
-                                    } else {
-                                      newIds = [...lessonFormStudentIds, u.id];
-                                    }
-                                    setLessonFormStudentIds(newIds);
-                                    setLessonFormStudentId(newIds[0] || '');
-                                  }}
-                                  className="checkbox checkbox-primary checkbox-xs rounded"
-                                />
-                                <span>{fullName}</span>
-                              </div>
-                              {u.level && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-base-300 text-content-muted font-mono">
-                                  {u.level}
-                                </span>
-                              )}
-                            </label>
-                          );
-                        })
-                      )}
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" onClick={() => setShowLessonRecordModal(false)}>{i18n.t("Anuluj")}</Button>
+                      <Button onClick={handleSaveLessonRecord} isLoading={isSavingLessonRecord}>{i18n.t("Zapisz lekcję")}</Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={lessonsDbSearch}
+                        onChange={e => setLessonsDbSearch(e.target.value)}
+                        className="w-full bg-base-200 border border-white/10 rounded-lg p-2.5 pl-10 text-white text-sm"
+                        placeholder="Szukaj lekcji po temacie, słownictwie lub kursancie..."
+                      />
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-3 top-3 text-content-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
                     </div>
 
-                    {lessonFormStudentIds.length > 0 && (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs px-2.5 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary font-bold">
-                          {lessonFormStudentIds.length === 1 
-                            ? i18n.t("1 kursant (lekcja indywidualna)") 
-                            : `${lessonFormStudentIds.length} ${i18n.t("kursantów (zajęcia grupowe)")}`
-                          }
+                    {selectedDbLessonKeys.length > 0 && (
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 rounded-xl bg-primary/10 border border-primary/30 gap-3">
+                        <span className="text-sm font-bold text-primary">
+                          Zaznaczono: {selectedDbLessonKeys.length} {selectedDbLessonKeys.length === 1 ? 'lekcję' : selectedDbLessonKeys.length < 5 ? 'lekcje' : 'lekcji'} do scalenia
                         </span>
-                        <span className="text-xs text-content-muted truncate max-w-full">
-                          {users
-                            .filter(u => lessonFormStudentIds.includes(u.id))
-                            .map(u => `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username)
-                            .join(', ')}
-                        </span>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-xs text-content-muted hover:text-white flex-1 sm:flex-none"
+                            onClick={() => setSelectedDbLessonKeys([])}
+                          >
+                            Wyczyść
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-primary hover:bg-primary/80 text-black font-extrabold flex-1 sm:flex-none"
+                            onClick={async () => {
+                              const selectedItems = allLessonsDatabase.filter(item => {
+                                const compositeKey = `${item.studentId}-${item.record.id}`;
+                                return selectedDbLessonKeys.includes(compositeKey);
+                              });
+                              
+                              if (selectedItems.length > 0) {
+                                const targetStudentIds = lessonFormStudentIds.length > 0 
+                                  ? lessonFormStudentIds 
+                                  : (lessonFormStudentId ? [lessonFormStudentId] : (selectedUser ? [selectedUser.id] : []));
+
+                                if (targetStudentIds.length === 0) {
+                                  alert("Wybierz przynajmniej jednego kursanta w sekcji 'Kursant / Kursanci' w zakładce 'Ręczny wpis'.");
+                                  return;
+                                }
+
+                                if (!window.confirm(`Czy chcesz bezpośrednio zaimportować ${selectedItems.length} lekcji jako osobne wpisy dla wybranych kursantów? Każda lekcja zachowa swoją oryginalną datę.`)) {
+                                  return;
+                                }
+
+                                setIsLoadingLessonsDb(true);
+                                try {
+                                  const sortedItems = [...selectedItems].sort((a, b) => new Date(a.record.date).getTime() - new Date(b.record.date).getTime());
+
+                                  for (const item of sortedItems) {
+                                    for (const sId of targetStudentIds) {
+                                      await createLessonRecordWithVocabularySet({
+                                        studentId: sId,
+                                        date: item.record.date,
+                                        topic: item.record.topic || 'Bez tematu',
+                                        vocabularyText: item.record.vocabularyText || '',
+                                        lessonSummary: item.record.lessonSummary || '',
+                                        studentSpeaking: item.record.studentSpeaking || '',
+                                        thingsToImprove: item.record.thingsToImprove || '',
+                                        suggestedFollowUp: item.record.suggestedFollowUp || ''
+                                      });
+                                      
+                                      await updateDoc(doc(db, 'users', sId), {
+                                        hasNewLesson: true,
+                                        hasNewVocabulary: true
+                                      });
+                                    }
+                                  }
+
+                                  showToast(`Pomyślnie zaimportowano ${selectedItems.length} osobnych lekcji dla wybranych kursantów!`);
+                                  
+                                  if (selectedUser?.id && targetStudentIds.includes(selectedUser.id)) {
+                                    fetchUserLogsAndStats(selectedUser.id);
+                                  }
+                                  
+                                  setShowLessonRecordModal(false);
+                                  setSelectedDbLessonKeys([]);
+                                } catch (err: any) {
+                                  alert("Błąd podczas importowania lekcji: " + err.message);
+                                } finally {
+                                  setIsLoadingLessonsDb(false);
+                                }
+                              }
+                            }}
+                          >
+                            Importuj zaznaczone ({selectedDbLessonKeys.length})
+                          </Button>
+                        </div>
                       </div>
                     )}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Data")}</label>
-                      <input 
-                        type="date" 
-                        value={lessonFormDate} 
-                        onChange={e => setLessonFormDate(e.target.value)}
-                        className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white font-mono"
-                      />
+                    
+                    <div className="max-h-[400px] overflow-y-auto space-y-3 custom-scrollbar pr-2">
+                      {isLoadingLessonsDb ? (
+                        <div className="flex flex-col items-center justify-center py-12 gap-3 text-content-muted">
+                          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                          <p className="text-sm font-medium">Ładowanie bazy lekcji...</p>
+                        </div>
+                      ) : (
+                        (() => {
+                          const queryClean = lessonsDbSearch.toLowerCase().trim();
+                          const filtered = allLessonsDatabase.filter(item => {
+                            if (!queryClean) return true;
+                            const topic = (item.record.topic || '').toLowerCase();
+                            const words = (item.record.vocabularyText || '').toLowerCase();
+                            const summary = (item.record.lessonSummary || '').toLowerCase();
+                            const sName = item.studentName.toLowerCase();
+                            return topic.includes(queryClean) || words.includes(queryClean) || summary.includes(queryClean) || sName.includes(queryClean);
+                          });
+
+                          if (filtered.length === 0) {
+                            return (
+                              <div className="text-center py-12 text-content-muted">
+                                Brak lekcji spełniających kryteria wyszukiwania.
+                              </div>
+                            );
+                          }
+
+                          return filtered.map((item, idx) => {
+                            const wordCount = countVocabularyItems(item.record.vocabularyText);
+                            const compositeKey = `${item.studentId}-${item.record.id}`;
+                            const isChecked = selectedDbLessonKeys.includes(compositeKey);
+                            return (
+                              <div 
+                                key={`${item.record.id}-${idx}`}
+                                className={`p-4 rounded-xl border transition-all flex items-start gap-4 ${
+                                  isChecked 
+                                    ? 'border-primary bg-primary/10 shadow-lg' 
+                                    : 'border-white/5 bg-base-200/50 hover:bg-base-200 hover:border-primary/30'
+                                }`}
+                              >
+                                <div className="pt-1.5 flex items-center h-full">
+                                  <input 
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      if (isChecked) {
+                                        setSelectedDbLessonKeys(prev => prev.filter(k => k !== compositeKey));
+                                      } else {
+                                        setSelectedDbLessonKeys(prev => [...prev, compositeKey]);
+                                      }
+                                    }}
+                                    className="checkbox checkbox-primary checkbox-sm rounded cursor-pointer"
+                                  />
+                                </div>
+                                <div 
+                                  className="flex-1 min-w-0 space-y-1 cursor-pointer select-none"
+                                  onClick={() => {
+                                    if (isChecked) {
+                                      setSelectedDbLessonKeys(prev => prev.filter(k => k !== compositeKey));
+                                    } else {
+                                      setSelectedDbLessonKeys(prev => [...prev, compositeKey]);
+                                    }
+                                  }}
+                                >
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-base-300 text-content-muted font-mono">{item.record.date}</span>
+                                    <span className="text-xs text-primary font-bold">Kursant: {item.studentName}</span>
+                                  </div>
+                                  <h4 className="font-bold text-base text-white truncate">{item.record.topic}</h4>
+                                  {item.record.lessonSummary && (
+                                    <p className="text-xs text-content-muted line-clamp-2 italic">
+                                      {item.record.lessonSummary}
+                                    </p>
+                                  )}
+                                  {item.record.vocabularyText && (
+                                    <div className="flex items-center gap-1 text-xs text-emerald-400 font-medium">
+                                      <span>Słówka ({wordCount}):</span>
+                                      <span className="truncate max-w-[300px] text-content-muted font-mono">{item.record.vocabularyText.replace(/\n/g, ' | ')}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-primary font-extrabold flex-shrink-0 border border-primary/20 hover:bg-primary hover:text-black self-center"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setLessonFormTopic(item.record.topic || '');
+                                    setLessonFormWords(item.record.vocabularyText || '');
+                                    setLessonFormSummary(item.record.lessonSummary || '');
+                                    setLessonFormStudentSpeaking(item.record.studentSpeaking || '');
+                                    setLessonFormThingsToImprove(item.record.thingsToImprove || '');
+                                    setLessonFormSuggestedFollowUp(item.record.suggestedFollowUp || '');
+                                    setActiveLessonFormTab('manual');
+                                    showToast("Dane lekcji zostały zaimportowane! Możesz je teraz sprawdzić i zapisać.");
+                                  }}
+                                >
+                                  Wybierz pojedynczą
+                                </Button>
+                              </div>
+                            );
+                          });
+                        })()
+                      )}
                     </div>
-                    <div>
-                      <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Temat")}</label>
-                      <input 
-                        type="text" 
-                        value={lessonFormTopic} 
-                        onChange={e => setLessonFormTopic(e.target.value)}
-                        className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white"
-                        placeholder={i18n.t("Np. Present Perfect vs Past Simple")}
-                      />
+                    
+                    <div className="flex justify-end pt-2 border-t border-white/5">
+                      <Button variant="ghost" onClick={() => setShowLessonRecordModal(false)}>{i18n.t("Anuluj")}</Button>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Revision Notes")}</label>
-                    <textarea 
-                      value={lessonFormSummary} 
-                      onChange={e => setLessonFormSummary(e.target.value)}
-                      className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
-                      placeholder={i18n.t("Zapis z lekcji...")}
-                      rows={5}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Kursant — o czym mówił")}</label>
-                    <textarea 
-                      value={lessonFormStudentSpeaking} 
-                      onChange={e => setLessonFormStudentSpeaking(e.target.value)}
-                      className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
-                      rows={5}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Słownictwo & Wymowa (Vocabulary & Pronunciation)")}</label>
-                    <textarea 
-                      value={lessonFormWords} 
-                      onChange={e => setLessonFormWords(e.target.value)}
-                      className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white font-mono text-sm min-h-[120px] resize-y"
-                      placeholder={i18n.t("apple - jabłko&#10;banana - banan")}
-                      rows={5}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Things to Improve")}</label>
-                    <textarea 
-                      value={lessonFormThingsToImprove} 
-                      onChange={e => setLessonFormThingsToImprove(e.target.value)}
-                      className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
-                      rows={5}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Suggested follow-up")}</label>
-                    <textarea 
-                      value={lessonFormSuggestedFollowUp} 
-                      onChange={e => setLessonFormSuggestedFollowUp(e.target.value)}
-                      className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
-                      rows={5}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="ghost" onClick={() => setShowLessonRecordModal(false)}>{i18n.t("Anuluj")}</Button>
-                  <Button onClick={handleSaveLessonRecord} isLoading={isSavingLessonRecord}>{i18n.t("Zapisz lekcję")}</Button>
-                </div>
+                )}
               </Card>
             ) : (
               <Card className="w-full shadow-2xl border-white/10 bg-base-100 p-0 overflow-hidden">
@@ -2491,9 +2808,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </div>
                   <div className="flex gap-2">
                     <Button variant="ghost" onClick={() => openLessonRecordModal('edit', viewingRecord!)}>
-                      
-                                                                    {i18n.t("Edytuj")}
-                                                                  </Button>
+                      {i18n.t("Edytuj")}
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                      onClick={() => handleDeleteLessonRecord(viewingRecord!)}
+                    >
+                      {i18n.t("Usuń")}
+                    </Button>
                     <button onClick={() => setShowLessonRecordModal(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-content-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

@@ -659,6 +659,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         let total = 0;
         snapshot.forEach(docSnap => {
           const data = docSnap.data();
+          if (data.exerciseType === 'Aktywność') return;
           if (data.detailedFeedback && Array.isArray(data.detailedFeedback)) {
             total += data.detailedFeedback.length;
           } else if (data.exercisesData) {
@@ -1277,7 +1278,9 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
             const practiceLogsRef = collection(db, `users/${user.id}/practiceLogs`);
             const qPL = query(practiceLogsRef, orderBy('date', 'desc'), limit(25));
             const plSnapshot = await getDocs(qPL);
-            const plList = plSnapshot.docs.map(doc => doc.data() as PracticeLog);
+            const plList = plSnapshot.docs
+              .map(doc => doc.data() as PracticeLog)
+              .filter(pl => (pl.exerciseType as string) !== 'Aktywność');
             
             const pastExercises = plList.map((pl, index) => {
               const dateStr = pl.date ? new Date(pl.date).toLocaleDateString() : '';
@@ -1681,7 +1684,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
     setTimeLeft(null);
 
     if (user && results.length > 0) {
-      const rawAvg = results.reduce((acc, r) => acc + (r?.score || 0), 0) / results.length;
+      const rawAvg = results.reduce((acc, r) => {
+        const itemScore = Number(r?.score);
+        return acc + (isNaN(itemScore) ? 0 : itemScore);
+      }, 0) / results.length;
       const score = isNaN(rawAvg) ? 0 : Math.round(rawAvg);
       const exercisesDetails = results.map((r) => {
         if (r.explanation === 'Ułożono poprawnie.') {
@@ -1815,7 +1821,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
   };
 
   const calcAvg = evaluationResults.length > 0
-    ? Math.round(evaluationResults.reduce((acc, r) => acc + (r?.score || 0), 0) / evaluationResults.length)
+    ? Math.round(evaluationResults.reduce((acc, r) => {
+        const itemScore = Number(r?.score);
+        return acc + (isNaN(itemScore) ? 0 : itemScore);
+      }, 0) / evaluationResults.length)
     : 0;
   const averageScore = isNaN(calcAvg) ? 0 : calcAvg;
 

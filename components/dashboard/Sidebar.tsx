@@ -118,6 +118,20 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
     if (currentView.startsWith('admin')) setIsAdminExpanded(true);
   }, [currentView]);
 
+  useEffect(() => {
+    if (user?.id) {
+      if (currentView === 'flashcard-sets' && user.hasNewVocabulary) {
+        updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
+      }
+      if (currentView === 'lesson-history' && user.hasNewLesson) {
+        updateDoc(doc(db, 'users', user.id), { hasNewLesson: false }).catch(console.error);
+      }
+      if (currentView === 'homework' && user.hasNewHomework) {
+        updateDoc(doc(db, 'users', user.id), { hasNewHomework: false }).catch(console.error);
+      }
+    }
+  }, [currentView, user?.id, user?.hasNewVocabulary, user?.hasNewLesson, user?.hasNewHomework]);
+
   const handleNavigate = (view: any) => {
     if (view === 'flashcard-sets' && user?.hasNewVocabulary) {
       if (user?.id) {

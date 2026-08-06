@@ -64,11 +64,24 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
 
   // Process logs for the selected user
   const userPerformanceData = userLogs.map(log => {
-    const total = log.totalWords || 0;
-    const correct = log.score || 0;
+    const totalVal = Number(log.totalWords);
+    const total = isNaN(totalVal) ? 0 : totalVal;
+    
+    // In practiceLogs, score is stored as percentage (0-100), but if it's test, totalWords is number of questions, etc.
+    // Let's compute actual correct and incorrect count.
+    const scoreVal = Number(log.score);
+    const scorePct = isNaN(scoreVal) ? 0 : scoreVal;
+    
+    // If score is stored as percentage, correct count is round(total * scorePct / 100)
+    // If total is 0, let's treat it as scorePct
+    const correct = total > 0 ? Math.round((total * scorePct) / 100) : scorePct;
     const errors = total - correct > 0 ? total - correct : 0;
+    
+    const rawDate = new Date(log.date);
+    const dateStr = isNaN(rawDate.getTime()) ? 'Brak daty' : rawDate.toLocaleDateString();
+
     return {
-      date: new Date(log.date).toLocaleDateString(),
+      date: dateStr,
       poprawne: correct,
       błędy: errors,
       razem: total

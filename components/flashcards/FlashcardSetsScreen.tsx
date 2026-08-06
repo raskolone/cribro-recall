@@ -153,20 +153,43 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     return last;
   }, [sets, sessions]);
 
-  const isRecent = (set: FlashcardSet) => {
-    if (!set || !set.createdAt) return false;
-    const dismissed = user?.dismissedNotifications || [];
+  const isNewSet = (set: FlashcardSet) => {
+    if (!set) return false;
+    
     let checkedSets: string[] = [];
     try {
       checkedSets = JSON.parse(localStorage.getItem('checked_sets') || '[]');
     } catch(e) {}
-    if (dismissed.includes(set.id) || checkedSets.includes(set.id)) return false;
+    if (checkedSets.includes(set.id)) return false;
 
-    const dateStr = set.createdAt;
-    const date = typeof dateStr === 'string' ? new Date(dateStr) : (dateStr.toDate ? dateStr.toDate() : new Date());
-    if (isNaN(date.getTime())) return false;
-    const diffDays = Math.ceil(Math.abs(Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
-    return diffDays <= 2;
+    const dismissed = user?.dismissedNotifications || [];
+    if (dismissed.includes(set.id)) return false;
+
+    // If assigned by teacher or is a lesson vocabulary, and not checked, it IS new
+    if (set.assignedByTeacher || set.isLessonVocabulary) {
+      return true;
+    }
+
+    // Otherwise, check if created in the last 7 days
+    if (set.createdAt) {
+      const dateStr = set.createdAt;
+      const date = typeof dateStr === 'string' ? new Date(dateStr) : (dateStr.toDate ? dateStr.toDate() : new Date());
+      if (!isNaN(date.getTime())) {
+        const diffDays = Math.ceil(Math.abs(Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+        return diffDays <= 7;
+      }
+    }
+    
+    return false;
+  };
+
+  const markSetAsChecked = (setId: string) => {
+    try {
+      const local = JSON.parse(localStorage.getItem('checked_sets') || '[]');
+      if (!local.includes(setId)) {
+        localStorage.setItem('checked_sets', JSON.stringify([...local, setId]));
+      }
+    } catch (e) {}
   };
 
   const formatDisplayDate = (dateVal: any) => {
@@ -209,12 +232,20 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     const cleanTitle = getSetCleanTitle(set);
     const lessonNum = set.lessonNumber || (lessonSets.length - index);
     const lessonDate = formatDisplayDate(set.lessonDate || set.createdAt);
+    const isNew = isNewSet(set);
 
     return (
-      <div key={set.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-base-200/50 p-4 rounded-xl border border-white/5 hover:border-amber-500/30 transition-colors gap-4 relative overflow-hidden">
-        {isRecent(set) && (
-           <div className="absolute top-0 right-0 px-2 py-1 bg-amber-500 text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 animate-pulse">
-             {language === 'pl' ? 'Nowe' : 'New'}
+      <div 
+        key={set.id} 
+        className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 rounded-xl transition-all duration-300 gap-4 relative overflow-hidden ${
+          isNew 
+            ? 'bg-amber-500/10 border-2 border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.25)] animate-pulse-slow' 
+            : 'bg-base-200/50 border border-white/5 hover:border-amber-500/30'
+        }`}
+      >
+        {isNew && (
+           <div className="absolute top-0 right-0 px-3 py-1 bg-amber-500 text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
+             {language === 'pl' ? 'Nowe słownictwo' : 'New vocabulary'}
            </div>
         )}
         <div className="flex-1 min-w-0">
@@ -253,16 +284,31 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           </div>
         </div>
         
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Button size="sm" onClick={() => onStudySet(set.id)} disabled={set.cardCount === 0} className="flex-1 sm:flex-none">
+        <div className="flex items-center gap-2 w-full sm:w-auto z-10">
+          <Button 
+            size="sm" 
+            onClick={() => { markSetAsChecked(set.id); onStudySet(set.id); }} 
+            disabled={set.cardCount === 0} 
+            className="flex-1 sm:flex-none"
+          >
             🎴 {t('flashcards.study')}
           </Button>
           {onNavigate && (
-            <Button size="sm" variant="secondary" onClick={() => onNavigate('ai-generator', { setId: set.id })} className="flex-1 sm:flex-none border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20">
+            <Button 
+              size="sm" 
+              variant="secondary" 
+              onClick={() => { markSetAsChecked(set.id); onNavigate('ai-generator', { setId: set.id }); }} 
+              className="flex-1 sm:flex-none border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
+            >
               ✨ {language === 'pl' ? 'Ćwicz w zdaniach' : 'Practice in sentences'}
             </Button>
           )}
-          <Button size="sm" variant="secondary" onClick={() => onStatsSet(set.id)} className="flex-1 sm:flex-none">
+          <Button 
+            size="sm" 
+            variant="secondary" 
+            onClick={() => { markSetAsChecked(set.id); onStatsSet(set.id); }} 
+            className="flex-1 sm:flex-none"
+          >
             {language === 'pl' ? 'Statystyki' : 'Stats'}
           </Button>
         </div>
@@ -273,19 +319,27 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
   const renderOtherSetCard = (set: FlashcardSet) => {
     const cleanTitle = getSetCleanTitle(set);
     const createdDate = formatDisplayDate(set.createdAt);
+    const isNew = isNewSet(set);
 
     return (
-      <Card key={set.id} className="flex flex-col h-full hover:border-primary/50 transition-colors group relative overflow-hidden">
-        {isRecent(set) && (
-           <div className="absolute top-0 right-0 px-2 py-1 bg-secondary text-secondary-content text-[10px] font-bold uppercase rounded-bl-lg z-10 animate-pulse">
-             {language === 'pl' ? 'Nowe' : 'New'}
+      <Card 
+        key={set.id} 
+        className={`flex flex-col h-full transition-all duration-300 group relative overflow-hidden ${
+          isNew 
+            ? 'bg-emerald-500/10 border-2 border-emerald-500/60 shadow-[0_0_20px_rgba(16,185,129,0.25)] animate-pulse-slow' 
+            : 'hover:border-primary/50'
+        }`}
+      >
+        {isNew && (
+           <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500 text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
+             {language === 'pl' ? 'Nowy zestaw' : 'New set'}
            </div>
         )}
         <div className="flex-1 mt-2">
           <div className="flex justify-between items-start mb-2 gap-2">
             <h3 
               className="text-xl font-bold hover:text-primary transition-colors cursor-pointer hover:underline line-clamp-2" 
-              onClick={() => handlePreviewSet(set.id)} 
+              onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }} 
               title={language === "pl" ? "Podgląd słownictwa" : "Preview vocabulary"}
             >
               {cleanTitle}
@@ -331,10 +385,10 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-base-300">
+        <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-base-300 z-10">
           <Button 
             className="flex-[2_1_auto]" 
-            onClick={() => onStudySet(set.id)}
+            onClick={() => { markSetAsChecked(set.id); onStudySet(set.id); }}
             disabled={set.cardCount === 0}
           >
             🎴 {t('flashcards.study')}
@@ -343,7 +397,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             <Button 
               variant="secondary"
               className="flex-[1_1_auto] border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
-              onClick={() => onNavigate('ai-generator', { setId: set.id })}
+              onClick={() => { markSetAsChecked(set.id); onNavigate('ai-generator', { setId: set.id }); }}
             >
               ✨ {language === 'pl' ? 'Ćwicz w zdaniach' : 'Practice'}
             </Button>
@@ -352,7 +406,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             <Button 
               variant="secondary" 
               className="flex-[1_1_auto]"
-              onClick={() => onEditSet(set.id)}
+              onClick={() => { markSetAsChecked(set.id); onEditSet(set.id); }}
             >
               {t('flashcards.edit')}
             </Button>
@@ -360,7 +414,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           <Button 
             variant="secondary" 
             className="flex-[1_1_auto]"
-            onClick={() => onStatsSet(set.id)}
+            onClick={() => { markSetAsChecked(set.id); onStatsSet(set.id); }}
           >
             {language === 'pl' ? 'Opis' : 'Stats'}
           </Button>

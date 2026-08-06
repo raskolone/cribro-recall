@@ -1015,10 +1015,14 @@ Zwróć JSON z polami:
   app.post('/api/gemini/student-stats-summary', requireFirebaseAuth, async (req, res) => {
     try {
       const { stats, logsSummary, language } = req.body;
-      const apiKey = process.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured. Please set VITE_GEMINI_API_KEY in environment variables.' });
+      const geminiApiKey = process.env.VITE_GEMINI_API_KEY;
+      const openaiApiKey = process.env.VITE_OPENAI_API_KEY;
+
+      if (!geminiApiKey && !openaiApiKey) {
+        return res.status(500).json({ error: 'No AI API key configured. Please set VITE_OPENAI_API_KEY or VITE_GEMINI_API_KEY in environment variables.' });
+      }
       
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: geminiApiKey || 'DUMMY' });
       
       const isPl = language !== 'en';
       const prompt = `Jesteś doświadczonym, empatycznym i wybitnym metodykiem oraz nauczycielem języka angielskiego (ELT Pedagogical Specialist & Language Coach).
@@ -1060,10 +1064,13 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
           },
           required: ["overallTeacherCommentary", "keyStrengths", "areasToImprove", "pedagogicalTip"]
         }
-      });
+      }, ['openai/gpt-4o-mini', 'gemini-3.6-flash', 'gemini-2.5-flash']);
       
       if (!response.text) throw new Error("No response from AI");
-      res.json(JSON.parse(response.text));
+      
+      let cleanText = response.text;
+      cleanText = cleanText.replace(/^```json\n?/g, '').replace(/```$/g, '').trim();
+      res.json(JSON.parse(cleanText));
     } catch (err: any) {
       console.error("Error in student-stats-summary endpoint:", err);
       res.status(500).json({ error: err.message });

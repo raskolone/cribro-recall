@@ -181,7 +181,10 @@ const StudentStatsScreen: React.FC = () => {
         const snapshot = await getDocs(q);
         const fetchedLogs: PracticeLog[] = [];
         snapshot.forEach(docSnap => {
-          fetchedLogs.push({ id: docSnap.id, ...docSnap.data() } as PracticeLog);
+          const logData = docSnap.data() as PracticeLog;
+          if ((logData.exerciseType as string) !== 'Aktywność') {
+            fetchedLogs.push({ id: docSnap.id, ...logData });
+          }
         });
         setLogs(fetchedLogs);
       } catch (err) {
@@ -202,13 +205,16 @@ const StudentStatsScreen: React.FC = () => {
     const dateMap = new Map<string, number>();
     logs.forEach(l => {
       if ((l.exerciseType as string) === 'Aktywność') return;
-      totalScoreSum += (Number(l.score) || 0);
+      
+      const scoreNum = Number(l.score);
+      totalScoreSum += isNaN(scoreNum) ? 0 : scoreNum;
 
       // Count sentences
       if (l.exerciseType === 'ai_translation') {
         let count = 0;
-        if (l.totalWords) {
-          count = l.totalWords;
+        if (l.totalWords !== undefined && l.totalWords !== null) {
+          const wNum = Number(l.totalWords);
+          count = isNaN(wNum) ? 0 : wNum;
         } else if (Array.isArray(l.exercisesData)) {
           count = l.exercisesData.length;
         } else if (typeof l.exercisesData === 'string') {
@@ -221,7 +227,7 @@ const StudentStatsScreen: React.FC = () => {
             } catch {}
           }
         }
-        totalSentences += count;
+        totalSentences += isNaN(count) ? 0 : count;
       }
 
       const dateKey = getLocalDateKey(l.date);

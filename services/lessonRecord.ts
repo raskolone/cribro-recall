@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { doc, setDoc, collection, getDocs, query, orderBy, where, serverTimestamp, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, setDoc, collection, getDocs, query, orderBy, where, serverTimestamp, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { LessonRecord, VocabularySet } from '../types';
 import { buildVocabularySetTitle, countVocabularyItems } from '../utils/vocabulary';
 
@@ -101,8 +101,9 @@ export async function createLessonRecordWithVocabularySet(input: {
   suggestedFollowUp?: string;
 }): Promise<{ lessonRecordId: string; vocabularySetId: string }> {
   // Generate IDs
-  const lessonRecordId = `lesson-${Date.now()}`;
-  const vocabularySetId = `vocab-${Date.now()}`;
+  const randomSuffix = Math.floor(Math.random() * 1000000);
+  const lessonRecordId = `lesson-${Date.now()}-${randomSuffix}`;
+  const vocabularySetId = `vocab-${Date.now()}-${randomSuffix}`;
   const now = new Date().toISOString();
 
   const title = buildVocabularySetTitle(input.date, input.topic);
@@ -245,3 +246,24 @@ export async function markVocabularySetAsUsed(studentId: string, setId: string):
     console.error("Failed to mark vocabulary set as used:", err);
   }
 }
+
+export async function deleteLessonRecord(studentId: string, lessonRecord: LessonRecord): Promise<void> {
+  const recordId = lessonRecord.id;
+  const vocabId = lessonRecord.vocabularySetId;
+
+  // 1. Delete lesson record
+  const recordRef = doc(db, `users/${studentId}/lessonRecords/${recordId}`);
+  await deleteDoc(recordRef);
+
+  // 2. Delete vocabulary set if it exists
+  if (vocabId) {
+    const setRef = doc(db, `users/${studentId}/vocabularySets/${vocabId}`);
+    await deleteDoc(setRef);
+  }
+
+  // 3. Delete flashcard set if it exists
+  const flashcardSetId = `set-lesson-${recordId}`;
+  const flashcardSetRef = doc(db, `sets/${flashcardSetId}`);
+  await deleteDoc(flashcardSetRef);
+}
+

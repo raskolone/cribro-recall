@@ -338,7 +338,8 @@ export const HomeworkScreen: React.FC = () => {
         if (evalArray && evalArray.length > 0) {
           evalArray.forEach((ev) => {
             evalResults.push(ev);
-            totalScore += ev.score || 0;
+            const evScore = Number(ev.score);
+            totalScore += isNaN(evScore) ? 0 : evScore;
           });
         } else {
           activeTask.sentences.forEach((item: any, i: number) => {
@@ -373,11 +374,13 @@ export const HomeworkScreen: React.FC = () => {
             explanation: res.explanation,
             suggestedVersion: res.suggestedVersion
           });
-          totalScore += res.score;
+          const resScore = Number(res.score);
+          totalScore += isNaN(resScore) ? 0 : resScore;
         }
       }
 
-      const avgScore = Math.round(totalScore / (activeTask.sentences.length || 1));
+      const calcAvg = totalScore / (activeTask.sentences.length || 1);
+      const avgScore = isNaN(calcAvg) ? 0 : Math.round(calcAvg);
 
       // Update in Firestore
       await updateDoc(doc(db, 'specialTasks', activeTask.id), {

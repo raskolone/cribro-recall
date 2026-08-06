@@ -74,7 +74,9 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
       const fetchPracticeLogs = async () => {
         const q = query(collection(db, `users/${user.id}/practiceLogs`));
         const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PracticeLog));
+        const data = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as PracticeLog))
+          .filter(log => (log.exerciseType as string) !== 'Aktywność');
         return data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       };
 
