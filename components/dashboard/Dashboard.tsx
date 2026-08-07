@@ -37,6 +37,7 @@ import SettingsScreen from '../settings/SettingsScreen';
 import TopicDatabaseScreen from '../admin/TopicDatabaseScreen';
 import HomeworkScreen from './HomeworkScreen';
 import AdminDebuggingScreen from '../admin/AdminDebuggingScreen';
+import OnboardingOverlay from './OnboardingOverlay';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -64,6 +65,15 @@ const Dashboard: React.FC = () => {
   const [slogan, setSlogan] = useState('');
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [isExerciseActive, setIsExerciseActive] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (isTeacher) return false;
+    if (user && !user.onboardingCompleted) return true;
+    try {
+      return localStorage.getItem('has_seen_onboarding') !== 'true';
+    } catch {
+      return true;
+    }
+  });
 
 
 
@@ -236,6 +246,7 @@ const Dashboard: React.FC = () => {
       return <AdminPanel />;
     }
     return <AIExerciseGeneratorScreen 
+      onShowOnboarding={() => setShowOnboarding(true)}
       initialSetId={activeSetId}
       onChangeView={(newView, extra) => {
         if (extra && (extra.setId || extra.activeSetId)) setActiveSetId(extra.setId || extra.activeSetId);
@@ -270,7 +281,14 @@ const Dashboard: React.FC = () => {
           });
         }}
       />
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto relative">
+        {showOnboarding && <OnboardingOverlay onComplete={() => {
+          setShowOnboarding(false);
+          try { localStorage.setItem('has_seen_onboarding', 'true'); } catch(e) {}
+          if (user?.id && !user.onboardingCompleted) {
+            updateDoc(doc(db, 'users', user.id), { onboardingCompleted: true }).catch(console.error);
+          }
+        }} language={language} />}
         {renderContent()}
       </main>
       <AdminMessageModal />

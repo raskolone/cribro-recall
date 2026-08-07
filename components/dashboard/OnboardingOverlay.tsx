@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Brain, History, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Brain, History, CheckCircle2, ShoppingBasket, Puzzle } from 'lucide-react';
 
 interface OnboardingOverlayProps {
   onComplete: () => void;
@@ -9,27 +9,27 @@ interface OnboardingOverlayProps {
 
 const steps = [
   {
-    icon: <Sparkles className="w-8 h-8 text-primary" />,
-    title: { pl: 'Generator AI', en: 'AI Generator' },
+    icon: <Puzzle className="w-10 h-10 text-primary" />,
+    title: { pl: 'Rozpocznij od Układanki', en: 'Start with the Puzzle' },
     desc: { 
-      pl: 'W panelu ćwiczeniowym wygenerujesz ćwiczenia językowe, dostosowane do Twojego poziomu i celów.',
-      en: 'In the practice panel you can generate language exercises tailored to your level and goals.'
+      pl: 'Sugerujemy, aby najpierw wykonać zadanie „układanka”. Pozwala to w łatwy sposób poznać strukturę, z którego następnie przejdziesz do samodzielnego tłumaczenia tych zdań.',
+      en: 'We recommend starting with the "puzzle" task to learn the structure, and then move on to translating the sentences yourself.'
     }
   },
   {
-    icon: <Brain className="w-8 h-8 text-purple-400" />,
-    title: { pl: 'Twoje Słownictwo', en: 'Your Vocabulary' },
+    icon: <ShoppingBasket className="w-10 h-10 text-purple-400" />,
+    title: { pl: 'Twój Koszyk Słówek', en: 'Your Vocabulary Basket' },
     desc: {
-      pl: 'W zakładce Słownictwo znajdziesz wszystkie zapisane zestawy, fiszki i słówka do nauki.',
-      en: 'In the Vocabulary tab, you will find all your saved sets, flashcards, and words to learn.'
+      pl: 'Dodawaj do koszyka dowolne słowa z lekcji lub własne pojęcia. Z zebranych w koszyku słów możesz jednym kliknięciem wygenerować spersonalizowane ćwiczenia.',
+      en: 'Add any words from lessons or your own concepts to the basket. You can generate personalized exercises from the collected words with one click.'
     }
   },
   {
-    icon: <History className="w-8 h-8 text-blue-400" />,
-    title: { pl: 'Historia Sesji', en: 'Session History' },
+    icon: <History className="w-10 h-10 text-blue-400" />,
+    title: { pl: 'Historia Sesji i Lekcji', en: 'Session & Lesson History' },
     desc: {
-      pl: 'Śledź swoje postępy i przeglądaj wykonane ćwiczenia w Historii, by szybciej osiągnąć sukces.',
-      en: 'Track your progress and review completed exercises in History to achieve success faster.'
+      pl: 'Zawsze możesz wrócić do przeszłości. W zakładkach historii sprawdzisz odbyte do tej pory zajęcia, prześledzisz swoje błędy i zobaczysz, jak bardzo się rozwijasz.',
+      en: 'You can always look back. In the history tabs, you can check past classes, track your mistakes, and see your progress.'
     }
   }
 ];
@@ -38,7 +38,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
   const [currentStep, setCurrentStep] = useState(0);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentStep}
@@ -47,15 +47,15 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
           exit={{ opacity: 0, scale: 1.1, y: -20 }}
           className="max-w-md w-full bg-base-200 border border-white/10 p-8 rounded-3xl shadow-2xl relative overflow-hidden"
         >
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-purple-500 to-blue-500" />
+          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-purple-500 to-blue-500" />
           
-          <div className="flex flex-col items-center text-center space-y-6">
-            <div className="p-4 bg-white/5 rounded-2xl">
+          <div className="flex flex-col items-center text-center space-y-6 mt-4">
+            <div className="p-5 bg-white/5 rounded-3xl shadow-inner border border-white/5">
               {steps[currentStep].icon}
             </div>
             
-            <div className="space-y-2">
-              <h3 className="text-2xl font-bold font-display">
+            <div className="space-y-3">
+              <h3 className="text-2xl font-bold font-display tracking-tight text-white">
                 {steps[currentStep].title[language]}
               </h3>
               <p className="text-content-muted text-base leading-relaxed">
@@ -63,11 +63,11 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
               </p>
             </div>
 
-            <div className="flex gap-2 py-4">
+            <div className="flex gap-2 py-6">
               {steps.map((_, i) => (
                 <div 
                   key={i} 
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${i === currentStep ? 'w-6 bg-primary' : 'bg-white/20'}`} 
+                  className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${i === currentStep ? 'w-8 bg-primary' : 'bg-white/20'}`} 
                 />
               ))}
             </div>
@@ -80,14 +80,14 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
                   onComplete();
                 }
               }}
-              className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
+              className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95"
             >
               {currentStep < steps.length - 1 ? (
                 language === 'pl' ? 'Dalej' : 'Next'
               ) : (
                 <>
                   <CheckCircle2 className="w-5 h-5" />
-                  {language === 'pl' ? 'Zaczynamy!' : "Let's Start!"}
+                  {language === 'pl' ? 'Rozumiem, zaczynamy!' : "Got it, let's start!"}
                 </>
               )}
             </button>
@@ -97,4 +97,5 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
     </div>
   );
 };
+
 export default OnboardingOverlay;

@@ -78,7 +78,8 @@ const generateContentWithFallback = async (params: any) => {
       const sysInst = apiParams.config?.systemInstruction || "You are a helpful AI assistant.";
 
       if (model.startsWith('openai')) {
-         const text = await callOpenAI(promptText, sysInst, model.replace('openai/', ''));
+         const isJsonMode = apiParams.config?.responseMimeType === 'application/json';
+           const text = await callOpenAI(promptText, sysInst, model.replace('openai/', ''), isJsonMode);
          return { text };
       }
 
@@ -115,33 +116,29 @@ const generateContentWithFallback = async (params: any) => {
 
 import OpenAI from "openai";
 
-const callOpenAI = async (prompt: string, systemInstruction: string, model: string = "gpt-4o-mini") => {
-  const apiKey = (import.meta as any).env?.VITE_OPENAI_API_KEY;
-  if (!apiKey) {
-    console.error("Brak VITE_OPENAI_API_KEY w środowisku!");
-    throw new Error("Missing VITE_OPENAI_API_KEY");
-  }
-
-  const openai = new OpenAI({
-    apiKey: apiKey,
-    dangerouslyAllowBrowser: true
-  });
-
-  console.log("Wysyłam zapytanie do OpenAI (gpt-4o-mini)...");
-
+const callOpenAI = async (prompt: string, systemInstruction: string, model: string = "gpt-4o-mini", isJson: boolean = true) => {
+  console.log("Wysyłam zapytanie do OpenAI przez proxy (" + model + ")...");
+  
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // always hardcoded to gpt-4o-mini
-      messages: [
-        { role: "system", content: systemInstruction || "You are a helpful assistant." },
-        { role: "user", content: prompt }
-      ],
-      temperature: 0.7,
-      response_format: { type: "json_object" }
+    const res = await fetch('/api/openai/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        systemInstruction,
+        model,
+        isJson
+      })
     });
-
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error ${res.status}`);
+    }
+    
+    const data = await res.json();
     console.log("Odpowiedź OpenAI odebrana pomyślnie.");
-    return response.choices[0].message.content;
+    return data.text;
   } catch (error) {
     console.error("Błąd wywołania OpenAI:", error);
     throw error;
@@ -154,7 +151,7 @@ const callDeepSeek = async (prompt: string, systemInstruction: string, model: st
   return await generateDeepSeekResponse(prompt, systemInstruction);
 };
 
-export const PREFERRED_AI_MODELS = ['openai/gpt-4o-mini'];
+export const PREFERRED_AI_MODELS = ['openai/gpt-4o-mini', 'gemini-2.5-flash', 'gemini-2.0-flash'];
 
 export const formatAIModelName = (model?: string): string => {
   if (!model) return 'OpenAI (GPT-4o mini)';
@@ -188,7 +185,8 @@ export const generateTextWithUnifiedFallback = async (
       }
       
       if (model.startsWith('openai')) {
-        const text = await callOpenAI(prompt, systemInstruction, model.replace('openai/', ''));
+        const isJson = geminiConfig?.responseMimeType === 'application/json';
+        const text = await callOpenAI(prompt, systemInstruction, model.replace('openai/', ''), isJson);
         if (text) {
           return { text, modelUsed: model };
         }
@@ -563,7 +561,7 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
       const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.";
       
       // Priority: DeepSeek (deepseek-reasoner / 4 pro, then deepseek-chat), with fallback to available Gemini models
-      const preferredModels = ['openai/gpt-4o-mini'];
+      const preferredModels = ['openai/gpt-4o-mini', 'gemini-2.5-flash', 'gemini-2.0-flash'];
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: evaluationResultSchema,
@@ -777,7 +775,7 @@ Zwróć WYŁĄCZNIE tablicowy obiekt JSON, w którym każdy element to obiekt o 
   const sysInst = "Jesteś asystentem AI tworzącym zestawy fiszek w formacie JSON dla modelu gpt-4o-mini.";
 
   try {
-    const text = await callOpenAI(prompt, sysInst, "gpt-4o-mini");
+    const text = await callOpenAI(prompt, sysInst, 'gpt-4o-mini', true);
     const jsonText = extractJSON(text || "");
     const parsed = JSON.parse(jsonText);
     const list = Array.isArray(parsed) ? parsed : (parsed.flashcards || parsed.words || parsed.items || []);

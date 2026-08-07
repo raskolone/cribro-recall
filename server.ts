@@ -1156,7 +1156,7 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
   // --- OPENAI API PROXIES ---
   app.post("/api/openai/generate", optionalFirebaseAuth, async (req, res) => {
     try {
-      const { prompt, systemInstruction, model } = req.body;
+      const { prompt, systemInstruction, model, isJson } = req.body;
       if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
 
       const openaiKey = process.env.VITE_OPENAI_API_KEY;
@@ -1174,6 +1174,14 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
         ],
         temperature: 0.7
       };
+      if (isJson) {
+        bodyPayload.response_format = { type: "json_object" };
+        const sysInstStr = systemInstruction ? String(systemInstruction).toLowerCase() : "";
+        const promptStr = String(prompt).toLowerCase();
+        if (!sysInstStr.includes('json') && !promptStr.includes('json')) {
+          bodyPayload.messages.push({ role: "system", content: "You must respond in valid JSON format." });
+        }
+      }
 
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -1206,7 +1214,7 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
   // --- DEEPSEEK / OPENROUTER / GROQ API PROXIES ---
   app.post("/api/deepseek/generate", optionalFirebaseAuth, async (req, res) => {
     try {
-      const { prompt, systemInstruction, model } = req.body;
+      const { prompt, systemInstruction, model, isJson } = req.body;
       if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
 
       const deepseekKey = process.env.VITE_DEEPSEEK_API_KEY || 'sk-9cd552056ba845e69ad063d53200fbcd';

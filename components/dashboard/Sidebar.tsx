@@ -119,34 +119,51 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
   }, [currentView]);
 
   useEffect(() => {
-    if (user?.id) {
-      if (currentView === 'flashcard-sets' && user.hasNewVocabulary) {
-        updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
+    if (!user?.id) return;
+    
+    const clearNotification = async (field: 'hasNewVocabulary' | 'hasNewLesson' | 'hasNewHomework') => {
+      try {
+        await updateDoc(doc(db, 'users', user.id), { [field]: false });
+        console.log(`Successfully cleared ${field}`);
+      } catch (e) {
+        console.error(`Failed to clear ${field}:`, e);
       }
-      if (currentView === 'lesson-history' && user.hasNewLesson) {
-        updateDoc(doc(db, 'users', user.id), { hasNewLesson: false }).catch(console.error);
-      }
-      if (currentView === 'homework' && user.hasNewHomework) {
-        updateDoc(doc(db, 'users', user.id), { hasNewHomework: false }).catch(console.error);
-      }
+    };
+
+    if (currentView === 'flashcard-sets' && user.hasNewVocabulary) {
+      clearNotification('hasNewVocabulary');
+    }
+    if (currentView === 'lesson-history' && user.hasNewLesson) {
+      clearNotification('hasNewLesson');
+    }
+    if (currentView === 'homework' && user.hasNewHomework) {
+      clearNotification('hasNewHomework');
     }
   }, [currentView, user?.id, user?.hasNewVocabulary, user?.hasNewLesson, user?.hasNewHomework]);
 
   const handleNavigate = (view: any) => {
-    if (view === 'flashcard-sets' && user?.hasNewVocabulary) {
-      if (user?.id) {
-        updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
+    if (!user?.id) {
+       onNavigate(view);
+       if (window.innerWidth < 768) onClose();
+       return;
+    }
+
+    const clearNotification = async (field: 'hasNewVocabulary' | 'hasNewLesson' | 'hasNewHomework') => {
+      try {
+        await updateDoc(doc(db, 'users', user.id), { [field]: false });
+      } catch (e) {
+        console.error(`Failed to clear ${field}:`, e);
       }
+    };
+
+    if (view === 'flashcard-sets' && user?.hasNewVocabulary) {
+      clearNotification('hasNewVocabulary');
     }
     if (view === 'lesson-history' && user?.hasNewLesson) {
-      if (user?.id) {
-        updateDoc(doc(db, 'users', user.id), { hasNewLesson: false }).catch(console.error);
-      }
+      clearNotification('hasNewLesson');
     }
     if (view === 'homework' && user?.hasNewHomework) {
-      if (user?.id) {
-        updateDoc(doc(db, 'users', user.id), { hasNewHomework: false }).catch(console.error);
-      }
+      clearNotification('hasNewHomework');
     }
     onNavigate(view);
     onClose();

@@ -493,7 +493,7 @@ interface AIExerciseGeneratorScreenProps {
   onChangeView?: (view: string, extra?: any) => void;
 }
 
-const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ initialSetId = null, onStartPractice, onExerciseStateChange, onOpenSidebar, onChangeView }) => {
+const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ initialSetId = null, onStartPractice, onExerciseStateChange, onOpenSidebar, onChangeView, onShowOnboarding }) => {
   const { language } = useLanguage();
   const { sets, getFlashcards } = useFlashcards();
   const { user, updateUserStreak } = useAuth();
@@ -2030,6 +2030,15 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       
                       {/* Top Bar: Notifications on Left, Streak Counter on Right */}
                       <div className="w-full flex items-center justify-between gap-2">
+                          {onShowOnboarding && (
+                            <button
+                              onClick={onShowOnboarding}
+                              className="absolute top-4 right-4 md:top-6 md:right-8 flex items-center gap-2 text-xs font-semibold text-primary/80 hover:text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-full transition-all border border-primary/20 z-50"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">{language === 'pl' ? 'Wyświetl onboarding ponownie' : 'Show onboarding again'}</span>
+                            </button>
+                          )}
                         <div className="flex flex-wrap items-center gap-1.5">
                           {user?.hasNewVocabulary && !isBannerDismissed && (
                             <span 

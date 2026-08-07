@@ -123,7 +123,7 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['id', 'username', 'role', 'email', 'photoURL', 'streakCount', 'lastStreakDate', 'createdAt', 'loginCount', 'lastLoginDate', 'firstName', 'lastName', 'level', 'description', 'requirePasswordChange', 'tempPassword', 'tempPasswordLogins', 'isSuspended', 'onboardingCompleted', 'hasNewVocabulary', 'hasNewLesson', 'dismissedNotifications', 'translatedSentencesCount', 'aiPrompt', 'frequentErrors']) &&
+      return hasOnlyAllowedFields(['id', 'username', 'role', 'email', 'photoURL', 'streakCount', 'lastStreakDate', 'createdAt', 'loginCount', 'lastLoginDate', 'firstName', 'lastName', 'level', 'description', 'requirePasswordChange', 'tempPassword', 'tempPasswordLogins', 'isSuspended', 'onboardingCompleted', 'hasNewVocabulary', 'hasNewLesson', 'hasNewHomework', 'dismissedNotifications', 'translatedSentencesCount', 'aiPrompt', 'frequentErrors']) &&
              (!('frequentErrors' in data) || data.frequentErrors is list) &&
              validStringLength('username', 1, 100) &&
              validStringLength('email', 0, 100) &&
@@ -141,6 +141,7 @@ service cloud.firestore {
              (!('onboardingCompleted' in data) || data.onboardingCompleted is bool) &&
              (!('hasNewVocabulary' in data) || data.hasNewVocabulary is bool) &&
              (!('hasNewLesson' in data) || data.hasNewLesson is bool) &&
+             (!('hasNewHomework' in data) || data.hasNewHomework is bool) &&
              (!('dismissedNotifications' in data) || data.dismissedNotifications is list) &&
              (!('translatedSentencesCount' in data) || data.translatedSentencesCount is number) &&
              (!('aiPrompt' in data) || data.aiPrompt is string) &&
@@ -211,7 +212,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) && ((request.resource.data.role == 'user') || ('email' in request.auth.token && (request.auth.token.email == "maciej.wyrozumski@gmail.com" || request.auth.token.email == "marta.lukaszczyk@gmail.com")) || isAdmin());
-      allow update: if (isOwner(userId) || isAdmin()) && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(["loginCount", "lastLoginDate", "streakCount", "lastStreakDate", "username", "photoURL", "firstName", "lastName", "level", "description", "requirePasswordChange", "hasNewVocabulary", "hasNewLesson", "dismissedNotifications", "translatedSentencesCount", "aiPrompt", "frequentErrors", "tempPassword", "tempPasswordLogins", "onboardingCompleted"]) || isAdmin());
+      allow update: if (isOwner(userId) || isAdmin()) && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(["loginCount", "lastLoginDate", "streakCount", "lastStreakDate", "username", "photoURL", "firstName", "lastName", "level", "description", "requirePasswordChange", "hasNewVocabulary", "hasNewLesson", "hasNewHomework", "dismissedNotifications", "translatedSentencesCount", "aiPrompt", "frequentErrors", "tempPassword", "tempPasswordLogins", "onboardingCompleted"]) || isAdmin());
       allow delete: if isAdmin();
 
       match /words/{wordId} {
