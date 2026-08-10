@@ -560,7 +560,7 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
     try {
       const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.";
       
-      // Priority: DeepSeek (deepseek-reasoner / 4 pro, then deepseek-chat), with fallback to available Gemini models
+      // Priority: OpenAI GPT-4o-mini, with fallback to available Gemini models
       const preferredModels = ['openai/gpt-4o-mini', 'gemini-2.5-flash', 'gemini-2.0-flash'];
       const geminiConfig = {
         responseMimeType: "application/json",

@@ -494,10 +494,10 @@ app.post('/api/gemini/generate-test', requireFirebaseAdmin, async (req, res) => 
     try {
       const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, typeCounts, fileData, driveFile } = req.body;
       const apiKey = process.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured. Please set VITE_GEMINI_API_KEY in environment variables.' });
+      const dummyKey = "dummy";
       
       
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
       
       let typeBreakdownInstruction = '';
       if (typeCounts && typeof typeCounts === 'object' && Object.keys(typeCounts).length > 0) {
@@ -674,7 +674,7 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawną tablicę JSON, zachowując 
       if (!apiKey) {
         return res.status(500).json({ error: 'Gemini API key not configured. Please set VITE_GEMINI_API_KEY in environment variables.' });
       }
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
       
       const studentsListStr = typeof students === 'string' 
         ? students 
@@ -846,7 +846,7 @@ Przeanalizuj CAŁĄ treść dokładnie i nie pomijaj żadnej lekcji. Zwróć wy�
         return res.status(500).json({ error: 'Gemini API key not configured. Please set VITE_GEMINI_API_KEY in environment variables.' });
       }
 
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
       
       const studentsListStr = typeof students === 'string' 
         ? students 
@@ -991,7 +991,7 @@ Zwróć JSON z polami:
       
       const apiKey = process.env.VITE_GEMINI_API_KEY;
       if (!apiKey) return res.status(500).json({ error: "Gemini API key not configured." });
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
       const response = await generateContentWithRetry(ai, prompt, {
         responseMimeType: 'application/json',
         responseSchema: {
