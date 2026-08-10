@@ -491,6 +491,7 @@ interface AIExerciseGeneratorScreenProps {
   onStartPractice?: (type: any, mode1?: boolean, mode2?: boolean) => void;
   onExerciseStateChange?: (active: boolean) => void;
   onChangeView?: (view: string, extra?: any) => void;
+  onShowOnboarding?: () => void;
 }
 
 const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ initialSetId = null, onStartPractice, onExerciseStateChange, onOpenSidebar, onChangeView, onShowOnboarding }) => {
@@ -2030,78 +2031,38 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       
                       {/* Top Bar: Notifications on Left, Streak Counter on Right */}
                       <div className="w-full flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                        </div>
+
+                        <div className="flex items-center gap-2 ml-auto">
                           {onShowOnboarding && (
                             <button
                               onClick={onShowOnboarding}
-                              className="absolute top-4 right-4 md:top-6 md:right-8 flex items-center gap-2 text-xs font-semibold text-primary/80 hover:text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-full transition-all border border-primary/20 z-50"
+                              className="flex items-center gap-2 text-xs font-semibold text-primary/80 hover:text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-full transition-all border border-primary/20 z-50"
                             >
                               <Sparkles className="w-3.5 h-3.5" />
                               <span className="hidden sm:inline">{language === 'pl' ? 'Wyświetl onboarding ponownie' : 'Show onboarding again'}</span>
                             </button>
                           )}
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {user?.hasNewVocabulary && !isBannerDismissed && (
-                            <span 
-                              onClick={() => {
-                                setSelectedSetId('lessons');
-                                if (vocabularySets.length > 0 && selectedLessonIds.length === 0) {
-                                  setSelectedLessonIds([vocabularySets[0].id]);
-                                }
-                                setIsBannerDismissed(true);
-                                if (user?.id) {
-                                  updateDoc(doc(db, 'users', user.id), { hasNewVocabulary: false }).catch(console.error);
-                                }
-                              }}
-                              className="text-[11px] px-2.5 py-0.5 bg-primary/20 text-primary border border-primary/40 rounded-full animate-pulse cursor-pointer hover:bg-primary/30 transition-colors whitespace-nowrap font-semibold shadow-[0_0_10px_rgba(16,185,129,0.2)]"
-                            >
-                              {language === 'pl' ? 'nowe słówka' : 'new vocab'}
-                            </span>
-                          )}
-                          {user?.hasNewLesson && (
-                            <span 
-                              onClick={() => {
-                                if (onChangeView) onChangeView('lesson-history');
-                                if (user?.id) {
-                                  updateDoc(doc(db, 'users', user.id), { hasNewLesson: false }).catch(console.error);
-                                }
-                              }}
-                              className="text-[11px] px-2.5 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full animate-pulse cursor-pointer hover:bg-amber-500/30 transition-colors whitespace-nowrap font-semibold shadow-[0_0_10px_rgba(245,158,11,0.2)]"
-                            >
-                              {language === 'pl' ? 'nowa lekcja' : 'new lesson'}
-                            </span>
-                          )}
-                          {user?.hasNewHomework && (
-                            <span 
-                              onClick={() => {
-                                if (onChangeView) onChangeView('homework');
-                                if (user?.id) {
-                                  updateDoc(doc(db, 'users', user.id), { hasNewHomework: false }).catch(console.error);
-                                }
-                              }}
-                              className="text-[11px] px-2.5 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/40 rounded-full animate-pulse cursor-pointer hover:bg-purple-500/30 transition-colors whitespace-nowrap font-semibold shadow-[0_0_10px_rgba(168,85,247,0.2)]"
-                            >
-                              {language === 'pl' ? 'nowa praca domowa' : 'new homework'}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Streak Counter Badge */}
-                        <div className="flex items-center gap-2 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-red-500/15 border border-amber-500/30 px-3 py-1.5 rounded-2xl shadow-[0_0_15px_rgba(245,158,11,0.15)] shrink-0 ml-auto">
-                          <div className="p-1 rounded-lg bg-gradient-to-tr from-amber-500 to-orange-500 text-slate-950 font-black shadow-[0_0_8px_rgba(245,158,11,0.5)]">
-                            <Flame className="w-4 h-4 text-slate-950 fill-amber-200 animate-bounce" />
-                          </div>
-                          <div className="flex items-center gap-1 text-xs font-black text-white">
-                            {user?.streakCount ? (
-                              <>
-                                <span className="text-amber-400 font-bold">{user.streakCount}</span>
-                                <span className="text-[11px] text-amber-200/90 font-semibold">
-                                  {language === 'pl' ? (user.streakCount === 1 ? 'dzień' : 'dni') : (user.streakCount === 1 ? 'day' : 'days')}
-                                </span>
-                                <span>🔥</span>
-                              </>
-                            ) : (
-                              <span className="text-amber-200/90 text-[11px]">0 dni 🔥</span>
-                            )}
+                          
+                          {/* Streak Counter Badge */}
+                          <div className="flex items-center gap-2 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-red-500/15 border border-amber-500/30 px-3 py-1.5 rounded-2xl shadow-[0_0_15px_rgba(245,158,11,0.15)] shrink-0">
+                            <div className="p-1 rounded-lg bg-gradient-to-tr from-amber-500 to-orange-500 text-slate-950 font-black shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                              <Flame className="w-4 h-4 text-slate-950 fill-amber-200 animate-bounce" />
+                            </div>
+                            <div className="flex items-center gap-1 text-xs font-black text-white">
+                              {user?.streakCount ? (
+                                <>
+                                  <span className="text-amber-400 font-bold">{user.streakCount}</span>
+                                  <span className="text-[11px] text-amber-200/90 font-semibold">
+                                    {language === 'pl' ? (user.streakCount === 1 ? 'dzień' : 'dni') : (user.streakCount === 1 ? 'day' : 'days')}
+                                  </span>
+                                  <span>🔥</span>
+                                </>
+                              ) : (
+                                <span className="text-amber-200/90 text-[11px]">0 dni 🔥</span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -2110,7 +2071,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       <div className="space-y-1.5 max-w-lg mx-auto text-center w-full pt-1">
                         <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight text-center">
                           {(() => {
-                            const rawName = user?.firstName || (user?.displayName || user?.name || user?.email || '').split(' ')[0] || '';
+                            const rawName = user?.firstName || (user?.displayName || user?.name || user?.username || '').split(' ')[0] || '';
                             const inflectedName = getPolishVocative(rawName);
                             return inflectedName 
                               ? `${inflectedName}, czas na trening` 
@@ -2774,12 +2735,12 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                         {vocabularySets.map((set, index) => {
                                           const isSelected = selectedLessonIds.includes(set.id);
                                           const lessonNumber = vocabularySets.length - index;
-                                          const isNewAndPulsing = index === 0 && user?.hasNewVocabulary && !isBannerDismissed;
+                                          
                                           return (
                                             <label 
                                               key={set.id} 
                                               className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
-                                                isNewAndPulsing ? 'border-primary shadow-[0_0_20px_rgba(114,240,180,0.5)] animate-pulse bg-primary/20' :
+                                                
                                                 isSelected ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
                                               }`}
                                             >
