@@ -1033,7 +1033,7 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
   // --- OPENAI API PROXIES ---
   const handleOpenAI = async (req: any, res: any) => {
     try {
-      const { prompt, systemInstruction, isJson, messages } = req.body || {};
+      const { prompt, systemInstruction, isJson, messages, model } = req.body || {};
       if (!prompt && !messages) return res.status(400).json({ error: 'Missing prompt or messages' });
 
       const openaiKey = process.env.OPENAI_API_KEY;
@@ -1047,7 +1047,14 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
         ];
       }
 
-      const openAiModels = ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo", "gpt-4-turbo"];
+      const requestedModel = model ? String(model).replace('openai/', '') : null;
+      const openAiModels = Array.from(new Set([
+        requestedModel,
+        "gpt-4o-mini",
+        "gpt-4o",
+        "gpt-4-turbo",
+        "gpt-3.5-turbo"
+      ].filter((m): m is string => Boolean(m))));
       let openAiSuccess = false;
       let resultText = "";
       let usedModel = "";

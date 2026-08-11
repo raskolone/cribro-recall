@@ -672,9 +672,19 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     if (user?.id) {
       getDocs(collection(db, `users/${user.id}/practiceLogs`)).then(snapshot => {
         let total = 0;
+        const dateSet = new Set<string>();
+
         snapshot.forEach(docSnap => {
           const data = docSnap.data();
           if (data.exerciseType === 'Aktywność') return;
+
+          if (data.date) {
+            const dateStr = typeof data.date === 'string' ? data.date : (data.date.toDate ? data.date.toDate().toISOString() : '');
+            if (dateStr) {
+              dateSet.add(dateStr.slice(0, 10));
+            }
+          }
+
           if (data.totalWords !== undefined && data.totalWords !== null && !isNaN(Number(data.totalWords))) {
             total += Number(data.totalWords);
           } else if (data.detailedFeedback && Array.isArray(data.detailedFeedback)) {
@@ -691,9 +701,53 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
             total += 1;
           }
         });
-        setTranslatedSentencesCount(total);
-        if (user.translatedSentencesCount !== total) {
-          updateDoc(doc(db, 'users', user.id), { translatedSentencesCount: total }).catch(console.error);
+
+        const maxTotal = Math.max(total, user?.translatedSentencesCount || 0);
+        setTranslatedSentencesCount(maxTotal);
+
+        // Compute active streak from practice dates
+        const getLocalDateStr = (d: Date) => {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+
+        const todayKey = getLocalDateStr(new Date());
+        const yesterdayKey = getLocalDateStr(new Date(Date.now() - 86400000));
+        let calculatedStreak = 0;
+
+        let checkDateMs: number | null = null;
+        if (dateSet.has(todayKey)) {
+          checkDateMs = new Date().setHours(0, 0, 0, 0);
+        } else if (dateSet.has(yesterdayKey)) {
+          checkDateMs = new Date(Date.now() - 86400000).setHours(0, 0, 0, 0);
+        }
+
+        if (checkDateMs !== null) {
+          const checkDate = new Date(checkDateMs);
+          while (true) {
+            const key = getLocalDateStr(checkDate);
+            if (dateSet.has(key)) {
+              calculatedStreak++;
+              checkDate.setDate(checkDate.getDate() - 1);
+            } else {
+              break;
+            }
+          }
+        }
+
+        const updatesToUser: any = {};
+        if (user.translatedSentencesCount !== maxTotal) {
+          updatesToUser.translatedSentencesCount = maxTotal;
+        }
+        if (calculatedStreak > (user.streakCount || 0)) {
+          updatesToUser.streakCount = calculatedStreak;
+          updatesToUser.lastStreakDate = todayKey;
+        }
+
+        if (Object.keys(updatesToUser).length > 0) {
+          updateDoc(doc(db, 'users', user.id), updatesToUser).catch(console.error);
         }
       }).catch(() => {
         if (typeof user?.translatedSentencesCount === 'number') {
@@ -710,7 +764,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         }
       } catch (e) {}
     }
-  }, [user?.id, user?.translatedSentencesCount]);
+  }, [user?.id, user?.translatedSentencesCount, user?.streakCount]);
 
   // Settings states
   const [activeTab, setActiveTab] = useState<'ai' | 'other'>('ai');
@@ -1290,9 +1344,9 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
                }
             }
             
-            // If no specific lessons picked or found, fallback to latest 3
+            // If no specific lessons picked or found, fallback to latest 10
             if (lrList.length === 0) {
-               const qLR = query(lessonRecordsRef, orderBy('date', 'desc'), limit(3));
+               const qLR = query(lessonRecordsRef, orderBy('date', 'desc'), limit(10));
                const lrSnapshot = await getDocs(qLR);
                lrList = lrSnapshot.docs.map(doc => doc.data() as LessonRecord);
             }

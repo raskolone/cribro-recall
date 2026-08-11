@@ -119,7 +119,8 @@ const callOpenAI = async (prompt: string, systemInstruction: string, model: stri
       body: JSON.stringify({
         prompt,
         systemInstruction,
-        isJson
+        isJson,
+        model
       })
     });
     
@@ -143,7 +144,15 @@ const callOpenAI = async (prompt: string, systemInstruction: string, model: stri
   }
 };
 
-export const PREFERRED_AI_MODELS = ['openai/gpt-4o-mini', 'gemini-2.5-flash'];
+export const PREFERRED_AI_MODELS = [
+  'openai/gpt-4o-mini',
+  'openai/gpt-4o',
+  'openai/gpt-4-turbo',
+  'openai/gpt-3.5-turbo',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash'
+];
 
 export const formatAIModelName = (model?: string): string => {
   if (!model) return 'OpenAI (GPT-4o mini)';
@@ -353,26 +362,30 @@ export const generateTranslationExercises = async (
   const masterPrompt = `ROLE:
 You are an expert English Language Content Creator specializing in adaptive, personalized language practice.
 
+PRIMARY MANDATE - LESSON HISTORY CONTEXT:
+You MUST FIRST examine the student's LESSON HISTORY provided in [LESSON / TOPIC CONTEXT].
+Base the generated sentences directly on the topics, vocabulary, grammar concepts, and areas to improve that were covered in the student's previous lessons. Every generated exercise should feel like an organic continuation of their ongoing learning journey.
+
 TASK:
-Generate natural, highly realistic sentences using the provided list of target vocabulary. Adapt the tone and topic naturally to match the vocabulary context. 
-CRITICAL: The Polish translations MUST be perfectly natural, logically coherent, grammatically flawless, and sound like something a native Polish speaker would actually say in real life. Do not generate robotic, word-for-word, or awkwardly phrased Polish sentences.
+Generate natural, highly realistic sentences using the provided target vocabulary and lesson history. Adapt the tone and topic naturally to match the student's context and level (${level || 'B2'}).
+CRITICAL: The Polish translations MUST be perfectly natural, logically coherent, grammatically flawless, and sound like something a native Polish speaker would actually say in real life.
 
 RULES FOR SENTENCE GENERATION:
-- ZASADA ŻELAZNA - LOGIKA I KONTEKST ŻYCIOWY (IRONCLAD RULE): Zdania MUSZĄ być w 100% logiczne, sensowne i naturalne w realnym świecie. Ich głównym celem jest nauka poprawnego, autentycznego kontekstu i użycia języka — a NIE tylko mechaniczne sprawdzanie słówka. BEZWZGLĘDNIE ZABRANIA SIĘ generowania zdań sztucznych, dziwacznych, pozbawionych sensu lub bezmyślnie wymuszonych. Praktyczny sens i spójność logiczna to absolutnie najwyższy priorytet.
+- ZASADA ŻELAZNA - HISTORIA LEKCJI: Najważniejszą podstawą generowania zdań jest HISTORIA LEKCJI I MATERIAŁ PRZEROBIONY NA POPRZEDNICH LEKCJACH! Przeanalizuj przesłany kontekst lekcji (tematy, omówioną teorię, słownictwo i rzeczy do poprawy) i twórz zdania ściśle nawiązujące do przerobionego materiału.
+- ZASADA ŻELAZNA - LOGIKA I KONTEKST ŻYCIOWY (IRONCLAD SEMANTIC LOGIC RULE): Zdania MUSZĄ być w 100% logiczne, sensowne i naturalne w realnym świecie. BEZWZGLĘDNIE ZABRANIA SIĘ generowania zdań sztucznych, dziwacznych, pozbawionych sensu lub mechanicznie wymuszonych. Praktyczny sens i spójność logiczna to najwyższy priorytet.
+- DOSTOSOWANIE DO POZIOMU KURSANTA (LEVEL APPROPRIATENESS): Wygenerowane zdania MUSZĄ być ściśle adekwatne i idealnie dopasowane do stopnia zaawansowania kursanta (${isGrammar ? 'dostosuj do bazy gramatycznej' : (level || 'B2')}). Słownictwo, struktury gramatyczne oraz długość i złożoność zdań muszą bezpośrednio odpowiadać danemu poziomowi (A1: 4-8 słów; A2: 5-9 słów; B1/B2: 8-12 słów; C1/C2: 10-15 słów).
 - CONTEXT: Sentences MUST sound like real-world communication relevant to the provided vocabulary (e.g., casual, technical, business, everyday conversation).
-- LENGTH: Maximum sentence length is 16 words, regardless of the level. Do not exceed 16 words for the entire sentence.
+- LENGTH: Maximum sentence length is 16 words, regardless of the level.
 - NATURALNESS: Never force multiple target words into a single sentence if it sounds awkward. Use MAXIMUM 1 target word per sentence.
 - GRAMMAR & STYLE: Use modern, natural English. Avoid academic, bizarre, or forced phrasing. The Polish translation MUST also be perfectly natural.
 - VARIETY: Use diverse sentence structures (mix conditionals, modal verbs, different tenses, and sentence lengths).
-- LOGIC & REALISM: Sentences MUST be practical, logical, and make total sense in real-world communication. Do NOT forcefully weave random student profile keywords or hobbies into a sentence if it makes the sentence illogical, weird, or artificial. Practical usability is the absolute highest priority.
+- LOGIC & REALISM: Sentences MUST be practical, logical, and make total sense in real-world communication.
 - HINT REQUIREMENT: Pole \`hint\` musi ZAWSZE zawierać kluczowe trudne słowa z danego zdania (angielskie) wraz z tłumaczeniem, plus krótką wskazówkę co do użytej struktury gramatycznej.
-- ANTI-REPETITION (CRITICAL): Do NOT generate sentences that are structurally identical or extremely similar to the sentences listed in PAST EXERCISES. The user should learn to understand the language dynamically, not memorize specific sentence structures by heart. Create new contexts, subjects, and scenarios.
-- ANTI-REPETITION & CONTEXT (CRITICAL): Jeśli uczeń kontynuuje ćwiczenie (ćwiczy dłużej), kategorycznie NIE powtarzaj tych samych ani podobnych zdań, które znajdują się w PAST EXERCISES. Buduj zupełnie nowe, świeże scenenarios i konteksty, ale utrzymaj docelowe słownictwo.
-- LEARNING FROM MISTAKES: Jeśli dostarczono sekcję [STUDENT MISTAKES], skup się na wygenerowaniu zdań, które ćwiczą trudne dla ucznia obszary (np. błędnie użyte słowa lub konstrukcje gramatyczne). Zdania muszą pokazywać wyraźny, życiowy kontekst poprawnego użycia, aby uczeń zrozumiał błąd i mógł się poprawić.
+- ANTI-REPETITION (CRITICAL): Do NOT generate sentences that are structurally identical or extremely similar to the sentences listed in PAST EXERCISES. Create new contexts, subjects, and scenarios.
 
 INPUT FORMAT:
-Target Vocabulary List: ${words.length > 0 ? words.join(', ') : 'General level-appropriate vocabulary'}
-Target CEFR Level: ${isGrammar ? 'ZIGNORUJ poziom kursanta (bypassed). Poziom trudności musi być dokładnie dopasowany do dostarczonych przykładów z bazy.' : (level || 'B2')}
+Target Vocabulary List: ${words.length > 0 ? words.join(', ') : 'Vocabulary from recent lessons'}
+Target CEFR Level: ${isGrammar ? 'Grammar Database Match' : (level || 'B2')}
 Number of Sentences: ${numSentences}`;
 
   const studentContextBlock = `${shortProfile}${shortLesson}${shortPast}${shortMistakes}`;
@@ -560,8 +573,8 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
     try {
       const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON. CRITICAL PUNCTUATION RULE: Do NOT deduct points or penalize scores for missing or incorrect punctuation/capitalization (punctuation is needed/good practice, but must NOT lower the score).";
       
-      // Priority: OpenAI GPT-4o-mini, with fallback to available Gemini models
-      const preferredModels = ['openai/gpt-4o-mini', 'gemini-2.5-flash'];
+      // Priority: OpenAI GPT-4o-mini, with fallback to available OpenAI models and then Gemini models
+      const preferredModels = PREFERRED_AI_MODELS;
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: evaluationResultSchema,
