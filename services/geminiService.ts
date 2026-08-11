@@ -360,33 +360,38 @@ export const generateTranslationExercises = async (
   const shortMistakes = mistakesContext ? `\n\n[STUDENT MISTAKES (AREAS TO IMPROVE)]:\n${mistakesContext.substring(0, 5000)}` : '';
 
   const masterPrompt = `ROLE:
-You are an expert English Language Content Creator specializing in adaptive, personalized language practice.
+You are an expert English Language Content Creator and AI Pedagogue specializing in adaptive, highly personalized language practice.
 
-PRIMARY MANDATE - LESSON HISTORY CONTEXT:
-You MUST FIRST examine the student's LESSON HISTORY provided in [LESSON / TOPIC CONTEXT].
-Base the generated sentences directly on the topics, vocabulary, grammar concepts, and areas to improve that were covered in the student's previous lessons. Every generated exercise should feel like an organic continuation of their ongoing learning journey.
+MASTER GENERATION PIPELINE - EXECUTE IN THIS EXACT SEQUENTIAL ORDER:
 
-TASK:
-Generate natural, highly realistic sentences using the provided target vocabulary and lesson history. Adapt the tone and topic naturally to match the student's context and level (${level || 'B2'}).
-CRITICAL: The Polish translations MUST be perfectly natural, logically coherent, grammatically flawless, and sound like something a native Polish speaker would actually say in real life.
+STEP 1: ANALYZE STUDENT PROFILE & DIRECTIVES
+First, carefully read [STUDENT SPECIFIC INSTRUCTIONS & PROFILE] below. Learn who the student is, their target proficiency level (${level || 'B2'}), their interests, background, and any ironclad teacher rules or AI prompt overrides.
 
-RULES FOR SENTENCE GENERATION:
-- ZASADA ŻELAZNA - HISTORIA LEKCJI: Najważniejszą podstawą generowania zdań jest HISTORIA LEKCJI I MATERIAŁ PRZEROBIONY NA POPRZEDNICH LEKCJACH! Przeanalizuj przesłany kontekst lekcji (tematy, omówioną teorię, słownictwo i rzeczy do poprawy) i twórz zdania ściśle nawiązujące do przerobionego materiału.
-- ZASADA ŻELAZNA - LOGIKA I KONTEKST ŻYCIOWY (IRONCLAD SEMANTIC LOGIC RULE): Zdania MUSZĄ być w 100% logiczne, sensowne i naturalne w realnym świecie. BEZWZGLĘDNIE ZABRANIA SIĘ generowania zdań sztucznych, dziwacznych, pozbawionych sensu lub mechanicznie wymuszonych. Praktyczny sens i spójność logiczna to najwyższy priorytet.
-- DOSTOSOWANIE DO POZIOMU KURSANTA (LEVEL APPROPRIATENESS): Wygenerowane zdania MUSZĄ być ściśle adekwatne i idealnie dopasowane do stopnia zaawansowania kursanta (${isGrammar ? 'dostosuj do bazy gramatycznej' : (level || 'B2')}). Słownictwo, struktury gramatyczne oraz długość i złożoność zdań muszą bezpośrednio odpowiadać danemu poziomowi (A1: 4-8 słów; A2: 5-9 słów; B1/B2: 8-12 słów; C1/C2: 10-15 słów).
-- CONTEXT: Sentences MUST sound like real-world communication relevant to the provided vocabulary (e.g., casual, technical, business, everyday conversation).
-- LENGTH: Maximum sentence length is 16 words, regardless of the level.
-- NATURALNESS: Never force multiple target words into a single sentence if it sounds awkward. Use MAXIMUM 1 target word per sentence.
-- GRAMMAR & STYLE: Use modern, natural English. Avoid academic, bizarre, or forced phrasing. The Polish translation MUST also be perfectly natural.
-- VARIETY: Use diverse sentence structures (mix conditionals, modal verbs, different tenses, and sentence lengths).
-- LOGIC & REALISM: Sentences MUST be practical, logical, and make total sense in real-world communication.
+STEP 2: ANALYZE LESSON HISTORY & PROGRESSION
+Second, examine [LESSON / TOPIC CONTEXT]. Review the topics, grammar theory, vocabulary, and teacher notes covered in the student's previous lessons. Every exercise must feel like a natural continuation of their ongoing learning journey.
+
+STEP 3: ANALYZE FREQUENT MISTAKES & WEAKNESSES
+Third, examine [STUDENT MISTAKES (AREAS TO IMPROVE)]. Review the frequent errors, grammar pitfalls, and difficult words recorded for this student.
+- ADAPTIVE DIFFICULTY: If the student frequently makes errors in a specific area, incorporate targeted practice sentences for those weaknesses. As their error rate decreases and accuracy improves, dynamically increase vocabulary difficulty and sentence complexity.
+
+STEP 4: APPLY SELECTED GENERATION SCOPE
+Fourth, review the material selected by the student/teacher for this generation run:
+- Target Vocabulary List: ${words.length > 0 ? words.join(', ') : 'Vocabulary from recent lessons'}
+- Selected CEFR Level: ${isGrammar ? 'Grammar Database Match' : (level || 'B2')}
+- Number of Sentences: ${numSentences}
+
+STEP 5: GENERATE NATURAL, LOGICAL SENTENCES
+Synthesize Steps 1-4 to generate ${numSentences} unique, natural, and highly realistic translation/puzzle exercises.
+
+CRITICAL QUALITY RULES:
+- ZASADA ŻELAZNA - KOLEJNOŚĆ WIDZENIA KONTEKSTU: Master Prompt w pierwszej kolejności analizuje profil kursanta i jego wytyczne, następnie sprawdza historię lekcji oraz często popełniane błędy, a na koniec uwzględnia wybrany przez kursanta zakres materiału do wygenerowania!
+- ZASADA ŻELAZNA - LOGIKA I KONTEKST ŻYCIOWY (IRONCLAD SEMANTIC REALISM): Wyjściowe zdania (zarówno po angielsku, jak i po polsku) MUSISZ tworzyć w 100% logiczne, sensowne, praktyczne i realistyczne. Kategorycznie zakazuje się generowania stwierdzeń dziwacznych, sztucznych, bezmyślnych kalk językowych lub zdań brzmiących niedorzecznie.
+- ZASADA ŻELAZNA - BEZWZGLĘDNA SPÓJNOŚĆ I NATURALNOŚĆ POLSKICH TŁUMACZEŃ (NATURAL POLISH TRANSLATION):
+  Tłumaczenie wyjściowe w języku polskim (pole \`polish_translation\`) MUSI mieć pełną spójność logiczną, być gramatycznie bezbłędne i brzmieć dokładnie tak, jak powiedziałby to rodzimy użytkownik języka polskiego (native speaker) w autentycznej rozmowie. Nie stwarzaj dosłownych kalk słowo-w-słowo ani niezgrabnych zwrotów.
+- DOSTOSOWANIE DO POZIOMU KURSANTA: Wygenerowane zdania MUSZĄ być ściśle dopasowane do poziomu kursanta (${isGrammar ? 'dostosuj do bazy gramatycznej' : (level || 'B2')}). Słownictwo, struktury gramatyczne oraz długość zdań muszą bezpośrednio odpowiadać danemu poziomowi (A1: 4-8 słów; A2: 5-9 słów; B1/B2: 8-12 słów; C1/C2: 10-15 słów).
+- CONTEXT & NATURALNESS: Sentences MUST sound like real-world communication. Maximum 1 target word per sentence so it sounds natural. Maximum sentence length: 16 words.
 - HINT REQUIREMENT: Pole \`hint\` musi ZAWSZE zawierać kluczowe trudne słowa z danego zdania (angielskie) wraz z tłumaczeniem, plus krótką wskazówkę co do użytej struktury gramatycznej.
-- ANTI-REPETITION (CRITICAL): Do NOT generate sentences that are structurally identical or extremely similar to the sentences listed in PAST EXERCISES. Create new contexts, subjects, and scenarios.
-
-INPUT FORMAT:
-Target Vocabulary List: ${words.length > 0 ? words.join(', ') : 'Vocabulary from recent lessons'}
-Target CEFR Level: ${isGrammar ? 'Grammar Database Match' : (level || 'B2')}
-Number of Sentences: ${numSentences}`;
+- ANTI-REPETITION: Do NOT generate sentences structurally identical or extremely similar to those in [PAST EXERCISES TO AVOID REPEATS].`;
 
   const studentContextBlock = `${shortProfile}${shortLesson}${shortPast}${shortMistakes}`;
   const customBlock = customPrompt ? `\n\n[ADDITIONAL INSTRUCTIONS / PROMPT OVERRIDE]:\n${customPrompt}` : '';

@@ -19,7 +19,7 @@ import AllTestsTeacherView from './AllTestsTeacherView';
 import TeacherDashboardStats from './TeacherDashboardStats';
 import TeacherSpecialTaskModal from './TeacherSpecialTaskModal';
 import AssignVocabularyModal from './AssignVocabularyModal';
-import { Trash2, Download, Printer, FileText, CheckCircle2 } from 'lucide-react';
+import { Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import i18n from "i18next";
 import html2pdf from 'html2pdf.js';
 
@@ -41,6 +41,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   });
   const { createUser, deleteUser, changeUserRole: updateRoleApi, changeUserPassword } = useFirebaseAdminApi();
   const { user: currentUser } = useAuth();
+  const [profileSaveModal, setProfileSaveModal] = useState<{ isOpen: boolean; success: boolean; title: string; message: string } | null>(null);
   
 
   const fetchUsers = async () => {
@@ -187,9 +188,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       const updatedUser = { ...selectedUser, ...formState };
       setSelectedUser(updatedUser);
       setUsers(users.map(u => u.id === selectedUser.id ? updatedUser : u));
-      if (!silent) alert('Zapisano profil pomyślnie!');
+      if (!silent) {
+        setProfileSaveModal({
+          isOpen: true,
+          success: true,
+          title: i18n.t('Profil Zapisany Pomyślnie'),
+          message: i18n.t(`Zmiany w profilu kursanta ${formState.firstName || ''} ${formState.lastName || ''} zostały pomyślnie zaktualizowane w bazie danych.`)
+        });
+      }
     } catch (e: any) {
-      alert('Błąd podczas zapisywania: ' + e.message);
+      if (!silent) {
+        setProfileSaveModal({
+          isOpen: true,
+          success: false,
+          title: i18n.t('Błąd Zapisywania Profilu'),
+          message: i18n.t(`Nie udało się zapisać zmian: ${e.message || e}`)
+        });
+      }
     } finally {
       setIsSavingProfile(false);
     }
@@ -3127,6 +3142,58 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             <span className="text-white font-bold">{toastMessage.text}</span>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Profile Save Status Graphical Pop-up Modal */}
+      <AnimatePresence>
+        {profileSaveModal && profileSaveModal.isOpen && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-base-100 border border-white/10 rounded-2xl p-6 shadow-2xl text-center space-y-4 overflow-hidden"
+            >
+              {/* Background ambient glow */}
+              <div
+                className={`absolute -top-16 -left-16 w-36 h-36 rounded-full blur-3xl pointer-events-none ${
+                  profileSaveModal.success ? 'bg-emerald-500/30' : 'bg-red-500/30'
+                }`}
+              />
+
+              <div className="flex justify-center pt-2">
+                {profileSaveModal.success ? (
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.35)]">
+                    <CheckCircle2 size={36} />
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/30 flex items-center justify-center text-red-400 shadow-[0_0_25px_rgba(239,68,68,0.35)]">
+                    <AlertCircle size={36} />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-xl font-extrabold text-white">
+                  {profileSaveModal.title}
+                </h3>
+                <p className="text-sm text-content-muted leading-relaxed">
+                  {profileSaveModal.message}
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  onClick={() => setProfileSaveModal(null)}
+                  variant={profileSaveModal.success ? 'primary' : 'secondary'}
+                  className="w-full"
+                >
+                  {profileSaveModal.success ? i18n.t('Gotowe') : i18n.t('Zamknij')}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

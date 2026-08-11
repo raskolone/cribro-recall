@@ -305,9 +305,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
             </span>
           </NavLink>
 
-          <NavLink id="tour-stats" icon={<BarChart2 size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate(isTeacher ? 'admin-stats' : 'student-stats')} isActive={currentView === 'student-stats' || currentView === 'admin-stats'}>
-              {language === 'pl' ? 'Statystyki' : 'Statistics'}
-          </NavLink>
+          {isTeacher && (
+            <NavLink id="tour-stats" icon={<BarChart2 size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('admin-stats')} isActive={currentView === 'admin-stats'}>
+                {language === 'pl' ? 'Statystyki' : 'Statistics'}
+            </NavLink>
+          )}
 
           <NavLink 
             id="tour-history" 
