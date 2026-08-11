@@ -43,7 +43,7 @@ const InlineAILoading: React.FC<InlineAILoadingProps> = ({ language }) => {
       <div className="flex-1 max-w-xs flex flex-col gap-1.5">
         <div className="flex justify-between items-center text-xs md:text-sm font-medium text-primary">
           <span>{language === 'pl' ? 'Przygotowywanie zadań...' : 'Preparing exercises...'}</span>
-          <span className="font-mono">{Math.floor(progress)}%</span>
+          <span className="font-mono">{Number.isNaN(Number(progress)) ? 0 : Math.floor(progress)}%</span>
         </div>
         <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden shadow-inner">
           <motion.div 

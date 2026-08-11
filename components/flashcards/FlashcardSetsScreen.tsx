@@ -274,7 +274,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             </span>
             <span className="flex items-center gap-1 font-mono">
               {language === 'pl' ? 'Opanowanie:' : 'Mastery:'} 
-              <span className={setMastery[set.id] >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{setMastery[set.id] || 0}%</span>
+              <span className={setMastery[set.id] >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : setMastery[set.id]}%</span>
             </span>
             {lastPracticed[set.id] && (
               <span className="font-mono text-gray-400">
@@ -374,7 +374,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           <div className="space-y-1.5 mb-2">
             <div className="flex justify-between text-xs font-medium">
               <span className="text-content-muted">{language === 'pl' ? 'Opanowanie' : 'Mastery'}</span>
-              <span className={(setMastery[set.id] || 0) >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{setMastery[set.id] || 0}%</span>
+              <span className={(setMastery[set.id] || 0) >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
             </div>
             <div className="w-full bg-base-300 h-1.5 rounded-full overflow-hidden">
               <div 
@@ -450,32 +450,6 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
         <Button onClick={handleCreateNewSet} isLoading={isCreating} className="shadow-lg shadow-primary/20">
           + {language === 'pl' ? 'Stwórz nowy zestaw' : 'Create new set'}
         </Button>
-      </div>
-
-      {/* Global Stats Panel */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-gradient-to-br from-base-200 to-base-300 border-base-300">
-          <div className="text-content-muted text-sm font-medium uppercase tracking-wider mb-2">
-            {language === 'pl' ? 'Łączna liczba słów' : 'Total Words'}
-          </div>
-          <div className="text-4xl font-black text-primary">{totalCards}</div>
-        </Card>
-        <Card className="bg-gradient-to-br from-base-200 to-base-300 border-base-300">
-          <div className="text-content-muted text-sm font-medium uppercase tracking-wider mb-2">
-            {language === 'pl' ? 'Listy' : 'Lists'}
-          </div>
-          <div className="text-4xl font-black">{sets.length}</div>
-        </Card>
-        <Card className="bg-gradient-to-br from-base-200 to-base-300 border-base-300">
-          <div className="text-content-muted text-sm font-medium uppercase tracking-wider mb-2">
-            {language === 'pl' ? 'Średnie opanowanie' : 'Avg Mastery'}
-          </div>
-          <div className="text-4xl font-black text-green-400">
-            {sets.length > 0 
-              ? Math.round((Object.values(setMastery) as number[]).reduce((a: number, b: number) => a + (isNaN(b) ? 0 : b), 0) / sets.length) 
-              : 0}%
-          </div>
-        </Card>
       </div>
 
       {/* Lesson Vocabulary Section */}

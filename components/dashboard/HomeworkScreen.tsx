@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { User, SpecialTask, HomeworkType, TranslationExercise, ErrorCorrectionExercise } from '../../types';
+import { User, SpecialTask, HomeworkType, TranslationExercise, FillInTheBlankExercise, LessonRecord } from '../../types';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { generateTranslationExercises, generateErrorCorrectionExercises, evaluateErrorCorrectionSentence, evaluateTranslations } from '../../services/geminiService';
+import { generateTranslationExercises, generateFillInTheBlankExercises, evaluateErrorCorrectionSentence, evaluateTranslations, evaluateTeacherHomework, processBulkSentences } from '../../services/geminiService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import AssignedTasks from './AssignedTasks';
+import { FillInTheBlankTask } from '../practice/FillInTheBlankTask';
 import { 
   BookOpen, 
   Sparkles, 
@@ -57,7 +57,7 @@ export const HomeworkScreen: React.FC = () => {
 
   // Items for creation
   const [translationItems, setTranslationItems] = useState<TranslationExercise[]>([]);
-  const [errorCorrectionItems, setErrorCorrectionItems] = useState<ErrorCorrectionExercise[]>([]);
+  const [errorCorrectionItems, setErrorCorrectionItems] = useState<FillInTheBlankExercise[]>([]);
 
   // AI Generator controls
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
@@ -66,6 +66,12 @@ export const HomeworkScreen: React.FC = () => {
   const [aiCount, setAiCount] = useState<number>(5);
   const [aiPrompt, setAiPrompt] = useState<string>('');
   const [genError, setGenError] = useState<string>('');
+  const [studentLessons, setStudentLessons] = useState<LessonRecord[]>([]);
+  const [selectedLessonId, setSelectedLessonId] = useState<string>("manual");
+  const [showBulkAddModal, setShowBulkAddModal] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+
 
   // Active task execution state for Student
   const [activeTask, setActiveTask] = useState<SpecialTask | null>(null);
@@ -141,20 +147,50 @@ export const HomeworkScreen: React.FC = () => {
       setInstructions('W każdym z poniższych zdań znajduje się błąd. Wpisz pełne, poprawione zdanie po angielsku.');
     }
   }, [homeworkType]);
+  useEffect(() => {
+    if (!selectedStudentId || selectedStudentId === "all") {
+      setStudentLessons([]);
+      setSelectedLessonId("manual");
+      return;
+    }
+    const loadLessons = async () => {
+      try {
+        const q = query(collection(db, "lessonRecords"), where("studentId", "==", selectedStudentId));
+        const snap = await getDocs(q);
+        const lessons: LessonRecord[] = [];
+        snap.forEach(d => lessons.push({ id: d.id, ...d.data() } as LessonRecord));
+        setStudentLessons(lessons.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadLessons();
+  }, [selectedStudentId]);
+
 
   // AI Generation handler
   const handleGenerateWithAI = async () => {
     setIsGenerating(true);
     setGenError('');
     try {
-      if (homeworkType === 'translation') {
-        const wordsArr = aiTopic ? aiTopic.split(',').map(s => s.trim()).filter(Boolean) : [];
+      let finalTopic = aiTopic;
+      let finalPrompt = aiPrompt;
+      if (selectedLessonId !== "manual") {
+        const lesson = studentLessons.find(l => l.id === selectedLessonId);
+        if (lesson) {
+          finalPrompt += `\nBazuj na słownictwie z tej lekcji:\n${lesson.vocabularyText}\nTemat lekcji: ${lesson.topic}`;
+          if (!finalTopic) finalTopic = lesson.topic;
+        }
+      }
+
+      if (homeworkType === "translation") {
+        const wordsArr = finalTopic ? finalTopic.split(",").map(s => s.trim()).filter(Boolean) : [];
         const result = await generateTranslationExercises(
           aiLevel,
           wordsArr,
-          aiPrompt,
-          aiTopic,
-          '',
+          finalPrompt,
+          finalTopic,
+          "",
           aiCount
         );
         if (result && result.length > 0) {
@@ -163,16 +199,16 @@ export const HomeworkScreen: React.FC = () => {
           setGenError('Nie udało się wygenerować zdań. Spróbuj zmienić parametry.');
         }
       } else {
-        const result = await generateErrorCorrectionExercises(
+        const result = await generateFillInTheBlankExercises(
           aiLevel,
-          aiTopic,
+          finalTopic,
           aiCount,
-          aiPrompt
+          finalPrompt
         );
-        if (result && result.length > 0) {
-          setErrorCorrectionItems(result);
+        if (result && result.textWithBlanks) {
+          setErrorCorrectionItems([result]);
         } else {
-          setGenError('Nie udało się wygenerować zadań z błędami.');
+          setGenError("Nie udało się wygenerować zadań z lukami.");
         }
       }
     } catch (err: any) {
@@ -188,15 +224,34 @@ export const HomeworkScreen: React.FC = () => {
     if (homeworkType === 'translation') {
       setTranslationItems([
         ...translationItems,
-        { polishSentence: '', englishTranslation: '', hint: '' }
+        { polishSentence: "", englishTranslation: "", hint: "" }
       ]);
     } else {
       setErrorCorrectionItems([
         ...errorCorrectionItems,
-        { incorrectSentence: '', correctSentence: '', explanation: '', hint: '' }
+        { textWithBlanks: "", blanks: {}, availableWords: [] }
       ]);
     }
   };
+  const handleBulkProcess = async () => {
+    if (!bulkText.trim()) return;
+    setIsBulkProcessing(true);
+    try {
+      const newItems = await processBulkSentences(bulkText);
+      if (newItems && newItems.length > 0) {
+        setTranslationItems([...translationItems, ...newItems]);
+        setShowBulkAddModal(false);
+        setBulkText("");
+      } else {
+        alert("Nie udało się wygenerować zadań. Sprawdź format tekstu.");
+      }
+    } catch (e: any) {
+      alert("Wystąpił błąd podczas przetwarzania zdań.");
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
 
   // Save/Assign Homework (Teacher)
   const handleSaveHomework = async () => {
@@ -219,9 +274,9 @@ export const HomeworkScreen: React.FC = () => {
         return;
       }
     } else {
-      const hasEmpty = errorCorrectionItems.some(i => !i.incorrectSentence.trim() || !i.correctSentence.trim());
+      const hasEmpty = errorCorrectionItems.some(i => !i.textWithBlanks.trim() || Object.keys(i.blanks).length === 0);
       if (hasEmpty) {
-        alert('Uzupełnij błędne i poprawne zdania dla wszystkich elementów.');
+        alert("Uzupełnij tekst z lukami i definicje luk dla wszystkich elementów.");
         return;
       }
     }
@@ -392,21 +447,30 @@ export const HomeworkScreen: React.FC = () => {
 
       // Log practice log for statistics & update streak
       try {
+        const sentencesCount = activeTask.sentences ? activeTask.sentences.length : 1;
         await addDoc(collection(db, `users/${user?.id}/practiceLogs`), {
           exerciseType: 'homework',
           exerciseFormat: activeTask.type || 'homework',
           date: new Date().toISOString(),
           isRevisionMode: false,
           score: avgScore,
-          totalWords: activeTask.sentences.length,
+          totalWords: sentencesCount,
           setDisplayName: activeTask.title || 'Praca domowa',
           exercisesData: evalResults
         });
-        if (updateUserStreak) {
-          updateUserStreak().catch(console.error);
+
+        if (user?.id) {
+          const currentCount = user.translatedSentencesCount || 0;
+          updateDoc(doc(db, 'users', user.id), {
+            translatedSentencesCount: currentCount + sentencesCount
+          }).catch(console.error);
         }
       } catch (e) {
         console.warn('Could not save homework practice log:', e);
+      }
+
+      if (updateUserStreak) {
+        updateUserStreak().catch(console.error);
       }
 
       setSubmissionResult({
@@ -420,6 +484,48 @@ export const HomeworkScreen: React.FC = () => {
       alert('Wystąpił błąd podczas przesyłania pracy domowej.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const handleAnalyzeWithAI = async () => {
+    if (!reviewTask || !reviewTask.id) return;
+    setIsAnalyzing(true);
+    try {
+      const results = await evaluateTeacherHomework(
+        (reviewTask.type === 'fill_in_the_blank' ? 'fill_in_the_blank' : 'translation'),
+        reviewTask.sentences,
+        reviewTask.studentAnswers || {},
+        teacherFeedbackText
+      );
+      
+      let totalScore = 0;
+      results.forEach((res) => {
+        const scoreNum = Number(res.score);
+        totalScore += isNaN(scoreNum) ? 0 : scoreNum;
+      });
+      const avgScore = results.length > 0 ? Math.round(totalScore / results.length) : 0;
+
+      const updatedData = {
+        evaluationResults: results,
+        grade: avgScore
+      };
+
+      await updateDoc(doc(db, 'specialTasks', reviewTask.id), updatedData);
+      
+      setReviewTask({
+        ...reviewTask,
+        evaluationResults: results,
+        grade: avgScore
+      });
+
+      alert('Zadanie przeanalizowane z uwzględnieniem Twoich wytycznych!');
+    } catch (e: any) {
+      console.error('Error analyzing homework:', e);
+      alert('Wystąpił błąd podczas analizy AI.');
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -496,7 +602,7 @@ export const HomeworkScreen: React.FC = () => {
           <div className="flex justify-between items-start border-b border-white/10 pb-4">
             <div>
               <span className="text-xs font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-primary/20 text-primary font-bold">
-                {activeTask.type === 'find_errors' ? 'Znajdź błędy w zdaniach' : 'Tłumaczenie zdań'}
+                {activeTask.type === 'fill_in_the_blank' ? 'Znajdź błędy w zdaniach' : 'Tłumaczenie zdań'}
               </span>
               <h2 className="text-xl font-bold text-white mt-2">{activeTask.title}</h2>
               {activeTask.instructions && (
@@ -528,7 +634,7 @@ export const HomeworkScreen: React.FC = () => {
               </div>
               <h3 className="text-2xl font-black text-white">Praca domowa przesłana do nauczyciela!</h3>
               <p className="text-sm text-content-muted max-w-lg mx-auto">
-                Twoje odpowiedzi zostały zapisane i przekazane do nauczyciela. Otrzymałeś szacunkowy wynik: <span className="font-bold text-primary">{submissionResult.score}%</span>.
+                Twoje odpowiedzi zostały zapisane i przekazane do nauczyciela. Otrzymałeś szacunkowy wynik: <span className="font-bold text-primary">{Number.isNaN(Number(submissionResult.score)) ? 0 : submissionResult.score}%</span>.
               </p>
 
               {/* Breakdown */}
@@ -542,7 +648,7 @@ export const HomeworkScreen: React.FC = () => {
                         {res.score !== undefined ? `${res.score}%` : (res.isCorrect ? 'Poprawne' : 'Do poprawy')}
                       </span>
                     </div>
-                    {activeTask.type === 'find_errors' ? (
+                    {activeTask.type === 'fill_in_the_blank' ? (
                       <>
                         <p className="text-sm text-red-300">Błędne zdanie: {res.incorrectSentence}</p>
                         <p className="text-sm text-gray-200">Twoja odpowiedź: <span className="text-primary font-medium">{res.studentAnswer || '(brak)'}</span></p>
@@ -573,6 +679,20 @@ export const HomeworkScreen: React.FC = () => {
             <div className="space-y-6">
               {activeTask.sentences.map((item: any, idx: number) => {
                 const isTranslation = (activeTask.type || 'translation') === 'translation';
+                
+                if (!isTranslation) {
+                  return (
+                    <div key={idx} className="p-5 rounded-2xl bg-base-200/60 border border-white/10 space-y-3">
+                      <FillInTheBlankTask 
+                        textWithBlanks={item.textWithBlanks} 
+                        availableWords={item.availableWords} 
+                        studentAnswers={(studentAnswers[idx] as any) || {}} 
+                        onAnswerChange={(blanks) => handleAnswerChange(idx, blanks as any)} 
+                      />
+                    </div>
+                  );
+                }
+
                 return (
                   <div key={idx} className="p-5 rounded-2xl bg-base-200/60 border border-white/10 space-y-3">
                     <div className="flex justify-between items-center">
@@ -590,20 +710,10 @@ export const HomeworkScreen: React.FC = () => {
                         </button>
                       )}
                     </div>
-
                     {/* Sentence Display */}
-                    {isTranslation ? (
-                      <div className="p-3 rounded-xl bg-base-300/80 text-white font-medium text-base border border-white/5">
-                        {item.polishSentence}
-                      </div>
-                    ) : (
-                      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 font-medium text-base">
-                        <span className="text-xs uppercase font-bold text-amber-400 block mb-1">
-                          Zdanie z błędem do poprawienia:
-                        </span>
-                        {item.incorrectSentence}
-                      </div>
-                    )}
+                    <div className="p-3 rounded-xl bg-base-300/80 text-white font-medium text-base border border-white/5">
+                      {item.polishSentence}
+                    </div>
 
                     {/* Hint display */}
                     {showHints[idx] && item.hint && (
@@ -615,13 +725,13 @@ export const HomeworkScreen: React.FC = () => {
                     {/* Student Answer Input */}
                     <div>
                       <label className="block text-xs font-semibold text-content-muted mb-1">
-                        {isTranslation ? 'Wpisz tłumaczenie na angielski:' : 'Wpisz poprawne zdanie po angielsku:'}
+                        Wpisz tłumaczenie na angielski:
                       </label>
                       <textarea
                         rows={2}
-                        value={studentAnswers[idx] || ''}
+                        value={(studentAnswers[idx] as any) || ''}
                         onChange={(e) => handleAnswerChange(idx, e.target.value)}
-                        placeholder={isTranslation ? 'Type English translation here...' : 'Type corrected English sentence here...'}
+                        placeholder="Type English translation here..."
                         className="w-full px-4 py-2.5 bg-base-100 text-white border border-white/10 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm transition-all resize-y"
                       />
                     </div>
@@ -719,14 +829,14 @@ export const HomeworkScreen: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => setHomeworkType('find_errors')}
+                onClick={() => setHomeworkType('fill_in_the_blank')}
                 className={`p-4 rounded-xl border text-left transition-all flex items-start gap-3 ${
-                  homeworkType === 'find_errors'
+                  homeworkType === 'fill_in_the_blank'
                     ? 'bg-primary/10 border-primary shadow-[0_0_15px_rgba(114,240,180,0.15)]'
                     : 'bg-base-200/60 border-white/5 hover:border-white/20'
                 }`}
               >
-                <div className={`p-2 rounded-lg ${homeworkType === 'find_errors' ? 'bg-primary text-base-100' : 'bg-base-300 text-gray-400'}`}>
+                <div className={`p-2 rounded-lg ${homeworkType === 'fill_in_the_blank' ? 'bg-primary text-base-100' : 'bg-base-300 text-gray-400'}`}>
                   <AlertTriangle size={20} />
                 </div>
                 <div>
@@ -787,6 +897,21 @@ export const HomeworkScreen: React.FC = () => {
                 </select>
               </div>
 
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-content-muted mb-1">Źródło słownictwa (z lekcji)</label>
+                <select
+                  value={selectedLessonId}
+                  onChange={(e) => setSelectedLessonId(e.target.value)}
+                  className="w-full px-3 py-1.5 bg-base-100 text-white border border-white/10 rounded-lg text-xs"
+                >
+                  <option value="manual">Manualnie (brak przypisanej lekcji)</option>
+                  {studentLessons.map((lesson) => (
+                    <option key={lesson.id} value={lesson.id}>
+                      {new Date(lesson.date).toLocaleDateString()} - {lesson.topic}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-xs font-semibold text-content-muted mb-1">Temat / Słownictwo</label>
                 <input
@@ -843,9 +968,17 @@ export const HomeworkScreen: React.FC = () => {
               <h3 className="font-bold text-white text-base">
                 Zdania w pracy domowej ({homeworkType === 'translation' ? translationItems.length : errorCorrectionItems.length})
               </h3>
-              <Button size="sm" variant="secondary" onClick={handleAddManualItem} className="flex items-center gap-1 text-xs">
-                <Plus size={14} /> Dodaj zdanie ręcznie
-              </Button>
+              <div className="flex gap-2">
+                {homeworkType === "translation" && (
+                  <Button size="sm" variant="secondary" onClick={() => setShowBulkAddModal(true)} className="flex items-center gap-1 text-xs">
+                    <FileText size={14} /> Wklej własne zdania
+                  </Button>
+                )}
+                <Button size="sm" variant="secondary" onClick={handleAddManualItem} className="flex items-center gap-1 text-xs">
+                  <Plus size={14} /> Dodaj pojedynczo
+                </Button>
+              </div>
+
             </div>
 
             {/* Type 1: Translation Editor */}
@@ -922,7 +1055,7 @@ export const HomeworkScreen: React.FC = () => {
             )}
 
             {/* Type 2: Error Correction Editor */}
-            {homeworkType === 'find_errors' && (
+            {homeworkType === 'fill_in_the_blank' && (
               <div className="space-y-3">
                 {errorCorrectionItems.length === 0 ? (
                   <p className="text-xs text-content-muted italic py-4 text-center border border-dashed border-white/10 rounded-xl">
@@ -942,66 +1075,54 @@ export const HomeworkScreen: React.FC = () => {
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-3">
                         <div>
-                          <label className="block text-[11px] font-semibold text-amber-400 mb-1">Zdanie Z BŁĘDEM (po angielsku)</label>
-                          <input
-                            type="text"
-                            value={item.incorrectSentence}
+                          <label className="block text-[11px] font-semibold text-amber-400 mb-1">Tekst z lukami (użyj [BLANK_1] itd.)</label>
+                          <textarea
+                            rows={3}
+                            value={item.textWithBlanks}
                             onChange={(e) => {
                               const updated = [...errorCorrectionItems];
-                              updated[idx].incorrectSentence = e.target.value;
+                              updated[idx].textWithBlanks = e.target.value;
                               setErrorCorrectionItems(updated);
                             }}
-                            placeholder="np. She don't like playing tennis."
+                            placeholder="This is a [BLANK_1]..."
                             className="w-full px-3 py-1.5 bg-base-100 text-white border border-amber-500/30 rounded-lg text-xs"
                           />
                         </div>
-
-                        <div>
-                          <label className="block text-[11px] font-semibold text-emerald-400 mb-1">POPRAWNE zdanie (wzorzec)</label>
-                          <input
-                            type="text"
-                            value={item.correctSentence}
-                            onChange={(e) => {
-                              const updated = [...errorCorrectionItems];
-                              updated[idx].correctSentence = e.target.value;
-                              setErrorCorrectionItems(updated);
-                            }}
-                            placeholder="np. She doesn't like playing tennis."
-                            className="w-full px-3 py-1.5 bg-base-100 text-white border border-emerald-500/30 rounded-lg text-xs"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[11px] font-semibold text-content-muted mb-1">Wytłumaczenie błędu (po polsku)</label>
-                          <input
-                            type="text"
-                            value={item.explanation || ''}
-                            onChange={(e) => {
-                              const updated = [...errorCorrectionItems];
-                              updated[idx].explanation = e.target.value;
-                              setErrorCorrectionItems(updated);
-                            }}
-                            placeholder="np. Dla 3. osoby używamy doesn't..."
-                            className="w-full px-3 py-1.5 bg-base-100 text-white border border-white/10 rounded-lg text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold text-content-muted mb-1">Wskazówka dla ucznia (opcjonalnie)</label>
-                          <input
-                            type="text"
-                            value={item.hint || ''}
-                            onChange={(e) => {
-                              const updated = [...errorCorrectionItems];
-                              updated[idx].hint = e.target.value;
-                              setErrorCorrectionItems(updated);
-                            }}
-                            placeholder="np. Sprawdź przeczenie..."
-                            className="w-full px-3 py-1.5 bg-base-100 text-white border border-white/10 rounded-lg text-xs"
-                          />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-emerald-400 mb-1">Odpowiedzi (JSON format)</label>
+                            <textarea
+                              rows={3}
+                              defaultValue={JSON.stringify(item.blanks, null, 2)}
+                              onBlur={(e) => {
+                                const updated = [...errorCorrectionItems];
+                                try {
+                                  updated[idx].blanks = JSON.parse(e.target.value);
+                                  setErrorCorrectionItems(updated);
+                                } catch(err) {
+                                  // ignore invalid json
+                                }
+                              }}
+                              placeholder='{ "BLANK_1": "word" }'
+                              className="w-full px-3 py-1.5 bg-base-100 text-white border border-emerald-500/30 rounded-lg text-xs font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-content-muted mb-1">Dostępne słowa (po przecinku)</label>
+                            <textarea
+                              rows={3}
+                              value={(item.availableWords || []).join(", ")}
+                              onChange={(e) => {
+                                const updated = [...errorCorrectionItems];
+                                updated[idx].availableWords = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
+                                setErrorCorrectionItems(updated);
+                              }}
+                              placeholder="word1, word2, word3"
+                              className="w-full px-3 py-1.5 bg-base-100 text-white border border-white/10 rounded-lg text-xs"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1097,7 +1218,7 @@ export const HomeworkScreen: React.FC = () => {
                   >
                     <div className="flex justify-between items-start mb-3">
                       <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-base-300 text-primary">
-                        {task.type === 'find_errors' ? 'Znajdź błędy' : 'Tłumaczenie zdań'}
+                        {task.type === 'fill_in_the_blank' ? 'Znajdź błędy' : 'Tłumaczenie zdań'}
                       </span>
 
                       {/* Status Badge */}
@@ -1201,14 +1322,6 @@ export const HomeworkScreen: React.FC = () => {
             </div>
           )}
 
-          {/* Integrated Flashcards Sub-section */}
-          <div className="pt-6 border-t border-white/10">
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Layers size={20} className="text-primary" />
-              Słownictwo z lekcji / Przypisane pakiety fiszek
-            </h2>
-            <AssignedTasks onStudySet={() => {}} />
-          </div>
         </div>
       )}
 
@@ -1246,7 +1359,7 @@ export const HomeworkScreen: React.FC = () => {
                     <div className="flex justify-between items-center text-xs font-mono text-content-muted">
                       <span>Zdanie #{idx + 1}</span>
                       {evalItem?.score !== undefined && (
-                        <span className="text-primary font-bold">Wynik AI: {evalItem.score}%</span>
+                        <span className="text-primary font-bold">Wynik AI: {Number.isNaN(Number(evalItem.score)) ? 0 : evalItem.score}%</span>
                       )}
                     </div>
 
@@ -1292,18 +1405,58 @@ export const HomeworkScreen: React.FC = () => {
                 className="w-full px-4 py-2.5 bg-base-100 text-white border border-white/10 rounded-xl focus:border-primary focus:outline-none text-sm resize-y"
               />
 
-              <div className="flex justify-end gap-3 pt-2">
-                <Button variant="secondary" onClick={() => setReviewTask(null)}>
-                  Zamknij
+              <div className="flex justify-between items-center pt-2">
+                <Button onClick={handleAnalyzeWithAI} isLoading={isAnalyzing} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700">
+                  <Sparkles size={18} /> Przeanalizuj z AI
                 </Button>
-                <Button onClick={handleSaveReview} isLoading={isSavingReview} className="flex items-center gap-2">
-                  <Check size={18} /> Zapisz ocenę i komentarz
+                <div className="flex justify-end gap-3">
+                  <Button variant="secondary" onClick={() => setReviewTask(null)}>
+                    Zamknij
+                  </Button>
+                  <Button onClick={handleSaveReview} isLoading={isSavingReview} className="flex items-center gap-2">
+                    <Check size={18} /> Zapisz ocenę i komentarz
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+      {showBulkAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <Card className="w-full max-w-2xl bg-base-300 border-white/10">
+            <div className="p-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <FileText className="text-primary" /> Dodaj własne zdania hurtowo
+                </h2>
+                <button onClick={() => setShowBulkAddModal(false)} className="text-content-muted hover:text-white transition-colors p-1">
+                  <X size={20} />
+                </button>
+              </div>
+              <p className="text-sm text-content-muted">
+                Wklej listę zdań (po polsku lub po polsku i angielsku). AI przeanalizuje tekst i automatycznie podzieli go na osobne zadania do tłumaczenia.
+              </p>
+              <textarea
+                rows={10}
+                value={bulkText}
+                onChange={(e) => setBulkText(e.target.value)}
+                placeholder="Np.\n1. Chcę kupić nowy samochód.\n2. I want to buy a new car.\n..."
+                className="w-full px-4 py-3 bg-base-100 text-white border border-white/10 rounded-xl focus:border-primary focus:outline-none text-sm resize-y"
+              />
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="secondary" onClick={() => setShowBulkAddModal(false)}>
+                  Anuluj
+                </Button>
+                <Button onClick={handleBulkProcess} isLoading={isBulkProcessing} className="flex items-center gap-2">
+                  <Sparkles size={18} /> Przetwórz z AI
                 </Button>
               </div>
             </div>
           </Card>
         </div>
       )}
+
     </div>
   );
 };

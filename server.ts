@@ -1,6 +1,6 @@
 
 async function callOpenAIServerFallback(prompt, system, schema) {
-  const openaiKey = process.env.VITE_OPENAI_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
   if (openaiKey) {
     try {
       console.log("[Server] Attempting OpenAI GPT model...");
@@ -53,8 +53,7 @@ try {
 async function generateContentWithRetry(aiClient: any, contents: any, config: any, customModels?: string[]) {
   const models = customModels || [
     'openai/gpt-4o-mini',
-    'gemini-2.5-flash',
-    'gemini-2.0-flash'
+    'gemini-2.5-flash'
   ];
   let lastError;
   const errors: string[] = [];
@@ -94,13 +93,13 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
         const sysInst = config?.systemInstruction || "";
 
         if (model.startsWith('openai')) {
-           const apiKey = process.env.VITE_OPENAI_API_KEY;
+           const apiKey = process.env.OPENAI_API_KEY;
            if (!apiKey) {
-             console.warn("[Server] VITE_OPENAI_API_KEY not configured, skipping model");
-             throw new Error("VITE_OPENAI_API_KEY not configured");
+             console.warn("[Server] OPENAI_API_KEY not configured, skipping model");
+             throw new Error("OPENAI_API_KEY not configured");
            }
            
-           const targetModel = model.replace('openai/', '');
+           const targetModel = 'gpt-4o-mini';
            const isJsonMode = config?.responseMimeType === 'application/json';
 
            let finalPrompt = promptText;
@@ -138,33 +137,6 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
            const data = await response.json();
            return { text: data.choices?.[0]?.message?.content || "" };
 
-        } else if (model.startsWith('deepseek')) {
-           const apiKey = process.env.VITE_DEEPSEEK_API_KEY;
-           if (!apiKey) {
-             console.warn("[Server] VITE_DEEPSEEK_API_KEY not configured, skipping model");
-             throw new Error("VITE_DEEPSEEK_API_KEY not configured");
-           }
-           
-           const isReasoner = model === 'deepseek-reasoner';
-           const response = await fetch("https://api.deepseek.com/chat/completions", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-              model: model,
-              messages: [
-                ...(sysInst && !isReasoner ? [{ role: "system", content: sysInst }] : []),
-                { role: "user", content: (isReasoner && sysInst ? sysInst + "\n\n" : "") + promptText }
-              ],
-              temperature: isReasoner ? 0.6 : (config?.temperature || 0.7)
-            })
-           });
-
-           if (!response.ok) throw new Error(`DeepSeek API error: ${response.statusText}`);
-           const data = await response.json();
-           return { text: data.choices?.[0]?.message?.content || "" };
         } else {
             const timeoutPromise = new Promise((_, reject) => {
               setTimeout(() => reject(new Error("Request timed out after 60 seconds")), 60000);
@@ -394,102 +366,6 @@ export async function createApp() {
 
   // Proxy for Gemini API
   
-  app.post('/api/deepseek/generate-test', requireFirebaseAdmin, async (req, res) => {
-    try {
-      const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, typeCounts, fileData, driveFile } = req.body;
-      const apiKey = process.env.VITE_DEEPSEEK_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: 'VITE_DEEPSEEK_API_KEY not configured.' });
-      
-      let typeBreakdownInstruction = '';
-      if (typeCounts && typeof typeCounts === 'object' && Object.keys(typeCounts).length > 0) {
-        const parts = Object.entries(typeCounts)
-          .filter(([t]) => !selectedTypes || selectedTypes.includes(t))
-          .map(([type, count]) => `- ${type}: DOKŁADNIE 1 ZADANIE ZBIORCZE zawierające ${count} przykładów/zdań w bullet pointach`);
-        if (parts.length > 0) {
-          typeBreakdownInstruction = `STRUKTURA ZADAŃ W TESTU (GŁÓWNA ZASADA GRUPOWANIA):\n${parts.join('\n')}\nKażdy z wybranych typów ma stanowić DOKŁADNIE JEDNO POJEDYNCZE ZADANIE ZBIORCZE z wybraną liczbą przykładów! Łączna liczba obiektów w tablicy pytań ma wynosić DOKŁADNIE ${selectedTypes ? selectedTypes.length : 1} (po jednym obiekcie dla każdego wybranego typu).`;
-        }
-      }
-      
-      const typeRulesMap = {
-        'translation': "- translation: 1 zadanie zbiorcze. W 'prompt' umieść N zdań polskich w punktach (1., 2., ...). Dodaj w nawiasie krótką wskazówkę, np. (past simple). W 'correctAnswer' umieść N angielskich tłumaczeń w punktach (1., 2., ...).",
-        'fill_in_blank': "- fill_in_blank: 1 zadanie zbiorcze w formie JEDNEGO SPÓJNEGO TEKSTU (np. krótka historyjka). W 'prompt' umieść tekst z lukami '___'. W 'correctAnswer' umieść N poprawnych słów w punktach (1., 2., ...).",
-        'fill_in_blank_bank': "- fill_in_blank_bank: 1 zadanie zbiorcze w formie JEDNEGO SPÓJNEGO TEKSTU. W 'wordBank' umieść słowa w rozsypce do wstawienia. W 'prompt' umieść tekst z lukami '___'. W 'correctAnswer' umieść N odpowiedzi.",
-        'matching': "- matching: 1 zadanie zbiorcze. W 'options' zamieść listę wszystkich N par w formacie [\"słowo1 = word1\", \"słowo2 = word2\", ...].",
-        'find_mistake': "- find_mistake: 1 zadanie zbiorcze. W 'prompt' umieść N zdań do poprawienia.",
-        'multiple_choice': "- multiple_choice: 1 zadanie zbiorcze. W 'prompt' umieść teksty z lukami lub pytania wielokrotnego wyboru. Podaj opcje A/B/C.",
-        'writing': "- writing: 1 zadanie z dłuższą wypowiedzią pisemną."
-      };
-      
-      const activeTypes = selectedTypes || ['multiple_choice', 'fill_in_blank', 'fill_in_blank_bank', 'translation'];
-      const activeRules = activeTypes.map((t) => typeRulesMap[t]).filter(Boolean).join('\n   ');
-
-      const prompt = `Jesteś asystentem edukacyjnym. Tworzysz wysoce spersonalizowany test dla kursanta na poziomie ${level || 'nieokreślony'}.
-      
-Tytuł/Tematyka: ${testTitle || 'Brak tytułu'}
-Zakres wytycznych: ${scope || 'Ogólne sprawdzenie wiedzy'}
-Kontekst i hobby ucznia: ${studentProfile || 'Brak specjalnych informacji'}
-Ostatnia lekcja: ${lessonContext || 'Brak'}
-Wcześniejsze lekcje: ${allLessonsContext || 'Brak'}
-Ogólna ilość zadań (grup): ${tasksCount || 10}
-
-${typeBreakdownInstruction}
-
-ZASADY:
-${activeRules}
-
-MUSISZ ZWRÓCIĆ WYŁĄCZNIE POPRAWNY JSON z jedną główną strukturą zawierającą tablicę 'questions'.
-Struktura pojedynczego pytania (obiektu):
-{
-  "type": "string - jeden z: multiple_choice, fill_in_blank, fill_in_blank_bank, translation, matching, writing, find_mistake",
-  "instruction": "Krótka instrukcja po polsku",
-  "prompt": "Treść polecenia, tekst z lukami, wypunktowane zdania polskie itp.",
-  "options": ["Opcja A", "Opcja B", ...] (tylko tam gdzie potrzebne),
-  "wordBank": ["slowo1", "slowo2", ...] (tylko dla fill_in_blank_bank),
-  "correctAnswer": "Prawidłowa odpowiedź (wypunktowana lista 1. ... 2. ... dla zadań wielokrotnych, konkretny klucz dla zamkniętych)",
-  "points": 1
-}
-
-Zwróć format jako:
-{
-  "questions": [
-     { "type": "...", ... }
-  ]
-}
-`;
-
-      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'deepseek-chat',
-          messages: [{ role: 'user', content: prompt }],
-          response_format: { type: 'json_object' }
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      const text = data.choices[0]?.message?.content || "";
-      
-      const jsonBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/i;
-      const match = text.match(jsonBlockRegex);
-      let jsonText = match && match[1] ? match[1].trim() : text;
-      
-      const parsed = JSON.parse(jsonText);
-      res.json({ questions: parsed.questions || parsed });
-    } catch (error) {
-      console.error('DeepSeek generate test error:', error);
-      res.status(500).json({ error: error.message || 'Error generating test' });
-    }
-  });
-
 app.post('/api/gemini/generate-test', requireFirebaseAdmin, async (req, res) => {
     try {
       const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, typeCounts, fileData, driveFile } = req.body;
@@ -820,7 +696,7 @@ Przeanalizuj CAŁĄ treść dokładnie i nie pomijaj żadnej lekcji. Zwróć wy�
           responseSchema: schema,
           temperature: 0.2
         },
-        ['openai/gpt-4o-mini', 'gemini-2.5-flash', 'gemini-2.0-flash']
+        ['openai/gpt-4o-mini', 'gemini-2.5-flash']
       );
 
       const responseText = response.text;
@@ -981,6 +857,7 @@ Poprawna odpowiedź (dla zadań zamkniętych): ${q.correctAnswer || "Zadanie otw
 
 Twoim zadaniem jest ocenić ten test i dostarczyć konstruktywny, motywujący feedback dla kursanta w języku polskim.
 Przeanalizuj każdą odpowiedź ucznia. Zwróć szczególną uwagę na zadania typu "writing" - wskaż błędy, ale też pochwal za dobre użycie struktur.
+ZASADA INTERPUNKCJI: Pamiętaj, że interpunkcja (kropki, przecinki, wielkie litery) jest potrzebna i jest dobrą praktyką, ale NIE MOŻE obniżać oceny ani powodować odejmowania punktów.
 Na koniec przyznaj łączną ocenę (np. w procentach lub punktach).
 
 Zwróć JSON z polami:
@@ -1015,11 +892,11 @@ Zwróć JSON z polami:
   app.post('/api/gemini/student-stats-summary', requireFirebaseAuth, async (req, res) => {
     try {
       const { stats, logsSummary, language } = req.body;
-      const geminiApiKey = process.env.VITE_GEMINI_API_KEY;
-      const openaiApiKey = process.env.VITE_OPENAI_API_KEY;
+      const geminiApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+      const openaiApiKey = process.env.OPENAI_API_KEY;
 
       if (!geminiApiKey && !openaiApiKey) {
-        return res.status(500).json({ error: 'No AI API key configured. Please set VITE_OPENAI_API_KEY or VITE_GEMINI_API_KEY in environment variables.' });
+        return res.status(500).json({ error: 'No AI API key configured. Please set OPENAI_API_KEY or GEMINI_API_KEY in environment variables.' });
       }
       
       const ai = new GoogleGenAI({ apiKey: geminiApiKey || 'DUMMY' });
@@ -1154,203 +1031,141 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
   app.post("/api/tts", handleTTS);
 
   // --- OPENAI API PROXIES ---
-  app.post("/api/openai/generate", optionalFirebaseAuth, async (req, res) => {
+  const handleOpenAI = async (req: any, res: any) => {
     try {
-      const { prompt, systemInstruction, model, isJson } = req.body;
-      if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
+      const { prompt, systemInstruction, isJson, messages } = req.body || {};
+      if (!prompt && !messages) return res.status(400).json({ error: 'Missing prompt or messages' });
 
-      const openaiKey = process.env.VITE_OPENAI_API_KEY;
-      if (!openaiKey) {
-        return res.status(500).json({ error: 'No OpenAI API key configured (VITE_OPENAI_API_KEY is missing).' });
-      }
+      const openaiKey = process.env.OPENAI_API_KEY;
+      const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 
-      const targetModel = model || 'gpt-4o-mini';
-
-      const bodyPayload: any = {
-        model: targetModel,
-        messages: [
+      let chatMessages = messages;
+      if (!chatMessages) {
+        chatMessages = [
           ...(systemInstruction ? [{ role: "system", content: systemInstruction }] : []),
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.7
-      };
-      if (isJson) {
-        bodyPayload.response_format = { type: "json_object" };
-        const sysInstStr = systemInstruction ? String(systemInstruction).toLowerCase() : "";
-        const promptStr = String(prompt).toLowerCase();
-        if (!sysInstStr.includes('json') && !promptStr.includes('json')) {
-          bodyPayload.messages.push({ role: "system", content: "You must respond in valid JSON format." });
-        }
+          { role: "user", content: prompt || "" }
+        ];
       }
 
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${openaiKey}`
-        },
-        body: JSON.stringify(bodyPayload)
-      });
+      const openAiModels = ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo", "gpt-4-turbo"];
+      let openAiSuccess = false;
+      let resultText = "";
+      let usedModel = "";
 
-      if (response.ok) {
-        const data = await response.json();
-        const content = data.choices?.[0]?.message?.content || "";
-        if (content) {
-          return res.json({ text: content, modelUsed: targetModel });
-        } else {
-          return res.status(500).json({ error: 'Empty response from OpenAI' });
-        }
-      } else {
-        const errorText = await response.text();
-        console.error('OpenAI API error:', errorText);
-        return res.status(response.status).json({ error: errorText });
-      }
-    } catch (err: any) {
-      console.error('OpenAI exception:', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // --- DEEPSEEK / OPENROUTER / GROQ API PROXIES ---
-  app.post("/api/deepseek/generate", optionalFirebaseAuth, async (req, res) => {
-    try {
-      const { prompt, systemInstruction, model, isJson } = req.body;
-      if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
-
-      const deepseekKey = process.env.VITE_DEEPSEEK_API_KEY || 'sk-9cd552056ba845e69ad063d53200fbcd';
-      const openrouterKey = process.env.VITE_OPENROUTER_API_KEY;
-      const groqKey = process.env.VITE_GROQ_API_KEY;
-
-      if (!deepseekKey && !openrouterKey && !groqKey) {
-        return res.status(500).json({ error: 'No AI provider API key configured (VITE_DEEPSEEK_API_KEY, VITE_OPENROUTER_API_KEY, or VITE_GROQ_API_KEY).' });
-      }
-
-      let lastErrorText = '';
-
-      // 1. Try Direct DeepSeek API if key available
-      if (deepseekKey) {
-        const preferredModels = model 
-          ? [model, model === 'deepseek-reasoner' ? 'deepseek-chat' : 'deepseek-reasoner']
-          : ['deepseek-chat', 'deepseek-reasoner'];
-
-        for (const targetModel of preferredModels) {
+      if (openaiKey) {
+        for (const modelName of openAiModels) {
+          console.log(`OpenAI Fallback -> Przełączam na model: ${modelName}`);
+          
           try {
-            const isReasoner = targetModel === 'deepseek-reasoner';
             const bodyPayload: any = {
-              model: targetModel,
-              messages: [
-                ...(systemInstruction && !isReasoner ? [{ role: "system", content: systemInstruction }] : []),
-                { role: "user", content: (isReasoner && systemInstruction ? systemInstruction + "\n\n" : "") + prompt }
-              ],
-              temperature: isReasoner ? 0.6 : 0.7
+              model: modelName,
+              messages: chatMessages,
+              temperature: 0.7
             };
 
-            const response = await fetch("https://api.deepseek.com/chat/completions", {
+            if (isJson) {
+              bodyPayload.response_format = { type: "json_object" };
+              const sysInstStr = systemInstruction ? String(systemInstruction).toLowerCase() : "";
+              const promptStr = String(prompt || "").toLowerCase();
+              if (!sysInstStr.includes('json') && !promptStr.includes('json')) {
+                bodyPayload.messages = [
+                  ...bodyPayload.messages,
+                  { role: "system", content: "You must respond in valid JSON format." }
+                ];
+              }
+            }
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+            const response = await fetch("https://api.openai.com/v1/chat/completions", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${deepseekKey}`
+                "Authorization": `Bearer ${openaiKey}`
               },
-              body: JSON.stringify(bodyPayload)
+              body: JSON.stringify(bodyPayload),
+              signal: controller.signal
             });
+            clearTimeout(timeoutId);
 
             if (response.ok) {
               const data = await response.json();
               const content = data.choices?.[0]?.message?.content || "";
               if (content) {
-                return res.json({ text: content, modelUsed: targetModel });
+                resultText = content;
+                usedModel = modelName;
+                openAiSuccess = true;
+                break;
               }
             } else {
-              lastErrorText = await response.text();
-              console.warn(`DeepSeek Direct (${targetModel}) failed [${response.status}]:`, lastErrorText);
+              const errText = await response.text();
+              console.warn(`OpenAI model ${modelName} failed with status ${response.status}: ${errText}`);
+              if (response.status === 401 || response.status === 429 || errText.includes('insufficient_quota') || errText.includes('rate_limit')) {
+                console.warn("OpenAI API key invalid or out of quota/rate-limited. Skipping remaining OpenAI models.");
+                break;
+              }
             }
           } catch (mErr: any) {
-            console.warn(`DeepSeek model ${targetModel} exception:`, mErr?.message);
-            lastErrorText = mErr?.message || String(mErr);
+            console.warn(`OpenAI model ${modelName} exception:`, mErr?.message || mErr);
           }
         }
+      } else {
+        console.warn("OPENAI_API_KEY missing on server.");
       }
 
-      // 2. Try OpenRouter API if key available
-      if (openrouterKey) {
-        try {
-          const bodyPayload: any = {
-            model: "deepseek/deepseek-chat",
-            messages: [
-              ...(systemInstruction ? [{ role: "system", content: systemInstruction }] : []),
-              { role: "user", content: prompt }
-            ]
-          };
+      if (openAiSuccess && resultText) {
+        return res.json({ text: resultText, modelUsed: usedModel });
+      }
 
-          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${openrouterKey}`,
-              "HTTP-Referer": "https://cribro-recall.app",
-              "X-Title": "Cribro Recall"
-            },
-            body: JSON.stringify(bodyPayload)
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            const content = data.choices?.[0]?.message?.content || "";
-            if (content) {
-              return res.json({ text: content, modelUsed: "openrouter/deepseek-chat" });
+      // Ultimate Fallback to Gemini 2.5 Flash
+      console.log("OpenAI Fallback -> Przełączam na model: gemini-2.5-flash. Key present:", Boolean(geminiKey));
+      if (geminiKey) {
+        let gRetries = 3;
+        while (gRetries > 0) {
+          try {
+            const ai = new GoogleGenAI({ apiKey: geminiKey });
+            let fullPrompt = prompt || "";
+            if (!fullPrompt && Array.isArray(messages)) {
+              fullPrompt = messages.map((m: any) => `${m.role}: ${m.content}`).join("\n");
             }
-          } else {
-            lastErrorText = await response.text();
-            console.warn(`OpenRouter failed [${response.status}]:`, lastErrorText);
-          }
-        } catch (orErr: any) {
-          console.warn("OpenRouter exception:", orErr?.message);
-          lastErrorText = orErr?.message || String(orErr);
-        }
-      }
 
-      // 3. Try Groq API if key available
-      if (groqKey) {
-        try {
-          const bodyPayload: any = {
-            model: "llama-3.3-70b-versatile",
-            messages: [
-              ...(systemInstruction ? [{ role: "system", content: systemInstruction }] : []),
-              { role: "user", content: prompt }
-            ]
-          };
-
-          const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${groqKey}`
-            },
-            body: JSON.stringify(bodyPayload)
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            const content = data.choices?.[0]?.message?.content || "";
-            if (content) {
-              return res.json({ text: content, modelUsed: "groq/llama-3.3-70b" });
+            const geminiConfig: any = {};
+            if (systemInstruction) {
+              geminiConfig.systemInstruction = systemInstruction;
             }
-          } else {
-            lastErrorText = await response.text();
-            console.warn(`Groq failed [${response.status}]:`, lastErrorText);
+            if (isJson) {
+              geminiConfig.responseMimeType = "application/json";
+            }
+
+            const geminiRes = await ai.models.generateContent({
+              model: "gemini-2.5-flash",
+              contents: fullPrompt,
+              config: geminiConfig
+            });
+
+            if (geminiRes.text) {
+              return res.json({ text: geminiRes.text, modelUsed: "gemini-2.5-flash" });
+            }
+          } catch (gErr: any) {
+            console.warn(`Gemini fallback exception (retries left ${gRetries - 1}):`, gErr?.message || gErr);
+            gRetries--;
+            if (gRetries > 0) {
+              await new Promise(r => setTimeout(r, 1500));
+            }
           }
-        } catch (gErr: any) {
-          console.warn("Groq exception:", gErr?.message);
-          lastErrorText = gErr?.message || String(gErr);
         }
       }
 
-      return res.status(500).json({ error: 'Primary AI providers (DeepSeek / OpenRouter / Groq) failed', details: lastErrorText });
-    } catch (error: any) {
-      console.error('AI provider proxy error:', error);
-      res.status(500).json({ error: error.message });
+      return res.status(503).json({ error: "Usługa AI jest chwilowo niedostępna." });
+    } catch (err: any) {
+      console.error("OpenAI handler error:", err);
+      return res.status(503).json({ error: "Usługa AI jest chwilowo niedostępna." });
     }
-  });
+  };
+
+  app.post("/api/openai", optionalFirebaseAuth, handleOpenAI);
+  app.post("/api/openai/generate", optionalFirebaseAuth, handleOpenAI);
 
   return app;
 }

@@ -52,7 +52,7 @@ const StudentTestsScreen: React.FC<StudentTestsScreenProps> = ({ onBack }) => {
             <div className="flex items-center justify-between p-6 border-b border-white/10 shrink-0">
               <div>
                 <h3 className="text-xl font-bold text-white">{feedbackTest.title} - Feedback</h3>
-                <p className="text-content-muted text-sm mt-1">{i18n.t("Wynik:")} {feedbackTest.score}/{feedbackTest.maxScore} {i18n.t("pkt")}</p>
+                <p className="text-content-muted text-sm mt-1">{i18n.t("Wynik:")} {Number.isNaN(Number(feedbackTest.score)) ? 0 : feedbackTest.score}/{Number.isNaN(Number(feedbackTest.maxScore)) ? 100 : feedbackTest.maxScore} {i18n.t("pkt")}</p>
               </div>
               <button onClick={() => setFeedbackTest(null)} className="p-2 hover:bg-white/5 rounded-full transition-colors text-content-muted hover:text-white">
                 <X className="w-6 h-6" />
@@ -126,14 +126,14 @@ const StudentTestsScreen: React.FC<StudentTestsScreenProps> = ({ onBack }) => {
                       {i18n.t("Pobierz raport (PDF)")}
                     </Button>
                     {test.status !== 'pending' && test.score !== undefined && (
-                      <span className="text-xs text-primary">{i18n.t("Ostatni wynik:")} {test.score}/{test.maxScore}  {i18n.t("pkt")}</span>
+                      <span className="text-xs text-primary">{i18n.t("Ostatni wynik:")} {Number.isNaN(Number(test.score)) ? 0 : test.score}/{Number.isNaN(Number(test.maxScore)) ? 100 : test.maxScore}  {i18n.t("pkt")}</span>
                     )}
                   </div>
                 ) : (
                   <div className="bg-base-300/50 px-4 py-2 rounded-lg border border-white/5">
                     <div className="font-bold text-sm mb-1 text-primary">{i18n.t("Zakończony")}</div>
                     {test.score !== undefined && (
-                      <div className="text-xl font-bold">{test.score}/{test.maxScore} <span className="text-xs text-content-muted">{i18n.t("pkt")}</span></div>
+                      <div className="text-xl font-bold">{Number.isNaN(Number(test.score)) ? 0 : test.score}/{Number.isNaN(Number(test.maxScore)) ? 100 : test.maxScore} <span className="text-xs text-content-muted">{i18n.t("pkt")}</span></div>
                     )}
                     {test.attemptsLimit && test.attemptsLimit < 999 && (
                       <span className="text-xs text-content-muted mt-1 block">

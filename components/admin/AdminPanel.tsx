@@ -1526,7 +1526,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                   <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
                     <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Średni Wynik")}</div>
-                    <div className="text-4xl font-display font-bold text-emerald-400">{userStats.averageScore}%</div>
+                    <div className="text-4xl font-display font-bold text-emerald-400">{Number.isNaN(Number(userStats.averageScore)) ? 0 : userStats.averageScore}%</div>
                   </div>
                   <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
                     <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Słownictwo Ogółem")}</div>
@@ -1628,7 +1628,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                           let scorePercent = null;
                           if (log.score !== undefined) {
                             const scoreNum = Number(log.score) || 0;
-                            scorePercent = (scoreNum <= 1 && scoreNum > 0) ? Math.round(scoreNum * 100) : Math.round(scoreNum);
+                            scorePercent = Number.isNaN(Number(scoreNum)) ? 0 : ((scoreNum <= 1 && scoreNum > 0) ? Math.round(scoreNum * 100) : Math.round(scoreNum));
                           }
                           
                           return (
@@ -3240,7 +3240,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
                     <div style={{ fontSize: '12px', color: '#334155', marginBottom: '8px' }}>
                       {log.setDisplayName && <div><strong>Zestaw:</strong> {log.setDisplayName}</div>}
-                      {log.score !== undefined && <div><strong>Wynik:</strong> {log.score}%</div>}
+                      {log.score !== undefined && <div><strong>Wynik:</strong> {Number.isNaN(Number(log.score)) ? 0 : log.score}%</div>}
                       {log.wordsUsed && log.wordsUsed.length > 0 && <div><strong>Wykorzystane słówka:</strong> {log.wordsUsed.join(', ')}</div>}
                     </div>
 

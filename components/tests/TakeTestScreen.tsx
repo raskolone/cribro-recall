@@ -158,22 +158,31 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
       try {
         const logId = `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const logRef = doc(db, `users/${user.id}/practiceLogs/${logId}`);
+        const qCount = test.questions ? test.questions.length : 1;
         await setDoc(logRef, {
           exerciseType: 'test',
           exerciseFormat: 'test',
           date: new Date().toISOString(),
           isRevisionMode: false,
           score: scoreToSave,
-          totalWords: test.questions ? test.questions.length : 1,
+          totalWords: qCount,
           testName: test.title || 'Test',
           setDisplayName: test.title || 'Test',
           exercisesData: `Test: ${test.title} (${scoreToSave}%)`
         });
-        if (updateUserStreak) {
-          updateUserStreak().catch(console.error);
+
+        if (user?.id) {
+          const currentCount = user.translatedSentencesCount || 0;
+          updateDoc(doc(db, 'users', user.id), {
+            translatedSentencesCount: currentCount + qCount
+          }).catch(console.error);
         }
       } catch (logErr) {
         console.warn("Could not save test to practiceLogs:", logErr);
+      }
+
+      if (updateUserStreak) {
+        updateUserStreak().catch(console.error);
       }
 
       setGradingResult({ score: scoreToSave, feedback: gradeResult.feedback });
@@ -200,7 +209,7 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
             
             {gradingResult.score !== undefined && (
               <div className="mb-4 text-lg">
-                <strong>{i18n.t("Wynik:")}</strong> {gradingResult.score} {i18n.t("pkt")}
+                <strong>{i18n.t("Wynik:")}</strong> {Number.isNaN(Number(gradingResult.score)) ? 0 : gradingResult.score} {i18n.t("pkt")}
               </div>
             )}
 

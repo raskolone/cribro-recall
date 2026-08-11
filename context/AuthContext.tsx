@@ -115,9 +115,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     data.streakCount = 0;
                   }
                 } else {
-                  // No last streak date, reset streak to 0 just in case
-                  updateDoc(userDocRef, { streakCount: 0 }).catch(console.error);
-                  data.streakCount = 0;
+                  // No last streak date recorded yet, initialize lastStreakDate to today to preserve current streak
+                  const todayStr = getLocalDateKey(new Date());
+                  updateDoc(userDocRef, { lastStreakDate: todayStr }).catch(console.error);
+                  data.lastStreakDate = todayStr;
                 }
               }
 
@@ -362,14 +363,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const updateUserStreak = async (): Promise<{streakCount: number, showConfetti: boolean}> => {
-    if (!user || user.username === 'Local Demo') {
-      return { streakCount: user?.streakCount || 0, showConfetti: false };
+    if (!user) {
+      return { streakCount: 0, showConfetti: false };
     }
 
     try {
       const today = new Date();
-      const todayStr = today.toISOString();
-      const currentStreak = user.streakCount || 0;
+      const todayStr = getLocalDateKey(today);
+      const currentStreak = typeof user.streakCount === 'number' ? user.streakCount : 0;
       
       let newStreak = currentStreak;
       let showConfetti = false;
@@ -379,37 +380,53 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const diffDays = getDaysBetween(user.lastStreakDate, today);
 
         if (diffDays === 0) {
-          // Already practiced today, don't increment, but maybe still show confetti if they want
+          // Practiced today! If streak was 0, make it at least 1
+          newStreak = Math.max(1, currentStreak);
           showConfetti = true; 
         } else if (diffDays === 1) {
-          // Perfect streak continuation
-          newStreak += 1;
+          // Perfect streak continuation from yesterday
+          newStreak = Math.max(1, currentStreak) + 1;
           showConfetti = true;
         } else {
-          // Break in streak
+          // Break in streak (skipped 2+ days)
           newStreak = 1;
           showConfetti = true;
         }
       } else {
-        // First time
-        newStreak = 1;
+        // First recorded practice day
+        newStreak = Math.max(1, currentStreak);
+        if (newStreak === 0) newStreak = 1;
         showConfetti = true;
-      }
-
-      if (auth.currentUser) {
-         const userDocRef = doc(db, 'users', auth.currentUser.uid);
-         await updateDoc(userDocRef, {
-           streakCount: newStreak,
-           lastStreakDate: todayStr
-         });
       }
 
       const updatedUser = { ...user, streakCount: newStreak, lastStreakDate: todayStr };
       setUser(updatedUser);
+
+      // Save in Firestore if user has a valid document ID
+      if (user.id) {
+        try {
+          const userDocRef = doc(db, 'users', user.id);
+          await updateDoc(userDocRef, {
+            streakCount: newStreak,
+            lastStreakDate: todayStr
+          });
+        } catch (dbErr) {
+          console.warn("Could not sync streak to Firestore:", dbErr);
+        }
+      }
+
+      // Local storage fallback for persistence across reloads/offline
+      try {
+        localStorage.setItem(`user_streak_${user.id || 'demo'}`, JSON.stringify({
+          streakCount: newStreak,
+          lastStreakDate: todayStr
+        }));
+      } catch (e) {}
+
       return { streakCount: newStreak, showConfetti };
 
     } catch (error) {
-      console.error('Error updating config', error);
+      console.error('Error updating streak:', error);
       return { streakCount: user.streakCount || 0, showConfetti: false };
     }
   };

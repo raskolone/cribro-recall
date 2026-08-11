@@ -110,7 +110,7 @@ const FlashcardStatsScreen: React.FC<FlashcardStatsScreenProps> = ({ setId, onBa
               <h3 className="text-sm font-medium text-content-muted uppercase tracking-wider mb-4">
                 {language === 'pl' ? 'Ostatnia sesja' : 'Last Session'}
               </h3>
-              <div className="text-4xl font-black text-primary mb-2">{Number(lastSession?.scorePercent) || 0}%</div>
+              <div className="text-4xl font-black text-primary mb-2">{Number.isNaN(Number(lastSession?.scorePercent)) ? 0 : Number(lastSession?.scorePercent)}%</div>
               <div className="text-sm text-content-muted">
                 {lastSession?.completedAt?.toDate().toLocaleDateString()} • {lastSession?.mode}
               </div>

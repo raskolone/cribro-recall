@@ -86,7 +86,7 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
       <div className="text-center p-8 bg-base-200/40 backdrop-blur-xl border border-white/20 rounded-lg shadow-2xl max-w-md mx-auto">
           <h2 className="text-2xl font-bold mb-4">{i18n.t("Flashcards Complete!")}</h2>
           <p className="text-lg mb-2">{i18n.t("You've reviewed all")} {shuffledWords.length}  {i18n.t("words.")}</p>
-          <p className="text-sm text-content-muted mb-6">{i18n.t("Accuracy:")} {(shuffledWords.length > 0 ? Math.round((correctCount / shuffledWords.length) * 100) : 0)}%</p>
+          <p className="text-sm text-content-muted mb-6">{i18n.t("Accuracy:")} {(shuffledWords.length > 0 ? (Number.isNaN(Math.round((correctCount / shuffledWords.length) * 100)) ? 0 : Math.round((correctCount / shuffledWords.length) * 100)) : 0)}%</p>
           <div className="flex gap-4 justify-center">
               <Button onClick={() => { setIsFinished(false); setCurrentIndex(0); setResults({}); }}>{i18n.t("Review Again")}</Button>
               <Button onClick={onExit} variant="secondary">{i18n.t("Exit")}</Button>

@@ -210,11 +210,13 @@ const StudentStatsScreen: React.FC = () => {
       totalScoreSum += isNaN(scoreNum) ? 0 : scoreNum;
 
       // Count sentences
-      if (l.exerciseType === 'ai_translation') {
+      if ((l.exerciseType as string) !== 'Aktywność') {
         let count = 0;
         if (l.totalWords !== undefined && l.totalWords !== null) {
           const wNum = Number(l.totalWords);
           count = isNaN(wNum) ? 0 : wNum;
+        } else if (Array.isArray(l.detailedFeedback)) {
+          count = l.detailedFeedback.length;
         } else if (Array.isArray(l.exercisesData)) {
           count = l.exercisesData.length;
         } else if (typeof l.exercisesData === 'string') {
@@ -224,8 +226,13 @@ const StudentStatsScreen: React.FC = () => {
             try {
               const parsed = JSON.parse(l.exercisesData);
               if (Array.isArray(parsed)) count = parsed.length;
-            } catch {}
+              else count = 1;
+            } catch {
+              count = 1;
+            }
           }
+        } else {
+          count = 1;
         }
         totalSentences += isNaN(count) ? 0 : count;
       }
@@ -485,7 +492,7 @@ const StudentStatsScreen: React.FC = () => {
                 {language === 'pl' ? 'Średni Wynik' : 'Average Score'}
               </p>
               <div className="flex items-baseline gap-2">
-                <h3 className="text-3xl font-black text-white">{stats.averageScore}%</h3>
+                <h3 className="text-3xl font-black text-white">{Number.isNaN(Number(stats.averageScore)) ? 0 : stats.averageScore}%</h3>
                 <span className="text-xs font-bold text-emerald-400/90">{language === 'pl' ? 'poprawności' : 'accuracy'} 🎯</span>
               </div>
             </div>

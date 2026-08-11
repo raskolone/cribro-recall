@@ -194,6 +194,11 @@ const Dashboard: React.FC = () => {
           if (extra && extra.initialMode) {
             (window as any)._initialStudyMode = extra.initialMode === 'match' ? 'matching' : extra.initialMode;
           }
+          if (extra && extra.autoGenerate !== undefined) {
+              (window as any)._autoGenerate = extra.autoGenerate;
+            } else {
+              delete (window as any)._autoGenerate;
+            }
           setView(v as View);
         }} 
         onStartAIPractice={() => {
@@ -248,6 +253,7 @@ const Dashboard: React.FC = () => {
     return <AIExerciseGeneratorScreen 
       onShowOnboarding={() => setShowOnboarding(true)}
       initialSetId={activeSetId}
+      autoGenerate={(window as any)._autoGenerate}
       onChangeView={(newView, extra) => {
         if (extra && (extra.setId || extra.activeSetId)) setActiveSetId(extra.setId || extra.activeSetId);
         if (extra && extra.initialMode) {

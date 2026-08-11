@@ -79,12 +79,7 @@ const generateContentWithFallback = async (params: any) => {
 
       if (model.startsWith('openai')) {
          const isJsonMode = apiParams.config?.responseMimeType === 'application/json';
-           const text = await callOpenAI(promptText, sysInst, model.replace('openai/', ''), isJsonMode);
-         return { text };
-      }
-
-      if (model.startsWith('deepseek')) {
-         const text = await callDeepSeek(promptText, sysInst, model);
+         const text = await callOpenAI(promptText, sysInst, model.replace('openai/', ''), isJsonMode);
          return { text };
       }
 
@@ -102,7 +97,7 @@ const generateContentWithFallback = async (params: any) => {
     } catch (e: any) {
       console.warn(`Model ${model} failed:`, e?.status || e?.message);
       lastError = e;
-      if (e?.message === 'Missing VITE_OPENAI_API_KEY') {
+      if (e?.message === 'Missing OPENAI_API_KEY') {
         throw e;
       }
       if (e?.message?.includes("timed out")) continue;
@@ -114,30 +109,33 @@ const generateContentWithFallback = async (params: any) => {
   throw lastError;
 };
 
-import OpenAI from "openai";
-
 const callOpenAI = async (prompt: string, systemInstruction: string, model: string = "gpt-4o-mini", isJson: boolean = true) => {
   console.log("Wysyłam zapytanie do OpenAI przez proxy (" + model + ")...");
   
   try {
-    const res = await fetch('/api/openai/generate', {
+    const res = await fetch('/api/openai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prompt,
         systemInstruction,
-        model,
         isJson
       })
     });
     
+    const rawText = await res.text();
+    let data: any;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      throw new Error(`Serwer zwrócił nieprawidłową odpowiedź (status ${res.status}): ${rawText.slice(0, 100)}`);
+    }
+
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP error ${res.status}`);
+      throw new Error(data.error || `Błąd serwera AI (${res.status})`);
     }
     
-    const data = await res.json();
-    console.log("Odpowiedź OpenAI odebrana pomyślnie.");
+    console.log("Odpowiedź AI odebrana pomyślnie.");
     return data.text;
   } catch (error) {
     console.error("Błąd wywołania OpenAI:", error);
@@ -145,13 +143,7 @@ const callOpenAI = async (prompt: string, systemInstruction: string, model: stri
   }
 };
 
-import { generateDeepSeekResponse } from './deepseekService';
-
-const callDeepSeek = async (prompt: string, systemInstruction: string, model: string = "deepseek-chat") => {
-  return await generateDeepSeekResponse(prompt, systemInstruction);
-};
-
-export const PREFERRED_AI_MODELS = ['openai/gpt-4o-mini', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+export const PREFERRED_AI_MODELS = ['openai/gpt-4o-mini', 'gemini-2.5-flash'];
 
 export const formatAIModelName = (model?: string): string => {
   if (!model) return 'OpenAI (GPT-4o mini)';
@@ -159,8 +151,6 @@ export const formatAIModelName = (model?: string): string => {
   if (model.includes('gpt-4o')) return 'OpenAI (GPT-4o)';
   if (model.includes('gpt-4-turbo')) return 'OpenAI (GPT-4 Turbo)';
   if (model.includes('gpt-4')) return 'OpenAI (GPT-4)';
-  if (model.includes('deepseek-reasoner') || model.includes('deepseekv4-pro')) return 'DeepSeek Pro (R1)';
-  if (model.includes('deepseek-chat') || model.includes('deepseek')) return 'DeepSeek Lite (V3)';
   if (model.includes('gemini-2.5')) return 'Gemini 2.5 Flash';
   if (model.includes('gemini-2.0')) return 'Gemini 2.0 Flash';
   if (model.includes('gemini-1.5')) return 'Gemini 1.5 Flash';
@@ -190,40 +180,48 @@ export const generateTextWithUnifiedFallback = async (
         if (text) {
           return { text, modelUsed: model };
         }
-      } else if (model.startsWith('deepseek')) {
-        const text = await callDeepSeek(prompt, systemInstruction, model);
-        if (text) {
-          return { text, modelUsed: model };
-        }
       } else if (model.startsWith('gemini')) {
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error("Request timed out after 60 seconds")), 60000);
-        });
-        
-        const apiCall = getAI().models.generateContent({
-          model,
-          contents: prompt,
-          config: {
-            systemInstruction,
-            ...(geminiConfig || {})
-          }
-        });
+        let retries = 3;
+        while (retries > 0) {
+          try {
+            const timeoutPromise = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error("Request timed out after 60 seconds")), 60000);
+            });
+            
+            const apiCall = getAI().models.generateContent({
+              model,
+              contents: prompt,
+              config: {
+                systemInstruction,
+                ...(geminiConfig || {})
+              }
+            });
 
-        const response: any = await Promise.race([apiCall, timeoutPromise]);
-        const text = response?.text;
-        if (text) {
-          return { text, modelUsed: model };
+            const response: any = await Promise.race([apiCall, timeoutPromise]);
+            const text = response?.text;
+            if (text) {
+              return { text, modelUsed: model };
+            }
+          } catch (gErr: any) {
+            console.warn(`Gemini model ${model} attempt failed (retries left ${retries - 1}):`, gErr?.message || gErr);
+            retries--;
+            if (retries > 0) {
+              await new Promise(r => setTimeout(r, 1500));
+            } else {
+              throw gErr;
+            }
+          }
         }
       }
     } catch (error: any) {
       console.warn(`Model ${model} failed:`, error?.message || error);
       lastError = error;
-      if (error?.message === 'Missing VITE_OPENAI_API_KEY') {
+      if (error?.message === 'Missing OPENAI_API_KEY') {
         throw error;
       }
     }
   }
-  throw lastError || new Error("All OpenAI and DeepSeek fallback models failed.");
+  throw lastError || new Error("All AI fallback models failed.");
 };
 
 const vocabularySchema = {
@@ -360,6 +358,7 @@ Generate natural, highly realistic sentences using the provided list of target v
 CRITICAL: The Polish translations MUST be perfectly natural, logically coherent, grammatically flawless, and sound like something a native Polish speaker would actually say in real life. Do not generate robotic, word-for-word, or awkwardly phrased Polish sentences.
 
 RULES FOR SENTENCE GENERATION:
+- ZASADA ŻELAZNA - LOGIKA I KONTEKST ŻYCIOWY (IRONCLAD RULE): Zdania MUSZĄ być w 100% logiczne, sensowne i naturalne w realnym świecie. Ich głównym celem jest nauka poprawnego, autentycznego kontekstu i użycia języka — a NIE tylko mechaniczne sprawdzanie słówka. BEZWZGLĘDNIE ZABRANIA SIĘ generowania zdań sztucznych, dziwacznych, pozbawionych sensu lub bezmyślnie wymuszonych. Praktyczny sens i spójność logiczna to absolutnie najwyższy priorytet.
 - CONTEXT: Sentences MUST sound like real-world communication relevant to the provided vocabulary (e.g., casual, technical, business, everyday conversation).
 - LENGTH: Maximum sentence length is 16 words, regardless of the level. Do not exceed 16 words for the entire sentence.
 - NATURALNESS: Never force multiple target words into a single sentence if it sounds awkward. Use MAXIMUM 1 target word per sentence.
@@ -367,7 +366,8 @@ RULES FOR SENTENCE GENERATION:
 - VARIETY: Use diverse sentence structures (mix conditionals, modal verbs, different tenses, and sentence lengths).
 - LOGIC & REALISM: Sentences MUST be practical, logical, and make total sense in real-world communication. Do NOT forcefully weave random student profile keywords or hobbies into a sentence if it makes the sentence illogical, weird, or artificial. Practical usability is the absolute highest priority.
 - HINT REQUIREMENT: Pole \`hint\` musi ZAWSZE zawierać kluczowe trudne słowa z danego zdania (angielskie) wraz z tłumaczeniem, plus krótką wskazówkę co do użytej struktury gramatycznej.
-- ANTI-REPETITION (CRITICAL): Do NOT generate sentences that are structurally identical or extremely similar to the sentences listed in PAST EXERCISES. The user should learn to understand the language dynamically, not memorize specific sentence structures by heart. Create new contexts, subjects, and scenarios.\n- ANTI-REPETITION & CONTEXT (CRITICAL): Jeśli uczeń kontynuuje ćwiczenie (ćwiczy dłużej), kategorycznie NIE powtarzaj tych samych ani podobnych zdań, które znajdują się w PAST EXERCISES. Buduj zupełnie nowe, świeże scenariusze i konteksty, ale utrzymaj docelowe słownictwo.
+- ANTI-REPETITION (CRITICAL): Do NOT generate sentences that are structurally identical or extremely similar to the sentences listed in PAST EXERCISES. The user should learn to understand the language dynamically, not memorize specific sentence structures by heart. Create new contexts, subjects, and scenarios.
+- ANTI-REPETITION & CONTEXT (CRITICAL): Jeśli uczeń kontynuuje ćwiczenie (ćwiczy dłużej), kategorycznie NIE powtarzaj tych samych ani podobnych zdań, które znajdują się w PAST EXERCISES. Buduj zupełnie nowe, świeże scenenarios i konteksty, ale utrzymaj docelowe słownictwo.
 - LEARNING FROM MISTAKES: Jeśli dostarczono sekcję [STUDENT MISTAKES], skup się na wygenerowaniu zdań, które ćwiczą trudne dla ucznia obszary (np. błędnie użyte słowa lub konstrukcje gramatyczne). Zdania muszą pokazywać wyraźny, życiowy kontekst poprawnego użycia, aby uczeń zrozumiał błąd i mógł się poprawić.
 
 INPUT FORMAT:
@@ -400,7 +400,7 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
   const MAX_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. Always prioritize natural logic, practical communication, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: 1) If the target sentence has FEWER THAN 8 words (< 8 words): split into mostly SINGLE WORDS or small pairs (e.g. phrasal verbs 'look up', prepositions 'in the'). 2) If the target sentence has 8 OR MORE WORDS (>= 8 words): group into LARGER logical phrase chunks (2-4 words per chunk, e.g. 'I decided to go', 'to the grocery store', 'after work'). Limit long sentences to 3 to 5 chunks maximum so it is achievable and serves as a good warmup before typing.";
+      const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. IRONCLAD RULE: Every generated sentence MUST be strictly logical, natural, and make complete real-world sense to teach authentic context (never generate senseless or bizarre sentences just to test vocabulary). Always prioritize natural logic, practical communication context, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: 1) If the target sentence has FEWER THAN 8 words (< 8 words): split into mostly SINGLE WORDS or small pairs (e.g. phrasal verbs 'look up', prepositions 'in the'). 2) If the target sentence has 8 OR MORE WORDS (>= 8 words): group into LARGER logical phrase chunks (2-4 words per chunk, e.g. 'I decided to go', 'to the grocery store', 'after work'). Limit long sentences to 3 to 5 chunks maximum so it is achievable and serves as a good warmup before typing.";
       
       const preferredModels = PREFERRED_AI_MODELS;
       const geminiConfig = {
@@ -422,8 +422,7 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
       const verificationPrompt = `Przeanalizuj poniższe wygenerowane zdania w formacie JSON:
 ${responseText}
 
-TWOJE ZADANIE: Sprawdź spójność logiczną i sens zdania. Upewnij się, że zdania są naturalne, a nie robotyczne czy sztuczne. Dzięki temu umożliwi to uczenie się przez skojarzenia faktów.
-Jeśli to konieczne, popraw zdania (zarówno polskie, jak i angielskie), aby brzmiały jak najbardziej naturalnie i logicznie.
+TWOJE ZADANIE: Sprawdź spójność logiczną i sens każdego zdania. Upewnij się, że zdania są w 100% logiczne, sensowne i naturalne w realnym świecie, a nie robotyczne, dziwaczne czy sztuczne. Zdania mają uczyć poprawnego, autentycznego kontekstu! Jeśli jakiekolwiek zdanie jest bez sensu, sztuczne lub dziwne, OD RAZU popraw je na w pełni logiczne i życiowe, zachowując docelowe słownictwo.
 PAMIĘTAJ: Pole \`polish_translation\` (lub \`polishSentence\`) MUSI być ZAWSZE po polsku. Pole \`english_sentence\` (lub \`englishTranslation\`) MUSI być ZAWSZE po angielsku. Upewnij się, że nie pozamieniałeś języków miejscami!
 
 Zwróć skorygowany wynik WYŁĄCZNIE jako poprawny obiekt JSON, zachowując dokładnie tę samą strukturę (klucze).`;
@@ -506,9 +505,10 @@ GRADING RUBRIC (Total Score: 100%):
 3. Target Vocabulary & Spelling (20%): Is the key vocabulary used correctly and spelled properly? (Max 20 points)
 
 IMPORTANT GRADING RULES:
-- If the student's input is a completely valid, natural English translation, award high or full marks (85-100%). Do NOT unfairly penalize for valid synonyms or natural phrasing variations.
+- ZASADA INTERPUNKCJI (PUNCTUATION RULE): Interpunkcja (kropka na końcu zdania, przecinki, pytajniki, cudzysłowy) oraz wielkie litery są dobrą praktyką i są potrzebne, ALE NIE SŁUŻĄ DO ODEJMOWANIA PUNKTÓW. BEZWZGLĘDNIE ZABRANIA SIĘ odejmowania punktów lub obniżania oceny za brak lub błędy w interpunkcji / braki wielkich liter. Błędy interpunkcyjne NIE MOGĄ wpływać na ogólną ocenę punktową ani powodować obniżenia wyniku.
+- If the student's input is a completely valid, natural English translation (even if missing a full stop, comma, or capital letter), award high or full marks (85-100%). Do NOT unfairly penalize for valid synonyms, natural phrasing variations, or missing punctuation.
 - CRITICAL: If the student's input is a random string (e.g. "asdf"), completely wrong, irrelevant, missing ("(brak odpowiedzi)"), or in the wrong language, you MUST assign: meaning_score: 0, grammar_score: 0, vocabulary_score: 0, score: 0, and is_correct: false.
-- Deduct points for grammar errors, wrong vocabulary, or missing words.
+- Deduct points for grammar errors, wrong vocabulary, or missing words (do NOT deduct points for punctuation or capitalization).
 - Calculate total score = meaning_score + grammar_score + vocabulary_score.
 - Set is_correct to true ONLY if total score >= 75 AND the core meaning is preserved.
 
@@ -558,10 +558,10 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
   const MAX_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON.";
+      const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON. CRITICAL PUNCTUATION RULE: Do NOT deduct points or penalize scores for missing or incorrect punctuation/capitalization (punctuation is needed/good practice, but must NOT lower the score).";
       
       // Priority: OpenAI GPT-4o-mini, with fallback to available Gemini models
-      const preferredModels = ['openai/gpt-4o-mini', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+      const preferredModels = ['openai/gpt-4o-mini', 'gemini-2.5-flash'];
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: evaluationResultSchema,
@@ -814,7 +814,7 @@ export const generateImageForTerm = async (term: string, context?: string): Prom
   
   try {
     const response = await getAI().models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       contents: { parts: [{ text: prompt }] },
       config: {
         imageConfig: {
@@ -1157,37 +1157,30 @@ export const generateHomework = async (topic: string, summary: string, words: st
   }
 };
 
-export const generateErrorCorrectionExercises = async (
+export const generateFillInTheBlankExercises = async (
   level: string,
   topicOrWords?: string,
   numSentences: number = 5,
   customPrompt?: string
-): Promise<Array<{ incorrectSentence: string; correctSentence: string; explanation: string; hint: string }>> => {
+): Promise<{ textWithBlanks: string; blanks: Record<string, string>; availableWords: string[] }> => {
   const prompt = `ROLE:
 Jesteś doświadczonym nauczycielem języka angielskiego.
 
 ZADANIE:
-Wygeneruj ${numSentences} zdań po angielsku na poziomie ${level || 'B1-B2'}, w których celowo umieszczono powszechny błąd (gramatyczny, leksykalny, szyku wyrazów lub ortograficzny).
+Wygeneruj spójny krótki tekst (opowiadanie, artykuł lub dialog) po angielsku na poziomie ${level || 'B1-B2'}.
+W tekście zastąp około ${numSentences} kluczowych słów lub wyrażeń specjalnymi znacznikami [BLANK_1], [BLANK_2], itd. (od 1 do ${numSentences}).
 
-${topicOrWords ? `TEMAT / SŁOWNICTWO: ${topicOrWords}` : ''}
+${topicOrWords ? `TEMAT / SŁOWNICTWO, na którym ma się opierać tekst: ${topicOrWords}` : ''}
 ${customPrompt ? `DODATKOWE INSTRUKCJE OD NAUCZYCIELA: ${customPrompt}` : ''}
-
-Dla każdego zdania przygotuj:
-1. "incorrectSentence": Błędne zdanie po angielsku.
-2. "correctSentence": Poprawne zdanie po angielsku.
-3. "explanation": Krótkie wytłumaczenie po polsku, dlaczego to był błąd i jaka reguła tu obowiązuje.
-4. "hint": Wskazówka po polsku pomagająca uczniowi nakierować na błąd.
 
 Zwróć wynik WYŁĄCZNIE jako poprawny obiekt JSON o strukturze:
 {
-  "exercises": [
-    {
-      "incorrectSentence": "She don't like coffee.",
-      "correctSentence": "She doesn't like coffee.",
-      "explanation": "W 3. osobie liczby pojedynczej czasu Present Simple używamy przeczenia 'doesn't', a nie 'don't'.",
-      "hint": "Zwróć uwagę na przeczenie w 3. osobie l. pojedynczej."
-    }
-  ]
+  "textWithBlanks": "This is a [BLANK_1] of the text. It contains [BLANK_2] placeholders.",
+  "blanks": {
+    "BLANK_1": "sample",
+    "BLANK_2": "several"
+  },
+  "availableWords": ["sample", "several", "extra", "words"] // Include all correct answers plus optionally 1-2 distractor words
 }`;
 
   try {
@@ -1195,16 +1188,19 @@ Zwróć wynik WYŁĄCZNIE jako poprawny obiekt JSON o strukturze:
     const text = response?.text || '';
     const jsonText = extractJSON(text);
     const parsed = JSON.parse(jsonText);
-    if (parsed && Array.isArray(parsed.exercises)) {
-      return parsed.exercises;
+    
+    if (parsed && parsed.textWithBlanks && parsed.blanks) {
+      if (!parsed.availableWords || parsed.availableWords.length === 0) {
+        parsed.availableWords = Object.values(parsed.blanks);
+        // shuffle
+        parsed.availableWords = parsed.availableWords.sort(() => Math.random() - 0.5);
+      }
+      return parsed as { textWithBlanks: string; blanks: Record<string, string>; availableWords: string[] };
     }
-    if (Array.isArray(parsed)) {
-      return parsed;
-    }
-    return [];
-  } catch (err) {
-    console.error("Error generating error correction exercises:", err);
-    throw new Error("Nie udało się wygenerować zdań z błędami.");
+    throw new Error('Invalid format returned by AI');
+  } catch (error) {
+    console.error('Error generating fill-in-the-blank exercise:', error);
+    throw error;
   }
 };
 
@@ -1230,7 +1226,8 @@ Odpowiedź ucznia: "${studentAnswer}"
 
 ZADANIE:
 Oceń odpowiedź ucznia (punktacja 0-100%, flaga isCorrect, wyjaśnienie po polsku i sugerowana poprawna wersja). 
-Jeśli odpowiedź ucznia jest poprawną gramatycznie i znaczeniowo wersją bez błędu (nawet jeśli różni się drobnym szczegółem od wzorca, np. "does not" zamiast "doesn't"), uznaj ją za w pełni poprawną (isCorrect: true, score: 100).
+Jeśli odpowiedź ucznia jest poprawną gramatycznie i znaczeniowo wersją bez błędu (nawet jeśli różni się drobnym szczegółem od wzorca, np. "does not" zamiast "doesn't", albo brakuje jej kropki/przecinka/wielkiej litery), uznaj ją za w pełni poprawną (isCorrect: true, score: 100).
+ZASADA INTERPUNKCJI: Pamiętaj, że brak lub błędy interpunkcji (kropka, przecinek, wielka litera) NIE MOGĄ być powodem do odejmowania punktów ani uznania odpowiedzi za błędną.
 
 Zwróć czysty JSON:
 {
@@ -1266,7 +1263,7 @@ Zwróć czysty JSON:
 export const getAudioPronunciation = async (text: string, language: string): Promise<string> => {
   try {
     const response = await getAI().models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       contents: [{ parts: [{ text: text }] }],
       config: {
         responseModalities: [Modality.AUDIO],
@@ -1284,6 +1281,61 @@ export const getAudioPronunciation = async (text: string, language: string): Pro
   }
 };
 
+export const evaluateTeacherHomework = async (
+  taskType: 'translation' | 'fill_in_the_blank',
+  sentences: any[],
+  studentAnswers: Record<string | number, string>,
+  teacherComment: string
+): Promise<any[]> => {
+  const prompt = `ROLE:
+Jesteś doświadczonym, empatycznym nauczycielem języka angielskiego. Twój kolega (inny nauczyciel) poprosił Cię o ocenienie pracy domowej ucznia na podstawie pewnych wytycznych.
+
+ZADANIE:
+Oceń poprawność odpowiedzi ucznia.
+
+TYP ZADANIA: ${taskType}
+
+${taskType === 'translation' 
+  ? 'Oceniasz tłumaczenia zdań z języka polskiego na angielski.' 
+  : 'Oceniasz uzupełnianie luk w tekście.'}
+
+WYTYCZNE NAUCZYCIELA:
+"${teacherComment}"
+Musisz bezwzględnie wziąć te wytyczne pod uwagę (np. jeśli nauczyciel każe ignorować brak przecinków lub uznać konkretną odpowiedź - zrób to).
+ZASADA INTERPUNKCJI: Interpunkcja (kropka na końcu zdania, przecinki, pytajniki, wielkie litery) jest potrzebna i jest dobrą praktyką, ale NIE ODEJMUJ ZA NIĄ PUNKTÓW ani nie obniżaj oceny w przypadku jej braku lub drobnym błędzie interpunkcyjnym.
+
+DANE ZADANIA I ODPOWIEDZI UCZNIA:
+${JSON.stringify({sentences, studentAnswers}, null, 2)}
+
+WYMAGANY FORMAT ZWROTNY:
+Zwróć poprawny obiekt JSON o strukturze:
+{
+  "results": [
+    {
+      "isCorrect": true/false, // lub "częściowo" z punktami
+      "score": 0-100, // procentowa ocena danego elementu
+      "explanation": "Twój komentarz dla ucznia po polsku, biorący pod uwagę zdanie i wytyczne nauczyciela.",
+      "studentAnswer": "odpowiedź ucznia",
+      "correctAnswer": "wzorzec"
+    }
+    // ... dla każdego elementu z zadania
+  ]
+}`;
+
+  try {
+    const response = await generateContentWithFallback({ contents: prompt });
+    const text = response?.text || '';
+    const jsonText = extractJSON(text);
+    const parsed = JSON.parse(jsonText);
+    if (parsed && Array.isArray(parsed.results)) {
+      return parsed.results;
+    }
+    return [];
+  } catch (err) {
+    console.error("Error evaluating teacher homework:", err);
+    throw new Error("Nie udało się ocenić pracy za pomocą AI.");
+  }
+};
 export const generateLessonSummary = async (
   notes: string,
   pdfBase64: string,
@@ -1430,7 +1482,7 @@ Zwróć WYŁĄCZNIE poprawny obiekt JSON o strukturze:
 
     const response = await generateContentWithFallback({
       contents,
-      preferredModels: ['openai/gpt-4o-mini', 'gemini-2.5-flash', 'gemini-2.0-flash'],
+      preferredModels: ['openai/gpt-4o-mini', 'gemini-2.5-flash'],
       config: {
         responseMimeType: "application/json",
       }
@@ -1441,5 +1493,47 @@ Zwróć WYŁĄCZNIE poprawny obiekt JSON o strukturze:
   } catch (error) {
     console.error("Error generating bulk lesson summary:", error);
     throw new Error("Failed to generate bulk lesson summary.");
+  }
+};
+
+export const processBulkSentences = async (
+  text: string
+): Promise<Array<{ polishSentence: string; englishTranslation: string; hint: string }>> => {
+  const prompt = `ROLE: Nauczyciel języka angielskiego.
+Otrzymujesz tekst zawierający listę zdań do przetłumaczenia z języka polskiego na angielski.
+Mogą to być same zdania polskie, albo zdania z podanym już angielskim tłumaczeniem.
+
+ZADANIE:
+Przeanalizuj podany tekst i wyciągnij z niego poszczególne zdania. 
+Dla każdego zdania podaj jego polską wersję oraz poprawne, naturalne tłumaczenie na język angielski. Możesz też dodać opcjonalną krótką wskazówkę po polsku (np. jakiej gramatyki użyć).
+
+TEKST:
+"""
+${text}
+"""
+
+Zwróć wynik WYŁĄCZNIE jako obiekt JSON o strukturze:
+{
+  "exercises": [
+    {
+      "polishSentence": "...",
+      "englishTranslation": "...",
+      "hint": "..."
+    }
+  ]
+}
+`;
+
+  try {
+    const response = await generateContentWithFallback({ contents: prompt });
+    const jsonText = extractJSON(response?.text || '');
+    const parsed = JSON.parse(jsonText);
+    if (parsed && Array.isArray(parsed.exercises)) {
+      return parsed.exercises;
+    }
+    return [];
+  } catch (err) {
+    console.error("Error processing bulk sentences:", err);
+    throw new Error("Nie udało się przetworzyć podanego tekstu.");
   }
 };

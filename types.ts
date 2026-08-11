@@ -254,7 +254,17 @@ export interface ErrorCorrectionExercise {
   hint?: string;
 }
 
-export type HomeworkType = 'translation' | 'find_errors';
+export type HomeworkType = 'translation' | 'find_errors' | 'fill_in_the_blank';
+
+export interface FillInTheBlankExercise {
+  sentenceWithBlank?: string;
+  missingWord?: string;
+  fullSentence?: string;
+  textWithBlanks?: string;
+  blanks?: Record<string, string>;
+  availableWords?: string[];
+  hint?: string;
+}
 
 export interface SpecialTask {
   id?: string;

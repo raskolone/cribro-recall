@@ -116,6 +116,7 @@ TASK:
 Generate natural, highly realistic sentences using the provided list of target vocabulary from the student's personal word list or lesson history. Adapt the tone and topic naturally to match the vocabulary context.
 
 RULES FOR SENTENCE GENERATION:
+- ZASADA ŻELAZNA - LOGIKA I KONTEKST (IRONCLAD RULE): Zdania MUSZĄ być w 100% logiczne, sensowne, naturalne i przedstawiać prawdziwy, życiowy kontekst. ZABRANIA SIĘ generowania zdań bezsensownych, dziwacznych lub sztucznie ukierunkowanych tylko na przetestowanie słówka. Cel to nauka poprawnego, autentycznego kontekstu i użycia języka w życiu.
 - CONTEXT: Sentences MUST sound like real-world communication relevant to the provided vocabulary (e.g., casual, technical, business, everyday conversation).
 - NATURALNESS: Never force multiple target words into a single sentence if it sounds awkward. Use MAXIMUM 1 target word per sentence.
 - GRAMMAR & STYLE: Use modern, natural English. Avoid academic, bizarre, or forced phrasing.
@@ -136,6 +137,9 @@ Evaluate the student's translation based ONLY on the provided target sentence an
 
 CRITICAL ISOLATION RULE:
 Evaluate ONLY the data provided in the current input block. Ignore any previous sentences or chat history.
+
+ZASADA INTERPUNKCJI (PUNCTUATION RULE):
+Interpunkcja (kropka na końcu zdania, przecinki, pytajniki, wielkie litery) jest potrzebna i zalecana, ALE NIE SŁUŻY DO ODEJMOWANIA PUNKTÓW. BEZWZGLĘDNIE ZABRANIA SIĘ odejmowania punktów lub obniżania oceny za brak lub błędy interpunkcyjne / brak wielkiej litery.
 
 GRADING RUBRIC (Total Score: 100%):
 1. Meaning & Accuracy (40%): Does the translation convey the exact intended meaning? Accept valid synonyms and natural reformulations! (Max 40 points)
@@ -269,6 +273,15 @@ function getPolishVocative(name: string): string {
   }
 
   return cleanName;
+}
+
+function getPolishSentencesPlural(count: number): string {
+  if (count === 1) return 'zdanie';
+  const lastTwo = count % 100;
+  const last = count % 10;
+  if (lastTwo >= 12 && lastTwo <= 14) return 'zdań';
+  if (last >= 2 && last <= 4) return 'zdania';
+  return 'zdań';
 }
 
 
@@ -488,13 +501,14 @@ const AILoadingButton = ({ isLoading, onClick, children, className, disabled, lo
 interface AIExerciseGeneratorScreenProps {
   onOpenSidebar?: () => void;
   initialSetId?: string | null;
+  autoGenerate?: boolean;
   onStartPractice?: (type: any, mode1?: boolean, mode2?: boolean) => void;
   onExerciseStateChange?: (active: boolean) => void;
   onChangeView?: (view: string, extra?: any) => void;
   onShowOnboarding?: () => void;
 }
 
-const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ initialSetId = null, onStartPractice, onExerciseStateChange, onOpenSidebar, onChangeView, onShowOnboarding }) => {
+const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ initialSetId = null, autoGenerate = false, onStartPractice, onExerciseStateChange, onOpenSidebar, onChangeView, onShowOnboarding }) => {
   const { language } = useLanguage();
   const { sets, getFlashcards } = useFlashcards();
   const { user, updateUserStreak } = useAuth();
@@ -661,29 +675,42 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         snapshot.forEach(docSnap => {
           const data = docSnap.data();
           if (data.exerciseType === 'Aktywność') return;
-          if (data.detailedFeedback && Array.isArray(data.detailedFeedback)) {
+          if (data.totalWords !== undefined && data.totalWords !== null && !isNaN(Number(data.totalWords))) {
+            total += Number(data.totalWords);
+          } else if (data.detailedFeedback && Array.isArray(data.detailedFeedback)) {
             total += data.detailedFeedback.length;
           } else if (data.exercisesData) {
             if (Array.isArray(data.exercisesData)) {
               total += data.exercisesData.length;
             } else if (typeof data.exercisesData === 'string' && data.exercisesData.includes(' | ')) {
               total += data.exercisesData.split(' | ').length;
-            } else if (data.totalWords) {
-              total += data.totalWords;
             } else {
               total += 1;
             }
-          } else if (data.totalWords) {
-            total += data.totalWords;
+          } else {
+            total += 1;
           }
         });
         setTranslatedSentencesCount(total);
         if (user.translatedSentencesCount !== total) {
           updateDoc(doc(db, 'users', user.id), { translatedSentencesCount: total }).catch(console.error);
         }
-      }).catch(console.error);
+      }).catch(() => {
+        if (typeof user?.translatedSentencesCount === 'number') {
+          setTranslatedSentencesCount(user.translatedSentencesCount);
+        }
+      });
+    } else {
+      try {
+        const stored = localStorage.getItem(`user_translated_count_${user?.id || 'demo'}`);
+        if (stored !== null) {
+          setTranslatedSentencesCount(Number(stored) || 0);
+        } else if (typeof user?.translatedSentencesCount === 'number') {
+          setTranslatedSentencesCount(user.translatedSentencesCount);
+        }
+      } catch (e) {}
     }
-  }, [user?.id]);
+  }, [user?.id, user?.translatedSentencesCount]);
 
   // Settings states
   const [activeTab, setActiveTab] = useState<'ai' | 'other'>('ai');
@@ -737,6 +764,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     }
   }, [user?.level]);
 
+  
   useEffect(() => {
     if (initialSetId) {
       setSelectedSetId(initialSetId);
@@ -746,6 +774,18 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       }
     }
   }, [initialSetId]);
+
+  const [hasAutoGenerated, setHasAutoGenerated] = useState(false);
+  useEffect(() => {
+    if (autoGenerate && !hasAutoGenerated && selectedSetId) {
+       // Wait a tiny bit for states to settle
+       setTimeout(() => {
+          handleGenerate();
+          setHasAutoGenerated(true);
+       }, 100);
+    }
+  }, [autoGenerate, hasAutoGenerated, selectedSetId]);
+
 
   // App states
   const [exercises, setExercises] = useState<TranslationExercise[]>([]);
@@ -763,7 +803,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   // Loading & error states
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
-  const [activeGeneratingModel, setActiveGeneratingModel] = useState<string>('deepseek-chat');
+  const [activeGeneratingModel, setActiveGeneratingModel] = useState<string>('openai/gpt-4o-mini');
   const [lastUsedWords, setLastUsedWords] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [debugLogs, setDebugLogs] = useState<string>('');
@@ -2082,8 +2122,12 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 animate-pulse" />
                           <span>
                             {language === 'pl' 
-                              ? `Przetłumaczyłeś już ${translatedSentencesCount} zdań. Świetna robota!` 
-                              : `You have translated ${translatedSentencesCount} sentences. Great job!`}
+                              ? (translatedSentencesCount === 0
+                                  ? 'Przetłumacz swoje pierwsze zdanie, aby rozpocząć! Powodzenia!'
+                                  : `Przetłumaczyłeś już ${translatedSentencesCount} ${getPolishSentencesPlural(translatedSentencesCount)}. Świetna robota!`)
+                              : (translatedSentencesCount === 0
+                                  ? 'Translate your first sentence to get started! Good luck!'
+                                  : `You have translated ${translatedSentencesCount} ${translatedSentencesCount === 1 ? 'sentence' : 'sentences'}. Great job!`)}
                           </span>
                         </p>
                       </div>
@@ -3528,7 +3572,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
             {practiceMode === 'time' && timeLeft !== null && (
               <div className={`font-mono text-base font-bold flex items-center gap-1.5 ${timeLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-primary'}`}>
                 <Clock className="w-4 h-4" />
-                {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                {Number.isNaN(Number(timeLeft)) ? 0 : Math.floor((timeLeft as number) / 60)}:{Number.isNaN(Number(timeLeft)) ? '00' : ((timeLeft as number) % 60).toString().padStart(2, '0')}
               </div>
             )}
             {practiceMode === 'fixed' && (
@@ -3976,7 +4020,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               {language === 'pl' ? 'Twój spersonalizowany wynik!' : 'Your overall score!'}
             </h2>
             <div className="flex justify-center items-baseline gap-2 relative z-10">
-              <span className="score-text inline-block text-6xl font-black text-primary font-mono drop-shadow-[0_0_15px_rgba(114,240,180,0.4)]">{averageScore}%</span>
+              <span className="score-text inline-block text-6xl font-black text-primary font-mono drop-shadow-[0_0_15px_rgba(114,240,180,0.4)]">{Number.isNaN(Number(averageScore)) ? 0 : averageScore}%</span>
               <span className="text-sm text-content-muted">/ 100%</span>
             </div>
 

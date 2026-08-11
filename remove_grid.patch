@@ -1,0 +1,142 @@
+--- components/flashcards/FlashcardStudyScreen.tsx
++++ components/flashcards/FlashcardStudyScreen.tsx
+@@ -152,99 +152,6 @@
+     );
+   }
+ 
+-  if (!selectedMode) {
+-    return (
+-      <div className="max-w-4xl mx-auto space-y-8">
+-        <div className="flex items-center justify-between">
+-          <button onClick={onBack} className="text-content-muted hover:text-white flex items-center gap-2">
+-            ← {language === 'pl' ? 'Wróć do zestawu' : 'Back to set'}
+-          </button>
+-          <h2 className="text-2xl font-bold">{set?.title}</h2>
+-        </div>
+-
+-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+-          {onStartAIPractice && (
+-            <Card 
+-              className="cursor-pointer hover:border-primary transition-colors group relative overflow-hidden"
+-              onClick={onStartAIPractice}
+-            >
+-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+-              <div className="text-4xl mb-4 relative z-10">✨</div>
+-              <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors relative z-10">
+-                {language === 'pl' ? 'Tłumacz z AI' : 'Translate with AI'}
+-              </h3>
+-              <p className="text-content-muted text-sm relative z-10">
+-                {language === 'pl' ? 'Ćwicz tłumaczenie całych zdań z użyciem tego słownictwa, wspierany przez AI.' : 'Practice translating full sentences using this vocabulary, powered by AI.'}
+-              </p>
+-            </Card>
+-          )}
+-
+-          <Card 
+-            className="cursor-pointer hover:border-primary transition-colors group"
+-            onClick={() => setSelectedMode('intro')}
+-          >
+-            <div className="text-4xl mb-4">👀</div>
+-            <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+-              {language === 'pl' ? 'Fiszki Intro' : 'Flashcards Intro'}
+-            </h3>
+-            <p className="text-content-muted text-sm">
+-              {language === 'pl' ? 'Zapoznaj się powoli z nowym materiałem, bez sprawdzania i wyników.' : 'Familiarize yourself gently with new material, without testing or scoring.'}
+-            </p>
+-          </Card>
+-
+-          <Card 
+-            className="cursor-pointer hover:border-primary transition-colors group"
+-            onClick={() => setSelectedMode('flashcards')}
+-          >
+-            <div className="text-4xl mb-4">🎴</div>
+-            <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+-              {language === 'pl' ? 'Fiszki' : 'Flashcards'}
+-            </h3>
+-            <p className="text-content-muted text-sm">
+-              {language === 'pl' ? 'Przeglądaj pojęcia i definicje. Odwracaj karty, aby sprawdzić swoją wiedzę.' : 'Review terms and definitions. Flip cards to test your knowledge.'}
+-            </p>
+-          </Card>
+-
+-          <Card 
+-            className="cursor-pointer hover:border-primary transition-colors group"
+-            onClick={() => setSelectedMode('quiz')}
+-          >
+-            <div className="text-4xl mb-4">📝</div>
+-            <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+-              {language === 'pl' ? 'Quiz' : 'Quiz'}
+-            </h3>
+-            <p className="text-content-muted text-sm">
+-              {language === 'pl' ? 'Wybierz poprawną odpowiedź z 4 dostępnych opcji.' : 'Choose the correct answer from 4 available options.'}
+-            </p>
+-          </Card>
+-
+-          <Card 
+-            className="cursor-pointer hover:border-primary transition-colors group"
+-            onClick={() => setSelectedMode('writing')}
+-          >
+-            <div className="text-4xl mb-4">⌨️</div>
+-            <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+-              {language === 'pl' ? 'Pisanie' : 'Writing'}
+-            </h3>
+-            <p className="text-content-muted text-sm">
+-              {language === 'pl' ? 'Wpisz poprawną definicję z klawiatury.' : 'Type the correct definition from your keyboard.'}
+-            </p>
+-          </Card>
+-
+-          <Card 
+-            className="cursor-pointer hover:border-primary transition-colors group"
+-            onClick={() => setSelectedMode('matching')}
+-          >
+-            <div className="text-4xl mb-4">🧩</div>
+-            <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+-              {language === 'pl' ? 'Dopasowywanie' : 'Matching'}
+-            </h3>
+-            <p className="text-content-muted text-sm">
+-              {language === 'pl' ? 'Połącz pojęcia z definicjami na czas.' : 'Match terms with definitions against the clock.'}
+-            </p>
+-          </Card>
+-        </div>
+-      </div>
+-    );
+-  }
+-
+   const renderModal = () => (
+     <ConfirmModal
+       isOpen={confirmModalState.isOpen}
+@@ -261,19 +168,19 @@
+   );
+ 
+   if (selectedMode === 'intro') {
+-    return <>{renderModal()}<IntroMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} onBack={() => setSelectedMode(null)} t={t} language={language} /></>;
++    return <>{renderModal()}<IntroMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} onBack={onBack} t={t} language={language} /></>;
+   }
+ 
+   if (selectedMode === 'quiz') {
+-    return <>{renderModal()}<QuizMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={() => setSelectedMode(null)} saveSession={saveSession} t={t} /></>;
++    return <>{renderModal()}<QuizMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSession} t={t} /></>;
+   }
+ 
+   if (selectedMode === 'writing') {
+-    return <>{renderModal()}<WritingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={() => setSelectedMode(null)} saveSession={saveSession} t={t} /></>;
++    return <>{renderModal()}<WritingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSession} t={t} /></>;
+   }
+ 
+   if (selectedMode === 'matching') {
+-    return <>{renderModal()}<MatchingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={() => setSelectedMode(null)} saveSession={saveSession} t={t} /></>;
++    return <>{renderModal()}<MatchingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSession} t={t} /></>;
+   }
+ 
+   return (
+@@ -282,9 +189,11 @@
+       <FlashcardsMode showConfirm={showConfirm} closeConfirm={closeConfirm} 
+         cards={cards} 
+         setId={setId} 
+-        onBack={() => setSelectedMode(null)} 
++        onBack={onBack} 
+         saveSession={saveSession}
+         t={t}
++        onNavigate={onNavigate}
++        language={language}
+       />
+     </>
+   );

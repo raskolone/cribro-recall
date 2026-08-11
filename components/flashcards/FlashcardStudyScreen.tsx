@@ -152,101 +152,6 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
     );
   }
 
-  if (!selectedMode) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
-          <button onClick={onBack} className="text-content-muted hover:text-white flex items-center gap-2">
-            ← {language === 'pl' ? 'Wróć do zestawu' : 'Back to set'}
-          </button>
-          <h2 className="text-2xl font-bold">{set?.title}</h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {onStartAIPractice && (
-            <Card 
-              className="cursor-pointer hover:border-primary transition-colors group relative overflow-hidden"
-              onClick={onStartAIPractice}
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-              <div className="text-4xl mb-4 relative z-10">✨</div>
-              <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors relative z-10">
-                {language === 'pl' ? 'Tłumacz z AI' : 'Translate with AI'}
-              </h3>
-              <p className="text-content-muted text-sm relative z-10">
-                {language === 'pl' ? 'Ćwicz tłumaczenie całych zdań z użyciem tego słownictwa, wspierany przez AI.' : 'Practice translating full sentences using this vocabulary, powered by AI.'}
-              </p>
-            </Card>
-          )}
-
-          <Card 
-            className="cursor-pointer hover:border-primary transition-colors group"
-            onClick={() => setSelectedMode('intro')}
-          >
-            <div className="text-4xl mb-4">👀</div>
-            <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
-              {language === 'pl' ? 'Fiszki Intro' : 'Flashcards Intro'}
-            </h3>
-            <p className="text-content-muted text-sm">
-              {language === 'pl' ? 'Zapoznaj się powoli z nowym materiałem, bez sprawdzania i wyników.' : 'Familiarize yourself gently with new material, without testing or scoring.'}
-            </p>
-          </Card>
-
-          <Card 
-            className="cursor-pointer hover:border-primary transition-colors group"
-            onClick={() => setSelectedMode('flashcards')}
-          >
-            <div className="text-4xl mb-4">🎴</div>
-            <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
-              {language === 'pl' ? 'Fiszki' : 'Flashcards'}
-            </h3>
-            <p className="text-content-muted text-sm">
-              {language === 'pl' ? 'Przeglądaj pojęcia i definicje. Odwracaj karty, aby sprawdzić swoją wiedzę.' : 'Review terms and definitions. Flip cards to test your knowledge.'}
-            </p>
-          </Card>
-
-          <Card 
-            className="cursor-pointer hover:border-primary transition-colors group"
-            onClick={() => setSelectedMode('quiz')}
-          >
-            <div className="text-4xl mb-4">📝</div>
-            <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
-              {language === 'pl' ? 'Quiz' : 'Quiz'}
-            </h3>
-            <p className="text-content-muted text-sm">
-              {language === 'pl' ? 'Wybierz poprawną odpowiedź z 4 dostępnych opcji.' : 'Choose the correct answer from 4 available options.'}
-            </p>
-          </Card>
-
-          <Card 
-            className="cursor-pointer hover:border-primary transition-colors group"
-            onClick={() => setSelectedMode('writing')}
-          >
-            <div className="text-4xl mb-4">⌨️</div>
-            <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
-              {language === 'pl' ? 'Pisanie' : 'Writing'}
-            </h3>
-            <p className="text-content-muted text-sm">
-              {language === 'pl' ? 'Wpisz poprawną definicję z klawiatury.' : 'Type the correct definition from your keyboard.'}
-            </p>
-          </Card>
-
-          <Card 
-            className="cursor-pointer hover:border-primary transition-colors group"
-            onClick={() => setSelectedMode('matching')}
-          >
-            <div className="text-4xl mb-4">🧩</div>
-            <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
-              {language === 'pl' ? 'Dopasowywanie' : 'Matching'}
-            </h3>
-            <p className="text-content-muted text-sm">
-              {language === 'pl' ? 'Połącz pojęcia z definicjami na czas.' : 'Match terms with definitions against the clock.'}
-            </p>
-          </Card>
-        </div>
-      </div>
-    );
-  }
 
   const renderModal = () => (
     <ConfirmModal
@@ -261,19 +166,25 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
   );
 
   if (selectedMode === 'intro') {
-    return <>{renderModal()}<IntroMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} onBack={() => setSelectedMode(null)} t={t} language={language} /></>;
+    return <>{renderModal()}<IntroMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} onBack={onBack} t={t} language={language} /></>;
   }
 
   if (selectedMode === 'quiz') {
-    return <>{renderModal()}<QuizMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={() => setSelectedMode(null)} saveSession={saveSession} t={t} /></>;
+    return <>{renderModal()}<QuizMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSession}
+        onNavigate={onNavigate}
+        language={language} t={t} /></>;
   }
 
   if (selectedMode === 'writing') {
-    return <>{renderModal()}<WritingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={() => setSelectedMode(null)} saveSession={saveSession} t={t} /></>;
+    return <>{renderModal()}<WritingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSession}
+        onNavigate={onNavigate}
+        language={language} t={t} /></>;
   }
 
   if (selectedMode === 'matching') {
-    return <>{renderModal()}<MatchingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={() => setSelectedMode(null)} saveSession={saveSession} t={t} /></>;
+    return <>{renderModal()}<MatchingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSession}
+        onNavigate={onNavigate}
+        language={language} t={t} /></>;
   }
 
   return (
@@ -282,8 +193,10 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
       <FlashcardsMode showConfirm={showConfirm} closeConfirm={closeConfirm} 
         cards={cards} 
         setId={setId} 
-        onBack={() => setSelectedMode(null)} 
+        onBack={onBack} 
         saveSession={saveSession}
+        onNavigate={onNavigate}
+        language={language}
         t={t}
       />
     </>
@@ -539,14 +452,14 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
       <div className="max-w-2xl mx-auto text-center space-y-8">
         <h2 className="text-3xl font-bold">{t('flashcards.complete')}</h2>
         <Card className="py-12">
-          <div className="text-6xl font-black text-primary mb-4">{score}%</div>
+          <div className="text-6xl font-black text-primary mb-4">{Number.isNaN(Number(score)) ? 0 : score}%</div>
           <p className="text-xl text-content-muted">
             {t('flashcards.score').replace('{correct}', correctCount.toString()).replace('{total}', cards.length.toString())}
           </p>
         </Card>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
           <Button onClick={onBack} variant="secondary" className="flex-1">{t('flashcards.back')}</Button>
-          <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards' }); }} className="flex-1">
+          <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards', autoGenerate: true }); }} className="flex-1">
             {language === 'pl' ? 'Przećwicz w zdaniach' : 'Practice in sentences'}
           </Button>
         </div>
@@ -583,7 +496,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
       <div className="w-full bg-base-300 h-2 rounded-full overflow-hidden">
         <div 
           className="bg-primary h-full transition-all duration-300"
-          style={{ width: `${((currentIndex) / cards.length) * 100}%` }}
+          style={{ width: `${cards.length > 0 ? ((currentIndex) / cards.length) * 100 : 0}%` }}
         />
       </div>
 
@@ -753,14 +666,14 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
       <div className="max-w-2xl mx-auto text-center space-y-8">
         <h2 className="text-3xl font-bold">{t('flashcards.complete')}</h2>
         <Card className="py-12">
-          <div className="text-6xl font-black text-primary mb-4">{score}%</div>
+          <div className="text-6xl font-black text-primary mb-4">{Number.isNaN(Number(score)) ? 0 : score}%</div>
           <p className="text-xl text-content-muted">
             {t('flashcards.score').replace('{correct}', correctCount.toString()).replace('{total}', cards.length.toString())}
           </p>
         </Card>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
           <Button onClick={onBack} variant="secondary" className="flex-1">{t('flashcards.back')}</Button>
-          <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards' }); }} className="flex-1">
+          <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards', autoGenerate: true }); }} className="flex-1">
             {language === 'pl' ? 'Przećwicz w zdaniach' : 'Practice in sentences'}
           </Button>
         </div>
@@ -797,7 +710,7 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
       <div className="w-full bg-base-300 h-2 rounded-full overflow-hidden">
         <div 
           className="bg-primary h-full transition-all duration-300"
-          style={{ width: `${((currentIndex) / cards.length) * 100}%` }}
+          style={{ width: `${cards.length > 0 ? ((currentIndex) / cards.length) * 100 : 0}%` }}
         />
       </div>
 
@@ -934,14 +847,14 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
       <div className="max-w-2xl mx-auto text-center space-y-8">
         <h2 className="text-3xl font-bold">{t('flashcards.complete')}</h2>
         <Card className="py-12">
-          <div className="text-6xl font-black text-primary mb-4">{score}%</div>
+          <div className="text-6xl font-black text-primary mb-4">{Number.isNaN(Number(score)) ? 0 : score}%</div>
           <p className="text-xl text-content-muted">
             {t('flashcards.score').replace('{correct}', correctCount.toString()).replace('{total}', cards.length.toString())}
           </p>
         </Card>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
           <Button onClick={onBack} variant="secondary" className="flex-1">{t('flashcards.back')}</Button>
-          <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards' }); }} className="flex-1">
+          <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards', autoGenerate: true }); }} className="flex-1">
             {language === 'pl' ? 'Przećwicz w zdaniach' : 'Practice in sentences'}
           </Button>
         </div>
@@ -970,7 +883,7 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
       <div className="w-full bg-base-300 h-2 rounded-full overflow-hidden">
         <div 
           className="bg-primary h-full transition-all duration-300"
-          style={{ width: `${((currentIndex) / cards.length) * 100}%` }}
+          style={{ width: `${cards.length > 0 ? ((currentIndex) / cards.length) * 100 : 0}%` }}
         />
       </div>
 
@@ -1122,7 +1035,7 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, show
         </Card>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
           <Button onClick={onBack} variant="secondary" className="flex-1">{t('flashcards.back')}</Button>
-          <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards' }); }} className="flex-1">
+          <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards', autoGenerate: true }); }} className="flex-1">
             {language === 'pl' ? 'Przećwicz w zdaniach' : 'Practice in sentences'}
           </Button>
         </div>
