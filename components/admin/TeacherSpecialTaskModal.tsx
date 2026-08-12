@@ -4,7 +4,7 @@ import Button from '../ui/Button';
 import { X, Sparkles, Check, Trash2, Plus, RefreshCw, BookOpen, Eye, EyeOff, CheckSquare, Square, ChevronDown } from 'lucide-react';
 import { generateTranslationExercises } from '../../services/geminiService';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 import i18n from "i18next";
 
@@ -195,6 +195,7 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
       };
 
       await addDoc(collection(db, 'specialTasks'), taskData);
+      await updateDoc(doc(db, 'users', user.id), { hasNewHomework: true });
       onTaskCreated();
       onClose();
     } catch (err: any) {

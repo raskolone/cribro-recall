@@ -288,6 +288,7 @@ const Dashboard: React.FC = () => {
         }}
       />
       <main className="flex-1 overflow-y-auto relative">
+        <StudentNotifications onNavigate={(newView) => setView(newView)} />
         {showOnboarding && <OnboardingOverlay onComplete={() => {
           setShowOnboarding(false);
           try { localStorage.setItem('has_seen_onboarding', 'true'); } catch(e) {}
