@@ -26,7 +26,8 @@ import {
   HelpCircle, 
   RefreshCw,
   Award,
-  Layers
+  Layers,
+  UserCheck
 } from 'lucide-react';
 
 export const HomeworkScreen: React.FC = () => {
@@ -147,50 +148,85 @@ export const HomeworkScreen: React.FC = () => {
       setInstructions('W każdym z poniższych zdań znajduje się błąd. Wpisz pełne, poprawione zdanie po angielsku.');
     }
   }, [homeworkType]);
+  // Auto-set level and load lessons when student changes
   useEffect(() => {
     if (!selectedStudentId || selectedStudentId === "all") {
       setStudentLessons([]);
       setSelectedLessonId("manual");
       return;
     }
+
+    // Auto-select student's assigned level from teacher profile
+    const selectedStudent = students.find((st) => st.id === selectedStudentId);
+    if (selectedStudent?.level) {
+      setAiLevel(selectedStudent.level);
+    }
+
+    // Load student's lesson records for vocabulary source
     const loadLessons = async () => {
       try {
-        const q = query(collection(db, "lessonRecords"), where("studentId", "==", selectedStudentId));
-        const snap = await getDocs(q);
+        const snap = await getDocs(collection(db, `users/${selectedStudentId}/lessonRecords`));
         const lessons: LessonRecord[] = [];
         snap.forEach(d => lessons.push({ id: d.id, ...d.data() } as LessonRecord));
-        setStudentLessons(lessons.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        const sorted = lessons.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setStudentLessons(sorted);
+        if (sorted.length > 0) {
+          setSelectedLessonId("all"); // Default to all lessons vocabulary
+        } else {
+          setSelectedLessonId("manual");
+        }
       } catch (err) {
-        console.error(err);
+        console.error("Błąd pobierania lekcji kursanta:", err);
       }
     };
     loadLessons();
-  }, [selectedStudentId]);
-
+  }, [selectedStudentId, students]);
 
   // AI Generation handler
   const handleGenerateWithAI = async () => {
+    if (!selectedStudentId) {
+      setGenError('Najpierw wybierz kursanta z listy na samej górze!');
+      return;
+    }
+
     setIsGenerating(true);
     setGenError('');
     try {
       let finalTopic = aiTopic;
       let finalPrompt = aiPrompt;
-      if (selectedLessonId !== "manual") {
+      let vocabularyTextToUse = "";
+
+      const selectedStudent = students.find((st) => st.id === selectedStudentId);
+      const studentProfileContext = selectedStudent
+        ? `Profil i tło kursanta:\nImię: ${selectedStudent.firstName || ''} ${selectedStudent.lastName || ''}\nPoziom: ${selectedStudent.level || aiLevel}\nOpis: ${selectedStudent.description || 'Brak'}`
+        : '';
+
+      if (selectedLessonId === "all" && studentLessons.length > 0) {
+        vocabularyTextToUse = studentLessons
+          .map((l) => l.vocabularyText)
+          .filter(Boolean)
+          .join('\n');
+        finalPrompt += `\n\nBAZUJ NA SKUMULOWANYM SŁOWNICTWIE ZE WSZYSTKICH (${studentLessons.length}) LEKCJI KURSANTA:\n${vocabularyTextToUse}`;
+      } else if (selectedLessonId !== "manual" && selectedLessonId !== "all") {
         const lesson = studentLessons.find(l => l.id === selectedLessonId);
         if (lesson) {
-          finalPrompt += `\nBazuj na słownictwie z tej lekcji:\n${lesson.vocabularyText}\nTemat lekcji: ${lesson.topic}`;
+          vocabularyTextToUse = lesson.vocabularyText || '';
+          finalPrompt += `\n\nBAZUJ NA SŁOWNICTWIE Z LEKCJI (${new Date(lesson.date).toLocaleDateString()} - ${lesson.topic}):\n${lesson.vocabularyText}`;
           if (!finalTopic) finalTopic = lesson.topic;
         }
       }
 
       if (homeworkType === "translation") {
-        const wordsArr = finalTopic ? finalTopic.split(",").map(s => s.trim()).filter(Boolean) : [];
+        const wordsArr = vocabularyTextToUse
+          ? vocabularyTextToUse.split('\n').map(s => s.trim()).filter(Boolean)
+          : (finalTopic ? finalTopic.split(",").map(s => s.trim()).filter(Boolean) : []);
+
         const result = await generateTranslationExercises(
           aiLevel,
           wordsArr,
           finalPrompt,
           finalTopic,
-          "",
+          studentProfileContext,
           aiCount
         );
         if (result && result.length > 0) {
@@ -766,39 +802,85 @@ export const HomeworkScreen: React.FC = () => {
             Kreator Nowej Pracy Domowej
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* 1. Wybór kursanta */}
-            <div>
-              <label className="block text-sm font-bold text-gray-200 mb-2">
-                1. Wybierz kursanta <span className="text-red-400">*</span>
-              </label>
-              <select
-                value={selectedStudentId}
-                onChange={(e) => setSelectedStudentId(e.target.value)}
-                className="w-full px-4 py-2.5 bg-base-100 text-white border border-white/10 rounded-xl focus:border-primary focus:outline-none text-sm"
-              >
-                <option value="">-- Wybierz ucznia --</option>
-                <option value="all">🌐 Wszyscy kursanci ({students.length})</option>
-                {students.map((st) => (
-                  <option key={st.id} value={st.id}>
-                    👤 {st.firstName ? `${st.firstName} ${st.lastName || ''}` : st.username} ({st.email})
-                  </option>
-                ))}
-              </select>
+          {/* 1. HIGHLIGHTED STEP 1: Wybierz kursanta */}
+          <div className={`p-5 rounded-2xl border-2 transition-all space-y-4 ${
+            selectedStudentId 
+              ? 'bg-primary/10 border-primary shadow-[0_0_25px_rgba(114,240,180,0.25)]' 
+              : 'bg-amber-500/10 border-amber-400 animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.25)]'
+          }`}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className={`p-2 rounded-xl ${selectedStudentId ? 'bg-primary text-base-100' : 'bg-amber-500 text-base-100'}`}>
+                  <UserCheck size={22} />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                    1. Wybierz kursanta <span className="text-xs uppercase font-mono px-2 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 font-bold">KROK NAJWAŻNIEJSZY</span>
+                  </h3>
+                  <p className="text-xs text-content-muted">
+                    Wskazanie kursanta automatycznie wczyta jego poziom językowy oraz historię lekcji i słownictwa.
+                  </p>
+                </div>
+              </div>
+
+              {/* Selected Student Badge / Summary */}
+              {selectedStudentId && selectedStudentId !== 'all' && (() => {
+                const selectedStudent = students.find(s => s.id === selectedStudentId);
+                return (
+                  <div className="flex items-center gap-3 bg-base-100/90 border border-primary/40 px-3.5 py-1.5 rounded-xl text-xs">
+                    <span className="text-white font-bold flex items-center gap-1.5">
+                      👤 {selectedStudent?.firstName ? `${selectedStudent.firstName} ${selectedStudent.lastName || ''}` : selectedStudent?.username}
+                    </span>
+                    <span className="px-2 py-0.5 bg-primary/20 text-primary font-mono font-bold rounded-md">
+                      🎯 Poziom: {selectedStudent?.level || 'B1-B2'}
+                    </span>
+                    <span className="text-gray-300">
+                      📚 Lekcje: <strong className="text-white">{studentLessons.length}</strong>
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
 
-            {/* Termin oddania */}
-            <div>
-              <label className="block text-sm font-bold text-gray-200 mb-2">
-                Termin oddania (opcjonalnie)
-              </label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-4 py-2.5 bg-base-100 text-white border border-white/10 rounded-xl focus:border-primary focus:outline-none text-sm"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-200 mb-1.5">
+                  Kursant docelowy <span className="text-red-400">*</span>
+                </label>
+                <select
+                  value={selectedStudentId}
+                  onChange={(e) => setSelectedStudentId(e.target.value)}
+                  className="w-full px-4 py-3 bg-base-100 text-white border-2 border-white/20 rounded-xl focus:border-primary focus:outline-none text-sm font-semibold shadow-inner"
+                >
+                  <option value="">-- Wybierz kursanta z listy (Wymagane) --</option>
+                  <option value="all">🌐 Wszyscy kursanci ({students.length})</option>
+                  {students.map((st) => (
+                    <option key={st.id} value={st.id}>
+                      👤 {st.firstName ? `${st.firstName} ${st.lastName || ''}` : st.username} {st.level ? `[Poziom: ${st.level}]` : ''} ({st.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-200 mb-1.5">
+                  Termin oddania pracy domowej (opcjonalnie)
+                </label>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-base-100 text-white border border-white/10 rounded-xl focus:border-primary focus:outline-none text-sm"
+                />
+              </div>
             </div>
+
+            {!selectedStudentId && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-200 text-xs font-semibold">
+                <Sparkles size={16} className="text-amber-400 shrink-0" />
+                <span>Najpierw wybierz kursanta z listy powyżej, aby automatycznie załadować jego poziom i historię lekcji!</span>
+              </div>
+            )}
           </div>
 
           {/* 2. Wybór typu pracy domowej */}
@@ -874,19 +956,34 @@ export const HomeworkScreen: React.FC = () => {
           </div>
 
           {/* 4. AI Generator Box */}
-          <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-4">
-            <div className="flex items-center gap-2 text-primary font-bold text-sm">
-              <Sparkles size={18} />
-              Generuj zestaw zadań z sztuczną inteligencją (AI)
+          <div className="p-5 rounded-2xl bg-primary/10 border border-primary/30 space-y-4 shadow-[0_0_20px_rgba(114,240,180,0.1)]">
+            <div className="flex items-center justify-between border-b border-primary/20 pb-3">
+              <div className="flex items-center gap-2 text-primary font-bold text-base">
+                <Sparkles size={20} />
+                Generator Zadań AI (Dopasowany do kursanta)
+              </div>
+              {selectedStudentId && selectedStudentId !== 'all' && (
+                <span className="text-xs bg-primary/20 text-primary border border-primary/30 px-2.5 py-1 rounded-full font-semibold">
+                  Profil: {students.find(s => s.id === selectedStudentId)?.firstName || 'Wybrany kursant'}
+                </span>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Poziom (Automatycznie wybrany) */}
               <div>
-                <label className="block text-xs font-semibold text-content-muted mb-1">Poziom</label>
+                <label className="block text-xs font-bold text-gray-200 mb-1 flex items-center justify-between">
+                  <span>Poziom językowy</span>
+                  {selectedStudentId && students.find(s => s.id === selectedStudentId)?.level && (
+                    <span className="text-[10px] text-primary font-semibold">
+                      (Dobrany z profilu: {students.find(s => s.id === selectedStudentId)?.level})
+                    </span>
+                  )}
+                </label>
                 <select
                   value={aiLevel}
                   onChange={(e) => setAiLevel(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-base-100 text-white border border-white/10 rounded-lg text-xs"
+                  className="w-full px-3.5 py-2 bg-base-100 text-white border border-white/10 rounded-xl text-xs font-semibold focus:border-primary focus:outline-none"
                 >
                   <option value="A1">A1 - Początkujący</option>
                   <option value="A2">A2 - Podstawowy</option>
@@ -894,70 +991,91 @@ export const HomeworkScreen: React.FC = () => {
                   <option value="B1-B2">B1-B2 - Średniozaawansowany</option>
                   <option value="B2">B2 - Wyższy średniozaawansowany</option>
                   <option value="C1">C1 - Zaawansowany</option>
+                  <option value="C2">C2 - Biegły</option>
                 </select>
               </div>
 
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-content-muted mb-1">Źródło słownictwa (z lekcji)</label>
+              {/* Źródło słownictwa */}
+              <div>
+                <label className="block text-xs font-bold text-gray-200 mb-1">
+                  Źródło słownictwa do wygenerowania
+                </label>
                 <select
                   value={selectedLessonId}
                   onChange={(e) => setSelectedLessonId(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-base-100 text-white border border-white/10 rounded-lg text-xs"
+                  className="w-full px-3.5 py-2 bg-base-100 text-white border border-white/10 rounded-xl text-xs font-semibold focus:border-primary focus:outline-none"
                 >
-                  <option value="manual">Manualnie (brak przypisanej lekcji)</option>
+                  <option value="manual">✍️ Manualne (własny temat / słownictwo wpisane niżej)</option>
+                  {studentLessons.length > 0 && (
+                    <option value="all">
+                      ⚡ Wszystkie lekcje kursanta (skumulowane słownictwo z {studentLessons.length} lekcji)
+                    </option>
+                  )}
                   {studentLessons.map((lesson) => (
                     <option key={lesson.id} value={lesson.id}>
-                      {new Date(lesson.date).toLocaleDateString()} - {lesson.topic}
+                      📖 Lekcja z dnia {new Date(lesson.date).toLocaleDateString()} - {lesson.topic || 'Bez tematu'}
                     </option>
                   ))}
                 </select>
               </div>
+
+              {/* Temat (Manualnie) */}
               <div>
-                <label className="block text-xs font-semibold text-content-muted mb-1">Temat / Słownictwo</label>
+                <label className="block text-xs font-bold text-gray-200 mb-1">
+                  Temat / Słownictwo docelowe (wpisywane manualnie)
+                </label>
                 <input
                   type="text"
                   value={aiTopic}
                   onChange={(e) => setAiTopic(e.target.value)}
-                  placeholder="np. Podróże, Conditionals..."
-                  className="w-full px-3 py-1.5 bg-base-100 text-white border border-white/10 rounded-lg text-xs"
+                  placeholder="np. Podróże i hotel, Present Perfect, Służba zdrowia..."
+                  className="w-full px-3.5 py-2 bg-base-100 text-white border border-white/10 rounded-xl text-xs focus:border-primary focus:outline-none"
                 />
               </div>
 
+              {/* Liczba zadań (Manualnie) */}
               <div>
-                <label className="block text-xs font-semibold text-content-muted mb-1">Liczba zdań</label>
+                <label className="block text-xs font-bold text-gray-200 mb-1">
+                  Liczba zdań w zadaniu (manualnie)
+                </label>
                 <input
                   type="number"
                   min={1}
-                  max={15}
+                  max={20}
                   value={aiCount}
                   onChange={(e) => setAiCount(Number(e.target.value))}
-                  className="w-full px-3 py-1.5 bg-base-100 text-white border border-white/10 rounded-lg text-xs"
+                  className="w-full px-3.5 py-2 bg-base-100 text-white border border-white/10 rounded-xl text-xs focus:border-primary focus:outline-none"
                 />
               </div>
             </div>
 
+            {/* Wskazówki dla AI (tworzy nauczyciel) */}
             <div>
-              <label className="block text-xs font-semibold text-content-muted mb-1">
-                Wskazówki / prompt dla AI (opcjonalnie)
+              <label className="block text-xs font-bold text-gray-200 mb-1">
+                Wskazówki dla AI (tworzy nauczyciel)
               </label>
-              <input
-                type="text"
+              <textarea
+                rows={2}
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="np. Skup się na błędach z okresami warunkowymi..."
-                className="w-full px-3 py-1.5 bg-base-100 text-white border border-white/10 rounded-lg text-xs"
+                placeholder="np. Użyj słownictwa biznesowego, skup się na zdaniach pytających i konstrukcji 'used to'..."
+                className="w-full px-3.5 py-2 bg-base-100 text-white border border-white/10 rounded-xl text-xs focus:border-primary focus:outline-none resize-none"
               />
             </div>
 
-            {genError && <p className="text-xs text-red-400">{genError}</p>}
+            {genError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-400 font-semibold">
+                ⚠️ {genError}
+              </div>
+            )}
 
             <Button
               onClick={handleGenerateWithAI}
               isLoading={isGenerating}
-              size="sm"
-              className="flex items-center gap-2"
+              size="md"
+              className="flex items-center gap-2 w-full justify-center shadow-lg"
             >
-              <Sparkles size={16} />
+              <Sparkles size={18} />
               Wygeneruj zestaw zdań z AI
             </Button>
           </div>

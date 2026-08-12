@@ -79,8 +79,8 @@ const generateContentWithFallback = async (params: any) => {
 
       if (model.startsWith('openai')) {
          const isJsonMode = apiParams.config?.responseMimeType === 'application/json';
-         const text = await callOpenAI(promptText, sysInst, model.replace('openai/', ''), isJsonMode);
-         return { text };
+         const openAiRes = await callOpenAI(promptText, sysInst, model.replace('openai/', ''), isJsonMode);
+         return { text: openAiRes.text };
       }
 
       const timeoutPromise = new Promise((_, reject) => {
@@ -109,7 +109,7 @@ const generateContentWithFallback = async (params: any) => {
   throw lastError;
 };
 
-const callOpenAI = async (prompt: string, systemInstruction: string, model: string = "gpt-4o-mini", isJson: boolean = true) => {
+const callOpenAI = async (prompt: string, systemInstruction: string, model: string = "gpt-4o-mini", isJson: boolean = true): Promise<{ text: string, modelUsed?: string }> => {
   console.log("Wysyłam zapytanie do OpenAI przez proxy (" + model + ")...");
   
   try {
@@ -136,8 +136,8 @@ const callOpenAI = async (prompt: string, systemInstruction: string, model: stri
       throw new Error(data.error || `Błąd serwera AI (${res.status})`);
     }
     
-    console.log("Odpowiedź AI odebrana pomyślnie.");
-    return data.text;
+    console.log("Odpowiedź AI odebrana pomyślnie. Model:", data.modelUsed);
+    return { text: data.text || "", modelUsed: data.modelUsed };
   } catch (error) {
     console.error("Błąd wywołania OpenAI:", error);
     throw error;
@@ -185,9 +185,14 @@ export const generateTextWithUnifiedFallback = async (
       
       if (model.startsWith('openai')) {
         const isJson = geminiConfig?.responseMimeType === 'application/json';
-        const text = await callOpenAI(prompt, systemInstruction, model.replace('openai/', ''), isJson);
-        if (text) {
-          return { text, modelUsed: model };
+        const openAiRes = await callOpenAI(prompt, systemInstruction, model.replace('openai/', ''), isJson);
+        if (openAiRes && openAiRes.text) {
+          const usedModel = openAiRes.modelUsed
+            ? (openAiRes.modelUsed.startsWith('gemini') || openAiRes.modelUsed.startsWith('openai')
+                ? openAiRes.modelUsed
+                : `openai/${openAiRes.modelUsed}`)
+            : model;
+          return { text: openAiRes.text, modelUsed: usedModel };
         }
       } else if (model.startsWith('gemini')) {
         let retries = 3;
@@ -793,8 +798,8 @@ Zwróć WYŁĄCZNIE tablicowy obiekt JSON, w którym każdy element to obiekt o 
   const sysInst = "Jesteś asystentem AI tworzącym zestawy fiszek w formacie JSON dla modelu gpt-4o-mini.";
 
   try {
-    const text = await callOpenAI(prompt, sysInst, 'gpt-4o-mini', true);
-    const jsonText = extractJSON(text || "");
+    const openAiRes = await callOpenAI(prompt, sysInst, 'gpt-4o-mini', true);
+    const jsonText = extractJSON(openAiRes.text || "");
     const parsed = JSON.parse(jsonText);
     const list = Array.isArray(parsed) ? parsed : (parsed.flashcards || parsed.words || parsed.items || []);
     return list;

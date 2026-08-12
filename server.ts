@@ -99,7 +99,7 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
              throw new Error("OPENAI_API_KEY not configured");
            }
            
-           const targetModel = 'gpt-4o-mini';
+           const targetModel = model.replace('openai/', '') || 'gpt-4o-mini';
            const isJsonMode = config?.responseMimeType === 'application/json';
 
            let finalPrompt = promptText;
@@ -120,14 +120,19 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
              bodyPayload.response_format = { type: "json_object" };
            }
 
+           const controller = new AbortController();
+           const timeoutId = setTimeout(() => controller.abort(), 60000);
+
            const response = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${apiKey}`
             },
-            body: JSON.stringify(bodyPayload)
+            body: JSON.stringify(bodyPayload),
+            signal: controller.signal
            });
+           clearTimeout(timeoutId);
 
            if (!response.ok) {
              const errText = await response.text();
@@ -1083,7 +1088,7 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
             }
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
 
             const response = await fetch("https://api.openai.com/v1/chat/completions", {
               method: "POST",

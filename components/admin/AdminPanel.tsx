@@ -19,7 +19,12 @@ import AllTestsTeacherView from './AllTestsTeacherView';
 import TeacherDashboardStats from './TeacherDashboardStats';
 import TeacherSpecialTaskModal from './TeacherSpecialTaskModal';
 import AssignVocabularyModal from './AssignVocabularyModal';
-import { Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import { 
+  Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
+  User as UserIcon, Users, Search, X, ChevronRight, Sparkles, BarChart2, Clock, 
+  BookOpen, BookMarked, UserCheck, Filter, Award, Activity, Calendar, 
+  RefreshCw, Plus, Eye, Shield, Target
+} from 'lucide-react';
 import i18n from "i18next";
 import html2pdf from 'html2pdf.js';
 
@@ -166,11 +171,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     }
   };
 
-  const handleSelectUser = (user: UserWithId) => {
+  const handleSelectUser = (user: UserWithId, targetTab?: string) => {
     setSelectedUser(user);
-    setActiveTab('profile');
+    const nextTab = targetTab || activeTab || 'profile';
+    setActiveTab(nextTab);
     if (onUserSelect) onUserSelect(user.id);
+    if (onViewChange) onViewChange(`admin-${nextTab}`);
     fetchUserLogsAndStats(user.id);
+    setIsStudentPickerOpen(false);
+  };
+
+  const handleTileClick = (tabId: string) => {
+    if (!selectedUser) {
+      setTargetTabAfterSelect(tabId);
+      setIsStudentPickerOpen(true);
+    } else {
+      setActiveTab(tabId);
+      if (onViewChange) onViewChange(`admin-${tabId}`);
+    }
   };
 
   const handleSaveProfile = async (silent = false, formState = profileForm) => {
@@ -1029,8 +1047,19 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [viewingRecord, setViewingRecord] = useState<LessonRecord | null>(null);
   const [isSavingLessonRecord, setIsSavingLessonRecord] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [levelFilter, setLevelFilter] = useState('all');
+  const [isStudentPickerOpen, setIsStudentPickerOpen] = useState(false);
+  const [targetTabAfterSelect, setTargetTabAfterSelect] = useState<string | null>(null);
+
+  const filteredUsers = users.filter(u => {
+    const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.username} ${u.email || ''}`.toLowerCase();
+    const matchesSearch = searchStr.includes(searchQuery.toLowerCase());
+    const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+    const matchesLevel = levelFilter === 'all' || u.level === levelFilter || (levelFilter !== 'all' && u.level?.includes(levelFilter));
+    return matchesSearch && matchesRole && matchesLevel;
+  });
 
   const openLessonRecordModal = (mode: 'view' | 'edit', record?: LessonRecord, preserveData: boolean = false) => {
     setLessonRecordModalMode(mode);
@@ -1189,331 +1218,260 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-extrabold tracking-tight mb-6">{i18n.t("Teacher Panel")}</h1>
-
-      {activeTab === null ? (
-        <div className="space-y-6">
-          <div className="flex justify-end gap-2 mb-4">
-            <button onClick={() => setShowAIModal(true)} className="px-4 py-2 bg-base-200/50 text-primary border border-primary/50 rounded-lg text-sm font-bold hover:bg-primary/10 transition-colors">
-              {i18n.t("✨ AI Lesson Generator")}
-            </button>
-            <button onClick={() => setShowCreateStudentModal(true)} className="px-4 py-2 bg-primary text-black rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors">
-              {i18n.t("+ Dodaj kursanta")}
-            </button>
-          </div>
-
-          {/* Single Glass Box: Ogólne statystyki kursantów */}
-          
-
-          {/* Student List & Search/Filter */}
-          <div className="space-y-4 mt-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-base-200/50 p-4 rounded-2xl border border-white/5">
-              <div className="font-bold text-lg text-white">
-                {i18n.t("Lista kursantów")} ({users.length})
-              </div>
-              <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                <input
-                  type="text"
-                  placeholder={i18n.t("Szukaj po imieniu, nazwisku, emailu...")}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full sm:w-72 bg-base-100 border border-base-300 rounded-lg p-2 text-sm outline-none focus:border-primary/50"
-                />
-                <select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  className="w-full sm:w-40 bg-base-100 border border-base-300 rounded-lg p-2 text-sm outline-none focus:border-primary/50"
-                >
-                  <option value="all">{i18n.t("Wszystkie role")}</option>
-                  <option value="user">{i18n.t("Kursant")}</option>
-                  <option value="admin">{i18n.t("Admin")}</option>
-                  <option value="teacher">{i18n.t("Nauczyciel")}</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Narrow student rows in liquid glass cards */}
-            <div className="space-y-2.5">
-              {users.filter(u => {
-                const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.username} ${u.email || ''}`.toLowerCase();
-                const matchesSearch = searchStr.includes(searchQuery.toLowerCase());
-                const matchesRole = roleFilter === 'all' || u.role === roleFilter;
-                return matchesSearch && matchesRole;
-              }).map((u) => (
-                <div
-                  key={u.id}
-                  onClick={() => handleSelectUser(u)}
-                  className="bg-gradient-to-r from-base-200/80 via-base-200/50 to-base-200/80 backdrop-blur-xl border border-white/10 hover:border-primary/50 hover:bg-base-200/90 p-3.5 px-5 rounded-2xl cursor-pointer flex items-center justify-between gap-4 transition-all duration-300 group shadow-lg hover:shadow-primary/10 relative overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                  
-                  <div className="flex items-center gap-3.5 min-w-0 relative z-10">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-bold text-primary text-sm flex-shrink-0 border border-primary/30 shadow-inner overflow-hidden group-hover:scale-105 transition-transform">
-                      {u.photoURL ? (
-                        <img src={u.photoURL} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        u.firstName ? u.firstName[0].toUpperCase() : u.username[0].toUpperCase()
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2.5 truncate">
-                      <span className="font-bold text-sm text-white group-hover:text-primary transition-colors truncate">
-                        {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
-                      </span>
-                      <span className="text-xs text-content-muted hidden md:inline truncate font-mono">
-                        ({u.username})
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 flex-shrink-0 relative z-10">
-                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider border ${
-                      u.role === 'admin' ? 'bg-red-500/10 text-red-400 border-red-500/30' : u.role === 'teacher' ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' : 'bg-primary/10 text-primary border-primary/30'
-                    }`}>
-                      {u.role === 'teacher' ? 'Nauczyciel' : u.role === 'admin' ? 'Admin' : 'Kursant'}
-                    </span>
-
-                    {u.level && (
-                      <span className="bg-primary/20 text-primary border border-primary/30 px-2.5 py-1 rounded-lg text-xs font-mono font-bold shadow-inner">
-                        Poziom: {u.level}
-                      </span>
-                    )}
-
-                    <div className="text-content-muted group-hover:text-primary group-hover:translate-x-1 transition-all">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+            <span>{i18n.t("Teacher Panel")}</span>
+            <span className="text-xs font-mono uppercase bg-primary/20 text-primary border border-primary/30 px-2.5 py-1 rounded-full font-bold">
+              Panel Nauczyciela
+            </span>
+          </h1>
+          <p className="text-xs sm:text-sm text-content-muted mt-1">
+            Zarządzaj kursantami, edytuj opisy i prompty AI, śledź statystyki oraz historię lekcji i sesji
+          </p>
         </div>
-      ) : activeTab === 'tests' ? (
-        <div className="space-y-6">
-          <div className="flex items-center gap-4 mb-6">
-            <button onClick={() => { setActiveTab(null); if (onViewChange) onViewChange('admin'); }} className="flex items-center gap-2 text-content-muted hover:text-white transition-colors bg-base-200/50 px-4 py-2 rounded-xl border border-white/5 hover:border-primary/50">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" /></svg>
-              {i18n.t("Wróć do panelu głównego")}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowAIModal(true)}
+            className="px-3.5 py-2 bg-base-200/80 text-primary border border-primary/40 rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/10 transition-colors flex items-center gap-2"
+          >
+            <Sparkles size={16} />
+            {i18n.t("✨ AI Lesson Generator")}
+          </button>
+          <button
+            onClick={() => setShowCreateStudentModal(true)}
+            className="px-3.5 py-2 bg-primary text-black rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-lg"
+          >
+            <Plus size={16} />
+            {i18n.t("Dodaj kursanta")}
+          </button>
+        </div>
+      </div>
+
+      {/* Dynamic Student Selector Banner */}
+      <div className={`p-5 rounded-2xl border-2 transition-all duration-300 ${
+        selectedUser 
+          ? 'bg-gradient-to-r from-primary/15 via-base-200/80 to-base-200/90 border-primary/60 shadow-[0_0_30px_rgba(114,240,180,0.15)]' 
+          : 'bg-base-200/50 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.1)]'
+      }`}>
+        {selectedUser ? (
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 border-2 border-primary/50 flex items-center justify-center font-bold text-primary text-xl flex-shrink-0 shadow-inner overflow-hidden">
+                {selectedUser.photoURL ? (
+                  <img src={selectedUser.photoURL} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  selectedUser.firstName ? selectedUser.firstName[0].toUpperCase() : selectedUser.username[0].toUpperCase()
+                )}
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-lg sm:text-xl font-extrabold text-white truncate">
+                    {selectedUser.firstName || selectedUser.lastName ? `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() : selectedUser.username}
+                  </h2>
+                  <span className="text-xs text-content-muted font-mono truncate">({selectedUser.username})</span>
+                  {selectedUser.level && (
+                    <span className="px-2.5 py-0.5 bg-primary/20 text-primary border border-primary/40 rounded-lg text-xs font-mono font-bold">
+                      Poziom: {selectedUser.level}
+                    </span>
+                  )}
+                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
+                    selectedUser.role === 'admin' ? 'bg-red-500/10 text-red-400 border-red-500/30' : selectedUser.role === 'teacher' ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' : 'bg-primary/10 text-primary border-primary/30'
+                  }`}>
+                    {selectedUser.role === 'teacher' ? 'Nauczyciel' : selectedUser.role === 'admin' ? 'Admin' : 'Kursant'}
+                  </span>
+                </div>
+                <div className="text-xs text-content-muted mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span>📧 {selectedUser.email || 'Brak emaila'}</span>
+                  <span>🔑 Logowań: <strong className="text-white">{selectedUser.loginCount || 0}</strong></span>
+                  <span>🕒 Ostatnia wizyta: <strong className="text-white">{selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleDateString() : 'Brak'}</strong></span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
+              <button
+                onClick={() => setIsStudentPickerOpen(true)}
+                className="px-4 py-2 bg-primary text-black rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all flex items-center gap-2 shadow-md"
+              >
+                <UserCheck size={16} />
+                Zmień kursanta
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedUser(null);
+                  setActiveTab(null);
+                  if (onUserSelect) onUserSelect(null);
+                  if (onViewChange) onViewChange('admin');
+                  setPracticeLogs([]);
+                  setLessonRecords([]);
+                }}
+                className="px-3 py-2 bg-base-100/80 hover:bg-white/10 text-content-muted hover:text-white border border-white/10 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5"
+              >
+                <X size={16} />
+                Wyczyść
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
+                <Users size={24} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  Wybierz kursanta, dla którego chcesz przeglądać dane
+                </h3>
+                <p className="text-xs text-content-muted mt-0.5">
+                  Wybierz ucznia z eleganckiej listy, aby odblokować kafelki profilu, statystyk, historii lekcji i sesji, testów oraz słownictwa.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsStudentPickerOpen(true)}
+              className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-black font-extrabold rounded-xl text-xs sm:text-sm shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:scale-105 transition-all flex items-center gap-2 shrink-0"
+            >
+              <Search size={18} />
+              Wybierz kursanta z listy
             </button>
           </div>
-          {selectedUser ? (
-            <AdminTestGenerator user={selectedUser} users={users} />
-          ) : (
-            <AllTestsTeacherView />
+        )}
+      </div>
+
+      {/* 5 KAFELKÓW GRID (Tiles view) */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-extrabold uppercase tracking-wider text-content-muted flex items-center gap-2">
+            <span>Kafelki modułów kursanta</span>
+            {selectedUser && (
+              <span className="text-xs text-primary font-mono font-normal">
+                (Dla: {selectedUser.firstName || selectedUser.username})
+              </span>
+            )}
+          </h2>
+          {!selectedUser && (
+            <span className="text-xs text-amber-400 font-semibold flex items-center gap-1">
+              <AlertCircle size={14} /> Kliknij dowolny kafelek, aby wybrać kursanta
+            </span>
           )}
         </div>
-      ) : (
-        <div className="space-y-6">
-          {!selectedUser ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 mb-6">
-                <button
-                  onClick={() => { setActiveTab(null); if (onViewChange) onViewChange('admin'); }}
-                  className="flex items-center gap-2 text-content-muted hover:text-white transition-colors bg-base-200/50 px-4 py-2 rounded-xl border border-white/5 hover:border-primary/50"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-                  </svg>
-                  {i18n.t("Wróć do panelu głównego")}
-                </button>
-                <h2 className="text-xl font-bold">
-                  {activeTab === 'profile' && 'Wybierz kursanta'}
-                  {activeTab === 'stats' && 'Wybierz kursanta (Statystyki)'}
-                  {activeTab === 'history' && 'Wybierz kursanta (Historia)'}
-                  {activeTab === 'tests' && 'Wybierz kursanta (Testy)'}
-                  {activeTab === 'vocabulary' && 'Wybierz kursanta (Słownictwo)'}
-                </h2>
-              </div>
-              
-              <Card className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-base-200/50">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto flex-1">
-                  <input
-                    type="text"
-                    placeholder={i18n.t("Szukaj po imieniu, nazwisku, emailu...")}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full sm:max-w-md bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
-                  />
-                  <select
-                    value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value)}
-                    className="w-full sm:w-48 bg-base-100 border border-base-300 rounded-lg p-2.5 outline-none focus:border-primary/50 text-sm"
-                  >
-                    <option value="all">{i18n.t("Wszystkie role")}</option>
-                    <option value="user">{i18n.t("Kursant")}</option>
-                    <option value="admin">{i18n.t("Admin")}</option>
-                    <option value="teacher">{i18n.t("Nauczyciel")}</option>
-                  </select>
-                </div>
-              </Card>
 
-              <div className="space-y-2.5">
-                {users.filter(u => {
-                  const searchStr = `${u.firstName || ''} ${u.lastName || ''} ${u.username} ${u.email || ''}`.toLowerCase();
-                  const matchesSearch = searchStr.includes(searchQuery.toLowerCase());
-                  const matchesRole = roleFilter === 'all' || u.role === roleFilter;
-                  return matchesSearch && matchesRole;
-                }).map((u) => (
-                  <div
-                    key={u.id}
-                    onClick={() => handleSelectUser(u)}
-                    className="bg-gradient-to-r from-base-200/80 via-base-200/50 to-base-200/80 backdrop-blur-xl border border-white/10 hover:border-primary/50 hover:bg-base-200/90 p-3.5 px-5 rounded-2xl cursor-pointer flex items-center justify-between gap-4 transition-all duration-300 group shadow-lg hover:shadow-primary/10 relative overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+          {[
+            {
+              id: 'profile',
+              title: 'Profil kursanta',
+              badge: 'Dane i AI',
+              desc: 'Dane osobowe, poziom i wytyczne dla AI',
+              icon: UserIcon
+            },
+            {
+              id: 'stats',
+              title: 'Statystyki',
+              badge: 'Analityka',
+              desc: 'Logowania, zadania, zdania i wyniki',
+              icon: BarChart2
+            },
+            {
+              id: 'history',
+              title: 'Historia lekcji i sesji',
+              badge: 'Lekcje + App',
+              desc: 'Dziennik lekcji oraz ćwiczenia w aplikacji',
+              icon: Clock
+            },
+            {
+              id: 'tests',
+              title: 'Testy i sprawdziany',
+              badge: 'Sprawdziany',
+              desc: 'Generowanie i podgląd testów AI',
+              icon: Award
+            },
+            {
+              id: 'vocabulary',
+              title: 'Słownictwo i zadania',
+              badge: 'Słówka + AI',
+              desc: 'Zestawy słówek i Zadania Specjalne AI',
+              icon: BookMarked
+            }
+          ].map((tile) => {
+            const IconComp = tile.icon;
+            const isActive = selectedUser && activeTab === tile.id;
 
-                    <div className="flex items-center gap-3.5 min-w-0 relative z-10">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-bold text-primary text-sm flex-shrink-0 border border-primary/30 shadow-inner overflow-hidden group-hover:scale-105 transition-transform">
-                        {u.photoURL ? (
-                          <img src={u.photoURL} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          u.firstName ? u.firstName[0].toUpperCase() : u.username[0].toUpperCase()
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2.5 truncate">
-                        <span className="font-bold text-sm text-white group-hover:text-primary transition-colors truncate">
-                          {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
-                        </span>
-                        <span className="text-xs text-content-muted hidden md:inline truncate font-mono">
-                          ({u.username})
-                        </span>
-                      </div>
+            return (
+              <div
+                key={tile.id}
+                onClick={() => handleTileClick(tile.id)}
+                className={`p-4 rounded-2xl cursor-pointer transition-all duration-300 relative overflow-hidden group flex flex-col justify-between ${
+                  isActive
+                    ? 'bg-primary/15 border-2 border-primary shadow-[0_0_25px_rgba(114,240,180,0.25)]'
+                    : selectedUser
+                    ? 'bg-base-200/60 hover:bg-base-200/90 border border-white/10 hover:border-primary/50 hover:shadow-lg'
+                    : 'bg-base-200/40 hover:bg-base-200/70 border border-white/10 hover:border-amber-500/50 hover:shadow-lg'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`p-2.5 rounded-xl ${
+                      isActive
+                        ? 'bg-primary text-black'
+                        : 'bg-base-100/80 text-primary border border-white/10 group-hover:border-primary/40'
+                    }`}>
+                      <IconComp size={22} />
                     </div>
-
-                    <div className="flex items-center gap-3 flex-shrink-0 relative z-10">
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider border ${
-                        u.role === 'admin' ? 'bg-red-500/10 text-red-400 border-red-500/30' : u.role === 'teacher' ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' : 'bg-primary/10 text-primary border-primary/30'
-                      }`}>
-                        {u.role === 'teacher' ? 'Nauczyciel' : u.role === 'admin' ? 'Admin' : 'Kursant'}
-                      </span>
-
-                      {u.level && (
-                        <span className="bg-primary/20 text-primary border border-primary/30 px-2.5 py-1 rounded-lg text-xs font-mono font-bold shadow-inner">
-                          Poziom: {u.level}
-                        </span>
-                      )}
-
-                      <div className="text-content-muted group-hover:text-primary group-hover:translate-x-1 transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    </div>
+                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md border ${
+                      isActive
+                        ? 'bg-primary/20 text-primary border-primary/40 font-mono'
+                        : 'bg-base-100/60 text-content-muted border-white/5'
+                    }`}>
+                      {isActive ? 'Aktywny' : tile.badge}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div ref={profileContainerRef}>
-              <div className="mb-4 flex items-center gap-6">
-                <button
-                  onClick={() => {
-                    setSelectedUser(null);
-                    if (onUserSelect) onUserSelect(null);
-                    setPracticeLogs([]);
-                    setLessonRecords([]);
-                  }}
-                  className="text-sm font-bold text-content-muted hover:text-white flex items-center gap-2 transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  {i18n.t("Wróć do listy kursantów")}
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedUser(null);
-                    setActiveTab(null);
-                    if (onUserSelect) onUserSelect(null);
-                    if (onViewChange) onViewChange('admin');
-                    setPracticeLogs([]);
-                    setLessonRecords([]);
-                  }}
-                  className="text-sm font-bold text-content-muted hover:text-white flex items-center gap-2 transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  {i18n.t("Wróć do menu głównego")}
-                </button>
-              </div>
 
-              <Card className="bg-base-200/50 mb-6">
-                <div className="flex items-center gap-6">
-                  <div className="w-24 h-24 rounded-full bg-base-300 flex items-center justify-center font-bold text-3xl text-primary flex-shrink-0 relative group overflow-hidden border border-white/10">
-                    {selectedUser.photoURL ? (
-                      <img src={selectedUser.photoURL} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      selectedUser.firstName ? selectedUser.firstName[0].toUpperCase() : selectedUser.username[0].toUpperCase()
-                    )}
-                    <div onClick={() => {
-                      const newUrl = prompt('Podaj URL do nowego awatara:', selectedUser.photoURL || '');
-                      if (newUrl !== null) {
-                        const userRef = doc(db, 'users', selectedUser.id);
-                        updateDoc(userRef, { photoURL: newUrl }).then(() => {
-                          const updated = { ...selectedUser, photoURL: newUrl };
-                          setSelectedUser(updated);
-                          setUsers(users.map(u => u.id === updated.id ? updated : u));
-                        }).catch(err => alert('Błąd: ' + err.message));
-                      }
-                    }} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                      <span className="text-xs text-white">{i18n.t("Zmień awatar")}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold">
-                      {selectedUser.firstName || selectedUser.lastName ? `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() : selectedUser.username}
-                    </h2>
-                    <p className="text-content-muted mt-1">
-                      {selectedUser.username}
-                      {selectedUser.level && <span className="ml-3 px-2 py-0.5 bg-primary/20 text-primary rounded text-xs uppercase font-bold">{selectedUser.level}</span>}
-                    </p>
-                    <div className="mt-3 text-sm text-content-muted flex flex-wrap gap-x-6 gap-y-2">
-                      <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-400"></div><span className="font-bold text-white">{i18n.t("Rola:")}</span> {selectedUser.role === 'admin' ? 'Admin' : selectedUser.role === 'teacher' ? 'Nauczyciel' : 'Kursant'}</div>
-                      <div><span className="font-bold text-white">{i18n.t("Logowania:")}</span> {selectedUser.loginCount || 0}</div>
-                      <div><span className="font-bold text-white">{i18n.t("Ostatnio:")}</span> {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString() : 'Nigdy'}</div>
-                    </div>
-                  </div>
+                  <h3 className="font-extrabold text-base text-white group-hover:text-primary transition-colors">
+                    {tile.title}
+                  </h3>
+                  <p className="text-xs text-content-muted mt-1 leading-relaxed">
+                    {tile.desc}
+                  </p>
                 </div>
 
-                {/* Mini Boxes for Selected Student Details */}
-                <div className="mt-6 pt-6 border-t border-white/5 grid grid-cols-2 sm:grid-cols-5 gap-3">
-                  {[
-                    { id: 'profile', label: 'Profil kursanta', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
-                    { id: 'stats', label: 'Statystyki', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
-                    { id: 'history', label: 'Historia lekcji', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-                    { id: 'tests', label: 'Testy', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
-                    { id: 'vocabulary', label: 'Słownictwo i zadania', icon: 'M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129' }
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => handleTabChange(tab.id)}
-                      className={`p-3 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-2 border ${
-                        activeTab === tab.id 
-                          ? 'bg-primary text-black border-primary shadow-lg' 
-                          : 'bg-base-100/60 text-content-muted hover:text-white hover:bg-base-200 border-white/5'
-                      }`}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
-                      </svg>
-                      <span className="text-center">{tab.label}</span>
-                    </button>
-                  ))}
+                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs font-semibold">
+                  <span className={isActive ? 'text-primary font-bold' : 'text-content-muted'}>
+                    {isActive ? 'Przeglądasz ten widok' : selectedUser ? 'Otwórz widok' : 'Wybierz kursanta'}
+                  </span>
+                  <ChevronRight size={16} className={`transition-transform group-hover:translate-x-1 ${isActive ? 'text-primary' : 'text-content-muted'}`} />
                 </div>
-              </Card>
-
-              <div className="mb-6 flex items-center gap-4">
-                <h2 className="text-xl font-bold text-primary">
-                  {activeTab === 'stats' && 'Statystyki'}
-                  {activeTab === 'history' && 'Historia lekcji'}
-                  {activeTab === 'profile' && 'Profil kursanta'}
-                  {activeTab === 'tests' && 'Testy'}
-                  {activeTab === 'vocabulary' && 'Słownictwo i zadania'}
-                  {activeTab === 'contact' && 'Kontakt'}
-                </h2>
               </div>
-<div ref={tabContentRef}>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Active Tab Content Header Banner */}
+      {selectedUser && activeTab && (
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-base-200/50 border border-white/10">
+          <div className="flex items-center gap-3">
+            <span className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+            <h2 className="text-xl font-extrabold text-white">
+              {activeTab === 'profile' && 'Profil i parametry kursanta'}
+              {activeTab === 'stats' && 'Statystyki i aktywność kursanta'}
+              {activeTab === 'history' && 'Historia lekcji oraz sesji nauki w aplikacji'}
+              {activeTab === 'tests' && 'Generowanie i przegląd testów AI'}
+              {activeTab === 'vocabulary' && 'Zestawy słówek i Zadania Specjalne AI'}
+            </h2>
+          </div>
+          <span className="text-xs font-mono text-content-muted hidden sm:inline">
+            Otwarty profil: <strong className="text-white">{selectedUser.firstName || selectedUser.username}</strong>
+          </span>
+        </div>
+      )}
+
+      {/* Active Tab Container */}
+      <div ref={tabContentRef}>
           {activeTab === 'stats' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
@@ -2012,10 +1970,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             </div>
           )}
         </div>
-        </div>
-      )}
-        </div>
-      )}
 
       {showSpecialTaskModal && selectedUser && (
         <TeacherSpecialTaskModal
@@ -3335,6 +3289,149 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </div>
         </div>
       </div>
+
+      {/* Pop-up Modal dla Wyboru Kursanta */}
+      {isStudentPickerOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="bg-base-200 border border-white/15 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-white/10 flex items-center justify-between bg-base-100/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-primary/20 text-primary border border-primary/30">
+                  <Users size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-extrabold text-white">Wybierz kursanta</h2>
+                  <p className="text-xs text-content-muted mt-0.5">
+                    Znajdź ucznia, aby wyświetlić jego kafelki (Profil, Statystyki, Historia, Testy, Słownictwo)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsStudentPickerOpen(false)}
+                className="p-2 text-content-muted hover:text-white rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Filter Controls */}
+            <div className="p-4 bg-base-100/30 border-b border-white/5 space-y-3">
+              <div className="relative">
+                <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted" />
+                <input
+                  type="text"
+                  placeholder="Szukaj po imieniu, nazwisku, emailu lub loginie..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-10 py-2.5 bg-base-100 border border-white/10 rounded-xl text-sm text-white placeholder-content-muted focus:border-primary focus:outline-none"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-content-muted hover:text-white p-1"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className="bg-base-100 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-primary outline-none cursor-pointer"
+                >
+                  <option value="all">🌐 Wszystkie role</option>
+                  <option value="user">👤 Kursanci (Uczniowie)</option>
+                  <option value="teacher">👨‍🏫 Nauczyciele</option>
+                  <option value="admin">🔑 Administratorzy</option>
+                </select>
+
+                <select
+                  value={levelFilter}
+                  onChange={(e) => setLevelFilter(e.target.value)}
+                  className="bg-base-100 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-primary outline-none cursor-pointer"
+                >
+                  <option value="all">🎯 Wszystkie poziomy</option>
+                  <option value="A1">Poziom A1</option>
+                  <option value="A2">Poziom A2</option>
+                  <option value="B1">Poziom B1</option>
+                  <option value="B2">Poziom B2</option>
+                  <option value="C1">Poziom C1</option>
+                  <option value="C2">Poziom C2</option>
+                </select>
+              </div>
+            </div>
+
+            {/* List of Students */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+              {filteredUsers.length === 0 ? (
+                <div className="text-center py-12 text-content-muted">
+                  <Users className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p className="font-semibold text-sm">Nie znaleziono kursantów spełniających kryteria.</p>
+                  <p className="text-xs mt-1">Zmień frazę w wyszukiwarce lub zresetuj filtry.</p>
+                </div>
+              ) : (
+                filteredUsers.map((u) => (
+                  <div
+                    key={u.id}
+                    onClick={() => {
+                      handleSelectUser(u, targetTabAfterSelect || undefined);
+                      setTargetTabAfterSelect(null);
+                    }}
+                    className="group bg-base-100/70 hover:bg-base-100 border border-white/10 hover:border-primary/50 p-3.5 px-4 rounded-2xl cursor-pointer flex items-center justify-between gap-3 transition-all duration-200 hover:shadow-[0_0_20px_rgba(114,240,180,0.15)]"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-bold text-primary text-base flex-shrink-0 border border-primary/30 overflow-hidden group-hover:scale-105 transition-transform">
+                        {u.photoURL ? (
+                          <img src={u.photoURL} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          u.firstName ? u.firstName[0].toUpperCase() : u.username[0].toUpperCase()
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-white group-hover:text-primary transition-colors truncate">
+                            {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
+                          </span>
+                          <span className="text-xs text-content-muted truncate">({u.username})</span>
+                        </div>
+                        <div className="text-xs text-content-muted truncate mt-0.5">
+                          {u.email || 'Brak maila'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      {u.level && (
+                        <span className="px-2.5 py-1 bg-primary/20 text-primary border border-primary/30 rounded-lg text-xs font-mono font-bold">
+                          {u.level}
+                        </span>
+                      )}
+                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider border ${
+                        u.role === 'admin' ? 'bg-red-500/10 text-red-400 border-red-500/30' : u.role === 'teacher' ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' : 'bg-primary/10 text-primary border-primary/30'
+                      }`}>
+                        {u.role === 'teacher' ? 'Nauczyciel' : u.role === 'admin' ? 'Admin' : 'Kursant'}
+                      </span>
+                      <ChevronRight size={18} className="text-content-muted group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-white/10 bg-base-100/40 text-xs text-content-muted flex justify-between items-center">
+              <span>Znaleziono: <strong className="text-white">{filteredUsers.length}</strong> z {users.length} osób</span>
+              <Button size="sm" variant="secondary" onClick={() => setIsStudentPickerOpen(false)}>
+                Zamknij
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
