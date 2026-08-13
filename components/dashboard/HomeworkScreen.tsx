@@ -4,9 +4,10 @@ import { useLanguage } from '../../context/LanguageContext';
 import { User, SpecialTask, HomeworkType, TranslationExercise, FillInTheBlankExercise, LessonRecord } from '../../types';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { generateTranslationExercises, generateFillInTheBlankExercises, evaluateErrorCorrectionSentence, evaluateTranslations, evaluateTeacherHomework, processBulkSentences } from '../../services/geminiService';
+import { generateTranslationExercises, generateFillInTheBlankExercises, evaluateErrorCorrectionSentence, evaluateTranslations, evaluateTeacherHomework, processBulkSentences, generateHomeworkChatPipeline } from '../../services/geminiService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import { LessonSelectionModal } from './LessonSelectionModal';
 import { FillInTheBlankTask } from '../practice/FillInTheBlankTask';
 import { 
   BookOpen, 
@@ -68,10 +69,12 @@ export const HomeworkScreen: React.FC = () => {
   const [aiPrompt, setAiPrompt] = useState<string>('');
   const [genError, setGenError] = useState<string>('');
   const [studentLessons, setStudentLessons] = useState<LessonRecord[]>([]);
-  const [selectedLessonId, setSelectedLessonId] = useState<string>("manual");
+  const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
+  const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [showBulkAddModal, setShowBulkAddModal] = useState(false);
   const [bulkText, setBulkText] = useState("");
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [isDraftLoaded, setIsDraftLoaded] = useState(false);
 
 
   // Active task execution state for Student
@@ -88,6 +91,23 @@ export const HomeworkScreen: React.FC = () => {
   const [reviewTask, setReviewTask] = useState<SpecialTask | null>(null);
   const [teacherFeedbackText, setTeacherFeedbackText] = useState<string>('');
   const [isSavingReview, setIsSavingReview] = useState<boolean>(false);
+
+  const handleHomeworkTypeChange = (type: HomeworkType) => {
+    if (
+      (homeworkType === 'translation' && translationItems.length > 0 && type !== 'translation') ||
+      (homeworkType === 'fill_in_the_blank' && errorCorrectionItems.length > 0 && type !== 'fill_in_the_blank')
+    ) {
+      if (window.confirm(
+        language === 'pl' 
+          ? "Uwaga: zmiana typu pracy domowej spowoduje ukrycie wprowadzonych wcześniej zdań. Kontynuować?" 
+          : "Warning: changing the homework type will hide the sentences you've entered. Continue?"
+      )) {
+        setHomeworkType(type);
+      }
+    } else {
+      setHomeworkType(type);
+    }
+  };
 
   // Load students & homework tasks
   const loadData = async () => {
@@ -138,21 +158,67 @@ export const HomeworkScreen: React.FC = () => {
     }
   }, [user?.id, isTeacher, user?.hasNewHomework]);
 
-  // Set default title when type changes
+  // Restore draft on initial load
   useEffect(() => {
-    if (homeworkType === 'translation') {
-      setTitle('Praca domowa: Tłumaczenie zdań');
-      setInstructions('Przetłumacz poniższe zdania na język angielski. Przemyśl strukturę zdania i zastosowane słownictwo.');
-    } else {
-      setTitle('Praca domowa: Znajdź błędy w zdaniach');
-      setInstructions('W każdym z poniższych zdań znajduje się błąd. Wpisz pełne, poprawione zdanie po angielsku.');
+    if (isTeacher) {
+      const savedDraft = localStorage.getItem('homework_draft');
+      if (savedDraft) {
+        try {
+          const draft = JSON.parse(savedDraft);
+          if (draft.selectedStudentId !== undefined) setSelectedStudentId(draft.selectedStudentId);
+          if (draft.homeworkType) setHomeworkType(draft.homeworkType);
+          if (draft.title) setTitle(draft.title);
+          if (draft.instructions) setInstructions(draft.instructions);
+          if (draft.dueDate) setDueDate(draft.dueDate);
+          if (draft.translationItems) setTranslationItems(draft.translationItems);
+          if (draft.errorCorrectionItems) setErrorCorrectionItems(draft.errorCorrectionItems);
+          if (draft.aiLevel) setAiLevel(draft.aiLevel);
+          if (draft.aiTopic !== undefined) setAiTopic(draft.aiTopic);
+          if (draft.aiCount) setAiCount(draft.aiCount);
+          if (draft.aiPrompt !== undefined) setAiPrompt(draft.aiPrompt);
+          if (draft.selectedLessonIds) setSelectedLessonIds(draft.selectedLessonIds);
+        } catch (e) {
+          console.error('Błąd podczas ładowania draftu:', e);
+        }
+      } else {
+        // No draft, set initial title based on default homework type
+        setTitle('Praca domowa: Tłumaczenie zdań');
+        setInstructions('Przetłumacz poniższe zdania na język angielski. Przemyśl strukturę zdania i zastosowane słownictwo.');
+      }
     }
-  }, [homeworkType]);
+    setIsDraftLoaded(true);
+  }, [isTeacher]);
+
+  // Save draft whenever relevant state changes
+  useEffect(() => {
+    if (isTeacher && isDraftLoaded && activeTab === 'create') {
+      const draft = {
+        selectedStudentId,
+        homeworkType,
+        title,
+        instructions,
+        dueDate,
+        translationItems,
+        errorCorrectionItems,
+        aiLevel,
+        aiTopic,
+        aiCount,
+        aiPrompt,
+        selectedLessonIds
+      };
+      localStorage.setItem('homework_draft', JSON.stringify(draft));
+    }
+  }, [
+    isTeacher, isDraftLoaded, activeTab, selectedStudentId, homeworkType, title, 
+    instructions, dueDate, translationItems, errorCorrectionItems, 
+    aiLevel, aiTopic, aiCount, aiPrompt, selectedLessonIds
+  ]);
+
   // Auto-set level and load lessons when student changes
   useEffect(() => {
     if (!selectedStudentId || selectedStudentId === "all") {
       setStudentLessons([]);
-      setSelectedLessonId("manual");
+      setSelectedLessonIds([]);
       return;
     }
 
@@ -170,11 +236,7 @@ export const HomeworkScreen: React.FC = () => {
         snap.forEach(d => lessons.push({ id: d.id, ...d.data() } as LessonRecord));
         const sorted = lessons.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setStudentLessons(sorted);
-        if (sorted.length > 0) {
-          setSelectedLessonId("all"); // Default to all lessons vocabulary
-        } else {
-          setSelectedLessonId("manual");
-        }
+        setSelectedLessonIds([]); // Default to no lessons selected (user opens modal to select)
       } catch (err) {
         console.error("Błąd pobierania lekcji kursanta:", err);
       }
@@ -197,23 +259,14 @@ export const HomeworkScreen: React.FC = () => {
       let vocabularyTextToUse = "";
 
       const selectedStudent = students.find((st) => st.id === selectedStudentId);
-      const studentProfileContext = selectedStudent
-        ? `Profil i tło kursanta:\nImię: ${selectedStudent.firstName || ''} ${selectedStudent.lastName || ''}\nPoziom: ${selectedStudent.level || aiLevel}\nOpis: ${selectedStudent.description || 'Brak'}`
-        : '';
+      const selectedLessons = studentLessons.filter((l) => selectedLessonIds.includes(l.id));
 
-      if (selectedLessonId === "all" && studentLessons.length > 0) {
-        vocabularyTextToUse = studentLessons
+      if (selectedLessons.length > 0) {
+        vocabularyTextToUse = selectedLessons
           .map((l) => l.vocabularyText)
           .filter(Boolean)
           .join('\n');
-        finalPrompt += `\n\nBAZUJ NA SKUMULOWANYM SŁOWNICTWIE ZE WSZYSTKICH (${studentLessons.length}) LEKCJI KURSANTA:\n${vocabularyTextToUse}`;
-      } else if (selectedLessonId !== "manual" && selectedLessonId !== "all") {
-        const lesson = studentLessons.find(l => l.id === selectedLessonId);
-        if (lesson) {
-          vocabularyTextToUse = lesson.vocabularyText || '';
-          finalPrompt += `\n\nBAZUJ NA SŁOWNICTWIE Z LEKCJI (${new Date(lesson.date).toLocaleDateString()} - ${lesson.topic}):\n${lesson.vocabularyText}`;
-          if (!finalTopic) finalTopic = lesson.topic;
-        }
+        finalPrompt += `\n\nBAZUJ NA SKUMULOWANYM SŁOWNICTWIE I KONTEKŚCIE Z WYBRANYCH (${selectedLessons.length}) LEKCJI KURSANTA:\n${vocabularyTextToUse}`;
       }
 
       if (homeworkType === "translation") {
@@ -221,16 +274,25 @@ export const HomeworkScreen: React.FC = () => {
           ? vocabularyTextToUse.split('\n').map(s => s.trim()).filter(Boolean)
           : (finalTopic ? finalTopic.split(",").map(s => s.trim()).filter(Boolean) : []);
 
-        const result = await generateTranslationExercises(
-          aiLevel,
-          wordsArr,
-          finalPrompt,
-          finalTopic,
-          studentProfileContext,
-          aiCount
-        );
-        if (result && result.length > 0) {
-          setTranslationItems(result);
+        const pipelineRes = await generateHomeworkChatPipeline({
+          studentProfile: selectedStudent ? {
+            firstName: selectedStudent.firstName,
+            lastName: selectedStudent.lastName,
+            level: selectedStudent.level || aiLevel,
+            description: selectedStudent.description,
+            aiPrompt: selectedStudent.aiPrompt
+          } : undefined,
+          lessonHistory: selectedLessons,
+          exerciseHistory: selectedStudent?.frequentErrors || [],
+          chatHistory: [],
+          teacherInstruction: finalPrompt,
+          numSentences: aiCount,
+          selectedWords: wordsArr,
+          level: aiLevel
+        });
+
+        if (pipelineRes && pipelineRes.sentences && pipelineRes.sentences.length > 0) {
+          setTranslationItems(pipelineRes.sentences);
         } else {
           setGenError('Nie udało się wygenerować zdań. Spróbuj zmienić parametry.');
         }
@@ -352,6 +414,7 @@ export const HomeworkScreen: React.FC = () => {
       setTitle('');
       setSelectedStudentId('');
       setActiveTab('list');
+      localStorage.removeItem('homework_draft');
       await loadData();
     } catch (err: any) {
       console.error(err);
@@ -891,7 +954,7 @@ export const HomeworkScreen: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
                 type="button"
-                onClick={() => setHomeworkType('translation')}
+                onClick={() => handleHomeworkTypeChange('translation')}
                 className={`p-4 rounded-xl border text-left transition-all flex items-start gap-3 ${
                   homeworkType === 'translation'
                     ? 'bg-primary/10 border-primary shadow-[0_0_15px_rgba(114,240,180,0.15)]'
@@ -911,7 +974,7 @@ export const HomeworkScreen: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => setHomeworkType('fill_in_the_blank')}
+                onClick={() => handleHomeworkTypeChange('fill_in_the_blank')}
                 className={`p-4 rounded-xl border text-left transition-all flex items-start gap-3 ${
                   homeworkType === 'fill_in_the_blank'
                     ? 'bg-primary/10 border-primary shadow-[0_0_15px_rgba(114,240,180,0.15)]'
@@ -995,28 +1058,44 @@ export const HomeworkScreen: React.FC = () => {
                 </select>
               </div>
 
-              {/* Źródło słownictwa */}
+              {/* Wybór lekcji kursanta do analizy AI */}
               <div>
                 <label className="block text-xs font-bold text-gray-200 mb-1">
-                  Źródło słownictwa do wygenerowania
+                  Wybór lekcji kursanta do analizy AI
                 </label>
-                <select
-                  value={selectedLessonId}
-                  onChange={(e) => setSelectedLessonId(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-base-100 text-white border border-white/10 rounded-xl text-xs font-semibold focus:border-primary focus:outline-none"
+                <button
+                  type="button"
+                  onClick={() => setIsLessonModalOpen(true)}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 transition-all ${
+                    selectedLessonIds.length > 0
+                      ? 'bg-primary/10 border-primary/40 text-primary hover:bg-primary/15 shadow-[0_0_12px_rgba(114,240,180,0.1)]'
+                      : 'bg-base-100 border-white/10 text-gray-300 hover:border-white/20 hover:text-white'
+                  }`}
                 >
-                  <option value="manual">✍️ Manualne (własny temat / słownictwo wpisane niżej)</option>
-                  {studentLessons.length > 0 && (
-                    <option value="all">
-                      ⚡ Wszystkie lekcje kursanta (skumulowane słownictwo z {studentLessons.length} lekcji)
-                    </option>
-                  )}
-                  {studentLessons.map((lesson) => (
-                    <option key={lesson.id} value={lesson.id}>
-                      📖 Lekcja z dnia {new Date(lesson.date).toLocaleDateString()} - {lesson.topic || 'Bez tematu'}
-                    </option>
-                  ))}
-                </select>
+                  <div className="flex items-center gap-2 truncate">
+                    <BookOpen className="w-4 h-4 shrink-0 text-primary" />
+                    <span className="truncate">
+                      {selectedLessonIds.length === 0
+                        ? 'Brak wybranych lekcji (Generowanie z własnego opisu / zdania manualne)'
+                        : `Lekcje do analizy AI: Wybrano ${selectedLessonIds.length} z ${studentLessons.length} lekcji`}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-bold bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg shrink-0 text-white">
+                    {selectedLessonIds.length === 0 ? 'Wybierz lekcje ↗' : 'Zmień ↗'}
+                  </span>
+                </button>
+                {selectedLessonIds.length > 0 && (
+                  <div className="mt-1.5 flex items-center justify-between text-[11px] text-gray-400 px-1">
+                    <span>AI przeanalizuje słownictwo i wpisy z {selectedLessonIds.length} lekcji.</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedLessonIds([])}
+                      className="text-red-400 hover:underline font-medium"
+                    >
+                      Wyczyść wybór
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Temat (Manualnie) */}
@@ -1575,6 +1654,15 @@ export const HomeworkScreen: React.FC = () => {
         </div>
       )}
 
+      {/* Modal wyboru lekcji kursanta */}
+      <LessonSelectionModal
+        isOpen={isLessonModalOpen}
+        onClose={() => setIsLessonModalOpen(false)}
+        lessons={studentLessons}
+        selectedLessonIds={selectedLessonIds}
+        onSave={(ids) => setSelectedLessonIds(ids)}
+        studentName={students.find((s) => s.id === selectedStudentId)?.firstName}
+      />
     </div>
   );
 };

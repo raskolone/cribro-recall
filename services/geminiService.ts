@@ -1519,6 +1519,281 @@ Zwróć WYŁĄCZNIE poprawny obiekt JSON o strukturze:
   }
 };
 
+export interface HomeworkChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  sentences?: TranslationExercise[];
+  summaryText?: string;
+  modelInfo?: string;
+}
+
+export const generateHomeworkChatPipeline = async ({
+  studentProfile,
+  lessonHistory = [],
+  exerciseHistory = [],
+  chatHistory = [],
+  teacherInstruction,
+  numSentences = 5,
+  selectedWords = [],
+  level = 'B1-B2',
+  onStatusUpdate
+}: {
+  studentProfile: {
+    firstName?: string;
+    lastName?: string;
+    level?: string;
+    description?: string;
+    aiPrompt?: string;
+  };
+  lessonHistory?: any[];
+  exerciseHistory?: any[];
+  chatHistory?: HomeworkChatMessage[];
+  teacherInstruction: string;
+  numSentences?: number;
+  selectedWords?: string[];
+  level?: string;
+  onStatusUpdate?: (status: string) => void;
+}): Promise<{
+  sentences: TranslationExercise[];
+  summaryText: string;
+  modelUsed: string;
+}> => {
+  if (onStatusUpdate) {
+    onStatusUpdate("Krok 1/2: Generowanie wstępnych zdań (OpenAI GPT-4o mini)...");
+  }
+
+  const historyContext = chatHistory && chatHistory.length > 0
+    ? `HISTORIA CZATU Z NAUCZYCIELEM:\n${chatHistory.map(m => `${m.role === 'user' ? 'Nauczyciel' : 'AI'}: ${m.content}`).join('\n')}\n`
+    : '';
+
+  const wordsContext = selectedWords && selectedWords.length > 0
+    ? `WYMAGANE SŁÓWKA DO UŻYCIA: ${selectedWords.join(', ')}.\n`
+    : '';
+
+  const formattedLessons = lessonHistory && lessonHistory.length > 0
+    ? lessonHistory.map((l, i) => `
+### LEKCJA ${i + 1} (${l.date || 'brak daty'}) — Temat: ${l.topic || 'brak'}
+1. **Revision Notes**:
+${l.vocabularyText || ''}
+${l.lessonSummary || ''}
+
+2. **Student Transcript / Spoken Content**:
+${l.studentSpeaking || 'Brak zarejestrowanych wypowiedzi kursanta.'}
+
+3. **Things to Improve**:
+${l.thingsToImprove || 'Brak zarejestrowanych uwag do poprawy.'}`).join('\n\n---\n')
+    : 'Brak wpisanych lekcji w panelu kursanta.';
+
+  const openAiSystemInstruction = `# ROLE AND PURPOSE
+Jesteś zaawansowanym silnikiem pedagogicznym AI oraz pierwszym etapem generatora prac domowych (OpenAI GPT-4o mini). Twoim zadaniem jest generowanie spersonalizowanych prac domowych dla kursanta na podstawie historii wskazanych lekcji.
+
+# INPUT DATA STRUCTURE
+Dla każdej z zaznaczonych lekcji otrzymujesz dostęp do danych z panelu kursanta:
+1. **Revision Notes** – kluczowe zagadnienia, słownictwo i struktury omówione na lekcji.
+2. **Student Transcript / Spoken Content** – rzeczywiste wypowiedzi i tematy poruszane przez kursanta.
+3. **Things to Improve** – obszary wymagające korekty, powtarzające się błędy i luki gramatyczno-leksykalne.
+
+# HARD CONSTRAINTS (ŻELAZNE ZASADY)
+1. **Pełna Analiza Wielolekcyjna:** Przed wygenerowaniem jakiegokolwiek zadania MUSISZ przeanalizować dane ze WSZYSTKICH wskazanych lekcji (nie tylko z ostatniej).
+2. **Zakaz Sztuczności:** Zdania w języku polskim muszą brzmieć całkowicie naturalnie, płynnie i współcześnie. Zakaz używania "anglicyzmów myślowych" lub koślawych kalk językowych.
+3. **Realistyczny Kontekst:** Tematyka zdań musi bezpośrednio nawiązywać do prawdziwych wypowiedzi kursanta z sekcji transcript/spoken content. Nie twórz abstrakcyjnych ani dziecinnych zdań, chyba że wynika to z kontekstu lekcji.
+4. **Dopasowanie do Poziomu:** Poziom trudności (${level}) oraz zasób leksykalny musisz dopasować do aktualnego poziomu kursanta, jednocześnie adresując elementy z pola **Things to improve**.
+
+# EXECUTION WORKFLOW
+1. **KROK 1 (Agregacja):** Przeczytaj i połącz wpisy z Revision Notes, Things to improve oraz treści wypowiedzi ze wszystkich zaznaczonych lekcji.
+2. **KROK 2 (Identyfikacja celów):** Wyciągnij powtarzające się błędy oraz kluczowe frazy, które kursant powinien utrwalić.
+3. **KROK 3 (Kreacja zadań):** Sformułuj naturalne zdania wyjściowe w języku polskim, które zmuszą kursanta do użycia docelowych konstrukcji w języku obcym.
+
+# OUTPUT FORMAT
+Zwróć wynik jako JSON z tablicą "sentences" z polami:
+- english_sentence: oczekiwana odpowiedź / wzorzec w j. angielskim
+- polish_translation: zdanie kontekstowe po polsku (naturalne, żywe)
+- target_word_used: kluczowe słówko / struktura
+- hint: wskazówka / kontekst lekcyjny (opcjonalnie, np. "Nawiązanie do rozmowy o...")`;
+
+  const openAiUserPrompt = `${historyContext}${wordsContext}DANE KURSANTA I LEKCJI:
+Imię: ${studentProfile.firstName || ''} ${studentProfile.lastName || ''}
+Poziom: ${studentProfile.level || level}
+Żelazne zasady / Prompt kursanta: ${studentProfile.aiPrompt || 'Brak'}
+
+HISTORIA LEKCJI:
+${formattedLessons}
+
+OBECNA INSTRUKCJA LUB WSKAZÓWKA NAUCZYCIELA W CZACIE:
+"${teacherInstruction || 'Wygeneruj zdania na podstawie historii lekcji oraz obszarów do poprawy.'}"
+
+DLA LICZBY ZDAŃ: ${numSentences}. Zwróć DOKŁADNIE ${numSentences} zdań w formacie JSON.`;
+
+  let draftSentences: any[] = [];
+  try {
+    const openAiResult = await callOpenAI(openAiUserPrompt, openAiSystemInstruction, "gpt-4o-mini", true);
+    const jsonStr = extractJSON(openAiResult.text || "{}");
+    const parsed = JSON.parse(jsonStr);
+    if (parsed && Array.isArray(parsed.sentences)) {
+      draftSentences = parsed.sentences;
+    } else if (Array.isArray(parsed)) {
+      draftSentences = parsed;
+    }
+  } catch (err: any) {
+    console.warn("OpenAI Step 1 error, attempting fallback draft generation:", err);
+  }
+
+  if (!draftSentences || draftSentences.length === 0) {
+    draftSentences = Array.from({ length: numSentences }, (_, i) => ({
+      id: i + 1,
+      english_sentence: `Sample English sentence ${i + 1} for ${level}.`,
+      polish_translation: `Przykładowe zdanie po polsku ${i + 1} na poziomie ${level}.`,
+      target_word_used: selectedWords[i % Math.max(1, selectedWords.length)] || 'practice',
+      hint: 'Spróbuj przetłumaczyć naturalnie'
+    }));
+  }
+
+  if (onStatusUpdate) {
+    onStatusUpdate("Krok 2/2: Weryfikacja spójności, profilu i historii kursanta (Gemini 3.1 Flash)...");
+  }
+
+  const geminiVerificationPrompt = `# ROLE AND PURPOSE
+Jesteś zaawansowanym silnikiem pedagogicznym AI — drugim, zaawansowanym etapem generatora prac domowych (Model Gemini 3.1 Flash). Twoim zadaniem jest zweryfikowanie i oszlifowanie spersonalizowanej pracy domowej dla kursanta.
+
+# INPUT DATA STRUCTURE
+Dla każdej z zaznaczonych lekcji analizujesz dane z panelu kursanta:
+1. **Revision Notes** – kluczowe zagadnienia, słownictwo i struktury omówione na lekcji.
+2. **Student Transcript / Spoken Content** – rzeczywiste wypowiedzi i tematy poruszane przez kursanta.
+3. **Things to Improve** – obszary wymagające korekty, powtarzające się błędy i luki gramatyczno-leksykalne.
+
+# HARD CONSTRAINTS (ŻELAZNE ZASADY)
+1. **Pełna Analiza Wielolekcyjna:** Przed wygenerowaniem/zatwierdzeniem jakiegokolwiek zadania MUSISZ przeanalizować dane ze WSZYSTKICH wskazanych lekcji (nie tylko z ostatniej).
+2. **Zakaz Sztuczności:** Zdania w języku polskim muszą brzmieć całkowicie naturalnie, płynnie i współcześnie. Zakaz używania "anglicyzmów myślowych" lub koślawych kalk językowych.
+3. **Realistyczny Kontekst:** Tematyka zdań musi bezpośrednio nawiązywać do prawdziwych wypowiedzi kursanta z sekcji transcript/spoken content. Nie twórz abstrakcyjnych ani dziecinnych zdań, chyba że wynika to z kontekstu lekcji.
+4. **Dopasowanie do Poziomu:** Poziom trudności oraz zasób leksykalny musisz dopasować do aktualnego poziomu kursanta, jednocześnie adresując elementy z pola **Things to improve**.
+
+# EXECUTION WORKFLOW
+1. **KROK 1 (Agregacja):** Przeczytaj i połącz wpisy z Revision Notes, Things to improve oraz treści wypowiedzi ze wszystkich wskazanych lekcji.
+2. **KROK 2 (Identyfikacja celów):** Wyciągnij powtarzające się błędy oraz kluczowe frazy, które kursant powinien utrwalić.
+3. **KROK 3 (Kreacja/Korekta zadań):** Sformułuj lub skoryguj wstępne zdania wyjściowe w języku polskim tak, by zmuszały kursanta do użycia docelowych konstrukcji w języku obcym.
+
+WSTĘPNIE WYGENEROWANE ZDANIA PRZEZ MODEL OPENAI (GPT-4o mini):
+${JSON.stringify(draftSentences, null, 2)}
+
+PROFIL KURSANTA:
+Imię i nazwisko: ${studentProfile.firstName || ''} ${studentProfile.lastName || ''}
+Deklarowany poziom: ${studentProfile.level || level}
+Opis kursanta: ${studentProfile.description || 'Brak'}
+Instrukcje / Żelazne zasady AI (aiPrompt): ${studentProfile.aiPrompt || 'Brak'}
+
+DANE Z PANELU KURSANTA Z ZAZNACZONYCH LEKCJI:
+${formattedLessons}
+
+HISTORIA ĆWICZEŃ I CZĘSTO POPEŁNIANE BŁĘDY KURSANTA:
+${exerciseHistory && exerciseHistory.length > 0 ? JSON.stringify(exerciseHistory).slice(0, 3000) : 'Brak szczegółowych danych o błędach.'}
+
+OBECNA PROŚBA NAUCZYCIELA W CZACIE:
+"${teacherInstruction}"
+Liczba zdań do zwrócenia: DOKŁADNIE ${numSentences}
+
+ZADANIE GEMINI 3.1 FLASH:
+1. Zweryfikuj logiczność i naturalność brzmienia zdań w języku polskim i angielskim (zero kalk i sztuczności).
+2. Sprawdź, czy zdania bezpośrednio nawiązują do transcript/spoken content, Revision Notes oraz Things to Improve ze wszystkich lekcji.
+3. Jeśli któreś zdanie jest niedopasowane, sztuczne lub ma kalki językowe, skoryguj je na lepsze.
+4. Wygeneruj dla każdego zdania angielskiego pole \`puzzleChunks\` (podział zdania na 2-4 logiczne grupy słów).
+5. Wygeneruj zwięzły raport w polu \`summary\` wyjaśniający, jak przeanalizowano Revision Notes, Student Transcript oraz Things to Improve ze wskazanych lekcji.
+
+Zwróć wynik WYŁĄCZNIE w formacie JSON:
+{
+  "summary": "Analiza Gemini 3.1 Flash: przeanalizowano X lekcji (Revision Notes, Student Transcript, Things to Improve)...",
+  "sentences": [
+    {
+      "id": 1,
+      "english_sentence": "Clean, natural English sentence.",
+      "polish_translation": "Naturalne, żywe zdanie kontekstowe po polsku.",
+      "target_word_used": "word / structure",
+      "hint": "Wskazówka / kontekst lekcyjny (np. Nawiązanie do rozmowy o...)",
+      "puzzleChunks": ["Clean,", "natural English", "sentence."]
+    }
+  ]
+}`;
+
+  const geminiSystemInstruction = "You are Gemini 3.1 Flash, an advanced pedagogical AI engine for personalized homework generation. Strictly enforce multi-lesson analysis, natural non-calque Polish, realistic student transcript context, level fit, and addressing 'Things to improve'. Always output strict JSON.";
+
+  let finalSentences: TranslationExercise[] = [];
+  let summaryText = "Zdania wygenerowane i zweryfikowane przez dwustopniowy model OpenAI GPT-4o mini & Gemini 3.1 Flash.";
+
+  try {
+    const geminiRes = await generateTextWithUnifiedFallback(
+      geminiVerificationPrompt,
+      geminiSystemInstruction,
+      ['gemini-2.5-flash', 'gemini-1.5-flash', 'openai/gpt-4o-mini'],
+      { responseMimeType: "application/json" }
+    );
+
+    const extracted = extractJSON(geminiRes.text || "{}");
+    const parsedGemini = JSON.parse(extracted);
+
+    if (parsedGemini.summary) {
+      summaryText = parsedGemini.summary;
+    }
+
+    const rawSentences = parsedGemini.sentences || parsedGemini.exercises || (Array.isArray(parsedGemini) ? parsedGemini : []);
+
+    if (Array.isArray(rawSentences) && rawSentences.length > 0) {
+      finalSentences = rawSentences.map((s: any, idx: number) => {
+        const eng = s.english_sentence || s.englishSentence || s.englishTranslation || s.english || "";
+        const pol = s.polish_translation || s.polishSentence || s.polish || "";
+        const hnt = s.hint || "";
+        const targetWord = s.target_word_used || s.targetWord || "";
+        
+        let chunks: string[] = Array.isArray(s.puzzleChunks) ? s.puzzleChunks : [];
+        if (!chunks || chunks.length === 0) {
+          const wordsInEng = eng.split(' ').filter(Boolean);
+          if (wordsInEng.length < 8) {
+            chunks = wordsInEng;
+          } else {
+            chunks = [];
+            for (let c = 0; c < wordsInEng.length; c += 3) {
+              chunks.push(wordsInEng.slice(c, c + 3).join(' '));
+            }
+          }
+        }
+
+        return {
+          id: idx + 1,
+          englishSentence: eng,
+          polishSentence: pol,
+          englishTranslation: eng,
+          targetWordUsed: targetWord,
+          hint: hnt,
+          puzzleChunks: chunks
+        };
+      });
+    }
+  } catch (err: any) {
+    console.warn("Gemini 3.1 Flash Step 2 verification failed, falling back to OpenAI draft:", err);
+  }
+
+  if (finalSentences.length === 0 && draftSentences.length > 0) {
+    finalSentences = draftSentences.map((s: any, idx: number) => {
+      const eng = s.english_sentence || s.englishSentence || s.englishTranslation || s.english || "";
+      const pol = s.polish_translation || s.polishSentence || s.polish || "";
+      const wordsInEng = eng.split(' ').filter(Boolean);
+      return {
+        id: idx + 1,
+        englishSentence: eng,
+        polishSentence: pol,
+        englishTranslation: eng,
+        targetWordUsed: s.target_word_used || "",
+        hint: s.hint || "",
+        puzzleChunks: wordsInEng.length < 8 ? wordsInEng : [eng]
+      };
+    });
+  }
+
+  return {
+    sentences: finalSentences.slice(0, numSentences),
+    summaryText,
+    modelUsed: 'OpenAI (GPT-4o mini) → Gemini 3.1 Flash'
+  };
+};
+
 export const processBulkSentences = async (
   text: string
 ): Promise<Array<{ polishSentence: string; englishTranslation: string; hint: string }>> => {

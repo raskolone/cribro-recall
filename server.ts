@@ -660,7 +660,7 @@ ${targetStudentId ? `Głównym kursantem jest: ${targetStudentName || targetStud
 - studentId (string): ID wybranego dopasowanego kursanta.
 - studentIds (array of strings): Lista ID wszystkich dopasowanych kursantów dla danej lekcji.
 - revisionNotes (string): Omówione zagadnienia, teoria, notatki z lekcji.
-- vocabularyText (string): Wyodrębnione słówka i zwroty w formacie "słowo_angielskie - polskie_tłumaczenie" (każde w osobnej linii).
+- vocabularyText (string): Wyodrębnij WSZYSTKIE słówka, zwroty i idiomy, które pojawiają się w sekcji lekcji. Nawet jeśli są zapisane ciągiem (nie w kolumnie), wyłuskaj DOKŁADNIE KAŻDE z nich. Ułóż je w formacie: "słowo_angielskie - polskie_tłumaczenie" (każde słówko w osobnej linii). Uważaj, aby nie pominąć żadnego słowa z notatek.
 - studentSpeaking (string): Uwagi dotyczące wypowiedzi kursanta, jego opinie, tematy na które się wypowiadał.
 - thingsToImprove (string): Wskazówki, błędy gramatyczne, wymowa i rzeczy do poprawy.
 - suggestedFollowUp (string): Praca domowa, ćwiczenia i zalecenia na przyszłość.
@@ -805,7 +805,7 @@ Zwróć wynik jako JSON z poniższymi polami:
 - studentIds (array of strings, Lista ID wszystkich kursantów z Bazy Kursantów, jeśli lekcja dotyczyła grupy lub kilku osób)
 - lessonTopic (string, Krótkie, jednozdaniowe podsumowanie tematu lekcji na podstawie revision notes. Maksymalnie 50 znaków, bez daty, zwięzłe hasło bez wieloczęściowych zdań.)
 - revisionNotes (string, Krótkie podsumowanie lekcji w stronie biernej po polsku, 3-6 zdań)
-- vocabularyText (string, Słownictwo i wymowa z lekcji. Zasada formatowania: każde słowo i jego definicja (lub wymowa) mają być w osobnej linijce, oddzielone myślnikiem. Np. "word - tłumaczenie" i w następnej linii kolejne słowo)
+- vocabularyText (string, Wyodrębnij WSZYSTKIE słówka, zwroty i idiomy, które pojawiają się w notatkach z lekcji. Nawet jeśli są zapisane ciągiem (nie w kolumnie) lub wplecione w tekst, wyłuskaj DOKŁADNIE KAŻDE z nich. Ułóż je ściśle w formacie: "słowo_angielskie - polskie_tłumaczenie" w osobnych linijkach. Uważaj, aby nie pominąć żadnego słowa. Do not include markdown formatting or bullet points.)
 - studentSpeaking (string, Krótkie memory o kursancie po polsku, 5-6 zdań neutralnie o czym mówił, styl itp.)
 - thingsToImprove (string, 2-3 obszary wymagające poprawy z diagnozą i przykładami, po polsku)
 - suggestedFollowUp (string, Ustalenia i najlepsze tematy na kolejną lekcję, po polsku)

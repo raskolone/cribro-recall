@@ -21,7 +21,7 @@ import TeacherSpecialTaskModal from './TeacherSpecialTaskModal';
 import AssignVocabularyModal from './AssignVocabularyModal';
 import { 
   Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
-  User as UserIcon, Users, Search, X, ChevronRight, Sparkles, BarChart2, Clock, 
+  User as UserIcon, Users, Search, X, ChevronRight, ChevronDown, ChevronUp, Sparkles, BarChart2, Clock, 
   BookOpen, BookMarked, UserCheck, Filter, Award, Activity, Calendar, 
   RefreshCw, Plus, Eye, Shield, Target
 } from 'lucide-react';
@@ -84,7 +84,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       const lessonsQ = query(collection(db, `users/${userId}/lessonRecords`));
       const lessonsSnapshot = await getDocs(lessonsQ);
       const lessonsList = lessonsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonRecord));
-      lessonsList.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
+      lessonsList.sort((a, b) => {
+        const dateB = new Date(b.date).getTime();
+        const dateA = new Date(a.date).getTime();
+        if (dateB !== dateA) return dateB - dateA;
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      });
       setLessonRecords(lessonsList);
 
       // Fetch Practice Logs
@@ -882,6 +887,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
   const [practiceLogs, setPracticeLogs] = useState<PracticeLog[]>([]);
   const [lessonRecords, setLessonRecords] = useState<LessonRecord[]>([]);
+  const [groupByMonth, setGroupByMonth] = useState(true);
+  const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({});
   const [userSets, setUserSets] = useState<FlashcardSet[]>([]);
   const [specialTasks, setSpecialTasks] = useState<any[]>([]);
   const [userStats, setUserStats] = useState<{ totalWords: number; difficultWords: number; masteryCount: number; totalTasks?: number; totalSentences?: number; averageScore?: number } | null>(null);
@@ -1518,7 +1525,20 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <div className="space-y-8">
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                  <h3 className="text-lg font-bold">{i18n.t("Historia lekcji")}</h3>
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-lg font-bold">{i18n.t("Historia lekcji")}</h3>
+                    {lessonRecords.length > 0 && (
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-content-muted hover:text-white transition-colors">
+                        <input 
+                          type="checkbox" 
+                          className="toggle toggle-primary toggle-sm"
+                          checked={groupByMonth}
+                          onChange={(e) => setGroupByMonth(e.target.checked)}
+                        />
+                        <span>Grupuj wg miesięcy</span>
+                      </label>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     <Button 
                       size="sm" 
@@ -1539,44 +1559,161 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </div>
                 </div>
                 {lessonRecords.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-4">
-                    {lessonRecords.map((record, index) => (
-                      <Card 
-                        key={record.id} 
-                        className="relative group cursor-pointer p-4 rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5"
-                        onClick={() => openLessonRecordModal('view', record)}
-                      >
-                        <div className="absolute top-1/2 -translate-y-1/2 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); openLessonRecordModal('edit', record); }}
-                            className="p-2 bg-base-100 rounded-lg text-content-muted hover:text-primary hover:bg-base-200 transition-colors"
-                            title="Edytuj lekcję"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                          </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleDeleteLessonRecord(record); }}
-                            className="p-2 bg-base-100 rounded-lg text-content-muted hover:text-red-500 hover:bg-base-200 transition-colors"
-                            title="Usuń lekcję"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                        <div className="flex items-center gap-4 pr-24">
-                          <div className="w-12 h-12 flex-shrink-0 bg-primary/10 text-primary font-mono font-bold rounded-lg flex items-center justify-center">
-                            #{lessonRecords.length - index}
+                  <div className="space-y-4">
+                    {(() => {
+                      if (!groupByMonth) {
+                        return (
+                          <div className="grid grid-cols-1 gap-2.5">
+                            {lessonRecords.map((record, index) => (
+                              <Card 
+                                key={record.id}
+                                className="relative group cursor-pointer p-3 rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5"
+                                onClick={() => openLessonRecordModal('view', record)}
+                              >
+                                <div className="absolute top-1/2 -translate-y-1/2 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); openLessonRecordModal('edit', record); }}
+                                    className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-primary hover:bg-base-200 transition-colors"
+                                    title="Edytuj lekcję"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                  </button>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteLessonRecord(record); }}
+                                    className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-red-500 hover:bg-base-200 transition-colors"
+                                    title="Usuń lekcję"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                </div>
+                                <div className="flex items-center gap-3 pr-20">
+                                  <div className="w-10 h-10 flex-shrink-0 bg-primary/10 text-primary font-mono text-sm font-bold rounded-lg flex items-center justify-center">
+                                    #{lessonRecords.length - index}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                     <h4 className="font-bold text-base line-clamp-1">{record.topic}</h4>
+                                     <span className="text-xs font-mono text-content-muted">{record.date}</span>
+                                  </div>
+                                </div>
+                              </Card>
+                            ))}
                           </div>
-                          <div className="flex-1 min-w-0">
-                             <h4 className="font-bold text-lg line-clamp-1">{record.topic}</h4>
-                             <span className="text-sm font-mono text-content-muted">{record.date}</span>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
+                        );
+                      }
+
+                      const groups: { key: string, items: typeof lessonRecords }[] = [];
+                      let currentGroupKey = '';
+                      let currentGroup: { key: string, items: typeof lessonRecords } | null = null;
+                      
+                      lessonRecords.forEach(record => {
+                          const d = new Date(record.date);
+                          const diffTime = new Date().getTime() - d.getTime();
+                          const diffDays = diffTime / (1000 * 3600 * 24);
+
+                          let groupKey = '';
+                          if (diffDays >= 0 && diffDays <= 7) {
+                              groupKey = 'Ostatni tydzień';
+                          } else if (Number.isNaN(d.getTime())) {
+                              groupKey = 'Inne';
+                          } else {
+                              groupKey = d.toLocaleString('pl-PL', { month: 'long', year: 'numeric' }).toUpperCase();
+                          }
+
+                          if (groupKey !== currentGroupKey) {
+                              currentGroupKey = groupKey;
+                              currentGroup = { key: groupKey, items: [] };
+                              groups.push(currentGroup);
+                          }
+                          currentGroup?.items.push(record);
+                      });
+
+                      return groups.map((group) => {
+                          const isExpanded = expandedMonths[group.key] === true; // Default to false
+                          
+                          return (
+                              <div key={group.key} className="flex flex-col gap-2.5">
+                                  {/* Left-aligned aesthetic header */}
+                                  <div 
+                                      className={`flex items-center justify-between p-3.5 rounded-xl cursor-pointer transition-all border liquid-glass-tile ${
+                                          isExpanded 
+                                              ? 'bg-primary/10 border-primary/30 shadow-[0_0_15px_rgba(114,240,180,0.15)]' 
+                                              : 'bg-base-200/40 border-white/10 hover:bg-base-200 hover:border-white/20'
+                                      }`}
+                                      onClick={() => setExpandedMonths(prev => ({ ...prev, [group.key]: !prev[group.key] }))}
+                                  >
+                                      <div className="flex items-center gap-3.5">
+                                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                                              isExpanded ? 'bg-primary text-black' : 'bg-base-300 text-content-muted'
+                                          }`}>
+                                              <Calendar className="w-4 h-4" />
+                                          </div>
+                                          <span className={`text-sm font-bold tracking-wide ${isExpanded ? 'text-primary' : 'text-gray-200'}`}>
+                                              {group.key}
+                                          </span>
+                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-base-300 text-content-muted">
+                                              {group.items.length}
+                                          </span>
+                                      </div>
+                                      <div className={`p-1 rounded-md transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                          <ChevronDown className={`w-4 h-4 ${isExpanded ? 'text-primary' : 'text-content-muted'}`} />
+                                      </div>
+                                  </div>
+
+                                  {/* Group Items */}
+                                  {isExpanded && (
+                                      <div className="grid grid-cols-1 gap-2.5 pl-2 sm:pl-4 border-l-2 border-primary/10 ml-2 sm:ml-4 mt-1 mb-2 animate-fadeIn">
+                                          {group.items.map(record => {
+                                              const globalIndex = lessonRecords.findIndex(l => l.id === record.id);
+                                              const lessonNumber = lessonRecords.length - globalIndex;
+
+                                              return (
+                                                  <Card 
+                                                    key={record.id}
+                                                    className="relative group cursor-pointer p-3 rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5"
+                                                    onClick={() => openLessonRecordModal('view', record)}
+                                                  >
+                                                    <div className="absolute top-1/2 -translate-y-1/2 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                      <button 
+                                                        onClick={(e) => { e.stopPropagation(); openLessonRecordModal('edit', record); }}
+                                                        className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-primary hover:bg-base-200 transition-colors"
+                                                        title="Edytuj lekcję"
+                                                      >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                        </svg>
+                                                      </button>
+                                                      <button 
+                                                        onClick={(e) => { e.stopPropagation(); handleDeleteLessonRecord(record); }}
+                                                        className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-red-500 hover:bg-base-200 transition-colors"
+                                                        title="Usuń lekcję"
+                                                      >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                      </button>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 pr-20">
+                                                      <div className="w-10 h-10 flex-shrink-0 bg-primary/10 text-primary font-mono text-sm font-bold rounded-lg flex items-center justify-center">
+                                                        #{lessonNumber}
+                                                      </div>
+                                                      <div className="flex-1 min-w-0">
+                                                         <h4 className="font-bold text-base line-clamp-1">{record.topic}</h4>
+                                                         <span className="text-xs font-mono text-content-muted">{record.date}</span>
+                                                      </div>
+                                                    </div>
+                                                  </Card>
+                                              );
+                                          })}
+                                      </div>
+                                  )}
+                              </div>
+                          );
+                      });
+                    })()}
                   </div>
                 ) : (
                   <p className="text-content-muted italic">{i18n.t("Brak historii lekcji.")}</p>

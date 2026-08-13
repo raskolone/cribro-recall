@@ -7,7 +7,7 @@ import { LessonRecord, PracticeLog } from '../../types';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import TTSButtons from '../flashcards/TTSButtons';
-import { Calendar, Tag, Sparkles, X, FileText, Clock, Search, BookOpen, AlertCircle, ArrowLeft, LayoutGrid, List, ChevronRight } from 'lucide-react';
+import { Calendar, Tag, Sparkles, X, FileText, Clock, Search, BookOpen, AlertCircle, ArrowLeft, LayoutGrid, List, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import Markdown from 'react-markdown';
 import gsap from 'gsap';
 
@@ -23,7 +23,9 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
   const [lessons, setLessons] = useState<LessonRecord[]>([]);
   const [practiceLogs, setPracticeLogs] = useState<PracticeLog[]>([]);
   const [activeTab, setActiveTab] = useState<'lessons' | 'sessions'>('lessons');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [groupByMonth, setGroupByMonth] = useState(true);
+  const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({});
   const [selectedLesson, setSelectedLesson] = useState<LessonRecord | null>(null);
   const [selectedLog, setSelectedLog] = useState<PracticeLog | null>(null);
 
@@ -68,7 +70,12 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
         const q = query(collection(db, `users/${user.id}/lessonRecords`));
         const snapshot = await getDocs(q);
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonRecord));
-        return data.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
+        return data.sort((a, b) => {
+          const dateB = new Date(b.date).getTime();
+          const dateA = new Date(a.date).getTime();
+          if (dateB !== dateA) return dateB - dateA;
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        });
       };
 
       const fetchPracticeLogs = async () => {
@@ -221,12 +228,25 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
           </h1>
           <p className="text-content-muted text-sm mt-1">
              {language === 'pl' 
-                 ? 'Przeglądaj notatki z lekcji i historię sesji ćwiczeniowych.' 
-                 : 'Review lesson notes and practice session history.'}
+                 ? 'Przeglądaj historię lekcji i sesji ćwiczeniowych.' 
+                 : 'Review lesson history and practice session history.'}
           </p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+          {/* Toggle for month grouping when in list view */}
+          {activeTab === 'lessons' && viewMode === 'list' && lessons.length > 0 && (
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-content-muted hover:text-white transition-colors mr-2">
+              <input 
+                type="checkbox" 
+                className="toggle toggle-primary toggle-sm"
+                checked={groupByMonth}
+                onChange={(e) => setGroupByMonth(e.target.checked)}
+              />
+              <span>{language === 'pl' ? 'Grupuj wg miesięcy' : 'Group by months'}</span>
+            </label>
+          )}
+
           {/* Grid / List Switcher (Visible when in lessons tab) */}
           {activeTab === 'lessons' && (
             <div className="flex items-center gap-1 bg-[#0a0f1a] border border-white/10 p-1 rounded-xl shadow-inner">
@@ -265,7 +285,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'lessons' ? 'bg-gradient-to-r from-emerald-500 to-teal-400 text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-content-muted hover:text-white'}`}
              >
                <FileText className="w-4 h-4" />
-               {language === 'pl' ? 'Notatki z lekcji' : 'Lesson Notes'}
+               {language === 'pl' ? 'Historia lekcji' : 'Lesson History'}
              </button>
              <button 
                onClick={() => setActiveTab('sessions')}
@@ -377,44 +397,159 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
           </div>
         ) : (
           /* List View (Lista) */
-          <div className="grid grid-cols-1 gap-4">
-            {lessons.map((lesson, index) => {
-              const lessonNumber = lessons.length - index;
-              const cleanTopic = lesson.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim();
+          <div className="space-y-4">
+            {(() => {
+              if (!groupByMonth) {
+                return (
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {lessons.map((lesson, index) => {
+                      const lessonNumber = lessons.length - index;
+                      const cleanTopic = lesson.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim();
+                      return (
+                        <Card 
+                          key={lesson.id}
+                          onClick={() => handleLessonSelect(lesson)}
+                          className={`p-3 cursor-pointer hover:border-emerald-500/50 transition-colors group flex items-center justify-between rounded-xl border ${isRecentLesson(lesson) ? 'border-emerald-500/80 animate-pulse bg-emerald-500/10' : 'border-white/10 bg-base-200/50'}`}
+                        >
+                            <div className="flex items-center gap-3 pr-4">
+                              <div className="w-10 h-10 flex-shrink-0 bg-emerald-500/10 text-emerald-400 font-mono text-sm font-bold rounded-lg flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-black transition-colors">
+                                #{lessonNumber}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-bold text-white text-base line-clamp-1 group-hover:text-emerald-400 transition-colors">
+                                  {cleanTopic}
+                                </h3>
+                                <div className="flex items-center gap-1.5 text-xs font-mono text-content-muted mt-0.5">
+                                  <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                                  {new Date(lesson.date).toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 text-content-muted">
+                               <div className="hidden sm:flex gap-2 flex-wrap">
+                                 {lesson.lessonSummary && (
+                                   <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                     <Sparkles className="w-2.5 h-2.5" />
+                                     {language === 'pl' ? 'Podsumowanie' : 'Summary'}
+                                   </span>
+                                 )}
+                               </div>
+                               <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-emerald-400" />
+                            </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                );
+              }
 
-              return (
-              <Card 
-                key={lesson.id} 
-                onClick={() => handleLessonSelect(lesson)}
-                className={`p-4 cursor-pointer hover:border-emerald-500/50 transition-colors group flex items-center justify-between rounded-xl border ${isRecentLesson(lesson) ? 'border-emerald-500/80 animate-pulse bg-emerald-500/10' : 'border-white/10 bg-base-200/50'}`}
-              >
-                  <div className="flex items-center gap-4 pr-4">
-                    <div className="w-12 h-12 flex-shrink-0 bg-emerald-500/10 text-emerald-400 font-mono font-bold rounded-xl flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-black transition-colors">
-                      #{lessonNumber}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-white text-lg line-clamp-1 group-hover:text-emerald-400 transition-colors">
-                        {cleanTopic}
-                      </h3>
-                      <div className="flex items-center gap-2 text-xs font-mono text-content-muted mt-1">
-                        <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-                        {new Date(lesson.date).toLocaleDateString()}
+              const groups: { key: string, items: typeof lessons }[] = [];
+              let currentGroupKey = '';
+              let currentGroup: { key: string, items: typeof lessons } | null = null;
+              
+              lessons.forEach(lesson => {
+                  const d = new Date(lesson.date);
+                  const diffTime = new Date().getTime() - d.getTime();
+                  const diffDays = diffTime / (1000 * 3600 * 24);
+
+                  let groupKey = '';
+                  if (diffDays >= 0 && diffDays <= 7) {
+                      groupKey = language === 'pl' ? 'Ostatni tydzień' : 'Last week';
+                  } else if (Number.isNaN(d.getTime())) {
+                      groupKey = language === 'pl' ? 'Inne' : 'Other';
+                  } else {
+                      groupKey = d.toLocaleString(language === 'pl' ? 'pl-PL' : 'en-US', { month: 'long', year: 'numeric' });
+                      groupKey = groupKey.toUpperCase();
+                  }
+
+                  if (groupKey !== currentGroupKey) {
+                      currentGroupKey = groupKey;
+                      currentGroup = { key: groupKey, items: [] };
+                      groups.push(currentGroup);
+                  }
+                  currentGroup?.items.push(lesson);
+              });
+
+              return groups.map((group) => {
+                  const isExpanded = expandedMonths[group.key] === true; // Default to false
+                  
+                  return (
+                      <div key={group.key} className="flex flex-col gap-2.5">
+                          {/* Left-aligned aesthetic header */}
+                          <div 
+                              className={`flex items-center justify-between p-3.5 rounded-xl cursor-pointer transition-all border liquid-glass-tile ${
+                                  isExpanded 
+                                      ? 'bg-primary/10 border-primary/30 shadow-[0_0_15px_rgba(114,240,180,0.15)]' 
+                                      : 'bg-base-200/40 border-white/10 hover:bg-base-200 hover:border-white/20'
+                              }`}
+                              onClick={() => setExpandedMonths(prev => ({ ...prev, [group.key]: !prev[group.key] }))}
+                          >
+                              <div className="flex items-center gap-3.5">
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                                      isExpanded ? 'bg-primary text-black' : 'bg-base-300 text-content-muted'
+                                  }`}>
+                                      <Calendar className="w-4 h-4" />
+                                  </div>
+                                  <span className={`text-sm font-bold tracking-wide ${isExpanded ? 'text-primary' : 'text-gray-200'}`}>
+                                      {group.key}
+                                  </span>
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-base-300 text-content-muted">
+                                      {group.items.length}
+                                  </span>
+                              </div>
+                              <div className={`p-1 rounded-md transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                  <ChevronDown className={`w-4 h-4 ${isExpanded ? 'text-primary' : 'text-content-muted'}`} />
+                              </div>
+                          </div>
+
+                          {/* Group Items */}
+                          {isExpanded && (
+                              <div className="grid grid-cols-1 gap-2.5 pl-2 sm:pl-4 border-l-2 border-primary/10 ml-2 sm:ml-4 mt-1 mb-2 animate-fadeIn">
+                                  {group.items.map(lesson => {
+                                      const globalIndex = lessons.findIndex(l => l.id === lesson.id);
+                                      const lessonNumber = lessons.length - globalIndex;
+                                      const cleanTopic = lesson.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim();
+
+                                      return (
+                                          <Card 
+                                              key={lesson.id}
+                                              onClick={() => handleLessonSelect(lesson)}
+                                              className={`p-3 cursor-pointer hover:border-emerald-500/50 transition-colors group flex items-center justify-between rounded-xl border ${isRecentLesson(lesson) ? 'border-emerald-500/80 animate-pulse bg-emerald-500/10' : 'border-white/10 bg-base-200/50'}`}
+                                          >
+                                              <div className="flex items-center gap-3 pr-4">
+                                                <div className="w-10 h-10 flex-shrink-0 bg-emerald-500/10 text-emerald-400 font-mono text-sm font-bold rounded-lg flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-black transition-colors">
+                                                  #{lessonNumber}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                  <h3 className="font-bold text-white text-base line-clamp-1 group-hover:text-emerald-400 transition-colors">
+                                                    {cleanTopic}
+                                                  </h3>
+                                                  <div className="flex items-center gap-1.5 text-xs font-mono text-content-muted mt-0.5">
+                                                    <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                                                    {new Date(lesson.date).toLocaleDateString()}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                              <div className="flex items-center gap-4 text-content-muted">
+                                                 <div className="hidden sm:flex gap-2 flex-wrap">
+                                                   {lesson.lessonSummary && (
+                                                     <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                       <Sparkles className="w-2.5 h-2.5" />
+                                                       {language === 'pl' ? 'Podsumowanie' : 'Summary'}
+                                                     </span>
+                                                   )}
+                                                 </div>
+                                                 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-emerald-400" />
+                                              </div>
+                                          </Card>
+                                      );
+                                  })}
+                              </div>
+                          )}
                       </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 text-content-muted">
-                     <div className="hidden sm:flex gap-2 flex-wrap">
-                       {lesson.lessonSummary && (
-                         <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                           <Sparkles className="w-3 h-3" />
-                           {language === 'pl' ? 'Podsumowanie' : 'Summary'}
-                         </span>
-                       )}
-                     </div>
-                     <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform text-emerald-400" />
-                  </div>
-              </Card>
-            )})}
+                  );
+              });
+            })()}
           </div>
         )
       ) : (

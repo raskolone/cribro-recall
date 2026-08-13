@@ -31,6 +31,7 @@ export interface User {
   aiPrompt?: string;
   isSuspended?: boolean;
   tempPasswordLogins?: number;
+  frequentErrors?: any[];
   onboardingCompleted?: boolean;
   tempPassword?: string;
 }

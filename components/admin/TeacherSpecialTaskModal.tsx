@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, TranslationExercise, LessonRecord } from '../../types';
 import Button from '../ui/Button';
-import { X, Sparkles, Check, Trash2, Plus, RefreshCw, BookOpen, Eye, EyeOff, CheckSquare, Square, ChevronDown } from 'lucide-react';
-import { generateTranslationExercises } from '../../services/geminiService';
+import { X, Sparkles, Check, Trash2, Plus, RefreshCw, BookOpen, Eye, EyeOff, Send, MessageSquare, Bot, User as UserIcon, Edit2 } from 'lucide-react';
+import { generateHomeworkChatPipeline, HomeworkChatMessage } from '../../services/geminiService';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
-import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import i18n from "i18next";
+import { LessonSelectionModal } from '../dashboard/LessonSelectionModal';
 
 interface TeacherSpecialTaskModalProps {
   user: User;
@@ -14,30 +15,58 @@ interface TeacherSpecialTaskModalProps {
   onTaskCreated: () => void;
 }
 
+interface ChatTurnItem {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  sentences?: (TranslationExercise & { accepted: boolean })[];
+  summaryText?: string;
+  modelInfo?: string;
+  timestamp: string;
+}
+
 const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({ user, onClose, onTaskCreated }) => {
-  const [manualPrompt, setManualPrompt] = useState('');
+  const [chatInput, setChatInput] = useState('');
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
   const [numSentences, setNumSentences] = useState(5);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [statusUpdate, setStatusUpdate] = useState<string>('');
   const [generatedSentences, setGeneratedSentences] = useState<(TranslationExercise & { id: string; accepted: boolean })[]>([]);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Lesson history state
+  // Chat conversation state
+  const [chatTurns, setChatTurns] = useState<ChatTurnItem[]>([
+    {
+      id: 'welcome',
+      role: 'assistant',
+      content: 'Witaj! Jestem Asystentem Generatora Prac Domowych AI.\nDziałam w oparciu o dwustopniową komunikację modeli:\n1️⃣ **OpenAI (GPT-4o mini)** tworzy pierwotny szkic zdań na podstawie Twoich uwag.\n2️⃣ **Gemini 3.1 Flash** analizuje historię lekcji i ćwiczeń kursanta, weryfikuje logikę i dostosowuje poziom.\n\nNapisz, jakie zdania chcesz wygenerować lub wybierz słówka z lekcji poniżej!',
+      modelInfo: 'OpenAI (GPT-4o mini) → Gemini 3.1 Flash',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }
+  ]);
+
+  // Lesson history & Exercise history state
   const [lessonRecords, setLessonRecords] = useState<LessonRecord[]>([]);
+  const [exerciseHistory, setExerciseHistory] = useState<any[]>([]);
   const [isLoadingLessons, setIsLoadingLessons] = useState(false);
-  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
+  const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [showVocabPreview, setShowVocabPreview] = useState(false);
+  const [editingSentenceId, setEditingSentenceId] = useState<string | null>(null);
+
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (user?.id) {
       setIsLoadingLessons(true);
+      
+      // Fetch lessons
       getLessonRecordsForStudent(user.id)
         .then((records) => {
           setLessonRecords(records);
-          if (records.length > 0) {
-            setSelectedLessonId(records[0].id);
-          }
+          // Default to no lessons selected (user opens modal to select specific ones)
+          setSelectedLessonIds([]);
         })
         .catch((err) => {
           console.error('Błąd pobierania historii lekcji:', err);
@@ -45,30 +74,32 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({ user,
         .finally(() => {
           setIsLoadingLessons(false);
         });
+
+      // Fetch practice logs for exercise history
+      getDocs(collection(db, `users/${user.id}/practiceLogs`))
+        .then((snap) => {
+          const logs: any[] = [];
+          snap.forEach((d) => logs.push(d.data()));
+          setExerciseHistory(logs);
+        })
+        .catch((e) => console.warn('History logs fetch:', e));
     }
   }, [user?.id]);
 
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatTurns, isGenerating, statusUpdate]);
+
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
-  // Parse vocabulary text into array of clean word items
   const parseVocabularyItems = (text: string): string[] => {
     if (!text) return [];
     return text
       .split('\n')
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
-  };
-
-  // Get full combined instructions string
-  const getCombinedInstructions = () => {
-    const parts: string[] = [];
-    if (manualPrompt.trim()) {
-      parts.push(manualPrompt.trim());
-    }
-    if (selectedWords.length > 0) {
-      parts.push(`Użyj słówek: ${selectedWords.join(', ')}.`);
-    }
-    return parts.join('\n\n');
   };
 
   const handleToggleWord = (word: string) => {
@@ -87,86 +118,117 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({ user,
     }
   };
 
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    setError('');
+  const toggleLessonSelection = (id: string) => {
+    setSelectedLessonIds((prev) =>
+      prev.includes(id) ? prev.filter((lId) => lId !== id) : [...prev, id]
+    );
+  };
 
-    try {
-      const studentProfileContext = `
-Spersonalizowany Prompt Kursanta (ŻELAZNE WSKAZÓWKI DLA AI):
-${user?.aiPrompt ? user.aiPrompt : 'Brak dodatkowych wskazówek.'}
-
-Profil i tło kursanta:
-${user?.description ? user.description : 'Brak dodatkowego opisu.'}
-`;
-      const finalPromptInstructions = getCombinedInstructions();
-      const finalPrompt = `Jesteś nauczycielem przygotowującym zdania do przetłumaczenia z polskiego na angielski dla tego ucznia. 
-INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania odpowiednie dla poziomu ucznia.'}`;
-
-      const newSentences = await generateTranslationExercises(
-        user.level || 'B1-B2',
-        selectedWords, // pass selected words directly if any
-        finalPrompt,
-        '', // no extra lesson context
-        studentProfileContext,
-        numSentences
-      );
-
-      if (newSentences && newSentences.length > 0) {
-        setGeneratedSentences(
-          newSentences.map((s) => ({ ...s, id: generateId(), accepted: true }))
-        );
-      } else {
-        setError('Brak wygenerowanych zdań. Spróbuj zmienić instrukcje lub wybrane słówka.');
-      }
-    } catch (err: any) {
-      console.error(err);
-      setError(`Błąd AI: ${err.message}`);
-    } finally {
-      setIsGenerating(false);
+  const handleSelectAllLessons = () => {
+    if (selectedLessonIds.length === lessonRecords.length) {
+      setSelectedLessonIds([]);
+    } else {
+      setSelectedLessonIds(lessonRecords.map((l) => l.id));
     }
   };
 
-  const handleRegenerateRejected = async () => {
-    const acceptedSentences = generatedSentences.filter((s) => s.accepted);
-    const numToRegenerate = generatedSentences.length - acceptedSentences.length;
+  const handleSelectLastNLessons = (n: number) => {
+    setSelectedLessonIds(lessonRecords.slice(0, n).map((l) => l.id));
+  };
 
-    if (numToRegenerate <= 0) return;
+  const selectedLessons = lessonRecords.filter((l) => selectedLessonIds.includes(l.id));
 
-    setIsGenerating(true);
+  const currentSelectedVocabItems = Array.from(
+    new Set(selectedLessons.flatMap((l) => parseVocabularyItems(l.vocabularyText)))
+  );
+
+  const handleSendChatMessage = async (overridePrompt?: string) => {
+    const instructionToSend = overridePrompt || chatInput;
+    if (!instructionToSend.trim() && selectedWords.length === 0) {
+      setError('Wpisz instrukcję lub zaznacz słówka do wygenerowania.');
+      return;
+    }
+
     setError('');
+    setIsGenerating(true);
+    setStatusUpdate('Inicjalizacja pipeline\'u dwumodelowego AI...');
+
+    const userMessageTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const userTurn: ChatTurnItem = {
+      id: generateId(),
+      role: 'user',
+      content: instructionToSend.trim() || `Wygeneruj ${numSentences} zdań z wybranymi słówkami (${selectedWords.join(', ')})`,
+      timestamp: userMessageTime
+    };
+
+    setChatTurns((prev) => [...prev, userTurn]);
+    if (!overridePrompt) setChatInput('');
 
     try {
-      const studentProfileContext = `Kluczowy profil kursanta: ${user?.firstName ? `Imię kursanta: ${user.firstName}. ` : ''}`;
-      const finalPromptInstructions = getCombinedInstructions();
-      const finalPrompt = `Jesteś nauczycielem przygotowującym zdania do przetłumaczenia. INSTRUKCJE: ${finalPromptInstructions}. Wygeneruj INNE zdania niż poprzednio.`;
+      const formattedHistory: HomeworkChatMessage[] = chatTurns.map((turn) => ({
+        role: turn.role,
+        content: turn.content
+      }));
 
-      const newSentences = await generateTranslationExercises(
-        user.level || 'B1-B2',
-        selectedWords,
-        finalPrompt,
-        '',
-        studentProfileContext,
-        numToRegenerate
-      );
+      const pipelineResult = await generateHomeworkChatPipeline({
+        studentProfile: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          level: user.level,
+          description: user.description,
+          aiPrompt: user.aiPrompt
+        },
+        lessonHistory: selectedLessons,
+        exerciseHistory: exerciseHistory.concat(user.frequentErrors || []),
+        chatHistory: formattedHistory,
+        teacherInstruction: instructionToSend,
+        numSentences: numSentences,
+        selectedWords: selectedWords,
+        level: user.level || 'B1-B2',
+        onStatusUpdate: (msg) => setStatusUpdate(msg)
+      });
 
-      if (newSentences && newSentences.length > 0) {
-        setGeneratedSentences([
-          ...acceptedSentences,
-          ...newSentences.map((s) => ({ ...s, id: generateId(), accepted: true })),
-        ]);
-      }
+      const newMappedSentences = pipelineResult.sentences.map((s) => ({
+        ...s,
+        id: generateId(),
+        accepted: true
+      }));
+
+      setGeneratedSentences(newMappedSentences);
+
+      const aiTurn: ChatTurnItem = {
+        id: generateId(),
+        role: 'assistant',
+        content: `Wygenerowano ${newMappedSentences.length} zdań dopasowanych do profilu kursanta i Twoich instrukcji.`,
+        sentences: newMappedSentences,
+        summaryText: pipelineResult.summaryText,
+        modelInfo: pipelineResult.modelUsed,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      setChatTurns((prev) => [...prev, aiTurn]);
     } catch (err: any) {
       console.error(err);
-      setError(`Błąd AI: ${err.message}`);
+      setError(`Błąd wygenerowania zdań przez AI: ${err.message || err}`);
     } finally {
       setIsGenerating(false);
+      setStatusUpdate('');
     }
   };
 
-  const toggleSentence = (id: string) => {
+  const toggleSentenceAcceptance = (id: string) => {
     setGeneratedSentences((prev) =>
       prev.map((s) => (s.id === id ? { ...s, accepted: !s.accepted } : s))
+    );
+  };
+
+  const handleUpdateSentence = (id: string, newPol: string, newEng: string, newHint: string) => {
+    setGeneratedSentences((prev) =>
+      prev.map((s) =>
+        s.id === id
+          ? { ...s, polishSentence: newPol, englishTranslation: newEng, englishSentence: newEng, hint: newHint }
+          : s
+      )
     );
   };
 
@@ -184,7 +246,7 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
       const taskData = {
         studentId: user.id,
         type: 'translation',
-        title: `Zadanie specjalne - ${new Date().toLocaleDateString()}`,
+        title: `Praca domowa - ${new Date().toLocaleDateString('pl-PL')}`,
         createdAt: serverTimestamp(),
         status: 'pending',
         sentences: finalSentences.map(({ polishSentence, englishTranslation, hint }) => ({
@@ -200,316 +262,413 @@ INSTRUKCJE OD NAUCZYCIELA: ${finalPromptInstructions || 'Wygeneruj losowe zdania
       onClose();
     } catch (err: any) {
       console.error(err);
-      setError(`Błąd zapisu: ${err.message}`);
+      setError(`Błąd zapisu w bazie danych: ${err.message}`);
       setIsSaving(false);
     }
   };
 
-  const currentSelectedLesson = lessonRecords.find((l) => l.id === selectedLessonId);
-  const currentLessonVocabItems = currentSelectedLesson
-    ? parseVocabularyItems(currentSelectedLesson.vocabularyText)
-    : [];
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-base-100 border border-white/10 rounded-2xl w-full max-w-3xl flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md">
+      <div className="bg-base-100 border border-white/10 rounded-2xl w-full max-w-4xl flex flex-col h-[92vh] shadow-2xl overflow-hidden">
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/5">
-          <div>
-            <h2 className="text-xl font-bold flex items-center gap-2 text-white">
-              <Sparkles className="w-6 h-6 text-primary" />
-              
-                                        {i18n.t("Zadanie specjalne (AI)")}
-                                      </h2>
-            <p className="text-sm text-content-muted mt-1">
-              
-                                        {i18n.t("Dla ucznia:")} {user.firstName} {user.lastName || ''} ({user.email || user.username})
-            </p>
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/10 bg-base-200/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
+              <Sparkles className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-white">
+                  {i18n.t("Czat Generatora AI z 2-Modelową Pipeline")}
+                </h2>
+                <span className="text-[10px] font-mono uppercase bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full">
+                  GPT-4o mini → Gemini 3.1 Flash
+                </span>
+              </div>
+              <p className="text-xs text-content-muted mt-0.5">
+                {i18n.t("Kursant:")} <span className="text-white font-medium">{user.firstName} {user.lastName || ''}</span> ({user.level || 'B1-B2'})
+              </p>
+            </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors text-content-muted hover:text-white">
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-colors text-content-muted hover:text-white">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-6">
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-500 p-4 rounded-xl text-sm">
-              {error}
-            </div>
-          )}
-
-          {/* Section: Lesson Selection & Vocabulary Preview */}
-          <div className="bg-base-200/40 border border-white/5 rounded-2xl p-4 space-y-4">
+        {/* Modal Body: Main Grid */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Top Options: Multi-Lesson Selector Trigger & Vocabulary Picker */}
+          <div className="p-3 sm:p-4 bg-base-200/30 border-b border-white/5 space-y-3 shrink-0">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <label className="text-sm font-bold text-white flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-primary" />
-                
-                                              {i18n.t("Wybierz lekcję z historii kursanta:")}
-                                            </label>
-              {selectedWords.length > 0 && (
-                <span className="text-xs font-mono bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full">
-                  
-                                                    {i18n.t("Wybrane słówka (")}{selectedWords.length})
-                </span>
+              <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+                <button
+                  type="button"
+                  onClick={() => setIsLessonModalOpen(true)}
+                  className={`w-full px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 transition-all ${
+                    selectedLessonIds.length > 0
+                      ? 'bg-primary/10 border-primary/40 text-primary hover:bg-primary/15'
+                      : 'bg-base-100 border-white/10 text-gray-300 hover:border-white/20 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <BookOpen className="w-4 h-4 shrink-0 text-primary" />
+                    <span className="truncate">
+                      {selectedLessonIds.length === 0
+                        ? 'Wybór lekcji kursanta: Brak wybranych (Kliknij, aby wybrać do analizy AI)'
+                        : `Lekcje do analizy AI: ${selectedLessonIds.length} z ${lessonRecords.length} wybranych`}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-bold bg-white/10 px-2 py-0.5 rounded-lg shrink-0 text-white hover:bg-white/20">
+                    {selectedLessonIds.length === 0 ? 'Wybierz lekcje ↗' : 'Zmień ↗'}
+                  </span>
+                </button>
+              </div>
+
+              {selectedLessonIds.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowVocabPreview((prev) => !prev)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-xl text-[11px] font-bold text-primary transition-all"
+                  >
+                    {showVocabPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    <span>{showVocabPreview ? 'Ukryj słowa' : `Słówka z lekcji (${currentSelectedVocabItems.length})`}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLessonIds([])}
+                    className="text-xs text-red-400 hover:underline px-2 py-1"
+                  >
+                    Wyczyść
+                  </button>
+                </div>
               )}
             </div>
 
-            {isLoadingLessons ? (
-              <div className="flex items-center gap-2 text-sm text-content-muted p-2">
-                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                
-                                              {i18n.t("Ładowanie historii lekcji...")}
-                                            </div>
-            ) : lessonRecords.length === 0 ? (
-              <p className="text-sm text-content-muted italic">{i18n.t("Brak zapisanych lekcji dla tego kursanta.")}</p>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                  <select
-                    value={selectedLessonId || ''}
-                    onChange={(e) => {
-                      setSelectedLessonId(e.target.value);
-                      setShowVocabPreview(true);
-                    }}
-                    className="flex-1 bg-base-100 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-primary/50"
-                  >
-                    {lessonRecords.map((record, index) => (
-                      <option key={record.id} value={record.id}>
-                        
-                                                    {i18n.t("Lekcja #")}{lessonRecords.length - index} — {record.topic} ({record.date})
-                      </option>
-                    ))}
-                  </select>
-
-                  <button
-                    onClick={() => setShowVocabPreview((prev) => !prev)}
-                    className="flex items-center justify-center gap-2 px-4 py-3 bg-base-100 hover:bg-base-200 border border-white/10 rounded-xl text-sm font-bold text-white transition-all hover:border-primary/40"
-                  >
-                    {showVocabPreview ? <EyeOff className="w-4 h-4 text-primary" /> : <Eye className="w-4 h-4 text-primary" />}
-                    <span>{showVocabPreview ? 'Ukryj słownictwo' : 'Podgląd słownictwa'}</span>
-                  </button>
+            {/* Vocabulary Preview Section if lessons are selected */}
+            {showVocabPreview && selectedLessonIds.length > 0 && (
+              <div className="pt-2 border-t border-white/5 space-y-2 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-content-muted">
+                    Słownictwo z wybranych lekcji ({currentSelectedVocabItems.length} słówek):
+                  </span>
+                  {currentSelectedVocabItems.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectAllFromLesson(currentSelectedVocabItems)}
+                      className="text-[11px] font-bold text-primary hover:underline"
+                    >
+                      {currentSelectedVocabItems.every((w) => selectedWords.includes(w))
+                        ? 'Odznacz wszystkie'
+                        : 'Zaznacz wszystkie'}
+                    </button>
+                  )}
                 </div>
 
-                {/* Vocabulary Preview Grid */}
-                {showVocabPreview && currentSelectedLesson && (
-                  <div className="mt-4 pt-4 border-t border-white/5 space-y-3 animate-fadeIn">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-wider text-content-muted">
-                        
-                                                                              {i18n.t("Słownictwo z lekcji:")} <span className="text-white">{currentSelectedLesson.topic}</span>
-                      </span>
-                      {currentLessonVocabItems.length > 0 && (
+                {currentSelectedVocabItems.length === 0 ? (
+                  <p className="text-[11px] text-content-muted italic">Brak zapisanych słówek w wybranych lekcjach.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
+                    {currentSelectedVocabItems.map((word, idx) => {
+                      const isChecked = selectedWords.includes(word);
+                      return (
                         <button
-                          onClick={() => handleSelectAllFromLesson(currentLessonVocabItems)}
-                          className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                          key={idx}
+                          type="button"
+                          onClick={() => handleToggleWord(word)}
+                          className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
+                            isChecked
+                              ? 'bg-primary text-black font-bold border-primary shadow-[0_0_10px_rgba(114,240,180,0.2)]'
+                              : 'bg-base-100 border-white/10 text-content-muted hover:text-white hover:border-white/30'
+                          }`}
                         >
-                          {currentLessonVocabItems.every((w) => selectedWords.includes(w))
-                            ? 'Odznacz wszystkie z tej lekcji'
-                            : 'Zaznacz wszystkie z tej lekcji'}
+                          {isChecked ? '✓ ' : '+ '}{word}
                         </button>
-                      )}
-                    </div>
-
-                    {currentLessonVocabItems.length === 0 ? (
-                      <p className="text-xs text-content-muted italic">{i18n.t("Brak słówek w opisie tej lekcji.")}</p>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
-                        {currentLessonVocabItems.map((word, idx) => {
-                          const isChecked = selectedWords.includes(word);
-                          return (
-                            <div
-                              key={idx}
-                              onClick={() => handleToggleWord(word)}
-                              className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all ${
-                                isChecked
-                                  ? 'bg-primary/10 border-primary/50 text-white shadow-[0_0_15px_rgba(114,240,180,0.15)]'
-                                  : 'bg-base-100/60 border-white/5 text-content-muted hover:border-white/20 hover:text-white'
-                              }`}
-                            >
-                              <div className={`w-5 h-5 rounded flex items-center justify-center transition-all shrink-0 ${
-                                isChecked ? 'bg-primary text-black font-bold' : 'border border-white/20'
-                              }`}>
-                                {isChecked && <Check className="w-3.5 h-3.5" />}
-                              </div>
-                              <span className="text-xs font-medium line-clamp-2">{word}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* Section: Manual Prompt & Instructions */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-bold text-content-muted mb-2">
-                
-                                              {i18n.t("Instrukcje / Sugestie dla AI")}
-                                            </label>
+          {/* Chat Messages Feed */}
+          <div ref={chatContainerRef} className="flex-1 p-4 overflow-y-auto space-y-4 bg-base-100/50">
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-xs flex items-center justify-between">
+                <span>{error}</span>
+                <button onClick={() => setError('')} className="hover:text-white">✕</button>
+              </div>
+            )}
 
-              {/* Display selected words pill summary above or inside */}
-              {selectedWords.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-base-200/50 rounded-xl border border-white/5">
-                  <span className="text-xs text-content-muted self-center mr-1">{i18n.t("Dodane słówka:")}</span>
-                  {selectedWords.map((w, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1 text-xs bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-lg"
+            {chatTurns.map((turn) => (
+              <div
+                key={turn.id}
+                className={`flex gap-3 max-w-3xl ${turn.role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs ${
+                    turn.role === 'user'
+                      ? 'bg-primary text-black font-bold'
+                      : 'bg-indigo-600/30 border border-indigo-400/30 text-indigo-300'
+                  }`}
+                >
+                  {turn.role === 'user' ? <UserIcon className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                </div>
+
+                <div
+                  className={`flex flex-col space-y-2 max-w-[85%] ${
+                    turn.role === 'user'
+                      ? 'items-end'
+                      : 'items-start'
+                  }`}
+                >
+                  <div
+                    className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed ${
+                      turn.role === 'user'
+                        ? 'bg-primary/20 border border-primary/30 text-white rounded-tr-none'
+                        : 'bg-base-200/90 border border-white/10 text-content-body rounded-tl-none space-y-3'
+                    }`}
+                  >
+                    <div className="whitespace-pre-wrap">{turn.content}</div>
+
+                    {turn.summaryText && (
+                      <div className="p-2.5 bg-indigo-950/40 border border-indigo-500/20 rounded-xl text-xs text-indigo-200 mt-2">
+                        <div className="font-bold text-indigo-300 mb-1 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                          Analiza Gemini 3.1 Flash:
+                        </div>
+                        {turn.summaryText}
+                      </div>
+                    )}
+
+                    {turn.modelInfo && (
+                      <div className="text-[10px] text-content-muted font-mono pt-1">
+                        Model: {turn.modelInfo} • {turn.timestamp}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* In Progress Pipeline Status Banner */}
+            {isGenerating && (
+              <div className="flex gap-3 max-w-2xl animate-fadeIn">
+                <div className="w-8 h-8 rounded-xl bg-indigo-600/30 border border-indigo-400/30 text-indigo-300 flex items-center justify-center shrink-0 text-xs">
+                  <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                </div>
+                <div className="p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-2xl rounded-tl-none text-xs text-indigo-200 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
+                  <span>{statusUpdate || 'Przetwarzanie przez pipeline AI...'}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Active Generated Sentences Preview Box */}
+            {generatedSentences.length > 0 && (
+              <div className="mt-4 p-4 bg-base-200/70 border border-primary/30 rounded-2xl space-y-3 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                    <Check className="w-4 h-4 text-primary" />
+                    Wygenerowane zdania ({generatedSentences.filter((s) => s.accepted).length} / {generatedSentences.length} zaakceptowane)
+                  </h3>
+                  <span className="text-[11px] text-content-muted">
+                    Możesz odznaczyć niechciane lub edytować treść
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {generatedSentences.map((s, index) => (
+                    <div
+                      key={s.id}
+                      className={`p-3 rounded-xl border transition-all ${
+                        s.accepted
+                          ? 'bg-base-100 border-white/10'
+                          : 'bg-base-100/40 border-white/5 opacity-50'
+                      }`}
                     >
-                      {w}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleWord(w);
-                        }}
-                        className="hover:text-red-400 ml-0.5"
-                      >
-                        ×
-                      </button>
-                    </span>
+                      {editingSentenceId === s.id ? (
+                        <div className="space-y-2">
+                          <div>
+                            <label className="text-[10px] text-content-muted uppercase">Polski:</label>
+                            <input
+                              type="text"
+                              value={s.polishSentence}
+                              onChange={(e) => handleUpdateSentence(s.id, e.target.value, s.englishTranslation, s.hint)}
+                              className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-xs text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-content-muted uppercase">Angielski:</label>
+                            <input
+                              type="text"
+                              value={s.englishTranslation}
+                              onChange={(e) => handleUpdateSentence(s.id, s.polishSentence, e.target.value, s.hint)}
+                              className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-xs text-white"
+                            />
+                          </div>
+                          <button
+                            onClick={() => setEditingSentenceId(null)}
+                            className="text-xs bg-primary/20 text-primary border border-primary/30 px-3 py-1 rounded-lg font-bold"
+                          >
+                            Zapisz edycję
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1 flex-1">
+                            <p className="text-xs font-bold text-white">
+                              {index + 1}. {s.polishSentence}
+                            </p>
+                            <p className="text-xs text-primary/90 font-medium">
+                              {s.englishTranslation}
+                            </p>
+                            {s.hint && <p className="text-[11px] text-content-muted">Wskazówka: {s.hint}</p>}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setEditingSentenceId(s.id)}
+                              className="p-1.5 text-content-muted hover:text-white rounded-lg hover:bg-white/5"
+                              title="Edytuj zdanie"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => toggleSentenceAcceptance(s.id)}
+                              className={`p-1.5 rounded-lg text-xs transition-colors ${
+                                s.accepted
+                                  ? 'text-red-400 hover:bg-red-500/20'
+                                  : 'text-green-400 hover:bg-green-500/20'
+                              }`}
+                              title={s.accepted ? 'Odrzuć' : 'Zaakceptuj'}
+                            >
+                              {s.accepted ? <Trash2 className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
-              )}
 
-              <textarea
-                value={manualPrompt}
-                onChange={(e) => setManualPrompt(e.target.value)}
-                placeholder={i18n.t("Np. Użyj słówek związanych z podróżowaniem. Skup się na czasie Past Simple...")}
-                className="w-full bg-base-200/50 border border-white/10 rounded-xl p-4 outline-none focus:border-primary/50 transition-colors h-24 resize-none text-white text-sm"
-              />
+                {/* Quick Chat Modifiers */}
+                <div className="pt-2 border-t border-white/5 flex flex-wrap gap-2">
+                  <span className="text-[11px] text-content-muted self-center mr-1">Szybka modyfikacja:</span>
+                  <button
+                    onClick={() => handleSendChatMessage("Zmień zdania na trudniejszy poziom z bardziej zaawansowanym słownictwem.")}
+                    disabled={isGenerating}
+                    className="text-[11px] bg-base-100 hover:bg-base-200 border border-white/10 text-content-body px-2.5 py-1 rounded-lg"
+                  >
+                    ⚡ Trudniejszy poziom
+                  </button>
+                  <button
+                    onClick={() => handleSendChatMessage("Spraw, aby zdania brzmiały bardziej naturalnie i potocznie.")}
+                    disabled={isGenerating}
+                    className="text-[11px] bg-base-100 hover:bg-base-200 border border-white/10 text-content-body px-2.5 py-1 rounded-lg"
+                  >
+                    💬 Bardziej potoczne
+                  </button>
+                  <button
+                    onClick={() => handleSendChatMessage("Zamień zdania na krótsze i prostsze struktury.")}
+                    disabled={isGenerating}
+                    className="text-[11px] bg-base-100 hover:bg-base-200 border border-white/10 text-content-body px-2.5 py-1 rounded-lg"
+                  >
+                    🌱 Prostsze zdania
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
-              {/* Realtime combined preview note */}
-              <p className="text-xs text-content-muted mt-1 italic">
-                {selectedWords.length > 0
-                  ? `Pełna instrukcja AI uwzględni wybrane ${selectedWords.length} słówek oraz powyższe wytyczne.`
-                  : 'Wpisz własne wytyczne lub zaznacz słówka z historii lekcji powyżej.'}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div>
-                <label className="block text-sm font-bold text-content-muted mb-2">
-                  
-                                                    {i18n.t("Liczba zdań")}
-                                                  </label>
+          {/* Bottom Chat Bar */}
+          <div className="p-3 sm:p-4 bg-base-200/60 border-t border-white/10 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 bg-base-100 border border-white/10 rounded-xl px-3 py-2">
+                <span className="text-xs text-content-muted">Liczba zdań:</span>
                 <input
                   type="number"
                   min={1}
                   max={20}
                   value={numSentences}
-                  onChange={(e) => setNumSentences(parseInt(e.target.value) || 5)}
-                  className="w-24 bg-base-200/50 border border-white/10 rounded-xl p-3 outline-none focus:border-primary/50 text-white font-mono text-center"
+                  onChange={(e) => setNumSentences(Math.max(1, parseInt(e.target.value) || 5))}
+                  className="w-12 bg-transparent text-xs font-bold text-white outline-none text-center font-mono"
                 />
               </div>
-              <div className="flex-1 flex items-end">
-                <Button
-                  onClick={handleGenerate}
+
+              <div className="flex-1 flex items-center gap-2 bg-base-100 border border-white/10 rounded-xl p-1.5 focus-within:border-primary/50 transition-colors">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendChatMessage();
+                    }
+                  }}
+                  placeholder="Napisz instrukcję lub co chcesz zmienić w wygenerowanych zdaniach..."
+                  className="flex-1 bg-transparent px-2 text-xs sm:text-sm text-white outline-none"
                   disabled={isGenerating}
-                  className="w-full sm:w-auto"
+                />
+
+                <Button
+                  onClick={() => handleSendChatMessage()}
+                  disabled={isGenerating || (!chatInput.trim() && selectedWords.length === 0)}
+                  size="sm"
+                  className="shrink-0"
                 >
-                  {isGenerating && generatedSentences.length === 0 ? (
-                    <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                  {isGenerating ? (
+                    <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      
-                                                                    {i18n.t("Wygeneruj zdania")}
-                                                                  </>
+                      <Send className="w-3.5 h-3.5 mr-1" />
+                      <span>Wyślij</span>
+                    </>
                   )}
                 </Button>
               </div>
             </div>
           </div>
-
-          {/* Generated sentences list */}
-          {generatedSentences.length > 0 && (
-            <div className="space-y-4 pt-6 border-t border-white/5">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-lg text-white">{i18n.t("Wygenerowane zdania")}</h3>
-                <span className="text-sm font-mono text-content-muted">
-                  {generatedSentences.filter((s) => s.accepted).length} / {generatedSentences.length}  {i18n.t("zaakceptowanych")}
-                                                  </span>
-              </div>
-
-              <div className="space-y-3">
-                {generatedSentences.map((s) => (
-                  <div
-                    key={s.id}
-                    className={`p-4 rounded-xl border transition-all ${
-                      s.accepted
-                        ? 'bg-base-200 border-primary/30'
-                        : 'bg-base-200/30 border-white/5 opacity-50'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="space-y-2 flex-1">
-                        <p className="font-bold text-white">{s.polishSentence}</p>
-                        <p className="text-content-muted text-sm">{s.englishTranslation}</p>
-                        {s.hint && <p className="text-xs text-primary/70">{i18n.t("Wskazówka:")} {s.hint}</p>}
-                      </div>
-                      <button
-                        onClick={() => toggleSentence(s.id)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          s.accepted
-                            ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
-                            : 'bg-green-500/10 text-green-500 hover:bg-green-500/20'
-                        }`}
-                        title={s.accepted ? 'Odrzuć' : 'Zaakceptuj'}
-                      >
-                        {s.accepted ? <Trash2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {generatedSentences.some((s) => !s.accepted) && (
-                <div className="flex justify-center pt-4">
-                  <Button
-                    variant="secondary"
-                    onClick={handleRegenerateRejected}
-                    disabled={isGenerating}
-                  >
-                    {isGenerating ? (
-                      <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin mr-2" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                    )}
-                    
-                                                          {i18n.t("Wygeneruj brakujące zdania (zamiast odrzuconych)")}
-                                                        </Button>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Modal Footer */}
-        {generatedSentences.length > 0 && (
-          <div className="p-6 border-t border-white/5 bg-base-200/50 flex justify-end gap-3">
-            <Button variant="secondary" onClick={onClose} disabled={isSaving}>
-              
-                                        {i18n.t("Anuluj")}
-                                      </Button>
-            <Button onClick={handleSaveTask} disabled={isSaving || generatedSentences.filter((s) => s.accepted).length === 0}>
+        <div className="p-4 border-t border-white/10 bg-base-200 flex items-center justify-between">
+          <span className="text-xs text-content-muted">
+            {generatedSentences.filter((s) => s.accepted).length} z {generatedSentences.length} zdań zostanie przypisanych
+          </span>
+
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={onClose} disabled={isSaving} size="sm">
+              Anuluj
+            </Button>
+            <Button
+              onClick={handleSaveTask}
+              disabled={isSaving || generatedSentences.filter((s) => s.accepted).length === 0}
+              size="sm"
+            >
               {isSaving ? (
-                <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
               ) : (
                 <>
-                  <Check className="w-4 h-4 mr-2" />
-                  
-                                                        {i18n.t("Zapisz jako Zadanie specjalne")}
-                                                      </>
+                  <Check className="w-4 h-4 mr-1.5" />
+                  Zapisz i przypisz pracę domową
+                </>
               )}
             </Button>
           </div>
-        )}
+        </div>
       </div>
+
+      <LessonSelectionModal
+        isOpen={isLessonModalOpen}
+        onClose={() => setIsLessonModalOpen(false)}
+        lessons={lessonRecords}
+        isLoading={isLoadingLessons}
+        selectedLessonIds={selectedLessonIds}
+        onSave={(ids) => setSelectedLessonIds(ids)}
+        studentName={user.firstName}
+      />
     </div>
   );
 };
