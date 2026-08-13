@@ -67,6 +67,41 @@ CRIBRO ENGLISH to nowoczesna, oparta na sztucznej inteligencji platforma do nauk
    npm run dev
    ```
 
+## 🧪 Starter Project: TypeScript + Python
+
+W repozytorium jest teraz prosty projekt edukacyjny dostępny pod ścieżką `/starter`.
+
+Frontend:
+```bash
+npm run dev
+```
+
+Backend Python:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r python_api/requirements.txt
+npm run dev:starter:backend
+```
+
+Po uruchomieniu obu procesów otwórz:
+
+```text
+http://localhost:3000/starter
+```
+
+Backend udostępnia dokumentację Swagger pod adresem:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+Co ćwiczysz w tym mini-projekcie:
+- formularze i stan po stronie React + TypeScript,
+- komunikację HTTP między frontendem i backendem,
+- walidację danych w Python FastAPI,
+- prostą logikę biznesową i zapis danych do JSON.
+
 ## 📁 Project Structure / Struktura projektu
 
 - `/src/components` - Komponenty UI, Dashboard, Landing Page, Tryby ćwiczeń

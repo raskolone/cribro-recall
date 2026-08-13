@@ -934,7 +934,10 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         if (selectedSet) {
           if (selectedSet.vocabularyText) {
             wordsList = selectedSet.vocabularyText
-              .split(/[\n;]+/)
+              // Split on newlines/semicolons, or on a comma only when it's followed
+              // by a real "term — translation" pair (so synonym commas inside a
+              // single definition, e.g. "creek — mała rzeka, strumień", survive intact).
+              .split(/[\n;]+|,\s*(?=[^,]*\s[-–—]\s)/)
               .map(line => line.trim())
               .filter(line => line.length > 0)
               .map(line => parseLineToWordItem(line, selectedSet.topic));

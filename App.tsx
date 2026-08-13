@@ -8,10 +8,9 @@ import { SettingsProvider } from './context/SettingsContext';
 import AuthScreen from './components/auth/AuthScreen';
 import Dashboard from './components/dashboard/Dashboard';
 import LandingPage from './components/landing/LandingPage';
-
 import ForcePasswordChangeScreen from './components/auth/ForcePasswordChangeScreen';
-
 import GlobalErrorBoundary from './components/ui/GlobalErrorBoundary';
+import StarterVocabularyApp from './components/starter/StarterVocabularyApp';
 
 const App: React.FC = () => {
   useEffect(() => {
@@ -43,6 +42,10 @@ const AppContent: React.FC = () => {
 
   const { user, isAuthReady } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
+
+  if (typeof window !== 'undefined' && window.location.pathname === '/starter') {
+    return <StarterVocabularyApp />;
+  }
 
   if (!isAuthReady) {
     return <div className="min-h-screen flex items-center justify-center bg-base-100">
