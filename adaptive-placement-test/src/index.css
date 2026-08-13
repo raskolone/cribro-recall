@@ -1,0 +1,68 @@
+:root {
+  --paper: #f5ede2;
+  --surface-strong: #fffaf3;
+  --ink: #17384b;
+  --ink-muted: #5c7382;
+  --accent: #c96f48;
+  --accent-deep: #a55535;
+  --support: #0f766e;
+  --line: rgba(23, 56, 75, 0.12);
+  --line-strong: rgba(23, 56, 75, 0.22);
+  --shadow: 0 24px 60px rgba(23, 56, 75, 0.12);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 17px;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, rgba(244, 186, 155, 0.55) 0%, rgba(244, 186, 155, 0) 30%),
+    radial-gradient(circle at 85% 18%, rgba(15, 118, 110, 0.16) 0%, rgba(15, 118, 110, 0) 22%),
+    linear-gradient(180deg, #fbf4ea 0%, #f0e6d8 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100svh;
+}
+
+body::selection {
+  background: rgba(201, 111, 72, 0.18);
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+@media (max-width: 768px) {
+  :root {
+    font-size: 16px;
+  }
+}

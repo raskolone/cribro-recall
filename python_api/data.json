@@ -1,0 +1,25 @@
+{
+  "words": [
+    {
+      "id": "seed-airport",
+      "term": "airport",
+      "translation": "lotnisko",
+      "category": "travel",
+      "createdAt": "2026-07-09T08:00:00+00:00"
+    },
+    {
+      "id": "seed-breakfast",
+      "term": "breakfast",
+      "translation": "sniadanie",
+      "category": "food",
+      "createdAt": "2026-07-09T08:05:00+00:00"
+    }
+  ],
+  "stats": {
+    "totalWords": 2,
+    "attempts": 0,
+    "correctAnswers": 0,
+    "currentStreak": 0,
+    "accuracy": 0
+  }
+}
