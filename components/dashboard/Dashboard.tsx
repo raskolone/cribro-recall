@@ -64,6 +64,37 @@ const Dashboard: React.FC = () => {
   });
   const [slogan, setSlogan] = useState('');
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
+
+  // Handle browser back button
+  useEffect(() => {
+    window.history.replaceState({ view, activeSetId }, '');
+    
+    const handlePopState = (e: PopStateEvent) => {
+      if (e.state) {
+        if (e.state.view) setView(e.state.view);
+        if (e.state.activeSetId !== undefined) setActiveSetId(e.state.activeSetId);
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleNavigate = (newView: View, extra?: any) => {
+    let newSetId = activeSetId;
+    if (extra && (extra.setId || extra.activeSetId)) {
+      newSetId = extra.setId || extra.activeSetId;
+    } else if (newView === 'dashboard' || newView === 'flashcard-sets' || newView === 'topic-database') {
+      newSetId = null;
+    }
+    
+    if (newView !== view || newSetId !== activeSetId) {
+      window.history.pushState({ view: newView, activeSetId: newSetId }, '');
+      setView(newView);
+      setActiveSetId(newSetId);
+    }
+  };
+
   const [isExerciseActive, setIsExerciseActive] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -140,9 +171,8 @@ const Dashboard: React.FC = () => {
       return (
         <LessonHistoryScreen 
           onStudySet={(setId) => {
-            setActiveSetId(setId);
             (window as any)._initialStudyMode = 'flashcards';
-            setView('flashcard-study');
+            handleNavigate('flashcard-study', { setId });
           }}
           onNavigate={(v: any, extra?: any) => {
             if (extra && (extra.setId || extra.activeSetId)) {
@@ -154,27 +184,23 @@ const Dashboard: React.FC = () => {
       );
     }
     if (view === 'tests') {
-      return <StudentTestsScreen onBack={() => setView('dashboard')} />;
+      return <StudentTestsScreen onBack={() => handleNavigate('dashboard')} />;
     }
     if (view === 'flashcard-sets') {
       return (
         <FlashcardSetsScreen 
           onStudySet={(setId) => {
-            setActiveSetId(setId);
             (window as any)._initialStudyMode = 'flashcards';
-            setView('flashcard-study');
+            handleNavigate('flashcard-study', { setId });
           }} 
           onEditSet={(setId) => {
-            setActiveSetId(setId);
-            setView('flashcard-edit');
+            handleNavigate('flashcard-edit', { setId });
           }} 
           onStatsSet={(setId) => {
-            setActiveSetId(setId);
-            setView('flashcard-stats');
+            handleNavigate('flashcard-stats', { setId });
           }} 
           onPresentSet={(setId) => {
-            setActiveSetId(setId);
-            setView('presentation');
+            handleNavigate('presentation', { setId });
           }} 
           onNavigate={(v: any, extra?: any) => {
             if (extra && (extra.setId || extra.activeSetId)) {
@@ -189,7 +215,7 @@ const Dashboard: React.FC = () => {
       return <FlashcardStudyScreen 
         setId={activeSetId || ''} 
         initialMode={(window as any)._initialStudyMode} 
-        onBack={() => setView('dashboard')} 
+        onBack={() => handleNavigate('dashboard')} 
         onNavigate={(v: any, extra?: any) => {
           if (extra && (extra.setId || extra.activeSetId)) setActiveSetId(extra.setId || extra.activeSetId);
           if (extra && extra.initialMode) {
@@ -211,11 +237,10 @@ const Dashboard: React.FC = () => {
       return (
         <FlashcardEditScreen 
           setId={activeSetId || ''} 
-          onBack={() => setView('flashcard-sets')} 
+          onBack={() => handleNavigate('flashcard-sets')} 
           onStudy={(setId) => {
-            setActiveSetId(setId);
             (window as any)._initialStudyMode = 'flashcards';
-            setView('flashcard-study');
+            handleNavigate('flashcard-study', { setId });
           }} 
         />
       );
@@ -224,7 +249,7 @@ const Dashboard: React.FC = () => {
       return (
         <FlashcardStatsScreen 
           setId={activeSetId || ''} 
-          onBack={() => setView('flashcard-sets')} 
+          onBack={() => handleNavigate('flashcard-sets')} 
         />
       );
     }
@@ -232,7 +257,7 @@ const Dashboard: React.FC = () => {
       return (
         <FlashcardPresentationScreen 
           setId={activeSetId || ''} 
-          onBack={() => setView('flashcard-sets')} 
+          onBack={() => handleNavigate('flashcard-sets')} 
         />
       );
     }
@@ -246,7 +271,7 @@ const Dashboard: React.FC = () => {
       return <TopicDatabaseScreen />;
     }
     if (view === 'admin-debugging') {
-      return <AdminDebuggingScreen onBack={() => setView('dashboard')} />;
+      return <AdminDebuggingScreen onBack={() => handleNavigate('dashboard')} />;
     }
     if (view === 'admin' || (isTeacher && view === 'dashboard')) {
       return <AdminPanel />;
@@ -272,7 +297,7 @@ const Dashboard: React.FC = () => {
     <div className="flex h-screen bg-base-100">
       <Sidebar 
         currentView={view} 
-        onNavigate={(newView) => setView(newView)}
+        onNavigate={(newView) => handleNavigate(newView)}
         onStartPractice={(exercise) => console.log('start practice', exercise)} 
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -290,7 +315,7 @@ const Dashboard: React.FC = () => {
         }}
       />
       <main className="flex-1 overflow-y-auto relative">
-        <StudentNotifications onNavigate={(newView) => setView(newView)} />
+        <StudentNotifications onNavigate={(newView) => handleNavigate(newView)} />
         {showOnboarding && <OnboardingOverlay onComplete={() => {
           setShowOnboarding(false);
           try { localStorage.setItem('has_seen_onboarding', 'true'); } catch(e) {}

@@ -284,7 +284,17 @@ export const generateVocabulary = async (language: Language, difficulty: Difficu
         responseSchema: vocabularySchema,
       } });
     let jsonText = extractJSON(response?.text || "");
-    return JSON.parse(jsonText);
+    
+    let parsed = JSON.parse(jsonText);
+    if (parsed && !Array.isArray(parsed)) {
+      if (Array.isArray(parsed.cards)) return parsed.cards;
+      if (Array.isArray(parsed.flashcards)) return parsed.flashcards;
+      if (Array.isArray(parsed.vocabulary)) return parsed.vocabulary;
+      if (Array.isArray(parsed.items)) return parsed.items;
+      return [];
+    }
+    return parsed;
+
   } catch (error: any) {
     console.error("Error generating vocabulary:", error);
     throw new Error(error.message || "Failed to generate vocabulary.");
@@ -752,26 +762,22 @@ For each term found, provide:
 
 Return a JSON array of objects.`;
 
-  const schema = {
-    type: Type.ARRAY,
-    items: {
-      type: Type.OBJECT,
-      properties: {
-        term: { type: Type.STRING },
-        definition: { type: Type.STRING },
-        contextSentence: { type: Type.STRING }
-      },
-      required: ["term", "definition", "contextSentence"]
-    }
-  };
-
   try {
     const response = await generateContentWithFallback({ contents: prompt, config: {
-        responseMimeType: "application/json",
-        responseSchema: schema,
+        responseMimeType: "application/json"
       } });
     let jsonText = extractJSON(response?.text || "");
-    return JSON.parse(jsonText);
+    
+    let parsed = JSON.parse(jsonText);
+    if (parsed && !Array.isArray(parsed)) {
+      if (Array.isArray(parsed.cards)) return parsed.cards;
+      if (Array.isArray(parsed.flashcards)) return parsed.flashcards;
+      if (Array.isArray(parsed.vocabulary)) return parsed.vocabulary;
+      if (Array.isArray(parsed.items)) return parsed.items;
+      return [];
+    }
+    return parsed;
+
   } catch (err) {
     console.error("Error generating flashcards from text:", err);
     throw new Error("Failed to parse vocabulary from text.");
@@ -906,7 +912,17 @@ Zwróć 10 poprawionych zadań jako JSON (tablica obiektów). Zastąp te, które
       } });
 
     let jsonText = extractJSON(response?.text || "");
-    return JSON.parse(jsonText);
+    
+    let parsed = JSON.parse(jsonText);
+    if (parsed && !Array.isArray(parsed)) {
+      if (Array.isArray(parsed.cards)) return parsed.cards;
+      if (Array.isArray(parsed.flashcards)) return parsed.flashcards;
+      if (Array.isArray(parsed.vocabulary)) return parsed.vocabulary;
+      if (Array.isArray(parsed.items)) return parsed.items;
+      return [];
+    }
+    return parsed;
+
   } catch (error) {
     console.error("Error modifying test:", error);
     throw new Error("Failed to modify test.");
@@ -1043,7 +1059,17 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawny obiekt JSON, zachowując dok
     responseText = fallbackRes2.text;
 
     let jsonText = extractJSON(responseText || "");
-    return JSON.parse(jsonText);
+    
+    let parsed = JSON.parse(jsonText);
+    if (parsed && !Array.isArray(parsed)) {
+      if (Array.isArray(parsed.cards)) return parsed.cards;
+      if (Array.isArray(parsed.flashcards)) return parsed.flashcards;
+      if (Array.isArray(parsed.vocabulary)) return parsed.vocabulary;
+      if (Array.isArray(parsed.items)) return parsed.items;
+      return [];
+    }
+    return parsed;
+
   } catch (error) {
     console.error("Error generating dynamic exercise:", error);
     throw new Error("Failed to generate exercise from AI.");
@@ -1833,5 +1859,32 @@ Zwróć wynik WYŁĄCZNIE jako obiekt JSON o strukturze:
   } catch (err) {
     console.error("Error processing bulk sentences:", err);
     throw new Error("Nie udało się przetworzyć podanego tekstu.");
+  }
+};
+
+export const generateFlashcardsFromTextWithGPT = async (text: string, termLang: string, defLang: string): Promise<any[]> => {
+  const prompt = `Analyze the following text and extract vocabulary words/phrases from it.
+Text: ${text}
+Source language of terms: ${termLang}
+Target language for definitions: ${defLang}
+
+For each term found, provide:
+1. The term itself.
+2. A clear definition or translation in the target language.
+3. An example context sentence in the source language (no translation needed).
+
+Return a JSON array of objects.`;
+
+  const sysInst = "You are an AI assistant creating flashcard sets in JSON format for the gpt-4o-mini model. Output ONLY a valid JSON array of objects with keys: term, definition, contextSentence.";
+
+  try {
+    const openAiRes = await callOpenAI(prompt, sysInst, 'gpt-4o-mini', true);
+    const jsonText = extractJSON(openAiRes.text || "");
+    const parsed = JSON.parse(jsonText);
+    const list = Array.isArray(parsed) ? parsed : (parsed.flashcards || parsed.cards || parsed.words || parsed.items || []);
+    return list;
+  } catch (err) {
+    console.error("Error generating flashcards from text with GPT:", err);
+    throw new Error("Failed to parse vocabulary from text using GPT-4o-mini.");
   }
 };

@@ -26,7 +26,8 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
   const [previewSetId, setPreviewSetId] = useState<string | null>(null);
   const [previewCards, setPreviewCards] = useState<any[]>([]);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const { getFlashcards } = useFlashcards();
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+    const { getFlashcards } = useFlashcards();
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -82,7 +83,8 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
       const setId = await createSet({
         title: language === 'pl' ? 'Nowy zestaw' : 'New Set',
         description: '',
-        isPublic: false
+        isPublic: false,
+        isDraft: true
       });
       onEditSet(setId);
     } catch (error) {
@@ -228,21 +230,77 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
   const otherSets = sortedSets.filter(s => !s.isLessonVocabulary && !s.isGeneral);
   const generalSets = sortedSets.filter(s => s.isGeneral);
 
-  const renderLessonSetRow = (set: FlashcardSet, index: number) => {
+  
+  const renderLessonSet = (set: FlashcardSet, index: number, view: 'list' | 'grid') => {
     const cleanTitle = getSetCleanTitle(set);
     const lessonNum = set.lessonNumber || (lessonSets.length - index);
     const lessonDate = formatDisplayDate(set.lessonDate || set.createdAt);
     const isNew = isNewSet(set);
 
+    const cardClass = isNew 
+      ? 'bg-amber-500/10 border-2 border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.25)] animate-pulse-slow' 
+      : (view === 'grid' ? 'hover:border-amber-500/50' : 'bg-base-200/50 border border-white/5 hover:border-amber-500/30');
+
+    if (view === 'grid') {
+      return (
+        <Card key={set.id} className={`flex flex-col h-full transition-all duration-300 group relative overflow-hidden ${cardClass}`}>
+          {isNew && (
+             <div className="absolute top-0 right-0 px-3 py-1 bg-amber-500 text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
+               {language === 'pl' ? 'Nowe słownictwo' : 'New vocabulary'}
+             </div>
+          )}
+          <div className="flex-1 mt-2">
+            <h3 
+              className="text-xl font-bold hover:text-amber-400 transition-colors cursor-pointer hover:underline line-clamp-2 mb-2" 
+              onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }}
+            >
+              {cleanTitle}
+                {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-gray-500 text-white px-2 py-0.5 rounded-full">DRAFT</span>}
+            </h3>
+            <div className="flex flex-wrap items-center gap-2 mb-4 text-xs text-content-muted">
+              <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded border border-amber-500/30">
+                {language === 'pl' ? `Lekcja #${lessonNum}` : `Lesson #${lessonNum}`}
+              </span>
+              <span className="bg-base-300 px-2 py-0.5 rounded font-mono text-content">
+                {set.cardCount} {t('flashcards.cards')}
+              </span>
+            </div>
+            
+            <div className="space-y-1.5 mb-2">
+              <div className="flex justify-between text-xs font-medium">
+                <span className="text-content-muted">{language === 'pl' ? 'Opanowanie' : 'Mastery'}</span>
+                <span className={(setMastery[set.id] || 0) >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
+              </div>
+              <div className="w-full bg-base-300 h-1.5 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-500 ${(setMastery[set.id] || 0) >= 80 ? 'bg-green-400' : 'bg-primary'}`}
+                  style={{ width: `${Math.min(100, Math.max(0, setMastery[set.id] || 0))}%` }}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-base-300 z-10">
+            <Button className="flex-1" onClick={() => { markSetAsChecked(set.id); onStudySet(set.id); }} disabled={set.cardCount === 0}>
+              🎴 {t('flashcards.study')}
+            </Button>
+            {onNavigate && (
+              <Button variant="secondary" className="flex-[1_1_auto] border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20" onClick={() => { markSetAsChecked(set.id); onNavigate('ai-generator', { setId: set.id }); }}>
+                ✨ {language === 'pl' ? 'Ćwicz' : 'Practice'}
+              </Button>
+            )}
+            <Button variant="secondary" onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }} disabled={set.cardCount === 0} className="px-3">
+              <span className="text-xl">👀</span>
+            </Button>
+            <Button variant="secondary" onClick={() => { markSetAsChecked(set.id); onStatsSet(set.id); }} className="px-3">
+              📊
+            </Button>
+          </div>
+        </Card>
+      );
+    }
+
     return (
-      <div 
-        key={set.id} 
-        className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 rounded-xl transition-all duration-300 gap-4 relative overflow-hidden ${
-          isNew 
-            ? 'bg-amber-500/10 border-2 border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.25)] animate-pulse-slow' 
-            : 'bg-base-200/50 border border-white/5 hover:border-amber-500/30'
-        }`}
-      >
+      <div key={set.id} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 rounded-xl transition-all duration-300 gap-4 relative overflow-hidden ${cardClass}`}>
         {isNew && (
            <div className="absolute top-0 right-0 px-3 py-1 bg-amber-500 text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
              {language === 'pl' ? 'Nowe słownictwo' : 'New vocabulary'}
@@ -252,14 +310,12 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           <div className="flex items-center gap-3 mb-1">
             <h3 
               className="text-lg font-bold hover:text-amber-400 transition-colors cursor-pointer hover:underline truncate" 
-              onClick={() => handlePreviewSet(set.id)} 
-              title={language === "pl" ? "Podgląd słownictwa" : "Preview vocabulary"}
+              onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }}
             >
               {cleanTitle}
+                {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-gray-500 text-white px-2 py-0.5 rounded-full">DRAFT</span>}
             </h3>
           </div>
-          
-          {/* Lesson Details */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-content-muted mt-2">
             <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-300 bg-amber-500/15 px-2.5 py-0.5 rounded-md border border-amber-500/30">
               {language === 'pl' ? `Lekcja #${lessonNum}` : `Lesson #${lessonNum}`}
@@ -274,120 +330,19 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             </span>
             <span className="flex items-center gap-1 font-mono">
               {language === 'pl' ? 'Opanowanie:' : 'Mastery:'} 
-              <span className={setMastery[set.id] >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : setMastery[set.id]}%</span>
+              <span className={(setMastery[set.id] || 0) >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
             </span>
             {lastPracticed[set.id] && (
-              <span className="font-mono text-gray-400">
-                {language === 'pl' ? 'Ostatnio:' : 'Last:'} {lastPracticed[set.id]?.toLocaleDateString()}
+              <span className="font-mono">
+                {language === 'pl' ? 'Ostatnio: ' : 'Last: '} {lastPracticed[set.id]?.toLocaleDateString()}
               </span>
             )}
           </div>
         </div>
         
-        <div className="flex items-center gap-2 w-full sm:w-auto z-10">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto z-10">
           <Button 
-            size="sm" 
-            onClick={() => { markSetAsChecked(set.id); onStudySet(set.id); }} 
-            disabled={set.cardCount === 0} 
-            className="flex-1 sm:flex-none"
-          >
-            🎴 {t('flashcards.study')}
-          </Button>
-          {onNavigate && (
-            <Button 
-              size="sm" 
-              variant="secondary" 
-              onClick={() => { markSetAsChecked(set.id); onNavigate('ai-generator', { setId: set.id }); }} 
-              className="flex-1 sm:flex-none border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
-            >
-              ✨ {language === 'pl' ? 'Ćwicz w zdaniach' : 'Practice in sentences'}
-            </Button>
-          )}
-          <Button 
-            size="sm" 
-            variant="secondary" 
-            onClick={() => { markSetAsChecked(set.id); onStatsSet(set.id); }} 
-            className="flex-1 sm:flex-none"
-          >
-            {language === 'pl' ? 'Statystyki' : 'Stats'}
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
-  const renderOtherSetCard = (set: FlashcardSet) => {
-    const cleanTitle = getSetCleanTitle(set);
-    const createdDate = formatDisplayDate(set.createdAt);
-    const isNew = isNewSet(set);
-
-    return (
-      <Card 
-        key={set.id} 
-        className={`flex flex-col h-full transition-all duration-300 group relative overflow-hidden ${
-          isNew 
-            ? 'bg-emerald-500/10 border-2 border-emerald-500/60 shadow-[0_0_20px_rgba(16,185,129,0.25)] animate-pulse-slow' 
-            : 'hover:border-primary/50'
-        }`}
-      >
-        {isNew && (
-           <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500 text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
-             {language === 'pl' ? 'Nowy zestaw' : 'New set'}
-           </div>
-        )}
-        <div className="flex-1 mt-2">
-          <div className="flex justify-between items-start mb-2 gap-2">
-            <h3 
-              className="text-xl font-bold hover:text-primary transition-colors cursor-pointer hover:underline line-clamp-2" 
-              onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }} 
-              title={language === "pl" ? "Podgląd słownictwa" : "Preview vocabulary"}
-            >
-              {cleanTitle}
-            </h3>
-            {set.assignedByTeacher && (
-              <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full font-bold bg-secondary/10 text-secondary flex-shrink-0">
-                {language === 'pl' ? 'Nauczyciel' : 'Teacher'}
-              </span>
-            )}
-          </div>
-          
-          {set.description && <p className="text-content-muted text-sm mb-4 line-clamp-2">{set.description}</p>}
-          
-          <div className="flex flex-wrap items-center gap-2.5 mb-6 text-xs text-content-muted">
-            {createdDate && (
-              <div className="font-mono bg-base-300/80 px-2.5 py-1 rounded-md text-gray-300">
-                {language === 'pl' ? `Utworzono: ${createdDate}` : `Created: ${createdDate}`}
-              </div>
-            )}
-            <div className="inline-block bg-base-300 text-content px-2.5 py-1 rounded-md text-xs font-mono">
-              {set.cardCount} {t('flashcards.cards')}
-            </div>
-            {lastPracticed[set.id] && (
-              <div className="text-xs text-content-muted font-mono">
-                {language === 'pl' ? 'Ostatnio: ' : 'Last: '} 
-                {lastPracticed[set.id]?.toLocaleDateString()}
-              </div>
-            )}
-          </div>
-
-          {/* Mastery Progress */}
-          <div className="space-y-1.5 mb-2">
-            <div className="flex justify-between text-xs font-medium">
-              <span className="text-content-muted">{language === 'pl' ? 'Opanowanie' : 'Mastery'}</span>
-              <span className={(setMastery[set.id] || 0) >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
-            </div>
-            <div className="w-full bg-base-300 h-1.5 rounded-full overflow-hidden">
-              <div 
-                className={`h-full transition-all duration-500 ${(setMastery[set.id] || 0) >= 80 ? 'bg-green-400' : 'bg-primary'}`}
-                style={{ width: `${Math.min(100, Math.max(0, setMastery[set.id] || 0))}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-base-300 z-10">
-          <Button 
-            className="flex-[2_1_auto]" 
+            className="flex-1 sm:flex-none" 
             onClick={() => { markSetAsChecked(set.id); onStudySet(set.id); }}
             disabled={set.cardCount === 0}
           >
@@ -395,50 +350,154 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           </Button>
           {onNavigate && (
             <Button 
-              variant="secondary"
-              className="flex-[1_1_auto] border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
+              variant="secondary" 
+              className="flex-1 sm:flex-none border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20" 
               onClick={() => { markSetAsChecked(set.id); onNavigate('ai-generator', { setId: set.id }); }}
             >
               ✨ {language === 'pl' ? 'Ćwicz w zdaniach' : 'Practice'}
             </Button>
           )}
-          {!set.isGeneral && (
-            <Button 
-              variant="secondary" 
-              className="flex-[1_1_auto]"
-              onClick={() => { markSetAsChecked(set.id); onEditSet(set.id); }}
-            >
-              {t('flashcards.edit')}
-            </Button>
-          )}
+          <Button variant="secondary" onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }} disabled={set.cardCount === 0} className="px-3" title="Podgląd">
+            👀
+          </Button>
           <Button 
             variant="secondary" 
-            className="flex-[1_1_auto]"
-            onClick={() => { markSetAsChecked(set.id); onStatsSet(set.id); }}
+            onClick={() => { markSetAsChecked(set.id); onStatsSet(set.id); }} 
+            className="flex-1 sm:flex-none px-3"
+            title="Statystyki"
           >
-            {language === 'pl' ? 'Opis' : 'Stats'}
+            📊
           </Button>
-          {(user?.role === 'admin' || user?.role === 'teacher') && onPresentSet && (
-            <Button 
-              variant="secondary"
-              className="flex-[1_1_auto] shadow-[0_0_15px_rgba(201,168,108,0.2)] bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 border-orange-500/30"
-              onClick={() => onPresentSet(set.id)}
-              disabled={set.cardCount === 0}
-            >
-              ▶ {language === 'pl' ? 'Prezentuj' : 'Present'}
-            </Button>
-          )}
-          {!set.isGeneral && (
-            <Button 
-              variant="danger" 
-              className="flex-[0_0_auto] px-3"
-              onClick={() => setSetToDelete(set.id)}
-            >
-              🗑
-            </Button>
-          )}
         </div>
-      </Card>
+      </div>
+    );
+  };
+
+  const renderOtherSet = (set: FlashcardSet, view: 'list' | 'grid') => {
+    const cleanTitle = getSetCleanTitle(set);
+    const createdDate = formatDisplayDate(set.createdAt);
+    const isNew = isNewSet(set);
+
+    const cardClass = isNew 
+      ? 'bg-emerald-500/10 border-2 border-emerald-500/60 shadow-[0_0_20px_rgba(16,185,129,0.25)] animate-pulse-slow' 
+      : (view === 'grid' ? 'hover:border-primary/50' : 'bg-base-200/50 border border-white/5 hover:border-primary/30');
+
+    if (view === 'grid') {
+      return (
+        <Card key={set.id} className={`flex flex-col h-full transition-all duration-300 group relative overflow-hidden ${cardClass}`}>
+          {isNew && (
+             <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500 text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
+               {language === 'pl' ? 'Nowy zestaw' : 'New set'}
+             </div>
+          )}
+          <div className="flex-1 mt-2">
+            <div className="flex justify-between items-start mb-2 gap-2">
+              <h3 
+                className="text-xl font-bold hover:text-primary transition-colors cursor-pointer hover:underline line-clamp-2" 
+                onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }}
+              >
+                {cleanTitle}
+                {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-gray-500 text-white px-2 py-0.5 rounded-full">DRAFT</span>}
+              </h3>
+            </div>
+            {set.description && <p className="text-content-muted text-sm mb-4 line-clamp-2">{set.description}</p>}
+            <div className="flex flex-wrap items-center gap-2.5 mb-6 text-xs text-content-muted">
+              {createdDate && (
+                <div className="font-mono bg-base-300/80 px-2.5 py-1 rounded-md text-gray-300">
+                  {language === 'pl' ? `Utworzono: ${createdDate}` : `Created: ${createdDate}`}
+                </div>
+              )}
+              <div className="inline-block bg-base-300 text-content px-2.5 py-1 rounded-md text-xs font-mono">
+                {set.cardCount} {t('flashcards.cards')}
+              </div>
+            </div>
+            <div className="space-y-1.5 mb-2">
+              <div className="flex justify-between text-xs font-medium">
+                <span className="text-content-muted">{language === 'pl' ? 'Opanowanie' : 'Mastery'}</span>
+                <span className={(setMastery[set.id] || 0) >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
+              </div>
+              <div className="w-full bg-base-300 h-1.5 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-500 ${(setMastery[set.id] || 0) >= 80 ? 'bg-green-400' : 'bg-primary'}`}
+                  style={{ width: `${Math.min(100, Math.max(0, setMastery[set.id] || 0))}%` }}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-base-300 z-10">
+            <Button className="flex-[2_1_auto]" onClick={() => { markSetAsChecked(set.id); onStudySet(set.id); }} disabled={set.cardCount === 0}>
+              🎴 {t('flashcards.study')}
+            </Button>
+            <Button variant="secondary" className="flex-[1_1_auto]" onClick={() => { markSetAsChecked(set.id); onEditSet(set.id); }}>
+              {language === 'pl' ? 'Edytuj' : 'Edit'}
+            </Button>
+            <Button variant="secondary" onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }} disabled={set.cardCount === 0} className="px-3" title={language === 'pl' ? 'Podgląd' : 'Preview'}>
+              👀
+            </Button>
+            <Button variant="secondary" onClick={(e) => { e.stopPropagation(); setSetToDelete(set.id); }} className="px-3 border-red-500/30 text-red-400 hover:text-red-300 hover:bg-red-500/10" title={language === 'pl' ? 'Usuń zestaw' : 'Delete set'}>
+              🗑️
+            </Button>
+          </div>
+        </Card>
+      );
+    }
+
+    return (
+      <div key={set.id} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 rounded-xl transition-all duration-300 gap-4 relative overflow-hidden ${cardClass}`}>
+        {isNew && (
+           <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500 text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
+             {language === 'pl' ? 'Nowy zestaw' : 'New set'}
+           </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 mb-1">
+            <h3 
+              className="text-lg font-bold hover:text-primary transition-colors cursor-pointer hover:underline truncate" 
+              onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }}
+            >
+              {cleanTitle}
+              {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-gray-500 text-white px-2 py-0.5 rounded-full">DRAFT</span>}
+            </h3>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-content-muted mt-2">
+            {createdDate && (
+              <span className="font-mono text-gray-300">
+                {language === 'pl' ? `Utworzono: ${createdDate}` : `Created: ${createdDate}`}
+              </span>
+            )}
+            <span className="inline-flex items-center bg-base-300 px-2 py-0.5 rounded-md text-content font-mono">
+              {set.cardCount} {t('flashcards.cards')}
+            </span>
+            <span className="flex items-center gap-1 font-mono">
+              {language === 'pl' ? 'Opanowanie:' : 'Mastery:'} 
+              <span className={(setMastery[set.id] || 0) >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
+            </span>
+          </div>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto z-10">
+          <Button 
+            className="flex-1 sm:flex-none" 
+            onClick={() => { markSetAsChecked(set.id); onStudySet(set.id); }}
+            disabled={set.cardCount === 0}
+          >
+            🎴 {t('flashcards.study')}
+          </Button>
+          <Button 
+            variant="secondary" 
+            className="flex-1 sm:flex-none" 
+            onClick={() => { markSetAsChecked(set.id); onEditSet(set.id); }}
+          >
+            {language === 'pl' ? 'Edytuj' : 'Edit'}
+          </Button>
+          <Button variant="secondary" onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }} disabled={set.cardCount === 0} className="px-3" title={language === 'pl' ? 'Podgląd' : 'Preview'}>
+            👀
+          </Button>
+          <Button variant="secondary" onClick={(e) => { e.stopPropagation(); setSetToDelete(set.id); }} className="px-3 border-red-500/30 text-red-400 hover:text-red-300 hover:bg-red-500/10" title={language === 'pl' ? 'Usuń zestaw' : 'Delete set'}>
+            🗑️
+          </Button>
+        </div>
+      </div>
     );
   };
 
@@ -447,9 +506,26 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-extrabold tracking-tight">{language === 'pl' ? 'Moje Listy Słów' : 'My Word Lists'}</h1>
-        <Button onClick={handleCreateNewSet} isLoading={isCreating} className="shadow-lg shadow-primary/20">
-          + {language === 'pl' ? 'Stwórz nowy zestaw' : 'Create new set'}
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          
+          <div className="flex bg-base-300 p-1 rounded-lg">
+            <button 
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-primary text-white shadow-sm' : 'text-content-muted hover:text-white'}`}
+            >
+              ☰
+            </button>
+            <button 
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-primary text-white shadow-sm' : 'text-content-muted hover:text-white'}`}
+            >
+              ⊞
+            </button>
+          </div>
+          <Button onClick={handleCreateNewSet} isLoading={isCreating} className="shadow-lg shadow-primary/20">
+            + {language === 'pl' ? 'Stwórz nowy zestaw' : 'Create new set'}
+          </Button>
+        </div>
       </div>
 
       {/* Lesson Vocabulary Section */}
@@ -458,8 +534,8 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           <h2 className="text-xl font-bold flex items-center gap-2 pb-2 border-b border-white/10 text-amber-400">
             📚 {language === 'pl' ? 'Słownictwo z lekcji' : 'Lesson Vocabulary'}
           </h2>
-          <div className="flex flex-col gap-3">
-            {lessonSets.map((set, idx) => renderLessonSetRow(set, idx))}
+          <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "flex flex-col gap-3"}>
+            {lessonSets.map((set, idx) => renderLessonSet(set, idx, viewMode))}
           </div>
         </div>
       )}
@@ -467,10 +543,10 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
       {/* Remaining Vocabulary Section */}
       <div className="mt-8 space-y-4">
         <h2 className="text-xl font-bold flex items-center gap-2 pb-2 border-b border-white/10 text-emerald-400">
-          📝 {language === 'pl' ? 'Pozostałe słownictwo' : 'Other Vocabulary'}
+          📝 {language === 'pl' ? 'Słownictwo prywatne' : 'Private Vocabulary'}
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {otherSets.map(renderOtherSetCard)}
+        <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "flex flex-col gap-3"}>
+          {otherSets.map(set => renderOtherSet(set, viewMode))}
           
           {otherSets.length === 0 && (
             <div className="col-span-full text-center py-12 text-content-muted border border-dashed border-base-300 rounded-2xl bg-base-200/30">
@@ -573,7 +649,9 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
               </Button>
               <Button 
                 onClick={() => {
-                  deleteSet(setToDelete);
+                  if (setToDelete) {
+                    deleteSet(setToDelete);
+                  }
                   setSetToDelete(null);
                 }} 
                 variant="danger"

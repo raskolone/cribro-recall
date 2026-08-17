@@ -1,3 +1,4 @@
+import { Sparkles } from "lucide-react";
 import { auth } from '../../firebase';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useFlashcards } from '../../context/FlashcardContext';
@@ -7,7 +8,7 @@ import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { Flashcard, FlashcardSet } from '../../types';
 import { getAISuggestions } from '../../services/aiSuggestions';
-import { generateFlashcardsFromText, formatFlashcardsWithAI, generateContextSentence, generateImageForTerm } from '../../services/geminiService';
+import { generateFlashcardsFromText, generateFlashcardsFromTextWithGPT, formatFlashcardsWithAI, generateContextSentence, generateImageForTerm } from '../../services/geminiService';
 import i18n from "i18next";
 
 interface FlashcardEditScreenProps {
@@ -104,6 +105,10 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
 
   // Import Modal State
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isAIGenModalOpen, setIsAIGenModalOpen] = useState(false);
+  const [aiGenTopic, setAiGenTopic] = useState('');
+  const [aiGenCount, setAiGenCount] = useState(10);
+  const [isGeneratingAITopic, setIsGeneratingAITopic] = useState(false);
   const [importText, setImportText] = useState('');
   const [importDelimiter, setImportDelimiter] = useState('tab');
   const [importTermLang, setImportTermLang] = useState('en');
@@ -165,7 +170,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
       try {
         const validCards = cards.filter(c => c.term?.trim() || c.definition?.trim());
         await saveFlashcards(setId, validCards);
-        await updateSet(setId, { title, description, isPublic });
+        await updateSet(setId, { title, description, isPublic, isDraft: false });
         setLastSaved(new Date());
       } catch (error) {
         console.error('Autosave failed', error);
@@ -349,7 +354,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
     try {
       const validCards = cards.filter(c => c.term?.trim() || c.definition?.trim());
       await saveFlashcards(setId, validCards);
-      await updateSet(setId, { title, description, isPublic });
+      await updateSet(setId, { title, description, isPublic, isDraft: false });
       setLastSaved(new Date());
     } catch (error) {
       console.error('Save failed', error);
@@ -472,11 +477,48 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
     }
   };
 
-  const handleImportWithAI = async () => {
+  const handleGenerateFromTopic = async (cleanSet: boolean) => {
+    if (!aiGenTopic.trim()) return;
+    setIsGeneratingAITopic(true);
+    try {
+      // @ts-ignore
+      const { generateFlashcardsFromTopicWithGPT } = await import('../../services/geminiService');
+      const generatedCards = await generateFlashcardsFromTopicWithGPT(aiGenTopic, aiGenCount, importTermLang, importDefLang);
+      if (generatedCards && generatedCards.length > 0) {
+        const newCards: Partial<Flashcard>[] = generatedCards.map((c: any, idx: number) => ({
+          id: `card-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 9)}`,
+          term: c.term,
+          definition: c.definition,
+          contextSentence: c.contextSentence,
+          termLanguage: importTermLang,
+          definitionLanguage: importDefLang,
+          isLocked: false
+        }));
+        
+        if (cleanSet) {
+            setCards(newCards as Flashcard[]);
+        } else {
+            setCards(prev => [...prev, ...newCards]);
+        }
+        
+        setIsAIGenModalOpen(false);
+        setAiGenTopic('');
+      } else {
+        alert(language === 'pl' ? 'Nie udało się wygenerować słówek.' : 'Failed to generate vocabulary.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(language === 'pl' ? 'Błąd podczas generowania: ' + err.message : 'Error generating: ' + err.message);
+    } finally {
+      setIsGeneratingAITopic(false);
+    }
+  };
+
+  const handleImportWithAI = async (cleanSet: boolean) => {
     if (!importText.trim()) return;
     setIsImportingWithAI(true);
     try {
-      const generatedCards = await generateFlashcardsFromText(importText, importTermLang, importDefLang);
+      const generatedCards = await generateFlashcardsFromTextWithGPT(importText, importTermLang, importDefLang);
       if (generatedCards && generatedCards.length > 0) {
         const newCards: Partial<Flashcard>[] = generatedCards.map((c, idx) => ({
           id: `card-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 9)}`,
@@ -487,13 +529,22 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
           definitionLanguage: importDefLang,
           isLocked: false
         }));
-        setCards(prev => [...prev, ...newCards]);
+        
+        if (cleanSet) {
+            setCards(newCards as Flashcard[]);
+        } else {
+            setCards(prev => [...prev, ...newCards]);
+        }
+        
         setIsImportModalOpen(false);
         setImportText('');
+      } else {
+        alert(language === 'pl' ? 'Nie udało się wygenerować słówek z tego tekstu.' : 'Failed to generate vocabulary from this text.');
       }
-    } catch (err) {
+    } catch (err: any) {
+      alert(language === 'pl' ? 'Wystąpił błąd podczas importu z AI: ' + err.message : 'Error during AI import: ' + err.message);
       console.error(err);
-      alert('Failed to import with AI. Check your API Key.');
+      
     } finally {
       setIsImportingWithAI(false);
     }
@@ -541,15 +592,22 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="secondary" onClick={handleManualSave}>
-            {language === 'pl' ? 'Stwórz' : 'Create'}
-          </Button>
-          <Button onClick={async () => {
-            await handleManualSave();
-            onStudy(setId);
-          }}>
-            {language === 'pl' ? 'Stwórz i ćwicz' : 'Create and Study'}
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setIsImportModalOpen(true)}
+            className="text-sm font-medium text-amber-500 hover:text-amber-400 transition-colors flex items-center gap-2"
+          >
+            <Sparkles className="w-4 h-4" /> {language === 'pl' ? 'Importuj z AI' : 'Import with AI'}
+          </button>
+          <button 
+            onClick={() => setIsAIGenModalOpen(true)}
+            className="text-sm font-medium text-amber-500 hover:text-amber-400 transition-colors flex items-center gap-2"
+          >
+            <Sparkles className="w-4 h-4" /> {language === 'pl' ? 'Wygeneruj z tematu AI' : 'Generate from topic AI'}
+          </button>
+
+                    <Button onClick={async () => { await handleManualSave(); onBack(); }} className="bg-amber-500 text-black hover:bg-amber-400 border-transparent">
+            {language === 'pl' ? 'Zapisz nowy zestaw' : 'Save new set'}
           </Button>
         </div>
       </div>
@@ -574,14 +632,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
 
       {/* Toolbar */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => setIsImportModalOpen(true)}
-            className="text-sm font-medium text-content-muted hover:text-white transition-colors flex items-center gap-2"
-          >
-            <span>+</span> {language === 'pl' ? 'Importuj' : 'Import'}
-          </button>
-        </div>
+
         <div className="flex items-center gap-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <span className={`text-sm font-medium ${aiSuggestionsEnabled ? 'text-blue-400' : 'text-content-muted'}`}>
@@ -755,12 +806,99 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
         </div>
       </Card>
 
+      {/* AI Generator Modal */}
+      {isAIGenModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <Sparkles className="w-6 h-6 text-amber-400" />
+                {language === 'pl' ? 'Generuj słówka z AI' : 'Generate vocabulary with AI'}
+              </h2>
+              <button onClick={() => setIsAIGenModalOpen(false)} className="text-content-muted hover:text-white text-2xl">{i18n.t("&times;")}</button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">{language === 'pl' ? 'Temat (np. Podróże samolotem)' : 'Topic (e.g. Air travel)'}</label>
+                <input 
+                  type="text" 
+                  value={aiGenTopic}
+                  onChange={(e) => setAiGenTopic(e.target.value)}
+                  className="w-full bg-base-200/40 border border-white/10 rounded px-3 py-2 focus:outline-none focus:border-primary"
+                  placeholder={language === 'pl' ? 'Wpisz dowolny temat...' : 'Enter any topic...'}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">{language === 'pl' ? 'Ilość słówek' : 'Word count'} ({aiGenCount})</label>
+                <input 
+                  type="range" 
+                  min="5" 
+                  max="50" 
+                  step="5"
+                  value={aiGenCount}
+                  onChange={(e) => setAiGenCount(Number(e.target.value))}
+                  className="w-full accent-primary"
+                />
+              </div>
+              
+              <div className="flex flex-wrap gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">{language === 'pl' ? 'Język pojęcia' : 'Term language'}</label>
+                  <select 
+                    value={importTermLang} 
+                    onChange={(e) => setImportTermLang(e.target.value)}
+                    className="w-full bg-base-200/40 border border-white/10 rounded px-3 py-2 focus:outline-none focus:border-primary"
+                  >
+                    {LANGUAGES.map((l: any) => <option key={l.code} value={l.code}>{l.name}</option>)}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">{language === 'pl' ? 'Język definicji' : 'Def language'}</label>
+                  <select 
+                    value={importDefLang} 
+                    onChange={(e) => setImportDefLang(e.target.value)}
+                    className="w-full bg-base-200/40 border border-white/10 rounded px-3 py-2 focus:outline-none focus:border-primary"
+                  >
+                    {LANGUAGES.map((l: any) => <option key={l.code} value={l.code}>{l.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-3 mt-8">
+              <Button variant="secondary" onClick={() => setIsAIGenModalOpen(false)}>
+                {language === 'pl' ? 'Anuluj' : 'Cancel'}
+              </Button>
+              <Button 
+                onClick={() => handleGenerateFromTopic(false)} 
+                disabled={!aiGenTopic.trim() || isGeneratingAITopic}
+                className="bg-amber-500/20 text-amber-500 hover:bg-amber-500/30"
+              >
+                {isGeneratingAITopic ? '...' : (language === 'pl' ? 'Dodaj do istniejących ✨' : 'Append ✨')}
+              </Button>
+              <Button 
+                onClick={() => handleGenerateFromTopic(true)} 
+                disabled={!aiGenTopic.trim() || isGeneratingAITopic}
+                className="bg-amber-500 text-black hover:bg-amber-400"
+              >
+                {isGeneratingAITopic ? (language === 'pl' ? 'Generowanie...' : 'Generating...') : (language === 'pl' ? 'Czysty Zestaw ✨' : 'Clean Set ✨')}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Import Modal */}
       {isImportModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <Card className="w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">{language === 'pl' ? 'Importuj fiszki' : 'Import flashcards'}</h2>
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <Sparkles className="w-6 h-6 text-amber-400" />
+                {language === 'pl' ? 'Importuj z AI' : 'Import with AI'}
+              </h2>
               <button onClick={() => setIsImportModalOpen(false)} className="text-content-muted hover:text-white text-2xl">{i18n.t("&times;")}</button>
             </div>
             
@@ -768,24 +906,11 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
               <div>
                 <p className="text-content-muted mb-4">
                   {language === 'pl' 
-                    ? 'Wklej swoje dane poniżej lub prześlij plik. Użyj wybranego separatora (np. tabulator, przecinek), aby oddzielić pojęcie od definicji.' 
-                    : 'Paste your data below or upload a file. Use the selected delimiter (e.g. tab, comma) to separate the term from the definition.'}
+                    ? 'Wklej dowolną listę słówek, tekst lub artykuł. Sztuczna inteligencja przeanalizuje go i automatycznie stworzy dla Ciebie gotowy zestaw fiszek.' 
+                    : 'Paste any vocabulary list, text, or article. Artificial intelligence will analyze it and automatically create a ready flashcard set for you.'}
                 </p>
                 
                 <div className="flex flex-wrap gap-4 mb-4">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium">{language === 'pl' ? 'Separator:' : 'Delimiter:'}</label>
-                    <select 
-                      value={importDelimiter} 
-                      onChange={(e) => setImportDelimiter(e.target.value)}
-                      className="bg-base-200/40 backdrop-blur-md border border-white/10 rounded px-2 py-1 text-sm focus:outline-none focus:border-primary"
-                    >
-                      <option value="tab">{language === 'pl' ? 'Tabulator' : 'Tab'}</option>
-                      <option value="comma">{language === 'pl' ? 'Przecinek' : 'Comma'}</option>
-                      <option value="semicolon">{language === 'pl' ? 'Średnik' : 'Semicolon'}</option>
-                    </select>
-                  </div>
-                  
                   <div className="flex items-center gap-2">
                     <label className="text-sm font-medium">{language === 'pl' ? 'Język pojęcia:' : 'Term language:'}</label>
                     <select 
@@ -793,7 +918,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                       onChange={(e) => setImportTermLang(e.target.value)}
                       className="bg-base-200/40 backdrop-blur-md border border-white/10 rounded px-2 py-1 text-sm focus:outline-none focus:border-primary"
                     >
-                      {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
+                      {LANGUAGES.map((l: any) => <option key={l.code} value={l.code}>{l.name}</option>)}
                     </select>
                   </div>
                   
@@ -804,7 +929,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                       onChange={(e) => setImportDefLang(e.target.value)}
                       className="bg-base-200/40 backdrop-blur-md border border-white/10 rounded px-2 py-1 text-sm focus:outline-none focus:border-primary"
                     >
-                      {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
+                      {LANGUAGES.map((l: any) => <option key={l.code} value={l.code}>{l.name}</option>)}
                     </select>
                   </div>
                 </div>
@@ -813,16 +938,15 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                   value={importText}
                   onChange={(e) => setImportText(e.target.value)}
                   className="w-full h-64 bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-4 focus:outline-none focus:border-primary font-mono text-sm resize-y"
-                  placeholder={language === 'pl' ? 'Pojęcie 1\\tDefinicja 1\\nPojęcie 2\\tDefinicja 2' : 'Term 1\\tDefinition 1\\nTerm 2\\tDefinition 2'}
+                  placeholder={language === 'pl' ? 'Wklej tutaj tekst do analizy przez AI...' : 'Paste text for AI analysis here...'}
                 />
               </div>
-              
               
               <div className="flex items-center gap-4 pt-4 border-t border-base-300">
                 <label className="flex-1">
                   <div className="border-2 border-dashed border-base-300 rounded-lg p-4 text-center cursor-pointer hover:border-primary hover:text-primary transition-colors">
-                    <span className="text-sm font-medium">{language === 'pl' ? 'Wybierz plik (.csv, .txt)' : 'Choose file (.csv, .txt)'}</span>
-                    <input type="file" accept=".csv,.txt,.tsv" onChange={handleFileUpload} className="hidden" />
+                    <span className="text-sm font-medium">{language === 'pl' ? 'Wybierz plik z tekstem (.txt)' : 'Choose text file (.txt)'}</span>
+                    <input type="file" accept=".txt,.csv,.tsv" onChange={handleFileUpload} className="hidden" />
                   </div>
                 </label>
                 <div className="flex-1">
@@ -832,23 +956,25 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                   </div>
                 </div>
               </div>
-              <div className="flex justify-end pt-2">
-                <Button onClick={handleFormatTextWithAI} disabled={!importText.trim() || isFormattingWithAI} variant="secondary" className="bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 hover:text-white border-transparent">
-                  {isFormattingWithAI ? '...' : (language === 'pl' ? 'Kosmetyka AI (Flashlight) ✨' : 'Clean up with AI ✨')}
-                </Button>
-              </div>
-
             </div>
             
-            <div className="flex justify-end gap-4 mt-6 pt-4 border-t border-base-300">
+            <div className="flex justify-end gap-3 mt-8">
               <Button variant="secondary" onClick={() => setIsImportModalOpen(false)}>
                 {language === 'pl' ? 'Anuluj' : 'Cancel'}
               </Button>
-              <Button variant="secondary" onClick={handleImportWithAI} disabled={!importText.trim() || isImportingWithAI} className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 hover:text-white border-transparent">
-                {isImportingWithAI ? (language === 'pl' ? 'Analizowanie...' : 'Analyzing...') : (language === 'pl' ? 'Import z AI ✨' : 'Import with AI ✨')}
+              <Button 
+                onClick={() => handleImportWithAI(false)} 
+                disabled={!importText.trim() || isImportingWithAI}
+                className="bg-amber-500/20 text-amber-500 hover:bg-amber-500/30 border-transparent"
+              >
+                {isImportingWithAI ? '...' : (language === 'pl' ? 'Dodaj do istniejących ✨' : 'Append ✨')}
               </Button>
-              <Button onClick={handleImport} disabled={!importText.trim() || isImportingWithAI}>
-                {language === 'pl' ? 'Importuj standardowo' : 'Standard Import'}
+              <Button 
+                onClick={() => handleImportWithAI(true)} 
+                disabled={!importText.trim() || isImportingWithAI}
+                className="bg-amber-500 text-black hover:bg-amber-400 border-transparent"
+              >
+                {isImportingWithAI ? (language === 'pl' ? 'Analizowanie...' : 'Analyzing...') : (language === 'pl' ? 'Czysty Zestaw ✨' : 'Clean Set ✨')}
               </Button>
             </div>
           </Card>

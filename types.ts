@@ -97,6 +97,7 @@ export interface FlashcardSet {
   title: string;
   description?: string;
   isPublic: boolean;
+  isDraft?: boolean;
   cardCount: number;
   words?: any[];
   cards?: any[];
