@@ -17,6 +17,7 @@ interface SidebarProps {
   onOpen?: () => void;
   isDesktopCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  onShowOnboarding?: () => void;
 }
 
 import { 
@@ -68,7 +69,7 @@ const NavLink: React.FC<{
   </button>
 );
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPractice, isOpen, onClose, onOpen, isDesktopCollapsed = false, onToggleCollapse }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPractice, isOpen, onClose, onOpen, isDesktopCollapsed = false, onToggleCollapse, onShowOnboarding }) => {
   const [practiceOpen, setPracticeOpen] = useState(false);
   const { user, logout } = useAuth();
   const navRef = useRef<HTMLDivElement>(null);
@@ -380,7 +381,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           <NavLink icon={<Settings size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('settings')} isActive={currentView === 'settings'}>
               {language === 'pl' ? 'Ustawienia' : 'Settings'}
             </NavLink>
-            <NavLink icon={<HelpCircle size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => {}} isActive={false}>
+            <NavLink icon={<HelpCircle size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => onShowOnboarding && onShowOnboarding()} isActive={false}>
               {language === 'pl' ? 'Pomoc' : 'Help'}
             </NavLink>
             <div className={`flex flex-col gap-2`}>

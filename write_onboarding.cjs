@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+const fs = require('fs');
+
+const code = `import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
@@ -343,7 +345,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
     };
   };
 
-  const { style: popoverStyle, actualPlacement } = getPopoverPosition();
+  const { style: popoverStyle } = getPopoverPosition();
 
   return (
     <div className="fixed inset-0 z-[250] overflow-hidden pointer-events-auto select-none">
@@ -480,3 +482,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
 };
 
 export default OnboardingOverlay;
+`;
+
+fs.writeFileSync('components/dashboard/OnboardingOverlay.tsx', code, 'utf8');
+console.log('Successfully written OnboardingOverlay.tsx with 6 steps and mockups!');

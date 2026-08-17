@@ -65,15 +65,16 @@ const Dashboard: React.FC = () => {
   const [slogan, setSlogan] = useState('');
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [isExerciseActive, setIsExerciseActive] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    if (isTeacher) return false;
-    if (user && !user.onboardingCompleted) return true;
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (isTeacher || !user) return;
+    if (user.onboardingCompleted) return;
     try {
-      return localStorage.getItem('has_seen_onboarding') !== 'true';
-    } catch {
-      return true;
-    }
-  });
+      if (localStorage.getItem('has_seen_onboarding') === 'true') return;
+    } catch (e) {}
+    setShowOnboarding(true);
+  }, [user?.id, user?.onboardingCompleted, isTeacher]);
 
 
 
@@ -277,6 +278,7 @@ const Dashboard: React.FC = () => {
         onClose={() => setIsSidebarOpen(false)}
         onOpen={() => setIsSidebarOpen(true)}
         isDesktopCollapsed={isDesktopCollapsed}
+        onShowOnboarding={() => setShowOnboarding(true)}
         onToggleCollapse={() => {
           setIsDesktopCollapsed(prev => {
             const next = !prev;

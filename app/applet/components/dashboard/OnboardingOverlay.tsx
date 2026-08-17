@@ -260,9 +260,17 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
       const targetId = steps[currentStep].targetId;
       const el = document.getElementById(targetId);
       if (el) {
-        // Scroll element into view smoothly if needed
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        // Scroll element smoothly into center view so it's fully visible
         const rect = el.getBoundingClientRect();
+        const inView = rect.top >= 40 && rect.bottom <= window.innerHeight - 40;
+        if (!inView) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        setTimeout(() => {
+          if (el) {
+            setTargetRect(el.getBoundingClientRect());
+          }
+        }, 120);
         setTargetRect(rect);
       } else {
         setTargetRect(null);
@@ -270,12 +278,14 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
     };
 
     updateTargetPosition();
-    const timeout = setTimeout(updateTargetPosition, 250);
+    const t1 = setTimeout(updateTargetPosition, 100);
+    const t2 = setTimeout(updateTargetPosition, 300);
     window.addEventListener('resize', updateTargetPosition);
     window.addEventListener('scroll', updateTargetPosition, true);
 
     return () => {
-      clearTimeout(timeout);
+      clearTimeout(t1);
+      clearTimeout(t2);
       window.removeEventListener('resize', updateTargetPosition);
       window.removeEventListener('scroll', updateTargetPosition, true);
     };
@@ -301,79 +311,84 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
   const getPopoverPosition = () => {
     if (!targetRect || !isDesktop) return { style: {}, actualPlacement: 'center' as const };
 
-    const popoverWidth = 460;
-    const padding = 16;
+    const popoverWidth = Math.min(480, window.innerWidth - 32);
+    const popoverHeight = 440;
+    const gap = 16;
     let top = 0;
     let left = targetRect.left + (targetRect.width / 2) - (popoverWidth / 2);
     let actualPlacement = step.placement;
-
-    // Check if space exists above or below
-    if (step.placement === 'top') {
-      top = targetRect.top - 460 - padding;
-      if (top < 20) {
-        // If not enough room at top, flip to bottom
-        top = targetRect.bottom + padding;
-        actualPlacement = 'bottom';
-      }
-    } else if (step.placement === 'bottom') {
-      top = targetRect.bottom + padding;
-      if (top + 460 > window.innerHeight) {
-        // If not enough room at bottom, flip to top
-        top = targetRect.top - 460 - padding;
-        actualPlacement = 'top';
-      }
-    } else {
-      top = targetRect.bottom + padding;
-    }
 
     // Keep within horizontal boundaries
     const maxLeft = window.innerWidth - popoverWidth - 20;
     left = Math.max(20, Math.min(left, maxLeft));
 
+    // Check if space exists above or below
+    if (step.placement === 'top') {
+      top = targetRect.top - popoverHeight - gap;
+      if (top < 20) {
+        // If not enough room at top, flip to bottom
+        top = targetRect.bottom + gap;
+        actualPlacement = 'bottom';
+      }
+    } else if (step.placement === 'bottom') {
+      top = targetRect.bottom + gap;
+      if (top + popoverHeight > window.innerHeight - 20) {
+        // If not enough room at bottom, flip to top
+        top = targetRect.top - popoverHeight - gap;
+        actualPlacement = 'top';
+      }
+    } else {
+      top = targetRect.bottom + gap;
+    }
+
     // Keep within vertical boundaries
-    top = Math.max(20, Math.min(top, window.innerHeight - 480));
+    top = Math.max(20, Math.min(top, window.innerHeight - popoverHeight - 20));
 
     return {
       style: {
+        position: 'fixed' as const,
         top: `${top}px`,
         left: `${left}px`,
-        width: `${popoverWidth}px`
+        width: `${popoverWidth}px`,
+        zIndex: 260
       },
       actualPlacement
     };
   };
 
-  const { style: popoverStyle, actualPlacement } = getPopoverPosition();
+  const { style: popoverStyle } = getPopoverPosition();
 
   return (
     <div className="fixed inset-0 z-[250] overflow-hidden pointer-events-auto select-none">
-      {/* Dimmed backdrop */}
+      {/* Invisible click catcher that covers the whole screen */}
       <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-500"
-        onClick={onComplete}
+        className="absolute inset-0 cursor-pointer" 
+        onClick={onComplete} 
       />
 
-      {/* Spotlight cutout for Desktop when target element is found */}
-      {isDesktop && targetRect && (
+      {/* Spotlight cutout hole using a single div with huge box-shadow */}
+      {isDesktop && targetRect ? (
         <div
-          className="absolute border-2 border-emerald-400 rounded-3xl pointer-events-none transition-all duration-400 ease-out"
+          className="absolute border-2 border-emerald-400 rounded-3xl pointer-events-none transition-all duration-300 ease-out z-[255]"
           style={{
             top: targetRect.top - 8,
             left: targetRect.left - 8,
             width: targetRect.width + 16,
             height: targetRect.height + 16,
-            boxShadow: '0 0 0 9999px rgba(0,0,0,0.75), 0 0 35px rgba(16,185,129,0.6)'
+            boxShadow: '0 0 0 9999px rgba(0,0,0,0.85), inset 0 0 15px rgba(16,185,129,0.1)'
           }}
         >
-          <div className="absolute -top-3 left-6 px-3 py-0.5 rounded-full bg-emerald-500 text-black font-extrabold text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-black animate-ping" />
-            <span>{language === 'pl' ? 'Wskazywany element' : 'Active Feature'}</span>
+          <div className="absolute -top-3.5 left-6 px-3 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-black text-[10px] uppercase tracking-widest shadow-[0_0_12px_rgba(16,185,129,0.6)] flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping" />
+            <span>{language === 'pl' ? 'Podświetlona sekcja' : 'Active Feature'}</span>
           </div>
         </div>
+      ) : (
+        <div className="absolute inset-0 bg-black/85 pointer-events-none transition-opacity duration-300" />
       )}
 
       {/* Main Tour Container */}
-      <div className={`relative z-10 w-full h-full flex ${isDesktop && targetRect ? 'block' : 'items-center justify-center p-4'}`}>
+      <div className={`relative z-[260] w-full h-full flex ${isDesktop && targetRect ? 'block' : 'items-center justify-center p-4'}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
@@ -384,9 +399,9 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
             style={isDesktop && targetRect ? popoverStyle : undefined}
             className={`${
               isDesktop && targetRect 
-                ? 'absolute' 
+                ? '' 
                 : 'max-w-md w-full'
-            } bg-[#0a101b] border-2 border-emerald-500/40 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(16,185,129,0.25)] p-6 text-white overflow-hidden`}
+            } bg-[#0a101b] border-2 border-emerald-500/40 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.9),0_0_30px_rgba(16,185,129,0.25)] p-6 text-white overflow-hidden`}
           >
             {/* Top decorative gradient bar */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-400 via-cyan-400 to-purple-500" />

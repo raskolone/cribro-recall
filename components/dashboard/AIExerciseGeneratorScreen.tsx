@@ -2088,18 +2088,23 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       {/* Top Bar: Notifications on Left, Streak Counter on Right */}
                       <div className="w-full flex items-center justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-1.5">
+                          {onShowOnboarding && (
+                            <button
+                              type="button"
+                              id="tour-help-button"
+                              onClick={onShowOnboarding}
+                              title={language === "pl" ? "Pomoc i Przewodnik po aplikacji" : "Help & App Guide"}
+                              className="group relative flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-400 text-emerald-300 hover:text-white shadow-[0_0_12px_rgba(16,185,129,0.15)] transition-all duration-300 active:scale-95 cursor-pointer"
+                            >
+                              <HelpCircle className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform drop-shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
+                              <span className="text-xs font-bold font-sans tracking-wide">
+                                {language === "pl" ? "Pomoc" : "Help"}
+                              </span>
+                            </button>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2 ml-auto">
-                          {onShowOnboarding && (
-                            <button
-                              onClick={onShowOnboarding}
-                              className="flex items-center gap-2 text-xs font-semibold text-primary/80 hover:text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-full transition-all border border-primary/20 z-50"
-                            >
-                              <Sparkles className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">{language === 'pl' ? 'Wyświetl onboarding ponownie' : 'Show onboarding again'}</span>
-                            </button>
-                          )}
                           
                           {/* Streak Counter Badge */}
                           <div className="flex items-center gap-2 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-red-500/15 border border-amber-500/30 px-3 py-1.5 rounded-2xl shadow-[0_0_15px_rgba(245,158,11,0.15)] shrink-0">
@@ -2124,7 +2129,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       </div>
 
                       {/* Centered Heading with Declined Name */}
-                      <div className="space-y-1.5 max-w-lg mx-auto text-center w-full pt-1">
+                      <div id="tour-generator-header" className="space-y-1.5 max-w-lg mx-auto text-center w-full pt-1">
                         <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight text-center">
                           {(() => {
                             const rawName = user?.firstName || (user?.displayName || user?.name || user?.username || '').split(' ')[0] || '';
@@ -2163,7 +2168,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       {/* Primary Format Cards */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                         {/* Card 1: Układanka */}
-                        <div className="relative group">
+                        <div id="tour-mode-puzzle" className="relative group">
                           <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-emerald-500/0 via-emerald-500/40 to-emerald-500/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
                           <button
                             type="button"
@@ -2198,7 +2203,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         </div>
 
                         {/* Card 2: Prawdziwe wyzwanie */}
-                        <div className="relative group">
+                        <div id="tour-mode-typing" className="relative group">
                           <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-cyan-500/0 via-cyan-500/40 to-cyan-500/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
                           <button
                             type="button"
@@ -2284,7 +2289,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     </div>
 
                     {/* LOWER SECTION: EXPANDED BARS (ŹRÓDŁO MATERIAŁU & ILOŚĆ ZDAŃ STACKED VERTICALLY - DESKTOP ONLY) */}
-                    <div className="hidden sm:flex flex-col gap-4 w-full">
+                    <div id="tour-vocab-source" className="hidden sm:flex flex-col gap-4 w-full">
                       {/* Bar 1: Źródło materiału */}
                       <div className="w-full bg-[#0e1626] border-2 border-slate-700/80 p-4 rounded-3xl shadow-md space-y-3">
                         <div className="flex items-center justify-between">
