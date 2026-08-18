@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 
-import { Sparkles, Brain, Activity, Ear, Mail, ChevronRight, CheckCircle2, Star, Lightbulb, Play, Users, BookOpen, Settings, CheckSquare, PenTool, ArrowRight, GraduationCap, Trophy, Globe, Lock, Shield } from 'lucide-react';
+import { Sparkles, Brain, Activity, Ear, Mail, ChevronRight, CheckCircle2, Star, Lightbulb, Play, Users, BookOpen, Settings, CheckSquare, PenTool, ArrowRight, GraduationCap, Trophy, Globe, Lock, Shield, ExternalLink, Code } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import i18n from "i18next";
@@ -481,33 +481,124 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
               </div>
             </div>
 
-            {/* Divider */}
-            <div className="col-span-1 lg:col-span-2 py-16">
-              <div className="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+            {/* Divider separating app info and creator section */}
+            <div className="col-span-1 lg:col-span-2 pt-16 pb-10">
+              <div className="w-full h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent"></div>
+              <div className="text-center mt-10">
+                <span className="px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest inline-flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {language === 'pl' ? 'O Twórcy' : 'About the Creator'}
+                </span>
+                <h2 className="text-3xl md:text-5xl font-display font-bold text-white mt-4 mb-3">
+                  {language === 'pl' ? 'Twórca Projektu Cribro' : 'The Mind Behind Cribro'}
+                </h2>
+                <p className="text-content-muted text-sm md:text-base max-w-2xl mx-auto">
+                  {language === 'pl' 
+                    ? 'Innowacyjne podejście do nauki języków łączące sztuczną inteligencję z nowoczesnymi metodami zapamiętywania.' 
+                    : 'An innovative approach to language learning combining artificial intelligence with modern memorization techniques.'}
+                </p>
+              </div>
             </div>
 
-            {/* Creator Card */}
-            <div className="col-span-1 lg:col-span-2 flex justify-center pb-8">
-              <div className="liquid-glass-card p-6 max-w-sm w-full border border-white/10 text-center flex flex-col items-center group relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
-                <div className="w-20 h-20 rounded-full overflow-hidden mb-4 border-2 border-primary/40 group-hover:border-primary transition-colors relative z-10 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
-                  <img src="https://ui-avatars.com/api/?name=Maciej+Wyrozumski&background=10b981&color=fff&size=128" alt="Maciej Wyrozumski" className="w-full h-full object-cover" />
+            {/* Creator Section: 2 Aligned Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 col-span-1 lg:col-span-2 pb-12 items-stretch">
+              {/* Card 1: Bio & Photo Placeholder */}
+              <div className="liquid-glass-card p-6 sm:p-8 border border-white/10 flex flex-col justify-between group relative overflow-hidden rounded-2xl shadow-xl h-full">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
+                
+                <div>
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 mb-6">
+                    {/* Waist-up Business Portrait Placeholder */}
+                    <div className="relative w-28 h-36 sm:w-32 sm:h-40 rounded-2xl overflow-hidden border-2 border-primary/30 group-hover:border-primary transition-all duration-300 shadow-[0_0_25px_rgba(16,185,129,0.15)] flex-shrink-0 bg-base-300/50">
+                      <img 
+                        src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800&auto=format&fit=crop&q=80" 
+                        alt="Maciej Wyrozumski - Twórca Cribro" 
+                        className="w-full h-full object-cover object-top filter brightness-95 group-hover:scale-105 transition-transform duration-500"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="absolute bottom-0 inset-x-0 bg-black/70 backdrop-blur-xs py-0.5 text-center text-[10px] text-primary font-mono tracking-wider border-t border-primary/20">
+                        {language === 'pl' ? 'Zdjęcie twórcy' : 'Creator photo'}
+                      </div>
+                    </div>
+
+                    <div className="flex-1 text-center sm:text-left">
+                      <div className="inline-flex items-center gap-1.5 text-[11px] text-primary font-mono uppercase tracking-wider bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20 mb-2">
+                        <Code className="w-3 h-3" />
+                        {language === 'pl' ? 'Twórca & Architekt Platformy' : 'Creator & Platform Architect'}
+                      </div>
+                      <h3 className="text-2xl font-bold text-white mb-1">Maciej Wyrozumski</h3>
+                      <p className="text-xs text-primary/80 font-medium">
+                        {language === 'pl' ? 'Software Engineer • AI Solutions Specialist' : 'Software Engineer • AI Solutions Specialist'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-content-muted leading-relaxed mb-6">
+                    {language === 'pl' 
+                      ? 'Pasjonat łączenia inżynierii oprogramowania i generatywnego AI z praktyczną edukacją. Stworzyłem platformę Cribro jako kompleksowe środowisko przyspieszające opanowywanie języka obcego – eliminujące rutynę i wspierające zarówno samodzielnych uczniów, jak i lektorów w codziennym procesie dydaktycznym.'
+                      : 'Passionate about bridging software engineering and generative AI with practical education. I developed Cribro as a comprehensive platform to accelerate language acquisition—removing friction and empowering both independent learners and teachers in the daily educational process.'}
+                  </p>
                 </div>
-                <span className="text-[10px] text-primary font-mono uppercase tracking-widest mb-1 relative z-10 bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
-                  {language === 'pl' ? 'Strona twórcy Cribro' : 'Cribro Creator'}
-                </span>
-                <h4 className="text-xl font-bold text-white mb-2 relative z-10 mt-2">Maciej Wyrozumski</h4>
-                <p className="text-sm text-content-muted mb-5 relative z-10 leading-relaxed">
-                  {language === 'pl' ? 'Odkryj więcej moich projektów, narzędzi AI i rozwiązań webowych na moim portfolio.' : 'Discover more of my projects, AI tools, and web solutions on my portfolio.'}
-                </p>
-                <a 
-                  href="https://www.maciej.pro" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="px-6 py-3 rounded-xl bg-primary/10 hover:bg-primary text-primary hover:text-black border border-primary/30 font-bold text-sm transition-all duration-300 flex items-center gap-2 relative z-10 group/btn"
-                >
-                  <Globe className="w-4 h-4 group-hover/btn:animate-spin-slow" /> www.maciej.pro
-                </a>
+
+                <div className="pt-4 border-t border-white/5 flex flex-wrap gap-2">
+                  <span className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-gray-300 text-xs font-medium">
+                    ⚡ AI & Large Language Models
+                  </span>
+                  <span className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-gray-300 text-xs font-medium">
+                    🧠 Spaced Repetition (SM-2)
+                  </span>
+                  <span className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-gray-300 text-xs font-medium">
+                    🎯 EdTech & Modern Web
+                  </span>
+                </div>
+              </div>
+
+              {/* Card 2: Portfolio, Contact & Collaboration Tile */}
+              <div className="liquid-glass-card p-6 sm:p-8 border border-white/10 flex flex-col justify-between group relative overflow-hidden rounded-2xl shadow-xl h-full">
+                <div className="absolute inset-0 bg-gradient-to-bl from-blue-500/5 via-transparent to-transparent pointer-events-none" />
+
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                      <Globe className="w-6 h-6" />
+                    </div>
+                    <span className="text-[11px] text-emerald-400 font-mono uppercase tracking-wider bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      {language === 'pl' ? 'Portfolio & Projekty' : 'Portfolio & Projects'}
+                    </span>
+                  </div>
+
+                  <h3 className="text-2xl font-bold text-white mb-3">
+                    {language === 'pl' ? 'Poznaj więcej moich projektów' : 'Discover more of my projects'}
+                  </h3>
+
+                  <p className="text-sm text-content-muted leading-relaxed mb-6">
+                    {language === 'pl'
+                      ? 'Odwiedź moje oficjalne portfolio, aby poznać inne autorskie narzędzia cyfrowe, zaawansowane aplikacje webowe oraz innowacje oparte o sztuczną inteligencję. Chętnie podejmę dyskusję o rozwoju nowych projektów i współpracy technologicznej.'
+                      : 'Visit my official portfolio to explore other digital products, advanced web applications, and AI-driven innovations. Open for discussions regarding new projects and technical collaboration.'}
+                  </p>
+                </div>
+
+                <div className="space-y-3 pt-4 border-t border-white/5">
+                  <a 
+                    href="https://www.maciej.pro" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-full px-6 py-3.5 rounded-xl bg-primary text-black hover:bg-primary-hover font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 group/link"
+                  >
+                    <Globe className="w-4 h-4 group-hover/link:rotate-12 transition-transform" />
+                    <span>www.maciej.pro</span>
+                    <ExternalLink className="w-4 h-4 opacity-70" />
+                  </a>
+
+                  <a 
+                    href="mailto:wyrozumski@maciej.pro" 
+                    className="w-full px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 text-sm font-medium transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    <Mail className="w-4 h-4 text-content-muted" />
+                    <span>wyrozumski@maciej.pro</span>
+                  </a>
+                </div>
               </div>
             </div>
 
