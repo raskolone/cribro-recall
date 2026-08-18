@@ -57,7 +57,7 @@ import {
   Layers,
   Shuffle, X, Eye, Flame, Globe, History, Database, Lock,
   CheckCircle2, LayoutGrid, Mic, AlertCircle,
-  Plus, Minus, ShoppingBag, Trash2, Check
+  Plus, Minus, ShoppingBag, Trash2, Check, Edit3
 } from 'lucide-react';
 
 export interface BasketWordItem {
@@ -980,12 +980,24 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         .catch(console.error);
 
       // fetch special tasks
-      import('firebase/firestore').then(({ collection, getDocs, query, where, orderBy }) => {
-        const tasksQ = query(collection(db, 'specialTasks'), where('studentId', '==', user.id));
+      import('firebase/firestore').then(({ collection, getDocs, query, where }) => {
+        const tasksQ = query(collection(db, 'specialTasks'), where('studentId', 'in', [user.id, 'all']));
         getDocs(tasksQ).then(snap => {
           const tasks = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-          tasks.sort((a, b) => new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt).getTime() - new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt).getTime());
-          setSpecialTasks(tasks.filter(t => t.status === 'pending')); // only pending tasks
+          const getMillis = (val: any) => {
+            if (!val) return 0;
+            if (typeof val.toMillis === 'function') return val.toMillis();
+            if (val.seconds !== undefined) return val.seconds * 1000;
+            if (typeof val === 'string' || typeof val === 'number') {
+              const t = new Date(val).getTime();
+              return isNaN(t) ? 0 : t;
+            }
+            return 0;
+          };
+          tasks.sort((a, b) => getMillis(b.createdAt) - getMillis(a.createdAt));
+          setSpecialTasks(tasks.filter(t => t.status === 'pending' || !t.status));
+        }).catch(err => {
+          console.error("Error loading specialTasks for student:", err);
         });
       });
     }
@@ -2153,6 +2165,71 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         </p>
                       </div>
                     </div>
+
+                    {/* ASSIGNED HOMEWORK ALERT BANNER FOR STUDENT */}
+                    {!isTeacher && specialTasks.length > 0 && (
+                      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-primary/15 to-emerald-500/20 border border-primary/40 shadow-[0_0_25px_rgba(114,240,180,0.15)] space-y-3 relative overflow-hidden animate-fade-in-up">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-8 h-8 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary text-base">
+                              📝
+                            </span>
+                            <div>
+                              <h3 className="font-extrabold text-white text-sm sm:text-base leading-tight">
+                                {language === 'pl' ? 'Nowa praca domowa od nauczyciela' : 'New homework assigned by teacher'}
+                              </h3>
+                              <span className="text-[11px] text-primary font-semibold">
+                                {specialTasks.length} {specialTasks.length === 1 ? (language === 'pl' ? 'zadanie oczekujące na rozwiązanie' : 'pending homework task') : (language === 'pl' ? 'zadania oczekujące na rozwiązanie' : 'pending homework tasks')}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-primary/20 text-primary border border-primary/30">
+                            {language === 'pl' ? 'Do zrobienia' : 'Pending'}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 pt-1 border-t border-white/10">
+                          {specialTasks.slice(0, 2).map((hwTask) => (
+                            <div key={hwTask.id} className="p-3 rounded-xl bg-black/40 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                              <div className="min-w-0 flex-1">
+                                <h4 className="font-bold text-white text-xs sm:text-sm truncate">
+                                  {hwTask.title || (language === 'pl' ? 'Praca domowa: Tłumaczenia' : 'Homework: Translations')}
+                                </h4>
+                                <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1">
+                                  {hwTask.instructions || `${hwTask.sentences?.length || 0} zdań w zestawie`}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (onChangeView) {
+                                      onChangeView('homework', { taskId: hwTask.id });
+                                    }
+                                  }}
+                                  className="text-xs py-1.5 px-3 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl flex items-center gap-1.5 shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:scale-105 transition-all cursor-pointer"
+                                >
+                                  <Edit3 size={13} />
+                                  <span>{language === 'pl' ? 'Rozwiąż zadanie' : 'Start homework'}</span>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {specialTasks.length > 2 && (
+                          <div className="text-right pt-1">
+                            <button
+                              type="button"
+                              onClick={() => onChangeView && onChangeView('homework')}
+                              className="text-xs text-primary hover:underline font-semibold cursor-pointer"
+                            >
+                              {language === 'pl' ? `Zobacz wszystkie (${specialTasks.length}) →` : `View all (${specialTasks.length}) →`}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* SECTION 1: TRYB ĆWICZENIA */}
                     <div className="space-y-3">

@@ -232,27 +232,35 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({ user,
     );
   };
 
+  const isSavingRef = useRef(false);
+
   const handleSaveTask = async () => {
+    if (isSaving || isSavingRef.current) return;
     const finalSentences = generatedSentences.filter((s) => s.accepted);
     if (finalSentences.length === 0) {
       setError('Musisz zaakceptować przynajmniej jedno zdanie.');
       return;
     }
 
+    isSavingRef.current = true;
     setIsSaving(true);
     setError('');
 
     try {
+      const studentName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'Kursant';
       const taskData = {
         studentId: user.id,
+        studentName: studentName,
+        assignedBy: 'Nauczyciel',
         type: 'translation',
         title: `Praca domowa - ${new Date().toLocaleDateString('pl-PL')}`,
-        createdAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         status: 'pending',
         sentences: finalSentences.map(({ polishSentence, englishTranslation, hint }) => ({
           polishSentence,
           englishTranslation,
-          hint,
+          hint: hint || '',
         })),
       };
 
@@ -263,7 +271,9 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({ user,
     } catch (err: any) {
       console.error(err);
       setError(`Błąd zapisu w bazie danych: ${err.message}`);
+    } finally {
       setIsSaving(false);
+      isSavingRef.current = false;
     }
   };
 

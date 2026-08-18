@@ -7,6 +7,7 @@ import { db } from '../../firebase';
 import { generateTranslationExercises, generateFillInTheBlankExercises, evaluateErrorCorrectionSentence, evaluateTranslations, evaluateTeacherHomework, processBulkSentences, generateHomeworkChatPipeline } from '../../services/geminiService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import ConfirmModal from '../ui/ConfirmModal';
 import { LessonSelectionModal } from './LessonSelectionModal';
 import { FillInTheBlankTask } from '../practice/FillInTheBlankTask';
 import { 
@@ -28,10 +29,34 @@ import {
   RefreshCw,
   Award,
   Layers,
-  UserCheck
+  UserCheck,
+  Eye
 } from 'lucide-react';
 
-export const HomeworkScreen: React.FC = () => {
+interface HomeworkScreenProps {
+  initialTaskId?: string | null;
+  onBack?: () => void;
+}
+
+export const getTaskDateMillis = (val: any): number => {
+  if (!val) return 0;
+  if (typeof val.toMillis === 'function') return val.toMillis();
+  if (val.seconds !== undefined) return val.seconds * 1000;
+  if (val instanceof Date) return val.getTime();
+  if (typeof val === 'string' || typeof val === 'number') {
+    const t = new Date(val).getTime();
+    return isNaN(t) ? 0 : t;
+  }
+  return 0;
+};
+
+export const formatTaskDate = (val: any): string => {
+  const millis = getTaskDateMillis(val);
+  if (!millis) return '';
+  return new Date(millis).toLocaleDateString('pl-PL');
+};
+
+export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId, onBack }) => {
   const { user, updateUserStreak } = useAuth();
   const { language } = useLanguage();
   const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
@@ -40,6 +65,8 @@ export const HomeworkScreen: React.FC = () => {
   const [students, setStudents] = useState<User[]>([]);
   const [tasks, setTasks] = useState<SpecialTask[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSavingHomework, setIsSavingHomework] = useState<boolean>(false);
+  const isSavingRef = React.useRef<boolean>(false);
   const [activeTab, setActiveTab] = useState<'list' | 'create' | 'flashcards'>('list');
 
   // Filter state for teacher
@@ -92,6 +119,13 @@ export const HomeworkScreen: React.FC = () => {
   const [teacherFeedbackText, setTeacherFeedbackText] = useState<string>('');
   const [isSavingReview, setIsSavingReview] = useState<boolean>(false);
 
+  // Preview modal for assigned homework
+  const [previewTask, setPreviewTask] = useState<SpecialTask | null>(null);
+
+  // Delete modal state
+  const [taskToDelete, setTaskToDelete] = useState<SpecialTask | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
   const handleHomeworkTypeChange = (type: HomeworkType) => {
     if (
       (homeworkType === 'translation' && translationItems.length > 0 && type !== 'translation') ||
@@ -131,7 +165,7 @@ export const HomeworkScreen: React.FC = () => {
         tasksSnap.forEach((d) => {
           loadedTasks.push({ id: d.id, ...d.data() } as SpecialTask);
         });
-        loadedTasks.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        loadedTasks.sort((a, b) => getTaskDateMillis(b.createdAt) - getTaskDateMillis(a.createdAt));
         setTasks(loadedTasks);
       } else if (user?.id) {
         // Load student's tasks
@@ -141,7 +175,7 @@ export const HomeworkScreen: React.FC = () => {
         tasksSnap.forEach((d) => {
           loadedTasks.push({ id: d.id, ...d.data() } as SpecialTask);
         });
-        loadedTasks.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        loadedTasks.sort((a, b) => getTaskDateMillis(b.createdAt) - getTaskDateMillis(a.createdAt));
         setTasks(loadedTasks);
       }
     } catch (e) {
@@ -156,7 +190,20 @@ export const HomeworkScreen: React.FC = () => {
     if (user?.hasNewHomework && user?.id) {
       updateDoc(doc(db, 'users', user.id), { hasNewHomework: false }).catch(console.error);
     }
-  }, [user?.id, isTeacher, user?.hasNewHomework]);
+  }, [user?.id, isTeacher]);
+
+  // Auto-select initial task if provided
+  useEffect(() => {
+    if (initialTaskId && tasks.length > 0) {
+      const found = tasks.find(t => t.id === initialTaskId);
+      if (found) {
+        setActiveTask(found);
+        setStudentAnswers({});
+        setShowHints({});
+        setSubmissionResult(null);
+      }
+    }
+  }, [initialTaskId, tasks]);
 
   // Restore draft on initial load
   useEffect(() => {
@@ -353,6 +400,7 @@ export const HomeworkScreen: React.FC = () => {
 
   // Save/Assign Homework (Teacher)
   const handleSaveHomework = async () => {
+    if (isSavingHomework || isSavingRef.current) return;
     if (!selectedStudentId) {
       alert('Wybierz kursanta, któremu chcesz przypisać pracę domową.');
       return;
@@ -380,6 +428,8 @@ export const HomeworkScreen: React.FC = () => {
     }
 
     try {
+      isSavingRef.current = true;
+      setIsSavingHomework(true);
       setIsLoading(true);
       const sentences = homeworkType === 'translation' ? translationItems : errorCorrectionItems;
 
@@ -388,6 +438,7 @@ export const HomeworkScreen: React.FC = () => {
         ? students.map(s => s.id!).filter(Boolean)
         : [selectedStudentId];
 
+      const nowIso = new Date().toISOString();
       for (const stId of targetStudentIds) {
         const studentObj = students.find(s => s.id === stId);
         const taskData: Partial<SpecialTask> = {
@@ -397,7 +448,7 @@ export const HomeworkScreen: React.FC = () => {
           title: title.trim() || 'Praca domowa',
           type: homeworkType,
           instructions: instructions.trim(),
-          createdAt: new Date().toISOString(),
+          createdAt: nowIso,
           dueDate,
           status: 'pending',
           sentences: sentences
@@ -420,19 +471,34 @@ export const HomeworkScreen: React.FC = () => {
       console.error(err);
       alert(`Błąd przypisywania pracy domowej: ${err.message}`);
     } finally {
+      setIsSavingHomework(false);
+      isSavingRef.current = false;
       setIsLoading(false);
     }
   };
 
   // Delete Homework (Teacher)
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('Czy na pewno chcesz usunąć tę pracę domową?')) return;
+  const handleDeleteTask = (task: SpecialTask) => {
+    setTaskToDelete(task);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!taskToDelete?.id) return;
+    setIsDeleting(true);
     try {
-      await deleteDoc(doc(db, 'specialTasks', taskId));
-      setTasks(prev => prev.filter(t => t.id !== taskId));
+      await deleteDoc(doc(db, 'specialTasks', taskToDelete.id));
+      setTasks(prev => prev.filter(t => t.id !== taskToDelete.id));
+      setTaskToDelete(null);
+      if (previewTask?.id === taskToDelete.id) {
+        setPreviewTask(null);
+      }
+      if (reviewTask?.id === taskToDelete.id) {
+        setReviewTask(null);
+      }
     } catch (e: any) {
-      console.error(e);
-      alert('Nie udało się usunąć zadania.');
+      console.error('Error deleting homework task:', e);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -670,6 +736,14 @@ export const HomeworkScreen: React.FC = () => {
               : 'Rozwiązuj przydzielone zadania od nauczyciela, doskonal język i wysyłaj odpowiedzi do oceny.'}
           </p>
         </div>
+
+        {!isTeacher && onBack && (
+          <div>
+            <Button variant="secondary" size="sm" onClick={onBack} className="text-xs">
+              ← Wróć do pulpitu
+            </Button>
+          </div>
+        )}
 
         {isTeacher && (
           <div className="flex gap-2">
@@ -1331,11 +1405,19 @@ export const HomeworkScreen: React.FC = () => {
 
           {/* Submit Action */}
           <div className="pt-4 border-t border-white/10 flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setActiveTab('list')}>
+            <Button variant="secondary" onClick={() => setActiveTab('list')} disabled={isSavingHomework}>
               Anuluj
             </Button>
-            <Button onClick={handleSaveHomework} className="flex items-center gap-2">
-              <Send size={18} /> Przypisz pracę domową
+            <Button onClick={handleSaveHomework} disabled={isSavingHomework} className="flex items-center gap-2">
+              {isSavingHomework ? (
+                <>
+                  <RefreshCw className="animate-spin" size={18} /> Przypisywanie...
+                </>
+              ) : (
+                <>
+                  <Send size={18} /> Przypisz pracę domową
+                </>
+              )}
             </Button>
           </div>
         </Card>
@@ -1470,28 +1552,53 @@ export const HomeworkScreen: React.FC = () => {
                     )}
 
                     {/* Actions */}
-                    <div className="mt-4 flex items-center justify-end gap-2">
+                    <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
                       {isTeacher ? (
                         <>
                           <Button
                             size="sm"
-                            variant={isSubmitted ? 'primary' : 'secondary'}
-                            onClick={() => {
-                              setReviewTask(task);
-                              setTeacherFeedbackText(task.teacherFeedback || '');
-                            }}
-                            className="text-xs flex items-center gap-1"
+                            variant="secondary"
+                            onClick={() => setPreviewTask(task)}
+                            className="text-xs flex items-center gap-1.5"
                           >
-                            <FileText size={14} />
-                            {isSubmitted ? 'Sprawdź / Oceń' : 'Podgląd zadania'}
+                            <Eye size={14} />
+                            Podgląd
                           </Button>
+                          {isSubmitted && (
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              onClick={() => {
+                                setReviewTask(task);
+                                setTeacherFeedbackText(task.teacherFeedback || '');
+                              }}
+                              className="text-xs flex items-center gap-1.5"
+                            >
+                              <FileText size={14} />
+                              Sprawdź / Oceń
+                            </Button>
+                          )}
+                          {isGraded && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => {
+                                setReviewTask(task);
+                                setTeacherFeedbackText(task.teacherFeedback || '');
+                              }}
+                              className="text-xs flex items-center gap-1.5 text-primary border-primary/30"
+                            >
+                              <Award size={14} />
+                              Szczegóły oceny
+                            </Button>
+                          )}
                           <button
                             type="button"
-                            onClick={() => handleDeleteTask(task.id!)}
-                            className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                            onClick={() => handleDeleteTask(task)}
+                            className="p-2 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-500/15 border border-red-500/20 hover:border-red-500/40 transition-all cursor-pointer"
                             title="Usuń pracę domową"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={15} />
                           </button>
                         </>
                       ) : (
@@ -1662,6 +1769,192 @@ export const HomeworkScreen: React.FC = () => {
         selectedLessonIds={selectedLessonIds}
         onSave={(ids) => setSelectedLessonIds(ids)}
         studentName={students.find((s) => s.id === selectedStudentId)?.firstName}
+      />
+
+      {/* ---------------- TEACHER & STUDENT HOMEWORK PREVIEW MODAL ---------------- */}
+      {previewTask && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <Card className="w-full max-w-3xl liquid-glass border-primary/30 my-6 space-y-5 bg-base-100 shadow-2xl">
+            {/* Header */}
+            <div className="flex justify-between items-start border-b border-white/10 pb-4">
+              <div>
+                <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                  <span className="text-[11px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-primary/20 text-primary font-bold">
+                    {previewTask.type === 'fill_in_the_blank' ? 'Znajdź błędy w zdaniach' : 'Tłumaczenie zdań'}
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                      previewTask.status === 'submitted'
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : previewTask.status === 'graded'
+                        ? 'bg-primary/20 text-primary'
+                        : 'bg-amber-500/20 text-amber-300'
+                    }`}
+                  >
+                    {previewTask.status === 'submitted'
+                      ? 'Przesłano do oceny'
+                      : previewTask.status === 'graded'
+                      ? 'Oceniono'
+                      : 'Oczekuje na wykonanie'}
+                  </span>
+                </div>
+                <h2 className="text-xl font-bold text-white">{previewTask.title}</h2>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-content-muted mt-1">
+                  <span>Kursant: <strong className="text-white">{previewTask.studentName || previewTask.studentId}</strong></span>
+                  {previewTask.dueDate && <span>• Termin: <strong className="text-gray-300">{previewTask.dueDate}</strong></span>}
+                  <span>• Liczba zdań: <strong className="text-gray-300">{previewTask.sentences?.length || 0}</strong></span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewTask(null)}
+                className="p-1.5 rounded-xl text-content-muted hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {previewTask.instructions && (
+              <div className="p-3 bg-base-200/60 rounded-xl border border-white/5 text-xs text-gray-300">
+                <strong className="text-content-muted block mb-0.5">Instrukcje / Wskazówki ogólne:</strong>
+                {previewTask.instructions}
+              </div>
+            )}
+
+            {/* Sentences List */}
+            <div className="space-y-3.5 max-h-[55vh] overflow-y-auto pr-1">
+              {previewTask.sentences?.map((item: any, idx: number) => {
+                const isTranslation = (previewTask.type || 'translation') === 'translation';
+                const stAns = previewTask.studentAnswers ? (previewTask.studentAnswers as any)[idx] : undefined;
+                const evalItem = previewTask.evaluationResults ? (previewTask.evaluationResults as any)[idx] : undefined;
+
+                return (
+                  <div key={idx} className="p-4 rounded-xl bg-base-200/50 border border-white/5 space-y-2.5">
+                    <div className="flex items-center justify-between text-xs font-mono text-content-muted">
+                      <span className="font-bold text-primary">Zdanie #{idx + 1}</span>
+                      {evalItem?.score !== undefined && (
+                        <span className="text-primary font-bold">Ocena AI: {evalItem.score}%</span>
+                      )}
+                    </div>
+
+                    {isTranslation ? (
+                      <div className="space-y-1.5 text-sm">
+                        <div>
+                          <span className="text-xs text-content-muted block">Po polsku (zadanie):</span>
+                          <p className="font-semibold text-white">{item.polishSentence}</p>
+                        </div>
+                        <div>
+                          <span className="text-xs text-content-muted block">Wzorzec angielski:</span>
+                          <p className="text-emerald-400 font-medium">{item.englishTranslation || item.englishSentence}</p>
+                        </div>
+                        {item.hint && (
+                          <div className="text-xs text-gray-400 bg-base-100/60 p-2 rounded-lg border border-white/5 flex items-start gap-1.5">
+                            <span className="text-amber-400">💡</span>
+                            <span>Wskazówka: {item.hint}</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5 text-sm">
+                        <div>
+                          <span className="text-xs text-content-muted block">Zdanie z błędem do korekty:</span>
+                          <p className="font-semibold text-amber-300">{item.incorrectSentence}</p>
+                        </div>
+                        <div>
+                          <span className="text-xs text-content-muted block">Poprawna wersja:</span>
+                          <p className="text-emerald-400 font-medium">{item.correctSentence}</p>
+                        </div>
+                        {item.hint && (
+                          <div className="text-xs text-gray-400 bg-base-100/60 p-2 rounded-lg border border-white/5 flex items-start gap-1.5">
+                            <span className="text-amber-400">💡</span>
+                            <span>Wskazówka: {item.hint}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {stAns !== undefined && (
+                      <div className="p-2.5 rounded-lg bg-base-100 border border-white/10 text-xs sm:text-sm">
+                        <span className="text-xs font-semibold text-content-muted block mb-0.5">Odpowiedź kursanta:</span>
+                        <span className={stAns ? 'text-primary font-medium' : 'text-red-400 italic'}>
+                          {stAns || '(Brak odpowiedzi)'}
+                        </span>
+                      </div>
+                    )}
+
+                    {evalItem?.explanation && (
+                      <p className="text-xs text-content-muted italic bg-base-300/40 p-2 rounded-lg">
+                        💡 {evalItem.explanation}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Teacher Feedback if present */}
+            {previewTask.teacherFeedback && (
+              <div className="p-3 bg-primary/10 rounded-xl border border-primary/20 text-xs space-y-1">
+                <strong className="text-primary block">Komentarz nauczyciela:</strong>
+                <p className="text-gray-200">{previewTask.teacherFeedback}</p>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
+              {isTeacher && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const t = previewTask;
+                    setPreviewTask(null);
+                    setTaskToDelete(t);
+                  }}
+                  className="text-xs text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-xl border border-red-500/25 flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Trash2 size={14} /> Usuń pracę domową
+                </button>
+              )}
+              <div className="flex items-center gap-2 ml-auto">
+                <Button variant="secondary" size="sm" onClick={() => setPreviewTask(null)}>
+                  Zamknij
+                </Button>
+                {isTeacher && previewTask.status === 'submitted' && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => {
+                      const t = previewTask;
+                      setPreviewTask(null);
+                      setReviewTask(t);
+                      setTeacherFeedbackText(t.teacherFeedback || '');
+                    }}
+                    className="text-xs flex items-center gap-1.5"
+                  >
+                    <FileText size={14} /> Sprawdź / Oceń
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!taskToDelete}
+        title="Usunąć pracę domową?"
+        message={
+          taskToDelete
+            ? `Czy na pewno chcesz trwale usunąć pracę "${taskToDelete.title || 'Praca domowa'}" dla kursanta ${taskToDelete.studentName || taskToDelete.studentId || ''}? Tej operacji nie można cofnąć.`
+            : ''
+        }
+        confirmText={isDeleting ? 'Usuwanie...' : 'Usuń pracę domową'}
+        cancelText="Anuluj"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          if (!isDeleting) setTaskToDelete(null);
+        }}
       />
     </div>
   );

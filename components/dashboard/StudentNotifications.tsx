@@ -9,7 +9,7 @@ import { db } from '../../firebase';
 import { StudentTest, SpecialTask } from '../../types';
 
 interface StudentNotificationsProps {
-  onNavigate: (view: any) => void;
+  onNavigate: (view: any, extra?: any) => void;
 }
 
 const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate }) => {
@@ -160,7 +160,7 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate 
     }
 
     if (navigate) {
-      onNavigate('homework');
+      onNavigate('homework', currentHomework?.id ? { taskId: currentHomework.id } : undefined);
     }
   };
 

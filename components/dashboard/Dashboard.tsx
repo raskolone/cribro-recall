@@ -80,6 +80,8 @@ const Dashboard: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+
   const handleNavigate = (newView: View, extra?: any) => {
     let newSetId = activeSetId;
     if (extra && (extra.setId || extra.activeSetId)) {
@@ -87,9 +89,15 @@ const Dashboard: React.FC = () => {
     } else if (newView === 'dashboard' || newView === 'flashcard-sets' || newView === 'topic-database') {
       newSetId = null;
     }
+
+    if (extra && extra.taskId) {
+      setActiveTaskId(extra.taskId);
+    } else if (newView !== 'homework') {
+      setActiveTaskId(null);
+    }
     
     if (newView !== view || newSetId !== activeSetId) {
-      window.history.pushState({ view: newView, activeSetId: newSetId }, '');
+      window.history.pushState({ view: newView, activeSetId: newSetId, activeTaskId: extra?.taskId || null }, '');
       setView(newView);
       setActiveSetId(newSetId);
     }
@@ -262,7 +270,12 @@ const Dashboard: React.FC = () => {
       );
     }
     if (view === 'homework') {
-      return <HomeworkScreen />;
+      return (
+        <HomeworkScreen 
+          initialTaskId={activeTaskId} 
+          onBack={() => handleNavigate('dashboard')} 
+        />
+      );
     }
     if (view === 'settings') {
       return <SettingsScreen />;
