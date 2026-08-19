@@ -261,11 +261,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
                 {language === 'pl' ? 'Panel kursanta' : 'Student View'}
             </NavLink>
           )}
-          {isTeacher && (
-            <NavLink icon={<Database size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('topic-database')} isActive={currentView === 'topic-database'}>
-                {language === 'pl' ? 'Zasoby' : 'Resources'}
-            </NavLink>
-          )}
+
 
           
           <NavLink 
@@ -287,7 +283,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
             </span>
           </NavLink>
 
-          <NavLink 
+          {!isTeacher && (
+  <NavLink 
             id="tour-homework" 
             
             icon={
@@ -305,12 +302,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               {language === 'pl' ? 'Praca domowa' : 'Homework'}
             </span>
           </NavLink>
-
-          {isTeacher && (
-            <NavLink id="tour-stats" icon={<BarChart2 size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('admin-stats')} isActive={currentView === 'admin-stats'}>
-                {language === 'pl' ? 'Statystyki' : 'Statistics'}
-            </NavLink>
           )}
+
+
 
           <NavLink 
             id="tour-history" 

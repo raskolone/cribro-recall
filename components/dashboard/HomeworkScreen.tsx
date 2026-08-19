@@ -35,6 +35,7 @@ import {
 
 interface HomeworkScreenProps {
   initialTaskId?: string | null;
+  initialStudentId?: string | null;
   onBack?: () => void;
 }
 
@@ -56,7 +57,7 @@ export const formatTaskDate = (val: any): string => {
   return new Date(millis).toLocaleDateString('pl-PL');
 };
 
-export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId, onBack }) => {
+export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = null, initialStudentId = null, onBack }) => {
   const { user, updateUserStreak } = useAuth();
   const { language } = useLanguage();
   const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
@@ -74,7 +75,14 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId, o
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
   // Form state for creating homework (Teacher)
-  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [selectedStudentId, setSelectedStudentId] = useState<string>(initialStudentId || '');
+  
+  useEffect(() => {
+    if (initialStudentId) {
+      setSelectedStudentId(initialStudentId);
+      setActiveTab('create');
+    }
+  }, [initialStudentId]);
   const [homeworkType, setHomeworkType] = useState<HomeworkType>('translation');
   const [title, setTitle] = useState<string>('');
   const [instructions, setInstructions] = useState<string>('');

@@ -13,6 +13,10 @@ interface TeacherSpecialTaskModalProps {
   user: User;
   onClose: () => void;
   onTaskCreated: () => void;
+  initialLesson?: LessonRecord;
+  initialWords?: string[];
+  initialTopic?: string;
+  autoGenerate?: boolean;
 }
 
 interface ChatTurnItem {
@@ -25,32 +29,63 @@ interface ChatTurnItem {
   timestamp: string;
 }
 
-const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({ user, onClose, onTaskCreated }) => {
+const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({ 
+  user, 
+  onClose, 
+  onTaskCreated,
+  initialLesson,
+  initialWords,
+  initialTopic,
+  autoGenerate 
+}) => {
   const [chatInput, setChatInput] = useState('');
-  const [selectedWords, setSelectedWords] = useState<string[]>([]);
+  const [selectedWords, setSelectedWords] = useState<string[]>(() => {
+    if (initialWords && initialWords.length > 0) return initialWords;
+    if (initialLesson?.vocabularyText) {
+      return initialLesson.vocabularyText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    }
+    return [];
+  });
   const [numSentences, setNumSentences] = useState(5);
   const [isGenerating, setIsGenerating] = useState(false);
   const [statusUpdate, setStatusUpdate] = useState<string>('');
   const [generatedSentences, setGeneratedSentences] = useState<(TranslationExercise & { id: string; accepted: boolean })[]>([]);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false);
 
   // Chat conversation state
-  const [chatTurns, setChatTurns] = useState<ChatTurnItem[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content: 'Witaj! Jestem Asystentem Generatora Prac Domowych AI.\nDziałam w oparciu o dwustopniową komunikację modeli:\n1️⃣ **OpenAI (GPT-4o mini)** tworzy pierwotny szkic zdań na podstawie Twoich uwag.\n2️⃣ **Gemini 3.1 Flash** analizuje historię lekcji i ćwiczeń kursanta, weryfikuje logikę i dostosowuje poziom.\n\nNapisz, jakie zdania chcesz wygenerować lub wybierz słówka z lekcji poniżej!',
-      modelInfo: 'OpenAI (GPT-4o mini) → Gemini 3.1 Flash',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const [chatTurns, setChatTurns] = useState<ChatTurnItem[]>(() => {
+    if (initialLesson) {
+      const wordsCount = initialLesson.vocabularyText ? initialLesson.vocabularyText.split('\n').map(l => l.trim()).filter(l => l.length > 0).length : 0;
+      return [
+        {
+          id: 'welcome',
+          role: 'assistant',
+          content: `Witaj! Tworzymy pracę domową na podstawie lekcji: **"${initialLesson.topic}"**.\n\nAutomatycznie załadowano **${wordsCount} słówek** z tej lekcji. Kliknij przycisk **„Generuj zdania”** poniżej lub napisz dodatkowe wskazówki do AI.`,
+          modelInfo: 'OpenAI (GPT-4o mini) → Gemini 3.1 Flash',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ];
     }
-  ]);
+    return [
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: 'Witaj! Jestem Asystentem Generatora Prac Domowych AI.\nDziałam w oparciu o dwustopniową komunikację modeli:\n1️⃣ **OpenAI (GPT-4o mini)** tworzy pierwotny szkic zdań na podstawie Twoich uwag.\n2️⃣ **Gemini 3.1 Flash** analizuje historię lekcji i ćwiczeń kursanta, weryfikuje logikę i dostosowuje poziom.\n\nNapisz, jakie zdania chcesz wygenerować lub wybierz słówka z lekcji poniżej!',
+        modelInfo: 'OpenAI (GPT-4o mini) → Gemini 3.1 Flash',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ];
+  });
 
   // Lesson history & Exercise history state
   const [lessonRecords, setLessonRecords] = useState<LessonRecord[]>([]);
   const [exerciseHistory, setExerciseHistory] = useState<any[]>([]);
   const [isLoadingLessons, setIsLoadingLessons] = useState(false);
-  const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
+  const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>(() => {
+    return initialLesson ? [initialLesson.id] : [];
+  });
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [showVocabPreview, setShowVocabPreview] = useState(false);
   const [editingSentenceId, setEditingSentenceId] = useState<string | null>(null);
@@ -64,9 +99,16 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({ user,
       // Fetch lessons
       getLessonRecordsForStudent(user.id)
         .then((records) => {
-          setLessonRecords(records);
-          // Default to no lessons selected (user opens modal to select specific ones)
-          setSelectedLessonIds([]);
+          let updatedRecords = records;
+          if (initialLesson && !records.some(r => r.id === initialLesson.id)) {
+            updatedRecords = [initialLesson, ...records];
+          }
+          setLessonRecords(updatedRecords);
+          if (initialLesson) {
+            setSelectedLessonIds([initialLesson.id]);
+            const words = parseVocabularyItems(initialLesson.vocabularyText);
+            setSelectedWords(words);
+          }
         })
         .catch((err) => {
           console.error('Błąd pobierania historii lekcji:', err);
@@ -84,7 +126,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({ user,
         })
         .catch((e) => console.warn('History logs fetch:', e));
     }
-  }, [user?.id]);
+  }, [user?.id, initialLesson]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -232,8 +274,6 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({ user,
     );
   };
 
-  const isSavingRef = useRef(false);
-
   const handleSaveTask = async () => {
     if (isSaving || isSavingRef.current) return;
     const finalSentences = generatedSentences.filter((s) => s.accepted);
@@ -253,7 +293,8 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({ user,
         studentName: studentName,
         assignedBy: 'Nauczyciel',
         type: 'translation',
-        title: `Praca domowa - ${new Date().toLocaleDateString('pl-PL')}`,
+        title: initialLesson ? `Praca domowa: ${initialLesson.topic}` : `Praca domowa - ${new Date().toLocaleDateString('pl-PL')}`,
+        instructions: initialLesson ? `Ćwiczenia na tłumaczenie zdań z lekcji: ${initialLesson.topic}` : '',
         createdAt: new Date().toISOString(),
         dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         status: 'pending',
@@ -297,6 +338,9 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({ user,
               </div>
               <p className="text-xs text-content-muted mt-0.5">
                 {i18n.t("Kursant:")} <span className="text-white font-medium">{user.firstName} {user.lastName || ''}</span> ({user.level || 'B1-B2'})
+                {initialLesson && (
+                  <span className="ml-2 text-primary font-semibold">• Baza: {initialLesson.topic}</span>
+                )}
               </p>
             </div>
           </div>
@@ -304,6 +348,27 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({ user,
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Initial Lesson Active Banner */}
+        {initialLesson && (
+          <div className="bg-gradient-to-r from-primary/15 via-emerald-500/10 to-primary/15 border-b border-primary/25 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-md bg-primary/20 text-primary font-bold uppercase text-[10px]">
+                Lekcja źródłowa
+              </span>
+              <span className="text-white font-bold">{initialLesson.topic}</span>
+              <span className="text-content-muted">({selectedWords.length} słówek wybranych)</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSendChatMessage(`Wygeneruj ${numSentences} zdań do tłumaczenia ze słownictwa z lekcji "${initialLesson.topic}": ${selectedWords.join(', ')}`)}
+              disabled={isGenerating || selectedWords.length === 0}
+              className="bg-primary hover:bg-primary/90 text-black font-bold px-3 py-1.5 rounded-xl shadow-[0_0_12px_rgba(114,240,180,0.3)] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 text-xs hover:scale-105"
+            >
+              <Sparkles size={13} /> {isGenerating ? 'Generowanie...' : 'Generuj zdania teraz'}
+            </button>
+          </div>
+        )}
 
         {/* Modal Body: Main Grid */}
         <div className="flex-1 flex flex-col overflow-hidden">

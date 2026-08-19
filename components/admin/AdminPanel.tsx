@@ -19,6 +19,7 @@ import AllTestsTeacherView from './AllTestsTeacherView';
 import TeacherDashboardStats from './TeacherDashboardStats';
 import TeacherSpecialTaskModal from './TeacherSpecialTaskModal';
 import AssignVocabularyModal from './AssignVocabularyModal';
+import HomeworkScreen from '../dashboard/HomeworkScreen';
 import { 
   Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
   User as UserIcon, Users, Search, X, ChevronRight, ChevronDown, ChevronUp, Sparkles, BarChart2, Clock, 
@@ -1052,6 +1053,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [summaryError, setSummaryError] = useState('');
   const [bulkSummaryError, setBulkSummaryError] = useState('');
   const [viewingRecord, setViewingRecord] = useState<LessonRecord | null>(null);
+  const [specialTaskInitialLesson, setSpecialTaskInitialLesson] = useState<LessonRecord | null>(null);
   const [isSavingLessonRecord, setIsSavingLessonRecord] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1115,6 +1117,21 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     setLessonFormSummary('');
   };
 
+
+  const handleGenerateHomeworkFromLesson = (record: LessonRecord) => {
+    let targetUser = selectedUser;
+    if (!targetUser || (record.studentId && targetUser.id !== record.studentId)) {
+      targetUser = users.find(u => u.id === record.studentId) || selectedUser;
+    }
+    if (!targetUser) {
+      alert('Nie znaleziono kursanta przypisanego do tej lekcji.');
+      return;
+    }
+    setSelectedUser(targetUser);
+    setSpecialTaskInitialLesson(record);
+    setShowLessonRecordModal(false);
+    setShowSpecialTaskModal(true);
+  };
 
   // User Profile Edit States
   const [activeTab, setActiveTab] = useState<string | null>(initialTab || null);
@@ -1224,9 +1241,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full pb-28 min-w-0">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1 sm:pt-0 pl-7 sm:pl-0">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
             <span>{i18n.t("Teacher Panel")}</span>
@@ -1258,7 +1275,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       </div>
 
       {/* Dynamic Student Selector Banner */}
-      <div className={`p-5 rounded-2xl border-2 transition-all duration-300 ${
+      <div className={`p-4 sm:p-5 rounded-2xl border-2 transition-all duration-300 ${
         selectedUser 
           ? 'bg-gradient-to-r from-primary/15 via-base-200/80 to-base-200/90 border-primary/60 shadow-[0_0_30px_rgba(114,240,180,0.15)]' 
           : 'bg-base-200/50 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.1)]'
@@ -1349,7 +1366,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         )}
       </div>
 
-      {/* 5 KAFELKÓW GRID (Tiles view) */}
+      
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-extrabold uppercase tracking-wider text-content-muted flex items-center gap-2">
@@ -1367,7 +1384,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+        {/* 6 KAFELKÓW GRID (Tiles view) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-4.5">
           {[
             {
               id: 'profile',
@@ -1398,6 +1416,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               icon: Award
             },
             {
+              id: 'homework',
+              title: 'Praca domowa',
+              badge: 'Zadania domowe',
+              desc: 'Przypisuj prace domowe wybranym kursantom',
+              icon: BookOpen
+            },
+            {
               id: 'vocabulary',
               title: 'Słownictwo i zadania',
               badge: 'Słówka + AI',
@@ -1409,48 +1434,47 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             const isActive = selectedUser && activeTab === tile.id;
 
             return (
-              <div
+                            <div
                 key={tile.id}
                 onClick={() => handleTileClick(tile.id)}
-                className={`p-4 rounded-2xl cursor-pointer transition-all duration-300 relative overflow-hidden group flex flex-col justify-between ${
+                className={`p-4 sm:p-4.5 cursor-pointer flex flex-col justify-between liquid-glass-tile select-none ${
                   isActive
-                    ? 'bg-primary/15 border-2 border-primary shadow-[0_0_25px_rgba(114,240,180,0.25)]'
+                    ? 'border-primary/80 shadow-[0_0_24px_rgba(114,240,180,0.25)] ring-1 ring-primary/40 bg-[#0e1524] z-10'
                     : selectedUser
-                    ? 'bg-base-200/60 hover:bg-base-200/90 border border-white/10 hover:border-primary/50 hover:shadow-lg'
-                    : 'bg-base-200/40 hover:bg-base-200/70 border border-white/10 hover:border-amber-500/50 hover:shadow-lg'
+                    ? 'hover:border-primary/50'
+                    : 'opacity-85 hover:border-amber-500/40'
                 }`}
               >
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`p-2.5 rounded-xl ${
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div className={`p-2 rounded-xl transition-colors ${
                       isActive
-                        ? 'bg-primary text-black'
-                        : 'bg-base-100/80 text-primary border border-white/10 group-hover:border-primary/40'
+                        ? 'bg-primary text-black shadow-[0_0_12px_rgba(114,240,180,0.4)]'
+                        : 'bg-base-100/90 text-primary border border-white/10 group-hover:border-primary/40'
                     }`}>
-                      <IconComp size={22} />
+                      <IconComp size={18} />
                     </div>
-                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md border ${
+                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md border font-mono ${
                       isActive
-                        ? 'bg-primary/20 text-primary border-primary/40 font-mono'
-                        : 'bg-base-100/60 text-content-muted border-white/5'
+                        ? 'bg-primary/20 text-primary border-primary/40'
+                        : 'bg-base-100/70 text-content-muted border-white/5'
                     }`}>
                       {isActive ? 'Aktywny' : tile.badge}
                     </span>
                   </div>
-
-                  <h3 className="font-extrabold text-base text-white group-hover:text-primary transition-colors">
+                  <h3 className="font-bold text-sm sm:text-base text-white group-hover:text-primary transition-colors truncate">
                     {tile.title}
                   </h3>
-                  <p className="text-xs text-content-muted mt-1 leading-relaxed">
+                  <p className="text-xs text-content-muted mt-0.5 leading-snug line-clamp-2 min-h-[2.2rem]">
                     {tile.desc}
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs font-semibold">
+                <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-xs font-semibold">
                   <span className={isActive ? 'text-primary font-bold' : 'text-content-muted'}>
                     {isActive ? 'Przeglądasz ten widok' : selectedUser ? 'Otwórz widok' : 'Wybierz kursanta'}
                   </span>
-                  <ChevronRight size={16} className={`transition-transform group-hover:translate-x-1 ${isActive ? 'text-primary' : 'text-content-muted'}`} />
+                  <ChevronRight size={14} className={`transition-transform group-hover:translate-x-0.5 ${isActive ? 'text-primary' : 'text-content-muted'}`} />
                 </div>
               </div>
             );
@@ -1469,6 +1493,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               {activeTab === 'history' && 'Historia lekcji oraz sesji nauki w aplikacji'}
               {activeTab === 'tests' && 'Generowanie i przegląd testów AI'}
               {activeTab === 'vocabulary' && 'Zestawy słówek i Zadania Specjalne AI'}
+              {activeTab === 'homework' && 'Praca domowa kursanta'}
             </h2>
           </div>
           <span className="text-xs font-mono text-content-muted hidden sm:inline">
@@ -1571,6 +1596,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                 onClick={() => openLessonRecordModal('view', record)}
                               >
                                 <div className="absolute top-1/2 -translate-y-1/2 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); handleGenerateHomeworkFromLesson(record); }}
+                                    className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                                    title="Wygeneruj pracę domową z tej lekcji"
+                                  >
+                                    <Sparkles className="h-4 w-4 text-emerald-400" />
+                                  </button>
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); openLessonRecordModal('edit', record); }}
                                     className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-primary hover:bg-base-200 transition-colors"
@@ -1678,6 +1710,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                                   >
                                                     <div className="absolute top-1/2 -translate-y-1/2 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                       <button 
+                                                        onClick={(e) => { e.stopPropagation(); handleGenerateHomeworkFromLesson(record); }}
+                                                        className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                                                        title="Wygeneruj pracę domową z tej lekcji"
+                                                      >
+                                                        <Sparkles className="h-4 w-4 text-emerald-400" />
+                                                      </button>
+                                                      <button 
                                                         onClick={(e) => { e.stopPropagation(); openLessonRecordModal('edit', record); }}
                                                         className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-primary hover:bg-base-200 transition-colors"
                                                         title="Edytuj lekcję"
@@ -1782,6 +1821,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           )}
 
           
+
+                    {activeTab === 'homework' && (
+            <div className="space-y-6">
+              <HomeworkScreen 
+                initialStudentId={selectedUser?.id || null}
+              />
+            </div>
+          )}
 
           {activeTab === 'vocabulary' && (
             <div className="space-y-6">
@@ -2111,9 +2158,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       {showSpecialTaskModal && selectedUser && (
         <TeacherSpecialTaskModal
           user={selectedUser}
-          onClose={() => setShowSpecialTaskModal(false)}
+          initialLesson={specialTaskInitialLesson || undefined}
+          onClose={() => {
+            setShowSpecialTaskModal(false);
+            setSpecialTaskInitialLesson(null);
+          }}
           onTaskCreated={() => {
             fetchUserLogsAndStats(selectedUser.id);
+            setSpecialTaskInitialLesson(null);
           }}
         />
       )}
@@ -2922,7 +2974,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <h3 className="text-2xl font-bold font-display">{viewingRecord?.topic}</h3>
                     <div className="font-mono text-sm text-primary mt-1">{viewingRecord?.date}</div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="primary" 
+                      onClick={() => handleGenerateHomeworkFromLesson(viewingRecord!)}
+                      className="flex items-center gap-1.5 font-bold shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:scale-105 text-xs sm:text-sm"
+                    >
+                      <Sparkles size={16} />
+                      {i18n.t("Wygeneruj pracę domową")}
+                    </Button>
                     <Button variant="ghost" onClick={() => openLessonRecordModal('edit', viewingRecord!)}>
                       {i18n.t("Edytuj")}
                     </Button>
@@ -2933,7 +2993,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     >
                       {i18n.t("Usuń")}
                     </Button>
-                    <button onClick={() => setShowLessonRecordModal(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                    <button onClick={() => setShowLessonRecordModal(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors cursor-pointer">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-content-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
@@ -2941,6 +3001,34 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </div>
                 </div>
                 <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                  {/* Quick Homework Generation Top Card */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-primary/20 via-emerald-500/10 to-primary/20 border border-primary/40 shadow-[0_0_20px_rgba(114,240,180,0.15)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary text-xl shrink-0">
+                        ✨
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-white text-sm sm:text-base flex items-center gap-2">
+                          {i18n.t("Wygeneruj pracę domową z tej lekcji")}
+                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
+                            AI Generator
+                          </span>
+                        </h4>
+                        <p className="text-xs text-content-muted mt-0.5">
+                          {viewingRecord?.vocabularyText
+                            ? `Utwórz ćwiczenia na tłumaczenie zdań z wykorzystaniem ${viewingRecord.vocabularyText.split('\n').filter(l => l.trim().length > 0).length} słówek z tej lekcji.`
+                            : `Utwórz ćwiczenia na tłumaczenie zdań powiązane z tematem lekcji: „${viewingRecord?.topic}”.`}
+                        </p>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="primary" 
+                      onClick={() => handleGenerateHomeworkFromLesson(viewingRecord!)}
+                      className="shrink-0 flex items-center gap-2 font-bold shadow-[0_0_15px_rgba(114,240,180,0.25)] hover:scale-105 text-xs sm:text-sm"
+                    >
+                      <Sparkles size={16} /> {i18n.t("Generuj zadania")}
+                    </Button>
+                  </div>
                   
                   {viewingRecord?.lessonSummary && (
                     <div className="rounded-xl overflow-hidden border border-white/5 bg-[#1a1f2e]">

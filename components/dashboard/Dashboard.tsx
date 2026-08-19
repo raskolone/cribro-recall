@@ -307,7 +307,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-base-100">
+    <div className="flex h-[100dvh] w-full bg-base-100 overflow-hidden">
       <Sidebar 
         currentView={view} 
         onNavigate={(newView) => handleNavigate(newView)}
@@ -327,7 +327,7 @@ const Dashboard: React.FC = () => {
           });
         }}
       />
-      <main className="flex-1 overflow-y-auto relative">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden relative min-w-0">
         <StudentNotifications onNavigate={(newView) => handleNavigate(newView)} />
         {showOnboarding && <OnboardingOverlay onComplete={() => {
           setShowOnboarding(false);

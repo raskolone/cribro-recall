@@ -960,11 +960,11 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
   });
 
   // Text-to-Speech API (ElevenLabs proxy & fallback)
-  const handleTTS = async (req: express.Request, res: express.Response) => {
+      const handleTTS = async (req: express.Request, res: express.Response) => {
     try {
       const text = (req.body?.text || req.query.text) as string;
-      const lang = (req.body?.accent || req.body?.lang || req.query.lang || req.query.accent || 'en-US') as string;
-      const customVoiceId = req.body?.voice_id || req.body?.voiceId;
+      const lang = (req.body?.accent || req.body?.lang || req.query.lang || req.query.accent || 'US') as string;
+      const isUK = lang === 'UK' || lang === 'en-GB' || lang === 'BrE';
 
       if (!text) {
         return res.status(400).json({ error: "Missing text parameter" });
@@ -974,19 +974,71 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
       const trimmedText = text.replace(/<[^>]+>/g, '').trim();
       const formattedText = /[.?!]$/.test(trimmedText) ? trimmedText : `${trimmedText}.`;
 
-      // Voice mapping
-      let voiceId = "S9WrLrqYPJzmQyWPWbZ5"; // Default en-US / AmE
-      if (customVoiceId) {
-        voiceId = customVoiceId;
-      } else if (lang === 'en-GB' || lang === 'BrE') {
-        voiceId = "NbkKnEAZ7Bqw4EAkVEaz"; // en-GB / BrE
-      } else {
-        voiceId = "S9WrLrqYPJzmQyWPWbZ5"; // en-US / AmE
+      // 1. GENERATE CACHE KEY & CHECK CACHE
+      const crypto = await import('crypto');
+      const hash = crypto.default.createHash('sha256').update(formattedText + '_' + (isUK ? 'UK' : 'US')).digest('hex');
+      const fileName = `tts_cache/${hash}.mp3`;
+
+      const hashInt = parseInt(hash.charAt(hash.length - 1), 16);
+      const isMale = hashInt % 2 === 0;
+      
+      const os = await import('os');
+      const path = await import('path');
+      const fs = await import('fs/promises');
+      const localCacheDir = path.join(os.tmpdir(), 'tts_cache');
+      await fs.mkdir(localCacheDir, { recursive: true });
+      const localFileName = path.join(localCacheDir, `${hash}.mp3`);
+
+      // Check Local Cache First
+      try {
+        const localBuffer = await fs.readFile(localFileName);
+        console.log('TTS Local Cache HIT:', hash);
+        res.set({
+          'Content-Type': 'audio/mpeg',
+          'Cache-Control': 'public, max-age=31536000'
+        });
+        return res.send(localBuffer);
+      } catch (e) {
+        // Not in local cache
       }
 
-      const elevenLabsKey = process.env.VITE_ELEVENLABS_API_KEY;
-      
-      if (elevenLabsKey) {
+      let bucket: any = null;
+      try {
+        const { getStorage } = await import('firebase-admin/storage');
+        const fbConfig = (await import('./firebase-applet-config.json', { with: { type: 'json' } })).default;
+        const bucketName = process.env.VITE_FIREBASE_STORAGE_BUCKET || fbConfig.storageBucket || "gen-lang-client-0425391821.firebasestorage.app";
+        if (bucketName) {
+          bucket = getStorage().bucket(bucketName);
+          const file = bucket.file(fileName);
+          const [exists] = await file.exists();
+          if (exists) {
+            console.log('TTS Firebase Cache HIT:', fileName);
+            const [audioBuffer] = await file.download();
+            // save to local cache for next time
+            fs.writeFile(localFileName, audioBuffer).catch(()=>{});
+            res.set({
+              'Content-Type': 'audio/mpeg',
+              'Cache-Control': 'public, max-age=31536000'
+            });
+            return res.send(audioBuffer);
+          }
+        }
+      } catch (err: any) {
+        console.warn('Firebase Storage cache check warning:', err.message || err);
+      }
+
+      console.log('TTS Cache MISS. Generowanie audio...');
+      let finalAudioBuffer: Buffer | null = null;
+
+      // POZIOM 1: ElevenLabs
+      const elevenLabsKey = process.env.VITE_ELEVENLABS_API_KEY || process.env.ELEVENLABS_API_KEY;
+      if (!finalAudioBuffer && elevenLabsKey) {
+        let voiceId = "S9WrLrqYPJzmQyWPWbZ5";
+        if (isUK) {
+          voiceId = isMale ? "JBFqnCBcs6TWROtGMCA3" : "Xb7hH8MSALEjdAclc2Uj"; // George : Alice
+        } else {
+          voiceId = isMale ? "29vD33N1CtxCmqQRPOHJ" : "21m00Tcm4TlvDq8ikWAM"; // Drew : Rachel
+        }
         try {
           const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
             method: 'POST',
@@ -997,41 +1049,127 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
             },
             body: JSON.stringify({
               text: formattedText,
-              model_id: "eleven_turbo_v2_5",
-              voice_settings: {
-                stability: 0.85,
-                similarity_boost: 0.88,
-                style: 0.0,
-                use_speaker_boost: true
-              }
+              model_id: "eleven_multilingual_v2"
             })
           });
-
           if (response.ok) {
-            const audioBuffer = await response.arrayBuffer();
-            res.set({
-              'Content-Type': 'audio/mpeg',
-              'Cache-Control': 'public, max-age=31536000'
-            });
-            return res.send(Buffer.from(audioBuffer));
+            finalAudioBuffer = Buffer.from(await response.arrayBuffer());
+            console.log('TTS Poziom 1: ElevenLabs sukces');
           } else {
-            const errorText = await response.text();
-            console.error(`ElevenLabs API returned ${response.status}: ${errorText}`);
-            throw new Error(`ElevenLabs API error: ${response.status}`);
+            const errTxt = await response.text();
+            console.warn(`ElevenLabs API error: ${response.status} - ${errTxt.slice(0, 100)}`);
           }
-        } catch (elError) {
-          console.error('ElevenLabs request failed:', elError);
-          throw elError;
+        } catch (e: any) {
+          console.warn('ElevenLabs API request failed:', e.message || e);
         }
-      } else {
-        throw new Error('ElevenLabs API key is missing. Ensure VITE_ELEVENLABS_API_KEY is configured.');
       }
+
+      // POZIOM 2: OpenAI TTS
+      const openaiKey = process.env.OPENAI_API_KEY;
+      if (!finalAudioBuffer && openaiKey) {
+        const voice = isUK ? (isMale ? "fable" : "shimmer") : (isMale ? "echo" : "nova");
+        try {
+          const response = await fetch('https://api.openai.com/v1/audio/speech', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openaiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: 'tts-1',
+              input: formattedText,
+              voice: voice
+            })
+          });
+          if (response.ok) {
+            finalAudioBuffer = Buffer.from(await response.arrayBuffer());
+            console.log('TTS Poziom 2: OpenAI TTS sukces');
+          } else {
+            const errTxt = await response.text();
+            console.warn(`OpenAI TTS API error: ${response.status} - ${errTxt.slice(0, 100)}`);
+          }
+        } catch (e: any) {
+          console.warn('OpenAI TTS API request failed:', e.message || e);
+        }
+      }
+
+      // POZIOM 3: Gemini / Google Cloud TTS
+      const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+      if (!finalAudioBuffer && geminiKey) {
+        try {
+          const langCode = isUK ? 'en-GB' : 'en-US';
+          const voiceName = isUK ? (isMale ? 'en-GB-Neural2-B' : 'en-GB-Neural2-A') : (isMale ? 'en-US-Neural2-D' : 'en-US-Neural2-F');
+          
+          const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${geminiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              input: { text: formattedText },
+              voice: { languageCode: langCode, name: voiceName },
+              audioConfig: { audioEncoding: "MP3", speakingRate: 0.95 }
+            })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.audioContent) {
+              finalAudioBuffer = Buffer.from(data.audioContent, 'base64');
+              console.log('TTS Poziom 3: Google Cloud TTS sukces');
+            }
+          } else {
+            console.warn(`GCP TTS API error: ${response.status}. Próba Gemini 3.1 Flash TTS...`);
+            const ai = new GoogleGenAI({ apiKey: geminiKey });
+            const interaction = await ai.interactions.create({
+              model: 'gemini-3.1-flash-tts-preview',
+              input: formattedText,
+              response_modalities: ['AUDIO'],
+              generation_config: {
+                speech_config: {
+                  language: langCode.toLowerCase(),
+                  voice: isUK ? (isMale ? "fenrir" : "zephyr") : (isMale ? "charon" : "kore")
+                } as any
+              }
+            });
+            for (const step of interaction.steps) {
+              if (step.type === 'model_output') {
+                const audioContent = step.content?.find(c => c.type === 'audio');
+                if (audioContent && audioContent.data) {
+                  finalAudioBuffer = Buffer.from(audioContent.data, 'base64');
+                  console.log('TTS Poziom 3: Gemini TTS Flash sukces');
+                }
+              }
+            }
+          }
+        } catch (e: any) {
+          console.warn('Google Cloud / Gemini TTS request failed:', e.message || e);
+        }
+      }
+
+      if (finalAudioBuffer) {
+        // Save to cache asynchronously so we don't block the response
+        fs.writeFile(localFileName, finalAudioBuffer).catch(() => {});
+        
+        if (bucket) {
+          const file = bucket.file(fileName);
+          file.save(finalAudioBuffer, {
+            metadata: { contentType: 'audio/mpeg' }
+          }).then(() => console.log('TTS zapisano w Firebase cache:', fileName))
+            .catch((e: any) => console.warn('Nie udało się zapisać do cache Firebase:', e.message || e.code));
+        }
+        
+        res.set({
+          'Content-Type': 'audio/mpeg',
+          'Cache-Control': 'public, max-age=31536000'
+        });
+        return res.send(finalAudioBuffer);
+      }
+
+      return res.status(503).json({ error: 'Usługa TTS chwilowo niedostępna na wszystkich poziomach.' });
     } catch (error: any) {
-      console.error('TTS error:', error);
+      console.error('TTS error:', error.message || error);
       res.status(500).json({ error: error.message });
     }
   };
-
   app.get("/api/tts", handleTTS);
   app.post("/api/tts", handleTTS);
 

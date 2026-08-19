@@ -63,8 +63,7 @@ export function getTTSUrl(
   accent: Accent | string = 'en-US'
 ): string {
   const formattedText = formatTextForTTS(text);
-  const selectedVoiceId = getVoiceId(accent);
-  return `/api/tts?text=${encodeURIComponent(formattedText)}&accent=${encodeURIComponent(accent)}&voice_id=${encodeURIComponent(selectedVoiceId)}`;
+  return `/api/tts?text=${encodeURIComponent(formattedText)}&accent=${encodeURIComponent(accent)}`;
 }
 
 let sharedAudioPlayer: HTMLAudioElement | null = null;
