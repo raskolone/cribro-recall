@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { User, SpecialTask, HomeworkType, TranslationExercise, FillInTheBlankExercise, LessonRecord } from '../../types';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { generateTranslationExercises, generateFillInTheBlankExercises, evaluateErrorCorrectionSentence, evaluateTranslations, evaluateTeacherHomework, processBulkSentences, generateHomeworkChatPipeline } from '../../services/geminiService';
 import Card from '../ui/Card';
@@ -19,6 +19,7 @@ import {
   Trash2, 
   Edit3, 
   Send, 
+  Save,
   Clock, 
   CheckCircle2, 
   AlertTriangle, 
@@ -74,13 +75,14 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
   const [filterStudentId, setFilterStudentId] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
-  // Form state for creating homework (Teacher)
+  // Form state for creating/editing homework (Teacher)
+  const [editingTask, setEditingTask] = useState<SpecialTask | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string>(initialStudentId || '');
   
   useEffect(() => {
     if (initialStudentId) {
       setSelectedStudentId(initialStudentId);
-      setActiveTab('create');
+      setFilterStudentId(initialStudentId);
     }
   }, [initialStudentId]);
   const [homeworkType, setHomeworkType] = useState<HomeworkType>('translation');
@@ -151,7 +153,40 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
     }
   };
 
-  // Load students & homework tasks
+  // Start editing existing homework task
+  const handleStartEditTask = (task: SpecialTask) => {
+    setEditingTask(task);
+    setSelectedStudentId(task.studentId || '');
+    setHomeworkType(task.type || 'translation');
+    setTitle(task.title || '');
+    setInstructions(task.instructions || '');
+    setDueDate(task.dueDate || '');
+    if (task.type === 'fill_in_the_blank') {
+      setErrorCorrectionItems(task.sentences || []);
+      setTranslationItems([]);
+    } else {
+      setTranslationItems(task.sentences || []);
+      setErrorCorrectionItems([]);
+    }
+    setActiveTab('create');
+  };
+
+  // Cancel edit mode
+  const handleCancelEdit = () => {
+    setEditingTask(null);
+    setTranslationItems([]);
+    setErrorCorrectionItems([]);
+    setTitle('');
+    setInstructions('');
+    if (initialStudentId) {
+      setSelectedStudentId(initialStudentId);
+    } else {
+      setSelectedStudentId('');
+    }
+    setActiveTab('list');
+  };
+
+  // Load students & homework tasks (with real-time updates)
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -194,10 +229,62 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
   };
 
   useEffect(() => {
-    loadData();
+    if (!user?.id) return;
+    setIsLoading(true);
+
+    let unsubscribe: () => void;
+
+    if (isTeacher) {
+      // 1. Fetch students
+      getDocs(collection(db, 'users')).then(usersSnap => {
+        const studentList: User[] = [];
+        usersSnap.forEach((d) => {
+          const u = { id: d.id, ...d.data() } as User;
+          if (u.role !== 'admin' && u.role !== 'teacher') {
+            studentList.push(u);
+          }
+        });
+        setStudents(studentList);
+      }).catch(console.error);
+
+      // 2. Real-time tasks listener
+      const q = query(collection(db, 'specialTasks'));
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const loadedTasks: SpecialTask[] = [];
+        snapshot.forEach((d) => {
+          loadedTasks.push({ id: d.id, ...d.data() } as SpecialTask);
+        });
+        loadedTasks.sort((a, b) => getTaskDateMillis(b.createdAt) - getTaskDateMillis(a.createdAt));
+        setTasks(loadedTasks);
+        setIsLoading(false);
+      }, (err) => {
+        console.error('Błąd real-time ładowania prac domowych:', err);
+        setIsLoading(false);
+      });
+    } else {
+      // Real-time listener for student's tasks
+      const q = query(collection(db, 'specialTasks'), where('studentId', 'in', [user.id, 'all']));
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const loadedTasks: SpecialTask[] = [];
+        snapshot.forEach((d) => {
+          loadedTasks.push({ id: d.id, ...d.data() } as SpecialTask);
+        });
+        loadedTasks.sort((a, b) => getTaskDateMillis(b.createdAt) - getTaskDateMillis(a.createdAt));
+        setTasks(loadedTasks);
+        setIsLoading(false);
+      }, (err) => {
+        console.error('Błąd real-time ładowania prac domowych dla kursanta:', err);
+        setIsLoading(false);
+      });
+    }
+
     if (user?.hasNewHomework && user?.id) {
       updateDoc(doc(db, 'users', user.id), { hasNewHomework: false }).catch(console.error);
     }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [user?.id, isTeacher]);
 
   // Auto-select initial task if provided
@@ -244,9 +331,9 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
     setIsDraftLoaded(true);
   }, [isTeacher]);
 
-  // Save draft whenever relevant state changes
+  // Save draft whenever relevant state changes (only when not editing existing task)
   useEffect(() => {
-    if (isTeacher && isDraftLoaded && activeTab === 'create') {
+    if (isTeacher && isDraftLoaded && activeTab === 'create' && !editingTask) {
       const draft = {
         selectedStudentId,
         homeworkType,
@@ -264,7 +351,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
       localStorage.setItem('homework_draft', JSON.stringify(draft));
     }
   }, [
-    isTeacher, isDraftLoaded, activeTab, selectedStudentId, homeworkType, title, 
+    isTeacher, isDraftLoaded, activeTab, editingTask, selectedStudentId, homeworkType, title, 
     instructions, dueDate, translationItems, errorCorrectionItems, 
     aiLevel, aiTopic, aiCount, aiPrompt, selectedLessonIds
   ]);
@@ -441,7 +528,35 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
       setIsLoading(true);
       const sentences = homeworkType === 'translation' ? translationItems : errorCorrectionItems;
 
-      // Target students
+      // If editing an existing task
+      if (editingTask?.id) {
+        const studentObj = students.find(s => s.id === selectedStudentId);
+        const updatedData: Partial<SpecialTask> = {
+          studentId: selectedStudentId,
+          studentName: studentObj 
+            ? `${studentObj.firstName || ''} ${studentObj.lastName || ''}`.trim() || studentObj.username 
+            : editingTask.studentName || 'Kursant',
+          title: title.trim() || 'Praca domowa',
+          type: homeworkType,
+          instructions: instructions.trim(),
+          dueDate,
+          sentences: sentences
+        };
+
+        await updateDoc(doc(db, 'specialTasks', editingTask.id), updatedData);
+        alert('Praca domowa została pomyślnie zaktualizowana!');
+        setEditingTask(null);
+        setTranslationItems([]);
+        setErrorCorrectionItems([]);
+        setTitle('');
+        setInstructions('');
+        if (!initialStudentId) setSelectedStudentId('');
+        setActiveTab('list');
+        await loadData();
+        return;
+      }
+
+      // Target students for new homework
       const targetStudentIds = selectedStudentId === 'all' 
         ? students.map(s => s.id!).filter(Boolean)
         : [selectedStudentId];
@@ -463,7 +578,11 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
         };
 
         await addDoc(collection(db, 'specialTasks'), taskData);
-        await updateDoc(doc(db, 'users', stId), { hasNewHomework: true });
+        try {
+          await updateDoc(doc(db, 'users', stId), { hasNewHomework: true });
+        } catch (uErr) {
+          console.warn('Could not update hasNewHomework for user:', uErr);
+        }
       }
 
       alert('Praca domowa została pomyślnie przypisana!');
@@ -471,13 +590,14 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
       setTranslationItems([]);
       setErrorCorrectionItems([]);
       setTitle('');
-      setSelectedStudentId('');
+      setInstructions('');
+      if (!initialStudentId) setSelectedStudentId('');
       setActiveTab('list');
       localStorage.removeItem('homework_draft');
       await loadData();
     } catch (err: any) {
       console.error(err);
-      alert(`Błąd przypisywania pracy domowej: ${err.message}`);
+      alert(`Błąd zapisywania pracy domowej: ${err.message}`);
     } finally {
       setIsSavingHomework(false);
       isSavingRef.current = false;
@@ -756,7 +876,12 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
         {isTeacher && (
           <div className="flex gap-2">
             <Button
-              onClick={() => setActiveTab('list')}
+              onClick={() => {
+                if (editingTask) {
+                  setEditingTask(null);
+                }
+                setActiveTab('list');
+              }}
               variant={activeTab === 'list' ? 'primary' : 'secondary'}
               className="flex items-center gap-2 text-sm"
             >
@@ -764,12 +889,25 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
               Lista prac ({tasks.length})
             </Button>
             <Button
-              onClick={() => setActiveTab('create')}
+              onClick={() => {
+                if (!editingTask) {
+                  setActiveTab('create');
+                }
+              }}
               variant={activeTab === 'create' ? 'primary' : 'secondary'}
               className="flex items-center gap-2 text-sm"
             >
-              <Plus size={16} />
-              Przypisz pracę domową
+              {editingTask ? (
+                <>
+                  <Edit3 size={16} className="text-amber-400" />
+                  Edycja pracy
+                </>
+              ) : (
+                <>
+                  <Plus size={16} />
+                  Przypisz pracę domową
+                </>
+              )}
             </Button>
           </div>
         )}
@@ -939,13 +1077,53 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
         </Card>
       ) : null}
 
-      {/* ---------------- TEACHER CREATE HOMEWORK WORKSPACE ---------------- */}
+      {/* ---------------- TEACHER CREATE / EDIT HOMEWORK WORKSPACE ---------------- */}
       {isTeacher && activeTab === 'create' && !activeTask && (
         <Card className="liquid-glass p-6 space-y-6">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2 border-b border-white/10 pb-3">
-            <Plus className="text-primary" size={22} />
-            Kreator Nowej Pracy Domowej
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              {editingTask ? (
+                <>
+                  <Edit3 className="text-primary" size={22} />
+                  Edycja Pracy Domowej
+                </>
+              ) : (
+                <>
+                  <Plus className="text-primary" size={22} />
+                  Kreator Nowej Pracy Domowej
+                </>
+              )}
+            </h2>
+            {editingTask && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleCancelEdit}
+                className="text-xs flex items-center gap-1.5 self-start sm:self-auto text-amber-300 hover:text-amber-200 border-amber-500/30"
+              >
+                <X size={14} /> Anuluj edycję i wróć do listy
+              </Button>
+            )}
+          </div>
+
+          {/* Edit Mode Alert Banner */}
+          {editingTask && (
+            <div className="p-4 rounded-xl bg-primary/10 border border-primary/30 flex flex-wrap items-center justify-between gap-3 shadow-[0_0_20px_rgba(114,240,180,0.15)]">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/20 text-primary">
+                  <Edit3 size={18} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                    Edytujesz pracę: <span className="text-primary">{editingTask.title || 'Praca domowa'}</span>
+                  </h4>
+                  <p className="text-xs text-content-muted">
+                    Przypisana do: <strong className="text-white">{editingTask.studentName || editingTask.studentId}</strong> | Możesz modyfikować treść zdań, wytyczne, termin oraz kursanta.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 1. HIGHLIGHTED STEP 1: Wybierz kursanta */}
           <div className={`p-5 rounded-2xl border-2 transition-all space-y-4 ${
@@ -1413,13 +1591,21 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
 
           {/* Submit Action */}
           <div className="pt-4 border-t border-white/10 flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setActiveTab('list')} disabled={isSavingHomework}>
+            <Button
+              variant="secondary"
+              onClick={editingTask ? handleCancelEdit : () => setActiveTab('list')}
+              disabled={isSavingHomework}
+            >
               Anuluj
             </Button>
             <Button onClick={handleSaveHomework} disabled={isSavingHomework} className="flex items-center gap-2">
               {isSavingHomework ? (
                 <>
-                  <RefreshCw className="animate-spin" size={18} /> Przypisywanie...
+                  <RefreshCw className="animate-spin" size={18} /> {editingTask ? 'Zapisywanie...' : 'Przypisywanie...'}
+                </>
+              ) : editingTask ? (
+                <>
+                  <Save size={18} /> Zapisz zmiany w pracy domowej
                 </>
               ) : (
                 <>
@@ -1571,6 +1757,16 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                           >
                             <Eye size={14} />
                             Podgląd
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleStartEditTask(task)}
+                            className="text-xs flex items-center gap-1.5 hover:border-primary/40 hover:text-primary transition-all"
+                            title="Edytuj zdania, wytyczne lub termin tej pracy"
+                          >
+                            <Edit3 size={14} />
+                            Edytuj
                           </Button>
                           {isSubmitted && (
                             <Button
