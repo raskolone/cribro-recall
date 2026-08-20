@@ -20,6 +20,7 @@ import TeacherDashboardStats from './TeacherDashboardStats';
 import TeacherSpecialTaskModal from './TeacherSpecialTaskModal';
 import AssignVocabularyModal from './AssignVocabularyModal';
 import HomeworkScreen from '../dashboard/HomeworkScreen';
+import { isTaskForStudent } from '../../utils/homework';
 import { 
   Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
   User as UserIcon, Users, Search, X, ChevronRight, ChevronDown, ChevronUp, Sparkles, BarChart2, Clock, 
@@ -112,9 +113,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
 
       let fetchedTasks: any[] = [];
       try {
-        const tasksQ = query(collection(db, 'specialTasks'), where('studentId', '==', userId));
-        const tasksSnapshot = await getDocs(tasksQ);
-        fetchedTasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        const targetStudent = users.find(u => u.id === userId) || selectedUser || { id: userId };
+        const tasksSnapshot = await getDocs(collection(db, 'specialTasks'));
+        tasksSnapshot.docs.forEach(doc => {
+          const t = { id: doc.id, ...doc.data() } as any;
+          if (isTaskForStudent(t, targetStudent)) {
+            fetchedTasks.push(t);
+          }
+        });
         fetchedTasks.sort((a, b) => new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt).getTime() - new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt).getTime());
         setSpecialTasks(fetchedTasks);
       } catch(e) { console.error("Error fetching special tasks", e); }

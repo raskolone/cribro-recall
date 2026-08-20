@@ -5,6 +5,7 @@ import { User, SpecialTask, HomeworkType, TranslationExercise, FillInTheBlankExe
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { generateTranslationExercises, generateFillInTheBlankExercises, evaluateErrorCorrectionSentence, evaluateTranslations, evaluateTeacherHomework, processBulkSentences, generateHomeworkChatPipeline } from '../../services/geminiService';
+import { isTaskForStudent } from '../../utils/homework';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import ConfirmModal from '../ui/ConfirmModal';
@@ -210,13 +211,15 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
         });
         loadedTasks.sort((a, b) => getTaskDateMillis(b.createdAt) - getTaskDateMillis(a.createdAt));
         setTasks(loadedTasks);
-      } else if (user?.id) {
-        // Load student's tasks
-        const q = query(collection(db, 'specialTasks'), where('studentId', 'in', [user.id, 'all']));
-        const tasksSnap = await getDocs(q);
+      } else if (user) {
+        // Load student's tasks with robust multi-attribute matching
+        const tasksSnap = await getDocs(collection(db, 'specialTasks'));
         const loadedTasks: SpecialTask[] = [];
         tasksSnap.forEach((d) => {
-          loadedTasks.push({ id: d.id, ...d.data() } as SpecialTask);
+          const t = { id: d.id, ...d.data() } as SpecialTask;
+          if (isTaskForStudent(t, user)) {
+            loadedTasks.push(t);
+          }
         });
         loadedTasks.sort((a, b) => getTaskDateMillis(b.createdAt) - getTaskDateMillis(a.createdAt));
         setTasks(loadedTasks);
@@ -229,7 +232,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
   };
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id && !user?.email && !user?.username) return;
     setIsLoading(true);
 
     let unsubscribe: () => void;
@@ -263,11 +266,14 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
       });
     } else {
       // Real-time listener for student's tasks
-      const q = query(collection(db, 'specialTasks'), where('studentId', 'in', [user.id, 'all']));
+      const q = query(collection(db, 'specialTasks'));
       unsubscribe = onSnapshot(q, (snapshot) => {
         const loadedTasks: SpecialTask[] = [];
         snapshot.forEach((d) => {
-          loadedTasks.push({ id: d.id, ...d.data() } as SpecialTask);
+          const t = { id: d.id, ...d.data() } as SpecialTask;
+          if (isTaskForStudent(t, user)) {
+            loadedTasks.push(t);
+          }
         });
         loadedTasks.sort((a, b) => getTaskDateMillis(b.createdAt) - getTaskDateMillis(a.createdAt));
         setTasks(loadedTasks);
@@ -531,11 +537,13 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
       // If editing an existing task
       if (editingTask?.id) {
         const studentObj = students.find(s => s.id === selectedStudentId);
-        const updatedData: Partial<SpecialTask> = {
+        const updatedData: Partial<SpecialTask> & Record<string, any> = {
           studentId: selectedStudentId,
           studentName: studentObj 
             ? `${studentObj.firstName || ''} ${studentObj.lastName || ''}`.trim() || studentObj.username 
             : editingTask.studentName || 'Kursant',
+          studentEmail: studentObj?.email || '',
+          studentUsername: studentObj?.username || '',
           title: title.trim() || 'Praca domowa',
           type: homeworkType,
           instructions: instructions.trim(),
@@ -564,10 +572,15 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
       const nowIso = new Date().toISOString();
       for (const stId of targetStudentIds) {
         const studentObj = students.find(s => s.id === stId);
-        const taskData: Partial<SpecialTask> = {
+        const studentName = studentObj 
+          ? `${studentObj.firstName || ''} ${studentObj.lastName || ''}`.trim() || studentObj.username 
+          : 'Kursant';
+        const taskData: Partial<SpecialTask> & Record<string, any> = {
           studentId: stId,
-          studentName: studentObj ? `${studentObj.firstName || ''} ${studentObj.lastName || ''}`.trim() || studentObj.username : 'Kursant',
-          assignedBy: user?.username || 'Nauczyciel',
+          studentName: studentName,
+          studentEmail: studentObj?.email || '',
+          studentUsername: studentObj?.username || '',
+          assignedBy: user?.username || user?.firstName || 'Nauczyciel',
           title: title.trim() || 'Praca domowa',
           type: homeworkType,
           instructions: instructions.trim(),

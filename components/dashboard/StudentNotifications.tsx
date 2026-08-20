@@ -7,6 +7,7 @@ import { useFlashcards } from '../../context/FlashcardContext';
 import { collection, query, orderBy, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { StudentTest, SpecialTask } from '../../types';
+import { isTaskForStudent } from '../../utils/homework';
 
 interface StudentNotificationsProps {
   onNavigate: (view: any, extra?: any) => void;
@@ -39,11 +40,13 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate 
           setTests(testsSnap.docs.map(d => ({ id: d.id, ...d.data() } as StudentTest)));
 
           // Fetch special tasks / homework
-          const tasksQ = query(collection(db, 'specialTasks'), where('studentId', 'in', [user.id, 'all']));
-          const tasksSnap = await getDocs(tasksQ);
+          const tasksSnap = await getDocs(collection(db, 'specialTasks'));
           const tasks: SpecialTask[] = [];
           tasksSnap.forEach(d => {
-            tasks.push({ id: d.id, ...d.data() } as SpecialTask);
+            const t = { id: d.id, ...d.data() } as SpecialTask;
+            if (isTaskForStudent(t, user)) {
+              tasks.push(t);
+            }
           });
           setHomeworkTasks(tasks);
         } catch (err) {

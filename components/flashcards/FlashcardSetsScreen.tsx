@@ -576,15 +576,15 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center animate-pulse" style={{ animationDuration: '4s' }}>
             <div className="w-[80vw] max-w-3xl h-[80vh] max-h-[600px] bg-primary/10 rounded-full blur-[120px]"></div>
           </div>
-          <div className="w-full max-w-2xl bg-base-200/40 backdrop-blur-2xl border border-white/10 rounded-2xl p-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.1),0_0_60px_rgba(74,222,128,0.15)] max-h-[80vh] flex flex-col relative z-10 animate-in fade-in zoom-in-95 duration-300">
+          <div className="w-full max-w-3xl lg:max-w-4xl bg-base-200/40 backdrop-blur-2xl border border-white/10 rounded-2xl p-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.1),0_0_60px_rgba(74,222,128,0.15)] max-h-[85vh] flex flex-col relative z-10 animate-in fade-in zoom-in-95 duration-300">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold">{language === 'pl' ? 'Podgląd słownictwa' : 'Vocabulary Preview'}</h3>
-              <button onClick={() => setPreviewSetId(null)} className="text-content-muted hover:text-white">
+              <h3 className="text-xl font-bold text-white">{language === 'pl' ? 'Podgląd słownictwa' : 'Vocabulary Preview'}</h3>
+              <button onClick={() => setPreviewSetId(null)} className="text-content-muted hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5">
                 ✕
               </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto scrollbar-hide space-y-2">
+            <div className="flex-1 overflow-y-auto scrollbar-hide space-y-2 pr-1">
               {isLoadingPreview ? (
                 <div className="text-center py-8 text-content-muted">
                   <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -597,15 +597,24 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {previewCards.map((card, idx) => (
-                    <div key={card.id || idx} className="bg-base-200/50 backdrop-blur-md border border-white/5 p-4 rounded-xl flex items-center gap-3 transition-colors hover:bg-base-200 hover:border-primary/30">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex flex-shrink-0 items-center justify-center font-bold text-xs">
-                        {idx + 1}
+                    <div 
+                      key={card.id || idx} 
+                      className="bg-base-200/50 backdrop-blur-md border border-white/5 p-3.5 rounded-xl flex items-center justify-between gap-3 transition-all hover:bg-base-200/80 hover:border-primary/30 min-w-0 overflow-hidden"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex shrink-0 items-center justify-center font-bold text-xs">
+                          {idx + 1}
+                        </div>
+                        <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+                          <div className="font-bold text-white text-sm md:text-base truncate" title={card.front || card.term}>
+                            {card.front || card.term}
+                          </div>
+                          <div className="text-primary/80 font-medium text-xs md:text-sm truncate" title={card.back || card.definition}>
+                            {card.back || card.definition}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 flex flex-col gap-0.5">
-                        <div className="font-bold text-white text-base">{card.front || card.term}</div>
-                        <div className="text-primary/80 font-medium text-sm">{card.back || card.definition}</div>
-                      </div>
-                      <div className="transition-opacity opacity-70 group-hover:opacity-100">
+                      <div className="shrink-0 flex items-center">
                         <TTSButtons text={card.front || card.term} />
                       </div>
                     </div>

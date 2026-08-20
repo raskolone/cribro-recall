@@ -11,6 +11,7 @@ import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, 
 import { generateSpeech, createSpeechAudio, formatTextForTTS } from '../../services/elevenLabsService';
 import TTSButtons from '../flashcards/TTSButtons';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog } from '../../types';
+import { isTaskForStudent } from '../../utils/homework';
 
 export interface CachedExerciseSet {
   id: string;
@@ -980,10 +981,15 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         .catch(console.error);
 
       // fetch special tasks
-      import('firebase/firestore').then(({ collection, getDocs, query, where }) => {
-        const tasksQ = query(collection(db, 'specialTasks'), where('studentId', 'in', [user.id, 'all']));
-        getDocs(tasksQ).then(snap => {
-          const tasks = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      import('firebase/firestore').then(({ collection, getDocs }) => {
+        getDocs(collection(db, 'specialTasks')).then(snap => {
+          const tasks: any[] = [];
+          snap.forEach(doc => {
+            const t = { id: doc.id, ...doc.data() } as any;
+            if (isTaskForStudent(t, user)) {
+              tasks.push(t);
+            }
+          });
           const getMillis = (val: any) => {
             if (!val) return 0;
             if (typeof val.toMillis === 'function') return val.toMillis();

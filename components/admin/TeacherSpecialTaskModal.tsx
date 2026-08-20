@@ -291,6 +291,8 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
       const taskData = {
         studentId: user.id,
         studentName: studentName,
+        studentEmail: user.email || '',
+        studentUsername: user.username || '',
         assignedBy: 'Nauczyciel',
         type: 'translation',
         title: initialLesson ? `Praca domowa: ${initialLesson.topic}` : `Praca domowa - ${new Date().toLocaleDateString('pl-PL')}`,
