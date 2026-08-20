@@ -291,7 +291,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [user?.id, isTeacher]);
+  }, [user?.id, user?.username, user?.email, user?.firstName, user?.lastName, isTeacher]);
 
   // Auto-select initial task if provided
   useEffect(() => {

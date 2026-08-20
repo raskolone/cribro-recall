@@ -1008,7 +1008,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       });
     }
 
-  }, [user?.id]);
+  }, [user?.id, user?.username, user?.email, user?.firstName, user?.lastName]);
 
   // Filter out sets assigned to the student (assignedByTeacher or belongs to user)
   const availableSets = sets.filter(s => (s.assignedByTeacher || s.userId) && !s.isLessonVocabulary);

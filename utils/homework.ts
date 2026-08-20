@@ -66,6 +66,8 @@ export const isTaskForStudent = (task: Partial<SpecialTask> | any, user: Partial
     if (taskStudentIdNorm === usernameNorm) return true;
     if (taskStudentNameNorm === usernameNorm) return true;
     if (taskStudentNameNorm.includes(usernameNorm)) return true;
+    if (taskStudentIdNorm.includes(usernameNorm)) return true;
+    if (usernameNorm.includes(taskStudentIdNorm) && taskStudentIdNorm.length >= 3) return true;
   }
 
   // 5. First Name / Last Name matching
@@ -77,10 +79,14 @@ export const isTaskForStudent = (task: Partial<SpecialTask> | any, user: Partial
     if (taskStudentNameNorm === fullNameNorm) return true;
     if (taskStudentIdNorm === fullNameNorm) return true;
     if (taskStudentNameNorm.includes(fullNameNorm)) return true;
+    if (taskStudentIdNorm.includes(fullNameNorm)) return true;
   }
 
   if (firstNameNorm && lastNameNorm) {
     if (taskStudentNameNorm.includes(firstNameNorm) && taskStudentNameNorm.includes(lastNameNorm)) {
+      return true;
+    }
+    if (taskStudentIdNorm.includes(firstNameNorm) && taskStudentIdNorm.includes(lastNameNorm)) {
       return true;
     }
   }
@@ -88,6 +94,12 @@ export const isTaskForStudent = (task: Partial<SpecialTask> | any, user: Partial
   if (firstNameNorm && firstNameNorm.length >= 3) {
     if (taskStudentNameNorm === firstNameNorm) return true;
     if (taskStudentNameNorm.startsWith(firstNameNorm + ' ')) return true;
+    if (taskStudentIdNorm === firstNameNorm) return true;
+  }
+
+  if (lastNameNorm && lastNameNorm.length >= 3) {
+    if (taskStudentNameNorm.endsWith(' ' + lastNameNorm)) return true;
+    if (taskStudentIdNorm.includes(lastNameNorm)) return true;
   }
 
   return false;
