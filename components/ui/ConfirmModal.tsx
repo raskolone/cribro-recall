@@ -41,7 +41,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <Button variant="secondary" onClick={onCancel}>
             {cancelText}
           </Button>
-          <Button variant="danger" onClick={onConfirm} className="bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/50">
+          <Button variant="danger" onClick={onConfirm} className="bg-danger/20 text-danger hover:bg-danger/30 border border-danger/50">
             {confirmText}
           </Button>
         </div>

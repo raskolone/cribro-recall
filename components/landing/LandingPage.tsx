@@ -47,9 +47,9 @@ const Typewriter = ({ words, loop }: { words: string[], loop: boolean }) => {
 const MockupWindow = ({ children, title }: { children: React.ReactNode, title?: string }) => (
   <div className="relative w-full rounded-2xl liquid-glass-panel border border-white/10 overflow-hidden shadow-2xl group hover:border-primary/30 transition-colors duration-500">
     <div className="h-8 bg-black/40 border-b border-white/5 flex items-center px-4 gap-2">
-      <div className="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
-      <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
-      <div className="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>
+      <div className="w-2.5 h-2.5 rounded-full bg-danger/80"></div>
+      <div className="w-2.5 h-2.5 rounded-full bg-warn/80"></div>
+      <div className="w-2.5 h-2.5 rounded-full bg-primary/80"></div>
       {title && <span className="ml-2 text-[10px] font-mono text-white/30 uppercase">{title}</span>}
     </div>
     <div className="p-4 sm:p-6 bg-[#0B0F19]">
@@ -251,7 +251,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                     <h4 className="text-xl md:text-2xl font-bold text-white mt-4 mb-6">
                       {language === 'pl' ? 'Lubię czytać książki w wolnym czasie.' : 'I like reading books in my free time.'}
                     </h4>
-                    <button className="text-yellow-500 text-sm font-bold flex items-center justify-center gap-2 mx-auto hover:text-yellow-400">
+                    <button className="text-primary text-sm font-bold flex items-center justify-center gap-2 mx-auto hover:text-primary">
                       <Lightbulb size={16} /> {language === 'pl' ? 'Pokaż wskazówkę' : 'Show hint'}
                     </button>
                   </div>
@@ -273,10 +273,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                       {language === 'pl' ? 'Poprzednie' : 'Previous'}
                     </button>
                     <div className="flex gap-3">
-                      <button className="px-6 py-3 rounded-xl bg-primary/40 border border-primary/20 text-white font-bold text-sm">
+                      <button className="px-6 py-3 rounded-xl bg-primary/40 border border-primary/20 text-accent-ink font-bold text-sm">
                         {language === 'pl' ? 'Sprawdź' : 'Check'}
                       </button>
-                      <button className="px-6 py-3 rounded-xl bg-primary text-black font-bold text-sm">
+                      <button className="px-6 py-3 rounded-xl bg-primary text-accent-ink font-bold text-sm">
                         {language === 'pl' ? 'Dalej' : 'Next'}
                       </button>
                     </div>
@@ -302,7 +302,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                     <div className="flex flex-wrap justify-between items-center gap-2 border-b border-white/10 pb-4">
                       <div className="flex items-center gap-3">
                         <span className="bg-white/5 px-2 py-1 rounded text-xs text-content-muted font-mono">Zdanie 1</span>
-                        <div className="flex items-center gap-1.5 text-xs text-blue-300 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-full">
+                        <div className="flex items-center gap-1.5 text-xs text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-full">
                           <Sparkles size={12} /> {language === 'pl' ? 'Sprawdzone przez: Asystent AI' : 'Verified by: AI Assistant'}
                         </div>
                       </div>
@@ -328,13 +328,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                     
                     <div className="pt-2">
                       <div className="text-[10px] text-content-muted uppercase tracking-widest mb-1">{language === 'pl' ? 'Twoja odpowiedź' : 'Your answer'}</div>
-                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-white text-sm">
+                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-accent-ink text-sm">
                         I usually go to the gym after work.
                       </div>
                     </div>
                     
-                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-2 text-blue-300 text-xs font-bold uppercase tracking-wider">
+                    <div className="bg-info/5 border border-info/20 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-2 text-info text-xs font-bold uppercase tracking-wider">
                         <Lightbulb size={14} /> {language === 'pl' ? 'Sprawdź Feedback' : 'Check Feedback'}
                       </div>
                       <p className="text-content-muted text-sm">
@@ -347,8 +347,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
             </div>
 
             <div className="space-y-6 lg:pl-12 order-1 lg:order-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-sm font-bold border border-blue-500/20">
-                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-bold border border-primary/20">
+                <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
                 {language === 'pl' ? 'Bezkompromisowa ocena' : 'Uncompromising grading'}
               </div>
               <h3 className="text-2xl font-bold text-white">
@@ -388,12 +388,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                 <p className="text-content-muted text-sm">{language === 'pl' ? 'Pełna lista uczniów z podglądem ich aktywności, historii lekcji i ogólnych postępów.' : 'Full list of students with an overview of their activity, lesson history, and overall progress.'}</p>
               </div>
               <div className="liquid-glass-card p-6 border border-white/5 hover:border-primary/30 transition-colors">
-                <BookOpen className="w-8 h-8 text-blue-400 mb-4" />
+                <BookOpen className="w-8 h-8 text-primary mb-4" />
                 <h3 className="text-xl font-bold text-white mb-2">{language === 'pl' ? 'Zestawy i Lekcje' : 'Sets & Lessons'}</h3>
                 <p className="text-content-muted text-sm">{language === 'pl' ? 'Twórz i przypisuj konkretne zestawy słownictwa oraz całe historie lekcji bezpośrednio do profili uczniów.' : 'Create and assign specific vocabulary sets and full lesson histories directly to student profiles.'}</p>
               </div>
               <div className="liquid-glass-card p-6 border border-white/5 hover:border-primary/30 transition-colors">
-                <CheckSquare className="w-8 h-8 text-emerald-400 mb-4" />
+                <CheckSquare className="w-8 h-8 text-primary mb-4" />
                 <h3 className="text-xl font-bold text-white mb-2">{language === 'pl' ? 'Prace Domowe i Testy' : 'Homework & Tests'}</h3>
                 <p className="text-content-muted text-sm">{language === 'pl' ? 'Zlecaj prace domowe i testy z dokładnymi terminami wykonania, aby skutecznie weryfikować wiedzę.' : 'Assign homework and tests with exact deadlines to effectively verify knowledge.'}</p>
               </div>
@@ -405,19 +405,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                 <div className="space-y-4">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-white/10 pb-4 gap-2">
                     <h4 className="text-lg font-bold text-white">{language === 'pl' ? 'Podgląd Ucznia: Jan Kowalski' : 'Student Overview: John Doe'}</h4>
-                    <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/30">Poziom: B2</span>
+                    <span className="bg-primary/20 text-primary px-3 py-1 rounded-full text-xs font-bold border border-primary/30">Poziom: B2</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-black/30 rounded-xl p-4 border border-white/5">
                       <h5 className="text-sm text-content-muted font-bold uppercase tracking-widest mb-3">{language === 'pl' ? 'Ostatnie Zadania' : 'Recent Tasks'}</h5>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between items-center bg-white/5 p-2 rounded border border-white/5">
-                          <span className="text-gray-300">Test: Present Perfect</span>
-                          <span className="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">92%</span>
+                          <span className="text-content">Test: Present Perfect</span>
+                          <span className="text-primary font-bold bg-primary/10 px-2 py-0.5 rounded">92%</span>
                         </div>
                         <div className="flex justify-between items-center bg-white/5 p-2 rounded border border-white/5">
-                          <span className="text-gray-300">Praca domowa (Lekcja 4)</span>
-                          <span className="text-yellow-400 font-bold bg-yellow-500/10 px-2 py-0.5 rounded">W trakcie</span>
+                          <span className="text-content">Praca domowa (Lekcja 4)</span>
+                          <span className="text-warn font-bold bg-warn/10 px-2 py-0.5 rounded">W trakcie</span>
                         </div>
                       </div>
                     </div>
@@ -439,9 +439,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
 
             {/* Divider */}
             <div className="col-span-1 lg:col-span-2 py-16">
-              <div className="w-full h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"></div>
+              <div className="w-full h-px bg-gradient-to-r from-transparent via-info/50 to-transparent"></div>
               <div className="text-center mt-8">
-                <span className="px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest">
+                <span className="px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest">
                   {language === 'pl' ? 'Dla Ucznia' : 'For Students'}
                 </span>
                 <h2 className="text-3xl md:text-5xl font-display font-bold text-white mt-4 mb-4">
@@ -453,7 +453,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
             {/* Student Features */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 col-span-1 lg:col-span-2">
               <div className="flex gap-4 p-6 liquid-glass-card items-start">
-                <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex-shrink-0 flex items-center justify-center text-purple-400 border border-purple-500/30">
+                <div className="w-12 h-12 rounded-xl bg-primary/20 flex-shrink-0 flex items-center justify-center text-primary border border-primary/30">
                   <Brain className="w-6 h-6" />
                 </div>
                 <div>
@@ -462,7 +462,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                 </div>
               </div>
               <div className="flex gap-4 p-6 liquid-glass-card items-start">
-                <div className="w-12 h-12 rounded-xl bg-pink-500/20 flex-shrink-0 flex items-center justify-center text-pink-400 border border-pink-500/30">
+                <div className="w-12 h-12 rounded-xl bg-primary/20 flex-shrink-0 flex items-center justify-center text-primary border border-primary/30">
                   <Settings className="w-6 h-6" />
                 </div>
                 <div>
@@ -471,7 +471,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                 </div>
               </div>
               <div className="flex gap-4 p-6 liquid-glass-card items-start">
-                <div className="w-12 h-12 rounded-xl bg-cyan-500/20 flex-shrink-0 flex items-center justify-center text-cyan-400 border border-cyan-500/30">
+                <div className="w-12 h-12 rounded-xl bg-primary/20 flex-shrink-0 flex items-center justify-center text-primary border border-primary/30">
                   <CheckSquare className="w-6 h-6" />
                 </div>
                 <div>
@@ -541,13 +541,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                 </div>
 
                 <div className="pt-4 border-t border-white/5 flex flex-wrap gap-2">
-                  <span className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-gray-300 text-xs font-medium">
+                  <span className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-content text-xs font-medium">
                     ⚡ AI & Large Language Models
                   </span>
-                  <span className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-gray-300 text-xs font-medium">
+                  <span className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-content text-xs font-medium">
                     🧠 Spaced Repetition (SM-2)
                   </span>
-                  <span className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-gray-300 text-xs font-medium">
+                  <span className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-content text-xs font-medium">
                     🎯 EdTech & Modern Web
                   </span>
                 </div>
@@ -555,15 +555,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
 
               {/* Card 2: Portfolio, Contact & Collaboration Tile */}
               <div className="liquid-glass-card p-6 sm:p-8 border border-white/10 flex flex-col justify-between group relative overflow-hidden rounded-2xl shadow-xl h-full">
-                <div className="absolute inset-0 bg-gradient-to-bl from-blue-500/5 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-bl from-info/5 via-transparent to-transparent pointer-events-none" />
 
                 <div>
                   <div className="flex items-center justify-between mb-6">
                     <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-[0_0_15px_rgba(16,185,129,0.15)]">
                       <Globe className="w-6 h-6" />
                     </div>
-                    <span className="text-[11px] text-emerald-400 font-mono uppercase tracking-wider bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span className="text-[11px] text-primary font-mono uppercase tracking-wider bg-primary/10 px-3 py-1 rounded-full border border-primary/20 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
                       {language === 'pl' ? 'Portfolio & Projekty' : 'Portfolio & Projects'}
                     </span>
                   </div>
@@ -584,7 +584,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                     href="https://www.maciej.pro" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="w-full px-6 py-3.5 rounded-xl bg-primary text-black hover:bg-primary-hover font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 group/link"
+                    className="w-full px-6 py-3.5 rounded-xl bg-primary text-accent-ink hover:bg-primary-hover font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 group/link"
                   >
                     <Globe className="w-4 h-4 group-hover/link:rotate-12 transition-transform" />
                     <span>www.maciej.pro</span>

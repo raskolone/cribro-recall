@@ -47,7 +47,7 @@ const InlineAILoading: React.FC<InlineAILoadingProps> = ({ language }) => {
         </div>
         <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden shadow-inner">
           <motion.div 
-            className="h-full bg-gradient-to-r from-emerald-500 to-primary relative"
+            className="h-full bg-gradient-to-r from-primary to-primary relative"
             style={{ width: `${progress}%` }}
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}

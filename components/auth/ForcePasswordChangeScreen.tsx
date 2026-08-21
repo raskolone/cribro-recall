@@ -70,10 +70,10 @@ const ForcePasswordChangeScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-base-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-2xl relative overflow-hidden border-orange-500/30">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-red-500"></div>
+      <Card className="w-full max-w-md shadow-2xl relative overflow-hidden border-warn/30">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-warn to-danger"></div>
         <div className="flex flex-col items-center mb-6 pt-4">
-          <div className="w-16 h-16 bg-orange-500/10 rounded-full flex items-center justify-center text-orange-500 mb-4">
+          <div className="w-16 h-16 bg-warn/10 rounded-full flex items-center justify-center text-warn mb-4">
             <ShieldAlert size={32} />
           </div>
           <h2 className="text-2xl font-bold text-center">{i18n.t("Witaj w ZEIAN!")}</h2>
@@ -84,7 +84,7 @@ const ForcePasswordChangeScreen: React.FC = () => {
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-3 rounded-lg text-sm mb-6">
+          <div className="bg-danger/10 border border-danger/20 text-danger p-3 rounded-lg text-sm mb-6">
             {error}
           </div>
         )}
@@ -135,7 +135,7 @@ const ForcePasswordChangeScreen: React.FC = () => {
             <Button
               onClick={handleGoogleLink}
               variant="secondary"
-              className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-900 border-transparent transition-all"
+              className="w-full flex items-center justify-center gap-3 bg-white hover:bg-content text-text-faint border-transparent transition-all"
               isLoading={isLoading}
             >
               <span className="font-bold">{i18n.t("Połącz z kontem Google")}</span>

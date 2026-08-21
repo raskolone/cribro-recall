@@ -67,7 +67,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
         {onBack && (
           <button 
             onClick={onBack}
-            className="absolute top-4 left-4 text-gray-400 hover:text-white transition-colors"
+            className="absolute top-4 left-4 text-text-2 hover:text-white transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -82,20 +82,20 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
           <h1 className="text-2xl font-bold mt-4">
             {isLoginMode ? 'Welcome back' : 'Create an account'}
           </h1>
-          <p className="text-gray-500 mt-2">
+          <p className="text-text-mute mt-2">
             {isLoginMode ? 'Sign in to continue your learning journey.' : 'Sign up to start boosting your vocabulary.'}
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-500 text-sm text-center">
+          <div className="mb-4 p-3 bg-danger/10 border border-danger/50 rounded-lg text-danger text-sm text-center">
             {error}
           </div>
         )}
 
         <form onSubmit={handleEmailAuth} className="space-y-4">
           <div>
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{i18n.t("Nazwa użytkownika (Login)")}</label>
+            <label className="block text-sm font-bold text-text-faint dark:text-content mb-1">{i18n.t("Nazwa użytkownika (Login)")}</label>
             <input
               type="text"
               value={email}
@@ -106,7 +106,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{i18n.t("Password")}</label>
+            <label className="block text-sm font-bold text-text-faint dark:text-content mb-1">{i18n.t("Password")}</label>
             <input
               type="password"
               value={password}
@@ -127,7 +127,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
             <div className="w-full border-t border-base-300 dark:border-dark-base-300"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-base-200 dark:bg-dark-base-200 text-gray-500">{i18n.t("Or continue with")}</span>
+            <span className="px-2 bg-base-200 dark:bg-dark-base-200 text-text-mute">{i18n.t("Or continue with")}</span>
           </div>
         </div>
 
@@ -144,7 +144,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
                                 </Button>
         </div>
 
-        <div className="mt-6 text-center text-sm text-gray-400">
+        <div className="mt-6 text-center text-sm text-text-2">
           {isLoginMode ? "Don't have an account? " : "Already have an account? "}
           <button 
             onClick={() => {

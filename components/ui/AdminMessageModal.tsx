@@ -64,7 +64,7 @@ const AdminMessageModal: React.FC = () => {
           <button 
             onClick={handleDismiss}
             disabled={isDismissing}
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-white transition-colors disabled:opacity-50"
           >
             <X size={20} />
           </button>
@@ -82,7 +82,7 @@ const AdminMessageModal: React.FC = () => {
                 {new Date(user.adminMessage.createdAt).toLocaleString('pl-PL')}
               </p>
               
-              <div className="bg-black/20 p-4 rounded-xl border border-white/5 text-gray-200 text-sm leading-relaxed whitespace-pre-wrap">
+              <div className="bg-black/20 p-4 rounded-xl border border-white/5 text-content text-sm leading-relaxed whitespace-pre-wrap">
                 {user.adminMessage.text}
               </div>
               
@@ -90,7 +90,7 @@ const AdminMessageModal: React.FC = () => {
                 <Button 
                   onClick={handleDismiss} 
                   isLoading={isDismissing}
-                  className="bg-primary text-black font-bold px-8 shadow-lg shadow-primary/20 hover:shadow-primary/40"
+                  className="bg-primary text-accent-ink font-bold px-8 shadow-lg shadow-primary/20 hover:shadow-primary/40"
                 >
                   Zrozumiałem
                 </Button>

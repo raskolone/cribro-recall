@@ -71,7 +71,7 @@ const PronunciationMic: React.FC<PronunciationMicProps> = ({ targetWord }) => {
         onClick={isRecording ? stopRecording : startRecording}
         className={`p-2 rounded-full transition-all flex items-center justify-center
           ${isRecording 
-            ? 'bg-red-500/20 text-red-500 animate-pulse border border-red-500/50' 
+            ? 'bg-danger/20 text-danger animate-pulse border border-danger/50' 
             : 'bg-primary/10 text-primary hover:bg-primary/20 border border-transparent'}
         `}
         title={isRecording ? "Stop recording" : "Test Pronunciation"}

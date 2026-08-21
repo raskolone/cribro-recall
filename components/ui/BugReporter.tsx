@@ -66,7 +66,7 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
     return (
       <button 
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 bg-red-500 hover:bg-red-600 text-white p-3 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110"
+        className="fixed bottom-6 right-6 z-50 bg-danger hover:bg-danger text-white p-3 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110"
         title={i18n.t("Zgłoś problem")}
       >
         <Bug size={24} />
@@ -75,9 +75,9 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-80 sm:w-96 glass-panel rounded-2xl shadow-2xl overflow-hidden border border-red-500/30 animate-in slide-in-from-bottom-5">
-      <div className="bg-red-500/10 p-4 border-b border-white/10 flex justify-between items-center">
-        <h3 className="font-bold flex items-center gap-2 text-red-400">
+    <div className="fixed bottom-6 right-6 z-50 w-80 sm:w-96 glass-panel rounded-2xl shadow-2xl overflow-hidden border border-danger/30 animate-in slide-in-from-bottom-5">
+      <div className="bg-danger/10 p-4 border-b border-white/10 flex justify-between items-center">
+        <h3 className="font-bold flex items-center gap-2 text-danger">
           <AlertCircle size={18} />
           
                             {i18n.t("Zgłoś problem")}
@@ -94,7 +94,7 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
       </div>
       
       {submitted ? (
-        <div className="p-6 text-center text-green-400 font-medium">
+        <div className="p-6 text-center text-primary font-medium">
           
                             {i18n.t("Dziękujemy! Twoje zgłoszenie zostało wysłane.")}
                           </div>
@@ -108,13 +108,13 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder={i18n.t("Opisz problem... (np. Przycisk X nie reaguje po kliknięciu)")}
-            className="w-full h-32 p-3 bg-black/50 border border-white/10 rounded-xl text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none resize-none placeholder:text-white/20"
+            className="w-full h-32 p-3 bg-black/50 border border-white/10 rounded-xl text-sm focus:border-danger focus:ring-1 focus:ring-danger outline-none resize-none placeholder:text-white/20"
             required
           />
           <button
             type="submit"
             disabled={isSubmitting || !description.trim()}
-            className="w-full bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:hover:bg-red-500 text-white py-2.5 rounded-xl font-medium transition-colors"
+            className="w-full bg-danger hover:bg-danger disabled:opacity-50 disabled:hover:bg-danger text-white py-2.5 rounded-xl font-medium transition-colors"
           >
             {isSubmitting ? 'Wysyłanie...' : 'Wyślij zgłoszenie'}
           </button>
