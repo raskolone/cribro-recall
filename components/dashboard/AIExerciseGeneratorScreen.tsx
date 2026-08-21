@@ -433,7 +433,7 @@ const AILoadingButton = ({ isLoading, onClick, children, className, disabled, lo
       disabled={isLoading || disabled}
       className={`relative overflow-hidden ${className} ${
         variant === 'primary' 
-          ? 'bg-primary text-black hover:bg-primary/95' 
+          ? 'bg-primary text-accent-ink hover:bg-primary/95' 
           : 'bg-base-200 text-white hover:bg-base-300 border border-white/10'
       } rounded-xl font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed`}
     >
@@ -1939,7 +1939,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   }
                 );
               }}
-              className="p-2 text-content-muted hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors"
+              className="p-2 text-content-muted hover:text-danger hover:bg-white/5 rounded-lg transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
@@ -1972,7 +1972,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
           {isTeacher && (
             <button
               onClick={() => setIsConfigOpen(!isConfigOpen)}
-              className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-white transition-colors"
               title={language === 'pl' ? 'Konfiguracja Promptu' : 'Prompt Setup'}
             >
               <Settings className="w-5 h-5" />
@@ -2011,9 +2011,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
       {/* Prompts config panel */}
       {isConfigOpen && (
-        <Card className="p-5 border-amber-500/30 bg-amber-500/[0.02] space-y-4 animate-fade-in-up">
+        <Card className="p-5 border-warn/30 bg-warn/[0.02] space-y-4 animate-fade-in-up">
           <div className="flex justify-between items-center">
-            <h3 className="font-bold text-amber-500 flex items-center gap-2 text-sm uppercase tracking-wider">
+            <h3 className="font-bold text-warn flex items-center gap-2 text-sm uppercase tracking-wider">
               <Settings className="w-4 h-4 animate-spin-slow" />
               {language === 'pl' ? 'PROTOTYP: Narzędzia Konfiguracji Promptów' : 'PROTOTYPE: Prompt Configuration Tools'}
             </h3>
@@ -2068,22 +2068,22 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="mb-6 bg-gradient-to-r from-red-500/20 to-red-900/20 border border-red-500/30 backdrop-blur-md text-red-100 p-4 rounded-2xl shadow-[0_8px_30px_rgba(239,68,68,0.15)] flex flex-col gap-3 relative overflow-hidden"
+            className="mb-6 bg-gradient-to-r from-danger/20 to-danger/20 border border-danger/30 backdrop-blur-md text-danger p-4 rounded-2xl shadow-[0_8px_30px_rgba(239,68,68,0.15)] flex flex-col gap-3 relative overflow-hidden"
           >
-            <div className="absolute top-0 left-0 w-1 h-full bg-red-500/50" />
+            <div className="absolute top-0 left-0 w-1 h-full bg-danger/50" />
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-red-500/20 rounded-xl shrink-0">
-                <AlertTriangle className="w-5 h-5 text-red-400" />
+              <div className="p-2 bg-danger/20 rounded-xl shrink-0">
+                <AlertTriangle className="w-5 h-5 text-danger" />
               </div>
               <div className="flex-1 mt-1">
-                <h4 className="font-bold text-red-300 text-sm mb-1">{language === 'pl' ? 'Ups, coś poszło nie tak' : 'Oops, something went wrong'}</h4>
-                <div className="text-sm text-red-200/90 leading-relaxed">{error}</div>
+                <h4 className="font-bold text-danger text-sm mb-1">{language === 'pl' ? 'Ups, coś poszło nie tak' : 'Oops, something went wrong'}</h4>
+                <div className="text-sm text-danger/90 leading-relaxed">{error}</div>
               </div>
               <button 
                 onClick={() => setError(null)}
                 className="p-1 hover:bg-white/10 rounded-lg transition-colors shrink-0"
               >
-                <X className="w-5 h-5 text-red-400/70" />
+                <X className="w-5 h-5 text-danger/70" />
               </button>
 
             </div>
@@ -2119,9 +2119,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               id="tour-help-button"
                               onClick={onShowOnboarding}
                               title={language === "pl" ? "Pomoc i Przewodnik po aplikacji" : "Help & App Guide"}
-                              className="group relative flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-400 text-emerald-300 hover:text-white shadow-[0_0_12px_rgba(16,185,129,0.15)] transition-all duration-300 active:scale-95 cursor-pointer"
+                              className="group relative flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary text-primary hover:text-accent-ink shadow-[0_0_12px_rgba(16,185,129,0.15)] transition-all duration-300 active:scale-95 cursor-pointer"
                             >
-                              <HelpCircle className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform drop-shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
+                              <HelpCircle className="w-4 h-4 text-primary group-hover:scale-110 transition-transform drop-shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
                               <span className="text-xs font-bold font-sans tracking-wide">
                                 {language === "pl" ? "Pomoc" : "Help"}
                               </span>
@@ -2132,21 +2132,21 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         <div className="flex items-center gap-2 ml-auto">
                           
                           {/* Streak Counter Badge */}
-                          <div className="flex items-center gap-2 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-red-500/15 border border-amber-500/30 px-3 py-1.5 rounded-2xl shadow-[0_0_15px_rgba(245,158,11,0.15)] shrink-0">
-                            <div className="p-1 rounded-lg bg-gradient-to-tr from-amber-500 to-orange-500 text-slate-950 font-black shadow-[0_0_8px_rgba(245,158,11,0.5)]">
-                              <Flame className="w-4 h-4 text-slate-950 fill-amber-200 animate-bounce" />
+                          <div className="flex items-center gap-2 bg-gradient-to-r from-warn/15 via-warn/15 to-danger/15 border border-warn/30 px-3 py-1.5 rounded-2xl shadow-[0_0_15px_rgba(245,158,11,0.15)] shrink-0">
+                            <div className="p-1 rounded-lg bg-gradient-to-tr from-warn to-warn text-text-faint font-black shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                              <Flame className="w-4 h-4 text-text-faint fill-warn animate-bounce" />
                             </div>
                             <div className="flex items-center gap-1 text-xs font-black text-white">
                               {user?.streakCount ? (
                                 <>
-                                  <span className="text-amber-400 font-bold">{user.streakCount}</span>
-                                  <span className="text-[11px] text-amber-200/90 font-semibold">
+                                  <span className="text-warn font-bold">{user.streakCount}</span>
+                                  <span className="text-[11px] text-warn/90 font-semibold">
                                     {language === 'pl' ? (user.streakCount === 1 ? 'dzień' : 'dni') : (user.streakCount === 1 ? 'day' : 'days')}
                                   </span>
                                   <span>🔥</span>
                                 </>
                               ) : (
-                                <span className="text-amber-200/90 text-[11px]">0 dni 🔥</span>
+                                <span className="text-warn/90 text-[11px]">0 dni 🔥</span>
                               )}
                             </div>
                           </div>
@@ -2164,8 +2164,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               : (language === 'pl' ? 'Czas na trening' : 'Time for training');
                           })()}
                         </h2>
-                        <p className="text-xs sm:text-sm text-emerald-400 font-semibold flex items-center justify-center gap-1.5">
-                          <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 animate-pulse" />
+                        <p className="text-xs sm:text-sm text-primary font-semibold flex items-center justify-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-primary shrink-0 animate-pulse" />
                           <span>
                             {language === 'pl' 
                               ? (translatedSentencesCount === 0
@@ -2181,7 +2181,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
                     {/* ASSIGNED HOMEWORK ALERT BANNER FOR STUDENT */}
                     {!isTeacher && specialTasks.length > 0 && (
-                      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-primary/15 to-emerald-500/20 border border-primary/40 shadow-[0_0_25px_rgba(114,240,180,0.15)] space-y-3 relative overflow-hidden animate-fade-in-up">
+                      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-primary/20 via-primary/15 to-primary/20 border border-primary/40 shadow-[0_0_25px_rgba(114,240,180,0.15)] space-y-3 relative overflow-hidden animate-fade-in-up">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2.5">
                             <span className="w-8 h-8 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary text-base">
@@ -2208,7 +2208,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 <h4 className="font-bold text-white text-xs sm:text-sm truncate">
                                   {hwTask.title || (language === 'pl' ? 'Praca domowa: Tłumaczenia' : 'Homework: Translations')}
                                 </h4>
-                                <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1">
+                                <p className="text-[11px] text-text-2 mt-0.5 line-clamp-1">
                                   {hwTask.instructions || `${hwTask.sentences?.length || 0} zdań w zestawie`}
                                 </p>
                               </div>
@@ -2220,7 +2220,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                       onChangeView('homework', { taskId: hwTask.id });
                                     }
                                   }}
-                                  className="text-xs py-1.5 px-3 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl flex items-center gap-1.5 shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:scale-105 transition-all cursor-pointer"
+                                  className="text-xs py-1.5 px-3 bg-primary hover:bg-primary/90 text-accent-ink font-bold rounded-xl flex items-center gap-1.5 shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:scale-105 transition-all cursor-pointer"
                                 >
                                   <Edit3 size={13} />
                                   <span>{language === 'pl' ? 'Rozwiąż zadanie' : 'Start homework'}</span>
@@ -2247,10 +2247,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     {/* SECTION 1: TRYB ĆWICZENIA */}
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                        <label className="text-[11px] font-bold text-text-2 uppercase tracking-widest">
                           {language === 'pl' ? 'Tryb ćwiczenia' : 'Exercise mode'}
                         </label>
-                        <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-semibold">
+                        <span className="text-xs font-mono text-primary bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full font-semibold">
                           4 Formaty
                         </span>
                       </div>
@@ -2259,7 +2259,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                         {/* Card 1: Układanka */}
                         <div id="tour-mode-puzzle" className="relative group">
-                          <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-emerald-500/0 via-emerald-500/40 to-emerald-500/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
+                          <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-primary/0 via-primary/40 to-primary/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
                           <button
                             type="button"
                             onClick={() => {
@@ -2268,24 +2268,24 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             }}
                             className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[160px] ${
                               exerciseFormat === 'puzzle'
-                                ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.45)] scale-[1.01]'
-                                : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-emerald-500/30 hover:border-emerald-500/70 hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] hover:-translate-y-0.5'
+                                ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-primary shadow-[0_0_35px_rgba(16,185,129,0.45)] scale-[1.01]'
+                                : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-primary/30 hover:border-primary/70 hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] hover:-translate-y-0.5'
                             }`}
                           >
                             <div className="flex items-center justify-between w-full z-10">
-                              <div className={`w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover/card:scale-110 transition-transform ${exerciseFormat === 'puzzle' ? 'text-emerald-400 bg-emerald-500/20 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]' : ''}`}>
+                              <div className={`w-11 h-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover/card:scale-110 transition-transform ${exerciseFormat === 'puzzle' ? 'text-primary bg-primary/20 border-primary shadow-[0_0_15px_rgba(16,185,129,0.5)]' : ''}`}>
                                 <LayoutGrid className="w-5 h-5 drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
                               </div>
-                              <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold text-primary bg-primary/10 border border-primary/20">
                                 {language === 'pl' ? 'Rekomendowane' : 'Recommended'}
                               </span>
                             </div>
 
                             <div className="z-10 mt-3">
-                              <h3 className="text-xl font-serif font-bold text-white group-hover/card:text-emerald-400 transition-colors flex items-center gap-1.5">
-                                {language === 'pl' ? 'Układanka' : 'Puzzle'} <ChevronRight className="w-4 h-4 text-emerald-400 group-hover/card:translate-x-1 transition-transform" />
+                              <h3 className="text-xl font-serif font-bold text-white group-hover/card:text-primary transition-colors flex items-center gap-1.5">
+                                {language === 'pl' ? 'Układanka' : 'Puzzle'} <ChevronRight className="w-4 h-4 text-primary group-hover/card:translate-x-1 transition-transform" />
                               </h3>
-                              <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                              <p className="text-xs text-text-2 mt-1 leading-relaxed">
                                 {language === 'pl' ? 'Układaj zdania z interaktywnych klocków i ucz się szybkiego szyku.' : 'Assemble sentences from interactive tiles.'}
                               </p>
                             </div>
@@ -2294,7 +2294,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
                         {/* Card 2: Prawdziwe wyzwanie */}
                         <div id="tour-mode-typing" className="relative group">
-                          <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-cyan-500/0 via-cyan-500/40 to-cyan-500/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
+                          <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-primary/0 via-primary/40 to-primary/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
                           <button
                             type="button"
                             onClick={() => {
@@ -2303,24 +2303,24 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             }}
                             className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[160px] ${
                               exerciseFormat === 'typing'
-                                ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-cyan-400 shadow-[0_0_35px_rgba(6,182,212,0.45)] scale-[1.01]'
-                                : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-cyan-500/30 hover:border-cyan-500/70 hover:shadow-[0_0_25px_rgba(6,182,212,0.25)] hover:-translate-y-0.5'
+                                ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-primary shadow-[0_0_35px_rgba(6,182,212,0.45)] scale-[1.01]'
+                                : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-primary/30 hover:border-primary/70 hover:shadow-[0_0_25px_rgba(6,182,212,0.25)] hover:-translate-y-0.5'
                             }`}
                           >
                             <div className="flex items-center justify-between w-full z-10">
-                              <div className={`w-11 h-11 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover/card:scale-110 transition-transform ${exerciseFormat === 'typing' ? 'text-cyan-400 bg-cyan-500/20 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : ''}`}>
+                              <div className={`w-11 h-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover/card:scale-110 transition-transform ${exerciseFormat === 'typing' ? 'text-primary bg-primary/20 border-primary shadow-[0_0_15px_rgba(6,182,212,0.5)]' : ''}`}>
                                 <Keyboard className="w-5 h-5 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
                               </div>
-                              <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20">
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold text-primary bg-primary/10 border border-primary/20">
                                 {language === 'pl' ? 'Wpisywanie' : 'Typing'}
                               </span>
                             </div>
 
                             <div className="z-10 mt-3">
-                              <h3 className="text-xl font-serif font-bold text-white group-hover/card:text-cyan-400 transition-colors flex items-center gap-1.5">
-                                {language === 'pl' ? 'Prawdziwe Wyzwanie' : 'Real Challenge'} <ChevronRight className="w-4 h-4 text-cyan-400 group-hover/card:translate-x-1 transition-transform" />
+                              <h3 className="text-xl font-serif font-bold text-white group-hover/card:text-primary transition-colors flex items-center gap-1.5">
+                                {language === 'pl' ? 'Prawdziwe Wyzwanie' : 'Real Challenge'} <ChevronRight className="w-4 h-4 text-primary group-hover/card:translate-x-1 transition-transform" />
                               </h3>
-                              <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                              <p className="text-xs text-text-2 mt-1 leading-relaxed">
                                 {language === 'pl' ? 'Pisanie pełnych zdań z pamięci i inteligentna korekta AI.' : 'Type full sentences with instant AI feedback.'}
                               </p>
                             </div>
@@ -2335,19 +2335,19 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <button
                             type="button"
                             onClick={() => handleStartOtherPractice('flashcards')}
-                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-purple-500/30 hover:border-purple-500/70 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:-translate-y-0.5 text-left min-h-[105px]"
+                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-primary/30 hover:border-primary/70 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:-translate-y-0.5 text-left min-h-[105px]"
                           >
                             <div className="flex items-center justify-between w-full z-10">
-                              <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-lg group-hover/card:scale-110 transition-transform">
+                              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-lg group-hover/card:scale-110 transition-transform">
                                 🗂️
                               </div>
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-purple-400 bg-purple-500/10 border border-purple-500/20">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-primary bg-primary/10 border border-primary/20">
                                 {language === 'pl' ? 'Nauka' : 'Learn'}
                               </span>
                             </div>
                             <div className="z-10 mt-2">
-                              <h4 className="text-sm font-serif font-bold text-white group-hover/card:text-purple-300 transition-colors flex items-center gap-1">
-                                {language === 'pl' ? 'Fiszki' : 'Flashcards'} <ChevronRight className="w-3.5 h-3.5 text-purple-400 group-hover/card:translate-x-1 transition-transform" />
+                              <h4 className="text-sm font-serif font-bold text-white group-hover/card:text-primary transition-colors flex items-center gap-1">
+                                {language === 'pl' ? 'Fiszki' : 'Flashcards'} <ChevronRight className="w-3.5 h-3.5 text-primary group-hover/card:translate-x-1 transition-transform" />
                               </h4>
                             </div>
                           </button>
@@ -2358,19 +2358,19 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <button
                             type="button"
                             onClick={() => handleStartOtherPractice('match')}
-                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-amber-500/30 hover:border-amber-500/70 hover:shadow-[0_0_20px_rgba(245,158,11,0.25)] hover:-translate-y-0.5 text-left min-h-[105px]"
+                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-warn/30 hover:border-warn/70 hover:shadow-[0_0_20px_rgba(245,158,11,0.25)] hover:-translate-y-0.5 text-left min-h-[105px]"
                           >
                             <div className="flex items-center justify-between w-full z-10">
-                              <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-lg group-hover/card:scale-110 transition-transform">
+                              <div className="w-9 h-9 rounded-xl bg-warn/10 border border-warn/20 flex items-center justify-center text-warn text-lg group-hover/card:scale-110 transition-transform">
                                 🧩
                               </div>
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-warn bg-warn/10 border border-warn/20">
                                 {language === 'pl' ? 'Gra' : 'Game'}
                               </span>
                             </div>
                             <div className="z-10 mt-2">
-                              <h4 className="text-sm font-serif font-bold text-white group-hover/card:text-amber-300 transition-colors flex items-center gap-1">
-                                {language === 'pl' ? 'Dopasowanie' : 'Match'} <ChevronRight className="w-3.5 h-3.5 text-amber-400 group-hover/card:translate-x-1 transition-transform" />
+                              <h4 className="text-sm font-serif font-bold text-white group-hover/card:text-warn transition-colors flex items-center gap-1">
+                                {language === 'pl' ? 'Dopasowanie' : 'Match'} <ChevronRight className="w-3.5 h-3.5 text-warn group-hover/card:translate-x-1 transition-transform" />
                               </h4>
                             </div>
                           </button>
@@ -2381,9 +2381,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     {/* LOWER SECTION: EXPANDED BARS (ŹRÓDŁO MATERIAŁU & ILOŚĆ ZDAŃ STACKED VERTICALLY - DESKTOP ONLY) */}
                     <div id="tour-vocab-source" className="hidden sm:flex flex-col gap-4 w-full">
                       {/* Bar 1: Źródło materiału */}
-                      <div className="w-full bg-[#0e1626] border-2 border-slate-700/80 p-4 rounded-3xl shadow-md space-y-3">
+                      <div className="w-full bg-[#0e1626] border-2 border-line-strong/80 p-4 rounded-3xl shadow-md space-y-3">
                         <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                          <label className="text-[11px] font-bold text-text-2 uppercase tracking-widest">
                             {language === 'pl' ? 'Źródło materiału' : 'Material Source'}
                           </label>
                         </div>
@@ -2391,19 +2391,19 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         <button
                           type="button"
                           onClick={() => setIsLessonSelectorOpen(true)}
-                          className="w-full group relative flex items-center justify-between px-4 py-3.5 rounded-2xl bg-[#070b12] border border-white/20 hover:border-emerald-500/60 shadow-[0_4px_15px_rgba(0,0,0,0.4)] hover:shadow-[0_0_20px_rgba(16,185,129,0.25)] transition-all duration-300 cursor-pointer overflow-hidden text-left"
+                          className="w-full group relative flex items-center justify-between px-4 py-3.5 rounded-2xl bg-[#070b12] border border-white/20 hover:border-primary/60 shadow-[0_4px_15px_rgba(0,0,0,0.4)] hover:shadow-[0_0_20px_rgba(16,185,129,0.25)] transition-all duration-300 cursor-pointer overflow-hidden text-left"
                         >
-                          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                          <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                           
                           <div className="flex items-center gap-3 z-10 min-w-0 flex-1 mr-2">
-                            <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                            <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary group-hover:scale-110 transition-transform shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
                               {selectedSetId === 'basket' ? <ShoppingBag className="w-4.5 h-4.5" /> : <BookOpen className="w-4.5 h-4.5" />}
                             </div>
                             <div className="flex flex-col min-w-0">
-                              <span className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors truncate">
+                              <span className="text-sm font-bold text-white group-hover:text-primary transition-colors truncate">
                                 {language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary Source'}
                               </span>
-                              <span className="text-xs text-gray-400 truncate">
+                              <span className="text-xs text-text-2 truncate">
                                 {selectedSetId === 'basket' ? (
                                   language === 'pl' ? `Koszyk słówek (${basketWords.length})` : `Word Basket (${basketWords.length})`
                                 ) : selectedLessonIds.length > 0 ? (
@@ -2419,13 +2419,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             {basketWords.length > 0 && (
                               <span 
                                 onClick={(e) => { e.stopPropagation(); setIsBasketModalOpen(true); }}
-                                className="text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1 hover:scale-105 transition-transform"
+                                className="text-xs font-bold text-primary bg-primary/15 border border-primary/30 px-2.5 py-1 rounded-full flex items-center gap-1 hover:scale-105 transition-transform"
                               >
                                 <ShoppingBag className="w-3.5 h-3.5" />
                                 <span>{basketWords.length}</span>
                               </span>
                             )}
-                            <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-400 group-hover:bg-emerald-500 group-hover:text-black transition-all flex items-center gap-1">
+                            <div className="px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-xs font-bold text-primary group-hover:bg-primary group-hover:text-accent-ink transition-all flex items-center gap-1">
                               <span>{language === 'pl' ? 'Wybierz' : 'Select'}</span>
                               <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                             </div>
@@ -2435,22 +2435,22 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         {/* Selected chips list */}
                         <div className="flex flex-wrap items-center gap-1.5 px-1 pt-1">
                           {selectedSetId === 'basket' ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
-                              <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/15 border border-primary/30 text-primary shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+                              <ShoppingBag className="w-3.5 h-3.5 text-primary" />
                               {language === 'pl' ? `Koszyk Słówek (${basketWords.length} słów)` : `Word Basket (${basketWords.length} words)`}
                             </span>
                           ) : selectedLessonIds.length > 0 ? (
                             vocabularySets
                               .filter(s => selectedLessonIds.includes(s.id))
                               .map((set, i) => (
-                                <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
-                                  <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                                <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/15 border border-primary/30 text-primary shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+                                  <BookOpen className="w-3.5 h-3.5 text-primary" />
                                   {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
                                 </span>
                               ))
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-gray-400">
-                              <BookOpen className="w-3.5 h-3.5 text-gray-400" />
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-text-2">
+                              <BookOpen className="w-3.5 h-3.5 text-text-2" />
                               {language === 'pl' ? 'Słownictwo Ogólne: Miks i Koszyk' : 'General Vocabulary Mix'}
                             </span>
                           )}
@@ -2458,9 +2458,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       </div>
 
                       {/* Bar 2: Ilość zadań */}
-                      <div className="w-full bg-[#0e1626] border-2 border-slate-700/80 p-4 rounded-3xl shadow-md space-y-3">
+                      <div className="w-full bg-[#0e1626] border-2 border-line-strong/80 p-4 rounded-3xl shadow-md space-y-3">
                         <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                          <label className="text-[11px] font-bold text-text-2 uppercase tracking-widest">
                             {language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}
                           </label>
                           <span className="text-2xl font-black text-white font-mono leading-none">
@@ -2478,7 +2478,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             onChange={(e) => {
                               setNumSentences(parseInt(e.target.value));
                             }}
-                            className="w-full h-2 bg-[#1a2536] rounded-lg appearance-none cursor-pointer accent-emerald-400 focus:outline-none"
+                            className="w-full h-2 bg-[#1a2536] rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
                           />
 
                           <div className="grid grid-cols-4 gap-2 pt-0.5">
@@ -2492,7 +2492,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 className={`py-2 rounded-xl font-bold text-xs transition-all duration-200 ${
                                   numSentences === val
                                     ? 'bg-[#283548] border border-white/20 text-white shadow-inner'
-                                    : 'bg-[#18212e] border border-white/5 text-gray-400 hover:text-white hover:bg-[#1f2b3c]'
+                                    : 'bg-[#18212e] border border-white/5 text-text-2 hover:text-white hover:bg-[#1f2b3c]'
                                 }`}
                               >
                                 {val}
@@ -2509,15 +2509,15 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         onClick={() => handleGenerate(false)}
                         isLoading={isLoading}
                         loadingText={language === 'pl' ? 'AI przygotowuje ćwiczenie...' : 'AI is preparing the exercise...'}
-                        className="w-full py-4 px-6 rounded-2xl border border-emerald-500/50 bg-gradient-to-r from-emerald-950/80 via-[#132c25] to-emerald-950/80 hover:from-emerald-900/90 hover:to-emerald-900/90 text-white font-bold text-base flex items-center justify-center gap-3 transition-all duration-300 shadow-[0_0_25px_rgba(16,185,129,0.2)] hover:shadow-[0_0_35px_rgba(16,185,129,0.35)] hover:scale-[1.008] active:scale-[0.995] group"
+                        className="w-full py-4 px-6 rounded-2xl border border-primary/50 bg-gradient-to-r from-primary/80 via-[#132c25] to-primary/80 hover:from-primary/90 hover:to-primary/90 text-white font-bold text-base flex items-center justify-center gap-3 transition-all duration-300 shadow-[0_0_25px_rgba(16,185,129,0.2)] hover:shadow-[0_0_35px_rgba(16,185,129,0.35)] hover:scale-[1.008] active:scale-[0.995] group"
                       >
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse shrink-0" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse shrink-0" />
                         <span>
                           {language === 'pl'
                             ? `Wygeneruj ${numSentences === 1 ? '1 zdanie' : numSentences >= 2 && numSentences <= 4 ? `${numSentences} zdania` : `${numSentences} zdań`}`
                             : `Generate ${numSentences} ${numSentences === 1 ? 'sentence' : 'sentences'}`}
                         </span>
-                        <ArrowRight className="w-5 h-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                        <ArrowRight className="w-5 h-5 text-primary group-hover:translate-x-1 transition-transform" />
                       </AILoadingButton>
                     </div>
                   </div>
@@ -2546,8 +2546,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             <div className="flex items-center gap-3">
                               <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border ${
                                 exerciseFormat === 'puzzle'
-                                  ? 'bg-emerald-500/20 border-emerald-400 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-                                  : 'bg-cyan-500/20 border-cyan-400 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)]'
+                                  ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                                  : 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(6,182,212,0.4)]'
                               }`}>
                                 {exerciseFormat === 'puzzle' ? (
                                   <LayoutGrid className="w-5 h-5" />
@@ -2561,7 +2561,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                     ? (language === 'pl' ? 'Układanka' : 'Puzzle')
                                     : (language === 'pl' ? 'Prawdziwe Wyzwanie' : 'Real Challenge')}
                                 </h3>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-text-2">
                                   {language === 'pl' ? 'Konfiguracja treningu' : 'Training setup'}
                                 </p>
                               </div>
@@ -2570,7 +2570,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             <button
                               type="button"
                               onClick={() => setIsConfigModalOpen(false)}
-                              className="p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
+                              className="p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-white transition-colors cursor-pointer"
                             >
                               <X className="w-5 h-5" />
                             </button>
@@ -2583,8 +2583,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               onClick={() => setExerciseFormat('puzzle')}
                               className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                                 exerciseFormat === 'puzzle'
-                                  ? 'bg-emerald-500/20 border border-emerald-400 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                                  : 'bg-white/5 border border-white/10 text-gray-400 hover:text-white'
+                                  ? 'bg-primary/20 border border-primary text-primary shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                                  : 'bg-white/5 border border-white/10 text-text-2 hover:text-white'
                               }`}
                             >
                               <LayoutGrid className="w-3.5 h-3.5" />
@@ -2596,8 +2596,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               onClick={() => setExerciseFormat('typing')}
                               className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                                 exerciseFormat === 'typing'
-                                  ? 'bg-cyan-500/20 border border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
-                                  : 'bg-white/5 border border-white/10 text-gray-400 hover:text-white'
+                                  ? 'bg-primary/20 border border-primary text-primary shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                                  : 'bg-white/5 border border-white/10 text-text-2 hover:text-white'
                               }`}
                             >
                               <Keyboard className="w-3.5 h-3.5" />
@@ -2610,7 +2610,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             {/* Section 1: Źródło materiału */}
                             <div className="bg-[#121929] border border-white/10 p-4 rounded-2xl space-y-3">
                               <div className="flex items-center justify-between">
-                                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                <label className="text-[11px] font-bold text-text-2 uppercase tracking-widest">
                                   {language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary Source'}
                                 </label>
                               </div>
@@ -2618,17 +2618,17 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               <button
                                 type="button"
                                 onClick={() => setIsLessonSelectorOpen(true)}
-                                className="w-full group relative flex items-center justify-between px-4 py-3 rounded-xl bg-[#080d16] border border-white/20 hover:border-emerald-500/60 shadow-md transition-all cursor-pointer text-left"
+                                className="w-full group relative flex items-center justify-between px-4 py-3 rounded-xl bg-[#080d16] border border-white/20 hover:border-primary/60 shadow-md transition-all cursor-pointer text-left"
                               >
                                 <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
-                                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                                  <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/40 flex items-center justify-center text-primary shrink-0">
                                     {selectedSetId === 'basket' ? <ShoppingBag className="w-4 h-4" /> : <BookOpen className="w-4 h-4" />}
                                   </div>
                                   <div className="flex flex-col min-w-0">
                                     <span className="text-xs font-bold text-white truncate">
                                       {language === 'pl' ? 'Źródło materiału' : 'Material Source'}
                                     </span>
-                                    <span className="text-[11px] text-gray-400 truncate">
+                                    <span className="text-[11px] text-text-2 truncate">
                                       {selectedSetId === 'basket' ? (
                                         language === 'pl' ? `Koszyk słówek (${basketWords.length})` : `Word Basket (${basketWords.length})`
                                       ) : selectedLessonIds.length > 0 ? (
@@ -2640,7 +2640,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   </div>
                                 </div>
 
-                                <div className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-xs font-bold text-emerald-400 hover:bg-emerald-500 hover:text-black transition-all flex items-center gap-1 shrink-0">
+                                <div className="px-3 py-1.5 rounded-lg bg-primary/20 text-xs font-bold text-primary hover:bg-primary hover:text-accent-ink transition-all flex items-center gap-1 shrink-0">
                                   <span>{language === 'pl' ? 'Wybierz' : 'Select'}</span>
                                   <ChevronRight className="w-3.5 h-3.5" />
                                 </div>
@@ -2649,22 +2649,22 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               {/* Chips list */}
                               <div className="flex flex-wrap items-center gap-1.5 pt-1">
                                 {selectedSetId === 'basket' ? (
-                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
-                                    <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/15 border border-primary/30 text-primary">
+                                    <ShoppingBag className="w-3.5 h-3.5 text-primary" />
                                     {language === 'pl' ? `Koszyk Słówek (${basketWords.length} słów)` : `Word Basket (${basketWords.length} words)`}
                                   </span>
                                 ) : selectedLessonIds.length > 0 ? (
                                   vocabularySets
                                     .filter(s => selectedLessonIds.includes(s.id))
                                     .map((set, i) => (
-                                      <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
-                                        <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                                      <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/15 border border-primary/30 text-primary">
+                                        <BookOpen className="w-3.5 h-3.5 text-primary" />
                                         {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
                                       </span>
                                     ))
                                 ) : (
-                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-gray-400">
-                                    <BookOpen className="w-3.5 h-3.5 text-gray-400" />
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-text-2">
+                                    <BookOpen className="w-3.5 h-3.5 text-text-2" />
                                     {language === 'pl' ? 'Słownictwo Ogólne: Miks i Koszyk' : 'General Vocabulary Mix'}
                                   </span>
                                 )}
@@ -2674,7 +2674,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             {/* Section 2: Ilość zadań */}
                             <div className="bg-[#121929] border border-white/10 p-4 rounded-2xl space-y-3">
                               <div className="flex items-center justify-between">
-                                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                <label className="text-[11px] font-bold text-text-2 uppercase tracking-widest">
                                   {language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}
                                 </label>
                                 <span className="text-2xl font-black text-white font-mono leading-none">
@@ -2690,7 +2690,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   step="1"
                                   value={numSentences}
                                   onChange={(e) => setNumSentences(parseInt(e.target.value))}
-                                  className="w-full h-2 bg-[#1a2536] rounded-lg appearance-none cursor-pointer accent-emerald-400 focus:outline-none"
+                                  className="w-full h-2 bg-[#1a2536] rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
                                 />
 
                                 <div className="grid grid-cols-4 gap-2">
@@ -2702,7 +2702,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                       className={`py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                                         numSentences === val
                                           ? 'bg-[#283548] border border-white/20 text-white shadow-inner'
-                                          : 'bg-[#18212e] border border-white/5 text-gray-400 hover:text-white'
+                                          : 'bg-[#18212e] border border-white/5 text-text-2 hover:text-white'
                                       }`}
                                     >
                                       {val}
@@ -2722,15 +2722,15 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               }}
                               isLoading={isLoading}
                               loadingText={language === 'pl' ? 'AI przygotowuje ćwiczenie...' : 'AI is preparing...'}
-                              className="w-full py-4 px-6 rounded-2xl border border-emerald-500/50 bg-gradient-to-r from-emerald-950/90 via-[#132c25] to-emerald-950/90 hover:from-emerald-900 hover:to-emerald-900 text-white font-bold text-base flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(16,185,129,0.3)] transition-all cursor-pointer"
+                              className="w-full py-4 px-6 rounded-2xl border border-primary/50 bg-gradient-to-r from-primary/90 via-[#132c25] to-primary/90 hover:from-primary hover:to-primary text-white font-bold text-base flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(16,185,129,0.3)] transition-all cursor-pointer"
                             >
-                              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse shrink-0" />
+                              <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse shrink-0" />
                               <span>
                                 {language === 'pl'
                                   ? `Wygeneruj ${numSentences === 1 ? '1 zdanie' : numSentences >= 2 && numSentences <= 4 ? `${numSentences} zdania` : `${numSentences} zdań`}`
                                   : `Generate ${numSentences} ${numSentences === 1 ? 'sentence' : 'sentences'}`}
                               </span>
-                              <ArrowRight className="w-5 h-5 text-emerald-400" />
+                              <ArrowRight className="w-5 h-5 text-primary" />
                             </AILoadingButton>
                           </div>
                         </motion.div>
@@ -2756,12 +2756,12 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         >
                           <div className="flex justify-between items-center mb-5 border-b border-white/10 pb-4">
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                              <BookOpen className="w-5 h-5 text-emerald-400" />
+                              <BookOpen className="w-5 h-5 text-primary" />
                               {language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary source'}
                             </h3>
                             <button 
                               onClick={() => setIsLessonSelectorOpen(false)}
-                              className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                              className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-white transition-colors"
                             >
                               <X className="w-5 h-5" />
                             </button>
@@ -2776,19 +2776,19 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 onClick={() => setIsMyLessonsOpen(!isMyLessonsOpen)}
                               >
                                 <div className="flex items-center gap-3">
-                                  <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-base">
+                                  <div className="w-9 h-9 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-bold text-base">
                                     📚
                                   </div>
                                   <div>
                                     <h4 className="text-base font-bold text-white">
                                       {language === 'pl' ? 'Moje Lekcje' : 'My Lessons'}
                                     </h4>
-                                    <p className="text-xs text-gray-400">
+                                    <p className="text-xs text-text-2">
                                       {language === 'pl' ? 'Lekcje z zajęć, miks oraz koszyk' : 'Class lessons, mix & basket'}
                                     </p>
                                   </div>
                                 </div>
-                                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isMyLessonsOpen ? 'rotate-180' : ''}`} />
+                                <ChevronDown className={`w-5 h-5 text-text-2 transition-transform duration-300 ${isMyLessonsOpen ? 'rotate-180' : ''}`} />
                               </div>
 
                               <AnimatePresence>
@@ -2801,7 +2801,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   >
                                     {/* Option 1: Słownictwo ogólne: miks i koszyk */}
                                     <label className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${
-                                      selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
+                                      selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
                                     }`}>
                                       <input 
                                         type="radio" 
@@ -2811,13 +2811,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                           setSelectedSetId('all');
                                           setSelectedLessonIds([]);
                                         }}
-                                        className="w-4 h-4 text-emerald-400 focus:ring-emerald-400 rounded-full border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
+                                        className="w-4 h-4 text-primary focus:ring-primary rounded-full border-white/20 bg-black/40 cursor-pointer accent-primary"
                                       />
                                       <div className="flex-1">
-                                        <span className={`text-sm font-bold ${selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'text-emerald-400' : 'text-gray-200'}`}>
+                                        <span className={`text-sm font-bold ${selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'text-primary' : 'text-content'}`}>
                                           {language === 'pl' ? 'Słownictwo ogólne: miks i koszyk' : 'General vocabulary: mix & basket'}
                                         </span>
-                                        <p className="text-[11px] text-gray-400">
+                                        <p className="text-[11px] text-text-2">
                                           {language === 'pl' ? 'Miks ze wszystkich Twoich dodanych lekcji i koszyka' : 'Mix from all your added lessons and basket'}
                                         </p>
                                       </div>
@@ -2825,7 +2825,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
                                     {/* Option 2: Mój koszyk */}
                                     <label className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${
-                                      selectedSetId === 'basket' ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
+                                      selectedSetId === 'basket' ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
                                     }`}>
                                       <input 
                                         type="radio" 
@@ -2835,12 +2835,12 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                           setSelectedSetId('basket');
                                           setSelectedLessonIds([]);
                                         }}
-                                        className="w-4 h-4 text-emerald-400 focus:ring-emerald-400 rounded-full border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
+                                        className="w-4 h-4 text-primary focus:ring-primary rounded-full border-white/20 bg-black/40 cursor-pointer accent-primary"
                                       />
                                       <div className="flex-1 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                          <ShoppingBag className="w-4 h-4 text-emerald-400" />
-                                          <span className={`text-sm font-bold ${selectedSetId === 'basket' ? 'text-emerald-400' : 'text-gray-200'}`}>
+                                          <ShoppingBag className="w-4 h-4 text-primary" />
+                                          <span className={`text-sm font-bold ${selectedSetId === 'basket' ? 'text-primary' : 'text-content'}`}>
                                             {language === 'pl' ? `Mój Koszyk (${basketWords.length})` : `My Basket (${basketWords.length})`}
                                           </span>
                                         </div>
@@ -2852,7 +2852,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                               e.stopPropagation();
                                               setIsBasketModalOpen(true);
                                             }}
-                                            className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 font-medium transition-colors"
+                                            className="text-xs px-2.5 py-1 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 font-medium transition-colors"
                                           >
                                             {language === 'pl' ? 'Otwórz koszyk' : 'Open basket'}
                                           </button>
@@ -2863,7 +2863,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                     {/* Option 3: Dedykowane zadania od nauczyciela (if present) */}
                                     {specialTasks.length > 0 && specialTasks.map(task => (
                                       <label key={task.id} className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${
-                                        selectedSetId === 'special-task-' + task.id ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
+                                        selectedSetId === 'special-task-' + task.id ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
                                       }`}>
                                         <input 
                                           type="radio" 
@@ -2873,9 +2873,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                             setSelectedSetId('special-task-' + task.id);
                                             setSelectedLessonIds([]);
                                           }}
-                                          className="w-4 h-4 text-emerald-400 focus:ring-emerald-400 rounded-full border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
+                                          className="w-4 h-4 text-primary focus:ring-primary rounded-full border-white/20 bg-black/40 cursor-pointer accent-primary"
                                         />
-                                        <span className={`text-sm font-semibold ${selectedSetId === 'special-task-' + task.id ? 'text-emerald-400' : 'text-gray-300'}`}>
+                                        <span className={`text-sm font-semibold ${selectedSetId === 'special-task-' + task.id ? 'text-primary' : 'text-content'}`}>
                                           {task.title}
                                         </span>
                                       </label>
@@ -2884,7 +2884,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                     {/* Option 4: Lekcje indywidualne (Checkboxy) */}
                                     {vocabularySets.length > 0 ? (
                                       <div className="pt-1 space-y-2">
-                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-1 pt-1">
+                                        <p className="text-[11px] font-bold text-text-2 uppercase tracking-wider px-1 pt-1">
                                           {language === 'pl' ? 'Lekcje indywidualne:' : 'Individual lessons:'}
                                         </p>
                                         {vocabularySets.map((set, index) => {
@@ -2896,7 +2896,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                               key={set.id} 
                                               className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                                                 
-                                                isSelected ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
+                                                isSelected ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
                                               }`}
                                             >
                                               <input 
@@ -2910,13 +2910,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                                     setSelectedLessonIds(prev => [...prev, set.id]);
                                                   }
                                                 }}
-                                                className="w-4 h-4 text-emerald-400 focus:ring-emerald-400 rounded border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
+                                                className="w-4 h-4 text-primary focus:ring-primary rounded border-white/20 bg-black/40 cursor-pointer accent-primary"
                                               />
                                               <div className="flex-1 flex flex-col min-w-0 gap-0.5">
-                                                <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+                                                <span className="text-[11px] font-bold text-primary uppercase tracking-wider">
                                                   Lesson {lessonNumber}
                                                 </span>
-                                                <span className={`text-xs font-semibold leading-relaxed ${isSelected ? 'text-white' : 'text-gray-300'} break-words`}>
+                                                <span className={`text-xs font-semibold leading-relaxed ${isSelected ? 'text-white' : 'text-content'} break-words`}>
                                                   {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
                                                 </span>
                                               </div>
@@ -2927,7 +2927,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                                   e.stopPropagation();
                                                   setPreviewVocabSet(set);
                                                 }}
-                                                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-emerald-400 hover:text-emerald-300 transition-colors flex-shrink-0 flex items-center gap-1 text-xs font-semibold"
+                                                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-primary hover:text-primary transition-colors flex-shrink-0 flex items-center gap-1 text-xs font-semibold"
                                               >
                                                 <Eye className="w-3.5 h-3.5" />
                                                 <span className="hidden sm:inline">{language === 'pl' ? 'Podgląd' : 'Preview'}</span>
@@ -2937,13 +2937,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                         })}
                                       </div>
                                     ) : (
-                                      <div className="text-center text-xs text-gray-400 py-3">Brak dodanych lekcji</div>
+                                      <div className="text-center text-xs text-text-2 py-3">Brak dodanych lekcji</div>
                                     )}
 
                                     {/* Option 5: Słownictwo prywatne (Flashcards) */}
                                     {availableSets.length > 0 && (
                                       <div className="pt-2 space-y-2 border-t border-white/5 mt-2">
-                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-1 pt-1">
+                                        <p className="text-[11px] font-bold text-text-2 uppercase tracking-wider px-1 pt-1">
                                           {language === 'pl' ? 'Słownictwo prywatne:' : 'Private vocabulary:'}
                                         </p>
                                         {availableSets.map((set) => {
@@ -2952,7 +2952,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                             <label 
                                               key={set.id} 
                                               className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
-                                                isSelected ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
+                                                isSelected ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
                                               }`}
                                             >
                                               <input 
@@ -2963,14 +2963,14 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                                   setSelectedSetId(set.id);
                                                   setSelectedLessonIds([]);
                                                 }}
-                                                className="w-4 h-4 text-emerald-400 focus:ring-emerald-400 rounded-full border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
+                                                className="w-4 h-4 text-primary focus:ring-primary rounded-full border-white/20 bg-black/40 cursor-pointer accent-primary"
                                               />
                                               <div className="flex-1 flex flex-col min-w-0 gap-0.5">
-                                                <span className={`text-xs font-semibold leading-relaxed ${isSelected ? 'text-emerald-400' : 'text-gray-300'} break-words`}>
+                                                <span className={`text-xs font-semibold leading-relaxed ${isSelected ? 'text-primary' : 'text-content'} break-words`}>
                                                   {set.title}
                                                 </span>
                                               </div>
-                                              <span className="text-[10px] font-bold bg-white/5 text-gray-400 px-2 py-0.5 rounded">
+                                              <span className="text-[10px] font-bold bg-white/5 text-text-2 px-2 py-0.5 rounded">
                                                 {set.cardCount}
                                               </span>
                                             </label>
@@ -2991,19 +2991,19 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 onClick={() => setIsGeneralVocabTabOpen(!isGeneralVocabTabOpen)}
                               >
                                 <div className="flex items-center gap-3">
-                                  <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-base">
+                                  <div className="w-9 h-9 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-bold text-base">
                                     🌐
                                   </div>
                                   <div>
                                     <h4 className="text-base font-bold text-white">
                                       {language === 'pl' ? 'Słownictwo Ogólne' : 'General Vocabulary'}
                                     </h4>
-                                    <p className="text-xs text-emerald-400">
+                                    <p className="text-xs text-primary">
                                       {language === 'pl' ? '3 Poziomy Zaawansowania (A1 - C2)' : '3 Proficiency Levels (A1 - C2)'}
                                     </p>
                                   </div>
                                 </div>
-                                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isGeneralVocabTabOpen ? 'rotate-180' : ''}`} />
+                                <ChevronDown className={`w-5 h-5 text-text-2 transition-transform duration-300 ${isGeneralVocabTabOpen ? 'rotate-180' : ''}`} />
                               </div>
 
                               <AnimatePresence>
@@ -3028,9 +3028,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                               <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${group.badgeClass}`}>
                                                 {group.levels}
                                               </span>
-                                              <span className="text-sm font-bold text-gray-200">{group.name}</span>
+                                              <span className="text-sm font-bold text-content">{group.name}</span>
                                             </div>
-                                            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isGroupExpanded ? 'rotate-180' : ''}`} />
+                                            <ChevronDown className={`w-4 h-4 text-text-2 transition-transform duration-300 ${isGroupExpanded ? 'rotate-180' : ''}`} />
                                           </div>
 
                                           <AnimatePresence>
@@ -3041,7 +3041,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                                 exit={{ height: 0, opacity: 0 }}
                                                 className="overflow-hidden bg-black/30 p-2.5 space-y-2 border-t border-white/5"
                                               >
-                                                <p className="text-[11px] text-gray-400 italic px-1 mb-1">{group.description}</p>
+                                                <p className="text-[11px] text-text-2 italic px-1 mb-1">{group.description}</p>
                                                 {groupSets.map((gSet) => {
                                                   const isSelected = selectedSetId === gSet.id;
                                                   return (
@@ -3049,7 +3049,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                                       key={gSet.id}
                                                       className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                                                         isSelected
-                                                          ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                                                          ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
                                                           : 'bg-[#121927] border-white/5 hover:border-white/10'
                                                       }`}
                                                     >
@@ -3061,16 +3061,16 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                                           setSelectedSetId(gSet.id);
                                                           setSelectedLessonIds([]);
                                                         }}
-                                                        className="w-4 h-4 text-emerald-400 focus:ring-emerald-400 rounded-full border-white/20 bg-black/40 cursor-pointer accent-emerald-400"
+                                                        className="w-4 h-4 text-primary focus:ring-primary rounded-full border-white/20 bg-black/40 cursor-pointer accent-primary"
                                                       />
                                                       <div className="flex-1 flex flex-col min-w-0">
                                                         <div className="flex items-center gap-2">
-                                                          <span className={`text-xs font-bold ${isSelected ? 'text-emerald-400' : 'text-white'} truncate`}>{gSet.title}</span>
-                                                          <span className="text-[10px] font-mono bg-white/10 text-emerald-300 px-1.5 py-0.5 rounded">
+                                                          <span className={`text-xs font-bold ${isSelected ? 'text-primary' : 'text-white'} truncate`}>{gSet.title}</span>
+                                                          <span className="text-[10px] font-mono bg-white/10 text-primary px-1.5 py-0.5 rounded">
                                                             {gSet.words.length} słówek
                                                           </span>
                                                         </div>
-                                                        <span className="text-[11px] text-gray-400 truncate">{gSet.description}</span>
+                                                        <span className="text-[11px] text-text-2 truncate">{gSet.description}</span>
                                                       </div>
                                                       <button
                                                         type="button"
@@ -3092,7 +3092,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                                             updatedAt: new Date().toISOString()
                                                           });
                                                         }}
-                                                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-emerald-400 hover:text-emerald-300 transition-colors flex-shrink-0 flex items-center gap-1 text-xs font-semibold"
+                                                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-primary hover:text-primary transition-colors flex-shrink-0 flex items-center gap-1 text-xs font-semibold"
                                                       >
                                                         <Eye className="w-3.5 h-3.5" />
                                                         <span className="hidden sm:inline">{language === 'pl' ? 'Podgląd' : 'Preview'}</span>
@@ -3116,7 +3116,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <div className="mt-4 pt-4 border-t border-white/10">
                             <button 
                               onClick={() => setIsLessonSelectorOpen(false)}
-                              className="w-full py-3.5 rounded-2xl bg-[#10b981] text-black font-bold text-base shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:bg-emerald-400 transition-colors"
+                              className="w-full py-3.5 rounded-2xl bg-[#10b981] text-accent-ink font-bold text-base shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:bg-primary transition-colors"
                             >
                               {language === 'pl' ? 'Zatwierdź' : 'Confirm'}
                             </button>
@@ -3143,24 +3143,24 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
                                   <div>
                                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                      <BookOpen className="w-5 h-5 text-emerald-400" />
+                                      <BookOpen className="w-5 h-5 text-primary" />
                                       {previewVocabSet.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
                                     </h3>
-                                    <p className="text-xs text-gray-400 mt-0.5">
+                                    <p className="text-xs text-text-2 mt-0.5">
                                       {language === 'pl' ? 'Kliknij +, aby dodać konkretne słówko do koszyka' : 'Click + to add specific words to basket'}
                                     </p>
                                   </div>
                                   <button 
                                     onClick={() => setPreviewVocabSet(null)}
-                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-white transition-colors"
                                   >
                                     <X className="w-5 h-5" />
                                   </button>
                                 </div>
 
                                 {previewVocabSet.vocabularyText && (
-                                  <div className="mb-4 flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
-                                    <span className="text-xs font-medium text-emerald-300">
+                                  <div className="mb-4 flex items-center justify-between bg-primary/10 border border-primary/20 rounded-xl p-3">
+                                    <span className="text-xs font-medium text-primary">
                                       {language === 'pl' ? 'Chcesz całą lekcję?' : 'Want full lesson?'}
                                     </span>
                                     <button
@@ -3171,7 +3171,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                           previewVocabSet.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()
                                         );
                                       }}
-                                      className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-bold hover:bg-emerald-400 transition-colors flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                                      className="text-xs px-3 py-1.5 rounded-lg bg-primary text-accent-ink font-bold hover:bg-primary transition-colors flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
                                     >
                                       <Plus className="w-3.5 h-3.5" />
                                       <span>{language === 'pl' ? 'Dodaj wszystkie do koszyka' : 'Add all to basket'}</span>
@@ -3194,13 +3194,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                         return (
                                           <div key={lIdx} className={`flex items-center justify-between gap-3 border rounded-xl p-3 text-sm transition-all ${
                                             inBasket 
-                                              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200' 
-                                              : 'bg-white/5 border-white/10 text-gray-200 hover:border-white/20'
+                                              ? 'bg-primary/10 border-primary/40 text-primary' 
+                                              : 'bg-white/5 border-white/10 text-content hover:border-white/20'
                                           }`}>
                                             <div className="flex-1 min-w-0">
                                               <span className="font-semibold text-white block truncate">{wordItem.term}</span>
                                               {wordItem.definition && (
-                                                <span className="text-xs text-gray-400 block truncate">{wordItem.definition}</span>
+                                                <span className="text-xs text-text-2 block truncate">{wordItem.definition}</span>
                                               )}
                                             </div>
                                             <button
@@ -3208,8 +3208,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                               onClick={() => toggleBasketWord(wordItem)}
                                               className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all shrink-0 ${
                                                 inBasket
-                                                  ? 'bg-emerald-500 text-black shadow-[0_0_10px_rgba(16,185,129,0.4)]'
-                                                  : 'bg-white/10 hover:bg-emerald-500/20 hover:text-emerald-400 text-gray-300 border border-white/10'
+                                                  ? 'bg-primary text-accent-ink shadow-[0_0_10px_rgba(16,185,129,0.4)]'
+                                                  : 'bg-white/10 hover:bg-primary/20 hover:text-primary text-content border border-white/10'
                                               }`}
                                               title={inBasket ? 'Usuń z koszyka' : 'Dodaj do koszyka'}
                                             >
@@ -3219,7 +3219,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                         );
                                       })
                                   ) : (
-                                    <div className="text-center text-gray-400 py-8">
+                                    <div className="text-center text-text-2 py-8">
                                       Brak słownictwa do wyświetlenia.
                                     </div>
                                   )}
@@ -3234,7 +3234,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                       }}
                                       className="py-3 px-4 rounded-xl bg-white/10 text-white font-semibold text-xs hover:bg-white/20 transition-colors flex items-center gap-2"
                                     >
-                                      <ShoppingBag className="w-4 h-4 text-emerald-400" />
+                                      <ShoppingBag className="w-4 h-4 text-primary" />
                                       <span>{language === 'pl' ? `Zobacz koszyk (${basketWords.length})` : `View basket (${basketWords.length})`}</span>
                                     </button>
                                   )}
@@ -3270,8 +3270,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   <div className="flex items-center gap-3">
                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xl ${
                                       practiceSetupType === 'match' 
-                                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' 
-                                        : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                                        ? 'bg-warn/20 text-warn border border-warn/30' 
+                                        : 'bg-primary/20 text-primary border border-primary/30'
                                     }`}>
                                       {practiceSetupType === 'match' ? '🧩' : '🗂️'}
                                     </div>
@@ -3279,7 +3279,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                       <h3 className="text-lg font-bold text-white">
                                         {language === 'pl' ? 'Skonfiguruj zadanie' : 'Configure Exercise'}
                                       </h3>
-                                      <p className="text-xs text-gray-400">
+                                      <p className="text-xs text-text-2">
                                         {practiceSetupType === 'match' 
                                           ? (language === 'pl' ? 'Gra w dopasowywanie pojęć' : 'Vocabulary matching game')
                                           : (language === 'pl' ? 'Nauka i testowanie z fiszkami' : 'Learn and test with flashcards')}
@@ -3288,7 +3288,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   </div>
                                   <button 
                                     onClick={() => setPracticeSetupOpen(false)}
-                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-white transition-colors"
                                   >
                                     <X className="w-5 h-5" />
                                   </button>
@@ -3296,7 +3296,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
                                 {/* Step 1: Source Selection */}
                                 <div className="space-y-2 mb-4">
-                                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
+                                  <label className="text-xs font-bold text-text-2 uppercase tracking-wider block">
                                     {language === 'pl' ? '1. Wybierz lekcję / źródło' : '1. Choose lesson / source'}
                                   </label>
                                   <div className="relative">
@@ -3335,7 +3335,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                         );
                                       })}
                                     </select>
-                                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-text-2">
                                       <ChevronDown className="w-4 h-4" />
                                     </div>
                                   </div>
@@ -3344,13 +3344,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 {/* Step 2: Words list */}
                                 <div className="flex-1 flex flex-col min-h-0 space-y-2 mb-6">
                                   <div className="flex justify-between items-center">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                    <label className="text-xs font-bold text-text-2 uppercase tracking-wider">
                                       {practiceSetupType === 'flashcards' 
                                         ? (language === 'pl' ? `2. Słówka w zestawie (${setupWords.length} słówek - Cała kategoria)` : `2. Words in set (${setupWords.length} words - Full category)`)
                                         : (language === 'pl' ? `2. Wybierz słówka (${setupCheckedWordIds.size} z ${setupWords.length})` : `2. Select words (${setupCheckedWordIds.size} of ${setupWords.length})`)}
                                     </label>
                                     {practiceSetupType === 'flashcards' ? (
-                                      <span className="text-[10px] font-bold text-purple-300 bg-purple-500/15 border border-purple-500/30 px-2.5 py-1 rounded-lg">
+                                      <span className="text-[10px] font-bold text-primary bg-primary/15 border border-primary/30 px-2.5 py-1 rounded-lg">
                                         {language === 'pl' ? 'Kategoria w całości' : 'Full category'}
                                       </span>
                                     ) : (
@@ -3358,14 +3358,14 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                         <button
                                           type="button"
                                           onClick={() => setSetupCheckedWordIds(new Set(setupWords.map(w => w.id)))}
-                                          className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg transition-colors border border-emerald-500/20"
+                                          className="text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-lg transition-colors border border-primary/20"
                                         >
                                           {language === 'pl' ? 'Zaznacz wszystkie' : 'Select all'}
                                         </button>
                                         <button
                                           type="button"
                                           onClick={() => setSetupCheckedWordIds(new Set())}
-                                          className="text-[10px] font-bold text-gray-400 bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg transition-colors border border-white/10"
+                                          className="text-[10px] font-bold text-text-2 bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg transition-colors border border-white/10"
                                         >
                                           {language === 'pl' ? 'Odznacz wszystkie' : 'Deselect all'}
                                         </button>
@@ -3374,7 +3374,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   </div>
 
                                   {practiceSetupType === 'flashcards' && (
-                                    <p className="text-[11px] text-purple-300/90 bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5">
+                                    <p className="text-[11px] text-primary/90 bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5">
                                       🎴 {language === 'pl' 
                                         ? 'Fiszki realizujesz jako pełną kategorię (zestaw). Wszystkie słówka są automatycznie dołączone.' 
                                         : 'Flashcards are studied as a complete category set. All words are automatically included.'}
@@ -3384,17 +3384,17 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   {/* Scrollable list of words with checkboxes */}
                                   <div className="flex-1 overflow-y-auto custom-scrollbar border border-white/5 rounded-2xl bg-[#0b0f19] p-2 space-y-1 max-h-[300px]">
                                     {setupWords.length === 0 ? (
-                                      <div className="text-center py-8 text-gray-500 text-sm">
+                                      <div className="text-center py-8 text-text-mute text-sm">
                                         {language === 'pl' ? 'Brak słówek w wybranym źródle' : 'No words in the selected source'}
                                       </div>
                                     ) : (
                                       setupWords.map((word) => {
                                         const isChecked = setupCheckedWordIds.has(word.id);
                                         const accentClass = practiceSetupType === 'match' 
-                                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' 
-                                          : 'bg-purple-500/10 border-purple-500/30 text-purple-300';
+                                          ? 'bg-warn/10 border-warn/30 text-warn' 
+                                          : 'bg-primary/10 border-primary/30 text-primary';
                                         
-                                        const checkColor = practiceSetupType === 'match' ? 'accent-amber-500' : 'accent-purple-500';
+                                        const checkColor = practiceSetupType === 'match' ? 'accent-warn' : 'accent-primary';
 
                                         return (
                                           <label
@@ -3404,7 +3404,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                             } ${
                                               isChecked
                                                 ? `${accentClass}`
-                                                : 'bg-white/[0.01] border-white/5 text-gray-400 hover:border-white/10 hover:bg-white/[0.03]'
+                                                : 'bg-white/[0.01] border-white/5 text-text-2 hover:border-white/10 hover:bg-white/[0.03]'
                                             }`}
                                           >
                                             <input
@@ -3426,9 +3426,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                               }`}
                                             />
                                             <div className="flex-1 min-w-0">
-                                              <span className={`font-semibold text-xs block ${isChecked ? 'text-white' : 'text-gray-300'}`}>{word.term}</span>
+                                              <span className={`font-semibold text-xs block ${isChecked ? 'text-white' : 'text-content'}`}>{word.term}</span>
                                               {word.definition && (
-                                                <span className="text-[11px] text-gray-400 block truncate">{word.definition}</span>
+                                                <span className="text-[11px] text-text-2 block truncate">{word.definition}</span>
                                               )}
                                             </div>
                                           </label>
@@ -3443,7 +3443,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   <button
                                     type="button"
                                     onClick={() => setPracticeSetupOpen(false)}
-                                    className="flex-1 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-bold text-sm border border-white/10 transition-colors"
+                                    className="flex-1 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-content font-bold text-sm border border-white/10 transition-colors"
                                   >
                                     {language === 'pl' ? 'Anuluj' : 'Cancel'}
                                   </button>
@@ -3453,10 +3453,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                     disabled={setupCheckedWordIds.size === 0 || isLoading}
                                     className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 text-black ${
                                       setupCheckedWordIds.size === 0 || isLoading
-                                        ? 'bg-gray-700 text-gray-500 cursor-not-allowed border-none'
+                                        ? 'bg-base-200 text-text-mute cursor-not-allowed border-none'
                                         : practiceSetupType === 'match'
-                                          ? 'bg-amber-400 hover:bg-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
-                                          : 'bg-purple-500 hover:bg-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.3)]'
+                                          ? 'bg-warn hover:bg-warn shadow-[0_0_20px_rgba(245,158,11,0.3)]'
+                                          : 'bg-primary hover:bg-primary shadow-[0_0_20px_rgba(168,85,247,0.3)]'
                                     }`}
                                   >
                                     {isLoading ? (
@@ -3493,24 +3493,24 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               >
                                 <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
                                   <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                                    <div className="w-10 h-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-bold">
                                       <ShoppingBag className="w-5 h-5" />
                                     </div>
                                     <div>
                                       <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                         {language === 'pl' ? 'Koszyk Słówek' : 'Vocabulary Basket'}
-                                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
                                           {basketWords.length}
                                         </span>
                                       </h3>
-                                      <p className="text-xs text-gray-400">
+                                      <p className="text-xs text-text-2">
                                         {language === 'pl' ? 'Twój własny zestaw słów wymiksowany z lekcji' : 'Your custom mix of vocabulary from lessons'}
                                       </p>
                                     </div>
                                   </div>
                                   <button 
                                     onClick={() => setIsBasketModalOpen(false)}
-                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-white transition-colors"
                                   >
                                     <X className="w-5 h-5" />
                                   </button>
@@ -3521,7 +3521,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                     <button
                                       type="button"
                                       onClick={clearBasket}
-                                      className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 font-medium px-2 py-1 rounded hover:bg-rose-500/10 transition-colors"
+                                      className="text-xs text-danger hover:text-danger flex items-center gap-1 font-medium px-2 py-1 rounded hover:bg-danger/10 transition-colors"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
                                       <span>{language === 'pl' ? 'Wyczyść koszyk' : 'Clear basket'}</span>
@@ -3532,24 +3532,24 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 <div className="overflow-y-auto custom-scrollbar flex-1 pr-1 space-y-2">
                                   {basketWords.length > 0 ? (
                                     basketWords.map((item, idx) => (
-                                      <div key={item.id + idx} className="flex items-center justify-between gap-3 bg-white/5 border border-white/10 hover:border-white/20 rounded-xl p-3 text-sm text-gray-200 transition-all">
+                                      <div key={item.id + idx} className="flex items-center justify-between gap-3 bg-white/5 border border-white/10 hover:border-white/20 rounded-xl p-3 text-sm text-content transition-all">
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center gap-2">
                                             <span className="font-semibold text-white truncate">{item.term}</span>
                                             {item.sourceTopic && (
-                                              <span className="text-[10px] font-mono bg-white/10 px-2 py-0.5 rounded text-gray-400 truncate max-w-[120px]">
+                                              <span className="text-[10px] font-mono bg-white/10 px-2 py-0.5 rounded text-text-2 truncate max-w-[120px]">
                                                 {item.sourceTopic}
                                               </span>
                                             )}
                                           </div>
                                           {item.definition && (
-                                            <span className="text-xs text-gray-400 block truncate mt-0.5">{item.definition}</span>
+                                            <span className="text-xs text-text-2 block truncate mt-0.5">{item.definition}</span>
                                           )}
                                         </div>
                                         <button
                                           type="button"
                                           onClick={() => toggleBasketWord(item)}
-                                          className="p-2 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors shrink-0"
+                                          className="p-2 text-text-2 hover:text-danger hover:bg-danger/10 rounded-lg transition-colors shrink-0"
                                           title="Usuń z koszyka"
                                         >
                                           <Trash2 className="w-4 h-4" />
@@ -3557,12 +3557,12 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                       </div>
                                     ))
                                   ) : (
-                                    <div className="text-center text-gray-400 py-12 space-y-3">
-                                      <ShoppingBag className="w-12 h-12 text-gray-600 mx-auto stroke-[1.5]" />
+                                    <div className="text-center text-text-2 py-12 space-y-3">
+                                      <ShoppingBag className="w-12 h-12 text-text-faint mx-auto stroke-[1.5]" />
                                       <p className="text-sm font-medium">
                                         {language === 'pl' ? 'Twój koszyk jest pusty.' : 'Your basket is empty.'}
                                       </p>
-                                      <p className="text-xs text-gray-500 max-w-xs mx-auto">
+                                      <p className="text-xs text-text-mute max-w-xs mx-auto">
                                         {language === 'pl' ? 'Wejdź w dowolną lekcję i kliknij przycisk +, aby dodać słówka do koszyka.' : 'Open any lesson and click + to add words into your basket.'}
                                       </p>
                                     </div>
@@ -3571,7 +3571,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
                                 {basketWords.length > 0 && (
                                   <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
-                                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                    <label className="block text-[10px] font-bold text-text-2 uppercase tracking-wider">
                                       {language === 'pl' ? 'Wybierz typ ćwiczenia dla koszyka' : 'Choose exercise type for basket'}
                                     </label>
                                     <div className="grid grid-cols-2 gap-2">
@@ -3582,7 +3582,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                           setIsBasketModalOpen(false);
                                           handleGenerate(false);
                                         }}
-                                        className="py-3 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-black font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                        className="py-3 px-3 rounded-xl bg-gradient-to-r from-primary to-primary text-black font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
                                       >
                                         <Sparkles className="w-4 h-4 fill-black" />
                                         <span>{language === 'pl' ? 'Trening AI' : 'AI Sentences'}</span>
@@ -3594,7 +3594,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                           setIsBasketModalOpen(false);
                                           handleStartBasketPractice('flashcards');
                                         }}
-                                        className="py-3 px-3 rounded-xl bg-white/10 border border-white/10 hover:border-emerald-500/40 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-white/15 transition-all"
+                                        className="py-3 px-3 rounded-xl bg-white/10 border border-white/10 hover:border-primary/40 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-white/15 transition-all"
                                       >
                                         <span>🗂️ {language === 'pl' ? 'Fiszki' : 'Flashcards'}</span>
                                       </button>
@@ -3605,7 +3605,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                           setIsBasketModalOpen(false);
                                           handleStartBasketPractice('quiz');
                                         }}
-                                        className="py-3 px-3 rounded-xl bg-white/10 border border-white/10 hover:border-emerald-500/40 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-white/15 transition-all"
+                                        className="py-3 px-3 rounded-xl bg-white/10 border border-white/10 hover:border-primary/40 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-white/15 transition-all"
                                       >
                                         <span>📝 {language === 'pl' ? 'Quiz' : 'Quiz'}</span>
                                       </button>
@@ -3616,7 +3616,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                           setIsBasketModalOpen(false);
                                           handleStartBasketPractice('match');
                                         }}
-                                        className="py-3 px-3 rounded-xl bg-white/10 border border-white/10 hover:border-emerald-500/40 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-white/15 transition-all"
+                                        className="py-3 px-3 rounded-xl bg-white/10 border border-white/10 hover:border-primary/40 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-white/15 transition-all"
                                       >
                                         <span>🧩 {language === 'pl' ? 'Dopasowanie' : 'Match'}</span>
                                       </button>
@@ -3720,7 +3720,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               {language === 'pl' ? 'Postęp:' : 'Progress:'} {activeSentenceIndex + 1} {practiceMode === 'fixed' ? `/ ${exercises.length}` : ''}
             </span>
             {practiceMode === 'time' && timeLeft !== null && (
-              <div className={`font-mono text-base font-bold flex items-center gap-1.5 ${timeLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-primary'}`}>
+              <div className={`font-mono text-base font-bold flex items-center gap-1.5 ${timeLeft <= 10 ? 'text-danger animate-pulse' : 'text-primary'}`}>
                 <Clock className="w-4 h-4" />
                 {Number.isNaN(Number(timeLeft)) ? 0 : Math.floor((timeLeft as number) / 60)}:{Number.isNaN(Number(timeLeft)) ? '00' : ((timeLeft as number) % 60).toString().padStart(2, '0')}
               </div>
@@ -3751,7 +3751,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   exit={{ opacity: 0, scale: 0.85 }}
                   className="absolute -right-2 -top-10 md:-right-8 md:-top-12 z-20"
                 >
-                  <div className="bg-primary text-black px-3.5 py-1.5 rounded-2xl rounded-bl-none shadow-md font-bold text-xs flex items-center gap-1.5">
+                  <div className="bg-primary text-accent-ink px-3.5 py-1.5 rounded-2xl rounded-bl-none shadow-md font-bold text-xs flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5" />
                     {language === 'pl' ? 'Świetnie Ci idzie! Oby tak dalej!' : 'Great job! Keep it up!'}
                   </div>
@@ -3784,7 +3784,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   <button
                     type="button"
                     onClick={() => toggleHint(activeSentenceIndex)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-500 hover:text-amber-400 transition-colors mx-auto"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-warn hover:text-warn transition-colors mx-auto"
                   >
                     <Lightbulb className="w-3.5 h-3.5" />
                     {showHints[activeSentenceIndex] 
@@ -3792,7 +3792,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       : (language === 'pl' ? 'Pokaż wskazówkę' : 'Show hint')}
                   </button>
                   {showHints[activeSentenceIndex] && (
-                    <div className="mt-1.5 mx-auto bg-amber-500/[0.04] border border-amber-500/15 rounded-xl p-3 text-xs text-amber-400 animate-fade-in-up max-w-lg">
+                    <div className="mt-1.5 mx-auto bg-warn/[0.04] border border-warn/15 rounded-xl p-3 text-xs text-warn animate-fade-in-up max-w-lg">
                       {exercises[activeSentenceIndex].hint}
                     </div>
                   )}
@@ -3802,7 +3802,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               {/* Student answer field */}
               <div className="w-full space-y-3 mt-4 pt-4 border-t border-white/5 flex flex-col items-center">
                 {exerciseFormat !== 'puzzle' && (
-                  <label className="block text-sm font-bold text-emerald-400/80 text-center w-full uppercase tracking-widest">
+                  <label className="block text-sm font-bold text-primary/80 text-center w-full uppercase tracking-widest">
                     {language === 'pl' ? 'Twoje tłumaczenie na angielski:' : 'Your translation to English:'}
                   </label>
                 )}
@@ -3814,13 +3814,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       dangerouslySetInnerHTML={{ __html: singleEvaluationResults[activeSentenceIndex].highlightedAnswer || singleEvaluationResults[activeSentenceIndex].studentAnswer }}
                     />
                     
-                    <div className={`w-full p-3.5 rounded-xl border flex flex-col items-center text-center ${singleEvaluationResults[activeSentenceIndex].isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                    <div className={`w-full p-3.5 rounded-xl border flex flex-col items-center text-center ${singleEvaluationResults[activeSentenceIndex].isCorrect ? 'bg-primary/10 border-primary/30' : 'bg-danger/10 border-danger/30'}`}>
                        <div className="font-bold flex flex-col sm:flex-row items-center justify-between w-full mb-3 text-sm gap-2">
                          <span className="flex items-center gap-2 flex-wrap">
                            {singleEvaluationResults[activeSentenceIndex].isCorrect ? '✅ Poprawnie!' : '❌ Błędy w tłumaczeniu'}
                            {canViewAiModels && (
-                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[11px] font-medium">
-                               <Sparkles className="w-3 h-3 text-cyan-400" />
+                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary text-[11px] font-medium">
+                               <Sparkles className="w-3 h-3 text-primary" />
                                <span>
                                  {language === 'pl' ? 'Sprawdzone przez: ' : 'Evaluated by: '}
                                  <strong className="text-white font-bold">{formatAIModelName(singleEvaluationResults[activeSentenceIndex].modelUsed)}</strong>
@@ -3830,10 +3830,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                          </span>
                          <span className={`text-xs font-bold font-mono px-2.5 py-1 rounded-lg border ${
                            singleEvaluationResults[activeSentenceIndex].score >= 80 
-                             ? 'bg-green-500/20 border-green-500/30 text-green-300' 
+                             ? 'bg-primary/20 border-primary/30 text-primary' 
                              : singleEvaluationResults[activeSentenceIndex].score >= 60 
-                               ? 'bg-amber-500/20 border-amber-500/30 text-amber-300' 
-                               : 'bg-red-500/20 border-red-500/30 text-red-300'
+                               ? 'bg-warn/20 border-warn/30 text-warn' 
+                               : 'bg-danger/20 border-danger/30 text-danger'
                          }`}>
                            
                                                                                      {i18n.t("Wynik:")} {singleEvaluationResults[activeSentenceIndex].score}%
@@ -3863,10 +3863,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                            dangerouslySetInnerHTML={{ __html: singleEvaluationResults[activeSentenceIndex].highlighted_better_version || singleEvaluationResults[activeSentenceIndex].correctTranslation }}
                          />
                          <div className="flex items-center justify-center gap-1.5 shrink-0 bg-black/30 p-1 rounded-md mt-2">
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-US')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 text-cyan-400 text-xs font-bold transition-all ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("Wymowa amerykańska")} disabled={isPlayingAudio}>
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-US')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 text-primary text-xs font-bold transition-all ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("Wymowa amerykańska")} disabled={isPlayingAudio}>
   <Volume2 className="w-3.5 h-3.5" /> AmE
 </button>
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-GB')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 text-emerald-400 text-xs font-bold transition-all ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("Wymowa brytyjska")} disabled={isPlayingAudio}>
+                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-GB')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 text-primary text-xs font-bold transition-all ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("Wymowa brytyjska")} disabled={isPlayingAudio}>
   <Volume2 className="w-3.5 h-3.5" /> BrE
 </button>
 
@@ -3875,30 +3875,30 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
                        <div className="space-y-3 mt-1 text-xs w-full text-left">
                          {singleEvaluationResults[activeSentenceIndex].feedbackSyntax && (
-                           <div className="bg-red-500/10 p-3 rounded-lg border border-red-500/20 flex flex-col items-start text-left w-full">
-                             <div className="flex items-center gap-1.5 font-bold text-red-400 text-[10px] uppercase tracking-wider mb-1">
+                           <div className="bg-danger/10 p-3 rounded-lg border border-danger/20 flex flex-col items-start text-left w-full">
+                             <div className="flex items-center gap-1.5 font-bold text-danger text-[10px] uppercase tracking-wider mb-1">
                                <AlertCircle className="w-3.5 h-3.5" />
                                {language === 'pl' ? 'Szyk i gramatyka' : 'Syntax & Grammar'}
                              </div>
-                             <p className="opacity-90 leading-relaxed text-red-100">{singleEvaluationResults[activeSentenceIndex].feedbackSyntax}</p>
+                             <p className="opacity-90 leading-relaxed text-danger">{singleEvaluationResults[activeSentenceIndex].feedbackSyntax}</p>
                            </div>
                          )}
                          {singleEvaluationResults[activeSentenceIndex].feedbackVocab && (
-                           <div className="bg-blue-500/10 p-3 rounded-lg border border-blue-500/20 flex flex-col items-start text-left w-full">
-                             <div className="flex items-center gap-1.5 font-bold text-blue-400 text-[10px] uppercase tracking-wider mb-1">
+                           <div className="bg-info/10 p-3 rounded-lg border border-info/20 flex flex-col items-start text-left w-full">
+                             <div className="flex items-center gap-1.5 font-bold text-info text-[10px] uppercase tracking-wider mb-1">
                                <AlertCircle className="w-3.5 h-3.5" />
                                {language === 'pl' ? 'Słownictwo i naturalność' : 'Vocabulary & Naturalness'}
                              </div>
-                             <p className="opacity-90 leading-relaxed text-blue-100">{singleEvaluationResults[activeSentenceIndex].feedbackVocab}</p>
+                             <p className="opacity-90 leading-relaxed text-info">{singleEvaluationResults[activeSentenceIndex].feedbackVocab}</p>
                            </div>
                          )}
                          {singleEvaluationResults[activeSentenceIndex].feedbackRule && (
-                           <div className="bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 flex flex-col items-start text-left w-full">
-                             <div className="flex items-center gap-1.5 font-bold text-amber-500 text-[10px] uppercase tracking-wider mb-1">
+                           <div className="bg-warn/10 p-3 rounded-lg border border-warn/20 flex flex-col items-start text-left w-full">
+                             <div className="flex items-center gap-1.5 font-bold text-warn text-[10px] uppercase tracking-wider mb-1">
                                <Sparkles className="w-3.5 h-3.5" />
                                {language === 'pl' ? 'Złota zasada' : 'Golden Rule'}
                              </div>
-                             <p className="opacity-90 leading-relaxed text-amber-100 font-medium">{singleEvaluationResults[activeSentenceIndex].feedbackRule}</p>
+                             <p className="opacity-90 leading-relaxed text-warn font-medium">{singleEvaluationResults[activeSentenceIndex].feedbackRule}</p>
                            </div>
                          )}
                          {(!singleEvaluationResults[activeSentenceIndex].feedbackSyntax && !singleEvaluationResults[activeSentenceIndex].feedbackVocab && !singleEvaluationResults[activeSentenceIndex].feedbackRule) && (
@@ -3980,7 +3980,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     <AILoadingButton
                       onClick={handleFinishAll}
                       disabled={studentAnswers[activeSentenceIndex] !== exercises[activeSentenceIndex].englishTranslation}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-black font-extrabold text-sm w-full sm:w-auto"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm w-full sm:w-auto"
                     >
                       {language === 'pl' ? 'Zakończ rozgrzewkę' : 'Finish warmup'}
                     </AILoadingButton>
@@ -3990,7 +3990,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       disabled={studentAnswers[activeSentenceIndex] !== exercises[activeSentenceIndex].englishTranslation || isGeneratingMore}
                       isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
                       loadingText={language === 'pl' ? 'Ładowanie...' : 'Loading...'}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-black font-extrabold text-sm w-full sm:w-auto"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm w-full sm:w-auto"
                     >
                       {language === 'pl' ? 'Następne' : 'Next'}
                     </AILoadingButton>
@@ -4014,7 +4014,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       disabled={!studentAnswers[activeSentenceIndex]?.trim() || isGeneratingMore}
                       isLoading={isGeneratingMore}
                       loadingText={language === 'pl' ? '...' : '...'}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-black font-extrabold text-sm"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm"
                     >
                       {language === 'pl' ? 'Zakończ' : 'Finish'}
                     </AILoadingButton>
@@ -4024,7 +4024,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       disabled={!studentAnswers[activeSentenceIndex]?.trim() || isGeneratingMore}
                       isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
                       loadingText={language === 'pl' ? '...' : '...'}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-black font-extrabold text-sm"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm"
                     >
                       {language === 'pl' ? 'Dalej' : 'Next'}
                     </AILoadingButton>
@@ -4035,7 +4035,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   {activeSentenceIndex === exercises.length - 1 && practiceMode === 'fixed' ? (
                     <AILoadingButton
                       onClick={handleFinishAll}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-black font-extrabold text-sm"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm"
                     >
                       {language === 'pl' ? 'Zakończ i podsumuj' : 'Finish & Summarize'}
                     </AILoadingButton>
@@ -4045,7 +4045,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       disabled={isGeneratingMore}
                       isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
                       loadingText={language === 'pl' ? '...' : '...'}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-black font-extrabold text-sm"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm"
                     >
                       {language === 'pl' ? 'Dalej' : 'Next'}
                     </AILoadingButton>
@@ -4056,12 +4056,12 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
             {(evaluationStatuses[activeSentenceIndex] === 'evaluating' || isGeneratingMore) && (
               <div className="w-full flex justify-center mt-3 animate-fade-in">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-semibold shadow-[0_0_15px_rgba(6,182,212,0.15)]">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/30 text-primary text-xs font-semibold shadow-[0_0_15px_rgba(6,182,212,0.15)]">
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                   </span>
-                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
                   {canViewAiModels ? (
                     <span>
                       {language === 'pl' ? 'Wysyłam zapytanie do: ' : 'Sending query to: '}
@@ -4107,7 +4107,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   rotate: Math.random() * 720 - 360
                 }}
                 transition={{ duration: 1.5 + Math.random() * 0.5, ease: "easeOut" }}
-                className={`absolute w-8 h-8 rounded-md mix-blend-screen pointer-events-none ${['bg-emerald-400', 'bg-teal-400', 'bg-cyan-400', 'bg-green-300'][i % 4]}`}
+                className={`absolute w-8 h-8 rounded-md mix-blend-screen pointer-events-none ${['bg-primary', 'bg-primary', 'bg-primary', 'bg-primary'][i % 4]}`}
                 style={{ clipPath: 'polygon(10% 0, 90% 0, 100% 10%, 100% 90%, 90% 100%, 10% 100%, 0 90%, 0 10%)' }}
               />
             ))}
@@ -4117,14 +4117,14 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               initial={{ scale: 0, opacity: 1 }}
               animate={{ scale: 4, opacity: 0 }}
               transition={{ duration: 1, ease: "easeOut" }}
-              className="absolute inset-0 rounded-full border-4 border-emerald-400/60 pointer-events-none"
+              className="absolute inset-0 rounded-full border-4 border-primary/60 pointer-events-none"
             />
 
             <motion.div 
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: "spring", bounce: 0.6, duration: 1 }}
-              className="w-28 h-28 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-3xl flex items-center justify-center relative z-10 shadow-[0_0_60px_rgba(52,211,153,0.8)] backdrop-blur-xl border border-white/30 pointer-events-auto"
+              className="w-28 h-28 bg-gradient-to-br from-primary to-primary rounded-3xl flex items-center justify-center relative z-10 shadow-[0_0_60px_rgba(52,211,153,0.8)] backdrop-blur-xl border border-white/30 pointer-events-auto"
             >
               <Puzzle className="w-14 h-14 text-black/90 drop-shadow-lg" />
             </motion.div>
@@ -4134,7 +4134,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
             <h2 className="text-4xl md:text-5xl font-black text-white drop-shadow-md">
               {language === 'pl' ? 'Świetna robota!' : 'Great job!'}
             </h2>
-            <p className="text-xl text-emerald-300 font-medium drop-shadow">
+            <p className="text-xl text-primary font-medium drop-shadow">
               {language === 'pl' 
                  ? 'Teraz czas na samodzielne tłumaczenie.' 
                  : 'Now it\'s time for independent translation.'}
@@ -4146,7 +4146,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               onClick={handleProceedToTrueChallenge} 
               isLoading={isLoading}
               loadingText={language === 'pl' ? 'Przygotowywanie...' : 'Preparing...'}
-              className="relative w-full py-5 text-xl font-black text-white rounded-2xl overflow-hidden group border border-emerald-300/40 bg-gradient-to-b from-emerald-500/50 to-emerald-700/50 backdrop-blur-xl shadow-[0_8px_32px_rgba(52,211,153,0.3)] transition-all hover:scale-[1.02] hover:shadow-[0_8px_40px_rgba(52,211,153,0.5)]"
+              className="relative w-full py-5 text-xl font-black text-white rounded-2xl overflow-hidden group border border-primary/40 bg-gradient-to-b from-primary/50 to-primary/50 backdrop-blur-xl shadow-[0_8px_32px_rgba(52,211,153,0.3)] transition-all hover:scale-[1.02] hover:shadow-[0_8px_40px_rgba(52,211,153,0.5)]"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-[150%] skew-x-[-30deg] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
               <span className="relative z-10 drop-shadow-md">
@@ -4214,10 +4214,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
             {evaluationResults.map((res, idx) => (
               <Card key={idx} className={`p-6 border-l-4 transition-all ${
                 res.score >= 85 
-                  ? 'border-l-green-400 border-base-300 bg-green-500/[0.01]' 
+                  ? 'border-l-green-400 border-base-300 bg-primary/[0.01]' 
                   : res.score >= 60 
-                    ? 'border-l-amber-500 border-base-300 bg-amber-500/[0.01]' 
-                    : 'border-l-red-500 border-base-300 bg-red-500/[0.01]'
+                    ? 'border-l-amber-500 border-base-300 bg-warn/[0.01]' 
+                    : 'border-l-red-500 border-base-300 bg-danger/[0.01]'
               }`}>
                 <div className="space-y-4">
                   <div className="flex justify-between items-start gap-4">
@@ -4226,8 +4226,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         {i18n.t("Zdanie")} {idx + 1}
                       </div>
                       {canViewAiModels && (
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-medium shadow-sm">
-                          <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-primary/10 border border-primary/30 text-primary text-xs font-medium shadow-sm">
+                          <Sparkles className="w-3.5 h-3.5 text-primary" />
                           <span>
                             {language === 'pl' ? 'Sprawdzone przez: ' : 'Evaluated by: '}
                             <strong className="text-white font-semibold">{formatAIModelName(res.modelUsed)}</strong>
@@ -4237,14 +4237,14 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className={`text-sm font-bold font-mono ${
-                        res.score >= 85 ? 'text-green-400' : res.score >= 60 ? 'text-amber-500' : 'text-red-400'
+                        res.score >= 85 ? 'text-primary' : res.score >= 60 ? 'text-warn' : 'text-danger'
                       }`}>
                         {res.score}%
                       </span>
                       {res.score >= 80 ? (
-                        <CheckCircle className="w-4 h-4 text-green-400" />
+                        <CheckCircle className="w-4 h-4 text-primary" />
                 ) : (
-                        <XCircle className="w-4 h-4 text-amber-500" />
+                        <XCircle className="w-4 h-4 text-warn" />
                       )}
                     </div>
                   </div>
@@ -4278,10 +4278,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         <div className="text-xs text-content-muted font-bold mb-1 uppercase tracking-wider">{language === 'pl' ? 'Twoja odpowiedź' : 'Your translation'}</div>
                         <div className={`text-sm p-2.5 rounded-lg font-medium border ${
                           res.score >= 85 
-                            ? 'bg-green-500/[0.02] border-green-500/10 text-green-100' 
+                            ? 'bg-primary/[0.02] border-primary/10 text-primary' 
                             : res.score >= 60 
-                              ? 'bg-amber-500/[0.02] border-amber-500/10 text-amber-100' 
-                              : 'bg-red-500/[0.02] border-red-500/10 text-red-100'
+                              ? 'bg-warn/[0.02] border-warn/10 text-warn' 
+                              : 'bg-danger/[0.02] border-danger/10 text-danger'
                         }`}>
                           {res.studentAnswer || <span className="italic opacity-50">{language === 'pl' ? '(brak)' : '(none)'}</span>}
                         </div>
@@ -4317,14 +4317,14 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
                     {/* Explanations & corrections */}
                     <details className="liquid-glass-tile p-4 rounded-xl border border-white/5 space-y-2 mt-2 group">
-                      <summary className="text-sm text-yellow-300 font-bold flex items-center gap-2 uppercase tracking-wider cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                      <summary className="text-sm text-warn font-bold flex items-center gap-2 uppercase tracking-wider cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
                         <span className="relative flex h-3 w-3 shrink-0">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-warn opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-warn"></span>
                         </span>
                         <Lightbulb className="w-4 h-4 shrink-0" />
                         {language === 'pl' ? 'Sprawdź Feedback' : 'Check Feedback'}
-                        <svg className="w-4 h-4 ml-auto transition-transform group-open:rotate-180 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-4 h-4 ml-auto transition-transform group-open:rotate-180 text-warn" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </summary>
@@ -4332,35 +4332,35 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         {(res.feedbackSyntax || res.feedbackVocab || res.feedbackRule) ? (
                           <div className="space-y-3">
                             {res.feedbackSyntax && (
-                              <div className="bg-red-500/10 p-3 rounded-lg border border-red-500/20">
-                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-red-400 uppercase tracking-wider mb-1">
+                              <div className="bg-danger/10 p-3 rounded-lg border border-danger/20">
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-danger uppercase tracking-wider mb-1">
                                   <AlertCircle className="w-3.5 h-3.5" />
                                   {language === 'pl' ? 'Szyk i gramatyka' : 'Syntax & Grammar'}
                                 </div>
-                                <div className="text-sm text-red-100/90 leading-relaxed">{res.feedbackSyntax}</div>
+                                <div className="text-sm text-danger/90 leading-relaxed">{res.feedbackSyntax}</div>
                               </div>
                             )}
                             {res.feedbackVocab && (
-                              <div className="bg-blue-500/10 p-3 rounded-lg border border-blue-500/20">
-                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">
+                              <div className="bg-info/10 p-3 rounded-lg border border-info/20">
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-info uppercase tracking-wider mb-1">
                                   <AlertCircle className="w-3.5 h-3.5" />
                                   {language === 'pl' ? 'Słownictwo i naturalność' : 'Vocabulary & Naturalness'}
                                 </div>
-                                <div className="text-sm text-blue-100/90 leading-relaxed">{res.feedbackVocab}</div>
+                                <div className="text-sm text-info/90 leading-relaxed">{res.feedbackVocab}</div>
                               </div>
                             )}
                             {res.feedbackRule && (
-                              <div className="bg-amber-500/10 p-3 rounded-lg border border-amber-500/20">
-                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-1">
+                              <div className="bg-warn/10 p-3 rounded-lg border border-warn/20">
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-warn uppercase tracking-wider mb-1">
                                   <Sparkles className="w-3.5 h-3.5" />
                                   {language === 'pl' ? 'Złota zasada' : 'Golden Rule'}
                                 </div>
-                                <div className="text-sm text-amber-100 font-medium leading-relaxed">{res.feedbackRule}</div>
+                                <div className="text-sm text-warn font-medium leading-relaxed">{res.feedbackRule}</div>
                               </div>
                             )}
                           </div>
                 ) : (
-                          <p className="text-sm leading-relaxed text-yellow-100 whitespace-pre-wrap">
+                          <p className="text-sm leading-relaxed text-warn whitespace-pre-wrap">
                             {res.explanation}
                           </p>
                         )}
@@ -4405,7 +4405,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               </div>
               <button 
                 onClick={() => setIsTopicModalOpen(false)}
-                className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                className="p-2 rounded-full hover:bg-white/10 text-text-2 hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -4414,7 +4414,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               {isLoadingTopics ? (
                 <div className="flex justify-center p-8"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
               ) : grammarChapters.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">Brak tematów w bazie. Skonfiguruj w panelu admina.</div>
+                <div className="text-center text-text-mute py-8">Brak tematów w bazie. Skonfiguruj w panelu admina.</div>
               ) : (
                 grammarChapters.map((chapter: any, cIdx: number) => (
                   <div key={chapter.id || cIdx} className="border border-white/5 bg-base-200/50 rounded-xl overflow-hidden">
@@ -4436,13 +4436,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   : `[TŁUMACZENIA]: Wygeneruj ćwiczenia, bazując ściśle na tych zdaniach, lekko je modyfikując: \n${topic.sentences}`;
                                handleGenerate(false, promptAddon);
                             }}
-                            className={`p-3 rounded-lg border text-left flex flex-col justify-center min-h-[60px] ${hasSentences ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/50 text-emerald-100" : "opacity-50 cursor-not-allowed border-transparent bg-black/10 text-gray-600"}`}
+                            className={`p-3 rounded-lg border text-left flex flex-col justify-center min-h-[60px] ${hasSentences ? "border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 text-primary" : "opacity-50 cursor-not-allowed border-transparent bg-black/10 text-text-faint"}`}
                           >
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-mono text-content-muted">{tIdx + 1}.</span>
                               <span className="font-semibold text-sm truncate flex-1">{topic.name}</span>
                             </div>
-                            {hasSentences && <div className="text-[10px] text-emerald-400 mt-1 ml-6">{topic.sentences.split("\n").filter((s:string) => s.trim()).length} zdań</div>}
+                            {hasSentences && <div className="text-[10px] text-primary mt-1 ml-6">{topic.sentences.split("\n").filter((s:string) => s.trim()).length} zdań</div>}
                           </button>
                          );
                       })}

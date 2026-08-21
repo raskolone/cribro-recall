@@ -122,7 +122,7 @@ const Dashboard: React.FC = () => {
   // Slogan logic refactored
   useEffect(() => {
     const slogans: { text: string; color: string }[] = [];
-    const colors = ['text-primary', 'text-secondary', 'text-accent', 'text-info', 'text-success'];
+    const colors = ['text-primary', 'text-accent-soft', 'text-content', 'text-primary', 'text-text-2'];
     
     const baseSlogans: string[] = [];
     if (language === 'pl') {

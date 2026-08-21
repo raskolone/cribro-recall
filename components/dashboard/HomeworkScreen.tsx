@@ -919,7 +919,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
             >
               {editingTask ? (
                 <>
-                  <Edit3 size={16} className="text-amber-400" />
+                  <Edit3 size={16} className="text-warn" />
                   Edycja pracy
                 </>
               ) : (
@@ -945,7 +945,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
               </span>
               <h2 className="text-xl font-bold text-white mt-2">{activeTask.title}</h2>
               {activeTask.instructions && (
-                <p className="text-sm text-gray-300 mt-1">{activeTask.instructions}</p>
+                <p className="text-sm text-content mt-1">{activeTask.instructions}</p>
               )}
             </div>
             <Button
@@ -968,7 +968,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
           {/* Submission Result Screen */}
           {submissionResult ? (
             <div className="space-y-6 text-center py-6">
-              <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/40 animate-bounce">
+              <div className="w-20 h-20 mx-auto rounded-full bg-primary/20 text-primary flex items-center justify-center border border-primary/40 animate-bounce">
                 <CheckCircle2 size={40} />
               </div>
               <h3 className="text-2xl font-black text-white">Praca domowa przesłana do nauczyciela!</h3>
@@ -983,21 +983,21 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                   <div key={idx} className="p-4 rounded-xl bg-base-200/60 border border-white/5 space-y-2">
                     <div className="flex justify-between items-center text-xs text-content-muted">
                       <span>Zdanie #{idx + 1}</span>
-                      <span className={res.isCorrect ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
+                      <span className={res.isCorrect ? 'text-primary font-bold' : 'text-warn font-bold'}>
                         {res.score !== undefined ? `${res.score}%` : (res.isCorrect ? 'Poprawne' : 'Do poprawy')}
                       </span>
                     </div>
                     {activeTask.type === 'fill_in_the_blank' ? (
                       <>
-                        <p className="text-sm text-red-300">Błędne zdanie: {res.incorrectSentence}</p>
-                        <p className="text-sm text-gray-200">Twoja odpowiedź: <span className="text-primary font-medium">{res.studentAnswer || '(brak)'}</span></p>
-                        <p className="text-sm text-emerald-400">Poprawna wersja: {res.correctSentence}</p>
+                        <p className="text-sm text-danger">Błędne zdanie: {res.incorrectSentence}</p>
+                        <p className="text-sm text-content">Twoja odpowiedź: <span className="text-primary font-medium">{res.studentAnswer || '(brak)'}</span></p>
+                        <p className="text-sm text-primary">Poprawna wersja: {res.correctSentence}</p>
                       </>
                     ) : (
                       <>
-                        <p className="text-sm text-gray-300">Zdanie PL: {res.polishSentence}</p>
-                        <p className="text-sm text-gray-200">Twoja odpowiedź: <span className="text-primary font-medium">{res.studentAnswer || '(brak)'}</span></p>
-                        <p className="text-sm text-emerald-400">Wzorcowe tłumaczenie: {res.correctTranslation}</p>
+                        <p className="text-sm text-content">Zdanie PL: {res.polishSentence}</p>
+                        <p className="text-sm text-content">Twoja odpowiedź: <span className="text-primary font-medium">{res.studentAnswer || '(brak)'}</span></p>
+                        <p className="text-sm text-primary">Wzorcowe tłumaczenie: {res.correctTranslation}</p>
                       </>
                     )}
                     {res.explanation && (
@@ -1042,7 +1042,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                         <button
                           type="button"
                           onClick={() => toggleHint(idx)}
-                          className="text-xs text-amber-400 hover:underline flex items-center gap-1"
+                          className="text-xs text-warn hover:underline flex items-center gap-1"
                         >
                           <HelpCircle size={14} />
                           {showHints[idx] ? 'Ukryj wskazówkę' : 'Pokaż wskazówkę'}
@@ -1056,7 +1056,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
 
                     {/* Hint display */}
                     {showHints[idx] && item.hint && (
-                      <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                      <div className="p-2.5 rounded-lg bg-warn/10 border border-warn/20 text-xs text-warn">
                         💡 <strong>Wskazówka:</strong> {item.hint}
                       </div>
                     )}
@@ -1119,7 +1119,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                 variant="secondary"
                 size="sm"
                 onClick={handleCancelEdit}
-                className="text-xs flex items-center gap-1.5 self-start sm:self-auto text-amber-300 hover:text-amber-200 border-amber-500/30"
+                className="text-xs flex items-center gap-1.5 self-start sm:self-auto text-warn hover:text-warn border-warn/30"
               >
                 <X size={14} /> Anuluj edycję i wróć do listy
               </Button>
@@ -1149,11 +1149,11 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
           <div className={`p-5 rounded-2xl border-2 transition-all space-y-4 ${
             selectedStudentId 
               ? 'bg-primary/10 border-primary shadow-[0_0_25px_rgba(114,240,180,0.25)]' 
-              : 'bg-amber-500/10 border-amber-400 animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.25)]'
+              : 'bg-warn/10 border-warn animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.25)]'
           }`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <div className={`p-2 rounded-xl ${selectedStudentId ? 'bg-primary text-base-100' : 'bg-amber-500 text-base-100'}`}>
+                <div className={`p-2 rounded-xl ${selectedStudentId ? 'bg-primary text-base-100' : 'bg-warn text-base-100'}`}>
                   <UserCheck size={22} />
                 </div>
                 <div>
@@ -1177,7 +1177,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                     <span className="px-2 py-0.5 bg-primary/20 text-primary font-mono font-bold rounded-md">
                       🎯 Poziom: {selectedStudent?.level || 'B1-B2'}
                     </span>
-                    <span className="text-gray-300">
+                    <span className="text-content">
                       📚 Lekcje: <strong className="text-white">{studentLessons.length}</strong>
                     </span>
                   </div>
@@ -1187,8 +1187,8 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-200 mb-1.5">
-                  Kursant docelowy <span className="text-red-400">*</span>
+                <label className="block text-xs font-bold text-content mb-1.5">
+                  Kursant docelowy <span className="text-danger">*</span>
                 </label>
                 <select
                   value={selectedStudentId}
@@ -1206,7 +1206,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-200 mb-1.5">
+                <label className="block text-xs font-bold text-content mb-1.5">
                   Termin oddania pracy domowej (opcjonalnie)
                 </label>
                 <input
@@ -1219,8 +1219,8 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
             </div>
 
             {!selectedStudentId && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-200 text-xs font-semibold">
-                <Sparkles size={16} className="text-amber-400 shrink-0" />
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-warn/20 border border-warn/40 text-warn text-xs font-semibold">
+                <Sparkles size={16} className="text-warn shrink-0" />
                 <span>Najpierw wybierz kursanta z listy powyżej, aby automatycznie załadować jego poziom i historię lekcji!</span>
               </div>
             )}
@@ -1228,8 +1228,8 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
 
           {/* 2. Wybór typu pracy domowej */}
           <div>
-            <label className="block text-sm font-bold text-gray-200 mb-2">
-              2. Wybierz typ pracy domowej <span className="text-red-400">*</span>
+            <label className="block text-sm font-bold text-content mb-2">
+              2. Wybierz typ pracy domowej <span className="text-danger">*</span>
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
@@ -1241,7 +1241,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                     : 'bg-base-200/60 border-white/5 hover:border-white/20'
                 }`}
               >
-                <div className={`p-2 rounded-lg ${homeworkType === 'translation' ? 'bg-primary text-base-100' : 'bg-base-300 text-gray-400'}`}>
+                <div className={`p-2 rounded-lg ${homeworkType === 'translation' ? 'bg-primary text-base-100' : 'bg-base-300 text-text-2'}`}>
                   <BookOpen size={20} />
                 </div>
                 <div>
@@ -1261,7 +1261,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                     : 'bg-base-200/60 border-white/5 hover:border-white/20'
                 }`}
               >
-                <div className={`p-2 rounded-lg ${homeworkType === 'fill_in_the_blank' ? 'bg-primary text-base-100' : 'bg-base-300 text-gray-400'}`}>
+                <div className={`p-2 rounded-lg ${homeworkType === 'fill_in_the_blank' ? 'bg-primary text-base-100' : 'bg-base-300 text-text-2'}`}>
                   <AlertTriangle size={20} />
                 </div>
                 <div>
@@ -1315,7 +1315,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Poziom (Automatycznie wybrany) */}
               <div>
-                <label className="block text-xs font-bold text-gray-200 mb-1 flex items-center justify-between">
+                <label className="block text-xs font-bold text-content mb-1 flex items-center justify-between">
                   <span>Poziom językowy</span>
                   {selectedStudentId && students.find(s => s.id === selectedStudentId)?.level && (
                     <span className="text-[10px] text-primary font-semibold">
@@ -1340,7 +1340,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
 
               {/* Wybór lekcji kursanta do analizy AI */}
               <div>
-                <label className="block text-xs font-bold text-gray-200 mb-1">
+                <label className="block text-xs font-bold text-content mb-1">
                   Wybór lekcji kursanta do analizy AI
                 </label>
                 <button
@@ -1349,7 +1349,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                   className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 transition-all ${
                     selectedLessonIds.length > 0
                       ? 'bg-primary/10 border-primary/40 text-primary hover:bg-primary/15 shadow-[0_0_12px_rgba(114,240,180,0.1)]'
-                      : 'bg-base-100 border-white/10 text-gray-300 hover:border-white/20 hover:text-white'
+                      : 'bg-base-100 border-white/10 text-content hover:border-white/20 hover:text-white'
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
@@ -1365,12 +1365,12 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                   </span>
                 </button>
                 {selectedLessonIds.length > 0 && (
-                  <div className="mt-1.5 flex items-center justify-between text-[11px] text-gray-400 px-1">
+                  <div className="mt-1.5 flex items-center justify-between text-[11px] text-text-2 px-1">
                     <span>AI przeanalizuje słownictwo i wpisy z {selectedLessonIds.length} lekcji.</span>
                     <button
                       type="button"
                       onClick={() => setSelectedLessonIds([])}
-                      className="text-red-400 hover:underline font-medium"
+                      className="text-danger hover:underline font-medium"
                     >
                       Wyczyść wybór
                     </button>
@@ -1380,7 +1380,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
 
               {/* Temat (Manualnie) */}
               <div>
-                <label className="block text-xs font-bold text-gray-200 mb-1">
+                <label className="block text-xs font-bold text-content mb-1">
                   Temat / Słownictwo docelowe (wpisywane manualnie)
                 </label>
                 <input
@@ -1394,7 +1394,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
 
               {/* Liczba zadań (Manualnie) */}
               <div>
-                <label className="block text-xs font-bold text-gray-200 mb-1">
+                <label className="block text-xs font-bold text-content mb-1">
                   Liczba zdań w zadaniu (manualnie)
                 </label>
                 <input
@@ -1410,7 +1410,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
 
             {/* Wskazówki dla AI (tworzy nauczyciel) */}
             <div>
-              <label className="block text-xs font-bold text-gray-200 mb-1">
+              <label className="block text-xs font-bold text-content mb-1">
                 Wskazówki dla AI (tworzy nauczyciel)
               </label>
               <textarea
@@ -1423,7 +1423,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
             </div>
 
             {genError && (
-              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-400 font-semibold">
+              <div className="p-3 bg-danger/10 border border-danger/30 rounded-xl text-xs text-danger font-semibold">
                 ⚠️ {genError}
               </div>
             )}
@@ -1473,7 +1473,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                         <button
                           type="button"
                           onClick={() => setTranslationItems(prev => prev.filter((_, i) => i !== idx))}
-                          className="text-red-400 hover:text-red-300 p-1"
+                          className="text-danger hover:text-danger p-1"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -1546,7 +1546,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                         <button
                           type="button"
                           onClick={() => setErrorCorrectionItems(prev => prev.filter((_, i) => i !== idx))}
-                          className="text-red-400 hover:text-red-300 p-1"
+                          className="text-danger hover:text-danger p-1"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -1554,7 +1554,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
 
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-[11px] font-semibold text-amber-400 mb-1">Tekst z lukami (użyj [BLANK_1] itd.)</label>
+                          <label className="block text-[11px] font-semibold text-warn mb-1">Tekst z lukami (użyj [BLANK_1] itd.)</label>
                           <textarea
                             rows={3}
                             value={item.textWithBlanks}
@@ -1564,12 +1564,12 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                               setErrorCorrectionItems(updated);
                             }}
                             placeholder="This is a [BLANK_1]..."
-                            className="w-full px-3 py-1.5 bg-base-100 text-white border border-amber-500/30 rounded-lg text-xs"
+                            className="w-full px-3 py-1.5 bg-base-100 text-white border border-warn/30 rounded-lg text-xs"
                           />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-[11px] font-semibold text-emerald-400 mb-1">Odpowiedzi (JSON format)</label>
+                            <label className="block text-[11px] font-semibold text-primary mb-1">Odpowiedzi (JSON format)</label>
                             <textarea
                               rows={3}
                               defaultValue={JSON.stringify(item.blanks, null, 2)}
@@ -1583,7 +1583,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                                 }
                               }}
                               placeholder='{ "BLANK_1": "word" }'
-                              className="w-full px-3 py-1.5 bg-base-100 text-white border border-emerald-500/30 rounded-lg text-xs font-mono"
+                              className="w-full px-3 py-1.5 bg-base-100 text-white border border-primary/30 rounded-lg text-xs font-mono"
                             />
                           </div>
                           <div>
@@ -1684,7 +1684,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
           ) : (isTeacher ? filteredTasks : tasks).length === 0 ? (
             <Card className="text-center py-12">
               <BookOpen className="mx-auto text-content-muted mb-3 opacity-40" size={48} />
-              <p className="text-base font-bold text-gray-300">Brak prac domowych</p>
+              <p className="text-base font-bold text-content">Brak prac domowych</p>
               <p className="text-xs text-content-muted mt-1">
                 {isTeacher
                   ? 'Nie przypisano jeszcze żadnej pracy domowej. Kliknij "Przypisz pracę domową", aby stworzyć pierwsze zadanie.'
@@ -1703,7 +1703,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                     key={task.id}
                     className={`liquid-glass relative transition-all border ${
                       isSubmitted
-                        ? 'border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                        ? 'border-primary/40 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
                         : isGraded
                         ? 'border-primary/40'
                         : 'border-white/10'
@@ -1718,10 +1718,10 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
                           isSubmitted
-                            ? 'bg-emerald-500/20 text-emerald-400'
+                            ? 'bg-primary/20 text-primary'
                             : isGraded
                             ? 'bg-primary/20 text-primary'
-                            : 'bg-amber-500/20 text-amber-300'
+                            : 'bg-warn/20 text-warn'
                         }`}
                       >
                         {isSubmitted ? (
@@ -1761,7 +1761,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                     {isGraded && task.teacherFeedback && (
                       <div className="mt-3 p-2.5 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary space-y-1">
                         <strong className="block">Komentarz nauczyciela:</strong>
-                        <p className="text-gray-200">{task.teacherFeedback}</p>
+                        <p className="text-content">{task.teacherFeedback}</p>
                       </div>
                     )}
 
@@ -1819,7 +1819,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                           <button
                             type="button"
                             onClick={() => handleDeleteTask(task)}
-                            className="p-2 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-500/15 border border-red-500/20 hover:border-red-500/40 transition-all cursor-pointer"
+                            className="p-2 rounded-xl text-danger hover:text-danger hover:bg-danger/15 border border-danger/20 hover:border-danger/40 transition-all cursor-pointer"
                             title="Usuń pracę domową"
                           >
                             <Trash2 size={15} />
@@ -1894,18 +1894,18 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                     {isTranslation ? (
                       <>
                         <p className="text-sm font-medium text-white">PL: {item.polishSentence}</p>
-                        <p className="text-sm text-emerald-400">Wzorzec EN: {item.englishTranslation}</p>
+                        <p className="text-sm text-primary">Wzorzec EN: {item.englishTranslation}</p>
                       </>
                     ) : (
                       <>
-                        <p className="text-sm font-medium text-amber-300">Z błędem: {item.incorrectSentence}</p>
-                        <p className="text-sm text-emerald-400">Wzorzec: {item.correctSentence}</p>
+                        <p className="text-sm font-medium text-warn">Z błędem: {item.incorrectSentence}</p>
+                        <p className="text-sm text-primary">Wzorzec: {item.correctSentence}</p>
                       </>
                     )}
 
                     <div className="p-2.5 rounded-lg bg-base-100 border border-white/10 text-sm">
                       <span className="text-xs font-semibold text-content-muted block mb-0.5">Odpowiedź kursanta:</span>
-                      <span className={stAns ? 'text-primary font-medium' : 'text-red-400 italic'}>
+                      <span className={stAns ? 'text-primary font-medium' : 'text-danger italic'}>
                         {stAns || '(Brak odpowiedzi)'}
                       </span>
                     </div>
@@ -1922,7 +1922,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
 
             {/* Teacher feedback area */}
             <div className="pt-4 border-t border-white/10 space-y-3">
-              <label className="block text-sm font-bold text-gray-200">
+              <label className="block text-sm font-bold text-content">
                 Komentarz / Wskazówki nauczyciela dla kursanta:
               </label>
               <textarea
@@ -1934,7 +1934,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
               />
 
               <div className="flex justify-between items-center pt-2">
-                <Button onClick={handleAnalyzeWithAI} isLoading={isAnalyzing} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700">
+                <Button onClick={handleAnalyzeWithAI} isLoading={isAnalyzing} className="flex items-center gap-2">
                   <Sparkles size={18} /> Przeanalizuj z AI
                 </Button>
                 <div className="flex justify-end gap-3">
@@ -2009,10 +2009,10 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                   <span
                     className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
                       previewTask.status === 'submitted'
-                        ? 'bg-emerald-500/20 text-emerald-400'
+                        ? 'bg-primary/20 text-primary'
                         : previewTask.status === 'graded'
                         ? 'bg-primary/20 text-primary'
-                        : 'bg-amber-500/20 text-amber-300'
+                        : 'bg-warn/20 text-warn'
                     }`}
                   >
                     {previewTask.status === 'submitted'
@@ -2025,8 +2025,8 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                 <h2 className="text-xl font-bold text-white">{previewTask.title}</h2>
                 <div className="flex flex-wrap items-center gap-3 text-xs text-content-muted mt-1">
                   <span>Kursant: <strong className="text-white">{previewTask.studentName || previewTask.studentId}</strong></span>
-                  {previewTask.dueDate && <span>• Termin: <strong className="text-gray-300">{previewTask.dueDate}</strong></span>}
-                  <span>• Liczba zdań: <strong className="text-gray-300">{previewTask.sentences?.length || 0}</strong></span>
+                  {previewTask.dueDate && <span>• Termin: <strong className="text-content">{previewTask.dueDate}</strong></span>}
+                  <span>• Liczba zdań: <strong className="text-content">{previewTask.sentences?.length || 0}</strong></span>
                 </div>
               </div>
               <button
@@ -2039,7 +2039,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
             </div>
 
             {previewTask.instructions && (
-              <div className="p-3 bg-base-200/60 rounded-xl border border-white/5 text-xs text-gray-300">
+              <div className="p-3 bg-base-200/60 rounded-xl border border-white/5 text-xs text-content">
                 <strong className="text-content-muted block mb-0.5">Instrukcje / Wskazówki ogólne:</strong>
                 {previewTask.instructions}
               </div>
@@ -2069,11 +2069,11 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                         </div>
                         <div>
                           <span className="text-xs text-content-muted block">Wzorzec angielski:</span>
-                          <p className="text-emerald-400 font-medium">{item.englishTranslation || item.englishSentence}</p>
+                          <p className="text-primary font-medium">{item.englishTranslation || item.englishSentence}</p>
                         </div>
                         {item.hint && (
-                          <div className="text-xs text-gray-400 bg-base-100/60 p-2 rounded-lg border border-white/5 flex items-start gap-1.5">
-                            <span className="text-amber-400">💡</span>
+                          <div className="text-xs text-text-2 bg-base-100/60 p-2 rounded-lg border border-white/5 flex items-start gap-1.5">
+                            <span className="text-warn">💡</span>
                             <span>Wskazówka: {item.hint}</span>
                           </div>
                         )}
@@ -2082,15 +2082,15 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                       <div className="space-y-1.5 text-sm">
                         <div>
                           <span className="text-xs text-content-muted block">Zdanie z błędem do korekty:</span>
-                          <p className="font-semibold text-amber-300">{item.incorrectSentence}</p>
+                          <p className="font-semibold text-warn">{item.incorrectSentence}</p>
                         </div>
                         <div>
                           <span className="text-xs text-content-muted block">Poprawna wersja:</span>
-                          <p className="text-emerald-400 font-medium">{item.correctSentence}</p>
+                          <p className="text-primary font-medium">{item.correctSentence}</p>
                         </div>
                         {item.hint && (
-                          <div className="text-xs text-gray-400 bg-base-100/60 p-2 rounded-lg border border-white/5 flex items-start gap-1.5">
-                            <span className="text-amber-400">💡</span>
+                          <div className="text-xs text-text-2 bg-base-100/60 p-2 rounded-lg border border-white/5 flex items-start gap-1.5">
+                            <span className="text-warn">💡</span>
                             <span>Wskazówka: {item.hint}</span>
                           </div>
                         )}
@@ -2100,7 +2100,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                     {stAns !== undefined && (
                       <div className="p-2.5 rounded-lg bg-base-100 border border-white/10 text-xs sm:text-sm">
                         <span className="text-xs font-semibold text-content-muted block mb-0.5">Odpowiedź kursanta:</span>
-                        <span className={stAns ? 'text-primary font-medium' : 'text-red-400 italic'}>
+                        <span className={stAns ? 'text-primary font-medium' : 'text-danger italic'}>
                           {stAns || '(Brak odpowiedzi)'}
                         </span>
                       </div>
@@ -2120,7 +2120,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
             {previewTask.teacherFeedback && (
               <div className="p-3 bg-primary/10 rounded-xl border border-primary/20 text-xs space-y-1">
                 <strong className="text-primary block">Komentarz nauczyciela:</strong>
-                <p className="text-gray-200">{previewTask.teacherFeedback}</p>
+                <p className="text-content">{previewTask.teacherFeedback}</p>
               </div>
             )}
 
@@ -2134,7 +2134,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                     setPreviewTask(null);
                     setTaskToDelete(t);
                   }}
-                  className="text-xs text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-xl border border-red-500/25 flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="text-xs text-danger hover:text-danger bg-danger/10 hover:bg-danger/20 px-3 py-1.5 rounded-xl border border-danger/25 flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <Trash2 size={14} /> Usuń pracę domową
                 </button>

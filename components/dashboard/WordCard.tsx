@@ -52,7 +52,7 @@ const WordCard: React.FC<WordCardProps> = ({ word }) => {
     >
       <button
         onClick={() => deleteWord(word.id)}
-        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600"
+        className="absolute -top-2 -right-2 bg-danger text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-danger"
         title={i18n.t("Delete word")}
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -62,7 +62,7 @@ const WordCard: React.FC<WordCardProps> = ({ word }) => {
       <div className="flex justify-between items-start">
         <div>
           <h3 className="text-lg font-bold text-primary">{word.word}</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">/{word.ipa}/</p>
+          <p className="text-sm text-text-mute dark:text-text-2 font-mono">/{word.ipa}/</p>
         </div>
         <div className="flex items-center space-x-2">
           {word.language === 'English' ? (
@@ -101,7 +101,7 @@ const WordCard: React.FC<WordCardProps> = ({ word }) => {
             onClick={() => toggleWordDifficulty(word.id)}
             title={word.isDifficult ? 'Mark as easy' : 'Mark as difficult'}
             className={`p-1.5 rounded-full transition-colors ${
-              word.isDifficult ? 'text-yellow-500 bg-yellow-500/20' : 'text-gray-400 dark:text-gray-500 hover:bg-base-300 dark:hover:bg-dark-base-300'
+              word.isDifficult ? 'text-warn bg-warn/20' : 'text-text-2 dark:text-text-mute hover:bg-base-300 dark:hover:bg-dark-base-300'
             }`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -110,8 +110,8 @@ const WordCard: React.FC<WordCardProps> = ({ word }) => {
           </button>
         </div>
       </div>
-      <p className="mt-2 text-gray-700 dark:text-gray-300">{word.definition}</p>
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 italic">"{word.example}"</p>
+      <p className="mt-2 text-text-faint dark:text-content">{word.definition}</p>
+      <p className="mt-1 text-sm text-text-mute dark:text-text-2 italic">"{word.example}"</p>
     </motion.div>
   );
 };

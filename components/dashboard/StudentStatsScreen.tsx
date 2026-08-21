@@ -113,8 +113,8 @@ const SpeechBubbleInfo: React.FC<SpeechBubbleInfoProps> = ({
         aria-label="Informacja od nauczyciela"
         className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs transition-all transform hover:scale-110 active:scale-95 shadow-md ${
           isCorrect
-            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30'
-            : 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 animate-pulse'
+            ? 'bg-primary/20 text-primary border border-primary/40 hover:bg-primary/30'
+            : 'bg-danger/20 text-danger border border-danger/40 hover:bg-danger/30 animate-pulse'
         }`}
       >
         {isCorrect ? 'i' : 'I'}
@@ -123,7 +123,7 @@ const SpeechBubbleInfo: React.FC<SpeechBubbleInfoProps> = ({
       {/* Speech Bubble Tooltip */}
       {isOpen && (
         <div 
-          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-3 w-72 sm:w-80 p-4 rounded-2xl bg-slate-900/95 border border-white/15 backdrop-blur-md shadow-2xl text-left text-xs animate-in fade-in zoom-in-95 duration-200 pointer-events-auto"
+          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-3 w-72 sm:w-80 p-4 rounded-2xl bg-base-200/95 border border-white/15 backdrop-blur-md shadow-2xl text-left text-xs animate-in fade-in zoom-in-95 duration-200 pointer-events-auto"
           style={{ filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.5))' }}
         >
           {/* Triangle tail pointing down */}
@@ -131,18 +131,18 @@ const SpeechBubbleInfo: React.FC<SpeechBubbleInfoProps> = ({
 
           <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/10">
             <span className="text-base">{isCorrect ? '🎉' : '👨‍🏫'}</span>
-            <span className={`font-bold uppercase tracking-wider text-[11px] ${isCorrect ? 'text-emerald-400' : 'text-amber-400'}`}>
+            <span className={`font-bold uppercase tracking-wider text-[11px] ${isCorrect ? 'text-primary' : 'text-warn'}`}>
               {isCorrect ? 'Komentarz Nauczyciela AI' : 'Wskazówka Nauczyciela AI'}
             </span>
           </div>
 
-          <p className="text-gray-200 leading-relaxed whitespace-pre-line font-medium">
+          <p className="text-content leading-relaxed whitespace-pre-line font-medium">
             {teacherMessage}
           </p>
 
           {!isCorrect && correctTranslation && (
-            <div className="mt-2.5 pt-2 border-t border-white/10 text-[11px] text-emerald-300">
-              <span className="font-semibold text-gray-400 block">Wzorcowe zdanie:</span>
+            <div className="mt-2.5 pt-2 border-t border-white/10 text-[11px] text-primary">
+              <span className="font-semibold text-text-2 block">Wzorcowe zdanie:</span>
               <span className="italic font-mono">{correctTranslation}</span>
             </div>
           )}
@@ -467,72 +467,72 @@ const StudentStatsScreen: React.FC = () => {
       {/* Top Numeric Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Streak */}
-        <Card className="p-6 bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-transparent border-amber-500/30 relative overflow-hidden group hover:border-amber-500/50 transition-all">
+        <Card className="p-6 bg-gradient-to-br from-warn/15 via-warn/10 to-transparent border-warn/30 relative overflow-hidden group hover:border-warn/50 transition-all">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-amber-500/20 rounded-2xl text-amber-400 border border-amber-500/30">
-              <Flame size={28} className={stats.currentStreak > 0 ? "animate-bounce text-amber-400" : "text-gray-400"} />
+            <div className="p-3 bg-warn/20 rounded-2xl text-warn border border-warn/30">
+              <Flame size={28} className={stats.currentStreak > 0 ? "animate-bounce text-warn" : "text-text-2"} />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-amber-300/80 mb-1">
+              <p className="text-xs font-bold uppercase tracking-wider text-warn/80 mb-1">
                 {language === 'pl' ? 'Obecny Streak' : 'Current Streak'}
               </p>
               <div className="flex items-baseline gap-2">
                 <h3 className="text-3xl font-black text-white">{stats.currentStreak}</h3>
-                <span className="text-xs font-bold text-amber-400/90">{language === 'pl' ? 'dni z rzędu' : 'days streak'} 🔥</span>
+                <span className="text-xs font-bold text-warn/90">{language === 'pl' ? 'dni z rzędu' : 'days streak'} 🔥</span>
               </div>
             </div>
           </div>
         </Card>
 
         {/* Longest Streak */}
-        <Card className="p-6 bg-gradient-to-br from-yellow-500/15 via-amber-600/10 to-transparent border-yellow-500/30 relative overflow-hidden group hover:border-yellow-500/50 transition-all">
+        <Card className="p-6 bg-gradient-to-br from-warn/15 via-warn/10 to-transparent border-warn/30 relative overflow-hidden group hover:border-warn/50 transition-all">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-yellow-500/20 rounded-2xl text-yellow-400 border border-yellow-500/30">
+            <div className="p-3 bg-warn/20 rounded-2xl text-warn border border-warn/30">
               <Trophy size={28} />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-yellow-300/80 mb-1">
+              <p className="text-xs font-bold uppercase tracking-wider text-warn/80 mb-1">
                 {language === 'pl' ? 'Najdłuższy Streak' : 'Longest Streak'}
               </p>
               <div className="flex items-baseline gap-2">
                 <h3 className="text-3xl font-black text-white">{stats.longestStreak}</h3>
-                <span className="text-xs font-bold text-yellow-400/90">{language === 'pl' ? 'dni' : 'days'} 🏆</span>
+                <span className="text-xs font-bold text-warn/90">{language === 'pl' ? 'dni' : 'days'} 🏆</span>
               </div>
             </div>
           </div>
         </Card>
 
         {/* Average Score */}
-        <Card className="p-6 bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-transparent border-emerald-500/30 relative overflow-hidden group hover:border-emerald-500/50 transition-all">
+        <Card className="p-6 bg-gradient-to-br from-primary/15 via-primary/10 to-transparent border-primary/30 relative overflow-hidden group hover:border-primary/50 transition-all">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-emerald-500/20 rounded-2xl text-emerald-400 border border-emerald-500/30">
+            <div className="p-3 bg-primary/20 rounded-2xl text-primary border border-primary/30">
               <Target size={28} />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-emerald-300/80 mb-1">
+              <p className="text-xs font-bold uppercase tracking-wider text-primary/80 mb-1">
                 {language === 'pl' ? 'Średni Wynik' : 'Average Score'}
               </p>
               <div className="flex items-baseline gap-2">
                 <h3 className="text-3xl font-black text-white">{Number.isNaN(Number(stats.averageScore)) ? 0 : stats.averageScore}%</h3>
-                <span className="text-xs font-bold text-emerald-400/90">{language === 'pl' ? 'poprawności' : 'accuracy'} 🎯</span>
+                <span className="text-xs font-bold text-primary/90">{language === 'pl' ? 'poprawności' : 'accuracy'} 🎯</span>
               </div>
             </div>
           </div>
         </Card>
 
         {/* Total Translated Sentences */}
-        <Card className="p-6 bg-gradient-to-br from-indigo-500/15 via-purple-500/10 to-transparent border-indigo-500/30 relative overflow-hidden group hover:border-indigo-500/50 transition-all">
+        <Card className="p-6 bg-gradient-to-br from-primary/15 via-primary/10 to-transparent border-primary/30 relative overflow-hidden group hover:border-primary/50 transition-all">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-indigo-500/20 rounded-2xl text-indigo-400 border border-indigo-500/30">
+            <div className="p-3 bg-primary/20 rounded-2xl text-primary border border-primary/30">
               <BookOpen size={28} />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-indigo-300/80 mb-1">
+              <p className="text-xs font-bold uppercase tracking-wider text-primary/80 mb-1">
                 {language === 'pl' ? 'Przetłumaczone Zdania' : 'Translated Sentences'}
               </p>
               <div className="flex items-baseline gap-2">
                 <h3 className="text-3xl font-black text-white">{stats.totalWords}</h3>
-                <span className="text-xs font-bold text-indigo-300/90">{language === 'pl' ? 'zdań' : 'sentences'} ✨</span>
+                <span className="text-xs font-bold text-primary/90">{language === 'pl' ? 'zdań' : 'sentences'} ✨</span>
               </div>
             </div>
           </div>
@@ -578,7 +578,7 @@ const StudentStatsScreen: React.FC = () => {
             </p>
           </div>
         ) : aiError ? (
-          <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-rose-300 text-sm flex items-center justify-between">
+          <div className="p-4 bg-danger/10 border border-danger/30 rounded-2xl text-danger text-sm flex items-center justify-between">
             <p>{aiError}</p>
             <Button variant="secondary" onClick={fetchTeacherCommentary} className="text-xs">
               {language === 'pl' ? 'Spróbuj ponownie' : 'Retry'}
@@ -592,7 +592,7 @@ const StudentStatsScreen: React.FC = () => {
                 <MessageSquare className="w-4 h-4 text-primary" />
                 {language === 'pl' ? 'Podsumowanie Dydaktyczne' : 'Pedagogical Overview'}
               </h3>
-              <div className="text-sm md:text-base text-gray-200 leading-relaxed whitespace-pre-line font-normal">
+              <div className="text-sm md:text-base text-content leading-relaxed whitespace-pre-line font-normal">
                 {aiAnalysis.overallTeacherCommentary}
               </div>
             </div>
@@ -600,15 +600,15 @@ const StudentStatsScreen: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Key Strengths */}
               {aiAnalysis.keyStrengths && aiAnalysis.keyStrengths.length > 0 && (
-                <div className="bg-emerald-500/10 p-5 rounded-2xl border border-emerald-500/20 space-y-3">
-                  <h4 className="text-sm font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <div className="bg-primary/10 p-5 rounded-2xl border border-primary/20 space-y-3">
+                  <h4 className="text-sm font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
                     {language === 'pl' ? 'Mocne Strony' : 'Key Strengths'}
                   </h4>
                   <ul className="space-y-2">
                     {aiAnalysis.keyStrengths.map((str, idx) => (
-                      <li key={idx} className="text-xs md:text-sm text-emerald-100 flex items-start gap-2">
-                        <span className="text-emerald-400 font-bold">•</span>
+                      <li key={idx} className="text-xs md:text-sm text-primary flex items-start gap-2">
+                        <span className="text-primary font-bold">•</span>
                         <span>{str}</span>
                       </li>
                     ))}
@@ -618,15 +618,15 @@ const StudentStatsScreen: React.FC = () => {
 
               {/* Areas to Improve */}
               {aiAnalysis.areasToImprove && aiAnalysis.areasToImprove.length > 0 && (
-                <div className="bg-amber-500/10 p-5 rounded-2xl border border-amber-500/20 space-y-3">
-                  <h4 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                    <Target className="w-4 h-4 text-amber-400" />
+                <div className="bg-warn/10 p-5 rounded-2xl border border-warn/20 space-y-3">
+                  <h4 className="text-sm font-bold text-warn uppercase tracking-wider flex items-center gap-2">
+                    <Target className="w-4 h-4 text-warn" />
                     {language === 'pl' ? 'Obszary do Wyszkolenia' : 'Areas to Improve'}
                   </h4>
                   <ul className="space-y-2">
                     {aiAnalysis.areasToImprove.map((area, idx) => (
-                      <li key={idx} className="text-xs md:text-sm text-amber-100 flex items-start gap-2">
-                        <span className="text-amber-400 font-bold">•</span>
+                      <li key={idx} className="text-xs md:text-sm text-warn flex items-start gap-2">
+                        <span className="text-warn font-bold">•</span>
                         <span>{area}</span>
                       </li>
                     ))}
@@ -637,13 +637,13 @@ const StudentStatsScreen: React.FC = () => {
 
             {/* Pedagogical Tip */}
             {aiAnalysis.pedagogicalTip && (
-              <div className="bg-gradient-to-r from-primary/20 to-emerald-500/20 p-4 md:p-5 rounded-2xl border border-primary/30 flex items-start gap-3">
+              <div className="bg-gradient-to-r from-primary/20 to-primary/20 p-4 md:p-5 rounded-2xl border border-primary/30 flex items-start gap-3">
                 <Lightbulb className="w-6 h-6 text-primary shrink-0 mt-0.5" />
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-primary mb-1">
                     {language === 'pl' ? 'Wskazówka Metodyczna' : 'Methodical Tip'}
                   </h4>
-                  <p className="text-xs md:text-sm text-gray-200 font-medium">
+                  <p className="text-xs md:text-sm text-content font-medium">
                     {aiAnalysis.pedagogicalTip}
                   </p>
                 </div>
@@ -715,8 +715,8 @@ const StudentStatsScreen: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <div className={`p-2.5 rounded-xl border ${
                         isSuccess 
-                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
-                          : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                          ? 'bg-primary/20 text-primary border-primary/30' 
+                          : 'bg-warn/20 text-warn border-warn/30'
                       }`}>
                         <Award className="w-5 h-5" />
                       </div>
@@ -726,7 +726,7 @@ const StudentStatsScreen: React.FC = () => {
                             {log.testName || (language === 'pl' ? 'Sesja Tłumaczeniowa AI' : 'AI Translation Practice')}
                           </h3>
                           <span className={`px-2.5 py-0.5 rounded-full text-xs font-black ${
-                            isSuccess ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            isSuccess ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-warn/20 text-warn border border-warn/30'
                           }`}>
                             {log.score || 0}%
                           </span>
@@ -773,25 +773,25 @@ const StudentStatsScreen: React.FC = () => {
                             key={idx} 
                             className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
                               item.isCorrect 
-                                ? 'bg-emerald-500/5 border-emerald-500/20' 
-                                : 'bg-rose-500/5 border-rose-500/20'
+                                ? 'bg-primary/5 border-primary/20' 
+                                : 'bg-danger/5 border-danger/20'
                             }`}
                           >
                             <div className="space-y-1.5 flex-1">
-                              <div className="flex items-center gap-2 text-xs font-semibold text-gray-400">
+                              <div className="flex items-center gap-2 text-xs font-semibold text-text-2">
                                 <span>Zdanie #{idx + 1} (PL):</span>
                                 <span className="text-white font-medium">{item.polishSentence}</span>
                               </div>
 
                               <div className="flex items-center gap-2 text-xs font-semibold">
-                                <span className="text-gray-400">Odpowiedź ucznia:</span>
-                                <span className={item.isCorrect ? 'text-emerald-300 font-mono' : 'text-rose-300 font-mono line-through'}>
+                                <span className="text-text-2">Odpowiedź ucznia:</span>
+                                <span className={item.isCorrect ? 'text-primary font-mono' : 'text-danger font-mono line-through'}>
                                   {item.studentAnswer || '(brak)'}
                                 </span>
                               </div>
 
                               {!item.isCorrect && item.correctTranslation && (
-                                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
+                                <div className="flex items-center gap-2 text-xs font-semibold text-primary">
                                   <span>Poprawne tłumaczenie:</span>
                                   <span className="font-mono">{item.correctTranslation}</span>
                                 </div>
@@ -801,7 +801,7 @@ const StudentStatsScreen: React.FC = () => {
                             {/* Speech Bubble Tooltip Trigger Badge */}
                             <div className="flex items-center gap-3 shrink-0 self-start sm:self-center">
                               <span className={`text-xs font-bold px-2 py-1 rounded-md ${
-                                item.isCorrect ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10'
+                                item.isCorrect ? 'text-primary bg-primary/10' : 'text-danger bg-danger/10'
                               }`}>
                                 {item.isCorrect ? (language === 'pl' ? 'Poprawne' : 'Correct') : (language === 'pl' ? 'Błąd' : 'Mistake')}
                               </span>

@@ -113,34 +113,34 @@ const LessonHistory: React.FC = () => {
             <div className="space-y-3 mb-4">
               {isTeacher && lesson.studentSpeaking && (
                 <div className="rounded-xl overflow-hidden border border-white/5 bg-[#242424]">
-                  <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200 text-sm">
-                    <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                  <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-content text-sm">
+                    <span className="w-2 h-2 rounded-full bg-text-faint"></span>
                     
                                                     {i18n.t("Kursant — o czym mówił")}
                                                   </div>
-                  <div className="p-3 text-sm text-gray-300 whitespace-pre-wrap">{lesson.studentSpeaking}</div>
+                  <div className="p-3 text-sm text-content whitespace-pre-wrap">{lesson.studentSpeaking}</div>
                 </div>
               )}
 
               {lesson.thingsToImprove && (
                 <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a1616]">
-                  <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200 text-sm">
-                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                  <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-content text-sm">
+                    <span className="w-2 h-2 rounded-full bg-danger"></span>
                     
                                                     {i18n.t("Things to Improve")}
                                                   </div>
-                  <div className="p-3 text-sm text-gray-300 whitespace-pre-wrap">{lesson.thingsToImprove}</div>
+                  <div className="p-3 text-sm text-content whitespace-pre-wrap">{lesson.thingsToImprove}</div>
                 </div>
               )}
 
               {isTeacher && lesson.suggestedFollowUp && (
                 <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a2816]">
-                  <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200 text-sm">
-                    <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                  <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-content text-sm">
+                    <span className="w-2 h-2 rounded-full bg-warn"></span>
                     
                                                     {i18n.t("Suggested follow-up")}
                                                   </div>
-                  <div className="p-3 text-sm text-gray-300 whitespace-pre-wrap">{lesson.suggestedFollowUp}</div>
+                  <div className="p-3 text-sm text-content whitespace-pre-wrap">{lesson.suggestedFollowUp}</div>
                 </div>
               )}
 
@@ -155,13 +155,13 @@ const LessonHistory: React.FC = () => {
                     {lesson.lessonSummary && (
                       <div>
                         <div className="text-xs font-bold text-content-muted uppercase mb-1">{i18n.t("Podsumowanie")}</div>
-                        <div className="text-sm text-gray-300 whitespace-pre-wrap">{lesson.lessonSummary}</div>
+                        <div className="text-sm text-content whitespace-pre-wrap">{lesson.lessonSummary}</div>
                       </div>
                     )}
                     {lesson.vocabularyText && (
                       <div>
                         <div className="text-xs font-bold text-content-muted uppercase mb-1">{i18n.t("Słownictwo")}</div>
-                        <div className="text-sm font-mono text-gray-300 whitespace-pre-wrap bg-black/20 p-2 rounded-lg">{lesson.vocabularyText}</div>
+                        <div className="text-sm font-mono text-content whitespace-pre-wrap bg-black/20 p-2 rounded-lg">{lesson.vocabularyText}</div>
                       </div>
                     )}
                   </div>

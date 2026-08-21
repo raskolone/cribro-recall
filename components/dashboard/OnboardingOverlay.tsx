@@ -45,8 +45,8 @@ const steps: StepData[] = [
       en: 'Welcome to your daily training center! Instead of passive multiple choice tests, you practice active sentence formation. AI analyzes your responses instantly to build true fluency.'
     },
     renderMockup: (lang) => (
-      <div className="p-3.5 bg-base-300/80 rounded-2xl border border-emerald-500/25 space-y-2 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/30">
+      <div className="p-3.5 bg-base-300/80 rounded-2xl border border-primary/25 space-y-2 text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/30">
           <Sparkles className="w-3.5 h-3.5 animate-pulse" />
           <span>{lang === 'pl' ? 'Praktyczne Formaty Ćwiczeń z AI' : 'AI-Powered Practice Formats'}</span>
         </div>
@@ -72,28 +72,28 @@ const steps: StepData[] = [
     },
     renderMockup: (lang) => (
       <div className="space-y-2 text-xs">
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-white">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-primary/15 border border-primary/30 text-white">
           <div className="flex items-center gap-2.5">
-            <BookOpen className="w-4 h-4 text-blue-400" />
+            <BookOpen className="w-4 h-4 text-primary" />
             <div>
               <span className="font-bold">{lang === 'pl' ? 'Moje Lekcje' : 'My Lessons'}</span>
-              <span className="text-blue-300/80 text-[10px] ml-2 font-mono">
+              <span className="text-primary/80 text-[10px] ml-2 font-mono">
                 {lang === 'pl' ? '(Materiały z zajęć)' : '(From your tutor)'}
               </span>
             </div>
           </div>
-          <span className="bg-blue-500/30 text-blue-200 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold">
+          <span className="bg-primary/30 text-primary px-2 py-0.5 rounded-md font-mono text-[10px] font-bold">
             {lang === 'pl' ? 'Własne' : 'Custom'}
           </span>
         </div>
-        <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 space-y-1.5">
+        <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/25 space-y-1.5">
           <div className="flex items-center justify-between text-white font-bold">
-            <span className="text-emerald-300">{lang === 'pl' ? 'Baza Słownictwa Ogólnego' : 'General Vocabulary Database'}</span>
-            <span className="text-emerald-400 font-mono text-[10px] font-bold">A1 • A2 • B1 • B2 • C1 • C2</span>
+            <span className="text-primary">{lang === 'pl' ? 'Baza Słownictwa Ogólnego' : 'General Vocabulary Database'}</span>
+            <span className="text-primary font-mono text-[10px] font-bold">A1 • A2 • B1 • B2 • C1 • C2</span>
           </div>
           <div className="flex flex-wrap gap-1.5 pt-0.5">
             {['Biznes', 'Podróże', 'Praca', 'Życie codzienne', 'Technologia'].map((cat, i) => (
-              <span key={i} className="px-2 py-0.5 rounded-md bg-white/10 text-gray-200 text-[10px] font-medium">{cat}</span>
+              <span key={i} className="px-2 py-0.5 rounded-md bg-white/10 text-content text-[10px] font-medium">{cat}</span>
             ))}
           </div>
         </div>
@@ -116,31 +116,31 @@ const steps: StepData[] = [
     },
     renderMockup: (lang) => (
       <div className="space-y-2 text-xs">
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-purple-500/20 border border-purple-500/40 text-white shadow-[0_0_15px_rgba(168,85,247,0.15)]">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-primary/20 border border-primary/40 text-accent-ink shadow-[0_0_15px_rgba(168,85,247,0.15)]">
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-lg bg-purple-500/30 text-purple-300 flex items-center justify-center font-bold">
+            <div className="w-6 h-6 rounded-lg bg-primary/30 text-primary flex items-center justify-center font-bold">
               <Check className="w-3.5 h-3.5" />
             </div>
             <div>
               <span className="font-bold text-white">sustainable</span>
-              <span className="text-gray-300 text-[10px] ml-2">zrównoważony</span>
+              <span className="text-content text-[10px] ml-2">zrównoważony</span>
             </div>
           </div>
-          <span className="text-[10px] text-purple-200 bg-purple-500/30 px-2 py-0.5 rounded-full font-bold">
+          <span className="text-[10px] text-primary bg-primary/30 px-2 py-0.5 rounded-full font-bold">
             {lang === 'pl' ? 'W koszyku ✓' : 'In Basket ✓'}
           </span>
         </div>
         <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/10 text-white">
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold border border-emerald-500/30">
+            <div className="w-6 h-6 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-bold border border-primary/30">
               <Plus className="w-3.5 h-3.5" />
             </div>
             <div>
               <span className="font-bold text-white">negotiate</span>
-              <span className="text-gray-400 text-[10px] ml-2">negocjować</span>
+              <span className="text-text-2 text-[10px] ml-2">negocjować</span>
             </div>
           </div>
-          <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+          <span className="text-[10px] text-primary font-semibold bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
             {lang === 'pl' ? 'Kliknij + aby dodać' : 'Click + to add'}
           </span>
         </div>
@@ -162,13 +162,13 @@ const steps: StepData[] = [
       en: 'We recommend starting with the "Puzzle" mode. Assembling sentences from interactive blocks helps you internalize new vocabulary and master English word order without stress.'
     },
     renderMockup: (lang) => (
-      <div className="p-3.5 bg-emerald-950/60 rounded-2xl border-2 border-emerald-500/40 space-y-2.5 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
-        <div className="text-[11px] text-emerald-200 font-semibold text-center">
+      <div className="p-3.5 bg-primary/60 rounded-2xl border-2 border-primary/40 space-y-2.5 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+        <div className="text-[11px] text-primary font-semibold text-center">
           {lang === 'pl' ? '🇵🇱 Lubię czytać książki po pracy.' : '🇵🇱 Lubię czytać książki po pracy.'}
         </div>
         <div className="flex flex-wrap items-center justify-center gap-1.5">
           {['I', 'enjoy', 'reading', 'books', 'after work'].map((tile, i) => (
-            <span key={i} className="px-2.5 py-1 rounded-lg bg-emerald-500/25 border border-emerald-400 text-emerald-300 text-xs font-mono font-bold shadow-md">
+            <span key={i} className="px-2.5 py-1 rounded-lg bg-primary/25 border border-primary text-primary text-xs font-mono font-bold shadow-md">
               {tile}
             </span>
           ))}
@@ -191,13 +191,13 @@ const steps: StepData[] = [
       en: 'After completing the puzzle, switch to the "Real Challenge". The AI generates full sentences for you to translate and type directly from memory.'
     },
     renderMockup: (lang) => (
-      <div className="p-3.5 bg-cyan-950/60 rounded-2xl border-2 border-cyan-500/40 space-y-2 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
-        <div className="text-[11px] text-cyan-200 font-semibold">
+      <div className="p-3.5 bg-primary/60 rounded-2xl border-2 border-primary/40 space-y-2 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
+        <div className="text-[11px] text-primary font-semibold">
           {lang === 'pl' ? 'Tłumacz z pamięci: Zwykle chodzę na siłownię wieczorem.' : 'Translate: Zwykle chodzę na siłownię wieczorem.'}
         </div>
-        <div className="p-2.5 rounded-xl bg-black/60 border border-cyan-400/50 text-cyan-300 font-mono text-xs flex items-center justify-between">
+        <div className="p-2.5 rounded-xl bg-black/60 border border-primary/50 text-primary font-mono text-xs flex items-center justify-between">
           <span>I usually go to the gym in the evening...</span>
-          <span className="w-2 h-3.5 bg-cyan-400 animate-pulse"></span>
+          <span className="w-2 h-3.5 bg-primary animate-pulse"></span>
         </div>
       </div>
     )
@@ -217,17 +217,17 @@ const steps: StepData[] = [
       en: 'Every sentence is scored across Meaning (40 pts), Grammar (40 pts), and Vocabulary (20 pts). AI highlights mistakes, suggests natural phrases, and plays audio.'
     },
     renderMockup: (lang) => (
-      <div className="p-3.5 bg-[#0a111e] rounded-2xl border border-emerald-500/30 space-y-2 text-xs">
+      <div className="p-3.5 bg-[#0a111e] rounded-2xl border border-primary/30 space-y-2 text-xs">
         <div className="flex justify-between items-center border-b border-white/10 pb-1.5">
-          <span className="font-bold text-emerald-400 text-sm">{lang === 'pl' ? 'Wynik: 100% (Świetnie!)' : 'Score: 100% (Great!)'}</span>
-          <div className="flex gap-2 text-[10px] font-mono text-gray-300">
-            <span className="text-emerald-400">Zn: 40/40</span>
-            <span className="text-emerald-400">Gr: 40/40</span>
-            <span className="text-emerald-400">Sł: 20/20</span>
+          <span className="font-bold text-primary text-sm">{lang === 'pl' ? 'Wynik: 100% (Świetnie!)' : 'Score: 100% (Great!)'}</span>
+          <div className="flex gap-2 text-[10px] font-mono text-content">
+            <span className="text-primary">Zn: 40/40</span>
+            <span className="text-primary">Gr: 40/40</span>
+            <span className="text-primary">Sł: 20/20</span>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-gray-300 text-[11px] pt-1">
-          <Lightbulb className="w-4 h-4 shrink-0 text-amber-400" />
+        <div className="flex items-center gap-2 text-content text-[11px] pt-1">
+          <Lightbulb className="w-4 h-4 shrink-0 text-warn" />
           <span>{lang === 'pl' ? 'Zdanie w 100% poprawne gramatycznie i naturalne.' : 'Sentence is grammatically correct and natural.'}</span>
         </div>
       </div>
@@ -356,7 +356,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
       {/* Spotlight cutout for Desktop when target element is found */}
       {isDesktop && targetRect && (
         <div
-          className="absolute border-2 border-emerald-400 rounded-3xl pointer-events-none transition-all duration-400 ease-out"
+          className="absolute border-2 border-primary rounded-3xl pointer-events-none transition-all duration-400 ease-out"
           style={{
             top: targetRect.top - 8,
             left: targetRect.left - 8,
@@ -365,7 +365,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
             boxShadow: '0 0 0 9999px rgba(0,0,0,0.75), 0 0 35px rgba(16,185,129,0.6)'
           }}
         >
-          <div className="absolute -top-3 left-6 px-3 py-0.5 rounded-full bg-emerald-500 text-black font-extrabold text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-1.5">
+          <div className="absolute -top-3 left-6 px-3 py-0.5 rounded-full bg-primary text-accent-ink font-extrabold text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-black animate-ping" />
             <span>{language === 'pl' ? 'Wskazywany element' : 'Active Feature'}</span>
           </div>
@@ -386,21 +386,21 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
               isDesktop && targetRect 
                 ? 'absolute' 
                 : 'max-w-md w-full'
-            } bg-[#0a101b] border-2 border-emerald-500/40 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(16,185,129,0.25)] p-6 text-white overflow-hidden`}
+            } bg-[#0a101b] border-2 border-primary/40 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(16,185,129,0.25)] p-6 text-white overflow-hidden`}
           >
             {/* Top decorative gradient bar */}
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-400 via-cyan-400 to-purple-500" />
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-primary to-primary" />
 
             {/* Header row */}
             <div className="flex items-center justify-between gap-3 mb-3">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary">
                 {step.badge[language]}
               </span>
               <button
                 type="button"
                 onClick={onComplete}
                 title={language === 'pl' ? 'Zamknij / Pomiń' : 'Close / Skip'}
-                className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors cursor-pointer"
+                className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-text-2 hover:text-white transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -411,7 +411,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
               <h3 className="text-xl font-bold font-serif text-white tracking-tight leading-snug">
                 {step.title[language]}
               </h3>
-              <p className="text-xs sm:text-sm text-gray-300 leading-relaxed font-sans">
+              <p className="text-xs sm:text-sm text-content leading-relaxed font-sans">
                 {step.desc[language]}
               </p>
             </div>
@@ -431,9 +431,9 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
                     onClick={() => setCurrentStep(idx)}
                     className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
                       idx === currentStep 
-                        ? 'w-6 bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]' 
+                        ? 'w-6 bg-primary shadow-[0_0_8px_rgba(16,185,129,0.8)]' 
                         : idx < currentStep 
-                          ? 'w-2 bg-emerald-500/40' 
+                          ? 'w-2 bg-primary/40' 
                           : 'w-2 bg-white/20 hover:bg-white/40'
                     }`}
                   />
@@ -446,7 +446,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
                   <button
                     type="button"
                     onClick={handlePrev}
-                    className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-content text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                     <span>{language === 'pl' ? 'Wstecz' : 'Back'}</span>
@@ -456,7 +456,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="px-4 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold text-xs transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-primary hover:bg-primary text-accent-ink font-extrabold text-xs transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] flex items-center gap-1.5 active:scale-95 cursor-pointer"
                 >
                   {currentStep < steps.length - 1 ? (
                     <>

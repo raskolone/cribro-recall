@@ -362,8 +362,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
                 <ClipboardList size={20} className={unreadTestsCount > 0 ? "text-primary animate-bounce" : ""} />
                 {unreadTestsCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-black"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-danger border border-black"></span>
                   </span>
                 )}
               </div>
@@ -384,11 +384,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               <NavLink 
                 icon={
                   <div className="relative">
-                    <Bug size={20} className={newBugsCount > 0 ? "text-red-400" : ""} />
+                    <Bug size={20} className={newBugsCount > 0 ? "text-danger" : ""} />
                     {newBugsCount > 0 && (
                       <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-black"></span>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-danger border border-black"></span>
                       </span>
                     )}
                   </div>
@@ -397,7 +397,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
                 onClick={() => handleNavigate('admin-debugging')} 
                 isActive={currentView === 'admin-debugging'}
               >
-                  <span className={newBugsCount > 0 ? "text-red-400 font-bold" : ""}>
+                  <span className={newBugsCount > 0 ? "text-danger font-bold" : ""}>
                     {language === 'pl' ? 'Zgłoszone błędy' : 'Reported bugs'}
                     {newBugsCount > 0 && ` (${newBugsCount})`}
                   </span>
@@ -411,7 +411,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               {language === 'pl' ? 'Pomoc' : 'Help'}
             </NavLink>
             <div className={`flex flex-col gap-2`}>
-              <button onClick={() => logout()} className={`group relative z-10 hover:z-20 w-full flex items-center ${isDesktopCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border border-transparent text-red-400 hover:bg-red-500/10 active:scale-[0.98]`}>
+              <button onClick={() => logout()} className={`group relative z-10 hover:z-20 w-full flex items-center ${isDesktopCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border border-transparent text-danger hover:bg-danger/10 active:scale-[0.98]`}>
                 <div className={`flex items-center justify-center transition-transform duration-300 ${isDesktopCollapsed ? 'mr-3 md:mr-0' : 'mr-3'} group-hover:scale-110`}>
                   <LogOut size={20} />
                 </div>

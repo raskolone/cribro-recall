@@ -51,7 +51,7 @@ const WordList: React.FC = () => {
           ))}
         </div>
       ) : (
-        <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+        <p className="text-text-mute dark:text-text-2 text-center py-8">
           {words.length === 0 
             ? "Your vocabulary list is empty. Generate some new words to get started!"
             : "No words found matching your search or in this set."}

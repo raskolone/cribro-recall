@@ -254,8 +254,8 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                 onClick={() => setViewMode('grid')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   viewMode === 'grid'
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-black shadow-[0_0_12px_rgba(16,185,129,0.4)]'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                    : 'text-text-2 hover:text-white'
                 }`}
                 title={language === 'pl' ? 'Widok kafelkowy' : 'Tile view'}
               >
@@ -267,8 +267,8 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                 onClick={() => setViewMode('list')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   viewMode === 'list'
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-black shadow-[0_0_12px_rgba(16,185,129,0.4)]'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                    : 'text-text-2 hover:text-white'
                 }`}
                 title={language === 'pl' ? 'Widok listy' : 'List view'}
               >
@@ -282,14 +282,14 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
           <div className="flex liquid-glass-tile p-1 rounded-xl border border-white/10">
              <button 
                onClick={() => setActiveTab('lessons')}
-               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'lessons' ? 'bg-gradient-to-r from-emerald-500 to-teal-400 text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-content-muted hover:text-white'}`}
+               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'lessons' ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-content-muted hover:text-white'}`}
              >
                <FileText className="w-4 h-4" />
                {language === 'pl' ? 'Historia lekcji' : 'Lesson History'}
              </button>
              <button 
                onClick={() => setActiveTab('sessions')}
-               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'sessions' ? 'bg-gradient-to-r from-emerald-500 to-teal-400 text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-content-muted hover:text-white'}`}
+               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'sessions' ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-content-muted hover:text-white'}`}
              >
                <Clock className="w-4 h-4" />
                {language === 'pl' ? 'Historia Sesji' : 'Session History'}
@@ -327,45 +327,45 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                 <div
                   key={lesson.id}
                   onClick={() => handleLessonSelect(lesson)}
-                  className={`bg-[#0a0e17] hover:border-emerald-500/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_36px_rgba(16,185,129,0.25)] rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 relative overflow-hidden group cursor-pointer hover:-translate-y-1.5 min-h-[220px] ${isRecentLesson(lesson) ? 'border-emerald-500/80 animate-pulse drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-white/10'}`}
+                  className={`bg-[#0a0e17] hover:border-primary/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_36px_rgba(16,185,129,0.25)] rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 relative overflow-hidden group cursor-pointer hover:-translate-y-1.5 min-h-[220px] ${isRecentLesson(lesson) ? 'border-primary/80 animate-pulse drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-white/10'}`}
                 >
                   {/* Glass & Shiny Effects */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                   <div className="absolute -inset-full top-0 block bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 group-hover:animate-shine pointer-events-none" />
 
                   <div>
                     {/* Top Row: Lesson Number Badge & Date Pill */}
                     {isRecentLesson(lesson) && (
-                      <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500 text-black font-extrabold text-[10px] uppercase rounded-bl-xl z-20">
+                      <div className="absolute top-0 right-0 px-3 py-1 bg-primary text-accent-ink font-extrabold text-[10px] uppercase rounded-bl-xl z-20">
                         {language === 'pl' ? 'Nowe' : 'New'}
                       </div>
                     )}
                     <div className="flex items-center justify-between mb-4 relative z-10">
-                      <span className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono font-black text-sm flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-black transition-all shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]">
+                      <span className="w-10 h-10 rounded-2xl bg-primary/10 border border-primary/30 text-primary font-mono font-black text-sm flex items-center justify-center group-hover:bg-primary group-hover:text-accent-ink transition-all shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]">
                         #{lessonNumber}
                       </span>
-                      <div className="flex items-center gap-1.5 text-xs font-mono text-gray-400 bg-white/5 border border-white/10 px-3 py-1 rounded-full">
-                        <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                      <div className="flex items-center gap-1.5 text-xs font-mono text-text-2 bg-white/5 border border-white/10 px-3 py-1 rounded-full">
+                        <Calendar className="w-3.5 h-3.5 text-primary" />
                         {new Date(lesson.date).toLocaleDateString()}
                       </div>
                     </div>
 
                     {/* Topic Title */}
-                    <h3 className="text-lg font-serif font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-2 mb-3 relative z-10">
+                    <h3 className="text-lg font-serif font-bold text-white group-hover:text-primary transition-colors line-clamp-2 mb-3 relative z-10">
                       {cleanTopic}
                     </h3>
 
                     {/* Badges */}
                     <div className="flex flex-wrap items-center gap-2 mt-2 relative z-10">
                       {lesson.lessonSummary && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                          <Sparkles className="w-3 h-3 text-emerald-400" />
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/30">
+                          <Sparkles className="w-3 h-3 text-primary" />
                           {language === 'pl' ? 'Podsumowanie' : 'Summary'}
                         </span>
                       )}
                       {vocabCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
-                          <Tag className="w-3 h-3 text-cyan-400" />
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/30">
+                          <Tag className="w-3 h-3 text-primary" />
                           {vocabCount} {language === 'pl' ? 'słów' : 'words'}
                         </span>
                       )}
@@ -373,7 +373,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                   </div>
 
                   {/* Bottom Footer Action */}
-                  <div className="flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:text-emerald-300 mt-5 pt-3 border-t border-white/5 relative z-10">
+                  <div className="flex items-center justify-between text-xs font-bold text-primary group-hover:text-primary mt-5 pt-3 border-t border-white/5 relative z-10">
                     <span>{language === 'pl' ? 'Zobacz notatki' : 'View notes'}</span>
                     <div className="flex items-center gap-2">
                       {vocabCount > 0 && onStudySet && (
@@ -382,13 +382,13 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                             e.stopPropagation();
                             onStudySet(`lesson_${lesson.id}`);
                           }}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-black font-bold transition-all border border-emerald-500/30 flex items-center gap-1 text-[11px] shadow-sm"
+                          className="px-2.5 py-1 rounded-lg bg-primary/20 hover:bg-primary text-primary hover:text-accent-ink font-bold transition-all border border-primary/30 flex items-center gap-1 text-[11px] shadow-sm"
                           title={language === 'pl' ? 'Generuj / Ucz się fiszek z tej lekcji' : 'Study flashcards from this lesson'}
                         >
                           <span>🎴</span> {language === 'pl' ? 'Fiszki' : 'Flashcards'}
                         </button>
                       )}
-                      <ChevronRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform text-emerald-400" />
+                      <ChevronRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform text-primary" />
                     </div>
                   </div>
                 </div>
@@ -409,18 +409,18 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                         <Card 
                           key={lesson.id}
                           onClick={() => handleLessonSelect(lesson)}
-                          className={`p-3 cursor-pointer hover:border-emerald-500/50 transition-colors group flex items-center justify-between rounded-xl border ${isRecentLesson(lesson) ? 'border-emerald-500/80 animate-pulse bg-emerald-500/10' : 'border-white/10 bg-base-200/50'}`}
+                          className={`p-3 cursor-pointer hover:border-primary/50 transition-colors group flex items-center justify-between rounded-xl border ${isRecentLesson(lesson) ? 'border-primary/80 animate-pulse bg-primary/10' : 'border-white/10 bg-base-200/50'}`}
                         >
                             <div className="flex items-center gap-3 pr-4">
-                              <div className="w-10 h-10 flex-shrink-0 bg-emerald-500/10 text-emerald-400 font-mono text-sm font-bold rounded-lg flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-black transition-colors">
+                              <div className="w-10 h-10 flex-shrink-0 bg-primary/10 text-primary font-mono text-sm font-bold rounded-lg flex items-center justify-center group-hover:bg-primary group-hover:text-accent-ink transition-colors">
                                 #{lessonNumber}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-white text-base line-clamp-1 group-hover:text-emerald-400 transition-colors">
+                                <h3 className="font-bold text-white text-base line-clamp-1 group-hover:text-primary transition-colors">
                                   {cleanTopic}
                                 </h3>
                                 <div className="flex items-center gap-1.5 text-xs font-mono text-content-muted mt-0.5">
-                                  <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                                  <Calendar className="w-3.5 h-3.5 text-primary" />
                                   {new Date(lesson.date).toLocaleDateString()}
                                 </div>
                               </div>
@@ -428,13 +428,13 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                             <div className="flex items-center gap-4 text-content-muted">
                                <div className="hidden sm:flex gap-2 flex-wrap">
                                  {lesson.lessonSummary && (
-                                   <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                   <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
                                      <Sparkles className="w-2.5 h-2.5" />
                                      {language === 'pl' ? 'Podsumowanie' : 'Summary'}
                                    </span>
                                  )}
                                </div>
-                               <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-emerald-400" />
+                               <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-primary" />
                             </div>
                         </Card>
                       );
@@ -486,11 +486,11 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                           >
                               <div className="flex items-center gap-3.5">
                                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                                      isExpanded ? 'bg-primary text-black' : 'bg-base-300 text-content-muted'
+                                      isExpanded ? 'bg-primary text-accent-ink' : 'bg-base-300 text-content-muted'
                                   }`}>
                                       <Calendar className="w-4 h-4" />
                                   </div>
-                                  <span className={`text-sm font-bold tracking-wide ${isExpanded ? 'text-primary' : 'text-gray-200'}`}>
+                                  <span className={`text-sm font-bold tracking-wide ${isExpanded ? 'text-primary' : 'text-content'}`}>
                                       {group.key}
                                   </span>
                                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-base-300 text-content-muted">
@@ -514,18 +514,18 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                                           <Card 
                                               key={lesson.id}
                                               onClick={() => handleLessonSelect(lesson)}
-                                              className={`p-3 cursor-pointer hover:border-emerald-500/50 transition-colors group flex items-center justify-between rounded-xl border ${isRecentLesson(lesson) ? 'border-emerald-500/80 animate-pulse bg-emerald-500/10' : 'border-white/10 bg-base-200/50'}`}
+                                              className={`p-3 cursor-pointer hover:border-primary/50 transition-colors group flex items-center justify-between rounded-xl border ${isRecentLesson(lesson) ? 'border-primary/80 animate-pulse bg-primary/10' : 'border-white/10 bg-base-200/50'}`}
                                           >
                                               <div className="flex items-center gap-3 pr-4">
-                                                <div className="w-10 h-10 flex-shrink-0 bg-emerald-500/10 text-emerald-400 font-mono text-sm font-bold rounded-lg flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-black transition-colors">
+                                                <div className="w-10 h-10 flex-shrink-0 bg-primary/10 text-primary font-mono text-sm font-bold rounded-lg flex items-center justify-center group-hover:bg-primary group-hover:text-accent-ink transition-colors">
                                                   #{lessonNumber}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                  <h3 className="font-bold text-white text-base line-clamp-1 group-hover:text-emerald-400 transition-colors">
+                                                  <h3 className="font-bold text-white text-base line-clamp-1 group-hover:text-primary transition-colors">
                                                     {cleanTopic}
                                                   </h3>
                                                   <div className="flex items-center gap-1.5 text-xs font-mono text-content-muted mt-0.5">
-                                                    <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                                                    <Calendar className="w-3.5 h-3.5 text-primary" />
                                                     {new Date(lesson.date).toLocaleDateString()}
                                                   </div>
                                                 </div>
@@ -533,13 +533,13 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                                               <div className="flex items-center gap-4 text-content-muted">
                                                  <div className="hidden sm:flex gap-2 flex-wrap">
                                                    {lesson.lessonSummary && (
-                                                     <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                     <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
                                                        <Sparkles className="w-2.5 h-2.5" />
                                                        {language === 'pl' ? 'Podsumowanie' : 'Summary'}
                                                      </span>
                                                    )}
                                                  </div>
-                                                 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-emerald-400" />
+                                                 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-primary" />
                                               </div>
                                           </Card>
                                       );
@@ -580,7 +580,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                         log.exerciseType === 'flashcards' ? (language === 'pl' ? 'Fiszki' : 'Flashcards') : 
                         log.exerciseType}
                        {log.exerciseFormat && (
-                         <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-xs font-mono font-medium text-emerald-400">
+                         <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-xs font-mono font-medium text-primary">
                            {log.exerciseFormat === 'puzzle' ? (language === 'pl' ? 'Układanka' : 'Puzzle') : 
                             log.exerciseFormat === 'typing' ? (language === 'pl' ? 'Wpisywanie' : 'Typing') : 
                             log.exerciseFormat}
@@ -588,7 +588,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                        )}
                      </span>
                      {log.isRevisionMode && (
-                       <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-500">
+                       <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-warn/10 text-warn">
                          {language === 'pl' ? 'Powtórka' : 'Revision'}
                        </span>
                      )}
@@ -600,7 +600,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                        <>
                          <span className="opacity-50 text-[10px]">•</span>
                          <BookOpen className="w-3 h-3" />
-                         <span className="text-teal-300/80">{log.setDisplayName}</span>
+                         <span className="text-primary/80">{log.setDisplayName}</span>
                        </>
                      )}
                    </div>
@@ -621,7 +621,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                    {log.score !== undefined && log.score !== null && !isNaN(Number(log.score)) && (
                      <div>
                        <div className="text-content-muted text-[10px] uppercase">{language === 'pl' ? 'Wynik' : 'Score'}</div>
-                       <div className={`font-bold ${log.score >= 80 ? 'text-green-400' : log.score >= 50 ? 'text-amber-500' : 'text-red-400'}`}>
+                       <div className={`font-bold ${log.score >= 80 ? 'text-primary' : log.score >= 50 ? 'text-warn' : 'text-danger'}`}>
                          {log.score}%
                        </div>
                      </div>
@@ -677,10 +677,10 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
               {isTeacher && selectedLesson.studentSpeaking && (
                 <div className="space-y-3">
                    <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
-                     <AlertCircle className="w-4 h-4 text-blue-400" />
+                     <AlertCircle className="w-4 h-4 text-primary" />
                      {language === 'pl' ? 'O czym mówił kursant' : 'Student Speaking'}
                    </h3>
-                   <div className="bg-blue-500/5 border border-blue-500/10 rounded-2xl p-6 text-content text-sm whitespace-pre-wrap">
+                   <div className="bg-info/5 border border-info/10 rounded-2xl p-6 text-content text-sm whitespace-pre-wrap">
                       <Markdown>{selectedLesson.studentSpeaking}</Markdown>
                    </div>
                 </div>
@@ -689,10 +689,10 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
               {selectedLesson.thingsToImprove && (
                 <div className="space-y-3">
                    <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
-                     <AlertCircle className="w-4 h-4 text-red-400" />
+                     <AlertCircle className="w-4 h-4 text-danger" />
                      {language === 'pl' ? 'Do poprawy (błędy)' : 'Things to improve'}
                    </h3>
-                   <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-6 text-content text-sm whitespace-pre-wrap">
+                   <div className="bg-danger/5 border border-danger/10 rounded-2xl p-6 text-content text-sm whitespace-pre-wrap">
                       <Markdown>{selectedLesson.thingsToImprove}</Markdown>
                    </div>
                 </div>
@@ -701,10 +701,10 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
               {isTeacher && selectedLesson.suggestedFollowUp && (
                 <div className="space-y-3">
                    <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
-                     <Clock className="w-4 h-4 text-amber-400" />
+                     <Clock className="w-4 h-4 text-warn" />
                      {language === 'pl' ? 'Zadanie / Następna lekcja' : 'Suggested Follow-up'}
                    </h3>
-                   <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-6 text-content text-sm whitespace-pre-wrap">
+                   <div className="bg-warn/5 border border-warn/10 rounded-2xl p-6 text-content text-sm whitespace-pre-wrap">
                       <Markdown>{selectedLesson.suggestedFollowUp}</Markdown>
                    </div>
                 </div>
@@ -712,7 +712,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
 
               {selectedLesson.vocabularyText && getVocabList(selectedLesson.vocabularyText).length > 0 && (
                 <div className="space-y-4 pt-4">
-                   <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+                   <div className="bg-primary/10 border border-primary/30 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
                      <div>
                        <div className="font-bold text-white text-base flex items-center gap-2">
                          <span>🎴</span> {language === 'pl' ? 'Ćwiczenia ze słownictwa z tej lekcji' : 'Vocabulary exercises from this lesson'}
@@ -732,7 +732,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                              setSelectedLesson(null);
                              onStudySet(`lesson_${lId}`);
                            }}
-                           className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold flex-1 sm:flex-none shadow-md"
+                           className="bg-primary hover:bg-primary text-accent-ink font-bold flex-1 sm:flex-none shadow-md"
                          >
                            🎴 {language === 'pl' ? 'Generuj / Ucz się Fiszek' : 'Study Flashcards'}
                          </Button>
@@ -746,7 +746,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                              setSelectedLesson(null);
                              onNavigate('ai-generator', { setId: `lesson_${lId}` });
                            }}
-                           className="flex-1 sm:flex-none border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
+                           className="flex-1 sm:flex-none border-primary/30 text-primary hover:bg-primary/20"
                          >
                            ✨ {language === 'pl' ? 'Przećwicz w zdaniach AI' : 'Practice in AI Sentences'}
                          </Button>
@@ -820,7 +820,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                 {selectedLog.score !== undefined && selectedLog.score !== null && !isNaN(Number(selectedLog.score)) && (
                   <div className="liquid-glass-tile p-4 rounded-xl flex-1 text-center border border-white/5">
                     <div className="text-content-muted text-[10px] uppercase mb-1">{language === 'pl' ? 'Wynik' : 'Score'}</div>
-                    <div className={`font-bold text-2xl ${selectedLog.score >= 80 ? 'text-green-400' : selectedLog.score >= 50 ? 'text-amber-500' : 'text-red-400'}`}>
+                    <div className={`font-bold text-2xl ${selectedLog.score >= 80 ? 'text-primary' : selectedLog.score >= 50 ? 'text-warn' : 'text-danger'}`}>
                       {selectedLog.score}%
                     </div>
                   </div>
@@ -833,7 +833,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                   return (
                     <div className="space-y-3 pt-4">
                       <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
-                        <BookOpen className="w-4 h-4 text-emerald-400" />
+                        <BookOpen className="w-4 h-4 text-primary" />
                         {language === 'pl' ? 'Wykonane tłumaczenia i ćwiczenia' : 'Completed Translations & Exercises'}
                       </h3>
                       <div className="space-y-3">
@@ -841,27 +841,27 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                           <div key={idx} className="p-4 rounded-xl liquid-glass-tile border border-white/10 space-y-2 text-sm">
                             <div className="font-bold text-white flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
-                                <span className="text-emerald-400 font-mono text-xs">#{idx + 1}</span>
+                                <span className="text-primary font-mono text-xs">#{idx + 1}</span>
                                 <span>{item.polish}</span>
                               </div>
                               {item.score !== undefined && item.score !== null && !isNaN(Number(item.score)) && (
-                                <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${Number(item.score) >= 80 ? 'bg-green-500/20 text-green-400' : Number(item.score) >= 50 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>
+                                <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${Number(item.score) >= 80 ? 'bg-primary/20 text-primary' : Number(item.score) >= 50 ? 'bg-warn/20 text-warn' : 'bg-danger/20 text-danger'}`}>
                                   {Number(item.score)}%
                                 </span>
                               )}
                             </div>
                             {item.english && (
-                              <div className="text-emerald-300 text-xs font-mono">
+                              <div className="text-primary text-xs font-mono">
                                 EN: {item.english}
                               </div>
                             )}
                             {item.studentAnswer && (
-                              <div className="text-blue-300 text-xs bg-blue-500/10 p-2.5 rounded-lg border border-blue-500/20">
+                              <div className="text-info text-xs bg-info/10 p-2.5 rounded-lg border border-info/20">
                                 <strong>{language === 'pl' ? 'Twoja odpowiedź:' : 'Your answer:'}</strong> "{item.studentAnswer}"
                               </div>
                             )}
                             {item.explanation && (
-                              <div className="text-amber-300 text-xs bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
+                              <div className="text-warn text-xs bg-warn/10 p-2.5 rounded-lg border border-warn/20">
                                 <strong>{language === 'pl' ? 'Komentarz / Błędy:' : 'Feedback:'}</strong> {item.explanation}
                               </div>
                             )}

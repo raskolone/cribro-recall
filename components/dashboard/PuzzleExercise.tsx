@@ -119,12 +119,12 @@ interface PuzzleExerciseProps {
 }
 
 const TILE_COLORS = [
-  'bg-blue-500/20 border-blue-400/30 text-blue-50 hover:bg-blue-400/30',
-  'bg-purple-500/20 border-purple-400/30 text-purple-50 hover:bg-purple-400/30',
-  'bg-teal-500/20 border-teal-400/30 text-teal-50 hover:bg-teal-400/30',
-  'bg-amber-500/20 border-amber-400/30 text-amber-50 hover:bg-amber-400/30',
-  'bg-pink-500/20 border-pink-400/30 text-pink-50 hover:bg-pink-400/30',
-  'bg-indigo-500/20 border-indigo-400/30 text-indigo-50 hover:bg-indigo-400/30',
+  'bg-primary/20 border-primary/30 text-primary hover:bg-primary/30',
+  'bg-primary/10 border-primary/25 text-primary hover:bg-primary/20',
+  'bg-primary/25 border-primary/40 text-primary hover:bg-primary/35',
+  'bg-primary/15 border-primary/25 text-primary hover:bg-primary/25',
+  'bg-primary/20 border-primary/35 text-primary hover:bg-primary/30',
+  'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20',
 ];
 
 interface TileData {
@@ -407,7 +407,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, displaySenten
           <button 
             onClick={() => playAudio(selectedTiles.map(t => t.text).join(' '))}
             disabled={isPlayingAudio}
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/5 hover:bg-white/10 text-emerald-400 transition-colors z-30 disabled:opacity-50"
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/5 hover:bg-white/10 text-primary transition-colors z-30 disabled:opacity-50"
             title={i18n.t("Posłuchaj ułożonego fragmentu")}
           >
             <Volume2 className="w-5 h-5" />
@@ -425,8 +425,8 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, displaySenten
               onClick={() => handleRemoveTile(st, idx)}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all shadow-sm z-20 backdrop-blur-md ${
                 isCompleted 
-                  ? 'bg-primary text-black border border-primary/50 cursor-default' 
-                  : `${st.colorClass} border hover:bg-red-500/80 hover:text-white hover:border-red-500 hover:shadow-[0_0_15px_rgba(239,68,68,0.6)] cursor-pointer`
+                  ? 'bg-primary text-accent-ink border border-primary/50 cursor-default' 
+                  : `${st.colorClass} border hover:bg-danger/80 hover:text-white hover:border-danger hover:shadow-[0_0_15px_rgba(239,68,68,0.6)] cursor-pointer`
               }`}
             >
               {st.text}
@@ -457,7 +457,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, displaySenten
                   disabled={isCompleted}
                   className={`pr-8 pl-4 py-3 rounded-xl font-bold text-base shadow-lg z-10 transition-all duration-300 relative overflow-hidden
                     ${isError 
-                      ? 'bg-red-500 text-white border-red-400 shadow-[0_0_25px_rgba(239,68,68,0.9)] scale-105 animate-shake' 
+                      ? 'bg-danger text-white border-danger shadow-[0_0_25px_rgba(239,68,68,0.9)] scale-105 animate-shake' 
                       : `${tile.colorClass} hover:scale-105 cursor-pointer active:scale-95`
                     }`}
                 >
@@ -511,7 +511,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, displaySenten
               className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-base-300 hover:bg-base-200 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               title={i18n.t("Wymowa brytyjska")}
             >
-              <Volume2 className="w-4 h-4 text-emerald-400" />
+              <Volume2 className="w-4 h-4 text-primary" />
               <span className="font-bold text-sm">BrE (UK)</span>
             </button>
             <button
@@ -520,7 +520,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, displaySenten
               className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-base-300 hover:bg-base-200 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               title={i18n.t("Wymowa amerykańska")}
             >
-              <Volume2 className="w-4 h-4 text-cyan-400" />
+              <Volume2 className="w-4 h-4 text-primary" />
               <span className="font-bold text-sm">AmE (US)</span>
             </button>
           </div>

@@ -60,7 +60,7 @@ const VocabularyGenerator: React.FC = () => {
             onChange={(e) => setDifficulty(e.target.value as Difficulty)}
           />
           <div>
-            <label htmlFor="targetSet" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">
+            <label htmlFor="targetSet" className="block text-sm font-bold text-text-faint dark:text-content mb-1">
               
                                         {i18n.t("Add to Set (Optional)")}
                                       </label>
@@ -77,7 +77,7 @@ const VocabularyGenerator: React.FC = () => {
             </select>
           </div>
         </div>
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        {error && <p className="text-danger text-sm">{error}</p>}
         {isLoading ? (
           <div className="pt-2">
             <AISkeletonLoader 
