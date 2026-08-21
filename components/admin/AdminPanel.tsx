@@ -814,12 +814,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       try {
         await changeUserPassword(selectedUser.id, newPasswordForUser);
       } catch (apiErr: any) {
-        let msg = apiErr.message;
-        try {
-          const parsed = JSON.parse(apiErr.message);
-          if (parsed.error) msg = parsed.error;
-        } catch (e) {}
-        throw new Error("API Error: " + msg);
+        throw new Error("API Error: " + (apiErr.message || String(apiErr)));
       }
       
       // 2. Set requirePasswordChange to true in Firestore so the student has to change it on login

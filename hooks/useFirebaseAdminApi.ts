@@ -1,5 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { auth } from '../firebase';
+import { extractErrorMessage } from '../services/geminiService';
 
 export function useFirebaseAdminApi() {
   const { user } = useAuth();
@@ -9,13 +10,24 @@ export function useFirebaseAdminApi() {
     return await auth.currentUser.getIdToken();
   };
 
+  const handleResponse = async (res: Response) => {
+    if (!res.ok) {
+      const errText = await res.text();
+      let errData: any = null;
+      try {
+        errData = JSON.parse(errText);
+      } catch {}
+      throw new Error(extractErrorMessage(errData, errText || `API Error (${res.status})`));
+    }
+    return res.json();
+  };
+
   const listUsers = async () => {
     const token = await getIdToken();
     const res = await fetch('/api/admin-users/users', {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return handleResponse(res);
   };
 
   const createUser = async (email: string, password: string, role: string) => {
@@ -28,8 +40,7 @@ export function useFirebaseAdminApi() {
       },
       body: JSON.stringify({ email, password, role }),
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return handleResponse(res);
   };
 
   const deleteUser = async (uid: string) => {
@@ -38,8 +49,7 @@ export function useFirebaseAdminApi() {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return handleResponse(res);
   };
 
   const changeUserRole = async (uid: string, role: string) => {
@@ -52,8 +62,7 @@ export function useFirebaseAdminApi() {
       },
       body: JSON.stringify({ role }),
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return handleResponse(res);
   };
 
   const changeUserPassword = async (uid: string, password: string) => {
@@ -66,8 +75,7 @@ export function useFirebaseAdminApi() {
       },
       body: JSON.stringify({ password }),
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return handleResponse(res);
   };
 
   return { listUsers, createUser, deleteUser, changeUserRole, changeUserPassword };

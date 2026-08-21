@@ -53,6 +53,7 @@ try {
 async function generateContentWithRetry(aiClient: any, contents: any, config: any, customModels?: string[]) {
   const models = customModels || [
     'openai/gpt-4o-mini',
+    'gemini-3.7-flash',
     'gemini-2.5-flash'
   ];
   let lastError;
@@ -93,7 +94,7 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
         const sysInst = config?.systemInstruction || "";
 
         if (model.startsWith('openai')) {
-           const apiKey = process.env.OPENAI_API_KEY;
+           const apiKey = getOpenAIApiKey();
            if (!apiKey) {
              console.warn("[Server] OPENAI_API_KEY not configured, skipping model");
              throw new Error("OPENAI_API_KEY not configured");
@@ -193,6 +194,53 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
 // For now, I'll export an async function startServer()
 
 // We can just rely on process.env.FIREBASE_SERVICE_ACCOUNT and initialize Firebase Admin
+function getGeminiApiKey(): string {
+  return process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.API_KEY || "";
+}
+
+function getOpenAIApiKey(): string {
+  return process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY || "";
+}
+
+function formatErrorString(err: any): string {
+  if (!err) return "Unknown error";
+  if (typeof err === "string") {
+    try {
+      const jsonStart = err.indexOf('{');
+      if (jsonStart !== -1) {
+        const parsed = JSON.parse(err.slice(jsonStart));
+        if (parsed && (parsed.error || parsed.errors || parsed.message)) {
+          return formatErrorString(parsed);
+        }
+      }
+    } catch {}
+    return err;
+  }
+  if (err.error) {
+    if (typeof err.error === "string") return err.error;
+    if (typeof err.error === "object") {
+      return err.error.message || formatErrorString(err.error);
+    }
+    return String(err.error);
+  }
+  if (err.errors && Array.isArray(err.errors)) {
+    return err.errors.map((e: any) => typeof e === "object" ? (e.message || formatErrorString(e)) : String(e)).join(", ");
+  }
+  if (err.message && typeof err.message === "string") {
+    try {
+      const jsonStart = err.message.indexOf('{');
+      if (jsonStart !== -1) {
+        const parsed = JSON.parse(err.message.slice(jsonStart));
+        if (parsed && (parsed.error || parsed.errors || parsed.message)) {
+          return formatErrorString(parsed);
+        }
+      }
+    } catch {}
+    return err.message;
+  }
+  return String(err);
+}
+
 function getAdminApp() {
   if (getApps().length > 0) return getApp();
   const serviceAccountStr = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -304,7 +352,7 @@ export async function createApp() {
       const listUsersResult = await adminAuth.listUsers(1000);
       res.json(listUsersResult.users);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: formatErrorString(error) });
     }
   });
 
@@ -332,7 +380,7 @@ export async function createApp() {
       }
       res.json(userRecord);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: formatErrorString(error) });
     }
   });
 
@@ -342,7 +390,7 @@ export async function createApp() {
       await adminAuth.deleteUser(uid);
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: formatErrorString(error) });
     }
   });
 
@@ -353,7 +401,7 @@ export async function createApp() {
       await adminAuth.updateUser(uid, { password });
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: formatErrorString(error) });
     }
   });
 
@@ -364,7 +412,7 @@ export async function createApp() {
       await adminAuth.setCustomUserClaims(uid, { role });
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: formatErrorString(error) });
     }
   });
 
@@ -374,11 +422,8 @@ export async function createApp() {
 app.post('/api/gemini/generate-test', requireFirebaseAdmin, async (req, res) => {
     try {
       const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, typeCounts, fileData, driveFile } = req.body;
-      const apiKey = process.env.VITE_GEMINI_API_KEY;
-      const dummyKey = "dummy";
-      
-      
-  const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
+      const apiKey = getGeminiApiKey();
+      const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
       
       let typeBreakdownInstruction = '';
       if (typeCounts && typeof typeCounts === 'object' && Object.keys(typeCounts).length > 0) {
@@ -540,7 +585,7 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawną tablicę JSON, zachowując 
       return res.json({ questions: parsed });
     } catch (error: any) {
       console.error(error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: formatErrorString(error) });
     }
   });
 
@@ -551,9 +596,9 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawną tablicę JSON, zachowując 
         return res.status(400).json({ error: 'Missing textContent, pdfBase64 or driveFile' });
       }
       
-      const apiKey = process.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({ error: 'Gemini API key not configured. Please set VITE_GEMINI_API_KEY in environment variables.' });
+      const apiKey = getGeminiApiKey();
+      if (!apiKey && !getOpenAIApiKey()) {
+        return res.status(500).json({ error: 'AI API key not configured. Please set GEMINI_API_KEY or OPENAI_API_KEY in environment variables.' });
       }
       const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
       
@@ -711,7 +756,7 @@ Przeanalizuj CAŁĄ treść dokładnie i nie pomijaj żadnej lekcji. Zwróć wy�
       res.json(json);
     } catch (error: any) {
       console.error('Error in import-lessons-batch:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: formatErrorString(error) });
     }
   });
 
@@ -722,9 +767,9 @@ Przeanalizuj CAŁĄ treść dokładnie i nie pomijaj żadnej lekcji. Zwróć wy�
         return res.status(400).json({ error: 'Missing notes, pdfBase64 or driveFile' });
       }
       
-      const apiKey = process.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({ error: 'Gemini API key not configured. Please set VITE_GEMINI_API_KEY in environment variables.' });
+      const apiKey = getGeminiApiKey();
+      if (!apiKey && !getOpenAIApiKey()) {
+        return res.status(500).json({ error: 'AI API key not configured. Please set GEMINI_API_KEY or OPENAI_API_KEY in environment variables.' });
       }
 
       const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
@@ -839,7 +884,7 @@ Zwróć wynik jako JSON z poniższymi polami:
       res.json(json);
     } catch (error: any) {
       console.error(error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: formatErrorString(error) });
     }
   });
   // Proxy for Gemini API if we ever want to move Gemini to server-side
@@ -871,8 +916,8 @@ Zwróć JSON z polami:
 `;
 
       
-      const apiKey = process.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: "Gemini API key not configured." });
+      const apiKey = getGeminiApiKey();
+      if (!apiKey && !getOpenAIApiKey()) return res.status(500).json({ error: "AI API key not configured." });
       const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
       const response = await generateContentWithRetry(ai, prompt, {
         responseMimeType: 'application/json',
@@ -890,15 +935,15 @@ Zwróć JSON z polami:
       res.json(JSON.parse(response.text));
     } catch (err: any) {
       console.error(err);
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: formatErrorString(err) });
     }
   });
 
   app.post('/api/gemini/student-stats-summary', requireFirebaseAuth, async (req, res) => {
     try {
       const { stats, logsSummary, language } = req.body;
-      const geminiApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-      const openaiApiKey = process.env.OPENAI_API_KEY;
+      const geminiApiKey = getGeminiApiKey();
+      const openaiApiKey = getOpenAIApiKey();
 
       if (!geminiApiKey && !openaiApiKey) {
         return res.status(500).json({ error: 'No AI API key configured. Please set OPENAI_API_KEY or GEMINI_API_KEY in environment variables.' });
@@ -946,7 +991,7 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
           },
           required: ["overallTeacherCommentary", "keyStrengths", "areasToImprove", "pedagogicalTip"]
         }
-      }, ['openai/gpt-4o-mini', 'gemini-3.6-flash', 'gemini-2.5-flash']);
+      }, ['openai/gpt-4o-mini', 'gemini-3.7-flash', 'gemini-2.5-flash']);
       
       if (!response.text) throw new Error("No response from AI");
       
@@ -955,32 +1000,46 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
       res.json(JSON.parse(cleanText));
     } catch (err: any) {
       console.error("Error in student-stats-summary endpoint:", err);
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: formatErrorString(err) });
     }
   });
 
-  // Text-to-Speech API (ElevenLabs proxy & fallback)
-      const handleTTS = async (req: express.Request, res: express.Response) => {
+  // Text-to-Speech API (Primary: OpenAI tts-1 -> Fallback 1: gpt-4o-mini-tts -> Fallback 2: gemini-2.0-flash)
+  const handleTTS = async (req: express.Request, res: express.Response) => {
+    // Set CORS headers so any client or iframe can access the stream
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Range");
+
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+
     try {
       const text = (req.body?.text || req.query.text) as string;
-      const lang = (req.body?.accent || req.body?.lang || req.query.lang || req.query.accent || 'US') as string;
+      const lang = (req.body?.accent || req.body?.lang || req.query.lang || req.query.accent || 'en-US') as string;
+      const gender = (req.body?.gender || req.query.gender || 'male') as string;
+      const speed = parseFloat((req.body?.speed || req.query.speed || '1.0') as string) || 1.0;
+      const engine = (req.body?.engine || req.query.engine || 'auto') as string;
+
       const isUK = lang === 'UK' || lang === 'en-GB' || lang === 'BrE';
+      const isMale = gender === 'male' || gender === 'm' || (!gender.includes('female') && !gender.includes('f'));
 
       if (!text) {
         return res.status(400).json({ error: "Missing text parameter" });
       }
 
-      // Format text: ensure punctuation at end
+      // Format text: ensure proper punctuation at end for TTS natural cadence
       const trimmedText = text.replace(/<[^>]+>/g, '').trim();
       const formattedText = /[.?!]$/.test(trimmedText) ? trimmedText : `${trimmedText}.`;
 
       // 1. GENERATE CACHE KEY & CHECK CACHE
       const crypto = await import('crypto');
-      const hash = crypto.default.createHash('sha256').update(formattedText + '_' + (isUK ? 'UK' : 'US')).digest('hex');
+      const hash = crypto.default
+        .createHash('sha256')
+        .update(`${formattedText}_${isUK ? 'UK' : 'US'}_${isMale ? 'M' : 'F'}_${speed.toFixed(2)}_${engine}`)
+        .digest('hex');
       const fileName = `tts_cache/${hash}.mp3`;
-
-      const hashInt = parseInt(hash.charAt(hash.length - 1), 16);
-      const isMale = hashInt % 2 === 0;
       
       const os = await import('os');
       const path = await import('path');
@@ -989,13 +1048,13 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
       await fs.mkdir(localCacheDir, { recursive: true });
       const localFileName = path.join(localCacheDir, `${hash}.mp3`);
 
-      // Check Local Cache First
+      // Check Local Cache First (Instant 0ms latency)
       try {
         const localBuffer = await fs.readFile(localFileName);
-        console.log('TTS Local Cache HIT:', hash);
         res.set({
           'Content-Type': 'audio/mpeg',
-          'Cache-Control': 'public, max-age=31536000'
+          'Cache-Control': 'public, max-age=31536000',
+          'Accept-Ranges': 'bytes'
         });
         return res.send(localBuffer);
       } catch (e) {
@@ -1012,62 +1071,33 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
           const file = bucket.file(fileName);
           const [exists] = await file.exists();
           if (exists) {
-            console.log('TTS Firebase Cache HIT:', fileName);
             const [audioBuffer] = await file.download();
-            // save to local cache for next time
             fs.writeFile(localFileName, audioBuffer).catch(()=>{});
             res.set({
               'Content-Type': 'audio/mpeg',
-              'Cache-Control': 'public, max-age=31536000'
+              'Cache-Control': 'public, max-age=31536000',
+              'Accept-Ranges': 'bytes'
             });
             return res.send(audioBuffer);
           }
         }
       } catch (err: any) {
-        console.warn('Firebase Storage cache check warning:', err.message || err);
+        // Continue to generation pipeline
       }
 
-      console.log('TTS Cache MISS. Generowanie audio...');
       let finalAudioBuffer: Buffer | null = null;
+      let contentType = 'audio/mpeg';
+      const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
 
-      // POZIOM 1: ElevenLabs
-      const elevenLabsKey = process.env.VITE_ELEVENLABS_API_KEY || process.env.ELEVENLABS_API_KEY;
-      if (!finalAudioBuffer && elevenLabsKey) {
-        let voiceId = "S9WrLrqYPJzmQyWPWbZ5";
-        if (isUK) {
-          voiceId = isMale ? "JBFqnCBcs6TWROtGMCA3" : "Xb7hH8MSALEjdAclc2Uj"; // George : Alice
-        } else {
-          voiceId = isMale ? "29vD33N1CtxCmqQRPOHJ" : "21m00Tcm4TlvDq8ikWAM"; // Drew : Rachel
-        }
-        try {
-          const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-            method: 'POST',
-            headers: {
-              'Accept': 'audio/mpeg',
-              'xi-api-key': elevenLabsKey,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              text: formattedText,
-              model_id: "eleven_multilingual_v2"
-            })
-          });
-          if (response.ok) {
-            finalAudioBuffer = Buffer.from(await response.arrayBuffer());
-            console.log('TTS Poziom 1: ElevenLabs sukces');
-          } else {
-            const errTxt = await response.text();
-            console.warn(`ElevenLabs API error: ${response.status} - ${errTxt.slice(0, 100)}`);
-          }
-        } catch (e: any) {
-          console.warn('ElevenLabs API request failed:', e.message || e);
-        }
-      }
+      // Voice selection for OpenAI models
+      // US: male -> 'echo' (or 'onyx'), female -> 'nova' (or 'alloy')
+      // UK: male -> 'fable', female -> 'shimmer'
+      const openAiVoice = isUK ? (isMale ? "fable" : "shimmer") : (isMale ? "echo" : "nova");
 
-      // POZIOM 2: OpenAI TTS
-      const openaiKey = process.env.OPENAI_API_KEY;
-      if (!finalAudioBuffer && openaiKey) {
-        const voice = isUK ? (isMale ? "fable" : "shimmer") : (isMale ? "echo" : "nova");
+      // =========================================================================
+      // POZIOM 1: DOMYŚLNY - OpenAI TTS-1 (Szybki, studyjny, naturalny)
+      // =========================================================================
+      if (!finalAudioBuffer && (engine === 'auto' || engine === 'openai') && openaiKey) {
         try {
           const response = await fetch('https://api.openai.com/v1/audio/speech', {
             method: 'POST',
@@ -1078,96 +1108,150 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
             body: JSON.stringify({
               model: 'tts-1',
               input: formattedText,
-              voice: voice
+              voice: openAiVoice,
+              speed: Math.max(0.75, Math.min(1.25, speed))
             })
           });
           if (response.ok) {
             finalAudioBuffer = Buffer.from(await response.arrayBuffer());
-            console.log('TTS Poziom 2: OpenAI TTS sukces');
+            contentType = 'audio/mpeg';
           } else {
             const errTxt = await response.text();
-            console.warn(`OpenAI TTS API error: ${response.status} - ${errTxt.slice(0, 100)}`);
+            console.warn(`[TTS Tier 1 - OpenAI tts-1] API error (${response.status}): ${errTxt.slice(0, 150)}`);
           }
         } catch (e: any) {
-          console.warn('OpenAI TTS API request failed:', e.message || e);
+          console.warn('[TTS Tier 1 - OpenAI tts-1] Request failed:', e.message || e);
         }
       }
 
-      // POZIOM 3: Gemini / Google Cloud TTS
-      const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-      if (!finalAudioBuffer && geminiKey) {
+      // =========================================================================
+      // POZIOM 2: FALLBACK 1 - GPT-4o-mini TTS (gpt-4o-mini-audio-preview / tts-1-hd)
+      // =========================================================================
+      if (!finalAudioBuffer && (engine === 'auto' || engine === 'gpt4o-mini' || engine === 'openai') && openaiKey) {
         try {
-          const langCode = isUK ? 'en-GB' : 'en-US';
-          const voiceName = isUK ? (isMale ? 'en-GB-Neural2-B' : 'en-GB-Neural2-A') : (isMale ? 'en-US-Neural2-D' : 'en-US-Neural2-F');
-          
-          const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${geminiKey}`, {
+          // Attempt 2a: gpt-4o-mini-audio-preview via chat completions
+          const miniAudioResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Authorization': `Bearer ${openaiKey}`,
+              'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
-              input: { text: formattedText },
-              voice: { languageCode: langCode, name: voiceName },
-              audioConfig: { audioEncoding: "MP3", speakingRate: 0.95 }
+              model: 'gpt-4o-mini-audio-preview',
+              modalities: ['text', 'audio'],
+              audio: {
+                voice: openAiVoice,
+                format: 'mp3'
+              },
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are a clean text-to-speech voice synthesizer. Say the provided text clearly and naturally, without any conversational preamble or pleasantries.'
+                },
+                {
+                  role: 'user',
+                  content: formattedText
+                }
+              ]
             })
           });
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.audioContent) {
-              finalAudioBuffer = Buffer.from(data.audioContent, 'base64');
-              console.log('TTS Poziom 3: Google Cloud TTS sukces');
+
+          if (miniAudioResponse.ok) {
+            const miniData = await miniAudioResponse.json();
+            const audioBase64 = miniData?.choices?.[0]?.message?.audio?.data;
+            if (audioBase64) {
+              finalAudioBuffer = Buffer.from(audioBase64, 'base64');
+              contentType = 'audio/mpeg';
             }
           } else {
-            console.warn(`GCP TTS API error: ${response.status}. Próba Gemini 3.1 Flash TTS...`);
-            const ai = new GoogleGenAI({ apiKey: geminiKey });
-            const interaction = await ai.interactions.create({
-              model: 'gemini-3.1-flash-tts-preview',
-              input: formattedText,
-              response_modalities: ['AUDIO'],
-              generation_config: {
-                speech_config: {
-                  language: langCode.toLowerCase(),
-                  voice: isUK ? (isMale ? "fenrir" : "zephyr") : (isMale ? "charon" : "kore")
-                } as any
-              }
+            // Attempt 2b: Fallback to tts-1-hd
+            const hdResponse = await fetch('https://api.openai.com/v1/audio/speech', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${openaiKey}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                model: 'tts-1-hd',
+                input: formattedText,
+                voice: openAiVoice,
+                speed: Math.max(0.75, Math.min(1.25, speed))
+              })
             });
-            for (const step of interaction.steps) {
-              if (step.type === 'model_output') {
-                const audioContent = step.content?.find(c => c.type === 'audio');
-                if (audioContent && audioContent.data) {
-                  finalAudioBuffer = Buffer.from(audioContent.data, 'base64');
-                  console.log('TTS Poziom 3: Gemini TTS Flash sukces');
-                }
-              }
+            if (hdResponse.ok) {
+              finalAudioBuffer = Buffer.from(await hdResponse.arrayBuffer());
+              contentType = 'audio/mpeg';
             }
           }
         } catch (e: any) {
-          console.warn('Google Cloud / Gemini TTS request failed:', e.message || e);
+          console.warn('[TTS Tier 2 - gpt-4o-mini-tts] Request failed:', e.message || e);
         }
       }
 
+      // =========================================================================
+      // POZIOM 3: FALLBACK 2 - Gemini TTS Audio Generation
+      // =========================================================================
+      const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.API_KEY;
+      if (!finalAudioBuffer && (engine === 'auto' || engine === 'gemini') && geminiKey) {
+        try {
+          const ai = new GoogleGenAI({ apiKey: geminiKey });
+          const voiceName = isMale ? 'Puck' : 'Kore';
+          const modelsToTry = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash"];
+          
+          for (const m of modelsToTry) {
+            try {
+              const geminiResponse = await ai.models.generateContent({
+                model: m,
+                contents: [{ parts: [{ text: `Say clearly with natural pronunciation: ${formattedText}` }] }],
+                config: {
+                  responseModalities: ["AUDIO" as any],
+                  speechConfig: {
+                    voiceConfig: {
+                      prebuiltVoiceConfig: { voiceName: voiceName },
+                    } as any,
+                  },
+                }
+              });
+
+              const base64Audio = geminiResponse?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+              if (base64Audio) {
+                const rawMime = geminiResponse?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.mimeType || 'audio/wav';
+                finalAudioBuffer = Buffer.from(base64Audio, 'base64');
+                contentType = rawMime;
+                break;
+              }
+            } catch (innerE: any) {
+              console.warn(`[TTS Tier 3 - Gemini Audio ${m}] failed:`, innerE.message || innerE);
+            }
+          }
+        } catch (e: any) {
+          console.warn('[TTS Tier 3 - Gemini Audio] generation failed:', e.message || e);
+        }
+      }
+
+      // Save to cache and return stream if generated
       if (finalAudioBuffer) {
-        // Save to cache asynchronously so we don't block the response
         fs.writeFile(localFileName, finalAudioBuffer).catch(() => {});
         
         if (bucket) {
           const file = bucket.file(fileName);
           file.save(finalAudioBuffer, {
-            metadata: { contentType: 'audio/mpeg' }
-          }).then(() => console.log('TTS zapisano w Firebase cache:', fileName))
-            .catch((e: any) => console.warn('Nie udało się zapisać do cache Firebase:', e.message || e.code));
+            metadata: { contentType: contentType }
+          }).catch((e: any) => console.warn('Firebase Storage cache write:', e.message || e));
         }
         
         res.set({
-          'Content-Type': 'audio/mpeg',
-          'Cache-Control': 'public, max-age=31536000'
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=31536000',
+          'Accept-Ranges': 'bytes'
         });
         return res.send(finalAudioBuffer);
       }
 
-      return res.status(503).json({ error: 'Usługa TTS chwilowo niedostępna na wszystkich poziomach.' });
+      return res.status(503).json({ error: 'Usługa TTS chwilowo niedostępna na serwerze.' });
     } catch (error: any) {
-      console.error('TTS error:', error.message || error);
-      res.status(500).json({ error: error.message });
+      console.error('[TTS] error:', error.message || error);
+      res.status(500).json({ error: formatErrorString(error) });
     }
   };
   app.get("/api/tts", handleTTS);
@@ -1179,8 +1263,8 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
       const { prompt, systemInstruction, isJson, messages, model } = req.body || {};
       if (!prompt && !messages) return res.status(400).json({ error: 'Missing prompt or messages' });
 
-      const openaiKey = process.env.OPENAI_API_KEY;
-      const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+      const openaiKey = getOpenAIApiKey();
+      const geminiKey = getGeminiApiKey();
 
       let chatMessages = messages;
       if (!chatMessages) {
@@ -1268,40 +1352,43 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
         return res.json({ text: resultText, modelUsed: usedModel });
       }
 
-      // Ultimate Fallback to Gemini 2.5 Flash
-      console.log("OpenAI Fallback -> Przełączam na model: gemini-2.5-flash. Key present:", Boolean(geminiKey));
+      // Ultimate Fallback to Gemini 3.7 / 2.5 Flash
+      console.log("OpenAI Fallback -> Przełączam na model Gemini. Key present:", Boolean(geminiKey));
       if (geminiKey) {
-        let gRetries = 3;
-        while (gRetries > 0) {
-          try {
-            const ai = new GoogleGenAI({ apiKey: geminiKey });
-            let fullPrompt = prompt || "";
-            if (!fullPrompt && Array.isArray(messages)) {
-              fullPrompt = messages.map((m: any) => `${m.role}: ${m.content}`).join("\n");
-            }
+        const geminiModels = ["gemini-3.7-flash", "gemini-2.5-flash"];
+        for (const gModel of geminiModels) {
+          let gRetries = 2;
+          while (gRetries > 0) {
+            try {
+              const ai = new GoogleGenAI({ apiKey: geminiKey });
+              let fullPrompt = prompt || "";
+              if (!fullPrompt && Array.isArray(messages)) {
+                fullPrompt = messages.map((m: any) => `${m.role}: ${m.content}`).join("\n");
+              }
 
-            const geminiConfig: any = {};
-            if (systemInstruction) {
-              geminiConfig.systemInstruction = systemInstruction;
-            }
-            if (isJson) {
-              geminiConfig.responseMimeType = "application/json";
-            }
+              const geminiConfig: any = {};
+              if (systemInstruction) {
+                geminiConfig.systemInstruction = systemInstruction;
+              }
+              if (isJson) {
+                geminiConfig.responseMimeType = "application/json";
+              }
 
-            const geminiRes = await ai.models.generateContent({
-              model: "gemini-2.5-flash",
-              contents: fullPrompt,
-              config: geminiConfig
-            });
+              const geminiRes = await ai.models.generateContent({
+                model: gModel,
+                contents: fullPrompt,
+                config: geminiConfig
+              });
 
-            if (geminiRes.text) {
-              return res.json({ text: geminiRes.text, modelUsed: "gemini-2.5-flash" });
-            }
-          } catch (gErr: any) {
-            console.warn(`Gemini fallback exception (retries left ${gRetries - 1}):`, gErr?.message || gErr);
-            gRetries--;
-            if (gRetries > 0) {
-              await new Promise(r => setTimeout(r, 1500));
+              if (geminiRes.text) {
+                return res.json({ text: geminiRes.text, modelUsed: gModel });
+              }
+            } catch (gErr: any) {
+              console.warn(`Gemini fallback ${gModel} exception (retries left ${gRetries - 1}):`, gErr?.message || gErr);
+              gRetries--;
+              if (gRetries > 0) {
+                await new Promise(r => setTimeout(r, 1000));
+              }
             }
           }
         }

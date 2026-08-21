@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Volume2 } from 'lucide-react';
 import i18n from "i18next";
-import { createSpeechAudio, formatTextForTTS } from '../../services/elevenLabsService';
+import { playSpeech } from '../../services/ttsService';
+import { useSettings } from '../../context/SettingsContext';
 
 interface TTSButtonsProps {
   text: string;
@@ -10,32 +11,32 @@ interface TTSButtonsProps {
 
 const TTSButtons: React.FC<TTSButtonsProps> = ({ text, size = 'md' }) => {
   const [isPlaying, setIsPlaying] = useState<string | null>(null);
+  const { soundSettings } = useSettings();
   const cleanText = text.replace(/<[^>]+>/g, '').trim();
 
-  const playTTS = (e: React.MouseEvent, lang: 'en-US' | 'en-GB') => {
+  const handlePlayTTS = async (e: React.MouseEvent, lang: 'en-US' | 'en-GB') => {
     e.stopPropagation();
-    if (!cleanText) return;
+    if (!cleanText || isPlaying) return;
     
     setIsPlaying(lang);
-    const audio = createSpeechAudio(cleanText, lang);
-
-    const handleStop = () => setIsPlaying(null);
-
-    audio.onended = handleStop;
-    audio.onerror = () => {
-      console.error("ElevenLabs audio streaming error.");
-      handleStop();
-    };
-    audio.play().catch((err) => {
-      console.error("Direct HTML5 audio playback error on mobile (ElevenLabs):", err);
-      handleStop();
-    });
+    try {
+      await playSpeech(cleanText, {
+        accent: lang,
+        gender: soundSettings?.voiceGender || 'male',
+        speed: soundSettings?.voiceSpeed || 1.0,
+        engine: soundSettings?.soundEngine || 'auto'
+      });
+    } catch (err) {
+      console.warn("TTS button play error:", err);
+    } finally {
+      setIsPlaying(null);
+    }
   };
 
   return (
     <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
       <button 
-        onClick={(e) => playTTS(e, 'en-GB')}
+        onClick={(e) => handlePlayTTS(e, 'en-GB')}
         disabled={!!isPlaying}
         className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 rounded-md border transition-all active:scale-95 group/btn disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0 ${isPlaying === 'en-GB' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10 hover:text-white'}`}
         title={i18n.t("British English Pronunciation")}
@@ -49,7 +50,7 @@ const TTSButtons: React.FC<TTSButtonsProps> = ({ text, size = 'md' }) => {
         )}
       </button>
       <button 
-        onClick={(e) => playTTS(e, 'en-US')}
+        onClick={(e) => handlePlayTTS(e, 'en-US')}
         disabled={!!isPlaying}
         className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 rounded-md border transition-all active:scale-95 group/btn disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0 ${isPlaying === 'en-US' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.3)]' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10 hover:text-white'}`}
         title={i18n.t("American English Pronunciation")}

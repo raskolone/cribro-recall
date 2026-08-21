@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import gsap from 'gsap';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useSettings } from '../../context/SettingsContext';
+import { playSpeech } from '../../services/ttsService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { Flashcard, FlashcardSet } from '../../types';
@@ -217,6 +219,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
   const touchCurrentRef = useRef<number | null>(null);
 
   const { getProgress } = useFlashcards();
+  const { soundSettings } = useSettings();
 
   useEffect(() => {
     const loadCards = async () => {
@@ -241,11 +244,21 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
     loadCards();
   }, [initialCards, setId, getProgress]);
 
-
-
   const handleFlip = useCallback(() => {
-    setIsFlipped(prev => !prev);
-  }, []);
+    setIsFlipped(prev => {
+      const nextState = !prev;
+      if (soundSettings?.autoPlayFlashcards && cards[currentIndex]) {
+        const textToSpeak = nextState ? cards[currentIndex].definition : cards[currentIndex].term;
+        playSpeech(textToSpeak, {
+          accent: soundSettings.ttsAccent,
+          gender: soundSettings.voiceGender,
+          speed: soundSettings.voiceSpeed,
+          engine: soundSettings.soundEngine
+        }).catch(() => {});
+      }
+      return nextState;
+    });
+  }, [cards, currentIndex, soundSettings]);
 
   const handleAnswer = useCallback(async (isCorrect: boolean) => {
     const responseTimeMs = Date.now() - startTime;

@@ -5,6 +5,7 @@ import { db } from '../firebase';
 
 import { GoogleGenAI, Type, Modality, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { Language, Difficulty, Word, AISuggestion, AudioVocabulary, TranslationExercise, TranslationEvaluationResult } from '../types';
+import { aiMonitor } from './aiMonitorService';
 
 
 export const extractJSON = (text: string): string => {
@@ -49,6 +50,45 @@ export const extractJSON = (text: string): string => {
   return text.trim();
 };
 
+export const extractErrorMessage = (data: any, fallback: string = "Wystąpił błąd"): string => {
+  if (!data) return fallback;
+  if (typeof data === "string") {
+    try {
+      const jsonStart = data.indexOf('{');
+      if (jsonStart !== -1) {
+        const parsed = JSON.parse(data.slice(jsonStart));
+        if (parsed && (parsed.error || parsed.errors || parsed.message)) {
+          return extractErrorMessage(parsed, fallback);
+        }
+      }
+    } catch {}
+    return data;
+  }
+  if (data.error) {
+    if (typeof data.error === "string") return data.error;
+    if (typeof data.error === "object") {
+      return data.error.message || extractErrorMessage(data.error, fallback);
+    }
+    return String(data.error);
+  }
+  if (data.errors && Array.isArray(data.errors)) {
+    return data.errors.map((e: any) => typeof e === "object" ? (e.message || extractErrorMessage(e, fallback)) : String(e)).join(", ");
+  }
+  if (data.message && typeof data.message === "string") {
+    try {
+      const jsonStart = data.message.indexOf('{');
+      if (jsonStart !== -1) {
+        const parsed = JSON.parse(data.message.slice(jsonStart));
+        if (parsed && (parsed.error || parsed.errors || parsed.message)) {
+          return extractErrorMessage(parsed, fallback);
+        }
+      }
+    } catch {}
+    return data.message;
+  }
+  return fallback;
+};
+
 
 let aiInstance: GoogleGenAI | null = null;
 export const getAI = () => {
@@ -61,25 +101,35 @@ export const getAI = () => {
 
 const generateContentWithFallback = async (params: any) => {
   const models = params.preferredModels || PREFERRED_AI_MODELS;
-  const { preferredModels, ...apiParams } = params;
+  const { preferredModels, taskName = 'Generowanie treści AI', ...apiParams } = params;
+
+  const promptText = typeof apiParams.contents === 'string' ? apiParams.contents : 
+                     (Array.isArray(apiParams.contents) ? apiParams.contents.map((c: any) => {
+                       if (typeof c === 'string') return c;
+                       if (c.text) return c.text;
+                       if (c.inlineData) return "[Załączono plik, który nie może być bezpośrednio przetworzony jako tekst]";
+                       return JSON.stringify(c);
+                     }).join('\n') : JSON.stringify(apiParams.contents));
+  const sysInst = apiParams.config?.systemInstruction || "You are a helpful AI assistant.";
+
+  const reqId = aiMonitor.startRequest({
+    taskName,
+    initialModel: models[0],
+    promptSnippet: promptText,
+    statusMessage: `Wysyłam zapytanie do: ${formatAIModelName(models[0])}`
+  });
 
   let lastError;
   for (const model of models) {
     try {
       console.log(`Attempting generation with ${model}...`);
-      
-      const promptText = typeof apiParams.contents === 'string' ? apiParams.contents : 
-                         (Array.isArray(apiParams.contents) ? apiParams.contents.map((c: any) => {
-                           if (typeof c === 'string') return c;
-                           if (c.text) return c.text;
-                           if (c.inlineData) return "[Załączono plik, który nie może być bezpośrednio przetworzony jako tekst]";
-                           return JSON.stringify(c);
-                         }).join('\n') : JSON.stringify(apiParams.contents));
-      const sysInst = apiParams.config?.systemInstruction || "You are a helpful AI assistant.";
+      aiMonitor.updateModelAttempt(reqId, model, `Odpytywanie modelu: ${formatAIModelName(model)}...`);
 
       if (model.startsWith('openai')) {
          const isJsonMode = apiParams.config?.responseMimeType === 'application/json';
          const openAiRes = await callOpenAI(promptText, sysInst, model.replace('openai/', ''), isJsonMode);
+         const usedModel = openAiRes.modelUsed || model;
+         aiMonitor.completeRequest(reqId, { modelUsed: usedModel });
          return { text: openAiRes.text };
       }
 
@@ -92,20 +142,29 @@ const generateContentWithFallback = async (params: any) => {
         model,
       });
 
-      const response = await Promise.race([apiCall, timeoutPromise]);
+      const response: any = await Promise.race([apiCall, timeoutPromise]);
+      aiMonitor.completeRequest(reqId, { modelUsed: model });
       return response as any;
     } catch (e: any) {
       console.warn(`Model ${model} failed:`, e?.status || e?.message);
       lastError = e;
       if (e?.message === 'Missing OPENAI_API_KEY') {
+        aiMonitor.failRequest(reqId, e.message);
         throw e;
       }
-      if (e?.message?.includes("timed out")) continue;
-      if (String(e?.status) === "404" || String(e?.status) === "503" || String(e?.status) === "429" || e?.message?.includes("503") || e?.message?.includes("429")) continue;
+      if (e?.message?.includes("timed out")) {
+        aiMonitor.updateStatus(reqId, `Model ${formatAIModelName(model)} przekroczył limit czasu.`);
+        continue;
+      }
+      if (String(e?.status) === "404" || String(e?.status) === "503" || String(e?.status) === "429" || e?.message?.includes("503") || e?.message?.includes("429")) {
+        aiMonitor.updateStatus(reqId, `Model ${formatAIModelName(model)} niedostępny (${e?.status || '503/429'}). Przełączanie...`);
+        continue;
+      }
       if (String(e?.status) === "400" && e?.message?.includes("not found")) continue;
       continue;
     }
   }
+  aiMonitor.failRequest(reqId, lastError?.message || "Wszystkie modele AI zawiodły");
   throw lastError;
 };
 
@@ -133,7 +192,7 @@ const callOpenAI = async (prompt: string, systemInstruction: string, model: stri
     }
 
     if (!res.ok) {
-      throw new Error(data.error || `Błąd serwera AI (${res.status})`);
+      throw new Error(extractErrorMessage(data, `Błąd serwera AI (${res.status})`));
     }
     
     console.log("Odpowiedź AI odebrana pomyślnie. Model:", data.modelUsed);
@@ -149,21 +208,24 @@ export const PREFERRED_AI_MODELS = [
   'openai/gpt-4o',
   'openai/gpt-4-turbo',
   'openai/gpt-3.5-turbo',
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',
-  'gemini-1.5-flash'
+  'gemini-3.7-flash',
+  'gemini-2.5-flash'
 ];
 
 export const formatAIModelName = (model?: string): string => {
   if (!model) return 'OpenAI (GPT-4o mini)';
+  if (model.includes('tts-1-hd')) return 'OpenAI (TTS-1 HD)';
+  if (model.includes('tts-1') || model === 'openai-tts-1') return 'OpenAI (TTS-1 Audio)';
+  if (model.includes('gpt-4o-mini-audio')) return 'OpenAI (GPT-4o mini Audio)';
   if (model.includes('gpt-4o-mini')) return 'OpenAI (GPT-4o mini)';
   if (model.includes('gpt-4o')) return 'OpenAI (GPT-4o)';
   if (model.includes('gpt-4-turbo')) return 'OpenAI (GPT-4 Turbo)';
   if (model.includes('gpt-4')) return 'OpenAI (GPT-4)';
+  if (model.includes('gemini-3.1-flash-tts')) return 'Gemini 3.1 Flash (TTS Audio)';
+  if (model.includes('gemini-3.7')) return 'Gemini 3.7 Flash';
   if (model.includes('gemini-2.5')) return 'Gemini 2.5 Flash';
-  if (model.includes('gemini-2.0')) return 'Gemini 2.0 Flash';
-  if (model.includes('gemini-1.5')) return 'Gemini 1.5 Flash';
   if (model.includes('gemini')) return 'Gemini Flash';
+  if (model.includes('Web Speech') || model.toLowerCase().includes('speech') || model.toLowerCase().includes('browser')) return 'Web Speech API (Browser)';
   return model;
 };
 
@@ -172,13 +234,23 @@ export const generateTextWithUnifiedFallback = async (
   systemInstruction: string,
   preferredModels: string[] = PREFERRED_AI_MODELS,
   geminiConfig?: any,
-  onModelAttempt?: (model: string) => void
+  onModelAttempt?: (model: string) => void,
+  taskContext?: { taskName?: string; category?: any }
 ): Promise<{ text: string, modelUsed: string }> => {
   let lastError;
+  const taskName = taskContext?.taskName || 'Zapytanie tekstowe AI';
+  const reqId = aiMonitor.startRequest({
+    taskName,
+    initialModel: preferredModels[0],
+    category: taskContext?.category || 'general',
+    promptSnippet: prompt,
+    statusMessage: `Wysyłam zapytanie do: ${formatAIModelName(preferredModels[0])}`
+  });
   
   for (const model of preferredModels) {
     try {
       console.log(`Attempting generation with ${model}...`);
+      aiMonitor.updateModelAttempt(reqId, model, `Odpytywanie modelu: ${formatAIModelName(model)}...`);
       if (onModelAttempt) {
         onModelAttempt(model);
       }
@@ -192,6 +264,7 @@ export const generateTextWithUnifiedFallback = async (
                 ? openAiRes.modelUsed
                 : `openai/${openAiRes.modelUsed}`)
             : model;
+          aiMonitor.completeRequest(reqId, { modelUsed: usedModel });
           return { text: openAiRes.text, modelUsed: usedModel };
         }
       } else if (model.startsWith('gemini')) {
@@ -214,12 +287,14 @@ export const generateTextWithUnifiedFallback = async (
             const response: any = await Promise.race([apiCall, timeoutPromise]);
             const text = response?.text;
             if (text) {
+              aiMonitor.completeRequest(reqId, { modelUsed: model });
               return { text, modelUsed: model };
             }
           } catch (gErr: any) {
             console.warn(`Gemini model ${model} attempt failed (retries left ${retries - 1}):`, gErr?.message || gErr);
             retries--;
             if (retries > 0) {
+              aiMonitor.updateStatus(reqId, `Ponawianie próby dla ${formatAIModelName(model)} (pozostało: ${retries})...`);
               await new Promise(r => setTimeout(r, 1500));
             } else {
               throw gErr;
@@ -231,10 +306,24 @@ export const generateTextWithUnifiedFallback = async (
       console.warn(`Model ${model} failed:`, error?.message || error);
       lastError = error;
       if (error?.message === 'Missing OPENAI_API_KEY') {
+        aiMonitor.failRequest(reqId, error.message);
         throw error;
       }
+      if (error?.message?.includes("timed out")) {
+        aiMonitor.updateStatus(reqId, `Model ${formatAIModelName(model)} przekroczył limit czasu.`);
+        continue;
+      }
+      if (String(error?.status) === "404" || String(error?.status) === "503" || String(error?.status) === "429" || error?.message?.includes("503") || error?.message?.includes("429")) {
+        aiMonitor.updateStatus(reqId, `Model ${formatAIModelName(model)} niedostępny (${error?.status || '503/429'}). Przełączanie...`);
+        continue;
+      }
+      if (String(error?.status) === "400" && error?.message?.includes("not found")) {
+        continue;
+      }
+      continue;
     }
   }
+  aiMonitor.failRequest(reqId, lastError?.message || "Wszystkie modele AI zawiodły");
   throw lastError || new Error("All AI fallback models failed.");
 };
 
@@ -446,7 +535,8 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
         systemInstruction,
         preferredModels,
         geminiConfig,
-        onModelAttempt
+        onModelAttempt,
+        { taskName: 'Generowanie zdań ćwiczeniowych (krok 1)', category: 'sentence-gen' }
       );
       let responseText = fallbackRes1.text;
       let modelUsed = fallbackRes1.modelUsed;
@@ -465,7 +555,8 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawny obiekt JSON, zachowując dok
         systemInstruction,
         preferredModels,
         geminiConfig,
-        onModelAttempt
+        onModelAttempt,
+        { taskName: 'Weryfikacja logiczna zdań (krok 2)', category: 'sentence-gen' }
       );
       if (fallbackRes2.text) {
         responseText = fallbackRes2.text;
@@ -605,7 +696,8 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
         systemInstruction,
         preferredModels,
         geminiConfig,
-        onModelAttempt
+        onModelAttempt,
+        { taskName: 'Ocena i analiza tłumaczeń zdań', category: 'evaluation' }
       );
       const responseText = fallbackRes.text;
       const modelUsed = fallbackRes.modelUsed;
@@ -707,6 +799,15 @@ export const generateTest = async (
   driveFile?: { id: string, mimeType: string, token: string },
   typeCounts?: Record<string, number>
 ): Promise<any[]> => {
+  const reqId = aiMonitor.startRequest({
+    taskName: `Generowanie testu: "${testTitle || level}"`,
+    initialModel: 'openai/gpt-4o-mini',
+    category: 'test',
+    provider: 'OpenAI',
+    promptSnippet: `Zakres: ${scope}, Poziom: ${level}`,
+    statusMessage: 'Tworzenie pytań i zadań testowych...'
+  });
+
   const user = auth.currentUser;
   const token = user ? await user.getIdToken() : '';
   
@@ -725,27 +826,37 @@ export const generateTest = async (
       driveFile
     };
 
-  const res = await fetch('/api/gemini/generate-test', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify(payload)
-  });
-  
-  if (!res.ok) {
-    const errText = await res.text();
-    try {
-        const errData = JSON.parse(errText);
-        throw new Error(errData.error || 'Failed to generate test');
-    } catch(e) {
-        throw new Error(`Server error (${res.status}): Invalid response.`);
+  try {
+    const res = await fetch('/api/gemini/generate-test', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!res.ok) {
+      const errText = await res.text();
+      let errData: any = null;
+      try {
+        errData = JSON.parse(errText);
+      } catch(e) {}
+      const errMsg = extractErrorMessage(errData, errText || 'Failed to generate test');
+      aiMonitor.failRequest(reqId, errMsg);
+      throw new Error(errMsg);
     }
+    
+    const data = await res.json();
+    aiMonitor.completeRequest(reqId, {
+      modelUsed: data.modelUsed || 'openai/gpt-4o-mini',
+      message: `Wygenerowano ${data.questions?.length || 0} pytań testowych`
+    });
+    return data.questions || [];
+  } catch (err: any) {
+    aiMonitor.failRequest(reqId, err?.message || 'Błąd generowania testu');
+    throw err;
   }
-  
-  const data = await res.json();
-  return data.questions || [];
 };
 
 
@@ -1161,32 +1272,51 @@ export const gradeTest = async (
   questions: any[],
   studentAnswers: Record<string, string>
 ): Promise<{score: number, feedback: string}> => {
+  const reqId = aiMonitor.startRequest({
+    taskName: `Ocenianie testu: "${testTitle || 'Test'}"`,
+    initialModel: 'openai/gpt-4o-mini',
+    category: 'test',
+    provider: 'OpenAI',
+    statusMessage: 'Weryfikacja odpowiedzi i generowanie ocen...'
+  });
+
   const user = auth.currentUser;
   const token = user ? await user.getIdToken() : '';
   
-  const res = await fetch('/api/gemini/grade-test', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      testTitle,
-      questions,
-      studentAnswers
-    })
-  });
-  
-  if (!res.ok) {
-    const errText = await res.text();
-    try {
-        const errData = JSON.parse(errText);
-        throw new Error(errData.error || 'Failed to grade test');
-    } catch(e) {
-        throw new Error(`Server error (${res.status}): Invalid response.`);
+  try {
+    const res = await fetch('/api/gemini/grade-test', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        testTitle,
+        questions,
+        studentAnswers
+      })
+    });
+    
+    if (!res.ok) {
+      const errText = await res.text();
+      let errData: any = null;
+      try {
+        errData = JSON.parse(errText);
+      } catch(e) {}
+      const errMsg = extractErrorMessage(errData, errText || 'Failed to grade test');
+      aiMonitor.failRequest(reqId, errMsg);
+      throw new Error(errMsg);
     }
+    const data = await res.json();
+    aiMonitor.completeRequest(reqId, {
+      modelUsed: 'openai/gpt-4o-mini',
+      message: `Wynik testu: ${data.score}% (${data.feedback ? 'Z opinią' : 'OK'})`
+    });
+    return data;
+  } catch (err: any) {
+    aiMonitor.failRequest(reqId, err?.message || 'Błąd oceniania testu');
+    throw err;
   }
-  return await res.json();
 };
 
 export const generateHomework = async (topic: string, summary: string, words: string): Promise<string> => {
@@ -1310,22 +1440,41 @@ Zwróć czysty JSON:
 };
 
 export const getAudioPronunciation = async (text: string, language: string): Promise<string> => {
+  const reqId = aiMonitor.startRequest({
+    taskName: `Generowanie wymowy Gemini TTS: "${text.slice(0, 30)}${text.length > 30 ? '...' : ''}"`,
+    initialModel: 'gemini-3.1-flash-tts-preview',
+    category: 'tts',
+    provider: 'Google Gemini',
+    promptSnippet: text,
+    statusMessage: `Wysyłam zapytanie audio do: Gemini 3.1 Flash (TTS)...`
+  });
+
   try {
+    const isUK = language === 'en-GB' || language === 'BrE';
+    const isMale = language === 'en';
+    const voiceName = isMale ? 'Puck' : 'Kore';
+
     const response = await getAI().models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-flash-tts-preview",
       contents: [{ parts: [{ text: text }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
             voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: language === 'en' ? 'Puck' : 'Kore' },
+              prebuiltVoiceConfig: { voiceName },
             },
         },
       } });
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (base64Audio) {
+      aiMonitor.completeRequest(reqId, { modelUsed: 'gemini-3.1-flash-tts-preview', message: 'Audio wygenerowane pomyślnie z Gemini TTS' });
+    } else {
+      aiMonitor.failRequest(reqId, 'Brak danych audio w odpowiedzi');
+    }
     return base64Audio || '';
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error generating audio:', err);
+    aiMonitor.failRequest(reqId, err?.message || 'Błąd generowania audio');
     return '';
   }
 };

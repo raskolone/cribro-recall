@@ -7,6 +7,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { Database, LogOut, Bug } from 'lucide-react';
 import { collection, collectionGroup, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { isTaskForStudent } from '../../utils/homework';
 
 interface SidebarProps {
   currentView: string;
@@ -88,6 +89,25 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
   const [isAdminExpanded, setIsAdminExpanded] = useState(currentView.startsWith('admin'));
   const [newBugsCount, setNewBugsCount] = useState(0);
   const [unreadTestsCount, setUnreadTestsCount] = useState(0);
+  const [pendingHomeworkCount, setPendingHomeworkCount] = useState(0);
+
+  useEffect(() => {
+    if (!isTeacher && user?.id) {
+      const unsub = onSnapshot(collection(db, 'specialTasks'), (snapshot) => {
+        let count = 0;
+        snapshot.forEach((d) => {
+          const t = { id: d.id, ...d.data() } as any;
+          if (isTaskForStudent(t, user) && (t.status === 'pending' || !t.status)) {
+            count++;
+          }
+        });
+        setPendingHomeworkCount(count);
+      }, (err) => {
+        console.error("Sidebar specialTasks snapshot error:", err);
+      });
+      return () => unsub();
+    }
+  }, [isTeacher, user]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -284,24 +304,36 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           </NavLink>
 
           {!isTeacher && (
-  <NavLink 
-            id="tour-homework" 
-            
-            icon={
-              <div className="relative">
-                <BookOpen size={20} />
-                
-              </div>
-            }
-            
-            isCollapsed={isDesktopCollapsed} 
-            onClick={() => handleNavigate('homework')} 
-            isActive={currentView === 'homework'}
-          >
-            <span>
-              {language === 'pl' ? 'Praca domowa' : 'Homework'}
-            </span>
-          </NavLink>
+            <NavLink 
+              id="tour-homework" 
+              icon={
+                <div className="relative">
+                  <BookOpen size={20} />
+                  {isDesktopCollapsed && (pendingHomeworkCount > 0 || user?.hasNewHomework) && (
+                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+                    </span>
+                  )}
+                </div>
+              }
+              isCollapsed={isDesktopCollapsed} 
+              onClick={() => handleNavigate('homework')} 
+              isActive={currentView === 'homework'}
+              badge={(pendingHomeworkCount > 0 || user?.hasNewHomework) ? (
+                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 text-[11px] font-bold">
+                  <span className="flex h-1.5 w-1.5 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
+                  </span>
+                  {pendingHomeworkCount > 0 ? pendingHomeworkCount : '1'}
+                </span>
+              ) : undefined}
+            >
+              <span>
+                {language === 'pl' ? 'Praca domowa' : 'Homework'}
+              </span>
+            </NavLink>
           )}
 
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { extractErrorMessage } from '../../services/geminiService';
 
 type Word = {
   id: string;
@@ -47,7 +48,11 @@ async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || 'Request failed');
+    let errData: any = null;
+    try {
+      errData = JSON.parse(errorText);
+    } catch {}
+    throw new Error(extractErrorMessage(errData, errorText || 'Request failed'));
   }
 
   return response.json() as Promise<T>;

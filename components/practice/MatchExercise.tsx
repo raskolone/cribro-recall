@@ -19,7 +19,7 @@ interface MatchCard {
 }
 
 import { useVocabulary } from '../../context/VocabularyContext';
-import { playSpeech } from '../../services/elevenLabsService';
+import { playSpeech } from '../../services/ttsService';
 import i18n from "i18next";
 
 interface MatchExerciseProps {

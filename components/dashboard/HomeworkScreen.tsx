@@ -857,7 +857,14 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
 
   // Filtered tasks for Teacher
   const filteredTasks = tasks.filter(t => {
-    if (filterStudentId !== 'all' && t.studentId !== filterStudentId) return false;
+    if (filterStudentId !== 'all') {
+      const targetStudent = students.find(s => s.id === filterStudentId);
+      if (targetStudent) {
+        if (!isTaskForStudent(t, targetStudent)) return false;
+      } else if (t.studentId !== filterStudentId) {
+        return false;
+      }
+    }
     if (filterStatus !== 'all' && t.status !== filterStatus) return false;
     return true;
   });

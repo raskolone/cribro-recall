@@ -4,7 +4,7 @@ import { BookOpen, FileText, X, Sparkles, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useFlashcards } from '../../context/FlashcardContext';
-import { collection, query, orderBy, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, getDocs, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { StudentTest, SpecialTask } from '../../types';
 import { isTaskForStudent } from '../../utils/homework';
@@ -31,34 +31,39 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate 
   });
 
   useEffect(() => {
-    if (user?.id && user?.role === 'user') {
-      const fetchNotificationsData = async () => {
-        try {
-          // Fetch tests
-          const testsQ = query(collection(db, `users/${user.id}/tests`), orderBy('createdAt', 'desc'));
-          const testsSnap = await getDocs(testsQ);
-          setTests(testsSnap.docs.map(d => ({ id: d.id, ...d.data() } as StudentTest)));
-
-          // Fetch special tasks / homework
-          const tasksSnap = await getDocs(collection(db, 'specialTasks'));
-          const tasks: SpecialTask[] = [];
-          tasksSnap.forEach(d => {
-            const t = { id: d.id, ...d.data() } as SpecialTask;
-            if (isTaskForStudent(t, user)) {
-              tasks.push(t);
-            }
-          });
-          setHomeworkTasks(tasks);
-        } catch (err) {
-          console.error('Error fetching notification data:', err);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchNotificationsData();
-    } else {
+    if (!user?.id || user?.role !== 'user') {
       setLoading(false);
+      return;
     }
+
+    // Real-time tests listener
+    const testsQ = query(collection(db, `users/${user.id}/tests`), orderBy('createdAt', 'desc'));
+    const unsubTests = onSnapshot(testsQ, (snap) => {
+      setTests(snap.docs.map(d => ({ id: d.id, ...d.data() } as StudentTest)));
+    }, (err) => {
+      console.error('Error in tests snapshot:', err);
+    });
+
+    // Real-time special tasks / homework listener
+    const unsubTasks = onSnapshot(collection(db, 'specialTasks'), (snap) => {
+      const tasks: SpecialTask[] = [];
+      snap.forEach(d => {
+        const t = { id: d.id, ...d.data() } as SpecialTask;
+        if (isTaskForStudent(t, user)) {
+          tasks.push(t);
+        }
+      });
+      setHomeworkTasks(tasks);
+      setLoading(false);
+    }, (err) => {
+      console.error('Error in homework snapshot:', err);
+      setLoading(false);
+    });
+
+    return () => {
+      unsubTests();
+      unsubTasks();
+    };
   }, [user]);
 
   if (loading || !user || user.role !== 'user') return null;

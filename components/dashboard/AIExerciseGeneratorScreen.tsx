@@ -4,11 +4,12 @@ import html2pdf from 'html2pdf.js';
 import { useLanguage } from '../../context/LanguageContext';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
-import { collection, getDocs, query, orderBy, limit, addDoc, where, documentId, doc, updateDoc, setDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { useSettings } from '../../context/SettingsContext';
+import { collection, getDocs, query, orderBy, limit, addDoc, where, documentId, doc, updateDoc, setDoc, writeBatch, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { getDoc } from 'firebase/firestore';
 import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, logMistakesToFirebase, formatAIModelName } from '../../services/geminiService';
-import { generateSpeech, createSpeechAudio, formatTextForTTS } from '../../services/elevenLabsService';
+import { generateSpeech, createSpeechAudio, formatTextForTTS, playSpeech } from '../../services/ttsService';
 import TTSButtons from '../flashcards/TTSButtons';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog } from '../../types';
 import { isTaskForStudent } from '../../utils/homework';
@@ -472,6 +473,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const { language } = useLanguage();
   const { sets, getFlashcards } = useFlashcards();
   const { user, updateUserStreak } = useAuth();
+  const { soundSettings } = useSettings();
   const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
   const [translatedSentencesCount, setTranslatedSentencesCount] = useState<number>(user?.translatedSentencesCount || 0);
 
@@ -827,22 +829,21 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
   const [playingAudioIndex, setPlayingAudioIndex] = useState<number | null>(null);
 
-  const handlePlaySentenceAudio = (text: string, lang: string, index: number) => {
+  const handlePlaySentenceAudio = async (text: string, lang: string, index: number) => {
     if (!text) return;
     setPlayingAudioIndex(index);
-    const audio = createSpeechAudio(text, lang as any);
-    const handleStop = () => setPlayingAudioIndex(null);
-    audio.onended = handleStop;
-    
-    audio.onerror = () => {
-      console.error("ElevenLabs audio streaming error.");
-      handleStop();
-    };
-    
-    audio.play().catch(err => {
-      console.error("Mobile HTML5 audio play error (ElevenLabs):", err);
-      handleStop();
-    });
+    try {
+      await playSpeech(text, {
+        accent: lang || soundSettings?.ttsAccent || 'en-US',
+        gender: soundSettings?.voiceGender || 'male',
+        speed: soundSettings?.voiceSpeed || 1.0,
+        engine: soundSettings?.soundEngine || 'auto'
+      });
+    } catch (err) {
+      console.warn("Sentence audio play error:", err);
+    } finally {
+      setPlayingAudioIndex(null);
+    }
   };
 
   const [activeSentenceIndex, setActiveSentenceIndex] = useState<number>(0);
@@ -975,39 +976,40 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   }, []);
 
   useEffect(() => {
-    if (user?.id) {
-      getVocabularySetsForStudent(user.id)
-        .then(setVocabularySets)
-        .catch(console.error);
+    if (!user?.id) return;
 
-      // fetch special tasks
-      import('firebase/firestore').then(({ collection, getDocs }) => {
-        getDocs(collection(db, 'specialTasks')).then(snap => {
-          const tasks: any[] = [];
-          snap.forEach(doc => {
-            const t = { id: doc.id, ...doc.data() } as any;
-            if (isTaskForStudent(t, user)) {
-              tasks.push(t);
-            }
-          });
-          const getMillis = (val: any) => {
-            if (!val) return 0;
-            if (typeof val.toMillis === 'function') return val.toMillis();
-            if (val.seconds !== undefined) return val.seconds * 1000;
-            if (typeof val === 'string' || typeof val === 'number') {
-              const t = new Date(val).getTime();
-              return isNaN(t) ? 0 : t;
-            }
-            return 0;
-          };
-          tasks.sort((a, b) => getMillis(b.createdAt) - getMillis(a.createdAt));
-          setSpecialTasks(tasks.filter(t => t.status === 'pending' || !t.status));
-        }).catch(err => {
-          console.error("Error loading specialTasks for student:", err);
-        });
+    getVocabularySetsForStudent(user.id)
+      .then(setVocabularySets)
+      .catch(console.error);
+
+    // Real-time special tasks listener
+    const unsub = onSnapshot(collection(db, 'specialTasks'), (snap) => {
+      const tasks: any[] = [];
+      snap.forEach(doc => {
+        const t = { id: doc.id, ...doc.data() } as any;
+        if (isTaskForStudent(t, user)) {
+          tasks.push(t);
+        }
       });
-    }
+      const getMillis = (val: any) => {
+        if (!val) return 0;
+        if (typeof val.toMillis === 'function') return val.toMillis();
+        if (val.seconds !== undefined) return val.seconds * 1000;
+        if (typeof val === 'string' || typeof val === 'number') {
+          const t = new Date(val).getTime();
+          return isNaN(t) ? 0 : t;
+        }
+        return 0;
+      };
+      tasks.sort((a, b) => getMillis(b.createdAt) - getMillis(a.createdAt));
+      setSpecialTasks(tasks.filter(t => t.status === 'pending' || !t.status));
+    }, (err) => {
+      console.error("Error loading specialTasks in real-time for student:", err);
+    });
 
+    return () => {
+      unsub();
+    };
   }, [user?.id, user?.username, user?.email, user?.firstName, user?.lastName]);
 
   // Filter out sets assigned to the student (assignedByTeacher or belongs to user)
@@ -1526,22 +1528,21 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
   // Submit and grade translations with Gemini
   
-  const playAudio = (text: string, lang: string) => {
+  const playAudio = async (text: string, lang?: string) => {
     if (!text) return;
     setIsPlayingAudio(true);
-    const audio = createSpeechAudio(text, lang as any);
-    const handleStop = () => setIsPlayingAudio(false);
-    audio.onended = handleStop;
-    
-    audio.onerror = () => {
-      console.error("ElevenLabs audio streaming error.");
-      handleStop();
-    };
-    
-    audio.play().catch(err => {
-      console.error("Mobile HTML5 audio play error (ElevenLabs):", err);
-      handleStop();
-    });
+    try {
+      await playSpeech(text, {
+        accent: lang || soundSettings?.ttsAccent || 'en-US',
+        gender: soundSettings?.voiceGender || 'male',
+        speed: soundSettings?.voiceSpeed || 1.0,
+        engine: soundSettings?.soundEngine || 'auto'
+      });
+    } catch (err) {
+      console.warn("Direct playAudio error:", err);
+    } finally {
+      setIsPlayingAudio(false);
+    }
   };
 
   const handleEvaluateSingle = async () => {
@@ -1579,6 +1580,11 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
         const result = results[0];
         setSingleEvaluationResults(prev => ({ ...prev, [currentIdx]: result }));
         setEvaluationStatuses(prev => ({ ...prev, [currentIdx]: 'evaluated' }));
+
+        // Auto-play sentence pronunciation if user setting autoPlaySentence is enabled
+        if (soundSettings?.autoPlaySentence && result.correctTranslation) {
+          playAudio(result.correctTranslation, soundSettings.ttsAccent || 'en-US');
+        }
       } else {
         throw new Error('AI returned empty evaluation results.');
       }

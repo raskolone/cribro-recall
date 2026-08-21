@@ -26,6 +26,8 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { PracticeLog, TranslationEvaluationResult } from '../../types';
+import { extractErrorMessage } from '../../services/geminiService';
+import { aiMonitor } from '../../services/aiMonitorService';
 import i18n from 'i18next';
 
 // Helper to format local date keys (YYYY-MM-DD)
@@ -368,27 +370,46 @@ const StudentStatsScreen: React.FC = () => {
       const currentUser = auth.currentUser;
       const token = currentUser ? await currentUser.getIdToken() : '';
 
-      const res = await fetch('/api/gemini/student-stats-summary', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          stats,
-          logsSummary,
-          language
-        })
+      const reqId = aiMonitor.startRequest({
+        taskName: 'Podsumowanie pedagogiczne ucznia AI',
+        initialModel: 'openai/gpt-4o-mini',
+        category: 'stats',
+        provider: 'OpenAI',
+        statusMessage: 'Generowanie analizy postępów i wskazówek dla ucznia...'
       });
 
-      if (!res.ok) {
-        throw new Error("Failed to fetch teacher commentary");
-      }
+      try {
+        const res = await fetch('/api/gemini/student-stats-summary', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            stats,
+            logsSummary,
+            language
+          })
+        });
 
-      const data = await res.json();
-      setAiAnalysis(data);
-      // Cache in localStorage
-      (function(){ try { localStorage.setItem(`ai_teacher_stats_${user?.id}`, JSON.stringify({ data, timestamp: Date.now() })); } catch(e) {} })();
+        if (!res.ok) {
+          const errText = await res.text();
+          let errData: any = null;
+          try { errData = JSON.parse(errText); } catch(e) {}
+          const errorMsg = extractErrorMessage(errData, errText || 'Failed to fetch teacher commentary');
+          aiMonitor.failRequest(reqId, errorMsg);
+          throw new Error(errorMsg);
+        }
+
+        const data = await res.json();
+        aiMonitor.completeRequest(reqId, { modelUsed: data.modelUsed || 'OpenAI (GPT-4o mini)', message: 'Analiza statystyk odebrana pomyślnie' });
+        setAiAnalysis(data);
+        // Cache in localStorage
+        (function(){ try { localStorage.setItem(`ai_teacher_stats_${user?.id}`, JSON.stringify({ data, timestamp: Date.now() })); } catch(e) {} })();
+      } catch (err: any) {
+        aiMonitor.failRequest(reqId, err?.message || 'Błąd zapytania AI');
+        throw err;
+      }
     } catch (err: any) {
       console.error(err);
       setAiError(language === 'pl' ? 'Nie udało się pobrać komentarza nauczyciela AI.' : 'Could not fetch AI teacher commentary.');

@@ -4,6 +4,21 @@ export type Difficulty = 'A1-A2' | 'B1-B2' | 'C1-C2';
 export type RevisionFrequency = 'Daily' | 'Weekly' | 'Monthly';
 export type ExerciseType = 'intro' | 'flashcards' | 'quiz' | 'fill-in-the-blank' | 'match' | 'ai_translation';
 
+export type TTSAccent = 'en-US' | 'en-GB' | 'AmE' | 'BrE';
+export type VoiceGender = 'male' | 'female';
+export type SoundEngine = 'auto' | 'openai' | 'gpt4o-mini' | 'gemini' | 'browser';
+export type VoiceSpeed = 0.75 | 0.85 | 1.0 | 1.15;
+
+export interface SoundSettings {
+  ttsAccent: TTSAccent;
+  voiceGender: VoiceGender;
+  voiceSpeed: VoiceSpeed;
+  soundEngine: SoundEngine;
+  autoPlaySentence: boolean;
+  autoPlayFlashcards: boolean;
+  soundEffectsEnabled: boolean;
+}
+
 export interface User {
   id?: string;
   username: string;
@@ -34,6 +49,13 @@ export interface User {
   frequentErrors?: any[];
   onboardingCompleted?: boolean;
   tempPassword?: string;
+  soundSettings?: SoundSettings;
+  ttsAccent?: TTSAccent;
+  voiceGender?: VoiceGender;
+  voiceSpeed?: VoiceSpeed;
+  soundEngine?: SoundEngine;
+  autoPlaySentence?: boolean;
+  autoPlayFlashcards?: boolean;
 }
 
 export interface WordSet {

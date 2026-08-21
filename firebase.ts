@@ -25,13 +25,14 @@ const getFirebaseConfig = () => {
 
   // Also allow individual VITE_ vars to override, but ONLY if they look like real values
   const isValidOverride = (val: any) => typeof val === 'string' && val.trim() !== '' && val !== '...' && val !== 'your_firebase_api_key_here';
+  const env: any = (typeof import.meta !== 'undefined' && import.meta && import.meta.env) ? import.meta.env : (typeof process !== 'undefined' && process.env ? process.env : {});
 
-  if (isValidOverride(import.meta.env.VITE_FIREBASE_API_KEY)) config.apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
-  if (isValidOverride(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN)) config.authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
-  if (isValidOverride(import.meta.env.VITE_FIREBASE_PROJECT_ID)) config.projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
-  if (isValidOverride(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET)) config.storageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET;
-  if (isValidOverride(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID)) config.messagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID;
-  if (isValidOverride(import.meta.env.VITE_FIREBASE_APP_ID)) config.appId = import.meta.env.VITE_FIREBASE_APP_ID;
+  if (isValidOverride(env.VITE_FIREBASE_API_KEY)) config.apiKey = env.VITE_FIREBASE_API_KEY;
+  if (isValidOverride(env.VITE_FIREBASE_AUTH_DOMAIN)) config.authDomain = env.VITE_FIREBASE_AUTH_DOMAIN;
+  if (isValidOverride(env.VITE_FIREBASE_PROJECT_ID)) config.projectId = env.VITE_FIREBASE_PROJECT_ID;
+  if (isValidOverride(env.VITE_FIREBASE_STORAGE_BUCKET)) config.storageBucket = env.VITE_FIREBASE_STORAGE_BUCKET;
+  if (isValidOverride(env.VITE_FIREBASE_MESSAGING_SENDER_ID)) config.messagingSenderId = env.VITE_FIREBASE_MESSAGING_SENDER_ID;
+  if (isValidOverride(env.VITE_FIREBASE_APP_ID)) config.appId = env.VITE_FIREBASE_APP_ID;
 
   return config;
 };

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { playSpeech } from '../../services/elevenLabsService';
+import { playSpeech } from '../../services/ttsService';
 import i18n from "i18next";
 
 gsap.registerPlugin(useGSAP);
@@ -206,11 +206,10 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, displaySenten
     if (!text) return;
     setIsPlayingAudio(true);
     try {
-      const audio = await playSpeech(text, lang);
-      audio.onended = () => setIsPlayingAudio(false);
-      audio.onerror = () => setIsPlayingAudio(false);
+      await playSpeech(text, lang);
     } catch (err) {
       console.error(err);
+    } finally {
       setIsPlayingAudio(false);
     }
   };

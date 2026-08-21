@@ -56,7 +56,14 @@ They have typed "${req.term}" in ${sourceLangName}.
 Provide up to 5 autocomplete suggestions or related terms in ${sourceLangName} that start with or are closely related to "${req.term}".
 Return ONLY a JSON array of strings. No markdown formatting, no explanations.`;
 
-      const res = await generateTextWithUnifiedFallback(prompt, "You are a helpful assistant.", undefined, { temperature: 0.3 });
+      const res = await generateTextWithUnifiedFallback(
+        prompt,
+        "You are a helpful assistant.",
+        undefined,
+        { temperature: 0.3 },
+        undefined,
+        { taskName: `Autouzupełnianie fiszek: "${req.term}"`, category: 'autocomplete' }
+      );
       const text = res.text || '[]';
       try {
         const suggestions = JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
@@ -72,7 +79,14 @@ Return ONLY a JSON array of strings. No markdown formatting, no explanations.`;
 Provide a clear, concise translation or definition for the term "${req.term}" from ${sourceLangName} to ${targetLangName}.
 Return ONLY the translated term or short definition as a plain string. No quotes, no explanations.`;
 
-      const res = await generateTextWithUnifiedFallback(prompt, "You are a helpful assistant.", undefined, { temperature: 0.1 });
+      const res = await generateTextWithUnifiedFallback(
+        prompt,
+        "You are a helpful assistant.",
+        undefined,
+        { temperature: 0.1 },
+        undefined,
+        { taskName: `Definicja/Tłumaczenie fiszki: "${req.term}"`, category: 'flashcards' }
+      );
       const definition = (res.text || '').trim();
 
       // Save to cache

@@ -11,6 +11,7 @@ import LandingPage from './components/landing/LandingPage';
 import ForcePasswordChangeScreen from './components/auth/ForcePasswordChangeScreen';
 import GlobalErrorBoundary from './components/ui/GlobalErrorBoundary';
 import StarterVocabularyApp from './components/starter/StarterVocabularyApp';
+import { AdminAIActivityMonitor } from './components/admin/AdminAIActivityMonitor';
 
 const App: React.FC = () => {
   useEffect(() => {
@@ -28,6 +29,7 @@ const App: React.FC = () => {
       <AuthProvider>
         <GlobalErrorBoundary>
           <AppContent />
+          <AdminAIActivityMonitor />
         </GlobalErrorBoundary>
       </AuthProvider>
     </LanguageProvider>

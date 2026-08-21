@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { Word } from '../../types';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { getAudioPronunciation } from '../../services/geminiService';
-import { playSpeech, createSpeechAudio } from '../../services/elevenLabsService';
+import { playSpeech, createSpeechAudio } from '../../services/ttsService';
 import { playAudio, unlockAudioContext } from '../../utils/audioUtils';
 import { VOICE_CONFIG } from '../../constants';
 import PronunciationMic from '../ui/PronunciationMic';
@@ -27,10 +27,15 @@ const WordCard: React.FC<WordCardProps> = ({ word }) => {
         const accent = variant === 'American' ? 'en-US' : 'en-GB';
         await playSpeech(word.word, accent);
       } else {
-        unlockAudioContext();
-        const voice = VOICE_CONFIG[word.language];
-        const audio = await getAudioPronunciation(word.word, voice);
-        await playAudio(audio);
+        try {
+          unlockAudioContext();
+          const voice = VOICE_CONFIG[word.language];
+          const audio = await getAudioPronunciation(word.word, voice);
+          await playAudio(audio);
+        } catch (subErr) {
+          const langCode = word.language === 'Spanish' ? 'es-ES' : word.language === 'French' ? 'fr-FR' : 'nl-NL';
+          await playSpeech(word.word, { accent: langCode, engine: 'browser' });
+        }
       }
     } catch (error) {
       console.error(`Failed to play ${variant} audio`, error);

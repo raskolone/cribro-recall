@@ -290,6 +290,9 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
       const studentName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'Kursant';
       const taskData = {
         studentId: user.id,
+        studentIds: [user.id],
+        userId: user.id,
+        studentUid: user.id,
         studentName: studentName,
         studentEmail: user.email || '',
         studentUsername: user.username || '',
