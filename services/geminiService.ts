@@ -55,25 +55,71 @@ export const extractErrorMessage = (data: any, fallback: string = "Wystąpił b�
   if (typeof data === "string") {
     try {
       const jsonStart = data.indexOf('{');
-      if (jsonStart !== -1) {
-        const parsed = JSON.parse(data.slice(jsonStart));
-        if (parsed && (parsed.error || parsed.errors || parsed.message)) {
+      const arrayStart = data.indexOf('[');
+      const start = (jsonStart !== -1 && arrayStart !== -1) ? Math.min(jsonStart, arrayStart) : (jsonStart !== -1 ? jsonStart : arrayStart);
+      if (start !== -1) {
+        const parsed = JSON.parse(data.slice(start));
+        if (parsed && typeof parsed === 'object') {
           return extractErrorMessage(parsed, fallback);
         }
       }
     } catch {}
-    return data;
+    return data.trim() || fallback;
   }
-  if (data.error) {
-    if (typeof data.error === "string") return data.error;
+  
+  if (data.error !== undefined && data.error !== null) {
+    if (typeof data.error === "string") return data.error.trim() || fallback;
     if (typeof data.error === "object") {
-      return data.error.message || extractErrorMessage(data.error, fallback);
+      if (data.error.message && typeof data.error.message === "string") {
+        return data.error.message.trim() || fallback;
+      }
+      if (data.error.error) {
+        return extractErrorMessage(data.error.error, fallback);
+      }
+      if (data.error.errors) {
+        return extractErrorMessage(data.error.errors, fallback);
+      }
+      if (data.error.details && typeof data.error.details === "string") {
+        return data.error.details.trim() || fallback;
+      }
+      try {
+        const str = JSON.stringify(data.error);
+        if (str && str !== '{}') return str;
+      } catch {}
     }
     return String(data.error);
   }
-  if (data.errors && Array.isArray(data.errors)) {
-    return data.errors.map((e: any) => typeof e === "object" ? (e.message || extractErrorMessage(e, fallback)) : String(e)).join(", ");
+
+  if (data.errors !== undefined && data.errors !== null) {
+    if (Array.isArray(data.errors)) {
+      const list = data.errors
+        .map((e: any) => {
+          if (typeof e === "string") return e.trim();
+          if (typeof e === "object" && e) {
+            return e.message || e.error || e.details || extractErrorMessage(e, "");
+          }
+          return String(e);
+        })
+        .filter(Boolean);
+      if (list.length > 0) return list.join(", ");
+    } else if (typeof data.errors === "string") {
+      return data.errors.trim() || fallback;
+    } else if (typeof data.errors === "object") {
+      return extractErrorMessage(data.errors, fallback);
+    }
   }
+
+  if (Array.isArray(data)) {
+    const list = data
+      .map((e: any) => {
+        if (typeof e === "string") return e.trim();
+        if (typeof e === "object" && e) return extractErrorMessage(e, "");
+        return String(e);
+      })
+      .filter(Boolean);
+    if (list.length > 0) return list.join(", ");
+  }
+
   if (data.message && typeof data.message === "string") {
     try {
       const jsonStart = data.message.indexOf('{');
@@ -84,8 +130,13 @@ export const extractErrorMessage = (data: any, fallback: string = "Wystąpił b�
         }
       }
     } catch {}
-    return data.message;
+    return data.message.trim() || fallback;
   }
+
+  if (data.statusText && typeof data.statusText === "string") {
+    return data.statusText.trim() || fallback;
+  }
+
   return fallback;
 };
 
