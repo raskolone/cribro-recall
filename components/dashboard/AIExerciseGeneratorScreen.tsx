@@ -11,7 +11,7 @@ import { getDoc } from 'firebase/firestore';
 import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, logMistakesToFirebase, formatAIModelName } from '../../services/geminiService';
 import { generateSpeech, createSpeechAudio, formatTextForTTS, playSpeech } from '../../services/ttsService';
 import TTSButtons from '../flashcards/TTSButtons';
-import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog } from '../../types';
+import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog, canUserViewAiMonitor } from '../../types';
 import { isTaskForStudent } from '../../utils/homework';
 
 export interface CachedExerciseSet {
@@ -287,7 +287,7 @@ function getPolishSentencesPlural(count: number): string {
 }
 
 
-const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?: string; currentModel?: string }> = ({ language, level, currentModel }) => {
+const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?: string; currentModel?: string; canViewAiModels?: boolean }> = ({ language, level, currentModel, canViewAiModels = false }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tangledRef = useRef<SVGPathElement>(null);
   const spiralRef = useRef<SVGPathElement>(null);
@@ -409,7 +409,7 @@ const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?
           : 'AI is eliminating chaos and building a clear structure.'}
       </p>
 
-      {currentModel && (
+      {currentModel && canViewAiModels && (
         <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#72F0B4]/10 border border-[#72F0B4]/30 text-[#72F0B4] text-xs font-semibold shadow-[0_0_20px_rgba(139,195,74,0.15)]">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#72F0B4] opacity-75" />
@@ -475,6 +475,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const { user, updateUserStreak } = useAuth();
   const { soundSettings } = useSettings();
   const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
+  const canViewAiModels = canUserViewAiMonitor(user);
   const [translatedSentencesCount, setTranslatedSentencesCount] = useState<number>(user?.translatedSentencesCount || 0);
 
   useEffect(() => {
@@ -2093,7 +2094,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
       {/* STEP 1: SETUP */}
       {step === 'setup' && (
         isLoading ? (
-          <AIGenerationLoader language={language} level={level} logs={debugLogs} currentModel={activeGeneratingModel} />
+          <AIGenerationLoader language={language} level={level} logs={debugLogs} currentModel={activeGeneratingModel} canViewAiModels={canViewAiModels} />
         ) : (
           <div className="max-w-2xl mx-auto sm:mt-4 w-full">
             
@@ -3817,13 +3818,15 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                        <div className="font-bold flex flex-col sm:flex-row items-center justify-between w-full mb-3 text-sm gap-2">
                          <span className="flex items-center gap-2 flex-wrap">
                            {singleEvaluationResults[activeSentenceIndex].isCorrect ? '✅ Poprawnie!' : '❌ Błędy w tłumaczeniu'}
-                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[11px] font-medium">
-                             <Sparkles className="w-3 h-3 text-cyan-400" />
-                             <span>
-                               {language === 'pl' ? 'Sprawdzone przez: ' : 'Evaluated by: '}
-                               <strong className="text-white font-bold">{formatAIModelName(singleEvaluationResults[activeSentenceIndex].modelUsed)}</strong>
+                           {canViewAiModels && (
+                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[11px] font-medium">
+                               <Sparkles className="w-3 h-3 text-cyan-400" />
+                               <span>
+                                 {language === 'pl' ? 'Sprawdzone przez: ' : 'Evaluated by: '}
+                                 <strong className="text-white font-bold">{formatAIModelName(singleEvaluationResults[activeSentenceIndex].modelUsed)}</strong>
+                               </span>
                              </span>
-                           </span>
+                           )}
                          </span>
                          <span className={`text-xs font-bold font-mono px-2.5 py-1 rounded-lg border ${
                            singleEvaluationResults[activeSentenceIndex].score >= 80 
@@ -4059,10 +4062,16 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
                   </span>
                   <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>
-                    {language === 'pl' ? 'Wysyłam zapytanie do: ' : 'Sending query to: '}
-                    <strong className="text-white font-bold">{formatAIModelName(activeGeneratingModel)}</strong>
-                  </span>
+                  {canViewAiModels ? (
+                    <span>
+                      {language === 'pl' ? 'Wysyłam zapytanie do: ' : 'Sending query to: '}
+                      <strong className="text-white font-bold">{formatAIModelName(activeGeneratingModel)}</strong>
+                    </span>
+                  ) : (
+                    <span>
+                      {language === 'pl' ? 'Trwa sprawdzanie tłumaczenia...' : 'Evaluating translation...'}
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -4216,13 +4225,15 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-black/30 rounded text-xs font-mono text-content-muted">
                         {i18n.t("Zdanie")} {idx + 1}
                       </div>
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-medium shadow-sm">
-                        <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>
-                          {language === 'pl' ? 'Sprawdzone przez: ' : 'Evaluated by: '}
-                          <strong className="text-white font-semibold">{formatAIModelName(res.modelUsed)}</strong>
-                        </span>
-                      </div>
+                      {canViewAiModels && (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-medium shadow-sm">
+                          <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>
+                            {language === 'pl' ? 'Sprawdzone przez: ' : 'Evaluated by: '}
+                            <strong className="text-white font-semibold">{formatAIModelName(res.modelUsed)}</strong>
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className={`text-sm font-bold font-mono ${

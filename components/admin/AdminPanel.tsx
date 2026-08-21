@@ -2018,23 +2018,61 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                           onClick={() => handleRoleChange('user')}
                           className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'user' ? 'bg-primary text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
                         >
-                          
-                                                                                                    {i18n.t("Kursant (User)")}
-                                                                                                  </button>
+                          {i18n.t("Kursant (User)")}
+                        </button>
                         <button
                           onClick={() => handleRoleChange('admin')}
                           className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'admin' ? 'bg-red-500 text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
                         >
-                          
-                                                                                                    {i18n.t("Admin")}
-                                                                                                  </button>
+                          {i18n.t("Admin")}
+                        </button>
                         <button
                           onClick={() => handleRoleChange('teacher')}
                           className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'teacher' ? 'bg-purple-500 text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
                         >
-                          
-                                                                                                    {i18n.t("Nauczyciel")}
-                                                                                                  </button>
+                          {i18n.t("Nauczyciel")}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-bold text-content-muted">{i18n.t("Podgląd modeli AI i AI Live Monitor:")}</span>
+                        <span className={`text-xs font-mono px-2 py-0.5 rounded-full ${selectedUser.showAiMonitor || selectedUser.canViewAiMonitor ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'bg-base-300 text-content-muted'}`}>
+                          {selectedUser.showAiMonitor || selectedUser.canViewAiMonitor ? 'Włączony dla tego profilu' : 'Domyślnie ukryty'}
+                        </span>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-base-200/60 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div className="space-y-0.5">
+                          <span className="text-sm font-semibold text-white block">
+                            {selectedUser.showAiMonitor || selectedUser.canViewAiMonitor 
+                              ? 'Widoczność modeli AI (OpenAI/Gemini) & Live Monitor' 
+                              : 'Ukryj modele AI przed kursantem (Domyślne)'}
+                          </span>
+                          <p className="text-xs text-content-muted">
+                            {selectedUser.showAiMonitor || selectedUser.canViewAiMonitor
+                              ? 'Ten kursant ma uprawnienie do podglądu nazw modeli AI w zapytaniach oraz włączania Live Monitora.'
+                              : 'Domyślnie kursant nie widzi do jakich modeli wysyłane są zapytania (OpenAI/Gemini) w żadnym panelu.'}
+                          </p>
+                        </div>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className={selectedUser.showAiMonitor || selectedUser.canViewAiMonitor ? "bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/40 shrink-0" : "bg-base-300 text-content-muted hover:text-white shrink-0"}
+                          onClick={() => {
+                            const currentVal = Boolean(selectedUser.showAiMonitor || selectedUser.canViewAiMonitor);
+                            const newStatus = !currentVal;
+                            const userRef = doc(db, 'users', selectedUser.id);
+                            updateDoc(userRef, { showAiMonitor: newStatus, canViewAiMonitor: newStatus }).then(() => {
+                              const updated = { ...selectedUser, showAiMonitor: newStatus, canViewAiMonitor: newStatus };
+                              setSelectedUser(updated);
+                              setUsers(users.map(u => u.id === updated.id ? updated : u));
+                              showToast(newStatus ? 'Włączono podgląd modeli AI i Live Monitor dla tego kursanta.' : 'Ukryto modele AI i wyłączono monitor dla tego kursanta.');
+                            }).catch(err => alert('Błąd: ' + err.message));
+                          }}
+                        >
+                          {selectedUser.showAiMonitor || selectedUser.canViewAiMonitor ? '✅ Podgląd AI: WŁĄCZONY' : '🔒 Podgląd AI: WYŁĄCZONY'}
+                        </Button>
                       </div>
                     </div>
                     

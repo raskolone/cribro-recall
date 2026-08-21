@@ -9,7 +9,7 @@ import { useVocabulary } from '../../context/VocabularyContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { FREQUENCIES } from '../../constants';
-import { RevisionFrequency, TTSAccent, VoiceGender, VoiceSpeed, SoundEngine } from '../../types';
+import { RevisionFrequency, TTSAccent, VoiceGender, VoiceSpeed, SoundEngine, canUserViewAiMonitor } from '../../types';
 import { LogOut, Volume2, Play, CheckCircle2, RefreshCw, VolumeX, Sparkles, Sliders, Check } from 'lucide-react';
 import { playSpeech } from '../../services/ttsService';
 import i18n from "i18next";
@@ -19,6 +19,7 @@ const SettingsScreen: React.FC = () => {
     const { soundSettings, updateSoundSettings, resetSoundSettings } = useSettings();
     const { language } = useLanguage();
     const { linkGoogleAccount, user, logout } = useAuth();
+    const canViewAiModels = canUserViewAiMonitor(user);
     const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
     const [linkError, setLinkError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -138,7 +139,9 @@ const SettingsScreen: React.FC = () => {
                             <h2 className="text-lg font-bold text-white flex items-center gap-2">
                                 {language === 'pl' ? 'Ustawienia Dźwięku i Lektora AI' : 'Sound & AI Voice Settings'}
                                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 uppercase tracking-wider">
-                                    {soundSettings.soundEngine === 'browser' ? 'Web Speech' : 'Multi-Tier AI'}
+                                    {canViewAiModels
+                                        ? (soundSettings.soundEngine === 'browser' ? 'Web Speech' : 'Multi-Tier AI')
+                                        : 'Lektor AI'}
                                 </span>
                             </h2>
                             <p className="text-xs text-content-muted">
@@ -184,21 +187,40 @@ const SettingsScreen: React.FC = () => {
                         <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
                             {language === 'pl' ? 'Kategoria / Silnik Dźwięku' : 'Audio Engine Category'}
                         </label>
-                        <select
-                            value={soundSettings.soundEngine || 'auto'}
-                            onChange={(e) => handleSettingChange('soundEngine', e.target.value as SoundEngine)}
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-white text-sm focus:outline-none focus:border-emerald-400 transition-colors"
-                        >
-                            <option value="auto">⚡ {language === 'pl' ? 'Automatyczny (OpenAI tts-1 + gpt-4o-mini + Gemini)' : 'Automatic (OpenAI tts-1 + gpt-4o-mini + Gemini)'}</option>
-                            <option value="openai">🤖 {language === 'pl' ? 'OpenAI tts-1 (Studyjny & szybki)' : 'OpenAI tts-1 (Studio quality)'}</option>
-                            <option value="gpt4o-mini">🎙️ {language === 'pl' ? 'OpenAI GPT-4o-mini Audio' : 'OpenAI GPT-4o-mini Audio'}</option>
-                            <option value="gemini">♊ {language === 'pl' ? 'Google Gemini 2.0 Flash Audio' : 'Google Gemini 2.0 Flash Audio'}</option>
-                            <option value="browser">🌐 {language === 'pl' ? 'Lokalny Przeglądarki (Web Speech - 100% niezawodny)' : 'Native Browser (Web Speech - 100% reliable)'}</option>
-                        </select>
+                        {canViewAiModels ? (
+                            <select
+                                value={soundSettings.soundEngine || 'auto'}
+                                onChange={(e) => handleSettingChange('soundEngine', e.target.value as SoundEngine)}
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-white text-sm focus:outline-none focus:border-emerald-400 transition-colors"
+                            >
+                                <option value="auto">⚡ {language === 'pl' ? 'Automatyczny (OpenAI tts-1 + gpt-4o-mini + Gemini)' : 'Automatic (OpenAI tts-1 + gpt-4o-mini + Gemini)'}</option>
+                                <option value="openai">🤖 {language === 'pl' ? 'OpenAI tts-1 (Studyjny & szybki)' : 'OpenAI tts-1 (Studio quality)'}</option>
+                                <option value="gpt4o-mini">🎙️ {language === 'pl' ? 'OpenAI GPT-4o-mini Audio' : 'OpenAI GPT-4o-mini Audio'}</option>
+                                <option value="gemini">♊ {language === 'pl' ? 'Google Gemini 2.0 Flash Audio' : 'Google Gemini 2.0 Flash Audio'}</option>
+                                <option value="browser">🌐 {language === 'pl' ? 'Lokalny Przeglądarki (Web Speech - 100% niezawodny)' : 'Native Browser (Web Speech - 100% reliable)'}</option>
+                            </select>
+                        ) : (
+                            <select
+                                value={soundSettings.soundEngine || 'auto'}
+                                onChange={(e) => handleSettingChange('soundEngine', e.target.value as SoundEngine)}
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-white text-sm focus:outline-none focus:border-emerald-400 transition-colors"
+                            >
+                                <option value="auto">⚡ {language === 'pl' ? 'Automatyczny (Rekomendowany - wysoka jakość)' : 'Automatic (Recommended - High quality)'}</option>
+                                <option value="openai">🎙️ {language === 'pl' ? 'Studyjny Lektor HD' : 'Studio HD Voice'}</option>
+                                <option value="gpt4o-mini">🤖 {language === 'pl' ? 'Zaawansowany Lektor AI' : 'Advanced AI Voice'}</option>
+                                <option value="gemini">♊ {language === 'pl' ? 'Ekspresyjny Lektor AI' : 'Expressive AI Voice'}</option>
+                                <option value="browser">🌐 {language === 'pl' ? 'Lokalny w Przeglądarce (Web Speech)' : 'Native Browser (Web Speech)'}</option>
+                            </select>
+                        )}
                         <p className="text-[11px] text-content-muted mt-1.5">
-                            {language === 'pl' 
-                                ? 'Domyślnie system generuje mowę przez OpenAI tts-1, z kaskadowym przełączeniem na gpt-4o-mini, Gemini 2.0 Flash oraz lokalny syntezator przeglądarki.' 
-                                : 'Default engine uses OpenAI tts-1 with fallback to gpt-4o-mini, Gemini 2.0 Flash, and native Web Speech.'}
+                            {canViewAiModels
+                                ? (language === 'pl' 
+                                    ? 'Domyślnie system generuje mowę przez OpenAI tts-1, z kaskadowym przełączeniem na gpt-4o-mini, Gemini 2.0 Flash oraz lokalny syntezator przeglądarki.' 
+                                    : 'Default engine uses OpenAI tts-1 with fallback to gpt-4o-mini, Gemini 2.0 Flash, and native Web Speech.')
+                                : (language === 'pl'
+                                    ? 'Domyślny tryb automatyczny inteligentnie dobiera optymalnego lektora dla najwyższej jakości i płynności wymowy.'
+                                    : 'The default automatic mode selects the best voice synthesis for high quality and smooth pronunciation.')
+                            }
                         </p>
                     </div>
 
@@ -329,6 +351,39 @@ const SettingsScreen: React.FC = () => {
                     </label>
                 </div>
             </Card>
+
+            {/* AI LIVE MONITOR STATUS & TOGGLE CARD (Visible only to Admin or Permitted Students) */}
+            {canViewAiModels && (
+                <Card className="border border-cyan-500/30 bg-gradient-to-br from-base-200/90 via-base-200/70 to-cyan-950/20 shadow-lg">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                                <Sparkles className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                    AI Live Monitor
+                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 uppercase tracking-wider">
+                                        {user?.role === 'admin' ? 'Admin' : 'Aktywny'}
+                                    </span>
+                                </h2>
+                                <p className="text-xs text-content-muted">
+                                    {language === 'pl'
+                                        ? 'Pływający monitor aktywności zapytań AI (TTS, generowanie ćwiczeń, ocenianie, latency).'
+                                        : 'Floating real-time AI activity monitor (TTS, exercise generation, grading, latency).'}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2.5 bg-cyan-500/10 border border-cyan-500/30 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-cyan-300 shrink-0">
+                            <span className="relative flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-400" />
+                            </span>
+                            <span>{language === 'pl' ? 'Monitor Aktywny' : 'Monitor Active'}</span>
+                        </div>
+                    </div>
+                </Card>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>

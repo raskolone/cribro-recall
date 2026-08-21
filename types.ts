@@ -49,6 +49,8 @@ export interface User {
   frequentErrors?: any[];
   onboardingCompleted?: boolean;
   tempPassword?: string;
+  showAiMonitor?: boolean;
+  canViewAiMonitor?: boolean;
   soundSettings?: SoundSettings;
   ttsAccent?: TTSAccent;
   voiceGender?: VoiceGender;
@@ -57,6 +59,17 @@ export interface User {
   autoPlaySentence?: boolean;
   autoPlayFlashcards?: boolean;
 }
+
+/**
+ * Checks if the user is authorized to view AI model names and the AI Live Monitor.
+ * Admins always have access by default.
+ * Regular students only have access if explicitly enabled by an admin in their profile.
+ */
+export const canUserViewAiMonitor = (user?: User | null): boolean => {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  return Boolean(user.showAiMonitor || user.canViewAiMonitor);
+};
 
 export interface WordSet {
   id: string;

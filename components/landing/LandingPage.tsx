@@ -303,7 +303,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                       <div className="flex items-center gap-3">
                         <span className="bg-white/5 px-2 py-1 rounded text-xs text-content-muted font-mono">Zdanie 1</span>
                         <div className="flex items-center gap-1.5 text-xs text-blue-300 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-full">
-                          <Sparkles size={12} /> {language === 'pl' ? 'Sprawdzone przez: OpenAI' : 'Verified by: OpenAI'}
+                          <Sparkles size={12} /> {language === 'pl' ? 'Sprawdzone przez: Asystent AI' : 'Verified by: AI Assistant'}
                         </div>
                       </div>
                       <div className="text-primary font-black flex items-center gap-1">

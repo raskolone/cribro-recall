@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { aiMonitor, AIActivityEvent } from '../../services/aiMonitorService';
 import { formatAIModelName } from '../../services/geminiService';
+import { canUserViewAiMonitor } from '../../types';
 import { 
   Sparkles, 
   Cpu, 
@@ -22,6 +23,7 @@ import { playSpeech } from '../../services/ttsService';
 export const AdminAIActivityMonitor: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const isAllowed = canUserViewAiMonitor(user);
 
   const [events, setEvents] = useState<AIActivityEvent[]>([]);
   const [activeCount, setActiveCount] = useState<number>(0);
@@ -30,7 +32,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
   const [, setTimeTicker] = useState<number>(Date.now());
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAllowed) return;
 
     const unsubscribe = aiMonitor.subscribe((newEvents, newActiveCount) => {
       setEvents(newEvents);
@@ -38,16 +40,16 @@ export const AdminAIActivityMonitor: React.FC = () => {
     });
 
     return () => unsubscribe();
-  }, [isAdmin]);
+  }, [isAllowed]);
 
   // Timer for active elapsed duration update
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAllowed) return;
     const interval = setInterval(() => {
       setTimeTicker(Date.now());
     }, 150);
     return () => clearInterval(interval);
-  }, [isAdmin]);
+  }, [isAllowed]);
 
   // Find most recent active event or most recent finished event
   const activeEvent = useMemo(() => {
@@ -63,7 +65,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
     return null;
   }, [events, activeEvent]);
 
-  if (!isAdmin) return null;
+  if (!isAllowed) return null;
 
   const currentDisplayEvent = activeEvent || recentFinishedEvent;
 
@@ -227,7 +229,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
                   <h4 className="text-sm font-bold text-white flex items-center gap-2">
                     Live Monitor AI & API Keys
                     <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-semibold border border-cyan-500/30">
-                      Admin Mode
+                      {isAdmin ? 'Admin Mode' : 'AI Live View'}
                     </span>
                   </h4>
                   <p className="text-[11px] text-white/50">Podgląd zapytań tekstowych, testów i syntezy audio w czasie rzeczywistym</p>
