@@ -10,7 +10,9 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
-        hmr: false, watch: { usePolling: false },
+        // HMR on: iCloud Drive bywa kapryśny przy fsevents, więc polling jako fallback.
+        hmr: true,
+        watch: { usePolling: true, interval: 300 },
       },
       plugins: [
         react(), 
