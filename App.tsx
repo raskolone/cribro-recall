@@ -10,6 +10,7 @@ import Dashboard from './components/dashboard/Dashboard';
 import LandingPage from './components/landing/LandingPage';
 import ForcePasswordChangeScreen from './components/auth/ForcePasswordChangeScreen';
 import GlobalErrorBoundary from './components/ui/GlobalErrorBoundary';
+import ConstellationBackground from './components/ui/ConstellationBackground';
 import StarterVocabularyApp from './components/starter/StarterVocabularyApp';
 import { AdminAIActivityMonitor } from './components/admin/AdminAIActivityMonitor';
 
@@ -50,13 +51,16 @@ const AppContent: React.FC = () => {
   }
 
   if (!isAuthReady) {
-    return <div className="min-h-screen flex items-center justify-center bg-base-100">
+    return <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
     </div>;
   }
 
   return (
-    <div className={`min-h-screen relative text-content transition-colors duration-300 bg-base-100`}>
+    // Bez własnego tła: gradient strony żyje na <body> (design/theme/tokens.css),
+    // żeby kanwa konstelacji mogła się przez niego przebijać.
+    <div className={`min-h-screen relative text-content transition-colors duration-300`}>
+      <ConstellationBackground />
       <div className="relative z-10 w-full min-h-screen pointer-events-auto flex flex-col">
         
         <ViewSwitcher currentView={user ? ((user.requirePasswordChange && (user.tempPasswordLogins || 0) > 3) ? 'force-password-change' : 'dashboard') : showAuth ? 'auth' : 'landing'}>

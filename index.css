@@ -1,6 +1,13 @@
 @import "tailwindcss";
+/* Nocturne Green — źródło prawdy dla kolorów, typografii, promieni i ruchu.
+   Zmieniaj wartości tam, nie tutaj. @theme poniżej tylko lustrzanie odbija
+   tokeny do utilities Tailwinda (design/theme/tailwind.config.snippet.js). */
+@import "./design/theme/tokens.css";
 
 @theme {
+  /* --- Aliasy zastane. Odpowiadają tokenom Nocturne, zostają bez zmian:
+         primary = --accent, content = --text, content-muted = --text-mute,
+         base-200 = --surface-flat. Używane ~2700 razy w komponentach. --- */
   --color-primary: #72f0b4;
   --color-secondary: #7a8da6;
   --color-base-100: #0a0e1a;
@@ -12,6 +19,41 @@
   --color-dark-base-200: #141b2a;
   --color-dark-base-300: rgba(255, 255, 255, 0.08);
   --color-dark-content: #eae8e3;
+
+  /* --- Nocturne Green: nazwy z tokens.css, dostępne jako utilities --- */
+  --color-accent: #72f0b4;
+  --color-accent-soft: #a5f7d0;
+  --color-accent-ink: #06120c;
+
+  --color-bg: #09101c;
+  --color-bg-lift: #172a46;
+  --color-ink: #05070d;
+  --color-ink-2: #0b1120;
+  --color-surface-flat: #141b2a;
+
+  --color-text-hi: #ffffff;
+  --color-text-2: #9aa9bd;
+  --color-text-3: #8a99ad;
+  --color-text-mute: #7a8da6;
+  --color-text-faint: #39445a;
+
+  /* Stan — jedyne nasycone barwy poza akcentem. Nie do dekoracji. */
+  --color-warn: #e0a83a;
+  --color-danger: #f0726f;
+  --color-info: #6fa8f0;
+
+  --color-line: rgba(255, 255, 255, 0.07);
+  --color-line-strong: rgba(255, 255, 255, 0.12);
+  --color-line-soft: rgba(255, 255, 255, 0.04);
+
+  /* Cienie dodane pod własnymi nazwami — skala shadow-sm/md/lg Tailwinda
+     zostaje nietknięta, żeby nie ruszyć setek istniejących klas. */
+  --shadow-ambient-sm: 0 8px 24px -8px rgba(0, 0, 0, 0.5);
+  --shadow-ambient-md: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+  --shadow-ambient-lg: 0 16px 48px -12px rgba(0, 0, 0, 0.7);
+  --shadow-glow: 0 0 24px rgba(114, 240, 180, 0.35);
+  --shadow-glow-strong: 0 0 48px rgba(114, 240, 180, 0.45);
+  --shadow-btn: 0 8px 24px -8px rgba(114, 240, 180, 0.6);
 
   --font-sans: "DM Sans", sans-serif;
   --font-display: "Cormorant Garamond", serif;
@@ -64,35 +106,27 @@
     scrollbar-width: none;  /* Firefox */
 }
 
-:root { font-family: 'DM Sans', sans-serif; color-scheme: dark; }
-html, body, #root {
-  background-color: #0a0e1a;
-  min-height: 100vh;
-  color: #eae8e3;
-}
-body {
-  background: radial-gradient(circle at 50% -20%, #172a46 0%, #09101c 70%), #09101c;
-  background-attachment: fixed;
-  color: #eae8e3;
-  line-height: 1.6;
-  letter-spacing: 0.02em;
-}
+/* Ground, typografia i reset żyją w design/theme/tokens.css. Tutaj tylko to,
+   czego tokeny nie obejmują: schemat kolorów i wysokość korzenia Reacta. */
+:root { color-scheme: dark; }
+html, body, #root { min-height: 100vh; }
 
-h1, h2, h3 {
-  font-family: 'Cormorant Garamond', serif;
-  font-weight: 700;
-  line-height: 1.2;
-}
+/* Kanwa konstelacji leży fixed na z-index 0, więc powłoka aplikacji musi
+   siedzieć nad nią. Gradient strony zostaje na body (reguła paczki). */
+#root { position: relative; z-index: 1; }
 
+/* Odznaka wg components.md — ten sam wzór co .badge, pod zastaną nazwą. */
 .tag-green {
-  background: rgba(114, 240, 180, 0.12); /* base-primary 12% */
-  border: 1px solid rgba(114, 240, 180, 0.3);
-  color: #72f0b4;
-  padding: 3px 9px;
-  border-radius: 2px;
-  font-family: 'DM Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  background: var(--accent-12);
+  border: 1px solid var(--accent-30);
+  color: var(--accent);
+  padding: 5px 12px;
+  border-radius: var(--r-pill);
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -125,134 +159,115 @@ h1, h2, h3 {
   animation: pulsar-strong 2s infinite ease-in-out;
 }
 
-/* Liquid Glass Effects */
-.liquid-glass-panel {
-  background: linear-gradient(135deg, rgba(25, 25, 25, 0.4) 0%, rgba(25, 25, 25, 0.3) 100%),
-              linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0.02) 100%);
-  backdrop-filter: blur(30px) saturate(150%);
-  -webkit-backdrop-filter: blur(30px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 20px 60px -10px rgba(0, 0, 0, 0.5), inset 1.5px 1.5px 0 0 rgba(255, 255, 255, 0.25), inset -1px -1px 0 0 rgba(255, 255, 255, 0.05);
-  border-radius: 24px;
-}
+/* ---------------------------------------------------------------------------
+   Powierzchnie — receptury z design/theme/components.md.
+   Nazwy klas zostały zastane (liquid-glass-*), bo używa ich 15 komponentów;
+   zmieniła się ich treść: krawędź hairline zamiast wewnętrznych rozświetleń,
+   0.2s ease zamiast 0.4s, podniesienie o 2px zamiast skalowania.
+   --------------------------------------------------------------------------- */
 
+/* .card — podstawowa powierzchnia */
 .liquid-glass-card {
-  background: linear-gradient(135deg, rgba(25, 25, 25, 0.4) 0%, rgba(25, 25, 25, 0.25) 100%),
-              linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 35%, rgba(255, 255, 255, 0.03) 100%);
-  backdrop-filter: blur(30px) saturate(150%);
-  -webkit-backdrop-filter: blur(30px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.5), inset 1.5px 1.5px 0 0 rgba(255, 255, 255, 0.3), inset -1px -1px 0 0 rgba(255, 255, 255, 0.05);
-  border-radius: 20px;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  background: var(--surface-gradient);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: transform var(--t), border-color var(--t), box-shadow var(--t);
 }
 
 .liquid-glass-card:hover {
-  background: linear-gradient(135deg, rgba(35, 35, 35, 0.45) 0%, rgba(35, 35, 35, 0.3) 100%),
-              linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 35%, rgba(255, 255, 255, 0.05) 100%);
-  border-color: rgba(114, 240, 180, 0.3);
-  box-shadow: 0 24px 64px -12px rgba(0, 0, 0, 0.55), 0 0 24px rgba(114, 240, 180, 0.12), inset 1.5px 1.5px 0 0 rgba(255, 255, 255, 0.35), inset -1px -1px 0 0 rgba(255, 255, 255, 0.08);
   transform: translateY(-2px);
+  border-color: var(--accent-25);
+  box-shadow: var(--shadow-lg), var(--glow);
 }
 
-.liquid-glass-button {
-  background: linear-gradient(135deg, rgba(114, 240, 180, 0.15) 0%, rgba(114, 240, 180, 0.05) 100%);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  border: 1px solid rgba(114, 240, 180, 0.2);
-  box-shadow: 0 8px 24px -6px rgba(114, 240, 180, 0.2), inset 1.5px 1.5px 0 0 rgba(255, 255, 255, 0.35), inset -1px -1px 0 0 rgba(114, 240, 180, 0.1);
-  border-radius: 9999px;
-  color: #72f0b4;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+/* Panel — ta sama powierzchnia, bez reakcji na hover (kontener, nie cel) */
+.liquid-glass-panel {
+  background: var(--surface-gradient);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
-.liquid-glass-button:hover {
-  background: linear-gradient(135deg, rgba(114, 240, 180, 0.25) 0%, rgba(114, 240, 180, 0.1) 100%);
-  box-shadow: 0 12px 32px -6px rgba(114, 240, 180, 0.3), inset 1.5px 1.5px 0 0 rgba(255, 255, 255, 0.45), inset -1px -1px 0 0 rgba(114, 240, 180, 0.15);
-  transform: translateY(-1px);
-}
-
+/* Kafel — wariant nieprzezroczysty, tam gdzie blur jest zbyt kosztowny
+   (siatki kafli na dashboardzie). Poświata dopiero na hover: glow oznacza
+   rzecz aktywną, a nie każdy element siatki. */
 .liquid-glass-tile {
-  background: #0a0e17;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 1px 1px 0 0 rgba(255, 255, 255, 0.08);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, background 0.25s ease !important;
-  border-radius: 20px;
   position: relative;
   overflow: hidden;
+  background: var(--surface-flat);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-md);
+  transition: transform var(--t), border-color var(--t), box-shadow var(--t), background var(--t);
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
 
-.liquid-glass-tile::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, transparent 100%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-
-.liquid-glass-tile::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 100%;
-  left: -100%;
-  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.08), transparent);
-  transform: skewX(-12deg);
-  pointer-events: none;
-}
-
 @media (hover: hover) and (pointer: fine) {
   .liquid-glass-tile:hover {
-    background: #0e1524;
-    border-color: rgba(16, 185, 129, 0.45) !important;
-    box-shadow: 0 14px 32px -4px rgba(0, 0, 0, 0.6), 0 0 24px rgba(16, 185, 129, 0.2), inset 1px 1px 0 0 rgba(255, 255, 255, 0.15) !important;
-    transform: translateY(-3px) scale(1.02) !important;
-    -webkit-transform: translateY(-3px) scale(1.02) !important;
-    z-index: 50 !important;
-  }
-
-  .liquid-glass-tile:hover::before {
-    opacity: 1;
-  }
-
-  .liquid-glass-tile:hover::after {
-    animation: shine 2.5s infinite ease-in-out;
+    transform: translateY(-2px);
+    border-color: var(--accent-25);
+    box-shadow: var(--shadow-lg), var(--glow);
   }
 }
 
 @media (hover: none) {
   .liquid-glass-tile:active {
-    background: #0e1524;
-    border-color: rgba(16, 185, 129, 0.4) !important;
-    transform: scale(0.98) !important;
-    -webkit-transform: scale(0.98) !important;
+    border-color: var(--accent-30);
+    background: var(--ink-2);
   }
 }
 
+/* Stan wybrany dla kafli i kart wybieralnych — wg components.md:
+   mocniejsza krawędź, wypełnienie akcentem na 8%, poświata. Rozmiar bez zmian. */
+.liquid-glass-card.is-selected,
+.liquid-glass-tile.is-selected {
+  border-color: var(--accent-30);
+  background-image: linear-gradient(var(--accent-08), var(--accent-08));
+  box-shadow: var(--glow);
+}
+
+/* .btn-secondary — domyślny przycisk: obrys i przezroczysty akcent */
+.liquid-glass-button {
+  border: 1px solid var(--accent-25);
+  border-radius: var(--r-pill);
+  background: linear-gradient(135deg, var(--accent-15), var(--accent-04));
+  color: var(--accent);
+  box-shadow: none;
+  transition: border-color var(--t), box-shadow var(--t), transform var(--t);
+}
+
+.liquid-glass-button:hover {
+  border-color: var(--accent-55);
+  box-shadow: var(--glow);
+  transform: translateY(-1px);
+}
+
+/* Wiersz listy / dowolny element podnoszony na hover */
 .liquid-glass-hover {
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  transition: transform var(--t), border-color var(--t), box-shadow var(--t), background var(--t);
 }
 
 .liquid-glass-hover:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%) !important;
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
-  border-color: rgba(114, 240, 180, 0.3) !important;
-  box-shadow: 0 12px 32px -6px rgba(0, 0, 0, 0.4), 0 0 16px rgba(114, 240, 180, 0.1), inset 1.5px 1.5px 0 0 rgba(255, 255, 255, 0.25), inset -1px -1px 0 0 rgba(255, 255, 255, 0.05) !important;
-  transform: translateY(-2px) scale(1.015) !important;
+  border-color: var(--accent-25);
+  box-shadow: var(--glow);
+  transform: translateY(-2px);
 }
 
+/* Wiersze tabeli się nie podnoszą — tylko rozjaśnia się tło (components.md, .row) */
 tr.liquid-glass-hover:hover {
-  transform: none !important;
-  box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.05) !important;
+  transform: none;
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.03);
 }
+
 
 @keyframes pulsar-soft {
   0%, 100% {
