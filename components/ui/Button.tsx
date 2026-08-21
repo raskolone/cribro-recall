@@ -8,21 +8,36 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean;
 }
 
-const Button: React.FC<ButtonProps> = ({ 
-  children, 
-  className, 
-  variant = 'primary', 
-  size = 'md', 
+/**
+ * Warianty wg design/theme/components.md.
+ *
+ * `primary` to jedyne miejsce w motywie, gdzie akcent wypełnia większą
+ * powierzchnię — używaj go dla jednej głównej akcji na ekranie. Domyślnym
+ * przyciskiem jest `secondary` (obrys + przezroczysty akcent).
+ */
+const Button: React.FC<ButtonProps> = ({
+  children,
+  className,
+  variant = 'primary',
+  size = 'md',
   isLoading = false,
-  ...props 
+  ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-bold font-sans rounded-full focus:outline-none transition-all duration-300 ease-out disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseStyles =
+    'inline-flex items-center justify-center font-sans rounded-full transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-45 disabled:pointer-events-none';
 
   const variantStyles = {
-    primary: 'liquid-glass-button',
-    secondary: 'bg-white/5 backdrop-blur-md border border-white/10 text-content hover:border-primary/40 hover:text-primary hover:bg-white/10 hover:-translate-y-[1px] shadow-[0_4px_16px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(114,240,180,0.15)]',
-    ghost: 'bg-transparent text-primary hover:bg-primary/10 hover:-translate-y-[1px]',
-    danger: 'bg-red-500/10 backdrop-blur-md text-red-400 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 hover:-translate-y-[1px] shadow-[0_4px_16px_rgba(0,0,0,0.2)]',
+    // Jedyne dozwolone wypełnienie akcentem — stąd ciemny tekst i poświata.
+    primary:
+      'bg-accent text-accent-ink font-bold shadow-btn hover:brightness-110 hover:-translate-y-px active:translate-y-0 active:brightness-95',
+    // Domyślny przycisk: obrys, tekst akcentem, poświata dopiero na hover.
+    secondary:
+      'font-medium text-accent border border-accent/25 bg-[linear-gradient(135deg,var(--accent-15),var(--accent-04))] hover:border-accent/55 hover:shadow-glow hover:-translate-y-px',
+    // Trzeciorzędny: etykieta monospace, neutralna powierzchnia.
+    ghost:
+      'font-medium font-mono tracking-[0.06em] text-text-2 bg-white/[0.04] border border-line-strong hover:bg-white/[0.07] hover:text-content',
+    danger:
+      'font-medium text-danger border border-danger/30 bg-danger/10 hover:border-danger/55 hover:bg-danger/15 hover:-translate-y-px',
   };
 
   const sizeStyles = {
