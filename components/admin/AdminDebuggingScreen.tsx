@@ -76,7 +76,7 @@ const AdminDebuggingScreen: React.FC<AdminDebuggingScreenProps> = ({ onBack }) =
           <ArrowLeft size={24} />
         </button>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Bug className="text-red-500" />
+          <Bug className="text-danger" />
           
                             {i18n.t("Zgłoszenia problemów")}
                           </h1>
@@ -103,9 +103,9 @@ const AdminDebuggingScreen: React.FC<AdminDebuggingScreenProps> = ({ onBack }) =
               >
                 <div className="flex justify-between items-start mb-2">
                   <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                    report.status === 'new' ? 'bg-red-500/20 text-red-500' : 
-                    report.status === 'investigating' ? 'bg-yellow-500/20 text-yellow-500' : 
-                    'bg-green-500/20 text-green-500'
+                    report.status === 'new' ? 'bg-danger/20 text-danger' : 
+                    report.status === 'investigating' ? 'bg-warn/20 text-warn' : 
+                    'bg-primary/20 text-primary'
                   }`}>
                     {report.status === 'new' ? 'Nowe' : report.status === 'investigating' ? 'W trakcie' : 'Rozwiązane'}
                   </span>
@@ -134,7 +134,7 @@ const AdminDebuggingScreen: React.FC<AdminDebuggingScreenProps> = ({ onBack }) =
                   <button 
                     onClick={() => updateStatus(selectedReport.id!, 'investigating')}
                     disabled={selectedReport.status === 'investigating'}
-                    className={`p-2 rounded-lg transition-colors ${selectedReport.status === 'investigating' ? 'bg-yellow-500 text-black' : 'bg-white/10 hover:bg-yellow-500/20 text-yellow-500'}`}
+                    className={`p-2 rounded-lg transition-colors ${selectedReport.status === 'investigating' ? 'bg-warn text-black' : 'bg-white/10 hover:bg-warn/20 text-warn'}`}
                     title={i18n.t("Oznacz jako W trakcie")}
                   >
                     <Clock size={20} />
@@ -142,14 +142,14 @@ const AdminDebuggingScreen: React.FC<AdminDebuggingScreenProps> = ({ onBack }) =
                   <button 
                     onClick={() => updateStatus(selectedReport.id!, 'resolved')}
                     disabled={selectedReport.status === 'resolved'}
-                    className={`p-2 rounded-lg transition-colors ${selectedReport.status === 'resolved' ? 'bg-green-500 text-black' : 'bg-white/10 hover:bg-green-500/20 text-green-500'}`}
+                    className={`p-2 rounded-lg transition-colors ${selectedReport.status === 'resolved' ? 'bg-primary text-accent-ink' : 'bg-white/10 hover:bg-primary/20 text-primary'}`}
                     title={i18n.t("Oznacz jako Rozwiązane")}
                   >
                     <CheckCircle size={20} />
                   </button>
                   <button 
                     onClick={() => deleteReport(selectedReport.id!)}
-                    className="p-2 bg-white/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors ml-2"
+                    className="p-2 bg-white/10 hover:bg-danger/20 text-danger rounded-lg transition-colors ml-2"
                     title={i18n.t("Usuń zgłoszenie")}
                   >
                     <Trash2 size={20} />
@@ -167,8 +167,8 @@ const AdminDebuggingScreen: React.FC<AdminDebuggingScreenProps> = ({ onBack }) =
 
                 {selectedReport.errorContext && (
                   <div>
-                    <h3 className="text-sm font-bold text-red-400 uppercase tracking-wider mb-2">{i18n.t("Kontekst błędu z kodu")}</h3>
-                    <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-xs whitespace-pre-wrap font-mono overflow-x-auto text-red-300">
+                    <h3 className="text-sm font-bold text-danger uppercase tracking-wider mb-2">{i18n.t("Kontekst błędu z kodu")}</h3>
+                    <div className="bg-danger/10 border border-danger/20 p-4 rounded-xl text-xs whitespace-pre-wrap font-mono overflow-x-auto text-danger">
                       {selectedReport.errorContext}
                     </div>
                   </div>

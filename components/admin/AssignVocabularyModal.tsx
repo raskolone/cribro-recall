@@ -301,7 +301,7 @@ export default function AssignVocabularyModal({
           </div>
           <button 
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            className="p-2 rounded-xl hover:bg-white/10 text-text-2 hover:text-white transition-colors"
           >
             <X size={20} />
           </button>
@@ -312,7 +312,7 @@ export default function AssignVocabularyModal({
           {/* Controls Bar */}
           <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
             {/* Search Input */}
-            <Button onClick={() => setIsAddResourceModalOpen(true)} className="bg-primary text-black font-bold shrink-0">
+            <Button onClick={() => setIsAddResourceModalOpen(true)} className="bg-primary text-accent-ink font-bold shrink-0">
                 <Sparkles size={16} className="mr-2" /> Wygeneruj zestaw (AI)
               </Button>
             <div className="relative w-full sm:w-80">
@@ -330,19 +330,19 @@ export default function AssignVocabularyModal({
             <div className="flex items-center gap-1.5 bg-base-200/60 p-1 rounded-xl border border-white/10 text-xs w-full sm:w-auto justify-center">
               <button
                 onClick={() => setFilterType('all')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-all ${filterType === 'all' ? 'bg-primary text-black font-bold shadow' : 'text-content-muted hover:text-white'}`}
+                className={`px-3 py-1.5 rounded-lg font-medium transition-all ${filterType === 'all' ? 'bg-primary text-accent-ink font-bold shadow' : 'text-content-muted hover:text-white'}`}
               >
                 Wszystkie ({tiles.length})
               </button>
               <button
                 onClick={() => setFilterType('lesson')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-all ${filterType === 'lesson' ? 'bg-primary text-black font-bold shadow' : 'text-content-muted hover:text-white'}`}
+                className={`px-3 py-1.5 rounded-lg font-medium transition-all ${filterType === 'lesson' ? 'bg-primary text-accent-ink font-bold shadow' : 'text-content-muted hover:text-white'}`}
               >
                 Z Lekcji
               </button>
               <button
                 onClick={() => setFilterType('set')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-all ${filterType === 'set' ? 'bg-primary text-black font-bold shadow' : 'text-content-muted hover:text-white'}`}
+                className={`px-3 py-1.5 rounded-lg font-medium transition-all ${filterType === 'set' ? 'bg-primary text-accent-ink font-bold shadow' : 'text-content-muted hover:text-white'}`}
               >
                 Zestawy
               </button>
@@ -381,8 +381,8 @@ export default function AssignVocabularyModal({
                         <div className="flex items-center gap-2 min-w-0">
                           <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded-md tracking-wider border ${
                             tile.sourceType === 'lesson' 
-                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                              : 'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                              ? 'bg-primary/10 text-primary border-primary/30'
+                              : 'bg-primary/10 text-primary border-primary/30'
                           }`}>
                             {tile.sourceType === 'lesson' ? 'Lekcja' : 'Zestaw'}
                           </span>
@@ -391,7 +391,7 @@ export default function AssignVocabularyModal({
                           </span>
                         </div>
                         {isSelected && (
-                          <span className="w-5 h-5 rounded-full bg-primary text-black flex items-center justify-center shrink-0">
+                          <span className="w-5 h-5 rounded-full bg-primary text-accent-ink flex items-center justify-center shrink-0">
                             <Check size={12} strokeWidth={3} />
                           </span>
                         )}
@@ -465,7 +465,7 @@ export default function AssignVocabularyModal({
                       onClick={() => handleToggleWord(w)}
                       className={`flex items-center gap-3 p-2.5 rounded-xl border text-sm cursor-pointer transition-all ${
                         isChecked
-                          ? 'bg-primary/10 border-primary/40 text-white'
+                          ? 'bg-primary/10 border-primary/40 text-accent-ink'
                           : 'bg-base-100/40 border-white/5 text-content-muted hover:bg-base-100'
                       }`}
                     >
@@ -518,7 +518,7 @@ export default function AssignVocabularyModal({
               onClick={handleAssign}
               isLoading={isSubmitting}
               disabled={selectedWordsCount === 0 || !selectedTileId}
-              className="bg-primary text-black font-bold shadow-lg shadow-primary/20"
+              className="bg-primary text-accent-ink font-bold shadow-lg shadow-primary/20"
             >
               <Sparkles size={18} className="mr-2" />
               Przypisz zestaw ({selectedWordsCount})

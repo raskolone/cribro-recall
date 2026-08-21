@@ -168,7 +168,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
   return (
     <div className="bg-gradient-to-r from-base-200/90 via-base-200/60 to-base-200/90 backdrop-blur-xl rounded-2xl border border-primary/30 p-5 shadow-2xl relative overflow-hidden my-4 transition-all duration-300">
       <div className="absolute -right-16 -top-16 w-56 h-56 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -left-16 -bottom-16 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -left-16 -bottom-16 w-48 h-48 bg-info/10 rounded-full blur-3xl pointer-events-none" />
       
       {/* Header Box & Toggle Button */}
       <div 
@@ -197,15 +197,15 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
         <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center gap-2 text-xs font-mono">
             <div className="bg-base-100/70 px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-2 shadow-inner">
-              <LogIn size={13} className="text-blue-400" />
+              <LogIn size={13} className="text-info" />
               <span>Logowań: <strong className="text-white">{totalLogins}</strong></span>
             </div>
             <div className="bg-base-100/70 px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-2 shadow-inner">
-              <BookOpen size={13} className="text-emerald-400" />
+              <BookOpen size={13} className="text-primary" />
               <span>Ćwiczeń: <strong className="text-white">{totalExercises}</strong></span>
             </div>
             <div className="bg-base-100/70 px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-2 shadow-inner">
-              <Users size={13} className="text-purple-400" />
+              <Users size={13} className="text-primary" />
               <span>Aktywnych: <strong className="text-white">{uniqueUsersActive}</strong></span>
             </div>
           </div>
@@ -231,7 +231,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
               <button
                 onClick={() => setActiveViewMode('both')}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                  activeViewMode === 'both' ? 'bg-primary text-black shadow-md' : 'text-content-muted hover:text-white'
+                  activeViewMode === 'both' ? 'bg-primary text-accent-ink shadow-md' : 'text-content-muted hover:text-white'
                 }`}
               >
                 <BarChart2 size={13} />
@@ -240,7 +240,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
               <button
                 onClick={() => setActiveViewMode('chart')}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                  activeViewMode === 'chart' ? 'bg-primary text-black shadow-md' : 'text-content-muted hover:text-white'
+                  activeViewMode === 'chart' ? 'bg-primary text-accent-ink shadow-md' : 'text-content-muted hover:text-white'
                 }`}
               >
                 <BarChart2 size={13} />
@@ -249,7 +249,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
               <button
                 onClick={() => setActiveViewMode('logs')}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                  activeViewMode === 'logs' ? 'bg-primary text-black shadow-md' : 'text-content-muted hover:text-white'
+                  activeViewMode === 'logs' ? 'bg-primary text-accent-ink shadow-md' : 'text-content-muted hover:text-white'
                 }`}
               >
                 <ListFilter size={13} />
@@ -270,7 +270,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
               <button
                 onClick={() => setTypeFilter('login')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  typeFilter === 'login' ? 'bg-blue-500/80 text-white' : 'bg-base-100/60 text-content-muted hover:text-white'
+                  typeFilter === 'login' ? 'bg-info/80 text-white' : 'bg-base-100/60 text-content-muted hover:text-white'
                 }`}
               >
                 {i18n.t("Logowania")}
@@ -278,7 +278,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
               <button
                 onClick={() => setTypeFilter('practice')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  typeFilter === 'practice' ? 'bg-emerald-500/80 text-white' : 'bg-base-100/60 text-content-muted hover:text-white'
+                  typeFilter === 'practice' ? 'bg-primary/80 text-accent-ink' : 'bg-base-100/60 text-content-muted hover:text-white'
                 }`}
               >
                 {i18n.t("Ćwiczenia")}
@@ -295,12 +295,12 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
                   {i18n.t("Wykres aktywności w ostatnich 10 dniach")}
                 </h3>
                 <div className="flex items-center gap-4 text-[11px] font-mono">
-                  <span className="flex items-center gap-1.5 text-emerald-400">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" />
+                  <span className="flex items-center gap-1.5 text-primary">
+                    <span className="w-2.5 h-2.5 rounded-full bg-primary inline-block" />
                     Ćwiczenia
                   </span>
-                  <span className="flex items-center gap-1.5 text-blue-400">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-400 inline-block" />
+                  <span className="flex items-center gap-1.5 text-info">
+                    <span className="w-2.5 h-2.5 rounded-full bg-info inline-block" />
                     Logowania
                   </span>
                 </div>
@@ -376,10 +376,10 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
                             <span className="font-bold text-white truncate">{act.userName}</span>
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
                               act.type === 'login' 
-                                ? 'bg-blue-500/20 text-blue-400' 
+                                ? 'bg-info/20 text-info' 
                                 : act.type === 'test' 
-                                  ? 'bg-amber-500/20 text-amber-400'
-                                  : 'bg-emerald-500/20 text-emerald-400'
+                                  ? 'bg-warn/20 text-warn'
+                                  : 'bg-primary/20 text-primary'
                             }`}>
                               {act.type === 'login' ? 'Logowanie' : act.type === 'test' ? 'Test' : 'Ćwiczenie'}
                             </span>

@@ -72,20 +72,20 @@ export const AdminAIActivityMonitor: React.FC = () => {
   const getCategoryBadge = (category?: AIActivityEvent['category']) => {
     switch (category) {
       case 'tts':
-        return { label: 'TTS Audio', bg: 'bg-violet-500/20', text: 'text-violet-300', border: 'border-violet-500/30' };
+        return { label: 'TTS Audio', bg: 'bg-primary/20', text: 'text-primary', border: 'border-primary/30' };
       case 'sentence-gen':
-        return { label: 'Zdania AI', bg: 'bg-blue-500/20', text: 'text-blue-300', border: 'border-blue-500/30' };
+        return { label: 'Zdania AI', bg: 'bg-info/20', text: 'text-info', border: 'border-info/30' };
       case 'evaluation':
-        return { label: 'Ocena AI', bg: 'bg-emerald-500/20', text: 'text-emerald-300', border: 'border-emerald-500/30' };
+        return { label: 'Ocena AI', bg: 'bg-primary/20', text: 'text-primary', border: 'border-primary/30' };
       case 'test':
-        return { label: 'Test / Quiz', bg: 'bg-amber-500/20', text: 'text-amber-300', border: 'border-amber-500/30' };
+        return { label: 'Test / Quiz', bg: 'bg-warn/20', text: 'text-warn', border: 'border-warn/30' };
       case 'flashcards':
       case 'autocomplete':
-        return { label: 'Fiszki / Słownictwo', bg: 'bg-cyan-500/20', text: 'text-cyan-300', border: 'border-cyan-500/30' };
+        return { label: 'Fiszki / Słownictwo', bg: 'bg-primary/20', text: 'text-primary', border: 'border-primary/30' };
       case 'stats':
-        return { label: 'Pedagogika AI', bg: 'bg-fuchsia-500/20', text: 'text-fuchsia-300', border: 'border-fuchsia-500/30' };
+        return { label: 'Pedagogika AI', bg: 'bg-primary/20', text: 'text-primary', border: 'border-primary/30' };
       default:
-        return { label: 'Zapytanie AI', bg: 'bg-cyan-500/20', text: 'text-cyan-300', border: 'border-cyan-500/30' };
+        return { label: 'Zapytanie AI', bg: 'bg-primary/20', text: 'text-primary', border: 'border-primary/30' };
     }
   };
 
@@ -110,26 +110,26 @@ export const AdminAIActivityMonitor: React.FC = () => {
           >
             <div 
               onClick={() => setIsExpanded(true)}
-              className="cursor-pointer group flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[#0a101d]/95 hover:bg-[#0f172a] border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 shadow-[0_10px_35px_rgba(0,0,0,0.7),0_0_20px_rgba(6,182,212,0.25)] backdrop-blur-xl transition-all duration-300 active:scale-98 max-w-md"
+              className="cursor-pointer group flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[#0a101d]/95 hover:bg-[#0f172a] border border-primary/40 hover:border-primary text-primary shadow-[0_10px_35px_rgba(0,0,0,0.7),0_0_20px_rgba(6,182,212,0.25)] backdrop-blur-xl transition-all duration-300 active:scale-98 max-w-md"
             >
               {/* Pulsing indicator */}
               <div className="flex items-center gap-2 shrink-0">
                 {currentDisplayEvent.status === 'pending' || currentDisplayEvent.status === 'retrying' ? (
                   <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-primary shadow-[0_0_8px_#22d3ee]" />
                   </span>
                 ) : currentDisplayEvent.status === 'success' ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
                 ) : (
-                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <AlertTriangle className="w-4 h-4 text-danger shrink-0" />
                 )}
 
-                <div className="p-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 group-hover:bg-cyan-500/30 transition-colors">
+                <div className="p-1.5 rounded-lg bg-primary/20 text-primary group-hover:bg-primary/30 transition-colors">
                   {currentDisplayEvent.category === 'tts' ? (
-                    <Volume2 className="w-4 h-4 text-violet-300 animate-pulse" />
+                    <Volume2 className="w-4 h-4 text-primary animate-pulse" />
                   ) : (
-                    <Sparkles className="w-4 h-4 text-cyan-300 animate-pulse" />
+                    <Sparkles className="w-4 h-4 text-primary animate-pulse" />
                   )}
                 </div>
               </div>
@@ -137,7 +137,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
               {/* Text info */}
               <div className="flex flex-col text-left overflow-hidden">
                 <div className="flex items-center gap-2 text-xs font-semibold text-white/95">
-                  <span className="text-cyan-400 font-medium">
+                  <span className="text-primary font-medium">
                     {currentDisplayEvent.status === 'pending' || currentDisplayEvent.status === 'retrying' 
                       ? 'Wysyłam zapytanie do: ' 
                       : currentDisplayEvent.status === 'success'
@@ -149,7 +149,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
                   </strong>
                 </div>
 
-                <div className="flex items-center gap-1.5 text-[11px] text-cyan-200/85 font-normal truncate max-w-[280px]">
+                <div className="flex items-center gap-1.5 text-[11px] text-primary/85 font-normal truncate max-w-[280px]">
                   <span className="font-medium">{currentDisplayEvent.taskName}</span>
                   <span>•</span>
                   <span className="text-white/70 font-mono">
@@ -160,7 +160,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
                       : '0.0s'}
                   </span>
                   {currentDisplayEvent.status === 'retrying' && (
-                    <span className="px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+                    <span className="px-1 py-0.2 rounded bg-warn/20 text-warn text-[10px] font-bold">
                       Fallback
                     </span>
                   )}
@@ -168,7 +168,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
               </div>
 
               {/* Expand badge */}
-              <div className="shrink-0 flex items-center gap-1 pl-1 border-l border-white/10 text-cyan-400/70 group-hover:text-cyan-300">
+              <div className="shrink-0 flex items-center gap-1 pl-1 border-l border-white/10 text-primary/70 group-hover:text-primary">
                 <ChevronUp className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
               </div>
             </div>
@@ -188,21 +188,21 @@ export const AdminAIActivityMonitor: React.FC = () => {
           title="Panel zapytań AI & Kluczy API (Admin)"
           className={`flex items-center gap-2 px-3 py-2 rounded-2xl backdrop-blur-xl border transition-all duration-300 shadow-xl cursor-pointer ${
             activeCount > 0
-              ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.3)] animate-pulse'
-              : 'bg-[#0a101d]/90 hover:bg-[#0f172a] border-white/10 hover:border-cyan-500/40 text-white/70 hover:text-white'
+              ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(6,182,212,0.3)] animate-pulse'
+              : 'bg-[#0a101d]/90 hover:bg-[#0f172a] border-white/10 hover:border-primary/40 text-white/70 hover:text-white'
           }`}
         >
           {activeCount > 0 ? (
             <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-400" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
             </span>
           ) : (
-            <Cpu className="w-4 h-4 text-cyan-400" />
+            <Cpu className="w-4 h-4 text-primary" />
           )}
           <span className="text-xs font-semibold">AI Live Monitor</span>
           {events.length > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full bg-white/10 text-[10px] font-mono text-cyan-300">
+            <span className="px-1.5 py-0.5 rounded-full bg-white/10 text-[10px] font-mono text-primary">
               {events.length}
             </span>
           )}
@@ -217,18 +217,18 @@ export const AdminAIActivityMonitor: React.FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="w-[92vw] sm:w-[480px] max-h-[600px] flex flex-col rounded-3xl bg-[#090d16]/95 border border-cyan-500/30 text-white shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(6,182,212,0.2)] backdrop-blur-2xl overflow-hidden mt-2"
+            className="w-[92vw] sm:w-[480px] max-h-[600px] flex flex-col rounded-3xl bg-[#090d16]/95 border border-primary/30 text-white shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(6,182,212,0.2)] backdrop-blur-2xl overflow-hidden mt-2"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-cyan-950/30">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-primary/30">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300">
+                <div className="p-2 rounded-xl bg-primary/20 border border-primary/40 text-primary">
                   <Cpu className="w-4 h-4 animate-pulse" />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-white flex items-center gap-2">
                     Live Monitor AI & API Keys
-                    <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-semibold border border-cyan-500/30">
+                    <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-semibold border border-primary/30">
                       {isAdmin ? 'Admin Mode' : 'AI Live View'}
                     </span>
                   </h4>
@@ -240,7 +240,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
                 <button
                   onClick={handleQuickAudioTest}
                   title="Test syntezy mowy TTS"
-                  className="px-2 py-1 rounded-lg text-xs bg-violet-500/20 border border-violet-500/40 text-violet-300 hover:bg-violet-500/30 transition-colors flex items-center gap-1"
+                  className="px-2 py-1 rounded-lg text-xs bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 transition-colors flex items-center gap-1"
                 >
                   <Volume2 className="w-3 h-3" />
                   <span>Test TTS</span>
@@ -265,7 +265,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[440px] custom-scrollbar">
               {events.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center text-white/40 space-y-3">
-                  <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-cyan-400">
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-primary">
                     <Zap className="w-6 h-6 animate-pulse" />
                   </div>
                   <div>
@@ -276,7 +276,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
                   </div>
                   <button
                     onClick={handleQuickAudioTest}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-xs font-semibold hover:bg-cyan-500/30 transition-all"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/20 border border-primary/40 text-primary text-xs font-semibold hover:bg-primary/30 transition-all"
                   >
                     <Play className="w-3 h-3 fill-current" />
                     Wypróbuj zapytanie audio TTS
@@ -299,10 +299,10 @@ export const AdminAIActivityMonitor: React.FC = () => {
                       key={evt.id}
                       className={`p-3.5 rounded-2xl border transition-all ${
                         isPending
-                          ? 'bg-cyan-950/30 border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                          ? 'bg-primary/30 border-primary/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
                           : isSuccess
                           ? 'bg-white/[0.03] border-white/10 hover:border-white/20'
-                          : 'bg-rose-950/20 border-rose-500/30'
+                          : 'bg-danger/20 border-danger/30'
                       }`}
                     >
                       {/* Top row */}
@@ -310,13 +310,13 @@ export const AdminAIActivityMonitor: React.FC = () => {
                         <div className="flex items-center gap-2 overflow-hidden">
                           {isPending ? (
                             <span className="relative flex h-2.5 w-2.5 shrink-0">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-400" />
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
                             </span>
                           ) : isSuccess ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
                           ) : (
-                            <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                            <AlertTriangle className="w-3.5 h-3.5 text-danger shrink-0" />
                           )}
 
                           <span className="text-xs font-bold text-white truncate">
@@ -332,11 +332,11 @@ export const AdminAIActivityMonitor: React.FC = () => {
 
                       {/* Model & Key badge */}
                       <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-[10.5px] font-semibold">
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-primary/15 border border-primary/30 text-primary text-[10.5px] font-semibold">
                           {evt.category === 'tts' ? (
-                            <Volume2 className="w-3 h-3 text-violet-300" />
+                            <Volume2 className="w-3 h-3 text-primary" />
                           ) : (
-                            <Sparkles className="w-3 h-3 text-cyan-300" />
+                            <Sparkles className="w-3 h-3 text-primary" />
                           )}
                           <span>Model: <strong>{formatAIModelName(evt.currentModel)}</strong></span>
                         </div>
@@ -347,7 +347,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
 
                         {evt.provider && (
                           <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-white/70 text-[10px]">
-                            <Key className="w-2.5 h-2.5 text-amber-400" />
+                            <Key className="w-2.5 h-2.5 text-warn" />
                             <span>Klucz: {evt.provider}</span>
                           </div>
                         )}
@@ -368,7 +368,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
                       {/* Attempt sequence if fallback occurred */}
                       {evt.attemptHistory && evt.attemptHistory.length > 1 && (
                         <div className="mt-2 pt-2 border-t border-white/5 flex flex-wrap items-center gap-1 text-[10px] text-white/40">
-                          <span className="font-semibold text-cyan-400/80">Sekwencja modeli:</span>
+                          <span className="font-semibold text-primary/80">Sekwencja modeli:</span>
                           {evt.attemptHistory.map((att, idx) => (
                             <React.Fragment key={idx}>
                               <span className="px-1.5 py-0.5 rounded bg-white/5 text-white/60">
@@ -390,7 +390,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
               <span>Widok aktywny tylko dla administratorów</span>
               <button
                 onClick={() => setIsExpanded(false)}
-                className="text-cyan-400 hover:text-cyan-300 font-semibold"
+                className="text-primary hover:text-primary font-semibold"
               >
                 Zminimalizuj
               </button>

@@ -293,7 +293,7 @@ export default function TopicDatabaseScreen() {
   const isAllowed = user?.role === 'admin' || user?.role === 'teacher' || allowedEmails.includes(userEmail);
 
   if (!user || !isAllowed) {
-    return <div className="p-8 text-center text-red-500 font-bold">Brak dostępu.</div>;
+    return <div className="p-8 text-center text-danger font-bold">Brak dostępu.</div>;
   }
 
   // Section selection: null = 4-tile grid view, 'grammar' | 'vocabulary' | 'idioms' | 'phrasal'
@@ -612,13 +612,13 @@ export default function TopicDatabaseScreen() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <Button onClick={() => setIsAddResourceModalOpen(true)} className="bg-primary text-black font-bold shadow-lg shadow-primary/20 flex">
+            <Button onClick={() => setIsAddResourceModalOpen(true)} className="bg-primary text-accent-ink font-bold shadow-lg shadow-primary/20 flex">
               <Sparkles size={18} className="mr-2" /> Dodaj nowe zasoby
             </Button>
             {selectedSection && (
               <button
                 onClick={() => setSelectedSection(null)}
-                className="p-2.5 rounded-2xl bg-base-200/80 hover:bg-base-200 border border-white/10 text-gray-300 hover:text-white transition-all duration-300 shadow-md hover:scale-105"
+                className="p-2.5 rounded-2xl bg-base-200/80 hover:bg-base-200 border border-white/10 text-content hover:text-white transition-all duration-300 shadow-md hover:scale-105"
                 title="Powrót do menu Zasobów"
               >
                 <ArrowLeft size={20} />
@@ -635,7 +635,7 @@ export default function TopicDatabaseScreen() {
         </div>
 
         {selectedSection === 'grammar' && (
-          <Button onClick={handleSaveGrammar} isLoading={isSaving} className="bg-primary text-black font-bold shadow-lg shadow-primary/20">
+          <Button onClick={handleSaveGrammar} isLoading={isSaving} className="bg-primary text-accent-ink font-bold shadow-lg shadow-primary/20">
             <Save size={18} className="mr-2" />
             {i18n.t("Zapisz zmiany")}
           </Button>
@@ -677,23 +677,23 @@ export default function TopicDatabaseScreen() {
           {/* Tile 2: Baza Słownictwa */}
           <div
             onClick={() => setSelectedSection('vocabulary')}
-            className="group relative overflow-hidden rounded-3xl p-8 backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-white/20 hover:border-emerald-500/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(16,185,129,0.25)] transition-all duration-500 hover:-translate-y-2 cursor-pointer flex flex-col justify-between min-h-[220px]"
+            className="group relative overflow-hidden rounded-3xl p-8 backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-white/20 hover:border-primary/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(16,185,129,0.25)] transition-all duration-500 hover:-translate-y-2 cursor-pointer flex flex-col justify-between min-h-[220px]"
           >
-            <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/0 via-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-primary/0 via-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
             <div className="relative z-10 flex items-start justify-between">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500/30 via-emerald-500/10 to-transparent border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] group-hover:scale-110 transition-transform duration-300">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/30 via-primary/10 to-transparent border border-primary/40 flex items-center justify-center text-primary shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] group-hover:scale-110 transition-transform duration-300">
                 <Layers size={28} />
               </div>
-              <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full backdrop-blur-md">
+              <span className="text-xs font-mono font-bold text-primary bg-primary/10 border border-primary/30 px-3 py-1 rounded-full backdrop-blur-md">
                 {vocabularySets.length} Zestawów
               </span>
             </div>
 
             <div className="relative z-10 mt-6">
-              <h2 className="text-2xl font-bold text-white group-hover:text-emerald-400 transition-colors flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-white group-hover:text-primary transition-colors flex items-center gap-2">
                 Baza Słownictwa
-                <ChevronRight size={22} className="text-content-muted group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
+                <ChevronRight size={22} className="text-content-muted group-hover:text-primary group-hover:translate-x-1 transition-all" />
               </h2>
               <p className="text-sm text-content-muted mt-2 line-clamp-2">
                 Przeglądaj wszystkie bazy słownictwa i lekcji stworzone dla wszystkich kursantów, kopiuj i przypisuj zestawy.
@@ -704,23 +704,23 @@ export default function TopicDatabaseScreen() {
           {/* Tile 3: Idiomy */}
           <div
             onClick={() => setSelectedSection('idioms')}
-            className="group relative overflow-hidden rounded-3xl p-8 backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-white/20 hover:border-purple-500/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(168,85,247,0.25)] transition-all duration-500 hover:-translate-y-2 cursor-pointer flex flex-col justify-between min-h-[220px]"
+            className="group relative overflow-hidden rounded-3xl p-8 backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-white/20 hover:border-primary/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(168,85,247,0.25)] transition-all duration-500 hover:-translate-y-2 cursor-pointer flex flex-col justify-between min-h-[220px]"
           >
-            <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/0 via-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-primary/0 via-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
             <div className="relative z-10 flex items-start justify-between">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/30 via-purple-500/10 to-transparent border border-purple-500/40 flex items-center justify-center text-purple-400 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] group-hover:scale-110 transition-transform duration-300">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/30 via-primary/10 to-transparent border border-primary/40 flex items-center justify-center text-primary shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] group-hover:scale-110 transition-transform duration-300">
                 <MessageSquareQuote size={28} />
               </div>
-              <span className="text-xs font-mono font-bold text-purple-400 bg-purple-500/10 border border-purple-500/30 px-3 py-1 rounded-full backdrop-blur-md">
+              <span className="text-xs font-mono font-bold text-primary bg-primary/10 border border-primary/30 px-3 py-1 rounded-full backdrop-blur-md">
                 Popularne Zwroty
               </span>
             </div>
 
             <div className="relative z-10 mt-6">
-              <h2 className="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-white group-hover:text-primary transition-colors flex items-center gap-2">
                 Idiomy
-                <ChevronRight size={22} className="text-content-muted group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
+                <ChevronRight size={22} className="text-content-muted group-hover:text-primary group-hover:translate-x-1 transition-all" />
               </h2>
               <p className="text-sm text-content-muted mt-2 line-clamp-2">
                 Kolekcja idiomów angielskich wraz z polskim tłumaczeniem, kontekstem i przykładowymi zdaniami.
@@ -731,23 +731,23 @@ export default function TopicDatabaseScreen() {
           {/* Tile 4: Phrasal verbs */}
           <div
             onClick={() => setSelectedSection('phrasal')}
-            className="group relative overflow-hidden rounded-3xl p-8 backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-white/20 hover:border-cyan-500/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(6,182,212,0.25)] transition-all duration-500 hover:-translate-y-2 cursor-pointer flex flex-col justify-between min-h-[220px]"
+            className="group relative overflow-hidden rounded-3xl p-8 backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-white/20 hover:border-primary/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(6,182,212,0.25)] transition-all duration-500 hover:-translate-y-2 cursor-pointer flex flex-col justify-between min-h-[220px]"
           >
-            <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/0 via-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-primary/0 via-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
             <div className="relative z-10 flex items-start justify-between">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/30 via-cyan-500/10 to-transparent border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] group-hover:scale-110 transition-transform duration-300">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/30 via-primary/10 to-transparent border border-primary/40 flex items-center justify-center text-primary shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] group-hover:scale-110 transition-transform duration-300">
                 <Zap size={28} />
               </div>
-              <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 rounded-full backdrop-blur-md">
+              <span className="text-xs font-mono font-bold text-primary bg-primary/10 border border-primary/30 px-3 py-1 rounded-full backdrop-blur-md">
                 Czasowniki Złożone
               </span>
             </div>
 
             <div className="relative z-10 mt-6">
-              <h2 className="text-2xl font-bold text-white group-hover:text-cyan-400 transition-colors flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-white group-hover:text-primary transition-colors flex items-center gap-2">
                 Phrasal verbs
-                <ChevronRight size={22} className="text-content-muted group-hover:text-cyan-400 group-hover:translate-x-1 transition-all" />
+                <ChevronRight size={22} className="text-content-muted group-hover:text-primary group-hover:translate-x-1 transition-all" />
               </h2>
               <p className="text-sm text-content-muted mt-2 line-clamp-2">
                 Baza najważniejszych czasowników frazowych w języku angielskim z wyjaśnieniem i zastosowaniem.
@@ -886,7 +886,7 @@ export default function TopicDatabaseScreen() {
           {/* Top Bar with Header & Search */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-base-200/50 p-4 rounded-2xl border border-white/10 backdrop-blur-xl">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold">
+              <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-bold">
                 <Layers size={20} />
               </div>
               <div>
@@ -903,7 +903,7 @@ export default function TopicDatabaseScreen() {
                   placeholder="Szukaj po nazwie, słówku lub kursancie..."
                   value={vocabSearchQuery}
                   onChange={e => setVocabSearchQuery(e.target.value)}
-                  className="w-full bg-base-200/80 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder:text-content-muted focus:border-emerald-500/50 outline-none transition-all"
+                  className="w-full bg-base-200/80 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder:text-content-muted focus:border-primary/50 outline-none transition-all"
                 />
               </div>
 
@@ -922,7 +922,7 @@ export default function TopicDatabaseScreen() {
               onClick={() => setVocabCategory('student_lessons')}
               className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
                 vocabCategory === 'student_lessons'
-                  ? 'bg-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                  ? 'bg-primary text-accent-ink shadow-[0_0_20px_rgba(16,185,129,0.3)]'
                   : 'text-content-muted hover:text-white hover:bg-white/5'
               }`}
             >
@@ -939,7 +939,7 @@ export default function TopicDatabaseScreen() {
               onClick={() => setVocabCategory('general')}
               className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
                 vocabCategory === 'general'
-                  ? 'bg-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                  ? 'bg-primary text-accent-ink shadow-[0_0_20px_rgba(16,185,129,0.3)]'
                   : 'text-content-muted hover:text-white hover:bg-white/5'
               }`}
             >
@@ -955,8 +955,8 @@ export default function TopicDatabaseScreen() {
 
           {/* Cart banner if words selected */}
           {cart.length > 0 && (
-            <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 px-4 py-2.5 rounded-xl backdrop-blur-md">
-              <span className="text-xs font-bold text-emerald-400 font-mono">
+            <div className="flex items-center justify-between bg-primary/10 border border-primary/30 px-4 py-2.5 rounded-xl backdrop-blur-md">
+              <span className="text-xs font-bold text-primary font-mono">
                 {cart.length} słówek wybranych w koszyku
               </span>
               <div className="flex items-center gap-2">
@@ -965,7 +965,7 @@ export default function TopicDatabaseScreen() {
                   const wordsStr = cart.map(w => `- ${w.english} (${w.polish})`).join('\n');
                   navigator.clipboard.writeText(wordsStr);
                   alert(`Skopiowano ${cart.length} słówek do schowka!`);
-                }} className="bg-emerald-500 text-black font-bold">
+                }} className="bg-primary text-accent-ink font-bold">
                   <Copy size={14} className="mr-1" />
                   Skopiuj słówka
                 </Button>
@@ -985,13 +985,13 @@ export default function TopicDatabaseScreen() {
                     <div className="p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                       {/* Left: Set info */}
                       <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-bold shrink-0">
                           <BookOpen size={18} />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <h3 className="font-bold text-base text-white truncate">{vSet.name}</h3>
-                            <span className="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-bold">
+                            <span className="text-[10px] bg-primary/10 text-primary border border-primary/30 px-2 py-0.5 rounded font-mono font-bold">
                               {vSet.words?.length || 0} słówek
                             </span>
                             <span className="text-[10px] bg-white/10 text-content-muted px-2 py-0.5 rounded uppercase tracking-wider">
@@ -1006,7 +1006,7 @@ export default function TopicDatabaseScreen() {
                         <select
                           value={assignedUserId}
                           onChange={(e) => setSelectedUserAssignMap(prev => ({ ...prev, [vSet.id]: e.target.value }))}
-                          className="bg-black/50 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-emerald-500/50 max-w-[180px]"
+                          className="bg-black/50 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-primary/50 max-w-[180px]"
                         >
                           <option value="">Wybierz kursanta...</option>
                           {allUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -1017,7 +1017,7 @@ export default function TopicDatabaseScreen() {
                           disabled={!assignedUserId}
                           className={`text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all ${
                             assignedUserId
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500 hover:text-black cursor-pointer'
+                              ? 'bg-primary/20 text-primary border border-primary/30 hover:bg-primary hover:text-accent-ink cursor-pointer'
                               : 'bg-white/5 text-content-muted border border-white/5 cursor-not-allowed'
                           }`}
                         >
@@ -1060,7 +1060,7 @@ export default function TopicDatabaseScreen() {
                                       }}
                                     />
                                     <div className="flex-1 flex items-center justify-between min-w-0 pr-1">
-                                      <span className="font-bold text-emerald-400 truncate">{w.english}</span>
+                                      <span className="font-bold text-primary truncate">{w.english}</span>
                                       <TTSButtons text={w.english} />
                                     </div>
                                     <span className="text-content-muted truncate max-w-[50%]">{w.polish || '—'}</span>
@@ -1132,7 +1132,7 @@ export default function TopicDatabaseScreen() {
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <h4 className="font-bold text-base text-white">{gSet.title}</h4>
-                                    <span className="text-[10px] font-mono font-bold bg-white/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded">
+                                    <span className="text-[10px] font-mono font-bold bg-white/10 text-primary border border-primary/30 px-2 py-0.5 rounded">
                                       {gSet.words.length} słówek
                                     </span>
                                   </div>
@@ -1145,7 +1145,7 @@ export default function TopicDatabaseScreen() {
                                 <select
                                   value={assignedUserId}
                                   onChange={(e) => setSelectedUserAssignMap(prev => ({ ...prev, [gSet.id]: e.target.value }))}
-                                  className="bg-black/50 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-emerald-500/50 max-w-[180px]"
+                                  className="bg-black/50 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-primary/50 max-w-[180px]"
                                 >
                                   <option value="">Wybierz kursanta...</option>
                                   {allUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -1156,7 +1156,7 @@ export default function TopicDatabaseScreen() {
                                   disabled={!assignedUserId}
                                   className={`text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all ${
                                     assignedUserId
-                                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500 hover:text-black cursor-pointer'
+                                      ? 'bg-primary/20 text-primary border border-primary/30 hover:bg-primary hover:text-accent-ink cursor-pointer'
                                       : 'bg-white/5 text-content-muted border border-white/5 cursor-not-allowed'
                                   }`}
                                 >
@@ -1199,7 +1199,7 @@ export default function TopicDatabaseScreen() {
                                               }}
                                             />
                                             <div className="flex-1 flex items-center justify-between min-w-0 pr-1">
-                                              <span className="font-bold text-emerald-400 truncate">{w.english}</span>
+                                              <span className="font-bold text-primary truncate">{w.english}</span>
                                               <TTSButtons text={w.english} />
                                             </div>
                                             <span className="text-content-muted truncate max-w-[50%]">{w.polish || '—'}</span>
@@ -1234,7 +1234,7 @@ export default function TopicDatabaseScreen() {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-base-200/50 p-4 rounded-2xl border border-white/10 backdrop-blur-xl">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 font-bold">
+              <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-bold">
                 <MessageSquareQuote size={20} />
               </div>
               <h2 className="text-lg font-bold text-white">Idiomy Angielskie ({ALL_IDIOMS.length})</h2>
@@ -1248,7 +1248,7 @@ export default function TopicDatabaseScreen() {
                   placeholder="Szukaj idiomu, tłumaczenia lub kategorii..."
                   value={idiomsSearchQuery}
                   onChange={e => setIdiomsSearchQuery(e.target.value)}
-                  className="w-full bg-base-200/80 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder:text-content-muted focus:border-purple-500/50 outline-none"
+                  className="w-full bg-base-200/80 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder:text-content-muted focus:border-primary/50 outline-none"
                 />
               </div>
 
@@ -1265,10 +1265,10 @@ export default function TopicDatabaseScreen() {
             {filteredIdioms.map((idiom) => (
               <div
                 key={idiom.id}
-                className="p-5 rounded-2xl bg-base-200/50 border border-white/10 hover:border-purple-500/40 transition-all space-y-2 relative group overflow-hidden"
+                className="p-5 rounded-2xl bg-base-200/50 border border-white/10 hover:border-primary/40 transition-all space-y-2 relative group overflow-hidden"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-mono font-bold text-purple-400 bg-purple-500/10 border border-purple-500/30 px-2.5 py-0.5 rounded-md">
+                  <span className="text-xs font-mono font-bold text-primary bg-primary/10 border border-primary/30 px-2.5 py-0.5 rounded-md">
                     {idiom.category}
                   </span>
                   <button
@@ -1284,19 +1284,19 @@ export default function TopicDatabaseScreen() {
                 </div>
 
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">
+                  <h3 className="text-lg font-bold text-white group-hover:text-primary transition-colors">
                     {idiom.english}
                   </h3>
                   <TTSButtons text={idiom.english} />
                 </div>
-                <p className="text-sm font-semibold text-purple-400">
+                <p className="text-sm font-semibold text-primary">
                   {idiom.polish}
                 </p>
                 <p className="text-xs text-content-muted italic">
                   „{idiom.meaning}”
                 </p>
-                <div className="pt-2 border-t border-white/5 text-xs text-gray-300 font-mono bg-black/20 p-2.5 rounded-xl border border-white/5">
-                  <span className="text-purple-400 font-bold">Przykład: </span>
+                <div className="pt-2 border-t border-white/5 text-xs text-content font-mono bg-black/20 p-2.5 rounded-xl border border-white/5">
+                  <span className="text-primary font-bold">Przykład: </span>
                   {idiom.example}
                 </div>
               </div>
@@ -1316,7 +1316,7 @@ export default function TopicDatabaseScreen() {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-base-200/50 p-4 rounded-2xl border border-white/10 backdrop-blur-xl">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold">
+              <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-bold">
                 <Zap size={20} />
               </div>
               <h2 className="text-lg font-bold text-white">Phrasal Verbs ({ALL_PHRASALS.length})</h2>
@@ -1330,7 +1330,7 @@ export default function TopicDatabaseScreen() {
                   placeholder="Szukaj czasownika frazowego..."
                   value={phrasalSearchQuery}
                   onChange={e => setPhrasalSearchQuery(e.target.value)}
-                  className="w-full bg-base-200/80 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder:text-content-muted focus:border-cyan-500/50 outline-none"
+                  className="w-full bg-base-200/80 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder:text-content-muted focus:border-primary/50 outline-none"
                 />
               </div>
 
@@ -1347,10 +1347,10 @@ export default function TopicDatabaseScreen() {
             {filteredPhrasals.map((item) => (
               <div
                 key={item.id}
-                className="p-5 rounded-2xl bg-base-200/50 border border-white/10 hover:border-cyan-500/40 transition-all space-y-2 relative group overflow-hidden"
+                className="p-5 rounded-2xl bg-base-200/50 border border-white/10 hover:border-primary/40 transition-all space-y-2 relative group overflow-hidden"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-0.5 rounded-md">
+                  <span className="text-xs font-mono font-bold text-primary bg-primary/10 border border-primary/30 px-2.5 py-0.5 rounded-md">
                     Poziom {item.level || 'B1-B2'}
                   </span>
                   <button
@@ -1366,19 +1366,19 @@ export default function TopicDatabaseScreen() {
                 </div>
 
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-xl font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                  <h3 className="text-xl font-extrabold text-white group-hover:text-primary transition-colors">
                     {item.verb}
                   </h3>
                   <TTSButtons text={item.verb} />
                 </div>
-                <p className="text-sm font-semibold text-cyan-400">
+                <p className="text-sm font-semibold text-primary">
                   {item.polish}
                 </p>
                 <p className="text-xs text-content-muted">
                   Definicja: {item.definition}
                 </p>
-                <div className="pt-2 border-t border-white/5 text-xs text-gray-300 font-mono bg-black/20 p-2.5 rounded-xl border border-white/5">
-                  <span className="text-cyan-400 font-bold">Przykład: </span>
+                <div className="pt-2 border-t border-white/5 text-xs text-content font-mono bg-black/20 p-2.5 rounded-xl border border-white/5">
+                  <span className="text-primary font-bold">Przykład: </span>
                   {item.example}
                 </div>
               </div>

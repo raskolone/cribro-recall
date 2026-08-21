@@ -1267,7 +1267,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </button>
           <button
             onClick={() => setShowCreateStudentModal(true)}
-            className="px-3.5 py-2 bg-primary text-black rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-lg"
+            className="px-3.5 py-2 bg-primary text-accent-ink rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-lg"
           >
             <Plus size={16} />
             {i18n.t("Dodaj kursanta")}
@@ -1279,7 +1279,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       <div className={`p-4 sm:p-5 rounded-2xl border-2 transition-all duration-300 ${
         selectedUser 
           ? 'bg-gradient-to-r from-primary/15 via-base-200/80 to-base-200/90 border-primary/60 shadow-[0_0_30px_rgba(114,240,180,0.15)]' 
-          : 'bg-base-200/50 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.1)]'
+          : 'bg-base-200/50 border-warn/40 shadow-[0_0_20px_rgba(245,158,11,0.1)]'
       }`}>
         {selectedUser ? (
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -1303,7 +1303,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     </span>
                   )}
                   <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
-                    selectedUser.role === 'admin' ? 'bg-red-500/10 text-red-400 border-red-500/30' : selectedUser.role === 'teacher' ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' : 'bg-primary/10 text-primary border-primary/30'
+                    selectedUser.role === 'admin' ? 'bg-danger/10 text-danger border-danger/30' : selectedUser.role === 'teacher' ? 'bg-primary/10 text-primary border-primary/30' : 'bg-primary/10 text-primary border-primary/30'
                   }`}>
                     {selectedUser.role === 'teacher' ? 'Nauczyciel' : selectedUser.role === 'admin' ? 'Admin' : 'Kursant'}
                   </span>
@@ -1319,7 +1319,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
               <button
                 onClick={() => setIsStudentPickerOpen(true)}
-                className="px-4 py-2 bg-primary text-black rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all flex items-center gap-2 shadow-md"
+                className="px-4 py-2 bg-primary text-accent-ink rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all flex items-center gap-2 shadow-md"
               >
                 <UserCheck size={16} />
                 Zmień kursanta
@@ -1343,7 +1343,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         ) : (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
+              <div className="p-3 rounded-2xl bg-warn/20 text-warn border border-warn/30 shrink-0">
                 <Users size={24} />
               </div>
               <div>
@@ -1358,7 +1358,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
             <button
               onClick={() => setIsStudentPickerOpen(true)}
-              className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-black font-extrabold rounded-xl text-xs sm:text-sm shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:scale-105 transition-all flex items-center gap-2 shrink-0"
+              className="px-5 py-2.5 bg-gradient-to-r from-warn to-warn text-black font-extrabold rounded-xl text-xs sm:text-sm shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:scale-105 transition-all flex items-center gap-2 shrink-0"
             >
               <Search size={18} />
               Wybierz kursanta z listy
@@ -1379,7 +1379,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             )}
           </h2>
           {!selectedUser && (
-            <span className="text-xs text-amber-400 font-semibold flex items-center gap-1">
+            <span className="text-xs text-warn font-semibold flex items-center gap-1">
               <AlertCircle size={14} /> Kliknij dowolny kafelek, aby wybrać kursanta
             </span>
           )}
@@ -1443,14 +1443,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     ? 'border-primary/80 shadow-[0_0_24px_rgba(114,240,180,0.25)] ring-1 ring-primary/40 bg-[#0e1524] z-10'
                     : selectedUser
                     ? 'hover:border-primary/50'
-                    : 'opacity-85 hover:border-amber-500/40'
+                    : 'opacity-85 hover:border-warn/40'
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between mb-2.5">
                     <div className={`p-2 rounded-xl transition-colors ${
                       isActive
-                        ? 'bg-primary text-black shadow-[0_0_12px_rgba(114,240,180,0.4)]'
+                        ? 'bg-primary text-accent-ink shadow-[0_0_12px_rgba(114,240,180,0.4)]'
                         : 'bg-base-100/90 text-primary border border-white/10 group-hover:border-primary/40'
                     }`}>
                       <IconComp size={18} />
@@ -1514,17 +1514,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 </div>
                 <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
                   <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Ostatnie Logowanie")}</div>
-                  <div className="text-lg font-display font-bold text-emerald-400">
+                  <div className="text-lg font-display font-bold text-primary">
                     {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Nigdy'}
                   </div>
                 </div>
                 <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
                   <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Wykonane Zadania")}</div>
-                  <div className="text-4xl font-display font-bold text-cyan-400">{userStats?.totalTasks || 0}</div>
+                  <div className="text-4xl font-display font-bold text-primary">{userStats?.totalTasks || 0}</div>
                 </div>
                 <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
                   <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Przetłumaczone Zdania")}</div>
-                  <div className="text-4xl font-display font-bold text-emerald-400">{userStats?.totalSentences || 0}</div>
+                  <div className="text-4xl font-display font-bold text-primary">{userStats?.totalSentences || 0}</div>
                 </div>
               </div>
 
@@ -1532,7 +1532,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                   <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
                     <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Średni Wynik")}</div>
-                    <div className="text-4xl font-display font-bold text-emerald-400">{Number.isNaN(Number(userStats.averageScore)) ? 0 : userStats.averageScore}%</div>
+                    <div className="text-4xl font-display font-bold text-primary">{Number.isNaN(Number(userStats.averageScore)) ? 0 : userStats.averageScore}%</div>
                   </div>
                   <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
                     <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Słownictwo Ogółem")}</div>
@@ -1540,7 +1540,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </div>
                   <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
                     <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Trudne Słowa")}</div>
-                    <div className="text-4xl font-display font-bold text-amber-500">{userStats.difficultWords}</div>
+                    <div className="text-4xl font-display font-bold text-warn">{userStats.difficultWords}</div>
                   </div>
                 </div>
               )}
@@ -1570,7 +1570,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       size="sm" 
                       onClick={handleExportLessonsToPDF} 
                       disabled={isExportingPDF}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 shadow-sm font-bold"
+                      className="bg-primary hover:bg-primary text-accent-ink flex items-center gap-1.5 shadow-sm font-bold"
                     >
                       <Download className="w-4 h-4" />
                       {isExportingPDF ? 'Generowanie PDF...' : 'Eksportuj do PDF'}
@@ -1599,10 +1599,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                 <div className="absolute top-1/2 -translate-y-1/2 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); handleGenerateHomeworkFromLesson(record); }}
-                                    className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                                    className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-primary hover:bg-primary/10 transition-colors"
                                     title="Wygeneruj pracę domową z tej lekcji"
                                   >
-                                    <Sparkles className="h-4 w-4 text-emerald-400" />
+                                    <Sparkles className="h-4 w-4 text-primary" />
                                   </button>
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); openLessonRecordModal('edit', record); }}
@@ -1615,7 +1615,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                   </button>
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); handleDeleteLessonRecord(record); }}
-                                    className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-red-500 hover:bg-base-200 transition-colors"
+                                    className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-danger hover:bg-base-200 transition-colors"
                                     title="Usuń lekcję"
                                   >
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1680,11 +1680,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                   >
                                       <div className="flex items-center gap-3.5">
                                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                                              isExpanded ? 'bg-primary text-black' : 'bg-base-300 text-content-muted'
+                                              isExpanded ? 'bg-primary text-accent-ink' : 'bg-base-300 text-content-muted'
                                           }`}>
                                               <Calendar className="w-4 h-4" />
                                           </div>
-                                          <span className={`text-sm font-bold tracking-wide ${isExpanded ? 'text-primary' : 'text-gray-200'}`}>
+                                          <span className={`text-sm font-bold tracking-wide ${isExpanded ? 'text-primary' : 'text-content'}`}>
                                               {group.key}
                                           </span>
                                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-base-300 text-content-muted">
@@ -1712,10 +1712,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                                     <div className="absolute top-1/2 -translate-y-1/2 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                       <button 
                                                         onClick={(e) => { e.stopPropagation(); handleGenerateHomeworkFromLesson(record); }}
-                                                        className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                                                        className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-primary hover:bg-primary/10 transition-colors"
                                                         title="Wygeneruj pracę domową z tej lekcji"
                                                       >
-                                                        <Sparkles className="h-4 w-4 text-emerald-400" />
+                                                        <Sparkles className="h-4 w-4 text-primary" />
                                                       </button>
                                                       <button 
                                                         onClick={(e) => { e.stopPropagation(); openLessonRecordModal('edit', record); }}
@@ -1728,7 +1728,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                                       </button>
                                                       <button 
                                                         onClick={(e) => { e.stopPropagation(); handleDeleteLessonRecord(record); }}
-                                                        className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-red-500 hover:bg-base-200 transition-colors"
+                                                        className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-danger hover:bg-base-200 transition-colors"
                                                         title="Usuń lekcję"
                                                       >
                                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1788,7 +1788,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                <div className="flex items-center gap-2">
                                   {log.exerciseType}
                                   {log.exerciseFormat && (
-                                     <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] rounded border border-emerald-500/20">{log.exerciseFormat}</span>
+                                     <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] rounded border border-primary/20">{log.exerciseFormat}</span>
                                   )}
                                </div>
                             </td>
@@ -1804,7 +1804,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                             </td>
                             <td className="p-3 text-right font-mono font-medium">
                               {scorePercent !== null ? (
-                                <span className={scorePercent >= 80 ? 'text-primary font-bold' : scorePercent >= 50 ? 'text-amber-400' : 'text-red-400'}>
+                                <span className={scorePercent >= 80 ? 'text-primary font-bold' : scorePercent >= 50 ? 'text-warn' : 'text-danger'}>
                                   {scorePercent}% {log.totalWords ? `(${log.totalWords} el.)` : ''}
                                 </span>
                               ) : '-'}
@@ -1872,7 +1872,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                   alert(i18n.t("Błąd podczas usuwania zadania"));
                                 }
                               }}
-                              className="p-1 rounded text-content-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                              className="p-1 rounded text-content-muted hover:text-danger hover:bg-danger/10 transition-colors"
                               title={i18n.t("Usuń zadanie specjalne")}
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1881,7 +1881,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         </div>
                         <p className="text-sm text-content-muted mb-4">{i18n.t("Ilość zdań:")} {task.sentences?.length || 0}</p>
                         <div className="flex items-center justify-between text-xs font-mono text-content-muted">
-                          <span className={task.status === 'completed' ? 'text-primary' : 'text-amber-500'}>
+                          <span className={task.status === 'completed' ? 'text-primary' : 'text-warn'}>
                             {task.status === 'completed' ? 'Ukończone' : 'Oczekujące'}
                           </span>
                           <span>{new Date(task.createdAt?.seconds ? task.createdAt.seconds * 1000 : task.createdAt).toLocaleDateString()}</span>
@@ -2016,19 +2016,19 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => handleRoleChange('user')}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'user' ? 'bg-primary text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'user' ? 'bg-primary text-accent-ink border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
                         >
                           {i18n.t("Kursant (User)")}
                         </button>
                         <button
                           onClick={() => handleRoleChange('admin')}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'admin' ? 'bg-red-500 text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'admin' ? 'bg-danger text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
                         >
                           {i18n.t("Admin")}
                         </button>
                         <button
                           onClick={() => handleRoleChange('teacher')}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'teacher' ? 'bg-purple-500 text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'teacher' ? 'bg-primary text-accent-ink border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
                         >
                           {i18n.t("Nauczyciel")}
                         </button>
@@ -2038,7 +2038,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-bold text-content-muted">{i18n.t("Podgląd modeli AI i AI Live Monitor:")}</span>
-                        <span className={`text-xs font-mono px-2 py-0.5 rounded-full ${selectedUser.showAiMonitor || selectedUser.canViewAiMonitor ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'bg-base-300 text-content-muted'}`}>
+                        <span className={`text-xs font-mono px-2 py-0.5 rounded-full ${selectedUser.showAiMonitor || selectedUser.canViewAiMonitor ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-base-300 text-content-muted'}`}>
                           {selectedUser.showAiMonitor || selectedUser.canViewAiMonitor ? 'Włączony dla tego profilu' : 'Domyślnie ukryty'}
                         </span>
                       </div>
@@ -2058,7 +2058,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         <Button
                           variant="secondary"
                           size="sm"
-                          className={selectedUser.showAiMonitor || selectedUser.canViewAiMonitor ? "bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/40 shrink-0" : "bg-base-300 text-content-muted hover:text-white shrink-0"}
+                          className={selectedUser.showAiMonitor || selectedUser.canViewAiMonitor ? "bg-primary/20 text-primary hover:bg-primary/30 border border-primary/40 shrink-0" : "bg-base-300 text-content-muted hover:text-white shrink-0"}
                           onClick={() => {
                             const currentVal = Boolean(selectedUser.showAiMonitor || selectedUser.canViewAiMonitor);
                             const newStatus = !currentVal;
@@ -2159,7 +2159,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         <Button 
                           variant="secondary" 
                           size="sm"
-                          className={selectedUser.isSuspended ? "bg-green-500/20 text-green-500 hover:bg-green-500/30 border-transparent" : "bg-orange-500/20 text-orange-500 hover:bg-orange-500/30 border-transparent"}
+                          className={selectedUser.isSuspended ? "bg-primary/20 text-primary hover:bg-primary/30 border-transparent" : "bg-warn/20 text-warn hover:bg-warn/30 border-transparent"}
                           onClick={() => {
                             const newSuspended = !selectedUser.isSuspended;
                             const userRef = doc(db, 'users', selectedUser.id);
@@ -2175,7 +2175,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         <Button 
                           variant="secondary" 
                           size="sm" 
-                          className="bg-red-500/20 text-red-500 hover:bg-red-500/30 border-transparent"
+                          className="bg-danger/20 text-danger hover:bg-danger/30 border-transparent"
                           onClick={() => {
                             if (confirm('Czy na pewno chcesz usunąć to konto? Tej operacji nie można cofnąć.')) {
                               handleDeleteUser(selectedUser.id);
@@ -2260,7 +2260,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <h3 className="text-xl font-bold mb-4">{i18n.t("Wybierz plik z Google Drive")}</h3>
             
             {driveError && (
-              <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 rounded-lg mb-4 text-sm">
+              <div className="bg-danger/10 border border-danger/50 text-danger p-4 rounded-lg mb-4 text-sm">
                 {driveError}
               </div>
             )}
@@ -2311,7 +2311,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
             </div>
             {summaryError && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg mb-4 text-sm font-medium">
+              <div className="bg-danger/10 border border-danger/20 text-danger p-4 rounded-lg mb-4 text-sm font-medium">
                 {summaryError}
               </div>
             )}
@@ -2366,7 +2366,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
             </div>
             {bulkSummaryError && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg mb-4 text-sm font-medium">
+              <div className="bg-danger/10 border border-danger/20 text-danger p-4 rounded-lg mb-4 text-sm font-medium">
                 {bulkSummaryError}
               </div>
             )}
@@ -2486,7 +2486,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                               }}
                               className={`text-xs px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 ${
                                 isAssigned 
-                                  ? 'bg-primary/20 border-primary/50 text-white font-semibold' 
+                                  ? 'bg-primary/20 border-primary/50 text-accent-ink font-semibold' 
                                   : 'bg-base-300/40 border-white/10 text-content-muted/60 hover:text-white hover:bg-white/10'
                               }`}
                             >
@@ -2596,7 +2596,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       onClick={() => setActiveLessonFormTab('manual')}
                       className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${
                         activeLessonFormTab === 'manual'
-                          ? 'bg-primary text-black shadow-md'
+                          ? 'bg-primary text-accent-ink shadow-md'
                           : 'text-content-muted hover:text-white'
                       }`}
                     >
@@ -2607,7 +2607,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       onClick={() => setActiveLessonFormTab('database')}
                       className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${
                         activeLessonFormTab === 'database'
-                          ? 'bg-primary text-black shadow-md'
+                          ? 'bg-primary text-accent-ink shadow-md'
                           : 'text-content-muted hover:text-white'
                       }`}
                     >
@@ -2662,7 +2662,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                   key={u.id}
                                   className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${
                                     isSelected 
-                                      ? 'bg-primary/20 border border-primary/40 text-white font-medium' 
+                                      ? 'bg-primary/20 border border-primary/40 text-accent-ink font-medium' 
                                       : 'hover:bg-white/5 border border-transparent text-content-muted'
                                   }`}
                                 >
@@ -2817,7 +2817,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                           </Button>
                           <Button
                             size="sm"
-                            className="bg-primary hover:bg-primary/80 text-black font-extrabold flex-1 sm:flex-none"
+                            className="bg-primary hover:bg-primary/80 text-accent-ink font-extrabold flex-1 sm:flex-none"
                             onClick={async () => {
                               const selectedItems = allLessonsDatabase.filter(item => {
                                 const compositeKey = `${item.studentId}-${item.record.id}`;
@@ -2969,7 +2969,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                     </p>
                                   )}
                                   {item.record.vocabularyText && (
-                                    <div className="flex items-center gap-1 text-xs text-emerald-400 font-medium">
+                                    <div className="flex items-center gap-1 text-xs text-primary font-medium">
                                       <span>Słówka ({wordCount}):</span>
                                       <span className="truncate max-w-[300px] text-content-muted font-mono">{item.record.vocabularyText.replace(/\n/g, ' | ')}</span>
                                     </div>
@@ -2978,7 +2978,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="text-primary font-extrabold flex-shrink-0 border border-primary/20 hover:bg-primary hover:text-black self-center"
+                                  className="text-primary font-extrabold flex-shrink-0 border border-primary/20 hover:bg-primary hover:text-accent-ink self-center"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setLessonFormTopic(item.record.topic || '');
@@ -3027,7 +3027,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     </Button>
                     <Button 
                       variant="ghost" 
-                      className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                      className="text-danger hover:text-danger hover:bg-danger/10"
                       onClick={() => handleDeleteLessonRecord(viewingRecord!)}
                     >
                       {i18n.t("Usuń")}
@@ -3041,7 +3041,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 </div>
                 <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                   {/* Quick Homework Generation Top Card */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-primary/20 via-emerald-500/10 to-primary/20 border border-primary/40 shadow-[0_0_20px_rgba(114,240,180,0.15)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 border border-primary/40 shadow-[0_0_20px_rgba(114,240,180,0.15)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary text-xl shrink-0">
                         ✨
@@ -3071,56 +3071,56 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   
                   {viewingRecord?.lessonSummary && (
                     <div className="rounded-xl overflow-hidden border border-white/5 bg-[#1a1f2e]">
-                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200">
-                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-content">
+                        <span className="w-2 h-2 rounded-full bg-info"></span>
                         
                                                                           {i18n.t("Revision Notes")}
                                                                         </div>
-                      <div className="p-4 text-sm text-gray-300 whitespace-pre-wrap">{viewingRecord.lessonSummary}</div>
+                      <div className="p-4 text-sm text-content whitespace-pre-wrap">{viewingRecord.lessonSummary}</div>
                     </div>
                   )}
 
                   {viewingRecord?.studentSpeaking && (
                     <div className="rounded-xl overflow-hidden border border-white/5 bg-[#242424]">
-                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200">
-                        <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-content">
+                        <span className="w-2 h-2 rounded-full bg-text-faint"></span>
                         
                                                                           {i18n.t("Kursant — o czym mówił")}
                                                                         </div>
-                      <div className="p-4 text-sm text-gray-300 whitespace-pre-wrap">{viewingRecord.studentSpeaking}</div>
+                      <div className="p-4 text-sm text-content whitespace-pre-wrap">{viewingRecord.studentSpeaking}</div>
                     </div>
                   )}
 
                   {viewingRecord?.vocabularyText && (
                     <div className="rounded-xl overflow-hidden border border-white/5 bg-[#162a22]">
-                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200">
-                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-content">
+                        <span className="w-2 h-2 rounded-full bg-primary"></span>
                         
                                                                           {i18n.t("Słownictwo & Wymowa")}
                                                                         </div>
-                      <div className="p-4 text-sm font-mono text-gray-300 whitespace-pre-wrap">{viewingRecord.vocabularyText}</div>
+                      <div className="p-4 text-sm font-mono text-content whitespace-pre-wrap">{viewingRecord.vocabularyText}</div>
                     </div>
                   )}
 
                   {viewingRecord?.thingsToImprove && (
                     <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a1616]">
-                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200">
-                        <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-content">
+                        <span className="w-2 h-2 rounded-full bg-danger"></span>
                         
                                                                           {i18n.t("Things to Improve")}
                                                                         </div>
-                      <div className="p-4 text-sm text-gray-300 whitespace-pre-wrap">{viewingRecord.thingsToImprove}</div>
+                      <div className="p-4 text-sm text-content whitespace-pre-wrap">{viewingRecord.thingsToImprove}</div>
                     </div>
                   )}
 
                   {viewingRecord?.suggestedFollowUp && (
                     <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a2816]">
-                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-gray-200">
-                        <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-content">
+                        <span className="w-2 h-2 rounded-full bg-warn"></span>
                         
                                                                           {i18n.t("Suggested follow-up")}
                                                                         </div>
-                      <div className="p-4 text-sm text-gray-300 whitespace-pre-wrap">{viewingRecord.suggestedFollowUp}</div>
+                      <div className="p-4 text-sm text-content whitespace-pre-wrap">{viewingRecord.suggestedFollowUp}</div>
                     </div>
                   )}
                 </div>
@@ -3174,7 +3174,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <h3 className="text-xl font-bold mb-4">{i18n.t("Zmień hasło dla")} {selectedUser?.firstName || selectedUser?.username}</h3>
             <div className="space-y-4 mb-6">
               {changePasswordError && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-sm">
+                <div className="p-3 bg-danger/10 border border-danger/20 text-danger rounded-lg text-sm">
                   {changePasswordError}
                 </div>
               )}
@@ -3251,7 +3251,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             {!newStudentPassword ? (
               <div className="space-y-4 mb-6">
                 {createStudentError && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-sm">
+                  <div className="p-3 bg-danger/10 border border-danger/20 text-danger rounded-lg text-sm">
                     {createStudentError}
                   </div>
                 )}
@@ -3309,7 +3309,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             ) : (
               <div className="space-y-4 mb-6">
                 <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg text-center space-y-2 relative">
-                  <div className="text-green-500 font-bold mb-2">{i18n.t("Student Created Successfully!")}</div>
+                  <div className="text-primary font-bold mb-2">{i18n.t("Student Created Successfully!")}</div>
                   <div className="text-sm text-content-muted">{i18n.t("Email (Login):")}</div>
                   <div className="font-mono text-lg">{normalizeUsername(newStudentUsername)}</div>
                   <div className="text-sm text-content-muted mt-2">{i18n.t("Password:")}</div>
@@ -3327,7 +3327,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                                                         {i18n.t("Copy")}
                                                                       </button>
                   </div>
-                  <p className="text-xs text-amber-500 mt-2">{i18n.t("Please copy these credentials and share them securely with the student. This password will not be shown again.")}</p>
+                  <p className="text-xs text-warn mt-2">{i18n.t("Please copy these credentials and share them securely with the student. This password will not be shown again.")}</p>
                 </div>
               </div>
             )}
@@ -3376,17 +3376,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               {/* Background ambient glow */}
               <div
                 className={`absolute -top-16 -left-16 w-36 h-36 rounded-full blur-3xl pointer-events-none ${
-                  profileSaveModal.success ? 'bg-emerald-500/30' : 'bg-red-500/30'
+                  profileSaveModal.success ? 'bg-primary/30' : 'bg-danger/30'
                 }`}
               />
 
               <div className="flex justify-center pt-2">
                 {profileSaveModal.success ? (
-                  <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.35)]">
+                  <div className="w-16 h-16 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary shadow-[0_0_25px_rgba(16,185,129,0.35)]">
                     <CheckCircle2 size={36} />
                   </div>
                 ) : (
-                  <div className="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/30 flex items-center justify-center text-red-400 shadow-[0_0_25px_rgba(239,68,68,0.35)]">
+                  <div className="w-16 h-16 rounded-2xl bg-danger/20 border border-danger/30 flex items-center justify-center text-danger shadow-[0_0_25px_rgba(239,68,68,0.35)]">
                     <AlertCircle size={36} />
                   </div>
                 )}
@@ -3675,7 +3675,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         </span>
                       )}
                       <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider border ${
-                        u.role === 'admin' ? 'bg-red-500/10 text-red-400 border-red-500/30' : u.role === 'teacher' ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' : 'bg-primary/10 text-primary border-primary/30'
+                        u.role === 'admin' ? 'bg-danger/10 text-danger border-danger/30' : u.role === 'teacher' ? 'bg-primary/10 text-primary border-primary/30' : 'bg-primary/10 text-primary border-primary/30'
                       }`}>
                         {u.role === 'teacher' ? 'Nauczyciel' : u.role === 'admin' ? 'Admin' : 'Kursant'}
                       </span>

@@ -512,7 +512,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                       onClick={() => toggleLesson(l.id)}
                       className={`p-4 rounded-xl border transition-all cursor-pointer flex items-start gap-4 ${isSelected ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(114,240,180,0.15)]' : 'bg-base-200/20 border-transparent hover:border-primary/30 hover:bg-base-200/40'}`}
                     >
-                      <div className={`mt-1 flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? 'border-primary bg-primary text-black' : 'border-content-muted/30'}`}>
+                      <div className={`mt-1 flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? 'border-primary bg-primary text-accent-ink' : 'border-content-muted/30'}`}>
                         {isSelected && <CheckCircle className="w-4 h-4" />}
                       </div>
                       
@@ -564,7 +564,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                     
                                                                       {i18n.t("Zamknij")}
                                                                     </Button>
-                  <Button onClick={() => setIsLessonModalOpen(false)} className="bg-primary text-black hover:bg-primary/90">
+                  <Button onClick={() => setIsLessonModalOpen(false)} className="bg-primary text-accent-ink hover:bg-primary/90">
                     
                                                                       {i18n.t("Zatwierdź Wybór")}
                                                                     </Button>
@@ -613,7 +613,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                     <span>{i18n.t("Dopracuj z AI")}</span>
                   </Button>
 
-                  <Button onClick={handleSaveTest} isLoading={isSaving} className="bg-primary text-black hover:bg-primary/90 px-5 py-2 text-sm font-bold shadow-lg shadow-primary/20">
+                  <Button onClick={handleSaveTest} isLoading={isSaving} className="bg-primary text-accent-ink hover:bg-primary/90 px-5 py-2 text-sm font-bold shadow-lg shadow-primary/20">
                     {i18n.t("Przypisz Test")}
                   </Button>
 
@@ -652,7 +652,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                             <button onClick={() => moveQuestion(i, 'down')} disabled={i === generatedQuestions.length - 1} className="p-2 rounded-lg bg-base-300 text-content hover:bg-white/10 disabled:opacity-30 transition-colors">
                               <ChevronDown className="w-4 h-4" />
                             </button>
-                            <button onClick={() => removeQuestion(i)} className="p-2 rounded-lg bg-base-300 text-content hover:text-red-400 hover:bg-red-400/10 transition-colors" title={i18n.t("Usuń pytanie")}>
+                            <button onClick={() => removeQuestion(i)} className="p-2 rounded-lg bg-base-300 text-content hover:text-danger hover:bg-danger/10 transition-colors" title={i18n.t("Usuń pytanie")}>
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -812,7 +812,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                       placeholder={i18n.t("Napisz do AI co poprawić (np. 'zrób łatwiejsze słownictwo w zadaniu 2')")}
                     />
                     <div className="flex justify-end gap-2">
-                      <Button onClick={handleModifyTest} isLoading={isModifying} disabled={!feedback} className="bg-primary text-black hover:bg-primary/90 text-xs py-1.5 px-4 font-bold">
+                      <Button onClick={handleModifyTest} isLoading={isModifying} disabled={!feedback} className="bg-primary text-accent-ink hover:bg-primary/90 text-xs py-1.5 px-4 font-bold">
                         {i18n.t("Popraw Test AI")}
                       </Button>
                     </div>
@@ -933,7 +933,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                         </div>
                         <button 
                           onClick={() => toggleLesson(l.id)} 
-                          className="shrink-0 p-1 rounded-md text-content-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                          className="shrink-0 p-1 rounded-md text-content-muted hover:text-danger hover:bg-danger/10 transition-colors"
                           title={i18n.t("Usuń z wyboru")}
                         >
                           <X className="w-4 h-4" />
@@ -1019,7 +1019,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                             }
                           }}
                         />
-                        <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-colors ${isSelected ? 'border-primary bg-primary text-black font-extrabold' : 'border-white/20 bg-base-100'}`}>
+                        <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-colors ${isSelected ? 'border-primary bg-primary text-accent-ink font-extrabold' : 'border-white/20 bg-base-100'}`}>
                           {isSelected && <CheckCircle className="w-3.5 h-3.5" />}
                         </div>
                         <span className="text-white font-bold leading-snug pt-0.5">{type.label}</span>
@@ -1039,7 +1039,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                                   }
                                 }}
                                 disabled={(typeCounts[type.id] || 1) <= 1}
-                                className="w-6 h-6 rounded-md bg-white/5 hover:bg-primary/20 text-white hover:text-primary disabled:opacity-25 flex items-center justify-center font-bold text-xs transition-all active:scale-95"
+                                className="w-6 h-6 rounded-md bg-white/5 hover:bg-primary/20 text-accent-ink hover:text-primary disabled:opacity-25 flex items-center justify-center font-bold text-xs transition-all active:scale-95"
                               >
                                 -
                               </button>
@@ -1054,7 +1054,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                                     setTypeCounts(prev => ({ ...prev, [type.id]: cur + 1 }));
                                   }
                                 }}
-                                className="w-6 h-6 rounded-md bg-white/5 hover:bg-primary/20 text-white hover:text-primary flex items-center justify-center font-bold text-xs transition-all active:scale-95"
+                                className="w-6 h-6 rounded-md bg-white/5 hover:bg-primary/20 text-accent-ink hover:text-primary flex items-center justify-center font-bold text-xs transition-all active:scale-95"
                               >
                                 +
                               </button>
@@ -1099,7 +1099,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
             <Card className="p-6 bg-primary/5 border border-primary/20 flex flex-col items-center justify-center space-y-4">
               <h3 className="font-bold text-lg text-primary text-center">{i18n.t("Test wygenerowany pomyślnie! (")}{generatedQuestions.length}  {i18n.t("pytań)")}</h3>
               <p className="text-content-muted text-sm text-center">{i18n.t("Możesz teraz przejrzeć i edytować pytania przed przypisaniem testu kursantowi.")}</p>
-              <Button onClick={() => setIsPreviewModalOpen(true)} className="bg-primary text-black hover:bg-primary/90 w-full sm:w-auto">
+              <Button onClick={() => setIsPreviewModalOpen(true)} className="bg-primary text-accent-ink hover:bg-primary/90 w-full sm:w-auto">
                 
                                                           {i18n.t("Podgląd i edycja testu")}
                                                         </Button>
@@ -1121,7 +1121,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${test.status === 'pending' ? 'bg-orange-500/20 text-orange-400' : 'bg-primary/20 text-primary'}`}>
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${test.status === 'pending' ? 'bg-warn/20 text-warn' : 'bg-primary/20 text-primary'}`}>
                       {test.status === 'pending' ? 'Oczekujący' : 'Zakończony'}
                     </span>
                     {test.status === 'graded' && <div className="text-xs font-mono font-bold text-primary">{test.score}/{test.maxScore}</div>}
@@ -1144,7 +1144,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
 
                     <button
                       onClick={() => test.id && setConfirmModal({isOpen: true, testId: test.id})}
-                      className="p-1.5 rounded-lg text-content-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                      className="p-1.5 rounded-lg text-content-muted hover:text-danger hover:bg-danger/10 transition-colors"
                       title={i18n.t("Usuń przypisany test")}
                     >
                       <Trash2 className="w-4 h-4" />

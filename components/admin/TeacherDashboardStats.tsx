@@ -95,7 +95,7 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
         className="w-full flex items-center justify-between p-6 hover:bg-base-200 transition-colors"
       >
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500">
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
             <BarChart3 size={24} />
           </div>
           <div className="text-left">

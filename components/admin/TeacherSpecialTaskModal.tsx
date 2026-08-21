@@ -356,7 +356,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
 
         {/* Initial Lesson Active Banner */}
         {initialLesson && (
-          <div className="bg-gradient-to-r from-primary/15 via-emerald-500/10 to-primary/15 border-b border-primary/25 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="bg-gradient-to-r from-primary/15 via-primary/10 to-primary/15 border-b border-primary/25 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded-md bg-primary/20 text-primary font-bold uppercase text-[10px]">
                 Lekcja źródłowa
@@ -368,7 +368,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
               type="button"
               onClick={() => handleSendChatMessage(`Wygeneruj ${numSentences} zdań do tłumaczenia ze słownictwa z lekcji "${initialLesson.topic}": ${selectedWords.join(', ')}`)}
               disabled={isGenerating || selectedWords.length === 0}
-              className="bg-primary hover:bg-primary/90 text-black font-bold px-3 py-1.5 rounded-xl shadow-[0_0_12px_rgba(114,240,180,0.3)] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 text-xs hover:scale-105"
+              className="bg-primary hover:bg-primary/90 text-accent-ink font-bold px-3 py-1.5 rounded-xl shadow-[0_0_12px_rgba(114,240,180,0.3)] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 text-xs hover:scale-105"
             >
               <Sparkles size={13} /> {isGenerating ? 'Generowanie...' : 'Generuj zdania teraz'}
             </button>
@@ -387,7 +387,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                   className={`w-full px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 transition-all ${
                     selectedLessonIds.length > 0
                       ? 'bg-primary/10 border-primary/40 text-primary hover:bg-primary/15'
-                      : 'bg-base-100 border-white/10 text-gray-300 hover:border-white/20 hover:text-white'
+                      : 'bg-base-100 border-white/10 text-content hover:border-white/20 hover:text-white'
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
@@ -417,7 +417,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setSelectedLessonIds([])}
-                    className="text-xs text-red-400 hover:underline px-2 py-1"
+                    className="text-xs text-danger hover:underline px-2 py-1"
                   >
                     Wyczyść
                   </button>
@@ -458,7 +458,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                           onClick={() => handleToggleWord(word)}
                           className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
                             isChecked
-                              ? 'bg-primary text-black font-bold border-primary shadow-[0_0_10px_rgba(114,240,180,0.2)]'
+                              ? 'bg-primary text-accent-ink font-bold border-primary shadow-[0_0_10px_rgba(114,240,180,0.2)]'
                               : 'bg-base-100 border-white/10 text-content-muted hover:text-white hover:border-white/30'
                           }`}
                         >
@@ -475,7 +475,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
           {/* Chat Messages Feed */}
           <div ref={chatContainerRef} className="flex-1 p-4 overflow-y-auto space-y-4 bg-base-100/50">
             {error && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-xs flex items-center justify-between">
+              <div className="bg-danger/10 border border-danger/30 text-danger p-3 rounded-xl text-xs flex items-center justify-between">
                 <span>{error}</span>
                 <button onClick={() => setError('')} className="hover:text-white">✕</button>
               </div>
@@ -489,8 +489,8 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                 <div
                   className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs ${
                     turn.role === 'user'
-                      ? 'bg-primary text-black font-bold'
-                      : 'bg-indigo-600/30 border border-indigo-400/30 text-indigo-300'
+                      ? 'bg-primary text-accent-ink font-bold'
+                      : 'bg-info/30 border border-info/30 text-info'
                   }`}
                 >
                   {turn.role === 'user' ? <UserIcon className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
@@ -506,16 +506,16 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                   <div
                     className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed ${
                       turn.role === 'user'
-                        ? 'bg-primary/20 border border-primary/30 text-white rounded-tr-none'
+                        ? 'bg-primary/20 border border-primary/30 text-accent-ink rounded-tr-none'
                         : 'bg-base-200/90 border border-white/10 text-content-body rounded-tl-none space-y-3'
                     }`}
                   >
                     <div className="whitespace-pre-wrap">{turn.content}</div>
 
                     {turn.summaryText && (
-                      <div className="p-2.5 bg-indigo-950/40 border border-indigo-500/20 rounded-xl text-xs text-indigo-200 mt-2">
-                        <div className="font-bold text-indigo-300 mb-1 flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                      <div className="p-2.5 bg-info/40 border border-info/20 rounded-xl text-xs text-info mt-2">
+                        <div className="font-bold text-info mb-1 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-info" />
                           Analiza Gemini 3.1 Flash:
                         </div>
                         {turn.summaryText}
@@ -535,11 +535,11 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
             {/* In Progress Pipeline Status Banner */}
             {isGenerating && (
               <div className="flex gap-3 max-w-2xl animate-fadeIn">
-                <div className="w-8 h-8 rounded-xl bg-indigo-600/30 border border-indigo-400/30 text-indigo-300 flex items-center justify-center shrink-0 text-xs">
-                  <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 rounded-xl bg-info/30 border border-info/30 text-info flex items-center justify-center shrink-0 text-xs">
+                  <div className="w-4 h-4 border-2 border-info border-t-transparent rounded-full animate-spin" />
                 </div>
-                <div className="p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-2xl rounded-tl-none text-xs text-indigo-200 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
+                <div className="p-3 bg-info/40 border border-info/30 rounded-2xl rounded-tl-none text-xs text-info flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-info animate-pulse" />
                   <span>{statusUpdate || 'Przetwarzanie przez pipeline AI...'}</span>
                 </div>
               </div>
@@ -618,8 +618,8 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                               onClick={() => toggleSentenceAcceptance(s.id)}
                               className={`p-1.5 rounded-lg text-xs transition-colors ${
                                 s.accepted
-                                  ? 'text-red-400 hover:bg-red-500/20'
-                                  : 'text-green-400 hover:bg-green-500/20'
+                                  ? 'text-danger hover:bg-danger/20'
+                                  : 'text-primary hover:bg-primary/20'
                               }`}
                               title={s.accepted ? 'Odrzuć' : 'Zaakceptuj'}
                             >

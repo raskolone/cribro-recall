@@ -23,12 +23,12 @@ export const TestPreviewModal: React.FC<TestPreviewModalProps> = ({ test, isOpen
           <div>
             <div className="flex items-center gap-2">
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
-                test.status === 'pending' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-primary/20 text-primary border border-primary/30'
+                test.status === 'pending' ? 'bg-warn/20 text-warn border border-warn/30' : 'bg-primary/20 text-primary border border-primary/30'
               }`}>
                 {test.status === 'pending' ? 'Oczekujący' : 'Ukończony / Oceniony'}
               </span>
               {test.score !== undefined && test.maxScore !== undefined && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-1">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-info/20 text-info border border-info/30 flex items-center gap-1">
                   <Award size={14} /> Wynik: {test.score}/{test.maxScore}
                 </span>
               )}
@@ -92,9 +92,9 @@ export const TestPreviewModal: React.FC<TestPreviewModalProps> = ({ test, isOpen
 
           {/* AI Overall Feedback */}
           {test.aiFeedback && (
-            <div className="p-4 bg-blue-500/10 rounded-xl border border-blue-500/30 text-sm">
-              <span className="font-bold text-blue-400 block mb-1">{i18n.t("Informacja zwrotna z weryfikacji AI:")}</span>
-              <p className="text-blue-200 whitespace-pre-wrap">{test.aiFeedback}</p>
+            <div className="p-4 bg-info/10 rounded-xl border border-info/30 text-sm">
+              <span className="font-bold text-info block mb-1">{i18n.t("Informacja zwrotna z weryfikacji AI:")}</span>
+              <p className="text-info whitespace-pre-wrap">{test.aiFeedback}</p>
             </div>
           )}
 
@@ -121,11 +121,11 @@ export const TestPreviewModal: React.FC<TestPreviewModalProps> = ({ test, isOpen
                     {isSubmitted && studentAns !== undefined && (
                       <div className="flex items-center gap-1.5 text-xs font-bold">
                         {isCorrect ? (
-                          <span className="text-green-400 flex items-center gap-1">
+                          <span className="text-primary flex items-center gap-1">
                             <CheckCircle size={16} /> Poprawne
                           </span>
                         ) : (
-                          <span className="text-red-400 flex items-center gap-1">
+                          <span className="text-danger flex items-center gap-1">
                             <XCircle size={16} /> Wymaga poprawy
                           </span>
                         )}
@@ -164,8 +164,8 @@ export const TestPreviewModal: React.FC<TestPreviewModalProps> = ({ test, isOpen
                               {isSubmitted && (
                                 <div className={`p-2 rounded-lg border ${
                                   sAns.toLowerCase() === cAns.toLowerCase()
-                                    ? 'bg-green-500/10 border-green-500/20 text-green-300'
-                                    : 'bg-red-500/10 border-red-500/20 text-red-300'
+                                    ? 'bg-primary/10 border-primary/20 text-primary'
+                                    : 'bg-danger/10 border-danger/20 text-danger'
                                 }`}>
                                   <span className="text-[10px] opacity-80 uppercase tracking-wider block font-bold mb-0.5">Odpowiedź kursanta {sItem.num}:</span>
                                   <span className="font-bold">{sAns || 'Brak odpowiedzi'}</span>
@@ -213,7 +213,7 @@ export const TestPreviewModal: React.FC<TestPreviewModalProps> = ({ test, isOpen
 
                         {isSubmitted && (
                           <div className={`p-2.5 rounded-lg border ${
-                            isCorrect ? 'bg-green-500/10 border-green-500/20 text-green-300' : 'bg-red-500/10 border-red-500/20 text-red-300'
+                            isCorrect ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-danger/10 border-danger/20 text-danger'
                           }`}>
                             <span className="text-xs opacity-75 block">{i18n.t("Odpowiedź kursanta:")}</span>
                             <span className="font-bold whitespace-pre-wrap block leading-relaxed">{studentAns ? normalizePromptLines(studentAns) : i18n.t("Brak odpowiedzi")}</span>

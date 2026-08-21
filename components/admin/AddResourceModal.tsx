@@ -114,7 +114,7 @@ ${rawText}`;
             exit={{ opacity: 0, scale: 0.95 }}
             className="bg-[#121824] border border-white/10 w-full max-w-2xl rounded-3xl p-6 shadow-2xl relative overflow-hidden"
           >
-            <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+            <button onClick={onClose} className="absolute top-4 right-4 text-text-2 hover:text-white transition-colors">
               <X size={24} />
             </button>
             
@@ -125,7 +125,7 @@ ${rawText}`;
               <h2 className="text-2xl font-bold text-white">Dodaj nowe zasoby</h2>
             </div>
             
-            <p className="text-sm text-gray-300 mb-6">
+            <p className="text-sm text-content mb-6">
               Wklej tutaj słówka, idiomy lub phrasal verbs z dowolnego źródła. Sztuczna inteligencja automatycznie je sformatuje, podzieli na kategorie i doda do odpowiedniej bazy dla wszystkich kursantów.
             </p>
             
@@ -138,7 +138,7 @@ ${rawText}`;
             />
             
             {error && (
-              <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+              <div className="mb-4 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm">
                 {error}
               </div>
             )}
@@ -147,7 +147,7 @@ ${rawText}`;
               <Button variant="secondary" onClick={onClose} disabled={isProcessing}>
                 Anuluj
               </Button>
-              <Button onClick={handleProcess} isLoading={isProcessing} className="bg-primary text-black font-bold">
+              <Button onClick={handleProcess} isLoading={isProcessing} className="bg-primary text-accent-ink font-bold">
                 {isProcessing ? 'Porządkowanie (AI)...' : 'Dodaj zasoby'}
               </Button>
             </div>

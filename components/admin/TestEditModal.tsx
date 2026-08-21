@@ -116,7 +116,7 @@ export const TestEditModal: React.FC<TestEditModalProps> = ({ test, isOpen, onCl
 
         {/* Form Body */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
-          {errorMsg && <div className="p-3 bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl text-sm">{errorMsg}</div>}
+          {errorMsg && <div className="p-3 bg-danger/20 border border-danger/30 text-danger rounded-xl text-sm">{errorMsg}</div>}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Tytuł testu")}</label>
@@ -213,7 +213,7 @@ export const TestEditModal: React.FC<TestEditModalProps> = ({ test, isOpen, onCl
                     <button
                       type="button"
                       onClick={() => handleRemoveQuestion(idx)}
-                      className="p-1.5 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 ml-1"
+                      className="p-1.5 rounded bg-danger/10 text-danger hover:bg-danger/20 ml-1"
                     >
                       <Trash2 size={14} />
                     </button>

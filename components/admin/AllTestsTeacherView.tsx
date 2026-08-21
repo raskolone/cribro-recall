@@ -134,7 +134,7 @@ export const AllTestsTeacherView: React.FC = () => {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-white">{i18n.t("Wszystkie Przypisane Testy")}</h1>
             {unreadCount > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-red-500/20 border border-red-500/30 text-red-400 rounded-full text-xs font-bold animate-pulse">
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-danger/20 border border-danger/30 text-danger rounded-full text-xs font-bold animate-pulse">
                 <Bell size={14} className="animate-bounce" />
                 {unreadCount} {i18n.t("nowo rozwiązanych")}
               </div>
@@ -198,7 +198,7 @@ export const AllTestsTeacherView: React.FC = () => {
                 key={`${test.studentId}-${test.id}`}
                 className={`p-4 transition-all border ${
                   isUnread
-                    ? 'bg-red-500/10 border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.2)] animate-pulse'
+                    ? 'bg-danger/10 border-danger/40 shadow-[0_0_15px_rgba(239,68,68,0.2)] animate-pulse'
                     : 'bg-base-200/40 border-white/10 hover:border-white/20'
                 }`}
               >
@@ -209,21 +209,21 @@ export const AllTestsTeacherView: React.FC = () => {
                       <span className="font-bold text-lg text-white truncate">{test.title}</span>
                       
                       {isUnread && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white animate-bounce flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-danger text-white animate-bounce flex items-center gap-1">
                           <Bell size={12} /> Nowy wynik!
                         </span>
                       )}
 
                       <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                         test.status === 'pending'
-                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          ? 'bg-warn/20 text-warn border border-warn/30'
                           : 'bg-primary/20 text-primary border border-primary/30'
                       }`}>
                         {test.status === 'pending' ? 'Oczekujący' : 'Ukończony'}
                       </span>
 
                       {isDone && test.score !== undefined && test.maxScore !== undefined && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-1">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-info/20 text-info border border-info/30 flex items-center gap-1">
                           <Award size={12} /> {test.score}/{test.maxScore} pts
                         </span>
                       )}
@@ -243,7 +243,7 @@ export const AllTestsTeacherView: React.FC = () => {
                       </span>
 
                       {test.completedAt && (
-                        <span className="flex items-center gap-1 text-green-400">
+                        <span className="flex items-center gap-1 text-primary">
                           <CheckCircle2 size={14} /> Rozwiązany: {new Date(test.completedAt).toLocaleString()}
                         </span>
                       )}
@@ -274,7 +274,7 @@ export const AllTestsTeacherView: React.FC = () => {
 
                     <button
                       onClick={() => setConfirmModal({isOpen: true, test})}
-                      className="p-2 rounded-lg text-content-muted hover:text-red-400 hover:bg-red-400/10 transition-colors border border-transparent hover:border-red-400/20"
+                      className="p-2 rounded-lg text-content-muted hover:text-danger hover:bg-danger/10 transition-colors border border-transparent hover:border-danger/20"
                       title={i18n.t("Usuń test")}
                     >
                       <Trash2 size={18} />
