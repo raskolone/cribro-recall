@@ -130,7 +130,7 @@ export const MatchingTask: React.FC<MatchingTaskProps> = ({ options, onChange, i
                     layoutId={matchedRight.id}
                     draggable
                     onDragStart={(e: any) => handleDragStart(e, matchedRight.id, 'slot', left.id)}
-                    className="p-3 bg-primary text-black font-bold rounded-lg cursor-grab active:cursor-grabbing shadow-[0_0_15px_rgba(114,240,180,0.3)] text-center"
+                    className="p-3 bg-primary text-accent-ink font-bold rounded-lg cursor-grab active:cursor-grabbing shadow-[0_0_15px_rgba(114,240,180,0.3)] text-center"
                   >
                     {matchedRight.text}
                   </motion.div>

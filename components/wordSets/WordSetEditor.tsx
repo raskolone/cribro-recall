@@ -27,14 +27,14 @@ const WordEditItem: React.FC<{
       onDrop={(e) => onDrop(e, index)}
       className="p-4 bg-base-200 dark:bg-dark-base-200 rounded-xl border border-base-300 dark:border-dark-base-300 shadow-md mb-4 flex gap-4 cursor-move group transition-colors duration-300"
     >
-      <div className="flex flex-col justify-center text-gray-400 group-hover:text-primary transition-colors">
+      <div className="flex flex-col justify-center text-text-2 group-hover:text-primary transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
         </svg>
       </div>
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400">{i18n.t("Word")}</label>
+          <label className="block text-xs font-bold text-text-mute dark:text-text-2">{i18n.t("Word")}</label>
           <input
             value={word.word}
             onChange={(e) => onUpdate(word.id, { word: e.target.value })}
@@ -42,7 +42,7 @@ const WordEditItem: React.FC<{
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400">{i18n.t("Translation / Definition")}</label>
+          <label className="block text-xs font-bold text-text-mute dark:text-text-2">{i18n.t("Translation / Definition")}</label>
           <input
             value={word.definition}
             onChange={(e) => onUpdate(word.id, { definition: e.target.value })}
@@ -50,7 +50,7 @@ const WordEditItem: React.FC<{
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400">{i18n.t("Pronunciation (IPA)")}</label>
+          <label className="block text-xs font-bold text-text-mute dark:text-text-2">{i18n.t("Pronunciation (IPA)")}</label>
           <input
             value={word.ipa}
             onChange={(e) => onUpdate(word.id, { ipa: e.target.value })}
@@ -58,7 +58,7 @@ const WordEditItem: React.FC<{
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400">{i18n.t("Example Sentence")}</label>
+          <label className="block text-xs font-bold text-text-mute dark:text-text-2">{i18n.t("Example Sentence")}</label>
           <input
             value={word.example}
             onChange={(e) => onUpdate(word.id, { example: e.target.value })}
@@ -67,7 +67,7 @@ const WordEditItem: React.FC<{
         </div>
       </div>
       <div className="flex flex-col justify-center">
-        <button onClick={() => onDelete(word.id)} className="text-red-500 hover:text-red-700 p-2 transition-colors">
+        <button onClick={() => onDelete(word.id)} className="text-danger hover:text-danger p-2 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
@@ -118,7 +118,7 @@ const WordSetEditor: React.FC<WordSetEditorProps> = ({ setId, onBack }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={onBack} className="text-gray-500 hover:text-primary transition-colors">
+        <button onClick={onBack} className="text-text-mute hover:text-primary transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
@@ -130,7 +130,7 @@ const WordSetEditor: React.FC<WordSetEditorProps> = ({ setId, onBack }) => {
         <h2 className="text-xl font-bold mb-4">{i18n.t("Set Details")}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{i18n.t("Name")}</label>
+            <label className="block text-sm font-bold text-text-faint dark:text-content mb-1">{i18n.t("Name")}</label>
             <input
               value={set.name}
               onChange={(e) => updateWordSet(setId, { name: e.target.value })}
@@ -138,7 +138,7 @@ const WordSetEditor: React.FC<WordSetEditorProps> = ({ setId, onBack }) => {
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{i18n.t("Language")}</label>
+            <label className="block text-sm font-bold text-text-faint dark:text-content mb-1">{i18n.t("Language")}</label>
             <select
               value={set.language || ''}
               onChange={(e) => updateWordSet(setId, { language: e.target.value as Language })}
@@ -151,7 +151,7 @@ const WordSetEditor: React.FC<WordSetEditorProps> = ({ setId, onBack }) => {
             </select>
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{i18n.t("Description")}</label>
+            <label className="block text-sm font-bold text-text-faint dark:text-content mb-1">{i18n.t("Description")}</label>
             <textarea
               value={set.description}
               onChange={(e) => updateWordSet(setId, { description: e.target.value })}
@@ -165,7 +165,7 @@ const WordSetEditor: React.FC<WordSetEditorProps> = ({ setId, onBack }) => {
       <div>
         <h2 className="text-xl font-bold mb-4">{i18n.t("Words in Set (")}{setWords.length})</h2>
         {setWords.length === 0 ? (
-          <p className="text-gray-500 mb-4">{i18n.t("No words in this set yet. Generate some words and add them to this set, or add them manually below!")}</p>
+          <p className="text-text-mute mb-4">{i18n.t("No words in this set yet. Generate some words and add them to this set, or add them manually below!")}</p>
         ) : (
           <div className="space-y-2 mb-4">
             {setWords.map((word, index) => (
@@ -184,7 +184,7 @@ const WordSetEditor: React.FC<WordSetEditorProps> = ({ setId, onBack }) => {
         )}
         <button
           onClick={handleAddWord}
-          className="w-full py-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-2 font-medium"
+          className="w-full py-4 border-2 border-dashed border-line-strong rounded-lg text-text-mute hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-2 font-medium"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />

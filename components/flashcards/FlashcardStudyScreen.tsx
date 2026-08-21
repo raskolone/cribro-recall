@@ -137,7 +137,7 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
           <Button variant="secondary" onClick={onBack}>
             {language === 'pl' ? 'Wróć' : 'Back'}
           </Button>
-          <Button className="bg-primary text-black font-bold" onClick={() => onNavigate && onNavigate('flashcard-sets')}>
+          <Button className="bg-primary text-accent-ink font-bold" onClick={() => onNavigate && onNavigate('flashcard-sets')}>
             {language === 'pl' ? 'Przejdź do Słownictwa' : 'Go to Vocabulary'}
           </Button>
         </div>
@@ -496,7 +496,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setIsReversed(!isReversed)}
-            className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-400"
+            className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-text-2"
           >
             {isReversed ? 'PL -> EN' : 'EN -> PL'}
           </button>
@@ -710,7 +710,7 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setIsReversed(!isReversed)}
-            className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-400"
+            className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-text-2"
           >
             {isReversed ? 'PL -> EN' : 'EN -> PL'}
           </button>
@@ -741,9 +741,9 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
           let btnClass = "py-6 text-lg h-auto whitespace-normal break-words";
           if (selectedOption !== null) {
             if (option === currentCard.definition) {
-              btnClass += " bg-green-500/20 border-green-500 text-green-400";
+              btnClass += " bg-primary/20 border-primary text-primary";
             } else if (option === selectedOption) {
-              btnClass += " bg-red-500/20 border-red-500 text-red-400";
+              btnClass += " bg-danger/20 border-danger text-danger";
             } else {
               btnClass += " opacity-50";
             }
@@ -918,8 +918,8 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
             disabled={status !== 'typing'}
             autoFocus
             className={`w-full px-6 py-4 text-xl bg-base-100 border-2 rounded-xl focus:outline-none transition-colors ${
-              status === 'correct' ? 'border-green-500 text-green-400' :
-              status === 'incorrect' ? 'border-red-500 text-red-400' :
+              status === 'correct' ? 'border-primary text-primary' :
+              status === 'incorrect' ? 'border-danger text-danger' :
               'border-base-300 focus:border-primary'
             }`}
             placeholder={i18n.t("Type the definition...")}
@@ -927,8 +927,8 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
         </div>
         
         {status === 'incorrect' && (
-          <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-center">
-            <div className="text-sm text-red-400 mb-1">{i18n.t("Correct answer:")}</div>
+          <div className="p-4 bg-danger/10 border border-danger/30 rounded-xl text-center">
+            <div className="text-sm text-danger mb-1">{i18n.t("Correct answer:")}</div>
             <div className="text-xl font-bold text-white" dangerouslySetInnerHTML={{ __html: currentCard?.definition || '' }} />
           </div>
         )}
@@ -1075,7 +1075,7 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, show
         {items.map((item) => {
           if (item.isMatched) {
             return (
-              <div key={item.id} className="h-24 md:h-32 rounded-xl border-2 border-dashed border-green-500/30 bg-green-500/5 opacity-50 transition-all duration-500" />
+              <div key={item.id} className="h-24 md:h-32 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 opacity-50 transition-all duration-500" />
             );
           }
           
@@ -1087,7 +1087,7 @@ const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, show
               key={item.id}
               className={`relative h-24 md:h-32 p-3 flex items-center justify-center text-center cursor-pointer transition-all duration-200 select-none touch-manipulation ${
                 isSelected ? 'border-primary bg-primary/10 scale-105 shadow-lg shadow-primary/20' : 
-                isWrong ? 'border-red-500 bg-red-500/10 animate-shake' : 
+                isWrong ? 'border-danger bg-danger/10 animate-shake' : 
                 'hover:border-base-300 hover:bg-base-200/50'
               }`}
               onClick={() => handleItemClick(item)}

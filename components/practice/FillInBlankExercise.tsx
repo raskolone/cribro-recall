@@ -117,7 +117,7 @@ const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit
       </div>
       <div className="bg-base-200/40 backdrop-blur-xl border border-white/20 p-6 rounded-lg shadow-2xl transition-all duration-300">
         <p className="text-lg text-center mb-2">{i18n.t("Complete the sentence:")}</p>
-        <p className="text-center text-gray-600 mb-8">{i18n.t("(Hint: the word means \"")}{currentWord.definition}")</p>
+        <p className="text-center text-text-faint mb-8">{i18n.t("(Hint: the word means \"")}{currentWord.definition}")</p>
 
         <div className="text-2xl text-center flex flex-wrap justify-center items-center gap-2 font-medium">
             <span>{sentenceParts[0]}</span>
@@ -131,9 +131,9 @@ const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit
                     className={`w-36 text-center border-b-4 bg-transparent focus:outline-none transition-all duration-300 rounded-lg ${
                         isSubmitted 
                           ? (isCorrect 
-                              ? 'border-green-500 bg-green-500/10 shadow-[0_0_25px_rgba(34,197,94,0.5)] ring-2 ring-green-400/50 scale-105' 
-                              : 'border-red-500 bg-red-500/10 shadow-[0_0_25px_rgba(239,68,68,0.5)] ring-2 ring-red-400/50 animate-shake') 
-                          : 'border-gray-400 focus:border-primary focus:bg-primary/5 focus:shadow-[0_0_20px_rgba(var(--color-primary),0.2)]'
+                              ? 'border-primary bg-primary/10 shadow-[0_0_25px_rgba(34,197,94,0.5)] ring-2 ring-primary/50 scale-105' 
+                              : 'border-danger bg-danger/10 shadow-[0_0_25px_rgba(239,68,68,0.5)] ring-2 ring-danger/50 animate-shake') 
+                          : 'border-line-strong focus:border-primary focus:bg-primary/5 focus:shadow-[0_0_20px_rgba(var(--color-primary),0.2)]'
                     }`}
                     style={{ minWidth: `${Math.max(currentWord.word.length * 0.8, 5)}em`, padding: '4px 8px' }}
                 />
@@ -147,11 +147,11 @@ const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit
             ) : (
                 <div className="text-center space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     {isCorrect ? (
-                        <p className="text-green-500 font-bold text-xl drop-shadow-[0_0_10px_rgba(34,197,94,0.4)]">{i18n.t("Correct!")}</p>
+                        <p className="text-primary font-bold text-xl drop-shadow-[0_0_10px_rgba(34,197,94,0.4)]">{i18n.t("Correct!")}</p>
                     ) : (
-                        <p className="text-red-500 font-bold text-xl drop-shadow-[0_0_10px_rgba(239,68,68,0.4)]">
+                        <p className="text-danger font-bold text-xl drop-shadow-[0_0_10px_rgba(239,68,68,0.4)]">
                             
-                                                                      {i18n.t("Not quite. The correct answer is:")} <strong className="underline decoration-2 underline-offset-4 decoration-red-400">{currentWord.word}</strong>
+                                                                      {i18n.t("Not quite. The correct answer is:")} <strong className="underline decoration-2 underline-offset-4 decoration-danger">{currentWord.word}</strong>
                         </p>
                     )}
                     <Button onClick={handleNext} autoFocus className="mt-4">

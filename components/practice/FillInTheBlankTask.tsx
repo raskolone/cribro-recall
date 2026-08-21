@@ -85,7 +85,7 @@ export const FillInTheBlankTask: React.FC<FillInTheBlankTaskProps> = ({
               onClick={() => filledWord && handleRemoveWord(blankId)}
               className={`inline-block min-w-[100px] text-center mx-1 px-3 py-1 rounded border-b-2 ${
                 filledWord
-                  ? 'bg-primary/20 text-primary border-primary cursor-pointer hover:bg-red-500/20 hover:text-red-400 hover:border-red-400 hover:line-through'
+                  ? 'bg-primary/20 text-primary border-primary cursor-pointer hover:bg-danger/20 hover:text-danger hover:border-danger hover:line-through'
                   : 'bg-base-300 border-white/30 border-dashed text-content-muted'
               }`}
             >

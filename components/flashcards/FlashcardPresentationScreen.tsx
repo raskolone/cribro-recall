@@ -117,13 +117,13 @@ const FlashcardPresentationScreen: React.FC<FlashcardPresentationScreenProps> = 
         <div className="flex items-center gap-3 bg-base-300 rounded-lg p-1">
           <button 
             onClick={() => { setMode('def-first'); setStep(0); }}
-            className={`px-3 py-1 text-sm font-bold rounded-md transition-colors ${mode === 'def-first' ? 'bg-primary text-black' : 'text-content-muted hover:text-white'}`}
+            className={`px-3 py-1 text-sm font-bold rounded-md transition-colors ${mode === 'def-first' ? 'bg-primary text-accent-ink' : 'text-content-muted hover:text-white'}`}
           >
             {language === 'pl' ? 'Najpierw PL/Definicja' : 'Def First'}
           </button>
           <button 
             onClick={() => { setMode('term-first'); setStep(0); }}
-            className={`px-3 py-1 text-sm font-bold rounded-md transition-colors ${mode === 'term-first' ? 'bg-primary text-black' : 'text-content-muted hover:text-white'}`}
+            className={`px-3 py-1 text-sm font-bold rounded-md transition-colors ${mode === 'term-first' ? 'bg-primary text-accent-ink' : 'text-content-muted hover:text-white'}`}
           >
             {language === 'pl' ? 'Najpierw EN/Pojęcie' : 'Term First'}
           </button>

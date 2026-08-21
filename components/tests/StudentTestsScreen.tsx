@@ -70,7 +70,7 @@ const StudentTestsScreen: React.FC<StudentTestsScreenProps> = ({ onBack }) => {
                 <Download className="w-4 h-4" />
                 {i18n.t("Pobierz raport (PDF)")}
               </Button>
-              <Button onClick={() => setFeedbackTest(null)} className="bg-primary text-black hover:bg-primary/90">
+              <Button onClick={() => setFeedbackTest(null)} className="bg-primary text-accent-ink hover:bg-primary/90">
                 {i18n.t("Zamknij")}
               </Button>
             </div>
@@ -92,15 +92,15 @@ const StudentTestsScreen: React.FC<StudentTestsScreenProps> = ({ onBack }) => {
                 <h3 className="font-bold text-xl">{test.title}</h3>
                 <p className="text-sm text-content-muted mt-1">{test.scope}</p>
                 <div className="flex gap-4 mt-3 text-xs font-mono">
-                  <span className="text-orange-300">{i18n.t("Do:")} {test.dueDate}</span>
-                  <span className="text-blue-300">{i18n.t("Pytań:")} {test.questions.length}</span>
+                  <span className="text-warn">{i18n.t("Do:")} {test.dueDate}</span>
+                  <span className="text-text-mute">{i18n.t("Pytań:")} {test.questions.length}</span>
                 </div>
               </div>
               
               <div className="flex-shrink-0 text-center">
                 {(test.status === 'pending' || (test.attemptsLimit && (test.attemptsUsed || 0) < test.attemptsLimit)) ? (
                   <div className="flex flex-col items-center gap-2">
-                    <Button onClick={() => setActiveTest(test)} className="bg-primary text-black hover:bg-primary/90 font-bold w-full md:w-auto">
+                    <Button onClick={() => setActiveTest(test)} className="bg-primary text-accent-ink hover:bg-primary/90 font-bold w-full md:w-auto">
                       {test.status === 'pending' ? 'Rozpocznij Test' : 'Spróbuj ponownie'}
                     </Button>
                     {test.attemptsLimit && test.attemptsLimit < 999 && (

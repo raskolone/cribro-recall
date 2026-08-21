@@ -38,29 +38,29 @@ const TTSButtons: React.FC<TTSButtonsProps> = ({ text, size = 'md' }) => {
       <button 
         onClick={(e) => handlePlayTTS(e, 'en-GB')}
         disabled={!!isPlaying}
-        className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 rounded-md border transition-all active:scale-95 group/btn disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0 ${isPlaying === 'en-GB' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10 hover:text-white'}`}
+        className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 rounded-md border transition-all active:scale-95 group/btn disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0 ${isPlaying === 'en-GB' ? 'bg-primary/20 text-primary border-primary/40 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-white/5 text-content border-white/10 hover:bg-white/10 hover:text-white'}`}
         title={i18n.t("British English Pronunciation")}
       >
         <span className="text-xs leading-none">🇬🇧</span>
         <span className="text-[9px] font-mono uppercase tracking-wider">{i18n.t("UK")}</span>
         {isPlaying === 'en-GB' ? (
-          <span className="w-2.5 h-2.5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin inline-block" />
+          <span className="w-2.5 h-2.5 border-2 border-primary border-t-transparent rounded-full animate-spin inline-block" />
         ) : (
-          <Volume2 className="w-3 h-3 opacity-70 group-hover/btn:opacity-100 text-emerald-400" />
+          <Volume2 className="w-3 h-3 opacity-70 group-hover/btn:opacity-100 text-primary" />
         )}
       </button>
       <button 
         onClick={(e) => handlePlayTTS(e, 'en-US')}
         disabled={!!isPlaying}
-        className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 rounded-md border transition-all active:scale-95 group/btn disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0 ${isPlaying === 'en-US' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.3)]' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10 hover:text-white'}`}
+        className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 rounded-md border transition-all active:scale-95 group/btn disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0 ${isPlaying === 'en-US' ? 'bg-primary/20 text-primary border-primary/40 shadow-[0_0_10px_rgba(6,182,212,0.3)]' : 'bg-white/5 text-content border-white/10 hover:bg-white/10 hover:text-white'}`}
         title={i18n.t("American English Pronunciation")}
       >
         <span className="text-xs leading-none">🇺🇸</span>
         <span className="text-[9px] font-mono uppercase tracking-wider">{i18n.t("US")}</span>
         {isPlaying === 'en-US' ? (
-          <span className="w-2.5 h-2.5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin inline-block" />
+          <span className="w-2.5 h-2.5 border-2 border-primary border-t-transparent rounded-full animate-spin inline-block" />
         ) : (
-          <Volume2 className="w-3 h-3 opacity-70 group-hover/btn:opacity-100 text-cyan-400" />
+          <Volume2 className="w-3 h-3 opacity-70 group-hover/btn:opacity-100 text-primary" />
         )}
       </button>
     </div>

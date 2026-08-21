@@ -177,10 +177,10 @@ const MatchExercise: React.FC<MatchExerciseProps> = ({ words, onExit, onComplete
                 h-32 p-4 rounded-xl cursor-pointer transition-all duration-200 flex items-center justify-center text-center
                 backdrop-blur-xl border-2 shadow-lg
                 ${isSelected ? 'bg-primary/20 border-primary scale-105' : 'bg-base-100/60 border-white/20 hover:bg-base-100/80 hover:scale-105'}
-                ${isWrong ? 'bg-red-500/20 border-red-500 animate-shake' : ''}
+                ${isWrong ? 'bg-danger/20 border-danger animate-shake' : ''}
               `}
             >
-              <span className={`font-medium ${card.type === 'word' ? 'text-lg text-primary' : 'text-sm text-gray-700'}`}>
+              <span className={`font-medium ${card.type === 'word' ? 'text-lg text-primary' : 'text-sm text-text-faint'}`}>
                 {card.text}
               </span>
             </div>

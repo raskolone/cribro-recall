@@ -109,9 +109,9 @@ const QuizExercise: React.FC<QuizExerciseProps> = ({ words, onExit, onComplete }
             const isCorrectAnswer = option === currentWord.word;
             let buttonClass = 'bg-base-200/40 hover:bg-base-200/60 border-white/10';
             if (isSelected) {
-              buttonClass = isCorrect ? 'bg-green-500 text-white border-green-500' : 'bg-red-500 text-white border-red-500';
+              buttonClass = isCorrect ? 'bg-primary text-accent-ink border-primary' : 'bg-danger text-white border-danger';
             } else if (selectedAnswer && isCorrectAnswer) {
-              buttonClass = 'bg-green-500 text-white border-green-500';
+              buttonClass = 'bg-primary text-accent-ink border-primary';
             }
 
             return (

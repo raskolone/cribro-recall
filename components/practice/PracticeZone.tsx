@@ -57,7 +57,7 @@ const PracticeZone: React.FC<PracticeZoneProps> = ({
         )}
         <div className="text-center p-8 bg-base-200/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] shadow-xl transition-colors duration-300">
           <h2 className="text-xl font-bold mb-4">{i18n.t("Not Enough Words")}</h2>
-          <p className="mb-6 text-gray-600 dark:text-gray-400">
+          <p className="mb-6 text-text-faint dark:text-text-2">
             {isRevisionMode 
               ? "You need at least 4 difficult words to start a revision session. Mark more words as difficult in your vocabulary list."
               : selectedSetId !== 'all' 

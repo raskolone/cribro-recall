@@ -108,7 +108,7 @@ const AudioRecordButton: React.FC<AudioRecordButtonProps> = ({ audioUrl, onAudio
         </button>
         <button 
           onClick={onAudioRemove} 
-          className="w-8 h-8 flex items-center justify-center rounded text-red-400 hover:bg-base-200 transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded text-danger hover:bg-base-200 transition-colors"
           title={language === 'pl' ? 'Usuń audio' : 'Remove audio'}
         >
           <Trash2 size={16} />
@@ -129,7 +129,7 @@ const AudioRecordButton: React.FC<AudioRecordButtonProps> = ({ audioUrl, onAudio
       {isRecording ? (
         <button 
           onClick={stopRecording} 
-          className="w-8 h-8 flex items-center justify-center rounded bg-red-500/20 text-red-500 hover:bg-red-500/30 transition-colors animate-pulse"
+          className="w-8 h-8 flex items-center justify-center rounded bg-danger/20 text-danger hover:bg-danger/30 transition-colors animate-pulse"
           title={language === 'pl' ? 'Zatrzymaj nagrywanie' : 'Stop recording'}
         >
           <StopCircle size={16} />

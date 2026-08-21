@@ -238,27 +238,27 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     const isNew = isNewSet(set);
 
     const cardClass = isNew 
-      ? 'bg-amber-500/10 border-2 border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.25)] animate-pulse-slow' 
-      : (view === 'grid' ? 'hover:border-amber-500/50' : 'bg-base-200/50 border border-white/5 hover:border-amber-500/30');
+      ? 'bg-warn/10 border-2 border-warn/60 shadow-[0_0_20px_rgba(245,158,11,0.25)] animate-pulse-slow' 
+      : (view === 'grid' ? 'hover:border-warn/50' : 'bg-base-200/50 border border-white/5 hover:border-warn/30');
 
     if (view === 'grid') {
       return (
         <Card key={set.id} className={`flex flex-col h-full transition-all duration-300 group relative overflow-hidden ${cardClass}`}>
           {isNew && (
-             <div className="absolute top-0 right-0 px-3 py-1 bg-amber-500 text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
+             <div className="absolute top-0 right-0 px-3 py-1 bg-warn text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
                {language === 'pl' ? 'Nowe słownictwo' : 'New vocabulary'}
              </div>
           )}
           <div className="flex-1 mt-2">
             <h3 
-              className="text-xl font-bold hover:text-amber-400 transition-colors cursor-pointer hover:underline line-clamp-2 mb-2" 
+              className="text-xl font-bold hover:text-warn transition-colors cursor-pointer hover:underline line-clamp-2 mb-2" 
               onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }}
             >
               {cleanTitle}
-                {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-gray-500 text-white px-2 py-0.5 rounded-full">DRAFT</span>}
+                {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-text-faint text-white px-2 py-0.5 rounded-full">DRAFT</span>}
             </h3>
             <div className="flex flex-wrap items-center gap-2 mb-4 text-xs text-content-muted">
-              <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded border border-amber-500/30">
+              <span className="inline-flex items-center gap-1 font-mono font-bold text-warn bg-warn/15 px-2 py-0.5 rounded border border-warn/30">
                 {language === 'pl' ? `Lekcja #${lessonNum}` : `Lesson #${lessonNum}`}
               </span>
               <span className="bg-base-300 px-2 py-0.5 rounded font-mono text-content">
@@ -269,11 +269,11 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             <div className="space-y-1.5 mb-2">
               <div className="flex justify-between text-xs font-medium">
                 <span className="text-content-muted">{language === 'pl' ? 'Opanowanie' : 'Mastery'}</span>
-                <span className={(setMastery[set.id] || 0) >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
+                <span className={(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
               </div>
               <div className="w-full bg-base-300 h-1.5 rounded-full overflow-hidden">
                 <div 
-                  className={`h-full transition-all duration-500 ${(setMastery[set.id] || 0) >= 80 ? 'bg-green-400' : 'bg-primary'}`}
+                  className={`h-full transition-all duration-500 ${(setMastery[set.id] || 0) >= 80 ? 'bg-primary' : 'bg-primary'}`}
                   style={{ width: `${Math.min(100, Math.max(0, setMastery[set.id] || 0))}%` }}
                 />
               </div>
@@ -284,7 +284,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
               🎴 {t('flashcards.study')}
             </Button>
             {onNavigate && (
-              <Button variant="secondary" className="flex-[1_1_auto] border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20" onClick={() => { markSetAsChecked(set.id); onNavigate('ai-generator', { setId: set.id }); }}>
+              <Button variant="secondary" className="flex-[1_1_auto] border-primary/30 text-primary hover:bg-primary/20" onClick={() => { markSetAsChecked(set.id); onNavigate('ai-generator', { setId: set.id }); }}>
                 ✨ {language === 'pl' ? 'Ćwicz' : 'Practice'}
               </Button>
             )}
@@ -302,26 +302,26 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     return (
       <div key={set.id} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 rounded-xl transition-all duration-300 gap-4 relative overflow-hidden ${cardClass}`}>
         {isNew && (
-           <div className="absolute top-0 right-0 px-3 py-1 bg-amber-500 text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
+           <div className="absolute top-0 right-0 px-3 py-1 bg-warn text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
              {language === 'pl' ? 'Nowe słownictwo' : 'New vocabulary'}
            </div>
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-1">
             <h3 
-              className="text-lg font-bold hover:text-amber-400 transition-colors cursor-pointer hover:underline truncate" 
+              className="text-lg font-bold hover:text-warn transition-colors cursor-pointer hover:underline truncate" 
               onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }}
             >
               {cleanTitle}
-                {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-gray-500 text-white px-2 py-0.5 rounded-full">DRAFT</span>}
+                {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-text-faint text-white px-2 py-0.5 rounded-full">DRAFT</span>}
             </h3>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-content-muted mt-2">
-            <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-300 bg-amber-500/15 px-2.5 py-0.5 rounded-md border border-amber-500/30">
+            <span className="inline-flex items-center gap-1 font-mono font-bold text-warn bg-warn/15 px-2.5 py-0.5 rounded-md border border-warn/30">
               {language === 'pl' ? `Lekcja #${lessonNum}` : `Lesson #${lessonNum}`}
             </span>
             {lessonDate && (
-              <span className="font-mono text-gray-300">
+              <span className="font-mono text-content">
                 {language === 'pl' ? `Data lekcji: ${lessonDate}` : `Date: ${lessonDate}`}
               </span>
             )}
@@ -330,7 +330,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             </span>
             <span className="flex items-center gap-1 font-mono">
               {language === 'pl' ? 'Opanowanie:' : 'Mastery:'} 
-              <span className={(setMastery[set.id] || 0) >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
+              <span className={(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
             </span>
             {lastPracticed[set.id] && (
               <span className="font-mono">
@@ -351,7 +351,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           {onNavigate && (
             <Button 
               variant="secondary" 
-              className="flex-1 sm:flex-none border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20" 
+              className="flex-1 sm:flex-none border-primary/30 text-primary hover:bg-primary/20" 
               onClick={() => { markSetAsChecked(set.id); onNavigate('ai-generator', { setId: set.id }); }}
             >
               ✨ {language === 'pl' ? 'Ćwicz w zdaniach' : 'Practice'}
@@ -379,14 +379,14 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     const isNew = isNewSet(set);
 
     const cardClass = isNew 
-      ? 'bg-emerald-500/10 border-2 border-emerald-500/60 shadow-[0_0_20px_rgba(16,185,129,0.25)] animate-pulse-slow' 
+      ? 'bg-primary/10 border-2 border-primary/60 shadow-[0_0_20px_rgba(16,185,129,0.25)] animate-pulse-slow' 
       : (view === 'grid' ? 'hover:border-primary/50' : 'bg-base-200/50 border border-white/5 hover:border-primary/30');
 
     if (view === 'grid') {
       return (
         <Card key={set.id} className={`flex flex-col h-full transition-all duration-300 group relative overflow-hidden ${cardClass}`}>
           {isNew && (
-             <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500 text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
+             <div className="absolute top-0 right-0 px-3 py-1 bg-primary text-accent-ink font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
                {language === 'pl' ? 'Nowy zestaw' : 'New set'}
              </div>
           )}
@@ -397,13 +397,13 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
                 onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }}
               >
                 {cleanTitle}
-                {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-gray-500 text-white px-2 py-0.5 rounded-full">DRAFT</span>}
+                {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-text-faint text-white px-2 py-0.5 rounded-full">DRAFT</span>}
               </h3>
             </div>
             {set.description && <p className="text-content-muted text-sm mb-4 line-clamp-2">{set.description}</p>}
             <div className="flex flex-wrap items-center gap-2.5 mb-6 text-xs text-content-muted">
               {createdDate && (
-                <div className="font-mono bg-base-300/80 px-2.5 py-1 rounded-md text-gray-300">
+                <div className="font-mono bg-base-300/80 px-2.5 py-1 rounded-md text-content">
                   {language === 'pl' ? `Utworzono: ${createdDate}` : `Created: ${createdDate}`}
                 </div>
               )}
@@ -414,11 +414,11 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             <div className="space-y-1.5 mb-2">
               <div className="flex justify-between text-xs font-medium">
                 <span className="text-content-muted">{language === 'pl' ? 'Opanowanie' : 'Mastery'}</span>
-                <span className={(setMastery[set.id] || 0) >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
+                <span className={(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
               </div>
               <div className="w-full bg-base-300 h-1.5 rounded-full overflow-hidden">
                 <div 
-                  className={`h-full transition-all duration-500 ${(setMastery[set.id] || 0) >= 80 ? 'bg-green-400' : 'bg-primary'}`}
+                  className={`h-full transition-all duration-500 ${(setMastery[set.id] || 0) >= 80 ? 'bg-primary' : 'bg-primary'}`}
                   style={{ width: `${Math.min(100, Math.max(0, setMastery[set.id] || 0))}%` }}
                 />
               </div>
@@ -434,7 +434,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             <Button variant="secondary" onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }} disabled={set.cardCount === 0} className="px-3" title={language === 'pl' ? 'Podgląd' : 'Preview'}>
               👀
             </Button>
-            <Button variant="secondary" onClick={(e) => { e.stopPropagation(); setSetToDelete(set.id); }} className="px-3 border-red-500/30 text-red-400 hover:text-red-300 hover:bg-red-500/10" title={language === 'pl' ? 'Usuń zestaw' : 'Delete set'}>
+            <Button variant="secondary" onClick={(e) => { e.stopPropagation(); setSetToDelete(set.id); }} className="px-3 border-danger/30 text-danger hover:text-danger hover:bg-danger/10" title={language === 'pl' ? 'Usuń zestaw' : 'Delete set'}>
               🗑️
             </Button>
           </div>
@@ -445,7 +445,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     return (
       <div key={set.id} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 rounded-xl transition-all duration-300 gap-4 relative overflow-hidden ${cardClass}`}>
         {isNew && (
-           <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500 text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
+           <div className="absolute top-0 right-0 px-3 py-1 bg-primary text-accent-ink font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
              {language === 'pl' ? 'Nowy zestaw' : 'New set'}
            </div>
         )}
@@ -456,12 +456,12 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
               onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }}
             >
               {cleanTitle}
-              {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-gray-500 text-white px-2 py-0.5 rounded-full">DRAFT</span>}
+              {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-text-faint text-white px-2 py-0.5 rounded-full">DRAFT</span>}
             </h3>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-content-muted mt-2">
             {createdDate && (
-              <span className="font-mono text-gray-300">
+              <span className="font-mono text-content">
                 {language === 'pl' ? `Utworzono: ${createdDate}` : `Created: ${createdDate}`}
               </span>
             )}
@@ -470,7 +470,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             </span>
             <span className="flex items-center gap-1 font-mono">
               {language === 'pl' ? 'Opanowanie:' : 'Mastery:'} 
-              <span className={(setMastery[set.id] || 0) >= 80 ? 'text-green-400 font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
+              <span className={(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
             </span>
           </div>
         </div>
@@ -493,7 +493,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           <Button variant="secondary" onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }} disabled={set.cardCount === 0} className="px-3" title={language === 'pl' ? 'Podgląd' : 'Preview'}>
             👀
           </Button>
-          <Button variant="secondary" onClick={(e) => { e.stopPropagation(); setSetToDelete(set.id); }} className="px-3 border-red-500/30 text-red-400 hover:text-red-300 hover:bg-red-500/10" title={language === 'pl' ? 'Usuń zestaw' : 'Delete set'}>
+          <Button variant="secondary" onClick={(e) => { e.stopPropagation(); setSetToDelete(set.id); }} className="px-3 border-danger/30 text-danger hover:text-danger hover:bg-danger/10" title={language === 'pl' ? 'Usuń zestaw' : 'Delete set'}>
             🗑️
           </Button>
         </div>
@@ -511,13 +511,13 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           <div className="flex bg-base-300 p-1 rounded-lg">
             <button 
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-primary text-white shadow-sm' : 'text-content-muted hover:text-white'}`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-primary text-accent-ink shadow-sm' : 'text-content-muted hover:text-white'}`}
             >
               ☰
             </button>
             <button 
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-primary text-white shadow-sm' : 'text-content-muted hover:text-white'}`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-primary text-accent-ink shadow-sm' : 'text-content-muted hover:text-white'}`}
             >
               ⊞
             </button>
@@ -531,7 +531,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
       {/* Lesson Vocabulary Section */}
       {lessonSets.length > 0 && (
         <div className="mt-8 space-y-4">
-          <h2 className="text-xl font-bold flex items-center gap-2 pb-2 border-b border-white/10 text-amber-400">
+          <h2 className="text-xl font-bold flex items-center gap-2 pb-2 border-b border-white/10 text-warn">
             📚 {language === 'pl' ? 'Słownictwo z lekcji' : 'Lesson Vocabulary'}
           </h2>
           <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "flex flex-col gap-3"}>
@@ -542,7 +542,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
 
       {/* Remaining Vocabulary Section */}
       <div className="mt-8 space-y-4">
-        <h2 className="text-xl font-bold flex items-center gap-2 pb-2 border-b border-white/10 text-emerald-400">
+        <h2 className="text-xl font-bold flex items-center gap-2 pb-2 border-b border-white/10 text-primary">
           📝 {language === 'pl' ? 'Słownictwo prywatne' : 'Private Vocabulary'}
         </h2>
         <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "flex flex-col gap-3"}>

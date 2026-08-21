@@ -94,7 +94,7 @@ const SettingsScreen: React.FC = () => {
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-extrabold tracking-tight">{language === 'pl' ? 'Ustawienia Aplikacji' : 'Settings'}</h1>
                 {saveSuccessMessage && (
-                    <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-full animate-fade-in">
+                    <div className="flex items-center gap-1.5 text-xs text-primary font-semibold bg-primary/10 border border-primary/30 px-3 py-1.5 rounded-full animate-fade-in">
                         <Check size={14} />
                         {language === 'pl' ? 'Ustawienia zapisane' : 'Settings saved'}
                     </div>
@@ -129,16 +129,16 @@ const SettingsScreen: React.FC = () => {
             </Card>
 
             {/* DEDICATED SOUND & VOICE SETTINGS CARD */}
-            <Card className="border border-emerald-500/30 bg-gradient-to-br from-base-200/90 via-base-200/70 to-emerald-950/20 shadow-lg">
+            <Card className="border border-primary/30 bg-gradient-to-br from-base-200/90 via-base-200/70 to-primary/20 shadow-lg">
                 <div className="flex items-center justify-between pb-4 mb-5 border-b border-white/10">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                        <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
                             <Volume2 className="w-5 h-5" />
                         </div>
                         <div>
                             <h2 className="text-lg font-bold text-white flex items-center gap-2">
                                 {language === 'pl' ? 'Ustawienia Dźwięku i Lektora AI' : 'Sound & AI Voice Settings'}
-                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 uppercase tracking-wider">
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/20 text-primary uppercase tracking-wider">
                                     {canViewAiModels
                                         ? (soundSettings.soundEngine === 'browser' ? 'Web Speech' : 'Multi-Tier AI')
                                         : 'Lektor AI'}
@@ -157,14 +157,14 @@ const SettingsScreen: React.FC = () => {
                         disabled={isTestingAudio}
                         className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
                             audioTestSuccess
-                                ? 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.5)]'
-                                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
+                                ? 'bg-primary text-accent-ink shadow-[0_0_15px_rgba(16,185,129,0.5)]'
+                                : 'bg-primary/20 text-primary border border-primary/40 hover:bg-primary/30'
                         }`}
                         title={language === 'pl' ? 'Odsłuchaj próbkę głosu' : 'Play voice sample'}
                     >
                         {isTestingAudio ? (
                             <>
-                                <span className="w-3.5 h-3.5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                                <span className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                                 <span>{language === 'pl' ? 'Generowanie...' : 'Playing...'}</span>
                             </>
                         ) : audioTestSuccess ? (
@@ -184,14 +184,14 @@ const SettingsScreen: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {/* 1. Kategoria / Silnik Syntezy */}
                     <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
+                        <label className="block text-xs font-semibold text-content uppercase tracking-wider mb-2">
                             {language === 'pl' ? 'Kategoria / Silnik Dźwięku' : 'Audio Engine Category'}
                         </label>
                         {canViewAiModels ? (
                             <select
                                 value={soundSettings.soundEngine || 'auto'}
                                 onChange={(e) => handleSettingChange('soundEngine', e.target.value as SoundEngine)}
-                                className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-white text-sm focus:outline-none focus:border-emerald-400 transition-colors"
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-white text-sm focus:outline-none focus:border-primary transition-colors"
                             >
                                 <option value="auto">⚡ {language === 'pl' ? 'Automatyczny (OpenAI tts-1 + gpt-4o-mini + Gemini)' : 'Automatic (OpenAI tts-1 + gpt-4o-mini + Gemini)'}</option>
                                 <option value="openai">🤖 {language === 'pl' ? 'OpenAI tts-1 (Studyjny & szybki)' : 'OpenAI tts-1 (Studio quality)'}</option>
@@ -203,7 +203,7 @@ const SettingsScreen: React.FC = () => {
                             <select
                                 value={soundSettings.soundEngine || 'auto'}
                                 onChange={(e) => handleSettingChange('soundEngine', e.target.value as SoundEngine)}
-                                className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-white text-sm focus:outline-none focus:border-emerald-400 transition-colors"
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-white text-sm focus:outline-none focus:border-primary transition-colors"
                             >
                                 <option value="auto">⚡ {language === 'pl' ? 'Automatyczny (Rekomendowany - wysoka jakość)' : 'Automatic (Recommended - High quality)'}</option>
                                 <option value="openai">🎙️ {language === 'pl' ? 'Studyjny Lektor HD' : 'Studio HD Voice'}</option>
@@ -226,7 +226,7 @@ const SettingsScreen: React.FC = () => {
 
                     {/* 2. Domyślny Akcent */}
                     <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
+                        <label className="block text-xs font-semibold text-content uppercase tracking-wider mb-2">
                             {language === 'pl' ? 'Domyślny Akcent' : 'Default Accent'}
                         </label>
                         <div className="grid grid-cols-2 gap-2">
@@ -235,8 +235,8 @@ const SettingsScreen: React.FC = () => {
                                 onClick={() => handleSettingChange('ttsAccent', 'en-US')}
                                 className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-bold transition-all ${
                                     soundSettings.ttsAccent === 'en-US'
-                                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.25)]'
-                                        : 'bg-black/30 text-gray-400 border-white/10 hover:bg-white/5 hover:text-white'
+                                        ? 'bg-primary/20 text-primary border-primary/50 shadow-[0_0_10px_rgba(6,182,212,0.25)]'
+                                        : 'bg-black/30 text-text-2 border-white/10 hover:bg-white/5 hover:text-white'
                                 }`}
                             >
                                 <span className="text-base">🇺🇸</span>
@@ -248,8 +248,8 @@ const SettingsScreen: React.FC = () => {
                                 onClick={() => handleSettingChange('ttsAccent', 'en-GB')}
                                 className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-bold transition-all ${
                                     soundSettings.ttsAccent === 'en-GB'
-                                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.25)]'
-                                        : 'bg-black/30 text-gray-400 border-white/10 hover:bg-white/5 hover:text-white'
+                                        ? 'bg-primary/20 text-primary border-primary/50 shadow-[0_0_10px_rgba(16,185,129,0.25)]'
+                                        : 'bg-black/30 text-text-2 border-white/10 hover:bg-white/5 hover:text-white'
                                 }`}
                             >
                                 <span className="text-base">🇬🇧</span>
@@ -260,7 +260,7 @@ const SettingsScreen: React.FC = () => {
 
                     {/* 3. Wariant Głosu / Płeć */}
                     <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
+                        <label className="block text-xs font-semibold text-content uppercase tracking-wider mb-2">
                             {language === 'pl' ? 'Głos Lektora' : 'Voice Variant'}
                         </label>
                         <div className="grid grid-cols-2 gap-2">
@@ -270,7 +270,7 @@ const SettingsScreen: React.FC = () => {
                                 className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-bold transition-all ${
                                     soundSettings.voiceGender === 'male'
                                         ? 'bg-primary/20 text-primary border-primary/50'
-                                        : 'bg-black/30 text-gray-400 border-white/10 hover:bg-white/5 hover:text-white'
+                                        : 'bg-black/30 text-text-2 border-white/10 hover:bg-white/5 hover:text-white'
                                 }`}
                             >
                                 <span>👨</span>
@@ -282,8 +282,8 @@ const SettingsScreen: React.FC = () => {
                                 onClick={() => handleSettingChange('voiceGender', 'female')}
                                 className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-bold transition-all ${
                                     soundSettings.voiceGender === 'female'
-                                        ? 'bg-purple-500/20 text-purple-300 border-purple-500/50'
-                                        : 'bg-black/30 text-gray-400 border-white/10 hover:bg-white/5 hover:text-white'
+                                        ? 'bg-primary/20 text-primary border-primary/50'
+                                        : 'bg-black/30 text-text-2 border-white/10 hover:bg-white/5 hover:text-white'
                                 }`}
                             >
                                 <span>👩</span>
@@ -294,13 +294,13 @@ const SettingsScreen: React.FC = () => {
 
                     {/* 4. Prędkość Czytania Zdań */}
                     <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
+                        <label className="block text-xs font-semibold text-content uppercase tracking-wider mb-2">
                             {language === 'pl' ? 'Prędkość Czytania Zdań' : 'Sentence Reading Speed'}
                         </label>
                         <select
                             value={soundSettings.voiceSpeed || 1.0}
                             onChange={(e) => handleSettingChange('voiceSpeed', parseFloat(e.target.value) as VoiceSpeed)}
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-white text-sm focus:outline-none focus:border-emerald-400 transition-colors"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-white text-sm focus:outline-none focus:border-primary transition-colors"
                         >
                             <option value={0.75}>0.75x — {language === 'pl' ? 'Bardzo powolna (nauka wymowy)' : 'Slow (Pronunciation learning)'}</option>
                             <option value={0.85}>0.85x — {language === 'pl' ? 'Spokojna lektorska' : 'Relaxed tutor pace'}</option>
@@ -327,7 +327,7 @@ const SettingsScreen: React.FC = () => {
                             type="checkbox"
                             checked={soundSettings.autoPlaySentence}
                             onChange={(e) => handleSettingChange('autoPlaySentence', e.target.checked)}
-                            className="w-5 h-5 rounded border-white/20 bg-black/40 text-emerald-400 focus:ring-emerald-400 accent-emerald-400 cursor-pointer shrink-0"
+                            className="w-5 h-5 rounded border-white/20 bg-black/40 text-primary focus:ring-primary accent-primary cursor-pointer shrink-0"
                         />
                     </label>
 
@@ -346,7 +346,7 @@ const SettingsScreen: React.FC = () => {
                             type="checkbox"
                             checked={soundSettings.autoPlayFlashcards}
                             onChange={(e) => handleSettingChange('autoPlayFlashcards', e.target.checked)}
-                            className="w-5 h-5 rounded border-white/20 bg-black/40 text-emerald-400 focus:ring-emerald-400 accent-emerald-400 cursor-pointer shrink-0"
+                            className="w-5 h-5 rounded border-white/20 bg-black/40 text-primary focus:ring-primary accent-primary cursor-pointer shrink-0"
                         />
                     </label>
                 </div>
@@ -354,16 +354,16 @@ const SettingsScreen: React.FC = () => {
 
             {/* AI LIVE MONITOR STATUS & TOGGLE CARD (Visible only to Admin or Permitted Students) */}
             {canViewAiModels && (
-                <Card className="border border-cyan-500/30 bg-gradient-to-br from-base-200/90 via-base-200/70 to-cyan-950/20 shadow-lg">
+                <Card className="border border-primary/30 bg-gradient-to-br from-base-200/90 via-base-200/70 to-primary/20 shadow-lg">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                            <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                            <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
                                 <Sparkles className="w-5 h-5" />
                             </div>
                             <div>
                                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                                     AI Live Monitor
-                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 uppercase tracking-wider">
+                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/20 text-primary uppercase tracking-wider">
                                         {user?.role === 'admin' ? 'Admin' : 'Aktywny'}
                                     </span>
                                 </h2>
@@ -374,10 +374,10 @@ const SettingsScreen: React.FC = () => {
                                 </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2.5 bg-cyan-500/10 border border-cyan-500/30 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-cyan-300 shrink-0">
+                        <div className="flex items-center gap-2.5 bg-primary/10 border border-primary/30 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-primary shrink-0">
                             <span className="relative flex h-2.5 w-2.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-400" />
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
                             </span>
                             <span>{language === 'pl' ? 'Monitor Aktywny' : 'Monitor Active'}</span>
                         </div>
@@ -394,7 +394,7 @@ const SettingsScreen: React.FC = () => {
                                 {language === 'pl' ? 'Powiąż swoje konto z Google, aby móc logować się za jego pomocą i importować słówka z Google Drive i Google Docs.' : 'Link your account with Google to log in via Google and import words from Google Drive and Google Docs.'}
                             </p>
                             {auth.currentUser?.providerData?.some((p: any) => p.providerId === 'google.com') ? (
-                                <div className="text-green-500 font-bold text-sm">✓ {language === 'pl' ? 'Konto połączone z Google' : 'Account linked to Google'}</div>
+                                <div className="text-primary font-bold text-sm">✓ {language === 'pl' ? 'Konto połączone z Google' : 'Account linked to Google'}</div>
                             ) : (
                                 <Button 
                                     onClick={async () => {
@@ -414,7 +414,7 @@ const SettingsScreen: React.FC = () => {
                                     {language === 'pl' ? 'Połącz z Google' : 'Link with Google'}
                                 </Button>
                             )}
-                            {linkError && <p className="text-red-500 text-sm mt-2">{linkError}</p>}
+                            {linkError && <p className="text-danger text-sm mt-2">{linkError}</p>}
                         </div>
                     </div>
                 </Card>
@@ -435,8 +435,8 @@ const SettingsScreen: React.FC = () => {
                     </div>
                 </Card>
 
-                <Card className="border-red-500/30 bg-red-500/5 md:col-span-2">
-                    <h2 className="text-xl font-bold mb-4 text-red-500">{i18n.t("Danger Zone")}</h2>
+                <Card className="border-danger/30 bg-danger/5 md:col-span-2">
+                    <h2 className="text-xl font-bold mb-4 text-danger">{i18n.t("Danger Zone")}</h2>
                     <div className="space-y-4">
                         <p className="text-sm text-content-muted">
                             {i18n.t("Permanently delete all generated words from your account. This action cannot be undone.")}
@@ -458,7 +458,7 @@ const SettingsScreen: React.FC = () => {
             {showDeleteModal && (
                 <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <Card className="w-full max-w-md shadow-2xl border-primary/20">
-                        <h3 className="text-xl font-bold mb-4 text-red-500">{i18n.t("Confirm Deletion")}</h3>
+                        <h3 className="text-xl font-bold mb-4 text-danger">{i18n.t("Confirm Deletion")}</h3>
                         <p className="mb-6 opacity-80">
                             {i18n.t("Are you sure you want to delete all")} {words.length} {i18n.t("generated words? This action cannot be undone.")}
                         </p>

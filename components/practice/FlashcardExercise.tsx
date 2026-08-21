@@ -113,13 +113,13 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
             {currentWord?.word && <div className="absolute top-4 right-4"><TTSButtons text={currentWord.word} /></div>}
           </div>
           {/* Back of card */}
-          <div className="absolute w-full h-full p-6 backface-hidden bg-primary/40 backdrop-blur-xl border border-white/20 text-white rounded-xl shadow-2xl flex flex-col justify-center text-center" style={{ transform: 'rotateY(180deg)' }}>
+          <div className="absolute w-full h-full p-6 backface-hidden bg-primary/40 backdrop-blur-xl border border-white/20 text-accent-ink rounded-xl shadow-2xl flex flex-col justify-center text-center" style={{ transform: 'rotateY(180deg)' }}>
             <p className="text-xl font-semibold">{currentWord?.definition}</p>
             <p className="mt-4 text-base italic opacity-80">"{currentWord?.example}"</p>
           </div>
         </div>
         
-        <p className="text-center mt-4 text-gray-500">
+        <p className="text-center mt-4 text-text-mute">
           
                             {i18n.t("Card")} {currentIndex + 1}  {i18n.t("of")} {shuffledWords.length}
         </p>
@@ -135,11 +135,11 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
             if (selectedAnswer) {
               if (isSelected) {
                 btnClass = isCorrectAnswer 
-                  ? 'bg-green-500 text-white border-green-500 ring-2 ring-green-400' 
-                  : 'bg-red-500 text-white border-red-500';
+                  ? 'bg-primary text-accent-ink border-primary ring-2 ring-primary' 
+                  : 'bg-danger text-white border-danger';
               } else if (isCorrectAnswer) {
                 // Highlight the correct answer if the user chose incorrectly
-                btnClass = 'bg-green-500 text-white border-green-500 ring-2 ring-green-400 animate-pulse';
+                btnClass = 'bg-primary text-accent-ink border-primary ring-2 ring-primary animate-pulse';
               } else {
                 btnClass = 'opacity-50 cursor-not-allowed';
               }

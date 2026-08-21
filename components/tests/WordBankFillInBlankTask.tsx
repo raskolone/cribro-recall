@@ -243,8 +243,8 @@ export const WordBankFillInBlankTask: React.FC<WordBankFillInBlankTaskProps> = (
                 onClick={() => handleBankWordClick(wordObj)}
                 className={`px-4 py-2.5 rounded-xl border-2 text-base font-bold transition-all cursor-grab active:cursor-grabbing select-none shadow-md ${
                   isSelected
-                    ? 'bg-amber-400 text-black border-amber-300 ring-4 ring-amber-400/40 scale-105'
-                    : 'bg-base-100 border-primary/40 text-white hover:border-primary hover:bg-primary/20 hover:scale-105'
+                    ? 'bg-warn text-black border-warn ring-4 ring-warn/40 scale-105'
+                    : 'bg-base-100 border-primary/40 text-accent-ink hover:border-primary hover:bg-primary/20 hover:scale-105'
                 }`}
               >
                 {wordObj.text}
@@ -286,11 +286,11 @@ export const WordBankFillInBlankTask: React.FC<WordBankFillInBlankTaskProps> = (
                           placedWords[gapIdx]
                             ? showFeedback
                               ? placedWords[gapIdx].text.toLowerCase() === (correctParts[gapIdx] || '').toLowerCase()
-                                ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
-                                : 'border-red-500 bg-red-500/20 text-red-300 animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.4)]'
+                                ? 'border-primary bg-primary/20 text-primary shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                                : 'border-danger bg-danger/20 text-danger animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.4)]'
                               : 'border-primary/80 bg-primary/20 text-primary shadow-[0_0_15px_rgba(114,240,180,0.25)]'
                             : selectedWordFromBank
-                            ? 'border-amber-400 bg-amber-400/10 border-dashed text-amber-200 animate-pulse'
+                            ? 'border-warn bg-warn/10 border-dashed text-warn animate-pulse'
                             : 'border-dashed border-white/30 hover:border-primary/60 bg-white/5 text-content-muted'
                         }`}
                       >

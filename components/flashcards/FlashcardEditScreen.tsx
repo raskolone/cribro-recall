@@ -595,18 +595,18 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setIsImportModalOpen(true)}
-            className="text-sm font-medium text-amber-500 hover:text-amber-400 transition-colors flex items-center gap-2"
+            className="text-sm font-medium text-warn hover:text-warn transition-colors flex items-center gap-2"
           >
             <Sparkles className="w-4 h-4" /> {language === 'pl' ? 'Importuj z AI' : 'Import with AI'}
           </button>
           <button 
             onClick={() => setIsAIGenModalOpen(true)}
-            className="text-sm font-medium text-amber-500 hover:text-amber-400 transition-colors flex items-center gap-2"
+            className="text-sm font-medium text-warn hover:text-warn transition-colors flex items-center gap-2"
           >
             <Sparkles className="w-4 h-4" /> {language === 'pl' ? 'Wygeneruj z tematu AI' : 'Generate from topic AI'}
           </button>
 
-                    <Button onClick={async () => { await handleManualSave(); onBack(); }} className="bg-amber-500 text-black hover:bg-amber-400 border-transparent">
+                    <Button onClick={async () => { await handleManualSave(); onBack(); }} className="bg-warn text-black hover:bg-warn border-transparent">
             {language === 'pl' ? 'Zapisz nowy zestaw' : 'Save new set'}
           </Button>
         </div>
@@ -635,10 +635,10 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
 
         <div className="flex items-center gap-4">
           <label className="flex items-center gap-2 cursor-pointer">
-            <span className={`text-sm font-medium ${aiSuggestionsEnabled ? 'text-blue-400' : 'text-content-muted'}`}>
+            <span className={`text-sm font-medium ${aiSuggestionsEnabled ? 'text-primary' : 'text-content-muted'}`}>
               {language === 'pl' ? 'Sugestie' : 'Suggestions'}
             </span>
-            <div className={`w-10 h-6 rounded-full p-1 transition-colors ${aiSuggestionsEnabled ? 'bg-blue-500' : 'bg-base-300'}`}>
+            <div className={`w-10 h-6 rounded-full p-1 transition-colors ${aiSuggestionsEnabled ? 'bg-primary' : 'bg-base-300'}`}>
               <div className={`w-4 h-4 bg-white rounded-full transition-transform ${aiSuggestionsEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
             </div>
             <input 
@@ -663,10 +663,10 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
               <div className="w-px h-4 bg-white/10 mx-1" />
               <input type="color" onInput={(e) => document.execCommand('foreColor', false, e.currentTarget.value)} className="w-6 h-6 p-0 border-0 rounded cursor-pointer mx-1" title={i18n.t("Color")} />
               <div className="w-px h-4 bg-white/10 mx-1" />
-              <button onMouseDown={(e) => { e.preventDefault(); handleVoiceInput(index); }} className="w-8 h-8 flex items-center justify-center hover:bg-blue-500/20 rounded-lg text-blue-400 hover:text-blue-300 transition-colors" title={i18n.t("Voice Input")}>🎤</button>
+              <button onMouseDown={(e) => { e.preventDefault(); handleVoiceInput(index); }} className="w-8 h-8 flex items-center justify-center hover:bg-primary/20 rounded-lg text-primary hover:text-accent-soft transition-colors" title={i18n.t("Voice Input")}>🎤</button>
               <button 
                 onMouseDown={(e) => { e.preventDefault(); handleToggleLock(index); }} 
-                className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${card.isLocked ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30' : 'hover:bg-base-200 text-content-muted hover:text-white'}`} 
+                className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${card.isLocked ? 'bg-warn/20 text-warn hover:bg-warn/30' : 'hover:bg-base-200 text-content-muted hover:text-white'}`} 
                 title={card.isLocked ? 'Unlock' : 'Lock'}
               >
                 {card.isLocked ? '🔒' : '🔓'}
@@ -674,11 +674,11 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
             </div>
 
             {/* Card Header */}
-            <div className={`flex items-center justify-between px-6 py-3 border-b transition-colors rounded-t-2xl ${card.isLocked ? 'bg-orange-500/5 border-orange-500/10' : 'bg-base-200/50 border-base-300'}`}>
-              <span className={`font-black text-lg ${card.isLocked ? 'text-orange-500/70' : 'text-content-muted'}`}>{index + 1}</span>
+            <div className={`flex items-center justify-between px-6 py-3 border-b transition-colors rounded-t-2xl ${card.isLocked ? 'bg-warn/5 border-warn/10' : 'bg-base-200/50 border-base-300'}`}>
+              <span className={`font-black text-lg ${card.isLocked ? 'text-warn/70' : 'text-content-muted'}`}>{index + 1}</span>
               <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button className="text-content-muted hover:text-white cursor-grab p-1">☰</button>
-                <button onClick={() => handleRemoveCard(index)} className="text-content-muted hover:text-red-400 p-1 transition-colors">🗑</button>
+                <button onClick={() => handleRemoveCard(index)} className="text-content-muted hover:text-danger p-1 transition-colors">🗑</button>
               </div>
             </div>
             
@@ -747,12 +747,12 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                 <div className="flex flex-col items-center md:items-end gap-2 group/media">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold text-content-muted uppercase tracking-widest">{language === 'pl' ? 'OBRAZ' : 'IMAGE'}</span>
-                    <button onClick={() => handleGenerateImage(index)} disabled={isGeneratingImageFor === index || card.isLocked} className="text-[10px] font-bold text-purple-400 hover:text-purple-300 transition-colors uppercase" title={i18n.t("Generate with AI")}>{i18n.t("✨ AI")}</button>
+                    <button onClick={() => handleGenerateImage(index)} disabled={isGeneratingImageFor === index || card.isLocked} className="text-[10px] font-bold text-primary hover:text-primary transition-colors uppercase" title={i18n.t("Generate with AI")}>{i18n.t("✨ AI")}</button>
                   </div>
                   {card.imageUrl ? (
                     <div className="relative group/img">
                       <img src={card.imageUrl} alt={i18n.t("Card visual")} className="w-16 h-12 object-cover rounded-lg border border-white/10" referrerPolicy="no-referrer" />
-                      <button onClick={() => handleUpdateCard(index, 'imageUrl', '')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover/img:opacity-100 transition-opacity">×</button>
+                      <button onClick={() => handleUpdateCard(index, 'imageUrl', '')} className="absolute -top-2 -right-2 bg-danger text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover/img:opacity-100 transition-opacity">×</button>
                     </div>
                   ) : (
                     <div className="relative">
@@ -778,7 +778,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                 <div>
                   <div className="flex justify-between mb-3 border-b-2 border-transparent">
                     <span className="text-xs font-bold text-content-muted uppercase tracking-widest">{language === 'pl' ? 'ZDANIE Z KONTEKSTEM' : 'CONTEXT SENTENCE'}</span>
-                    <button onClick={() => handleGenerateContext(index)} disabled={isGeneratingContextFor === index || card.isLocked} className="text-[10px] font-bold text-purple-400 hover:text-purple-300 transition-colors uppercase" title={i18n.t("Generate Context with AI")}>
+                    <button onClick={() => handleGenerateContext(index)} disabled={isGeneratingContextFor === index || card.isLocked} className="text-[10px] font-bold text-primary hover:text-primary transition-colors uppercase" title={i18n.t("Generate Context with AI")}>
                       {isGeneratingContextFor === index ? '⏳' : '✨ AI'}
                     </button>
                   </div>
@@ -812,7 +812,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
           <Card className="w-full max-w-lg">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold flex items-center gap-2">
-                <Sparkles className="w-6 h-6 text-amber-400" />
+                <Sparkles className="w-6 h-6 text-warn" />
                 {language === 'pl' ? 'Generuj słówka z AI' : 'Generate vocabulary with AI'}
               </h2>
               <button onClick={() => setIsAIGenModalOpen(false)} className="text-content-muted hover:text-white text-2xl">{i18n.t("&times;")}</button>
@@ -874,14 +874,14 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
               <Button 
                 onClick={() => handleGenerateFromTopic(false)} 
                 disabled={!aiGenTopic.trim() || isGeneratingAITopic}
-                className="bg-amber-500/20 text-amber-500 hover:bg-amber-500/30"
+                className="bg-warn/20 text-warn hover:bg-warn/30"
               >
                 {isGeneratingAITopic ? '...' : (language === 'pl' ? 'Dodaj do istniejących ✨' : 'Append ✨')}
               </Button>
               <Button 
                 onClick={() => handleGenerateFromTopic(true)} 
                 disabled={!aiGenTopic.trim() || isGeneratingAITopic}
-                className="bg-amber-500 text-black hover:bg-amber-400"
+                className="bg-warn text-black hover:bg-warn"
               >
                 {isGeneratingAITopic ? (language === 'pl' ? 'Generowanie...' : 'Generating...') : (language === 'pl' ? 'Czysty Zestaw ✨' : 'Clean Set ✨')}
               </Button>
@@ -896,7 +896,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
           <Card className="w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold flex items-center gap-2">
-                <Sparkles className="w-6 h-6 text-amber-400" />
+                <Sparkles className="w-6 h-6 text-warn" />
                 {language === 'pl' ? 'Importuj z AI' : 'Import with AI'}
               </h2>
               <button onClick={() => setIsImportModalOpen(false)} className="text-content-muted hover:text-white text-2xl">{i18n.t("&times;")}</button>
@@ -965,14 +965,14 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
               <Button 
                 onClick={() => handleImportWithAI(false)} 
                 disabled={!importText.trim() || isImportingWithAI}
-                className="bg-amber-500/20 text-amber-500 hover:bg-amber-500/30 border-transparent"
+                className="bg-warn/20 text-warn hover:bg-warn/30 border-transparent"
               >
                 {isImportingWithAI ? '...' : (language === 'pl' ? 'Dodaj do istniejących ✨' : 'Append ✨')}
               </Button>
               <Button 
                 onClick={() => handleImportWithAI(true)} 
                 disabled={!importText.trim() || isImportingWithAI}
-                className="bg-amber-500 text-black hover:bg-amber-400 border-transparent"
+                className="bg-warn text-black hover:bg-warn border-transparent"
               >
                 {isImportingWithAI ? (language === 'pl' ? 'Analizowanie...' : 'Analyzing...') : (language === 'pl' ? 'Czysty Zestaw ✨' : 'Clean Set ✨')}
               </Button>
@@ -986,7 +986,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
           <div className="bg-base-100 p-6 rounded-xl w-full max-w-2xl border border-white/10 shadow-2xl relative my-auto">
             <h3 className="text-xl font-bold mb-4">{i18n.t("Wybierz plik z Google Drive")}</h3>
             {driveError && (
-              <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 rounded-lg mb-4 text-sm">
+              <div className="bg-danger/10 border border-danger/50 text-danger p-4 rounded-lg mb-4 text-sm">
                 {driveError}
               </div>
             )}

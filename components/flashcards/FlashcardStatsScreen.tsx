@@ -184,8 +184,8 @@ const FlashcardStatsScreen: React.FC<FlashcardStatsScreenProps> = ({ setId, onBa
                           </div>
                         </td>
                         <td className="py-3 px-4 text-content-muted" dangerouslySetInnerHTML={{ __html: card.definition }} />
-                        <td className="py-3 px-4 text-center text-green-400 font-mono">{stats.correct}</td>
-                        <td className="py-3 px-4 text-center text-red-400 font-mono">{stats.incorrect}</td>
+                        <td className="py-3 px-4 text-center text-primary font-mono">{stats.correct}</td>
+                        <td className="py-3 px-4 text-center text-danger font-mono">{stats.incorrect}</td>
                         <td className="py-3 px-4 text-right text-content-muted text-sm">
                           {stats.lastPracticed ? stats.lastPracticed.toLocaleDateString() : '-'}
                         </td>
