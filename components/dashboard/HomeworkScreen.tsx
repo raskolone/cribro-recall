@@ -11,6 +11,7 @@ import Button from '../ui/Button';
 import ConfirmModal from '../ui/ConfirmModal';
 import { LessonSelectionModal } from './LessonSelectionModal';
 import { FillInTheBlankTask } from '../practice/FillInTheBlankTask';
+import Badge from '../ui/Badge';
 import { 
   BookOpen, 
   Sparkles, 
@@ -2003,24 +2004,16 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
             <div className="flex justify-between items-start border-b border-white/10 pb-4">
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                  <span className="text-[11px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-primary/20 text-primary font-bold">
+                  <Badge>
                     {previewTask.type === 'fill_in_the_blank' ? 'Znajdź błędy w zdaniach' : 'Tłumaczenie zdań'}
-                  </span>
-                  <span
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                      previewTask.status === 'submitted'
-                        ? 'bg-primary/20 text-primary'
-                        : previewTask.status === 'graded'
-                        ? 'bg-primary/20 text-primary'
-                        : 'bg-warn/20 text-warn'
-                    }`}
-                  >
+                  </Badge>
+                  <Badge status={previewTask.status === 'submitted' || previewTask.status === 'graded' ? 'ok' : 'wait'}>
                     {previewTask.status === 'submitted'
                       ? 'Przesłano do oceny'
                       : previewTask.status === 'graded'
                       ? 'Oceniono'
                       : 'Oczekuje na wykonanie'}
-                  </span>
+                  </Badge>
                 </div>
                 <h2 className="text-xl font-bold text-white">{previewTask.title}</h2>
                 <div className="flex flex-wrap items-center gap-3 text-xs text-content-muted mt-1">

@@ -10,6 +10,9 @@ import TTSButtons from '../flashcards/TTSButtons';
 import { Calendar, Tag, Sparkles, X, FileText, Clock, Search, BookOpen, AlertCircle, ArrowLeft, LayoutGrid, List, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import Markdown from 'react-markdown';
 import gsap from 'gsap';
+import Badge from '../ui/Badge';
+import SectionHeader from '../ui/SectionHeader';
+import { sectionMeta } from '../../utils/sectionMeta';
 
 interface LessonHistoryScreenProps {
   onStudySet?: (setId: string) => void;
@@ -221,18 +224,12 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-24 relative">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">
-            {language === 'pl' ? 'Historia i postępy' : 'History & Progress'}
-          </h1>
-          <p className="text-content-muted text-sm mt-1">
-             {language === 'pl' 
-                 ? 'Przeglądaj historię lekcji i sesji ćwiczeniowych.' 
-                 : 'Review lesson history and practice session history.'}
-          </p>
-        </div>
-        
+      <SectionHeader
+        className="mb-8"
+        divider={false}
+        title={sectionMeta('lesson-history', language)?.title}
+        subtitle={sectionMeta('lesson-history', language)?.subtitle}
+        actions={
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
           {/* Toggle for month grouping when in list view */}
           {activeTab === 'lessons' && viewMode === 'list' && lessons.length > 0 && (
@@ -296,7 +293,8 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
              </button>
           </div>
         </div>
-      </div>
+        }
+      />
 
       {isLoading ? (
          <div className="flex justify-center p-12">
@@ -358,16 +356,16 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                     {/* Badges */}
                     <div className="flex flex-wrap items-center gap-2 mt-2 relative z-10">
                       {lesson.lessonSummary && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/30">
+                        <Badge plain>
                           <Sparkles className="w-3 h-3 text-primary" />
                           {language === 'pl' ? 'Podsumowanie' : 'Summary'}
-                        </span>
+                        </Badge>
                       )}
                       {vocabCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/30">
+                        <Badge plain>
                           <Tag className="w-3 h-3 text-primary" />
                           {vocabCount} {language === 'pl' ? 'słów' : 'words'}
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   </div>

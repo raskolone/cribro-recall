@@ -29,6 +29,8 @@ import { PracticeLog, TranslationEvaluationResult } from '../../types';
 import { extractErrorMessage } from '../../services/geminiService';
 import { aiMonitor } from '../../services/aiMonitorService';
 import i18n from 'i18next';
+import SectionHeader from '../ui/SectionHeader';
+import { sectionMeta } from '../../utils/sectionMeta';
 
 // Helper to format local date keys (YYYY-MM-DD)
 function getLocalDateKey(dateInput: string | Date): string {
@@ -450,19 +452,12 @@ const StudentStatsScreen: React.FC = () => {
   return (
     <div className="flex-1 p-4 md:p-8 overflow-y-auto w-full max-w-7xl mx-auto animate-fade-in space-y-8 pb-16">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
-        <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-            <GraduationCap className="w-8 h-8 text-primary" />
-            {language === 'pl' ? 'Statystyki i Podsumowanie Pracy' : 'Statistics & Work Summary'}
-          </h1>
-          <p className="text-content-muted text-sm mt-1">
-            {language === 'pl' 
-              ? 'Podejrzyj wyniki wszystkich swoich ćwiczeń oraz podsumowanie swojej pracy przygotowane przez AI.' 
-              : 'Review your exercise results and work summary prepared by AI.'}
-          </p>
-        </div>
-      </div>
+      <SectionHeader
+        icon={<GraduationCap className="w-8 h-8" />}
+        kicker={language === 'pl' ? 'Kursant' : 'Student'}
+        title={sectionMeta('student-stats', language)?.title}
+        subtitle={sectionMeta('student-stats', language)?.subtitle}
+      />
 
       {/* Top Numeric Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

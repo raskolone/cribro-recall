@@ -52,11 +52,11 @@ const NavLink: React.FC<{
   <button id={id}
     onClick={onClick}
     title={isCollapsed ? (typeof children === 'string' ? children : undefined) : undefined}
-    className={`group relative z-10 hover:z-20 w-full flex items-center justify-between ${isCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border ${isActive ? 'bg-primary/10 border-primary/20 text-primary shadow-[0_0_15px_rgba(114,240,180,0.15)]' : 'text-content-muted border-transparent hover:bg-white/5 hover:border-white/10 hover:text-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]'} active:scale-[0.98] ${className}`}
+    className={`group relative z-10 hover:z-20 w-full flex items-center justify-between ${isCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border ${isActive ? 'bg-primary/10 border-primary/20 text-primary shadow-glow' : 'text-content-muted border-transparent hover:bg-white/5 hover:border-white/10 hover:text-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]'} ${className}`}
   >
     <div className="flex items-center min-w-0">
       {icon && (
-        <div className={`flex items-center justify-center transition-transform duration-300 ${isCollapsed ? 'mr-3 md:mr-0' : 'mr-3'} group-hover:scale-110 group-hover:text-primary ${isActive ? 'scale-110 text-primary' : ''}`}>
+        <div className={`flex items-center justify-center transition-transform duration-300 ${isCollapsed ? 'mr-3 md:mr-0' : 'mr-3'} group-hover:text-primary ${isActive ? 'text-primary' : ''}`}>
           {icon}
         </div>
       )}
@@ -214,7 +214,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               onOpen();
             }
           }}
-          className="fixed left-0 top-20 z-40 md:hidden flex items-center justify-center p-2.5 bg-base-200/90 backdrop-blur-md border border-l-0 border-white/20 text-primary rounded-r-xl shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:bg-primary/10 hover:border-primary/40 transition-all duration-300 active:scale-95 group"
+          className="fixed left-0 top-20 z-40 md:hidden flex items-center justify-center p-2.5 bg-base-200/90 backdrop-blur-md border border-l-0 border-white/20 text-primary rounded-r-xl shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:bg-primary/10 hover:border-primary/40 transition-all duration-300 group"
           title={language === 'pl' ? 'Otwórz menu' : 'Open menu'}
           aria-label={language === 'pl' ? 'Otwórz menu' : 'Open menu'}
         >
@@ -237,7 +237,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               onToggleCollapse();
             }
           }}
-          className="hidden md:flex absolute -right-3.5 top-7 z-50 items-center justify-center w-7 h-7 rounded-full bg-base-200/95 backdrop-blur-md border border-white/20 text-content-muted hover:text-primary shadow-[0_0_15px_rgba(0,0,0,0.6)] hover:shadow-[0_0_15px_rgba(114,240,180,0.4)] hover:border-primary/50 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer group"
+          className="hidden md:flex absolute -right-3.5 top-7 z-50 items-center justify-center w-7 h-7 rounded-full bg-base-200/95 backdrop-blur-md border border-white/20 text-content-muted hover:text-primary shadow-[0_0_15px_rgba(0,0,0,0.6)] hover:shadow-[0_0_15px_rgba(114,240,180,0.4)] hover:border-primary/50 transition-all duration-300 hover:-translate-y-px cursor-pointer group"
           title={
             isDesktopCollapsed
               ? (language === 'pl' ? 'Rozwiń menu' : 'Expand sidebar')
@@ -411,8 +411,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               {language === 'pl' ? 'Pomoc' : 'Help'}
             </NavLink>
             <div className={`flex flex-col gap-2`}>
-              <button onClick={() => logout()} className={`group relative z-10 hover:z-20 w-full flex items-center ${isDesktopCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border border-transparent text-danger hover:bg-danger/10 active:scale-[0.98]`}>
-                <div className={`flex items-center justify-center transition-transform duration-300 ${isDesktopCollapsed ? 'mr-3 md:mr-0' : 'mr-3'} group-hover:scale-110`}>
+              <button onClick={() => logout()} className={`group relative z-10 hover:z-20 w-full flex items-center ${isDesktopCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border border-transparent text-danger hover:bg-danger/10`}>
+                <div className={`flex items-center justify-center transition-transform duration-300 ${isDesktopCollapsed ? 'mr-3 md:mr-0' : 'mr-3'}`}>
                   <LogOut size={20} />
                 </div>
                 <span className={`transition-all duration-300 group-hover:translate-x-0.5 ${isDesktopCollapsed ? 'md:hidden' : 'block'}`}>{language === 'pl' ? 'Wyloguj się' : 'Logout'}</span>

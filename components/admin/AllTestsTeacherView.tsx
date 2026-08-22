@@ -7,6 +7,7 @@ import Button from '../ui/Button';
 import TestPreviewModal from './TestPreviewModal';
 import TestEditModal from './TestEditModal';
 import ConfirmModal from '../ui/ConfirmModal';
+import Badge from '../ui/Badge';
 import { Eye, Edit2, Trash2, Search, Filter, Bell, CheckCircle2, Clock, Calendar, Award, User as UserIcon } from 'lucide-react';
 import i18n from 'i18next';
 
@@ -209,23 +210,17 @@ export const AllTestsTeacherView: React.FC = () => {
                       <span className="font-bold text-lg text-white truncate">{test.title}</span>
                       
                       {isUnread && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-danger text-white animate-bounce flex items-center gap-1">
-                          <Bell size={12} /> Nowy wynik!
-                        </span>
+                        <Badge tone="danger" icon={<Bell size={12} />}>Nowy wynik</Badge>
                       )}
 
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                        test.status === 'pending'
-                          ? 'bg-warn/20 text-warn border border-warn/30'
-                          : 'bg-primary/20 text-primary border border-primary/30'
-                      }`}>
+                      <Badge status={test.status === 'pending' ? 'wait' : 'ok'}>
                         {test.status === 'pending' ? 'Oczekujący' : 'Ukończony'}
-                      </span>
+                      </Badge>
 
                       {isDone && test.score !== undefined && test.maxScore !== undefined && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-info/20 text-info border border-info/30 flex items-center gap-1">
-                          <Award size={12} /> {test.score}/{test.maxScore} pts
-                        </span>
+                        <Badge tone="neutral" icon={<Award size={12} />} plain>
+                          {test.score}/{test.maxScore} pts
+                        </Badge>
                       )}
                     </div>
 
