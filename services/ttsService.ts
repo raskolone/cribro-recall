@@ -1,5 +1,6 @@
 import { SoundSettings, TTSAccent, VoiceGender, VoiceSpeed, SoundEngine } from '../types';
 import { aiMonitor } from './aiMonitorService';
+import { getCachedIdToken } from './authToken';
 import { formatAIModelName } from './geminiService';
 
 export type Accent = 'en-US' | 'en-GB' | 'AmE' | 'BrE';
@@ -110,6 +111,12 @@ export function getTTSUrl(
     speed: String(speed),
     engine: String(engine)
   });
+
+  // Synteza mowy kosztuje, więc endpoint wymaga zalogowania. Adres ląduje
+  // w `audio.src`, gdzie nie ma jak podać nagłówka Authorization — token
+  // idzie parametrem i serwer sprawdza go tak samo jak nagłówek.
+  const token = getCachedIdToken();
+  if (token) params.set('t', token);
 
   return `/api/tts?${params.toString()}`;
 }

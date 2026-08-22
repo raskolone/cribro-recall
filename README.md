@@ -67,6 +67,40 @@ CRIBRO ENGLISH to nowoczesna, oparta na sztucznej inteligencji platforma do nauk
    npm run dev
    ```
 
+## 🔐 Bezpieczeństwo / Security
+
+Trzy zasady, o które łatwo się potknąć przy rozwijaniu tego projektu.
+
+**Klucze API nigdy z przedrostkiem `VITE_`.** Vite podstawia wartość każdej
+takiej zmiennej wprost do plików wysyłanych do przeglądarki — klucz, za który
+płacisz, byłby wtedy widoczny dla każdego odwiedzającego. Wszystkie wywołania
+modeli idą przez własny serwer: `/api/openai`, `/api/gemini/generate` i
+`/api/tts`, a klucze siedzą pod `OPENAI_API_KEY` i `GEMINI_API_KEY`. Trasy te
+wymagają zalogowania, więc serwer musi umieć zweryfikować token: wystarczy
+`FIREBASE_PROJECT_ID` (albo konfiguracja Firebase, z której da się go odczytać),
+a `FIREBASE_SERVICE_ACCOUNT` potrzebne jest dodatkowo do operacji
+administracyjnych na kontach.
+
+**Reguły Firestore trzeba wdrożyć osobno.** Plik `firestore.rules` w repozytorium
+nie działa, dopóki go nie wyślesz — commit sam z siebie niczego nie zmienia:
+
+```bash
+firebase login
+firebase deploy --only firestore:rules
+```
+
+`firebase.json` wskazuje nazwaną bazę danych używaną przez aplikację, a nie
+`(default)` — bez tego reguły trafiłyby obok właściwych danych.
+
+**Prace domowe rozpoznaje się po `studentUid`.** Kolekcja `specialTasks` jest
+płaska i wspólna dla wszystkich kursantów, więc to jedyne pole, po którym reguła
+odróżnia własne zadanie od cudzego. Każde zapytanie kursanta musi zawierać
+`where('studentUid', '==', uid)` — pobranie całej kolekcji i odsianie cudzych
+zadań w przeglądarce zostanie odrzucone w całości. Gotowe zapytanie i komplet
+pól do zapisu są w `utils/homework.ts`. Stare dokumenty uzupełnia
+`scripts/backfill-task-owners.mjs` (najpierw bez `--apply`, żeby zobaczyć, co
+zrobi).
+
 ## 🧪 Starter Project: TypeScript + Python
 
 W repozytorium jest teraz prosty projekt edukacyjny dostępny pod ścieżką `/starter`.

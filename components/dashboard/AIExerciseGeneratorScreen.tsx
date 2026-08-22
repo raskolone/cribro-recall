@@ -12,7 +12,7 @@ import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, 
 import { generateSpeech, createSpeechAudio, formatTextForTTS, playSpeech } from '../../services/ttsService';
 import TTSButtons from '../flashcards/TTSButtons';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog, canUserViewAiMonitor } from '../../types';
-import { isTaskForStudent } from '../../utils/homework';
+import { studentTasksQuery } from '../../utils/homework';
 
 export interface CachedExerciseSet {
   id: string;
@@ -984,14 +984,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       .catch(console.error);
 
     // Real-time special tasks listener
-    const unsub = onSnapshot(collection(db, 'specialTasks'), (snap) => {
-      const tasks: any[] = [];
-      snap.forEach(doc => {
-        const t = { id: doc.id, ...doc.data() } as any;
-        if (isTaskForStudent(t, user)) {
-          tasks.push(t);
-        }
-      });
+    const unsub = onSnapshot(studentTasksQuery(user.id), (snap) => {
+      const tasks: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       const getMillis = (val: any) => {
         if (!val) return 0;
         if (typeof val.toMillis === 'function') return val.toMillis();

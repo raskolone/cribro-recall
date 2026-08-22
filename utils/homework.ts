@@ -1,5 +1,42 @@
+import { collection, query, where } from 'firebase/firestore';
 import { SpecialTask, User } from '../types';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
+
+/**
+ * Pole rozstrzygające, czyja jest praca domowa.
+ *
+ * Kolekcja `specialTasks` jest płaska i wspólna, więc reguły Firestore nie mają
+ * czego użyć poza polem w dokumencie. `studentUid` trzyma dokładny UID konta —
+ * bez normalizacji, bez dopasowania po nazwisku, bez wariantów. Dopiero taka
+ * dosłowność pozwala regule zapisać `resource.data.studentUid == request.auth.uid`,
+ * a kursantowi odpytać kolekcję z where() na tym samym polu.
+ */
+export const TASK_OWNER_FIELD = 'studentUid';
+
+/**
+ * Pola przypisania do zapisania przy tworzeniu i edycji zadania.
+ *
+ * Starsze wersje aplikacji rozsiały tę informację po czterech nazwach
+ * (studentId, userId, studentUid, studentIds) i kod czytający musiał sprawdzać
+ * wszystkie. Nadal je zapisujemy, żeby nie popsuć widoków, które po nich
+ * sięgają, ale wiążące jest wyłącznie `studentUid`.
+ */
+export const taskOwnerFields = (studentUid: string) => ({
+  studentUid,
+  studentId: studentUid,
+  userId: studentUid,
+  studentIds: [studentUid],
+});
+
+/**
+ * Jedyne dozwolone zapytanie kursanta o własne prace domowe.
+ *
+ * Nie da się tego zastąpić pobraniem całej kolekcji i odsianiem cudzych zadań
+ * w przeglądarce: reguły odrzucą takie zapytanie w całości, bo Firestore nie
+ * potrafi z góry udowodnić, że wynik zawiera wyłącznie dokumenty kursanta.
+ */
+export const studentTasksQuery = (uid: string) =>
+  query(collection(db, 'specialTasks'), where(TASK_OWNER_FIELD, '==', uid));
 
 /**
  * Normalizes text for comparison: lowercase, trim, remove accents/diacritics, normalize separators

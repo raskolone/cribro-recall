@@ -7,7 +7,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { Database, LogOut, Bug } from 'lucide-react';
 import { collection, collectionGroup, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { isTaskForStudent } from '../../utils/homework';
+import { studentTasksQuery } from '../../utils/homework';
 
 interface SidebarProps {
   currentView: string;
@@ -93,13 +93,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
 
   useEffect(() => {
     if (!isTeacher && user?.id) {
-      const unsub = onSnapshot(collection(db, 'specialTasks'), (snapshot) => {
+      const unsub = onSnapshot(studentTasksQuery(user.id), (snapshot) => {
         let count = 0;
         snapshot.forEach((d) => {
-          const t = { id: d.id, ...d.data() } as any;
-          if (isTaskForStudent(t, user) && (t.status === 'pending' || !t.status)) {
-            count++;
-          }
+          const t = d.data() as any;
+          if (t.status === 'pending' || !t.status) count++;
         });
         setPendingHomeworkCount(count);
       }, (err) => {

@@ -5,7 +5,8 @@ import { User, SpecialTask, HomeworkType, TranslationExercise, FillInTheBlankExe
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { generateTranslationExercises, generateFillInTheBlankExercises, evaluateErrorCorrectionSentence, evaluateTranslations, evaluateTeacherHomework, processBulkSentences, generateHomeworkChatPipeline } from '../../services/geminiService';
-import { isTaskForStudent } from '../../utils/homework';
+import { isTaskForStudent, studentTasksQuery, taskOwnerFields } from '../../utils/homework';
+import { backfillTaskOwners } from '../../utils/backfillTaskOwners';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import ConfirmModal from '../ui/ConfirmModal';
@@ -212,16 +213,13 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
         });
         loadedTasks.sort((a, b) => getTaskDateMillis(b.createdAt) - getTaskDateMillis(a.createdAt));
         setTasks(loadedTasks);
-      } else if (user) {
-        // Load student's tasks with robust multi-attribute matching
-        const tasksSnap = await getDocs(collection(db, 'specialTasks'));
-        const loadedTasks: SpecialTask[] = [];
-        tasksSnap.forEach((d) => {
-          const t = { id: d.id, ...d.data() } as SpecialTask;
-          if (isTaskForStudent(t, user)) {
-            loadedTasks.push(t);
-          }
-        });
+      } else if (user?.id) {
+        // Kursant pobiera wyłącznie własne zadania — filtr jest w zapytaniu,
+        // nie w przeglądarce (patrz komentarz przy studentTasksQuery).
+        const tasksSnap = await getDocs(studentTasksQuery(user.id));
+        const loadedTasks: SpecialTask[] = tasksSnap.docs.map(
+          (d) => ({ id: d.id, ...d.data() } as SpecialTask)
+        );
         loadedTasks.sort((a, b) => getTaskDateMillis(b.createdAt) - getTaskDateMillis(a.createdAt));
         setTasks(loadedTasks);
       }
@@ -239,6 +237,11 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
     let unsubscribe: () => void;
 
     if (isTeacher) {
+      // 0. Dociągnij `studentUid` w zadaniach sprzed zaostrzenia reguł.
+      //    Tylko nauczyciel ma prawo zapisu w specialTasks, więc to jedyne
+      //    miejsce, z którego migracja może się wykonać sama.
+      backfillTaskOwners();
+
       // 1. Fetch students
       getDocs(collection(db, 'users')).then(usersSnap => {
         const studentList: User[] = [];
@@ -265,17 +268,12 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
         console.error('Błąd real-time ładowania prac domowych:', err);
         setIsLoading(false);
       });
-    } else {
+    } else if (user?.id) {
       // Real-time listener for student's tasks
-      const q = query(collection(db, 'specialTasks'));
-      unsubscribe = onSnapshot(q, (snapshot) => {
-        const loadedTasks: SpecialTask[] = [];
-        snapshot.forEach((d) => {
-          const t = { id: d.id, ...d.data() } as SpecialTask;
-          if (isTaskForStudent(t, user)) {
-            loadedTasks.push(t);
-          }
-        });
+      unsubscribe = onSnapshot(studentTasksQuery(user.id), (snapshot) => {
+        const loadedTasks: SpecialTask[] = snapshot.docs.map(
+          (d) => ({ id: d.id, ...d.data() } as SpecialTask)
+        );
         loadedTasks.sort((a, b) => getTaskDateMillis(b.createdAt) - getTaskDateMillis(a.createdAt));
         setTasks(loadedTasks);
         setIsLoading(false);
@@ -539,7 +537,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
       if (editingTask?.id) {
         const studentObj = students.find(s => s.id === selectedStudentId);
         const updatedData: Partial<SpecialTask> & Record<string, any> = {
-          studentId: selectedStudentId,
+          ...taskOwnerFields(selectedStudentId),
           studentName: studentObj 
             ? `${studentObj.firstName || ''} ${studentObj.lastName || ''}`.trim() || studentObj.username 
             : editingTask.studentName || 'Kursant',
@@ -577,7 +575,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
           ? `${studentObj.firstName || ''} ${studentObj.lastName || ''}`.trim() || studentObj.username 
           : 'Kursant';
         const taskData: Partial<SpecialTask> & Record<string, any> = {
-          studentId: stId,
+          ...taskOwnerFields(stId),
           studentName: studentName,
           studentEmail: studentObj?.email || '',
           studentUsername: studentObj?.username || '',

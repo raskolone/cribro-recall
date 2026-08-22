@@ -594,7 +594,11 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
       results.forEach(result => {
         const resultId = `result-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const resultRef = doc(db, `sessions/${sessionId}/results/${resultId}`);
-        batch.set(resultRef, result);
+        // `userId` musi być na samym wyniku, a nie tylko na sesji nadrzędnej:
+        // oba dokumenty powstają w jednym batchu, a reguła sprawdzająca
+        // właściciela przez get() na sesji widziałaby jeszcze stan sprzed
+        // zapisu — czyli brak sesji — i odrzuciłaby całą operację.
+        batch.set(resultRef, { ...result, userId });
       });
       
       // Also add to practiceLogs so it appears in LessonHistoryScreen

@@ -4,6 +4,7 @@ import { ChevronDown, Users, Clock, ClipboardList, AlertCircle } from 'lucide-re
 import { db } from '../../firebase';
 import { User } from '../../types';
 import Badge from '../ui/Badge';
+import { backfillTaskOwners } from '../../utils/backfillTaskOwners';
 
 /**
  * Przegląd całego panelu nauczyciela.
@@ -83,6 +84,10 @@ const TeacherOverview: React.FC<TeacherOverviewProps> = ({ students, language })
     started.current = true;
     let cancelled = false;
     setTaskState('loading');
+    // Przy okazji domykamy migrację przypisań: to pierwszy ekran, który
+    // nauczyciel otwiera, a tylko jego konto ma prawo zapisu w specialTasks.
+    // Bez `studentUid` kursant nie zobaczy zadania po zaostrzeniu reguł.
+    backfillTaskOwners();
     getDocs(collection(db, 'specialTasks'))
       .then(snap => {
         if (cancelled) return;

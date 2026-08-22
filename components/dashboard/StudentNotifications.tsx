@@ -7,7 +7,7 @@ import { useFlashcards } from '../../context/FlashcardContext';
 import { collection, query, orderBy, where, getDocs, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { StudentTest, SpecialTask } from '../../types';
-import { isTaskForStudent } from '../../utils/homework';
+import { studentTasksQuery } from '../../utils/homework';
 
 interface StudentNotificationsProps {
   onNavigate: (view: any, extra?: any) => void;
@@ -45,15 +45,8 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate 
     });
 
     // Real-time special tasks / homework listener
-    const unsubTasks = onSnapshot(collection(db, 'specialTasks'), (snap) => {
-      const tasks: SpecialTask[] = [];
-      snap.forEach(d => {
-        const t = { id: d.id, ...d.data() } as SpecialTask;
-        if (isTaskForStudent(t, user)) {
-          tasks.push(t);
-        }
-      });
-      setHomeworkTasks(tasks);
+    const unsubTasks = onSnapshot(studentTasksQuery(user.id), (snap) => {
+      setHomeworkTasks(snap.docs.map(d => ({ id: d.id, ...d.data() } as SpecialTask)));
       setLoading(false);
     }, (err) => {
       console.error('Error in homework snapshot:', err);

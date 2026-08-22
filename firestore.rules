@@ -282,49 +282,124 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // ---------------------------------------------------------------
+    // Prace domowe (specialTasks)
+    // ---------------------------------------------------------------
+    //
+    // Kolekcja jest płaska i wspólna dla wszystkich kursantów, więc jedynym,
+    // co oddziela cudze prace od własnych, jest `studentUid` — dokładny UID
+    // konta, dla którego zadanie wystawiono. Nauczyciel zapisuje to pole przy
+    // każdym tworzeniu i edycji zadania (patrz utils/homework.ts).
+    //
+    // UWAGA dla przyszłych zmian w kliencie: reguła odwołuje się do
+    // `resource.data.studentUid`, więc kursant NIE może odpytać całej
+    // kolekcji — Firestore odrzuci zapytanie, którego nie potrafi z góry
+    // uznać za bezpieczne. Każde zapytanie kursanta musi zawierać
+    // where('studentUid', '==', uid). Filtrowanie po stronie przeglądarki
+    // (dawne isTaskForStudent na pełnym getDocs) już nie przejdzie i to jest
+    // zamierzone: wcześniej każdy zalogowany widział prace wszystkich.
+    function ownsTask() {
+      return isAuthenticated() &&
+             'studentUid' in resource.data &&
+             resource.data.studentUid == request.auth.uid;
+    }
+
     match /specialTasks/{taskId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow read: if isAdmin() || ownsTask();
+
+      // Zadania wystawia wyłącznie nauczyciel i zawsze konkretnemu kursantowi.
+      allow create: if isAdmin() &&
+                    request.resource.data.studentUid is string &&
+                    request.resource.data.studentUid.size() > 0;
+
+      // Nauczyciel może wszystko. Kursant odsyła wyłącznie własne rozwiązanie
+      // i nie dotyka ani przypisania, ani oceny, ani komentarza nauczyciela.
+      allow update: if isAdmin() ||
+        (
+          ownsTask() &&
+          request.resource.data.studentUid == resource.data.studentUid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+            ['status', 'studentAnswers', 'evaluationResults', 'submittedAt']
+          )
+        );
+
+      allow delete: if isAdmin();
     }
 
+    // Kolekcja bez odwołań w kodzie — zostaje zamknięta do właściciela,
+    // żeby ewentualne stare dokumenty nie były czytelne dla wszystkich.
     match /vocabulary/{vocabId} {
-      allow read: if request.auth != null;
-      // For create/update, we validate studentId is set to the user or it's an admin
-      allow create, update: if request.auth != null && (isAdmin() || request.resource.data.studentId == request.auth.uid);
-      allow delete: if request.auth != null && (isAdmin() || resource.data.studentId == request.auth.uid);
+      allow read: if isAdmin() ||
+                  (isAuthenticated() && resource.data.studentId == request.auth.uid);
+      allow create, update: if isAuthenticated() &&
+                  (isAdmin() || request.resource.data.studentId == request.auth.uid);
+      allow delete: if isAuthenticated() &&
+                  (isAdmin() || resource.data.studentId == request.auth.uid);
     }
 
+    // Zestawy fiszek. Klient pyta o nie przez where('userId','==',uid)
+    // (context/FlashcardContext.tsx), więc zawężenie odczytu do właściciela
+    // nie wymaga zmian po stronie aplikacji.
     match /sets/{setId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null 
+      allow read: if isAdmin() ||
+                  (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated()
         && (isAdmin() || request.resource.data.userId == request.auth.uid);
-      allow update, delete: if request.auth != null 
+      allow update, delete: if isAuthenticated()
         && (isAdmin() || resource.data.userId == request.auth.uid);
-      
+
       match /flashcards/{cardId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null 
-          && (get(/databases/$(database)/documents/sets/$(setId)).data.userId == request.auth.uid || isAdmin());
+        allow read, write: if isAuthenticated() && (
+          isAdmin() ||
+          (
+            exists(/databases/$(database)/documents/sets/$(setId)) &&
+            get(/databases/$(database)/documents/sets/$(setId)).data.userId == request.auth.uid
+          )
+        );
       }
     }
-    
+
     match /sessions/{sessionId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null 
+      allow read: if isAdmin() ||
+                  (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated()
         && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if request.auth != null 
-        && (resource.data.userId == request.auth.uid || isAdmin());
-      
+      allow update, delete: if isAuthenticated()
+        && (isAdmin() || resource.data.userId == request.auth.uid);
+
+      // Wyniki pojedynczych odpowiedzi. Zapis sprawdza `userId` w samym
+      // dokumencie, bo wynik i sesja nadrzędna powstają w jednym batchu —
+      // get() na sesji nie zobaczyłby jej jeszcze i odrzucił zapis.
       match /results/{resultId} {
-        allow read, write: if request.auth != null;
+        allow read: if isAuthenticated() && (
+          isAdmin() ||
+          (
+            exists(/databases/$(database)/documents/sessions/$(sessionId)) &&
+            get(/databases/$(database)/documents/sessions/$(sessionId)).data.userId == request.auth.uid
+          )
+        );
+        allow create, update: if isAuthenticated() &&
+          (isAdmin() || request.resource.data.userId == request.auth.uid);
+        allow delete: if isAuthenticated() &&
+          (isAdmin() || resource.data.userId == request.auth.uid);
       }
     }
-    
+
+    // Wspólny słownik podpowiedzi AI — same hasła i tłumaczenia, bez danych
+    // osobowych, więc odczyt zostaje wspólny. Zapis jest wyłącznie dopisaniem
+    // nowego wpisu o znanym kształcie: nikt nie podmieni ani nie skasuje
+    // cudzego tłumaczenia.
     match /aiSuggestionCache/{cacheId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+        request.resource.data.keys().hasOnly(
+          ['term', 'sourceLanguage', 'targetLanguage', 'suggestedDefinition', 'createdAt']
+        ) &&
+        request.resource.data.term is string &&
+        request.resource.data.term.size() <= 200 &&
+        request.resource.data.suggestedDefinition is string &&
+        request.resource.data.suggestedDefinition.size() <= 2000;
+      allow update, delete: if isAdmin();
     }
     match /global_idioms/{idiomId} {
       allow read: if request.auth != null;
@@ -340,9 +415,12 @@ service cloud.firestore {
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
+    // Baza tematów i inne wspólne ustawienia — czyta każdy zalogowany,
+    // zapisuje wyłącznie nauczyciel. Rolę "teacher" obsługuje już isAdmin(),
+    // więc osobny warunek na nią był zbędny i tylko powielał odczyt dokumentu.
     match /system/{document=**} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "teacher");
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
   }
 }

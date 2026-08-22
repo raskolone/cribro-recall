@@ -40,6 +40,7 @@ import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
+import defaultFirebaseConfig from "./firebase-applet-config.json" with { type: "json" };
 let pdfParse: any;
 try {
   const loadedPdf = typeof require !== "undefined" ? require("pdf-parse") : null;
@@ -195,11 +196,14 @@ async function generateContentWithRetry(aiClient: any, contents: any, config: an
 
 // We can just rely on process.env.FIREBASE_SERVICE_ACCOUNT and initialize Firebase Admin
 function getGeminiApiKey(): string {
-  return process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.API_KEY || "";
+  // Świadomie bez VITE_GEMINI_API_KEY: zmienna z tym przedrostkiem trafia
+  // przy budowaniu do bundla przeglądarki, więc nie wolno jej używać do
+  // niczego płatnego.
+  return process.env.GEMINI_API_KEY || process.env.API_KEY || "";
 }
 
 function getOpenAIApiKey(): string {
-  return process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY || "";
+  return process.env.OPENAI_API_KEY || "";
 }
 
 function formatErrorString(err: any): string {
@@ -241,6 +245,24 @@ function formatErrorString(err: any): string {
   return String(err);
 }
 
+/**
+ * ID projektu Firebase dla weryfikacji tokenów.
+ *
+ * verifyIdToken sprawdza podpis publicznymi certyfikatami Google i porównuje
+ * pole `aud` z ID projektu — klucz prywatny nie jest do tego potrzebny.
+ * Dlatego ochrona tras /api działa także tam, gdzie nie wgrano konta usługi:
+ * ID projektu leży w firebase-applet-config.json, który i tak jest publiczny.
+ */
+function getAdminProjectId(): string {
+  if (process.env.FIREBASE_PROJECT_ID) return process.env.FIREBASE_PROJECT_ID;
+  if (process.env.GOOGLE_CLOUD_PROJECT) return process.env.GOOGLE_CLOUD_PROJECT;
+  try {
+    const parsed = JSON.parse(process.env.VITE_FIREBASE_CONFIG || "{}");
+    if (parsed?.projectId) return parsed.projectId;
+  } catch {}
+  return (defaultFirebaseConfig as any)?.projectId || "";
+}
+
 function getAdminApp() {
   if (getApps().length > 0) return getApp();
   const serviceAccountStr = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -252,6 +274,17 @@ function getAdminApp() {
       console.warn('[Firebase Admin] Failed to parse service account');
     }
   }
+
+  const projectId = getAdminProjectId();
+  if (projectId) {
+    console.warn(
+      `[Firebase Admin] Brak FIREBASE_SERVICE_ACCOUNT — weryfikuję tokeny samym ID projektu (${projectId}). ` +
+      `Wystarczy do ochrony tras /api; operacje wymagające uprawnień administratora będą niedostępne.`
+    );
+    return initializeApp({ projectId });
+  }
+
+  console.error('[Firebase Admin] Brak konta usługi i ID projektu — trasy /api będą odrzucać wszystkie żądania.');
   return initializeApp(); // App Default Credentials
 }
 
@@ -1006,13 +1039,38 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
 
   // Text-to-Speech API (Primary: OpenAI tts-1 -> Fallback 1: gpt-4o-mini-tts -> Fallback 2: gemini-2.0-flash)
   const handleTTS = async (req: express.Request, res: express.Response) => {
-    // Set CORS headers so any client or iframe can access the stream
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Range");
+    // CORS tylko dla origin-ów wpisanych do ALLOWED_ORIGINS. Wcześniej stała
+    // tu gwiazdka, przez którą dowolna strona mogła wpiąć się w ten strumień
+    // i generować mowę na koszt tego projektu.
+    const origin = req.headers.origin;
+    const allowed = (process.env.ALLOWED_ORIGINS || "")
+      .split(",")
+      .map(o => o.trim())
+      .filter(Boolean);
+    if (origin && allowed.includes(origin)) {
+      res.header("Access-Control-Allow-Origin", origin);
+      res.header("Vary", "Origin");
+      res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Range");
+    }
 
     if (req.method === 'OPTIONS') {
       return res.sendStatus(200);
+    }
+
+    // Token przychodzi nagłówkiem (fetch) albo parametrem `t` (audio.src,
+    // gdzie nagłówka dołożyć się nie da — patrz services/ttsService.ts).
+    const authHeader = req.headers.authorization;
+    const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    const idToken = bearer || String(req.query.t || '');
+    if (!idToken || idToken === 'null' || idToken === 'undefined') {
+      return res.status(401).json({ error: 'Missing Bearer token' });
+    }
+    try {
+      await adminAuth.verifyIdToken(idToken);
+    } catch (err: any) {
+      console.warn('[TTS] Auth token verification failed:', err.message);
+      return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
     try {
@@ -1065,7 +1123,7 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
       try {
         const { getStorage } = await import('firebase-admin/storage');
         const fbConfig = (await import('./firebase-applet-config.json', { with: { type: 'json' } })).default;
-        const bucketName = process.env.VITE_FIREBASE_STORAGE_BUCKET || fbConfig.storageBucket || "gen-lang-client-0425391821.firebasestorage.app";
+        const bucketName = process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET || fbConfig.storageBucket || "gen-lang-client-0425391821.firebasestorage.app";
         if (bucketName) {
           bucket = getStorage().bucket(bucketName);
           const file = bucket.file(fileName);
@@ -1087,7 +1145,7 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
 
       let finalAudioBuffer: Buffer | null = null;
       let contentType = 'audio/mpeg';
-      const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
+      const openaiKey = getOpenAIApiKey();
 
       // Voice selection for OpenAI models
       // US: male -> 'echo' (or 'onyx'), female -> 'nova' (or 'alloy')
@@ -1191,7 +1249,7 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
       // =========================================================================
       // POZIOM 3: FALLBACK 2 - Gemini TTS Audio Generation
       // =========================================================================
-      const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.API_KEY;
+      const geminiKey = getGeminiApiKey();
       if (!finalAudioBuffer && (engine === 'auto' || engine === 'gemini') && geminiKey) {
         try {
           const ai = new GoogleGenAI({ apiKey: geminiKey });
@@ -1401,8 +1459,62 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
     }
   };
 
-  app.post("/api/openai", optionalFirebaseAuth, handleOpenAI);
-  app.post("/api/openai/generate", optionalFirebaseAuth, handleOpenAI);
+  // --- GEMINI PROXY ---
+  //
+  // Klucz Gemini nie może istnieć w przeglądarce. Vite wkleja każdą zmienną
+  // VITE_* wprost do bundla, więc dawne `new GoogleGenAI({ apiKey:
+  // import.meta.env.VITE_GEMINI_API_KEY })` wysyłało płatny klucz każdemu, kto
+  // otworzył stronę. Klient woła teraz ten endpoint, a klucz zostaje tutaj.
+  //
+  // Trasa celowo przepuszcza `contents` i `config` bez zmian: po drugiej
+  // stronie stoi cienki proxy w services/geminiService.ts, który udaje
+  // `ai.models.generateContent`, dzięki czemu miejsca wywołań w aplikacji
+  // wyglądają tak samo jak przed przeniesieniem.
+  const GEMINI_MODEL_PATTERN = /^gemini-[a-z0-9.\-]{1,60}$/i;
+
+  app.post("/api/gemini/generate", requireFirebaseAuth, async (req, res) => {
+    try {
+      const { model, contents, config } = req.body || {};
+
+      // Nazwa modelu trafia do ścieżki URL po stronie SDK, więc nie może być
+      // dowolnym ciągiem pochodzącym od klienta.
+      if (typeof model !== "string" || !GEMINI_MODEL_PATTERN.test(model)) {
+        return res.status(400).json({ error: "Nieprawidłowa nazwa modelu." });
+      }
+      if (contents === undefined || contents === null) {
+        return res.status(400).json({ error: "Brak pola contents." });
+      }
+
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) {
+        console.warn("[Gemini] Brak GEMINI_API_KEY na serwerze.");
+        return res.status(503).json({ error: "Usługa AI jest chwilowo niedostępna." });
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const response: any = await ai.models.generateContent({ model, contents, config });
+
+      // Zwracamy dokładnie te dwa pola, po które sięgają wywołania w kliencie
+      // (response.text oraz response.candidates[].content.parts) — reszta
+      // odpowiedzi SDK nie jest nigdzie używana.
+      return res.json({
+        text: response?.text ?? "",
+        candidates: response?.candidates ?? [],
+      });
+    } catch (err: any) {
+      console.error("[Gemini] proxy error:", err?.message || err);
+      const status = Number(err?.status);
+      return res
+        .status(status >= 400 && status < 600 ? status : 503)
+        .json({ error: formatErrorString(err) });
+    }
+  });
+
+  // Trasy AI wymagają zalogowania. Wcześniej auth było opcjonalne, więc
+  // dowolny adres w internecie mógł wołać te endpointy i zużywać limit
+  // płatnych kluczy — koszt szedł na właściciela projektu.
+  app.post("/api/openai", requireFirebaseAuth, handleOpenAI);
+  app.post("/api/openai/generate", requireFirebaseAuth, handleOpenAI);
 
   return app;
 }

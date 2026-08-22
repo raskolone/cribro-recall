@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import * as fs from 'fs';
 
-const ai = new GoogleGenAI({ apiKey: process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const dict = JSON.parse(fs.readFileSync('dictionary.json', 'utf8'));
 
 async function translateKeys() {

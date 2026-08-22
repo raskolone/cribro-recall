@@ -1,8 +1,42 @@
 import { GoogleGenAI } from "@google/genai";
+import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+
+/**
+ * Wariant serverless trasy /api/openai (wdrożenie na Vercelu).
+ *
+ * Musi pilnować dostępu dokładnie tak samo jak odpowiednik w server.ts:
+ * to endpoint wołający płatne modele, więc bez weryfikacji tokenu dowolny
+ * adres w internecie generowałby treści na rachunek właściciela projektu.
+ */
+function getAdminApp() {
+  if (getApps().length > 0) return getApp();
+  const serviceAccountStr = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (serviceAccountStr) {
+    try {
+      return initializeApp({ credential: cert(JSON.parse(serviceAccountStr)) });
+    } catch {
+      console.warn('[Firebase Admin] Nie udało się odczytać konta usługi');
+    }
+  }
+  return initializeApp();
+}
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers?.authorization;
+  const idToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!idToken || idToken === 'null' || idToken === 'undefined') {
+    return res.status(401).json({ error: 'Missing Bearer token' });
+  }
+  try {
+    await getAuth(getAdminApp()).verifyIdToken(idToken);
+  } catch (err: any) {
+    console.warn('Auth token verification failed:', err?.message || err);
+    return res.status(401).json({ error: 'Invalid or expired token' });
   }
 
   try {
@@ -12,7 +46,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const openaiKey = process.env.OPENAI_API_KEY;
-    const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
 
     let chatMessages = messages;
     if (!chatMessages) {

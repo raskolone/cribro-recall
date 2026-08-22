@@ -3,7 +3,9 @@ import { auth } from '../firebase';
 import { collection, getDocs, query, orderBy, limit, doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../firebase';
 
-import { GoogleGenAI, Type, Modality, HarmCategory, HarmBlockThreshold } from "@google/genai";
+// Ze SDK zostały już tylko stałe (enumy konfiguracji). Sam klient Gemini żyje
+// na serwerze — patrz getAI() niżej.
+import { Type, Modality } from "@google/genai";
 import { Language, Difficulty, Word, AISuggestion, AudioVocabulary, TranslationExercise, TranslationEvaluationResult } from '../types';
 import { aiMonitor } from './aiMonitorService';
 
@@ -141,14 +143,67 @@ export const extractErrorMessage = (data: any, fallback: string = "Wystąpił b�
 };
 
 
-let aiInstance: GoogleGenAI | null = null;
-export const getAI = () => {
-  if (!aiInstance) {
-    const key = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
-    aiInstance = new GoogleGenAI({ apiKey: key || 'dummy_key' });
+/**
+ * Nagłówki do własnych tras /api. Bez tokenu serwer odpowie 401 — trasy AI są
+ * płatne, więc nie mogą stać otworem dla całego internetu.
+ */
+const authHeaders = async (): Promise<Record<string, string>> => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  try {
+    const token = await auth.currentUser?.getIdToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  } catch (e) {
+    console.warn('Nie udało się pobrać tokenu uwierzytelniającego:', e);
   }
-  return aiInstance;
+  return headers;
 };
+
+/**
+ * Gemini przez własny serwer, nie bezpośrednio z przeglądarki.
+ *
+ * Wcześniej stało tu `new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY })`.
+ * Vite podstawia każdą zmienną VITE_* w czasie budowania, więc klucz lądował
+ * w publicznym bundlu — wystarczyło otworzyć DevTools, żeby go stamtąd wyjąć
+ * i używać na cudzy rachunek.
+ *
+ * Obiekt celowo naśladuje kształt `ai.models.generateContent`, żeby wywołania
+ * w aplikacji zostały nietknięte, i celowo przepisuje kod HTTP na `status`
+ * błędu: pętla fallbacku modeli rozpoznaje po nim 429/503 i przechodzi do
+ * kolejnego modelu.
+ */
+const geminiProxy = {
+  models: {
+    generateContent: async (params: any): Promise<any> => {
+      const res = await fetch('/api/gemini/generate', {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({
+          model: params?.model,
+          contents: params?.contents,
+          config: params?.config,
+        }),
+      });
+
+      const rawText = await res.text();
+      let data: any;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        throw new Error(`Serwer AI zwrócił nieprawidłową odpowiedź (status ${res.status}): ${rawText.slice(0, 100)}`);
+      }
+
+      if (!res.ok) {
+        const error: any = new Error(extractErrorMessage(data, `Błąd serwera AI (${res.status})`));
+        error.status = res.status;
+        throw error;
+      }
+
+      return data;
+    },
+  },
+};
+
+export const getAI = () => geminiProxy;
 
 const generateContentWithFallback = async (params: any) => {
   const models = params.preferredModels || PREFERRED_AI_MODELS;
@@ -225,7 +280,7 @@ const callOpenAI = async (prompt: string, systemInstruction: string, model: stri
   try {
     const res = await fetch('/api/openai', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({
         prompt,
         systemInstruction,

@@ -8,6 +8,7 @@ import { collection, addDoc, updateDoc, doc, serverTimestamp, getDocs } from 'fi
 import { db } from '../../firebase';
 import i18n from "i18next";
 import { LessonSelectionModal } from '../dashboard/LessonSelectionModal';
+import { taskOwnerFields } from '../../utils/homework';
 
 interface TeacherSpecialTaskModalProps {
   user: User;
@@ -289,10 +290,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
     try {
       const studentName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'Kursant';
       const taskData = {
-        studentId: user.id,
-        studentIds: [user.id],
-        userId: user.id,
-        studentUid: user.id,
+        ...taskOwnerFields(user.id!),
         studentName: studentName,
         studentEmail: user.email || '',
         studentUsername: user.username || '',
