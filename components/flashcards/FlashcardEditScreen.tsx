@@ -569,7 +569,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
   return (
     <div className="max-w-5xl mx-auto pb-24">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 sticky top-0 bg-base-100/90 backdrop-blur-md z-20 py-4 border-b border-base-300">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 sticky top-0 bg-ink/72 backdrop-blur-md z-20 py-4 border-b border-base-300">
         <div>
           <div className="flex items-center gap-4 mb-2">
             <button onClick={onBack} className="text-content-muted hover:text-white transition-colors">

@@ -85,7 +85,7 @@ const FlashcardPresentationScreen: React.FC<FlashcardPresentationScreenProps> = 
 
   if (cards.length === 0) {
     return (
-      <div className="flex flex-col h-screen items-center justify-center bg-base-100">
+      <div className="flex flex-col h-screen items-center justify-center">
         <h2 className="text-2xl font-bold mb-4">{language === 'pl' ? 'Ten zestaw nie ma słówek.' : 'This set has no words.'}</h2>
         <Button onClick={onBack}>{language === 'pl' ? 'Wróć' : 'Back'}</Button>
       </div>
@@ -98,7 +98,7 @@ const FlashcardPresentationScreen: React.FC<FlashcardPresentationScreenProps> = 
   const backContent = mode === 'def-first' ? card.term : card.definition;
 
   return (
-    <div className="fixed inset-0 z-50 bg-base-100 flex flex-col h-screen w-screen overflow-hidden text-content">
+    <div className="fixed inset-0 z-50 bg-bg flex flex-col h-screen w-screen overflow-hidden text-content">
       {/* Top Bar */}
       <div className="flex items-center justify-between p-4 bg-base-200/90 backdrop-blur-md border-b border-white/5">
         <div className="flex items-center gap-4">

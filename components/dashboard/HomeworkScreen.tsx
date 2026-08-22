@@ -1170,7 +1170,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
               {selectedStudentId && selectedStudentId !== 'all' && (() => {
                 const selectedStudent = students.find(s => s.id === selectedStudentId);
                 return (
-                  <div className="flex items-center gap-3 bg-base-100/90 border border-primary/40 px-3.5 py-1.5 rounded-xl text-xs">
+                  <div className="flex items-center gap-3 bg-ink/72 border border-primary/40 px-3.5 py-1.5 rounded-xl text-xs">
                     <span className="text-white font-bold flex items-center gap-1.5">
                       👤 {selectedStudent?.firstName ? `${selectedStudent.firstName} ${selectedStudent.lastName || ''}` : selectedStudent?.username}
                     </span>
@@ -1855,7 +1855,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
 
       {/* ---------------- TEACHER REVIEW & GRADING MODAL ---------------- */}
       {reviewTask && (
-        <div className="fixed inset-0 bg-base-100/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-ink/72 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
           <Card className="w-full max-w-3xl liquid-glass border-primary/30 my-8 space-y-6">
             <div className="flex justify-between items-start border-b border-white/10 pb-4">
               <div>

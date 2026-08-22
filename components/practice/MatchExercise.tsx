@@ -176,7 +176,7 @@ const MatchExercise: React.FC<MatchExerciseProps> = ({ words, onExit, onComplete
               className={`
                 h-32 p-4 rounded-xl cursor-pointer transition-all duration-200 flex items-center justify-center text-center
                 backdrop-blur-xl border-2 shadow-lg
-                ${isSelected ? 'bg-primary/20 border-primary scale-105' : 'bg-base-100/60 border-white/20 hover:bg-base-100/80 hover:scale-105'}
+                ${isSelected ? 'bg-primary/20 border-primary scale-105' : 'bg-base-100/60 border-white/20 hover:bg-ink/72 hover:scale-105'}
                 ${isWrong ? 'bg-danger/20 border-danger animate-shake' : ''}
               `}
             >

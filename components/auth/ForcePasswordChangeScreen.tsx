@@ -69,7 +69,7 @@ const ForcePasswordChangeScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-base-100 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-2xl relative overflow-hidden border-warn/30">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-warn to-danger"></div>
         <div className="flex flex-col items-center mb-6 pt-4">

@@ -213,7 +213,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
 
           <button 
             type="button" 
-            className="p-2 rounded-xl bg-base-100/80 hover:bg-primary/20 text-content-muted hover:text-primary border border-white/10 transition-all shadow-md"
+            className="p-2 rounded-xl bg-ink/72 hover:bg-primary/20 text-content-muted hover:text-primary border border-white/10 transition-all shadow-md"
             aria-label="Toggle statistics"
           >
             {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -228,7 +228,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
           {/* Sub-header controls: View Mode & Filters */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-base-100/40 p-2.5 rounded-xl border border-white/5">
             {/* View Mode Toggle */}
-            <div className="flex items-center gap-1 bg-base-100/80 p-1 rounded-lg border border-white/10 w-full sm:w-auto">
+            <div className="flex items-center gap-1 bg-ink/72 p-1 rounded-lg border border-white/10 w-full sm:w-auto">
               <button
                 onClick={() => setActiveViewMode('both')}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${
@@ -344,7 +344,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
                   placeholder={i18n.t("Szukaj w logach (imię, słowo kluczowe)...")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-base-100/80 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder:text-content-muted focus:border-primary/50 outline-none transition-colors"
+                  className="w-full bg-ink/72 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder:text-content-muted focus:border-primary/50 outline-none transition-colors"
                 />
               </div>
 
@@ -361,7 +361,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
                   {filteredActivities.slice(0, 50).map((act) => (
                     <div
                       key={act.id}
-                      className="flex items-center justify-between bg-base-100/40 hover:bg-base-100/80 p-2.5 px-3 rounded-xl border border-white/5 transition-all text-xs"
+                      className="flex items-center justify-between bg-base-100/40 hover:bg-ink/72 p-2.5 px-3 rounded-xl border border-white/5 transition-all text-xs"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="w-7 h-7 rounded-full bg-base-300 flex items-center justify-center font-bold text-primary flex-shrink-0 text-[11px] border border-white/10 overflow-hidden">

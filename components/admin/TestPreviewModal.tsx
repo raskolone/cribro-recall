@@ -157,7 +157,7 @@ export const TestPreviewModal: React.FC<TestPreviewModalProps> = ({ test, isOpen
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-xs">
-                              <div className="p-2 rounded-lg bg-base-100/80 border border-white/5">
+                              <div className="p-2 rounded-lg bg-ink/72 border border-white/5">
                                 <span className="text-[10px] text-content-muted uppercase tracking-wider block font-bold mb-0.5">Prawidłowa odpowiedź {sItem.num}:</span>
                                 <span className="font-bold text-primary">{cAns || normalizePromptLines(q.correctAnswer)}</span>
                               </div>

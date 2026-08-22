@@ -572,7 +572,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
       </div>
       {/* Preview Modal */}
       {previewSetId && (
-        <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-ink/72 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center animate-pulse" style={{ animationDuration: '4s' }}>
             <div className="w-[80vw] max-w-3xl h-[80vh] max-h-[600px] bg-primary/10 rounded-full blur-[120px]"></div>
           </div>
@@ -644,7 +644,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
       )}
 
       {setToDelete && (
-        <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-ink/72 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <Card className="w-full max-w-md shadow-2xl border-primary/20">
             <h3 className="text-xl font-bold mb-4">{language === 'pl' ? 'Potwierdzenie usunięcia' : 'Confirm Deletion'}</h3>
             <p className="mb-6 opacity-80">

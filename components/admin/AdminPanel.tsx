@@ -1333,7 +1333,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   setPracticeLogs([]);
                   setLessonRecords([]);
                 }}
-                className="px-3 py-2 bg-base-100/80 hover:bg-white/10 text-content-muted hover:text-white border border-white/10 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5"
+                className="px-3 py-2 bg-ink/72 hover:bg-white/10 text-content-muted hover:text-white border border-white/10 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5"
               >
                 <X size={16} />
                 Wyczyść
@@ -1451,7 +1451,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <div className={`p-2 rounded-xl transition-colors ${
                       isActive
                         ? 'bg-primary text-accent-ink shadow-[0_0_12px_rgba(114,240,180,0.4)]'
-                        : 'bg-base-100/90 text-primary border border-white/10 group-hover:border-primary/40'
+                        : 'bg-ink/72 text-primary border border-white/10 group-hover:border-primary/40'
                     }`}>
                       <IconComp size={18} />
                     </div>
@@ -2223,7 +2223,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
       {/* Delete User Modal */}
       {userToDelete && (
-        <div ref={deleteModalAnim.overlayRef} className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div ref={deleteModalAnim.overlayRef} className="fixed inset-0 bg-ink/72 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div ref={deleteModalAnim.contentRef} className="w-full max-w-md">
             <Card className="w-full shadow-2xl border-primary/20">
             <h3 className="text-xl font-bold mb-4">{i18n.t("Confirm Deletion")}</h3>
@@ -2582,7 +2582,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
       {/* Add/Edit Lesson Record Modal */}
       {showLessonRecordModal && (
-        <div ref={lessonRecordModalAnim.overlayRef} className="fixed inset-0 bg-base-100/90 backdrop-blur-md z-50 flex items-center justify-center p-4 md:p-6 overflow-y-auto">
+        <div ref={lessonRecordModalAnim.overlayRef} className="fixed inset-0 bg-ink/72 backdrop-blur-md z-50 flex items-center justify-center p-4 md:p-6 overflow-y-auto">
           <div ref={lessonRecordModalAnim.contentRef} className="w-full max-w-3xl my-auto">
             {lessonRecordModalMode === 'edit' ? (
               <Card className="w-full shadow-2xl border-primary/20">
@@ -3133,7 +3133,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
       {/* Send Message Modal */}
       {showMessageModal && (
-        <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-ink/72 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-md">
             <Card className="w-full shadow-2xl border-primary/20">
               <h3 className="text-xl font-bold mb-4">Wyślij wiadomość do {selectedUser?.firstName || selectedUser?.username}</h3>
@@ -3168,7 +3168,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       )}
 {/* Change Password Modal */}
       {showChangePasswordModal && (
-        <div ref={changePasswordModalAnim.overlayRef} className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div ref={changePasswordModalAnim.overlayRef} className="fixed inset-0 bg-ink/72 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div ref={changePasswordModalAnim.contentRef} className="w-full max-w-md">
             <Card className="w-full shadow-2xl border-primary/20">
             <h3 className="text-xl font-bold mb-4">{i18n.t("Zmień hasło dla")} {selectedUser?.firstName || selectedUser?.username}</h3>
@@ -3243,7 +3243,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
       {/* Create Student Modal */}
       {showCreateStudentModal && (
-        <div ref={createStudentModalAnim.overlayRef} className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div ref={createStudentModalAnim.overlayRef} className="fixed inset-0 bg-ink/72 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div ref={createStudentModalAnim.contentRef} className="w-full max-w-md">
             <Card className="w-full shadow-2xl border-primary/20">
             <h3 className="text-xl font-bold mb-4">{i18n.t("Create New Student")}</h3>

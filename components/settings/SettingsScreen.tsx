@@ -456,7 +456,7 @@ const SettingsScreen: React.FC = () => {
 
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (
-                <div className="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 bg-ink/72 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <Card className="w-full max-w-md shadow-2xl border-primary/20">
                         <h3 className="text-xl font-bold mb-4 text-danger">{i18n.t("Confirm Deletion")}</h3>
                         <p className="mb-6 opacity-80">

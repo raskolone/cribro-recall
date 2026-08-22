@@ -307,7 +307,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex h-[100dvh] w-full bg-base-100 overflow-hidden">
+    <div className="flex h-[100dvh] w-full overflow-hidden">
       <Sidebar 
         currentView={view} 
         onNavigate={(newView) => handleNavigate(newView)}
