@@ -116,7 +116,7 @@ const steps: StepData[] = [
     },
     renderMockup: (lang) => (
       <div className="space-y-2 text-xs">
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-primary/20 border border-primary/40 text-accent-ink shadow-[0_0_15px_rgba(168,85,247,0.15)]">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-primary/20 border border-primary/40 text-primary shadow-[0_0_15px_rgba(168,85,247,0.15)]">
           <div className="flex items-center gap-2.5">
             <div className="w-6 h-6 rounded-lg bg-primary/30 text-primary flex items-center justify-center font-bold">
               <Check className="w-3.5 h-3.5" />

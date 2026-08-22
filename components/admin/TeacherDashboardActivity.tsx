@@ -279,7 +279,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
               <button
                 onClick={() => setTypeFilter('practice')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  typeFilter === 'practice' ? 'bg-primary/80 text-accent-ink' : 'bg-base-100/60 text-content-muted hover:text-white'
+                  typeFilter === 'practice' ? 'bg-primary/80 text-primary' : 'bg-base-100/60 text-content-muted hover:text-white'
                 }`}
               >
                 {i18n.t("Ćwiczenia")}

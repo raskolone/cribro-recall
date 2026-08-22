@@ -506,7 +506,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                   <div
                     className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed ${
                       turn.role === 'user'
-                        ? 'bg-primary/20 border border-primary/30 text-accent-ink rounded-tr-none'
+                        ? 'bg-primary/20 border border-primary/30 text-primary rounded-tr-none'
                         : 'bg-base-200/90 border border-white/10 text-content-body rounded-tl-none space-y-3'
                     }`}
                   >

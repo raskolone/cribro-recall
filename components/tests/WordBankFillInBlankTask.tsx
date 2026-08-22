@@ -244,7 +244,7 @@ export const WordBankFillInBlankTask: React.FC<WordBankFillInBlankTaskProps> = (
                 className={`px-4 py-2.5 rounded-xl border-2 text-base font-bold transition-all cursor-grab active:cursor-grabbing select-none shadow-md ${
                   isSelected
                     ? 'bg-warn text-black border-warn ring-4 ring-warn/40 scale-105'
-                    : 'bg-base-100 border-primary/40 text-accent-ink hover:border-primary hover:bg-primary/20 hover:scale-105'
+                    : 'bg-base-100 border-primary/40 text-primary hover:border-primary hover:bg-primary/20 hover:scale-105'
                 }`}
               >
                 {wordObj.text}

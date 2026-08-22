@@ -2486,7 +2486,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                               }}
                               className={`text-xs px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 ${
                                 isAssigned 
-                                  ? 'bg-primary/20 border-primary/50 text-accent-ink font-semibold' 
+                                  ? 'bg-primary/20 border-primary/50 text-primary font-semibold' 
                                   : 'bg-base-300/40 border-white/10 text-content-muted/60 hover:text-white hover:bg-white/10'
                               }`}
                             >
@@ -2662,7 +2662,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                   key={u.id}
                                   className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${
                                     isSelected 
-                                      ? 'bg-primary/20 border border-primary/40 text-accent-ink font-medium' 
+                                      ? 'bg-primary/20 border border-primary/40 text-primary font-medium' 
                                       : 'hover:bg-white/5 border border-transparent text-content-muted'
                                   }`}
                                 >

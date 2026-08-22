@@ -273,7 +273,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                       {language === 'pl' ? 'Poprzednie' : 'Previous'}
                     </button>
                     <div className="flex gap-3">
-                      <button className="px-6 py-3 rounded-xl bg-primary/40 border border-primary/20 text-accent-ink font-bold text-sm">
+                      <button className="px-6 py-3 rounded-xl bg-primary/40 border border-primary/20 text-primary font-bold text-sm">
                         {language === 'pl' ? 'Sprawdź' : 'Check'}
                       </button>
                       <button className="px-6 py-3 rounded-xl bg-primary text-accent-ink font-bold text-sm">
@@ -328,13 +328,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                     
                     <div className="pt-2">
                       <div className="text-[10px] text-content-muted uppercase tracking-widest mb-1">{language === 'pl' ? 'Twoja odpowiedź' : 'Your answer'}</div>
-                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-accent-ink text-sm">
+                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-primary text-sm">
                         I usually go to the gym after work.
                       </div>
                     </div>
                     
-                    <div className="bg-info/5 border border-info/20 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-2 text-info text-xs font-bold uppercase tracking-wider">
+                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-2 text-primary text-xs font-bold uppercase tracking-wider">
                         <Lightbulb size={14} /> {language === 'pl' ? 'Sprawdź Feedback' : 'Check Feedback'}
                       </div>
                       <p className="text-content-muted text-sm">

@@ -1,8 +1,12 @@
 @import "tailwindcss";
 /* Nocturne Green — źródło prawdy dla kolorów, typografii, promieni i ruchu.
    Zmieniaj wartości tam, nie tutaj. @theme poniżej tylko lustrzanie odbija
-   tokeny do utilities Tailwinda (design/theme/tailwind.config.snippet.js). */
-@import "./design/theme/tokens.css";
+   tokeny do utilities Tailwinda (design/theme/tailwind.config.snippet.js).
+
+   layer(base) jest konieczne: CSS bez warstwy wygrywa z całą kaskadą
+   warstwową Tailwinda, więc reguła `a { color: var(--accent) }` z tokenów
+   nadpisywałaby każdą klasę text-* postawioną na linku. */
+@import "./design/theme/tokens.css" layer(base);
 
 @theme {
   /* --- Aliasy zastane. Odpowiadają tokenom Nocturne, zostają bez zmian:

@@ -2119,7 +2119,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               id="tour-help-button"
                               onClick={onShowOnboarding}
                               title={language === "pl" ? "Pomoc i Przewodnik po aplikacji" : "Help & App Guide"}
-                              className="group relative flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary text-primary hover:text-accent-ink shadow-[0_0_12px_rgba(16,185,129,0.15)] transition-all duration-300 active:scale-95 cursor-pointer"
+                              className="group relative flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary text-primary hover:text-accent-soft shadow-[0_0_12px_rgba(16,185,129,0.15)] transition-all duration-300 active:scale-95 cursor-pointer"
                             >
                               <HelpCircle className="w-4 h-4 text-primary group-hover:scale-110 transition-transform drop-shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
                               <span className="text-xs font-bold font-sans tracking-wide">

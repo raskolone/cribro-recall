@@ -465,7 +465,7 @@ export default function AssignVocabularyModal({
                       onClick={() => handleToggleWord(w)}
                       className={`flex items-center gap-3 p-2.5 rounded-xl border text-sm cursor-pointer transition-all ${
                         isChecked
-                          ? 'bg-primary/10 border-primary/40 text-accent-ink'
+                          ? 'bg-primary/10 border-primary/40 text-primary'
                           : 'bg-base-100/40 border-white/5 text-content-muted hover:bg-base-100'
                       }`}
                     >
