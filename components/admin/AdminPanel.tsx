@@ -21,6 +21,8 @@ import TeacherSpecialTaskModal from './TeacherSpecialTaskModal';
 import AssignVocabularyModal from './AssignVocabularyModal';
 import HomeworkScreen from '../dashboard/HomeworkScreen';
 import { isTaskForStudent } from '../../utils/homework';
+import TeacherOverview from './TeacherOverview';
+import { useLanguage } from '../../context/LanguageContext';
 import { 
   Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
   User as UserIcon, Users, Search, X, ChevronRight, ChevronDown, ChevronUp, Sparkles, BarChart2, Clock, 
@@ -38,6 +40,7 @@ interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: an
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId, onUserSelect }) => {
   const { sets: adminSets, getFlashcards } = useFlashcards();
+  const { language } = useLanguage();
   const { connectGoogleDrive, connectGoogleWorkspace } = useAuth();
   const [driveAccessToken, setDriveAccessToken] = useState<string | null>(() => {
     try {
@@ -1267,7 +1270,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </button>
           <button
             onClick={() => setShowCreateStudentModal(true)}
-            className="px-3.5 py-2 bg-primary text-accent-ink rounded-xl text-xs sm:text-sm font-bold hover:brightness-110/90 transition-colors flex items-center gap-2 shadow-lg"
+            className="px-3.5 py-2 bg-primary text-accent-ink rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-lg"
           >
             <Plus size={16} />
             {i18n.t("Dodaj kursanta")}
@@ -1275,11 +1278,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         </div>
       </div>
 
+      <TeacherOverview students={users} language={language} />
+
       {/* Dynamic Student Selector Banner */}
       <div className={`p-4 sm:p-5 rounded-2xl border-2 transition-all duration-300 ${
         selectedUser 
           ? 'bg-gradient-to-r from-primary/15 via-base-200/80 to-base-200/90 border-primary/60 shadow-[0_0_30px_rgba(114,240,180,0.15)]' 
-          : 'bg-base-200/50 border-warn/40 shadow-[0_0_20px_rgba(224, 168, 58,0.1)]'
+          : 'bg-base-200/50 border-line-strong'
       }`}>
         {selectedUser ? (
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -1319,7 +1324,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
               <button
                 onClick={() => setIsStudentPickerOpen(true)}
-                className="px-4 py-2 bg-primary text-accent-ink rounded-xl text-xs sm:text-sm font-bold hover:brightness-110/90 transition-all flex items-center gap-2 shadow-md"
+                className="px-4 py-2 bg-primary text-accent-ink rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all flex items-center gap-2 shadow-md"
               >
                 <UserCheck size={16} />
                 Zmień kursanta
@@ -1343,7 +1348,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         ) : (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-warn/20 text-warn border border-warn/30 shrink-0">
+              <div className="p-3 rounded-2xl bg-primary/12 text-primary border border-primary/30 shrink-0">
                 <Users size={24} />
               </div>
               <div>
@@ -1358,7 +1363,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
             <button
               onClick={() => setIsStudentPickerOpen(true)}
-              className="px-5 py-2.5 bg-gradient-to-r from-warn to-warn text-black font-extrabold rounded-xl text-xs sm:text-sm shadow-[0_0_20px_rgba(224, 168, 58,0.3)] hover:scale-105 transition-all flex items-center gap-2 shrink-0"
+              className="px-5 min-h-11 bg-primary text-accent-ink font-bold rounded-xl text-xs sm:text-sm shadow-btn hover:brightness-110 hover:-translate-y-px active:translate-y-0 transition-all flex items-center justify-center gap-2 shrink-0 w-full sm:w-auto"
             >
               <Search size={18} />
               Wybierz kursanta z listy
@@ -1379,7 +1384,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             )}
           </h2>
           {!selectedUser && (
-            <span className="text-xs text-warn font-semibold flex items-center gap-1">
+            <span className="text-xs text-text-mute font-medium flex items-center gap-1">
               <AlertCircle size={14} /> Kliknij dowolny kafelek, aby wybrać kursanta
             </span>
           )}
@@ -2016,19 +2021,19 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => handleRoleChange('user')}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'user' ? 'bg-primary text-accent-ink border-transparent' : 'bg-base-200 text-content-muted hover:brightness-125/80 hover:text-white border border-white/10'}`}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'user' ? 'bg-primary text-accent-ink border-transparent' : 'bg-base-200 text-content-muted hover:bg-primary/80 hover:text-white border border-white/10'}`}
                         >
                           {i18n.t("Kursant (User)")}
                         </button>
                         <button
                           onClick={() => handleRoleChange('admin')}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'admin' ? 'bg-danger text-white border-transparent' : 'bg-base-200 text-content-muted hover:brightness-125/80 hover:text-white border border-white/10'}`}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'admin' ? 'bg-danger text-white border-transparent' : 'bg-base-200 text-content-muted hover:bg-base-200/80 hover:text-white border border-white/10'}`}
                         >
                           {i18n.t("Admin")}
                         </button>
                         <button
                           onClick={() => handleRoleChange('teacher')}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'teacher' ? 'bg-primary text-accent-ink border-transparent' : 'bg-base-200 text-content-muted hover:brightness-125/80 hover:text-white border border-white/10'}`}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${selectedUser.role === 'teacher' ? 'bg-primary text-accent-ink border-transparent' : 'bg-base-200 text-content-muted hover:bg-primary/80 hover:text-white border border-white/10'}`}
                         >
                           {i18n.t("Nauczyciel")}
                         </button>
@@ -2817,7 +2822,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                           </Button>
                           <Button
                             size="sm"
-                            className="bg-primary hover:brightness-110/80 text-accent-ink font-extrabold flex-1 sm:flex-none"
+                            className="bg-primary hover:bg-primary/80 text-accent-ink font-extrabold flex-1 sm:flex-none"
                             onClick={async () => {
                               const selectedItems = allLessonsDatabase.filter(item => {
                                 const compositeKey = `${item.studentId}-${item.record.id}`;
@@ -3186,7 +3191,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       const toughPass = generateStrongPassword();
                       setNewPasswordForUser(toughPass);
                     }}
-                    className="text-xs text-primary hover:text-accent-soft/80 font-bold flex items-center gap-1 bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20 hover:bg-primary/20 transition-all"
+                    className="text-xs text-primary hover:text-primary/80 font-bold flex items-center gap-1 bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20 hover:bg-primary/20 transition-all"
                   >
                     
                                                               {i18n.t("✨ Generuj silne hasło")}

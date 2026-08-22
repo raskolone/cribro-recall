@@ -433,7 +433,7 @@ const AILoadingButton = ({ isLoading, onClick, children, className, disabled, lo
       disabled={isLoading || disabled}
       className={`relative overflow-hidden ${className} ${
         variant === 'primary' 
-          ? 'bg-primary text-accent-ink hover:brightness-110/95' 
+          ? 'bg-primary text-accent-ink hover:bg-primary/95' 
           : 'bg-base-200 text-white hover:bg-base-300 border border-white/10'
       } rounded-xl font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed`}
     >
@@ -2220,7 +2220,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                       onChangeView('homework', { taskId: hwTask.id });
                                     }
                                   }}
-                                  className="text-xs py-1.5 px-3 bg-primary hover:brightness-110/90 text-accent-ink font-bold rounded-xl flex items-center gap-1.5 shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:scale-105 transition-all cursor-pointer"
+                                  className="text-xs py-1.5 px-3 bg-primary hover:bg-primary/90 text-accent-ink font-bold rounded-xl flex items-center gap-1.5 shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:scale-105 transition-all cursor-pointer"
                                 >
                                   <Edit3 size={13} />
                                   <span>{language === 'pl' ? 'Rozwiąż zadanie' : 'Start homework'}</span>
@@ -3582,9 +3582,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                           setIsBasketModalOpen(false);
                                           handleGenerate(false);
                                         }}
-                                        className="py-3 px-3 rounded-xl bg-gradient-to-r from-primary to-primary text-black font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(114, 240, 180,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                        className="py-3 px-3 rounded-xl bg-primary text-accent-ink font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(114, 240, 180,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
                                       >
-                                        <Sparkles className="w-4 h-4 fill-black" />
+                                        <Sparkles className="w-4 h-4" />
                                         <span>{language === 'pl' ? 'Trening AI' : 'AI Sentences'}</span>
                                       </button>
 
@@ -3980,7 +3980,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     <AILoadingButton
                       onClick={handleFinishAll}
                       disabled={studentAnswers[activeSentenceIndex] !== exercises[activeSentenceIndex].englishTranslation}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:brightness-110/95 text-accent-ink font-extrabold text-sm w-full sm:w-auto"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm w-full sm:w-auto"
                     >
                       {language === 'pl' ? 'Zakończ rozgrzewkę' : 'Finish warmup'}
                     </AILoadingButton>
@@ -3990,7 +3990,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       disabled={studentAnswers[activeSentenceIndex] !== exercises[activeSentenceIndex].englishTranslation || isGeneratingMore}
                       isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
                       loadingText={language === 'pl' ? 'Ładowanie...' : 'Loading...'}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:brightness-110/95 text-accent-ink font-extrabold text-sm w-full sm:w-auto"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm w-full sm:w-auto"
                     >
                       {language === 'pl' ? 'Następne' : 'Next'}
                     </AILoadingButton>
@@ -4003,7 +4003,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     disabled={!studentAnswers[activeSentenceIndex]?.trim()}
                     isLoading={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
                     loadingText={language === 'pl' ? '...' : '...'}
-                    className="px-4 md:px-6 py-2 md:py-3 bg-base-300 hover:brightness-125/80 text-white font-bold text-sm"
+                    className="px-4 md:px-6 py-2 md:py-3 bg-base-300 hover:bg-base-300/80 text-white font-bold text-sm"
                   >
                     {language === 'pl' ? 'Sprawdź' : 'Check'}
                   </AILoadingButton>
@@ -4014,7 +4014,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       disabled={!studentAnswers[activeSentenceIndex]?.trim() || isGeneratingMore}
                       isLoading={isGeneratingMore}
                       loadingText={language === 'pl' ? '...' : '...'}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:brightness-110/95 text-accent-ink font-extrabold text-sm"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm"
                     >
                       {language === 'pl' ? 'Zakończ' : 'Finish'}
                     </AILoadingButton>
@@ -4024,7 +4024,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       disabled={!studentAnswers[activeSentenceIndex]?.trim() || isGeneratingMore}
                       isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
                       loadingText={language === 'pl' ? '...' : '...'}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:brightness-110/95 text-accent-ink font-extrabold text-sm"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm"
                     >
                       {language === 'pl' ? 'Dalej' : 'Next'}
                     </AILoadingButton>
@@ -4035,7 +4035,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   {activeSentenceIndex === exercises.length - 1 && practiceMode === 'fixed' ? (
                     <AILoadingButton
                       onClick={handleFinishAll}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:brightness-110/95 text-accent-ink font-extrabold text-sm"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm"
                     >
                       {language === 'pl' ? 'Zakończ i podsumuj' : 'Finish & Summarize'}
                     </AILoadingButton>
@@ -4045,7 +4045,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       disabled={isGeneratingMore}
                       isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
                       loadingText={language === 'pl' ? '...' : '...'}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:brightness-110/95 text-accent-ink font-extrabold text-sm"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm"
                     >
                       {language === 'pl' ? 'Dalej' : 'Next'}
                     </AILoadingButton>

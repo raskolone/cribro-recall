@@ -356,7 +356,7 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
       </div>
 
       <div className="pt-8 flex justify-end">
-        <Button onClick={handleSubmit} isLoading={isSubmitting} className="bg-primary text-accent-ink hover:brightness-110/90 font-bold px-8 py-3 text-lg">
+        <Button onClick={handleSubmit} isLoading={isSubmitting} className="bg-primary text-accent-ink hover:bg-primary/90 font-bold px-8 py-3 text-lg">
           
                             {i18n.t("Zakończ Test")}
                           </Button>

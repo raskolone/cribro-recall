@@ -564,7 +564,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                     
                                                                       {i18n.t("Zamknij")}
                                                                     </Button>
-                  <Button onClick={() => setIsLessonModalOpen(false)} className="bg-primary text-accent-ink hover:brightness-110/90">
+                  <Button onClick={() => setIsLessonModalOpen(false)} className="bg-primary text-accent-ink hover:bg-primary/90">
                     
                                                                       {i18n.t("Zatwierdź Wybór")}
                                                                     </Button>
@@ -613,7 +613,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                     <span>{i18n.t("Dopracuj z AI")}</span>
                   </Button>
 
-                  <Button onClick={handleSaveTest} isLoading={isSaving} className="bg-primary text-accent-ink hover:brightness-110/90 px-5 py-2 text-sm font-bold shadow-lg shadow-primary/20">
+                  <Button onClick={handleSaveTest} isLoading={isSaving} className="bg-primary text-accent-ink hover:bg-primary/90 px-5 py-2 text-sm font-bold shadow-lg shadow-primary/20">
                     {i18n.t("Przypisz Test")}
                   </Button>
 
@@ -812,7 +812,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                       placeholder={i18n.t("Napisz do AI co poprawić (np. 'zrób łatwiejsze słownictwo w zadaniu 2')")}
                     />
                     <div className="flex justify-end gap-2">
-                      <Button onClick={handleModifyTest} isLoading={isModifying} disabled={!feedback} className="bg-primary text-accent-ink hover:brightness-110/90 text-xs py-1.5 px-4 font-bold">
+                      <Button onClick={handleModifyTest} isLoading={isModifying} disabled={!feedback} className="bg-primary text-accent-ink hover:bg-primary/90 text-xs py-1.5 px-4 font-bold">
                         {i18n.t("Popraw Test AI")}
                       </Button>
                     </div>
@@ -1099,7 +1099,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
             <Card className="p-6 bg-primary/5 border border-primary/20 flex flex-col items-center justify-center space-y-4">
               <h3 className="font-bold text-lg text-primary text-center">{i18n.t("Test wygenerowany pomyślnie! (")}{generatedQuestions.length}  {i18n.t("pytań)")}</h3>
               <p className="text-content-muted text-sm text-center">{i18n.t("Możesz teraz przejrzeć i edytować pytania przed przypisaniem testu kursantowi.")}</p>
-              <Button onClick={() => setIsPreviewModalOpen(true)} className="bg-primary text-accent-ink hover:brightness-110/90 w-full sm:w-auto">
+              <Button onClick={() => setIsPreviewModalOpen(true)} className="bg-primary text-accent-ink hover:bg-primary/90 w-full sm:w-auto">
                 
                                                           {i18n.t("Podgląd i edycja testu")}
                                                         </Button>

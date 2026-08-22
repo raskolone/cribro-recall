@@ -104,7 +104,7 @@ const FlashcardPresentationScreen: React.FC<FlashcardPresentationScreenProps> = 
         <div className="flex items-center gap-4">
           <button 
             onClick={onBack}
-            className="w-10 h-10 rounded-full bg-base-300 flex items-center justify-center hover:brightness-125/80 hover:text-white transition-colors"
+            className="w-10 h-10 rounded-full bg-base-300 flex items-center justify-center hover:bg-base-300/80 hover:text-white transition-colors"
           >
             ✕
           </button>

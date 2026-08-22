@@ -251,7 +251,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                 onClick={() => setViewMode('grid')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   viewMode === 'grid'
-                    ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_12px_rgba(114, 240, 180,0.4)]'
+                    ? 'bg-primary/12 text-primary border border-primary/30 shadow-glow'
                     : 'text-text-2 hover:text-white'
                 }`}
                 title={language === 'pl' ? 'Widok kafelkowy' : 'Tile view'}
@@ -264,7 +264,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                 onClick={() => setViewMode('list')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   viewMode === 'list'
-                    ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_12px_rgba(114, 240, 180,0.4)]'
+                    ? 'bg-primary/12 text-primary border border-primary/30 shadow-glow'
                     : 'text-text-2 hover:text-white'
                 }`}
                 title={language === 'pl' ? 'Widok listy' : 'List view'}
@@ -279,14 +279,14 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
           <div className="flex liquid-glass-tile p-1 rounded-xl border border-white/10">
              <button 
                onClick={() => setActiveTab('lessons')}
-               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'lessons' ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_15px_rgba(114, 240, 180,0.3)]' : 'text-content-muted hover:text-white'}`}
+               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'lessons' ? 'bg-primary/12 text-primary border border-primary/30 shadow-glow' : 'text-content-muted hover:text-white'}`}
              >
                <FileText className="w-4 h-4" />
                {language === 'pl' ? 'Historia lekcji' : 'Lesson History'}
              </button>
              <button 
                onClick={() => setActiveTab('sessions')}
-               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'sessions' ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_15px_rgba(114, 240, 180,0.3)]' : 'text-content-muted hover:text-white'}`}
+               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'sessions' ? 'bg-primary/12 text-primary border border-primary/30 shadow-glow' : 'text-content-muted hover:text-white'}`}
              >
                <Clock className="w-4 h-4" />
                {language === 'pl' ? 'Historia Sesji' : 'Session History'}
