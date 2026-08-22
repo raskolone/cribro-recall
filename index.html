@@ -25,11 +25,29 @@
 
       // Uncaught Error Reporter Overlay to prevent blank screens
       window.addEventListener('error', function(event) {
+        if (isDevToolingNoise(event.error, event.filename)) return;
         showErrorOverlay(event.error || new Error(event.message));
       });
       window.addEventListener('unhandledrejection', function(event) {
+        if (isDevToolingNoise(event.reason)) return;
         showErrorOverlay(event.reason || new Error('Unhandled promise rejection'));
       });
+
+      /**
+       * Odsiewa awarie samego narzędzia deweloperskiego.
+       *
+       * Klient HMR Vite'a rzuca "WebSocket closed without opened" za każdym razem,
+       * gdy serwer dev zniknie — po zatrzymaniu go, restarcie albo uśpieniu
+       * komputera. To nie jest błąd aplikacji, ale trafiał na tę samą nakładkę
+       * co prawdziwa awaria startu i wyglądał jak zepsuty kod. W wersji
+       * produkcyjnej ta ścieżka w ogóle nie istnieje, bo nie ma tam klienta HMR.
+       */
+      function isDevToolingNoise(err, filename) {
+        var source = (filename || (err && err.stack) || '') + '';
+        if (source.indexOf('/@vite/') !== -1) return true;
+        var message = (err && err.message ? err.message : String(err || '')) + '';
+        return message.indexOf('WebSocket closed without opened') !== -1;
+      }
 
       function showErrorOverlay(err) {
         const root = document.getElementById('root');
