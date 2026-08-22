@@ -52,7 +52,7 @@ const MockupWindow = ({ children, title }: { children: React.ReactNode, title?: 
       <div className="w-2.5 h-2.5 rounded-full bg-primary/80"></div>
       {title && <span className="ml-2 text-[10px] font-mono text-white/30 uppercase">{title}</span>}
     </div>
-    <div className="p-4 sm:p-6 bg-[#0B0F19]">
+    <div className="p-4 sm:p-6 bg-ink-2">
       {children}
     </div>
   </div>
@@ -120,9 +120,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
             <div className="w-16 h-16 rounded-2xl liquid-glass-card flex items-center justify-center mb-8 !rounded-2xl shadow-[0_0_30px_rgba(114,240,180,0.15)]">
               <div className="relative">
                 <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M28 10 A 15 15 0 1 0 28 30" stroke="#72f0b4" strokeWidth="3" strokeLinecap="round" />
-                  <path d="M 23 23 A 8 8 0 1 1 23 11" fill="none" stroke="#72f0b4" strokeWidth="2.5" strokeLinecap="round" />
-                  <circle cx="23" cy="23" r="2.5" fill="#72f0b4" />
+                  <path d="M28 10 A 15 15 0 1 0 28 30" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" />
+                  <path d="M 23 23 A 8 8 0 1 1 23 11" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" />
+                  <circle cx="23" cy="23" r="2.5" fill="var(--accent)" />
                 </svg>
               </div>
             </div>

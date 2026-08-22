@@ -20,7 +20,7 @@ export const BrandLogo: React.FC<{ className?: string; showTagline?: boolean; is
         <span className="text-[1.1em] font-sans font-medium tracking-[0.05em] text-white">{i18n.t("CRIBRO")}</span>
         <span className="text-[1.1em] font-sans font-black tracking-tight text-primary mt-[-0.1em]">{i18n.t("ENGLISH")}</span>
         {showTagline && (
-          <span className="text-[0.45em] font-sans tracking-widest text-[#a0a0a0] mt-[0.3em] uppercase">
+          <span className="text-[0.45em] font-sans tracking-widest text-[var(--text-2)] mt-[0.3em] uppercase">
             
                                   {i18n.t("less noise. more language.")}
                                 </span>

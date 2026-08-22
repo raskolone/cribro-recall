@@ -217,7 +217,7 @@ const steps: StepData[] = [
       en: 'Every sentence is scored across Meaning (40 pts), Grammar (40 pts), and Vocabulary (20 pts). AI highlights mistakes, suggests natural phrases, and plays audio.'
     },
     renderMockup: (lang) => (
-      <div className="p-3.5 bg-[#0a111e] rounded-2xl border border-primary/30 space-y-2 text-xs">
+      <div className="p-3.5 bg-ink-2 rounded-2xl border border-primary/30 space-y-2 text-xs">
         <div className="flex justify-between items-center border-b border-white/10 pb-1.5">
           <span className="font-bold text-primary text-sm">{lang === 'pl' ? 'Wynik: 100% (Świetnie!)' : 'Score: 100% (Great!)'}</span>
           <div className="flex gap-2 text-[10px] font-mono text-content">
@@ -386,7 +386,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
               isDesktop && targetRect 
                 ? 'absolute' 
                 : 'max-w-md w-full'
-            } bg-[#0a101b] border-2 border-primary/40 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(16,185,129,0.25)] p-6 text-white overflow-hidden`}
+            } bg-ink-2 border-2 border-primary/40 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(16,185,129,0.25)] p-6 text-white overflow-hidden`}
           >
             {/* Top decorative gradient bar */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-primary to-primary" />

@@ -7,6 +7,7 @@ import TTSButtons from './TTSButtons';
 import { FlashcardSet, Flashcard, StudySession, SessionResult } from '../../types';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import i18n from "i18next";
+import { token } from '../../utils/themeTokens';
 
 interface FlashcardStatsScreenProps {
   setId: string;
@@ -123,13 +124,13 @@ const FlashcardStatsScreen: React.FC<FlashcardStatsScreenProps> = ({ setId, onBa
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={lineChartData}>
-                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
-                    <YAxis stroke="#94a3b8" fontSize={12} domain={[0, 100]} />
+                    <XAxis dataKey="name" stroke={token('--text-mute')} fontSize={12} />
+                    <YAxis stroke={token('--text-mute')} fontSize={12} domain={[0, 100]} />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#16181d', borderColor: '#22252b' }}
-                      itemStyle={{ color: '#4ade80' }}
+                      contentStyle={{ backgroundColor: token('--surface-flat'), borderColor: 'rgba(255,255,255,0.12)' }}
+                      itemStyle={{ color: token('--accent') }}
                     />
-                    <Line type="monotone" dataKey="accuracy" stroke="#4ade80" strokeWidth={3} dot={{ r: 4, fill: '#4ade80' }} />
+                    <Line type="monotone" dataKey="accuracy" stroke={token('--accent')} strokeWidth={3} dot={{ r: 4, fill: token('--accent') }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -143,13 +144,13 @@ const FlashcardStatsScreen: React.FC<FlashcardStatsScreenProps> = ({ setId, onBa
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barChartData}>
-                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
-                  <YAxis stroke="#94a3b8" fontSize={12} />
+                  <XAxis dataKey="name" stroke={token('--text-mute')} fontSize={12} />
+                  <YAxis stroke={token('--text-mute')} fontSize={12} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#16181d', borderColor: '#22252b' }}
+                    contentStyle={{ backgroundColor: token('--surface-flat'), borderColor: 'rgba(255,255,255,0.12)' }}
                   />
-                  <Bar dataKey="known" name={language === 'pl' ? 'Znane' : 'Known'} stackId="a" fill="#4ade80" radius={[0, 0, 4, 4]} />
-                  <Bar dataKey="unknown" name={language === 'pl' ? 'Nieznane' : 'Unknown'} stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="known" name={language === 'pl' ? 'Znane' : 'Known'} stackId="a" fill={token('--accent')} radius={[0, 0, 4, 4]} />
+                  <Bar dataKey="unknown" name={language === 'pl' ? 'Nieznane' : 'Unknown'} stackId="a" fill={token('--danger')} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

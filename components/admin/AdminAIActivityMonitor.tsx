@@ -110,14 +110,14 @@ export const AdminAIActivityMonitor: React.FC = () => {
           >
             <div 
               onClick={() => setIsExpanded(true)}
-              className="cursor-pointer group flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[#0a101d]/95 hover:bg-[#0f172a] border border-primary/40 hover:border-primary text-primary shadow-[0_10px_35px_rgba(0,0,0,0.7),0_0_20px_rgba(6,182,212,0.25)] backdrop-blur-xl transition-all duration-300 active:scale-98 max-w-md"
+              className="cursor-pointer group flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-ink-2/95 hover:bg-[var(--ink-2)] border border-primary/40 hover:border-primary text-primary shadow-[0_10px_35px_rgba(0,0,0,0.7),0_0_20px_rgba(6,182,212,0.25)] backdrop-blur-xl transition-all duration-300 active:scale-98 max-w-md"
             >
               {/* Pulsing indicator */}
               <div className="flex items-center gap-2 shrink-0">
                 {currentDisplayEvent.status === 'pending' || currentDisplayEvent.status === 'retrying' ? (
                   <span className="relative flex h-3 w-3">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-primary shadow-[0_0_8px_#22d3ee]" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-primary shadow-glow" />
                   </span>
                 ) : currentDisplayEvent.status === 'success' ? (
                   <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
@@ -189,7 +189,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
           className={`flex items-center gap-2 px-3 py-2 rounded-2xl backdrop-blur-xl border transition-all duration-300 shadow-xl cursor-pointer ${
             activeCount > 0
               ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(6,182,212,0.3)] animate-pulse'
-              : 'bg-[#0a101d]/90 hover:bg-[#0f172a] border-white/10 hover:border-primary/40 text-white/70 hover:text-white'
+              : 'bg-ink-2/90 hover:bg-[var(--ink-2)] border-white/10 hover:border-primary/40 text-white/70 hover:text-white'
           }`}
         >
           {activeCount > 0 ? (
@@ -217,7 +217,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="w-[92vw] sm:w-[480px] max-h-[600px] flex flex-col rounded-3xl bg-[#090d16]/95 border border-primary/30 text-white shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(6,182,212,0.2)] backdrop-blur-2xl overflow-hidden mt-2"
+            className="w-[92vw] sm:w-[480px] max-h-[600px] flex flex-col rounded-3xl bg-ink/95 border border-primary/30 text-white shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(6,182,212,0.2)] backdrop-blur-2xl overflow-hidden mt-2"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-primary/30">

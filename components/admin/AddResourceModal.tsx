@@ -112,7 +112,7 @@ ${rawText}`;
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-[#121824] border border-white/10 w-full max-w-2xl rounded-3xl p-6 shadow-2xl relative overflow-hidden"
+            className="bg-[var(--surface-flat)] border border-white/10 w-full max-w-2xl rounded-3xl p-6 shadow-2xl relative overflow-hidden"
           >
             <button onClick={onClose} className="absolute top-4 right-4 text-text-2 hover:text-white transition-colors">
               <X size={24} />

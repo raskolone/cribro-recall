@@ -38,7 +38,7 @@ class GlobalErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#0a0e1a] text-white flex flex-col items-center justify-center p-4">
+        <div className="min-h-screen bg-[var(--ink-2)] text-white flex flex-col items-center justify-center p-4">
           <div className="w-full max-w-2xl bg-danger/10 border border-danger/30 rounded-2xl p-8 text-center space-y-6">
             <h1 className="text-3xl font-bold text-danger">Wystąpił błąd aplikacji</h1>
             <p className="text-content-muted">

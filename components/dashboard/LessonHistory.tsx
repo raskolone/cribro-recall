@@ -112,7 +112,7 @@ const LessonHistory: React.FC = () => {
 
             <div className="space-y-3 mb-4">
               {isTeacher && lesson.studentSpeaking && (
-                <div className="rounded-xl overflow-hidden border border-white/5 bg-[#242424]">
+                <div className="rounded-xl overflow-hidden border border-white/5 bg-surface-flat">
                   <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-content text-sm">
                     <span className="w-2 h-2 rounded-full bg-text-faint"></span>
                     
@@ -123,7 +123,7 @@ const LessonHistory: React.FC = () => {
               )}
 
               {lesson.thingsToImprove && (
-                <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a1616]">
+                <div className="rounded-xl overflow-hidden border border-white/5 bg-danger/10">
                   <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-content text-sm">
                     <span className="w-2 h-2 rounded-full bg-danger"></span>
                     
@@ -134,7 +134,7 @@ const LessonHistory: React.FC = () => {
               )}
 
               {isTeacher && lesson.suggestedFollowUp && (
-                <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a2816]">
+                <div className="rounded-xl overflow-hidden border border-white/5 bg-warn/10">
                   <div className="px-3 py-2 font-bold flex items-center gap-2 border-b border-white/5 text-content text-sm">
                     <span className="w-2 h-2 rounded-full bg-warn"></span>
                     

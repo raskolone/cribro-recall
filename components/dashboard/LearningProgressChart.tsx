@@ -3,6 +3,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useVocabulary } from '../../context/VocabularyContext';
 import { useLanguage } from '../../context/LanguageContext';
 import Card from '../ui/Card';
+import { token } from '../../utils/themeTokens';
 
 const LearningProgressChart: React.FC = () => {
   const { words } = useVocabulary();
@@ -81,14 +82,14 @@ const LearningProgressChart: React.FC = () => {
           >
             <defs>
               <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#72f0b4" stopOpacity={0.8}/>
-                <stop offset="95%" stopColor="#72f0b4" stopOpacity={0}/>
+                <stop offset="5%" stopColor={token('--accent')} stopOpacity={0.8}/>
+                <stop offset="95%" stopColor={token('--accent')} stopOpacity={0}/>
               </linearGradient>
             </defs>
             <XAxis 
                 dataKey="date" 
-                stroke="#7a8da6" 
-                tick={{fill: '#7a8da6', fontSize: 12}}
+                stroke={token('--text-mute')} 
+                tick={{fill: token('--text-mute'), fontSize: 12}}
                 tickFormatter={(val) => {
                     // format as MM-DD
                     const parts = val.split('-');
@@ -97,21 +98,21 @@ const LearningProgressChart: React.FC = () => {
                 }}
             />
             <YAxis 
-                stroke="#7a8da6" 
-                tick={{fill: '#7a8da6', fontSize: 12}} 
+                stroke={token('--text-mute')} 
+                tick={{fill: token('--text-mute'), fontSize: 12}} 
             />
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
             <Tooltip 
-                contentStyle={{ backgroundColor: '#141b2a', borderColor: 'rgba(255,255,255,0.1)', color: '#eae8e3' }}
-                itemStyle={{ color: '#72f0b4', fontWeight: 'bold' }}
-                labelStyle={{ color: '#7a8da6', marginBottom: '4px' }}
+                contentStyle={{ backgroundColor: token('--surface-flat'), borderColor: 'rgba(255,255,255,0.1)', color: token('--text') }}
+                itemStyle={{ color: token('--accent'), fontWeight: 'bold' }}
+                labelStyle={{ color: token('--text-mute'), marginBottom: '4px' }}
                 formatter={(value: number) => [value, language === 'pl' ? 'Słówka' : 'Words']}
                 labelFormatter={(label) => label}
             />
             <Area 
                 type="monotone" 
                 dataKey="count" 
-                stroke="#72f0b4" 
+                stroke={token('--accent')} 
                 strokeWidth={3}
                 fillOpacity={1} 
                 fill="url(#colorCount)" 

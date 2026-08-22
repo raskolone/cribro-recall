@@ -42,23 +42,23 @@ const CuteMascot = ({ state }: { state: 'idle' | 'happy' | 'error' | 'thinking' 
           />
           <defs>
             <linearGradient id="bodyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#34d399" />
-              <stop offset="100%" stopColor="#0ea5e9" />
+              <stop offset="0%" stopColor="var(--accent)" />
+              <stop offset="100%" stopColor="var(--accent-soft)" />
             </linearGradient>
             <radialGradient id="eyeGlow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
-              <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+              <stop offset="0%" stopColor="var(--text-hi)" stopOpacity="1" />
+              <stop offset="100%" stopColor="var(--text-hi)" stopOpacity="0" />
             </radialGradient>
           </defs>
 
           {/* Eyes */}
           <g transform="translate(0, -5)">
             {/* Left Eye */}
-            <circle cx="45" cy="55" r="7" fill="#0f172a" />
+            <circle cx="45" cy="55" r="7" fill="var(--ink-2)" />
             <circle cx="47" cy="53" r="2.5" fill="white" />
             
             {/* Right Eye */}
-            <circle cx="75" cy="55" r="7" fill="#0f172a" />
+            <circle cx="75" cy="55" r="7" fill="var(--ink-2)" />
             <circle cx="77" cy="53" r="2.5" fill="white" />
 
             {/* Happy Eyes Overlay */}
@@ -67,8 +67,8 @@ const CuteMascot = ({ state }: { state: 'idle' | 'happy' | 'error' | 'thinking' 
               animate={{ opacity: state === 'happy' ? 1 : 0 }}
               transition={{ duration: 0.2 }}
             >
-              <path d="M 38 55 Q 45 45 52 55" fill="none" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
-              <path d="M 68 55 Q 75 45 82 55" fill="none" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
+              <path d="M 38 55 Q 45 45 52 55" fill="none" stroke="var(--ink-2)" strokeWidth="3" strokeLinecap="round" />
+              <path d="M 68 55 Q 75 45 82 55" fill="none" stroke="var(--ink-2)" strokeWidth="3" strokeLinecap="round" />
             </motion.g>
 
             {/* Error Eyes Overlay */}
@@ -77,8 +77,8 @@ const CuteMascot = ({ state }: { state: 'idle' | 'happy' | 'error' | 'thinking' 
               animate={{ opacity: state === 'error' ? 1 : 0 }}
               transition={{ duration: 0.2 }}
             >
-              <path d="M 40 50 L 50 60 M 50 50 L 40 60" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
-              <path d="M 70 50 L 80 60 M 80 50 L 70 60" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
+              <path d="M 40 50 L 50 60 M 50 50 L 40 60" stroke="var(--ink-2)" strokeWidth="3" strokeLinecap="round" />
+              <path d="M 70 50 L 80 60 M 80 50 L 70 60" stroke="var(--ink-2)" strokeWidth="3" strokeLinecap="round" />
             </motion.g>
           </g>
 
@@ -91,7 +91,7 @@ const CuteMascot = ({ state }: { state: 'idle' | 'happy' | 'error' | 'thinking' 
               "M 50 70 Q 60 75 70 70"
             } 
             fill="none" 
-            stroke="#0f172a" 
+            stroke="var(--ink-2)" 
             strokeWidth="3.5" 
             strokeLinecap="round" 
             animate={{

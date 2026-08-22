@@ -356,7 +356,7 @@ const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?
   return (
     <div ref={containerRef} className="flex flex-col items-center justify-center p-8 text-center w-full max-w-4xl mx-auto my-auto animate-fade-in relative min-h-[420px]">
       <div className="yarn-container relative w-full max-w-[500px] aspect-video mb-4 flex items-center justify-center select-none overflow-visible">
-        <div className="absolute inset-0 bg-[#72F0B4]/10 blur-[80px] rounded-full" />
+        <div className="absolute inset-0 bg-[var(--accent)]/10 blur-[80px] rounded-full" />
         
         <svg
           className="w-full h-full overflow-visible"
@@ -365,10 +365,10 @@ const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?
         >
           <defs>
             <filter id="yarnShadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="2" dy="4" stdDeviation="4" floodColor="#000000" floodOpacity="0.6" />
+              <feDropShadow dx="2" dy="4" stdDeviation="4" floodColor="var(--ink)" floodOpacity="0.6" />
             </filter>
             <filter id="yarnGlow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="0" stdDeviation="10" floodColor="#72F0B4" floodOpacity="0.2" />
+              <feDropShadow dx="0" dy="0" stdDeviation="10" floodColor="var(--accent)" floodOpacity="0.2" />
             </filter>
           </defs>
 
@@ -378,7 +378,7 @@ const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?
               <path
                 ref={tangledRef}
                 d={tangledPath}
-                stroke="#72F0B4"
+                stroke="var(--accent)"
                 strokeWidth="5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -388,7 +388,7 @@ const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?
               <path
                 ref={spiralRef}
                 d={spiralPath}
-                stroke="#72F0B4"
+                stroke="var(--accent)"
                 strokeWidth="5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -399,23 +399,23 @@ const AIGenerationLoader: React.FC<{ language: 'pl' | 'en'; level: string; logs?
       </div>
 
       <h3 className="text-2xl font-bold text-white mb-3 tracking-tight flex items-center justify-center gap-3">
-        <Sparkles className="w-6 h-6 text-[#72F0B4] animate-pulse" />
+        <Sparkles className="w-6 h-6 text-[var(--accent)] animate-pulse" />
         <span>{language === 'pl' ? 'Upraszczanie i porządkowanie...' : 'Simplifying and organizing...'}</span>
       </h3>
       
-      <p ref={statusTextRef} className="text-base text-[#72F0B4]/80 font-medium tracking-wide max-w-sm mx-auto">
+      <p ref={statusTextRef} className="text-base text-[var(--accent)]/80 font-medium tracking-wide max-w-sm mx-auto">
         {language === 'pl' 
           ? 'Sztuczna inteligencja eliminuje chaos i tworzy przejrzystą strukturę.' 
           : 'AI is eliminating chaos and building a clear structure.'}
       </p>
 
       {currentModel && canViewAiModels && (
-        <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#72F0B4]/10 border border-[#72F0B4]/30 text-[#72F0B4] text-xs font-semibold shadow-[0_0_20px_rgba(139,195,74,0.15)]">
+        <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--accent)] text-xs font-semibold shadow-[0_0_20px_rgba(139,195,74,0.15)]">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#72F0B4] opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#72F0B4]" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--accent)]" />
           </span>
-          <Sparkles className="w-3.5 h-3.5 text-[#72F0B4]" />
+          <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
           <span>
             {language === 'pl' ? 'Generowanie z użyciem: ' : 'Generating with: '}
             <strong className="text-white font-bold">{formatAIModelName(currentModel)}</strong>
@@ -940,8 +940,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     if (numSentencesRef.current) {
       const targetScale = 0.7 + (numSentences / 20) * 0.8;
       gsap.fromTo(numSentencesRef.current, 
-        { scale: targetScale * 1.5, color: '#ffffff' }, 
-        { scale: targetScale, color: '#72f0b4', duration: 0.5, ease: 'back.out(2)' }
+        { scale: targetScale * 1.5, color: 'var(--text-hi)' }, 
+        { scale: targetScale, color: 'var(--accent)', duration: 0.5, ease: 'back.out(2)' }
       );
     }
   }, [numSentences]);
@@ -950,8 +950,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     if (timeLimitRef.current) {
       const targetScale = 0.7 + (timeLimit / 20) * 0.8;
       gsap.fromTo(timeLimitRef.current, 
-        { scale: targetScale * 1.5, color: '#ffffff' }, 
-        { scale: targetScale, color: '#72f0b4', duration: 0.5, ease: 'back.out(2)' }
+        { scale: targetScale * 1.5, color: 'var(--text-hi)' }, 
+        { scale: targetScale, color: 'var(--accent)', duration: 0.5, ease: 'back.out(2)' }
       );
     }
   }, [timeLimit]);
@@ -2098,7 +2098,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
         ) : (
           <div className="max-w-2xl mx-auto sm:mt-4 w-full">
             
-            <Card className="p-0 md:p-8 border-none md:border-solid md:border md:border-white/10 bg-[#05080f] md:bg-[#0d131d] backdrop-blur-2xl relative overflow-visible md:overflow-hidden flex flex-col rounded-none md:rounded-3xl shadow-none md:shadow-[0_20px_60px_rgba(0,0,0,0.55)] max-w-2xl mx-auto min-h-screen md:min-h-0">
+            <Card className="p-0 md:p-8 border-none md:border-solid md:border md:border-white/10 bg-ink md:bg-ink-2 backdrop-blur-2xl relative overflow-visible md:overflow-hidden flex flex-col rounded-none md:rounded-3xl shadow-none md:shadow-[0_20px_60px_rgba(0,0,0,0.55)] max-w-2xl mx-auto min-h-screen md:min-h-0">
 
 
               {/* Single Box Body content */}
@@ -2268,7 +2268,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             }}
                             className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[160px] ${
                               exerciseFormat === 'puzzle'
-                                ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-primary shadow-[0_0_35px_rgba(16,185,129,0.45)] scale-[1.01]'
+                                ? 'bg-[var(--ink-2)]/90 backdrop-blur-md border-2 border-primary shadow-[0_0_35px_rgba(16,185,129,0.45)] scale-[1.01]'
                                 : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-primary/30 hover:border-primary/70 hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] hover:-translate-y-0.5'
                             }`}
                           >
@@ -2303,7 +2303,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             }}
                             className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[160px] ${
                               exerciseFormat === 'typing'
-                                ? 'bg-[#0a0e17]/90 backdrop-blur-md border-2 border-primary shadow-[0_0_35px_rgba(6,182,212,0.45)] scale-[1.01]'
+                                ? 'bg-[var(--ink-2)]/90 backdrop-blur-md border-2 border-primary shadow-[0_0_35px_rgba(6,182,212,0.45)] scale-[1.01]'
                                 : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-primary/30 hover:border-primary/70 hover:shadow-[0_0_25px_rgba(6,182,212,0.25)] hover:-translate-y-0.5'
                             }`}
                           >
@@ -2381,7 +2381,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     {/* LOWER SECTION: EXPANDED BARS (ŹRÓDŁO MATERIAŁU & ILOŚĆ ZDAŃ STACKED VERTICALLY - DESKTOP ONLY) */}
                     <div id="tour-vocab-source" className="hidden sm:flex flex-col gap-4 w-full">
                       {/* Bar 1: Źródło materiału */}
-                      <div className="w-full bg-[#0e1626] border-2 border-line-strong/80 p-4 rounded-3xl shadow-md space-y-3">
+                      <div className="w-full bg-ink-2 border-2 border-line-strong/80 p-4 rounded-3xl shadow-md space-y-3">
                         <div className="flex items-center justify-between">
                           <label className="text-[11px] font-bold text-text-2 uppercase tracking-widest">
                             {language === 'pl' ? 'Źródło materiału' : 'Material Source'}
@@ -2391,7 +2391,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         <button
                           type="button"
                           onClick={() => setIsLessonSelectorOpen(true)}
-                          className="w-full group relative flex items-center justify-between px-4 py-3.5 rounded-2xl bg-[#070b12] border border-white/20 hover:border-primary/60 shadow-[0_4px_15px_rgba(0,0,0,0.4)] hover:shadow-[0_0_20px_rgba(16,185,129,0.25)] transition-all duration-300 cursor-pointer overflow-hidden text-left"
+                          className="w-full group relative flex items-center justify-between px-4 py-3.5 rounded-2xl bg-ink border border-white/20 hover:border-primary/60 shadow-[0_4px_15px_rgba(0,0,0,0.4)] hover:shadow-[0_0_20px_rgba(16,185,129,0.25)] transition-all duration-300 cursor-pointer overflow-hidden text-left"
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                           
@@ -2458,7 +2458,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       </div>
 
                       {/* Bar 2: Ilość zadań */}
-                      <div className="w-full bg-[#0e1626] border-2 border-line-strong/80 p-4 rounded-3xl shadow-md space-y-3">
+                      <div className="w-full bg-ink-2 border-2 border-line-strong/80 p-4 rounded-3xl shadow-md space-y-3">
                         <div className="flex items-center justify-between">
                           <label className="text-[11px] font-bold text-text-2 uppercase tracking-widest">
                             {language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}
@@ -2468,7 +2468,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           </span>
                         </div>
 
-                        <div className="bg-[#070b12] border border-white/10 rounded-2xl p-4 space-y-3">
+                        <div className="bg-ink border border-white/10 rounded-2xl p-4 space-y-3">
                           <input
                             type="range"
                             min="1"
@@ -2478,7 +2478,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             onChange={(e) => {
                               setNumSentences(parseInt(e.target.value));
                             }}
-                            className="w-full h-2 bg-[#1a2536] rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
+                            className="w-full h-2 bg-surface-flat rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
                           />
 
                           <div className="grid grid-cols-4 gap-2 pt-0.5">
@@ -2491,8 +2491,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 }}
                                 className={`py-2 rounded-xl font-bold text-xs transition-all duration-200 ${
                                   numSentences === val
-                                    ? 'bg-[#283548] border border-white/20 text-white shadow-inner'
-                                    : 'bg-[#18212e] border border-white/5 text-text-2 hover:text-white hover:bg-[#1f2b3c]'
+                                    ? 'bg-surface-flat border border-white/20 text-white shadow-inner'
+                                    : 'bg-[var(--surface-flat)] border border-white/5 text-text-2 hover:text-white hover:bg-surface-flat'
                                 }`}
                               >
                                 {val}
@@ -2509,7 +2509,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         onClick={() => handleGenerate(false)}
                         isLoading={isLoading}
                         loadingText={language === 'pl' ? 'AI przygotowuje ćwiczenie...' : 'AI is preparing the exercise...'}
-                        className="w-full py-4 px-6 rounded-2xl border border-primary/50 bg-gradient-to-r from-primary/80 via-[#132c25] to-primary/80 hover:from-primary/90 hover:to-primary/90 text-white font-bold text-base flex items-center justify-center gap-3 transition-all duration-300 shadow-[0_0_25px_rgba(16,185,129,0.2)] hover:shadow-[0_0_35px_rgba(16,185,129,0.35)] hover:scale-[1.008] active:scale-[0.995] group"
+                        className="w-full py-4 px-6 rounded-2xl border border-primary/50 bg-gradient-to-r from-primary/80 via-primary/10 to-primary/80 hover:from-primary/90 hover:to-primary/90 text-white font-bold text-base flex items-center justify-center gap-3 transition-all duration-300 shadow-[0_0_25px_rgba(16,185,129,0.2)] hover:shadow-[0_0_35px_rgba(16,185,129,0.35)] hover:scale-[1.008] active:scale-[0.995] group"
                       >
                         <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse shrink-0" />
                         <span>
@@ -2539,7 +2539,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           exit={{ y: '100%' }}
                           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                           onClick={(e) => e.stopPropagation()}
-                          className="bg-[#0b101d] border border-white/15 w-full max-w-lg rounded-t-[2.5rem] sm:rounded-3xl p-5 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[92vh]"
+                          className="bg-ink-2 border border-white/15 w-full max-w-lg rounded-t-[2.5rem] sm:rounded-3xl p-5 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[92vh]"
                         >
                           {/* Header */}
                           <div className="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
@@ -2608,7 +2608,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           {/* Scrollable Content */}
                           <div className="overflow-y-auto space-y-4 py-4 my-1 pr-1 custom-scrollbar flex-1">
                             {/* Section 1: Źródło materiału */}
-                            <div className="bg-[#121929] border border-white/10 p-4 rounded-2xl space-y-3">
+                            <div className="bg-ink-2 border border-white/10 p-4 rounded-2xl space-y-3">
                               <div className="flex items-center justify-between">
                                 <label className="text-[11px] font-bold text-text-2 uppercase tracking-widest">
                                   {language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary Source'}
@@ -2618,7 +2618,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               <button
                                 type="button"
                                 onClick={() => setIsLessonSelectorOpen(true)}
-                                className="w-full group relative flex items-center justify-between px-4 py-3 rounded-xl bg-[#080d16] border border-white/20 hover:border-primary/60 shadow-md transition-all cursor-pointer text-left"
+                                className="w-full group relative flex items-center justify-between px-4 py-3 rounded-xl bg-ink border border-white/20 hover:border-primary/60 shadow-md transition-all cursor-pointer text-left"
                               >
                                 <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
                                   <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/40 flex items-center justify-center text-primary shrink-0">
@@ -2672,7 +2672,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             </div>
 
                             {/* Section 2: Ilość zadań */}
-                            <div className="bg-[#121929] border border-white/10 p-4 rounded-2xl space-y-3">
+                            <div className="bg-ink-2 border border-white/10 p-4 rounded-2xl space-y-3">
                               <div className="flex items-center justify-between">
                                 <label className="text-[11px] font-bold text-text-2 uppercase tracking-widest">
                                   {language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}
@@ -2682,7 +2682,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 </span>
                               </div>
 
-                              <div className="bg-[#080d16] border border-white/10 rounded-xl p-3 space-y-3">
+                              <div className="bg-ink border border-white/10 rounded-xl p-3 space-y-3">
                                 <input
                                   type="range"
                                   min="1"
@@ -2690,7 +2690,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   step="1"
                                   value={numSentences}
                                   onChange={(e) => setNumSentences(parseInt(e.target.value))}
-                                  className="w-full h-2 bg-[#1a2536] rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
+                                  className="w-full h-2 bg-surface-flat rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
                                 />
 
                                 <div className="grid grid-cols-4 gap-2">
@@ -2701,8 +2701,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                       onClick={() => setNumSentences(val)}
                                       className={`py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                                         numSentences === val
-                                          ? 'bg-[#283548] border border-white/20 text-white shadow-inner'
-                                          : 'bg-[#18212e] border border-white/5 text-text-2 hover:text-white'
+                                          ? 'bg-surface-flat border border-white/20 text-white shadow-inner'
+                                          : 'bg-[var(--surface-flat)] border border-white/5 text-text-2 hover:text-white'
                                       }`}
                                     >
                                       {val}
@@ -2722,7 +2722,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               }}
                               isLoading={isLoading}
                               loadingText={language === 'pl' ? 'AI przygotowuje ćwiczenie...' : 'AI is preparing...'}
-                              className="w-full py-4 px-6 rounded-2xl border border-primary/50 bg-gradient-to-r from-primary/90 via-[#132c25] to-primary/90 hover:from-primary hover:to-primary text-white font-bold text-base flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(16,185,129,0.3)] transition-all cursor-pointer"
+                              className="w-full py-4 px-6 rounded-2xl border border-primary/50 bg-gradient-to-r from-primary/90 via-primary/10 to-primary/90 hover:from-primary hover:to-primary text-white font-bold text-base flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(16,185,129,0.3)] transition-all cursor-pointer"
                             >
                               <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse shrink-0" />
                               <span>
@@ -2752,7 +2752,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           animate={{ y: 0 }}
                           exit={{ y: '100%' }}
                           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                          className="bg-[#0f1522] border border-white/10 w-full max-w-lg rounded-t-[2rem] sm:rounded-3xl p-6 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+                          className="bg-[var(--ink-2)] border border-white/10 w-full max-w-lg rounded-t-[2rem] sm:rounded-3xl p-6 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
                         >
                           <div className="flex justify-between items-center mb-5 border-b border-white/10 pb-4">
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -2770,7 +2770,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <div className="overflow-y-auto custom-scrollbar flex-1 pr-1 space-y-3 pb-4">
                             
                             {/* CATEGORY 1: MOJE LEKCJE (Rozwijany przycisk, domyślnie zwinięty) */}
-                            <div className="rounded-2xl border border-white/10 bg-[#121927] overflow-hidden">
+                            <div className="rounded-2xl border border-white/10 bg-[var(--surface-flat)] overflow-hidden">
                               <div 
                                 className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors"
                                 onClick={() => setIsMyLessonsOpen(!isMyLessonsOpen)}
@@ -2801,7 +2801,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   >
                                     {/* Option 1: Słownictwo ogólne: miks i koszyk */}
                                     <label className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${
-                                      selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
+                                      selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
                                     }`}>
                                       <input 
                                         type="radio" 
@@ -2825,7 +2825,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
                                     {/* Option 2: Mój koszyk */}
                                     <label className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${
-                                      selectedSetId === 'basket' ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
+                                      selectedSetId === 'basket' ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
                                     }`}>
                                       <input 
                                         type="radio" 
@@ -2863,7 +2863,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                     {/* Option 3: Dedykowane zadania od nauczyciela (if present) */}
                                     {specialTasks.length > 0 && specialTasks.map(task => (
                                       <label key={task.id} className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${
-                                        selectedSetId === 'special-task-' + task.id ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
+                                        selectedSetId === 'special-task-' + task.id ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
                                       }`}>
                                         <input 
                                           type="radio" 
@@ -2896,7 +2896,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                               key={set.id} 
                                               className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                                                 
-                                                isSelected ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
+                                                isSelected ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
                                               }`}
                                             >
                                               <input 
@@ -2952,7 +2952,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                             <label 
                                               key={set.id} 
                                               className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
-                                                isSelected ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[#18212e] border-white/5 hover:border-white/10'
+                                                isSelected ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
                                               }`}
                                             >
                                               <input 
@@ -2985,7 +2985,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             </div>
 
                             {/* CATEGORY 2: SŁOWNICTWO OGÓLNE (Rozwijany przycisk, domyślnie zwinięty) */}
-                            <div className="rounded-2xl border border-white/10 bg-[#121927] overflow-hidden">
+                            <div className="rounded-2xl border border-white/10 bg-[var(--surface-flat)] overflow-hidden">
                               <div 
                                 className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors"
                                 onClick={() => setIsGeneralVocabTabOpen(!isGeneralVocabTabOpen)}
@@ -3019,7 +3019,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                       const groupSets = GENERAL_VOCABULARY_SETS.filter(s => s.levelGroup === group.key);
                                       
                                       return (
-                                        <div key={group.key} className="rounded-xl border border-white/10 bg-[#18212e] overflow-hidden">
+                                        <div key={group.key} className="rounded-xl border border-white/10 bg-[var(--surface-flat)] overflow-hidden">
                                           <div 
                                             className="flex items-center justify-between p-3 cursor-pointer hover:bg-white/5 transition-colors"
                                             onClick={() => setExpandedGenLevelGroup(isGroupExpanded ? null : group.key)}
@@ -3050,7 +3050,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                                       className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                                                         isSelected
                                                           ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
-                                                          : 'bg-[#121927] border-white/5 hover:border-white/10'
+                                                          : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
                                                       }`}
                                                     >
                                                       <input
@@ -3116,7 +3116,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <div className="mt-4 pt-4 border-t border-white/10">
                             <button 
                               onClick={() => setIsLessonSelectorOpen(false)}
-                              className="w-full py-3.5 rounded-2xl bg-[#10b981] text-accent-ink font-bold text-base shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:bg-primary transition-colors"
+                              className="w-full py-3.5 rounded-2xl bg-[var(--accent)] text-accent-ink font-bold text-base shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:bg-primary transition-colors"
                             >
                               {language === 'pl' ? 'Zatwierdź' : 'Confirm'}
                             </button>
@@ -3138,7 +3138,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 initial={{ y: 20, opacity: 0, scale: 0.95 }}
                                 animate={{ y: 0, opacity: 1, scale: 1 }}
                                 exit={{ y: 20, opacity: 0, scale: 0.95 }}
-                                className="bg-[#0f1522] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85vh]"
+                                className="bg-[var(--ink-2)] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85vh]"
                               >
                                 <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
                                   <div>
@@ -3240,7 +3240,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   )}
                                   <button 
                                     onClick={() => setPreviewVocabSet(null)}
-                                    className="flex-1 py-3.5 rounded-xl bg-[#10b981] text-black font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                                    className="flex-1 py-3.5 rounded-xl bg-[var(--accent)] text-black font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                                   >
                                     {language === 'pl' ? 'Gotowe' : 'Done'}
                                   </button>
@@ -3263,7 +3263,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 initial={{ y: 20, opacity: 0, scale: 0.95 }}
                                 animate={{ y: 0, opacity: 1, scale: 1 }}
                                 exit={{ y: 20, opacity: 0, scale: 0.95 }}
-                                className="bg-[#0f1522] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85vh]"
+                                className="bg-[var(--ink-2)] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85vh]"
                               >
                                 {/* Header */}
                                 <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
@@ -3303,7 +3303,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                     <select
                                       value={setupSelectedSource}
                                       onChange={(e) => setSetupSelectedSource(e.target.value)}
-                                      className="w-full bg-[#18212e] text-white border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 appearance-none pr-10"
+                                      className="w-full bg-[var(--surface-flat)] text-white border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 appearance-none pr-10"
                                     >
                                       {basketWords.length > 0 && (
                                         <option value="basket">
@@ -3382,7 +3382,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   )}
 
                                   {/* Scrollable list of words with checkboxes */}
-                                  <div className="flex-1 overflow-y-auto custom-scrollbar border border-white/5 rounded-2xl bg-[#0b0f19] p-2 space-y-1 max-h-[300px]">
+                                  <div className="flex-1 overflow-y-auto custom-scrollbar border border-white/5 rounded-2xl bg-ink-2 p-2 space-y-1 max-h-[300px]">
                                     {setupWords.length === 0 ? (
                                       <div className="text-center py-8 text-text-mute text-sm">
                                         {language === 'pl' ? 'Brak słówek w wybranym źródle' : 'No words in the selected source'}
@@ -3489,7 +3489,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                 initial={{ y: 20, opacity: 0, scale: 0.95 }}
                                 animate={{ y: 0, opacity: 1, scale: 1 }}
                                 exit={{ y: 20, opacity: 0, scale: 0.95 }}
-                                className="bg-[#0f1522] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85vh]"
+                                className="bg-[var(--ink-2)] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85vh]"
                               >
                                 <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
                                   <div className="flex items-center gap-3">
@@ -3771,7 +3771,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
               {/* Polish Sentence */}
               {exerciseFormat !== 'puzzle' && (
-                <div className="w-full bg-[#18212e] border border-white/10 rounded-2xl p-5 shadow-[inset_0_2px_15px_rgba(0,0,0,0.5)] mb-2">
+                <div className="w-full bg-[var(--surface-flat)] border border-white/10 rounded-2xl p-5 shadow-[inset_0_2px_15px_rgba(0,0,0,0.5)] mb-2">
                   <div className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight leading-relaxed text-center">
                     {exercises[activeSentenceIndex].polishSentence}
                   </div>
@@ -4395,10 +4395,10 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
       {isTopicModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm" onClick={() => setIsTopicModalOpen(false)}>
           <div 
-            className="bg-[#121824] rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-white/10 shadow-[0_16px_64px_rgba(0,0,0,0.6)]"
+            className="bg-[var(--surface-flat)] rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-white/10 shadow-[0_16px_64px_rgba(0,0,0,0.6)]"
             onClick={e => e.stopPropagation()}
           >
-            <div className="sticky top-0 z-20 flex items-center justify-between p-6 bg-[#121824]/95 backdrop-blur-xl border-b border-white/10">
+            <div className="sticky top-0 z-20 flex items-center justify-between p-6 bg-[var(--surface-flat)]/95 backdrop-blur-xl border-b border-white/10">
               <div>
                  <h2 className="text-xl font-bold text-white">Tematyka mieszana (Zasoby)</h2>
                  <p className="text-sm text-content-muted">Wybierz kategorię z bazy, aby wygenerować zdania do ćwiczeń.</p>

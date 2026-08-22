@@ -278,11 +278,11 @@ export default function AssignVocabularyModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md">
       <div 
-        className="bg-[#121824] rounded-3xl w-full max-w-5xl max-h-[90vh] flex flex-col border border-white/10 shadow-[0_16px_64px_rgba(0,0,0,0.8)] overflow-hidden"
+        className="bg-[var(--surface-flat)] rounded-3xl w-full max-w-5xl max-h-[90vh] flex flex-col border border-white/10 shadow-[0_16px_64px_rgba(0,0,0,0.8)] overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 bg-[#121824]/95 border-b border-white/10 shrink-0">
+        <div className="flex items-center justify-between p-6 bg-[var(--surface-flat)]/95 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary">
               <Layers size={22} />
@@ -502,7 +502,7 @@ export default function AssignVocabularyModal({
         </div>
 
         {/* Footer Bar */}
-        <div className="p-6 bg-[#121824]/95 border-t border-white/10 flex items-center justify-between shrink-0">
+        <div className="p-6 bg-[var(--surface-flat)]/95 border-t border-white/10 flex items-center justify-between shrink-0">
           <div className="text-sm">
             <span className="text-content-muted">Wybranych słówek: </span>
             <span className="font-bold font-mono text-primary text-base">

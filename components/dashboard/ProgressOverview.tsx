@@ -4,6 +4,7 @@ import Card from '../ui/Card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useLanguage } from '../../context/LanguageContext';
 import i18n from "i18next";
+import { token } from '../../utils/themeTokens';
 
 const ProgressOverview: React.FC = () => {
   const { words, difficultWords, lastPractice } = useVocabulary();
@@ -51,7 +52,6 @@ const ProgressOverview: React.FC = () => {
     return { totalWords, difficultCount, languageData, difficultyData, levelData };
   }, [words, difficultWords]);
 
-  const COLORS = ['#4ade80', '#c9a86c', '#2563eb', '#9333ea'];
 
   if (words.length === 0) {
     return null; // Don't show if no words
@@ -104,14 +104,14 @@ const ProgressOverview: React.FC = () => {
               <h3 className="text-sm font-mono text-content-muted uppercase mb-2 lg:mb-4 text-center">{i18n.t("Words by Language")}</h3>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.languageData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="name" stroke="#a0a0a0" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#a0a0a0" fontSize={10} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="name" stroke={token('--text-mute')} fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke={token('--text-mute')} fontSize={10} tickLine={false} axisLine={false} />
                   <Tooltip 
                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                    contentStyle={{ backgroundColor: '#0d1117', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                    itemStyle={{ color: '#4ade80' }}
+                    contentStyle={{ backgroundColor: token('--surface-flat'), borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                    itemStyle={{ color: token('--accent') }}
                   />
-                  <Bar dataKey="count" fill="#4ade80" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill={token('--accent')} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -121,14 +121,14 @@ const ProgressOverview: React.FC = () => {
               <h3 className="text-sm font-mono text-content-muted uppercase mb-2 lg:mb-4 text-center">{i18n.t("Spaced Repetition")}</h3>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.levelData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="name" stroke="#a0a0a0" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#a0a0a0" fontSize={10} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="name" stroke={token('--text-mute')} fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke={token('--text-mute')} fontSize={10} tickLine={false} axisLine={false} />
                   <Tooltip 
                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                    contentStyle={{ backgroundColor: '#0d1117', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                    itemStyle={{ color: '#2563eb' }}
+                    contentStyle={{ backgroundColor: token('--surface-flat'), borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                    itemStyle={{ color: token('--info') }}
                   />
-                  <Bar dataKey="count" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill={token('--info')} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -149,14 +149,14 @@ const ProgressOverview: React.FC = () => {
                     stroke="none"
                   >
                     {stats.difficultyData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={index === 0 ? '#4ade80' : '#c9a86c'} />
+                      <Cell key={`cell-${index}`} fill={index === 0 ? token('--accent') : token('--text-faint')} />
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#0d1117', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                    itemStyle={{ color: '#ffffff' }}
+                    contentStyle={{ backgroundColor: token('--surface-flat'), borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                    itemStyle={{ color: token('--text') }}
                   />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', color: '#a0a0a0' }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', color: token('--text-mute') }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>

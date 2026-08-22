@@ -75,7 +75,7 @@ export const LessonSelectionModal: React.FC<LessonSelectionModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-fadeIn">
-      <div className="bg-[#121926] border border-white/10 rounded-2xl w-full max-w-2xl flex flex-col max-h-[85vh] shadow-2xl overflow-hidden">
+      <div className="bg-ink-2 border border-white/10 rounded-2xl w-full max-w-2xl flex flex-col max-h-[85vh] shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-white/10 bg-base-200/50 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">

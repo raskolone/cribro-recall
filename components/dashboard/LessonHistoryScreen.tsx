@@ -249,7 +249,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
 
           {/* Grid / List Switcher (Visible when in lessons tab) */}
           {activeTab === 'lessons' && (
-            <div className="flex items-center gap-1 bg-[#0a0f1a] border border-white/10 p-1 rounded-xl shadow-inner">
+            <div className="flex items-center gap-1 bg-ink-2 border border-white/10 p-1 rounded-xl shadow-inner">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
@@ -327,7 +327,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                 <div
                   key={lesson.id}
                   onClick={() => handleLessonSelect(lesson)}
-                  className={`bg-[#0a0e17] hover:border-primary/50 hover:bg-[#0e1524] shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_36px_rgba(16,185,129,0.25)] rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 relative overflow-hidden group cursor-pointer hover:-translate-y-1.5 min-h-[220px] ${isRecentLesson(lesson) ? 'border-primary/80 animate-pulse drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-white/10'}`}
+                  className={`bg-[var(--ink-2)] hover:border-primary/50 hover:bg-ink-2 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_36px_rgba(16,185,129,0.25)] rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 relative overflow-hidden group cursor-pointer hover:-translate-y-1.5 min-h-[220px] ${isRecentLesson(lesson) ? 'border-primary/80 animate-pulse drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-white/10'}`}
                 >
                   {/* Glass & Shiny Effects */}
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />

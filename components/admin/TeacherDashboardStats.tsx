@@ -6,12 +6,13 @@ import { BarChart3 } from 'lucide-react';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import i18n from "i18next";
+import { token, accentRamp } from '../../utils/themeTokens';
 
 interface StatsProps {
   users: (User & { id: string })[];
 }
 
-const COLORS = ['#00C49F', '#FFBB28', '#FF8042', '#0088FE', '#8884d8'];
+
 
 const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -139,8 +140,8 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
                       <CartesianGrid strokeDasharray="3 3" stroke="#333" />
                       <XAxis dataKey="name" tick={{fill: '#888'}} />
                       <YAxis tick={{fill: '#888'}} />
-                      <Tooltip contentStyle={{backgroundColor: '#1f2937', border: 'none', borderRadius: '8px'}} />
-                      <Bar dataKey="logins" fill="#00C49F" radius={[4, 4, 0, 0]} name="Logowania" />
+                      <Tooltip contentStyle={{backgroundColor: token('--surface-flat'), border: 'none', borderRadius: '8px'}} />
+                      <Bar dataKey="logins" fill={token('--accent')} radius={[4, 4, 0, 0]} name="Logowania" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -155,15 +156,15 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
                         cx="50%"
                         cy="50%"
                         outerRadius={80}
-                        fill="#8884d8"
+                        fill={token('--accent')}
                         dataKey="value"
                         label={({ name, percent }) => `${name} ${isNaN(percent) || percent == null ? 0 : (percent * 100).toFixed(0)}%`}
                       >
                         {levelPieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={`cell-${index}`} fill={accentRamp(levelPieData.length)[index]} />
                         ))}
                       </Pie>
-                      <Tooltip contentStyle={{backgroundColor: '#1f2937', border: 'none', borderRadius: '8px'}} />
+                      <Tooltip contentStyle={{backgroundColor: token('--surface-flat'), border: 'none', borderRadius: '8px'}} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -191,10 +192,10 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
                       <CartesianGrid strokeDasharray="3 3" stroke="#333" />
                       <XAxis dataKey="date" tick={{fill: '#888'}} />
                       <YAxis tick={{fill: '#888'}} />
-                      <Tooltip contentStyle={{backgroundColor: '#1f2937', border: 'none', borderRadius: '8px'}} />
+                      <Tooltip contentStyle={{backgroundColor: token('--surface-flat'), border: 'none', borderRadius: '8px'}} />
                       <Legend />
-                      <Bar dataKey="poprawne" stackId="a" fill="#00C49F" name="Poprawne odpowiedzi" radius={[0, 0, 4, 4]} />
-                      <Bar dataKey="błędy" stackId="a" fill="#ef4444" name="Błędy" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="poprawne" stackId="a" fill={token('--accent')} name="Poprawne odpowiedzi" radius={[0, 0, 4, 4]} />
+                      <Bar dataKey="błędy" stackId="a" fill={token('--danger')} name="Błędy" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

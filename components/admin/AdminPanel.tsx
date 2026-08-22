@@ -1440,7 +1440,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 onClick={() => handleTileClick(tile.id)}
                 className={`p-4 sm:p-4.5 cursor-pointer flex flex-col justify-between liquid-glass-tile select-none ${
                   isActive
-                    ? 'border-primary/80 shadow-[0_0_24px_rgba(114,240,180,0.25)] ring-1 ring-primary/40 bg-[#0e1524] z-10'
+                    ? 'border-primary/80 shadow-[0_0_24px_rgba(114,240,180,0.25)] ring-1 ring-primary/40 bg-ink-2 z-10'
                     : selectedUser
                     ? 'hover:border-primary/50'
                     : 'opacity-85 hover:border-warn/40'
@@ -3070,7 +3070,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </div>
                   
                   {viewingRecord?.lessonSummary && (
-                    <div className="rounded-xl overflow-hidden border border-white/5 bg-[#1a1f2e]">
+                    <div className="rounded-xl overflow-hidden border border-white/5 bg-surface-flat">
                       <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-content">
                         <span className="w-2 h-2 rounded-full bg-info"></span>
                         
@@ -3081,7 +3081,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   )}
 
                   {viewingRecord?.studentSpeaking && (
-                    <div className="rounded-xl overflow-hidden border border-white/5 bg-[#242424]">
+                    <div className="rounded-xl overflow-hidden border border-white/5 bg-surface-flat">
                       <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-content">
                         <span className="w-2 h-2 rounded-full bg-text-faint"></span>
                         
@@ -3092,7 +3092,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   )}
 
                   {viewingRecord?.vocabularyText && (
-                    <div className="rounded-xl overflow-hidden border border-white/5 bg-[#162a22]">
+                    <div className="rounded-xl overflow-hidden border border-white/5 bg-primary/10">
                       <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-content">
                         <span className="w-2 h-2 rounded-full bg-primary"></span>
                         
@@ -3103,7 +3103,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   )}
 
                   {viewingRecord?.thingsToImprove && (
-                    <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a1616]">
+                    <div className="rounded-xl overflow-hidden border border-white/5 bg-danger/10">
                       <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-content">
                         <span className="w-2 h-2 rounded-full bg-danger"></span>
                         
@@ -3114,7 +3114,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   )}
 
                   {viewingRecord?.suggestedFollowUp && (
-                    <div className="rounded-xl overflow-hidden border border-white/5 bg-[#2a2816]">
+                    <div className="rounded-xl overflow-hidden border border-white/5 bg-warn/10">
                       <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-content">
                         <span className="w-2 h-2 rounded-full bg-warn"></span>
                         

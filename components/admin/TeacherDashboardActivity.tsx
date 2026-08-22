@@ -5,6 +5,7 @@ import { User, PracticeLog } from '../../types';
 import { Activity, Clock, BookOpen, LogIn, Search, ChevronDown, ChevronUp, BarChart2, ListFilter, Users } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import i18n from "i18next";
+import { token } from '../../utils/themeTokens';
 
 interface ActivityProps {
   users: (User & { id: string })[];
@@ -311,22 +312,22 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
                   <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorExercises" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        <stop offset="5%" stopColor={token('--accent')} stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor={token('--accent')} stopOpacity={0}/>
                       </linearGradient>
                       <linearGradient id="colorLogins" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                        <stop offset="5%" stopColor={token('--info')} stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor={token('--info')} stopOpacity={0}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                     <XAxis dataKey="dateStr" tick={{ fill: '#888', fontSize: 11 }} />
                     <YAxis allowDecimals={false} tick={{ fill: '#888', fontSize: 11 }} />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#18181b', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', fontSize: '12px' }} 
+                      contentStyle={{ backgroundColor: token('--surface-flat'), borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', fontSize: '12px' }} 
                     />
-                    <Area type="monotone" dataKey="exercises" stroke="#10b981" fillOpacity={1} fill="url(#colorExercises)" name="Ćwiczenia" />
-                    <Area type="monotone" dataKey="logins" stroke="#3b82f6" fillOpacity={1} fill="url(#colorLogins)" name="Logowania" />
+                    <Area type="monotone" dataKey="exercises" stroke={token('--accent')} fillOpacity={1} fill="url(#colorExercises)" name="Ćwiczenia" />
+                    <Area type="monotone" dataKey="logins" stroke={token('--info')} fillOpacity={1} fill="url(#colorLogins)" name="Logowania" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
