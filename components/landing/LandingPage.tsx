@@ -92,18 +92,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
   return (
     <div className="min-h-screen text-content relative overflow-y-auto overflow-x-hidden font-sans bg-transparent scrollbar-hide">
       {/* Navigation */}
-      <nav className="absolute top-0 left-0 right-0 z-20 flex justify-end items-center px-8 py-6 max-w-7xl mx-auto">
-        <div className="font-mono text-sm border border-white/10 px-3 py-1 rounded flex gap-2">
+      <nav className="absolute top-0 left-0 right-0 z-20 flex justify-end items-center px-4 sm:px-8 py-4 sm:py-6 max-w-7xl mx-auto">
+        <div className="font-mono text-sm border border-line-strong rounded-full flex items-center">
           <button 
             onClick={() => setLanguage('pl')} 
-            className={`hover:text-primary transition-colors ${language === 'pl' ? 'text-primary font-bold' : 'text-content-muted'}`}
+            className={`min-w-11 min-h-11 px-3 flex items-center justify-center rounded-full hover:text-primary transition-colors ${language === 'pl' ? 'text-primary font-bold' : 'text-content-muted'}`}
           >
             {i18n.t("PL")}
           </button>
           <span className="text-white/20">|</span>
           <button 
             onClick={() => setLanguage('en')} 
-            className={`hover:text-primary transition-colors ${language === 'en' ? 'text-primary font-bold' : 'text-content-muted'}`}
+            className={`min-w-11 min-h-11 px-3 flex items-center justify-center rounded-full hover:text-primary transition-colors ${language === 'en' ? 'text-primary font-bold' : 'text-content-muted'}`}
           >
             {i18n.t("EN")}
           </button>
@@ -135,7 +135,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
               </h1>
             </div>
             
-            <div className="text-xl md:text-2xl font-mono text-primary mb-8 h-8 flex items-center gap-2">
+            <div className="text-lg sm:text-xl md:text-2xl font-mono text-primary mb-8 min-h-8 flex flex-wrap items-center gap-x-2">
               <span>{i18n.t("Your personal")}</span>
               <Typewriter words={['language coach.', 'vocabulary builder.', 'native speaker.', 'study assistant.']} loop={true} />
             </div>
@@ -193,7 +193,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                 <div className="pt-4 text-center">
                   <button 
                     onClick={onLoginClick}
-                    className="text-xs text-content-muted hover:text-white transition-colors"
+                    className="text-xs text-content-muted hover:text-white transition-colors py-3 px-2 -my-1"
                   >
                     {i18n.t("No account? Register here")}
                   </button>
@@ -251,7 +251,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                     <h4 className="text-xl md:text-2xl font-bold text-white mt-4 mb-6">
                       {language === 'pl' ? 'Lubię czytać książki w wolnym czasie.' : 'I like reading books in my free time.'}
                     </h4>
-                    <button className="text-primary text-sm font-bold flex items-center justify-center gap-2 mx-auto hover:text-primary">
+                    <button className="text-primary text-sm font-bold flex items-center justify-center gap-2 mx-auto py-3 px-3 hover:text-accent-soft transition-colors">
                       <Lightbulb size={16} /> {language === 'pl' ? 'Pokaż wskazówkę' : 'Show hint'}
                     </button>
                   </div>
@@ -268,11 +268,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                     />
                   </div>
                   
-                  <div className="flex justify-between pt-2">
+                  <div className="flex flex-wrap gap-3 justify-between pt-2">
                     <button className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-sm">
                       {language === 'pl' ? 'Poprzednie' : 'Previous'}
                     </button>
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3">
                       <button className="px-6 py-3 rounded-xl bg-primary/40 border border-primary/20 text-primary font-bold text-sm">
                         {language === 'pl' ? 'Sprawdź' : 'Check'}
                       </button>
@@ -612,7 +612,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
           <div className="text-content-muted text-sm text-center sm:text-left">
             &copy; {new Date().getFullYear()} Cribro. {language === 'pl' ? 'Wszelkie prawa zastrzeżone.' : 'All rights reserved.'}
           </div>
-          <a href="mailto:wyrozumski@maciej.pro" className="flex items-center justify-center gap-2 text-content-muted hover:text-primary transition-colors text-sm bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg border border-white/5">
+          <a href="mailto:wyrozumski@maciej.pro" className="flex items-center justify-center gap-2 py-3 text-content-muted hover:text-primary transition-colors text-sm bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg border border-white/5">
             <Mail className="w-4 h-4" /> wyrozumski@maciej.pro
           </a>
         </div>

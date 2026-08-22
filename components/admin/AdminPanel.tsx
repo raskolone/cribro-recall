@@ -1763,7 +1763,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               <div>
                 <h3 className="text-lg font-bold mb-4">{i18n.t("Historia ćwiczeń (App)")}</h3>
                 {practiceLogs.length > 0 ? (
-                  <div className="bg-base-200/50 rounded-xl border border-white/5 overflow-hidden">
+                  <div className="bg-base-200/50 rounded-xl border border-line overflow-x-auto">
                     <table className="w-full text-left text-sm">
                       <thead className="bg-black/20 text-content-muted font-mono uppercase text-xs">
                         <tr>

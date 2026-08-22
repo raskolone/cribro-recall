@@ -4,7 +4,9 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!-- Bez maximum-scale/user-scalable: blokowanie powiększania łamie WCAG 1.4.4,
+         a paczka motywu wprost wymaga zachowania dostępności. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Your English AI Coach - CRIBRO ENGLISH</title>
     <meta name="theme-color" content="#09101c" />
     <meta name="apple-mobile-web-app-capable" content="yes">
