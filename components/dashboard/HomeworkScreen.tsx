@@ -1120,7 +1120,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                 variant="secondary"
                 size="sm"
                 onClick={handleCancelEdit}
-                className="text-xs flex items-center gap-1.5 self-start sm:self-auto text-warn hover:text-warn border-warn/30"
+                className="text-xs flex items-center gap-1.5 self-start sm:self-auto text-warn hover:opacity-80 border-warn/30"
               >
                 <X size={14} /> Anuluj edycję i wróć do listy
               </Button>
@@ -1474,7 +1474,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                         <button
                           type="button"
                           onClick={() => setTranslationItems(prev => prev.filter((_, i) => i !== idx))}
-                          className="text-danger hover:text-danger p-1"
+                          className="text-danger hover:opacity-80 p-1"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -1547,7 +1547,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                         <button
                           type="button"
                           onClick={() => setErrorCorrectionItems(prev => prev.filter((_, i) => i !== idx))}
-                          className="text-danger hover:text-danger p-1"
+                          className="text-danger hover:opacity-80 p-1"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -1820,7 +1820,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                           <button
                             type="button"
                             onClick={() => handleDeleteTask(task)}
-                            className="p-2 rounded-xl text-danger hover:text-danger hover:bg-danger/15 border border-danger/20 hover:border-danger/40 transition-all cursor-pointer"
+                            className="p-2 rounded-xl text-danger hover:opacity-80 hover:bg-danger/15 border border-danger/20 hover:border-danger/40 transition-all cursor-pointer"
                             title="Usuń pracę domową"
                           >
                             <Trash2 size={15} />
@@ -2127,7 +2127,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                     setPreviewTask(null);
                     setTaskToDelete(t);
                   }}
-                  className="text-xs text-danger hover:text-danger bg-danger/10 hover:bg-danger/20 px-3 py-1.5 rounded-xl border border-danger/25 flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="text-xs text-danger hover:opacity-80 bg-danger/10 hover:bg-danger/20 px-3 py-1.5 rounded-xl border border-danger/25 flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <Trash2 size={14} /> Usuń pracę domową
                 </button>

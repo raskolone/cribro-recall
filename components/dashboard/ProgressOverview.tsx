@@ -63,7 +63,7 @@ const ProgressOverview: React.FC = () => {
         className="flex items-center gap-4 cursor-pointer select-none group"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <span className="font-mono text-xs tracking-[0.25em] text-primary uppercase whitespace-nowrap group-hover:text-primary-focus transition-colors">
+        <span className="font-mono text-xs tracking-[0.25em] text-primary uppercase whitespace-nowrap group-hover:text-accent-soft-focus transition-colors">
           {language === 'pl' ? 'Postępy w nauce' : 'Learning Progress'}
         </span>
         <div className="h-[1px] w-full bg-white/10 group-hover:bg-primary/20 transition-colors"></div>

@@ -93,7 +93,7 @@ const WordSetsScreen: React.FC = () => {
                                               </button>
                   <button
                     onClick={() => deleteWordSet(set.id)}
-                    className="text-danger hover:text-danger text-sm font-bold transition-colors"
+                    className="text-danger hover:opacity-80 text-sm font-bold transition-colors"
                   >
                     
                                                 {i18n.t("Delete Set")}

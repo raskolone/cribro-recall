@@ -269,11 +269,11 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             <div className="space-y-1.5 mb-2">
               <div className="flex justify-between text-xs font-medium">
                 <span className="text-content-muted">{language === 'pl' ? 'Opanowanie' : 'Mastery'}</span>
-                <span className={(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
+                <span className={(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-primary/60 font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
               </div>
               <div className="w-full bg-base-300 h-1.5 rounded-full overflow-hidden">
                 <div 
-                  className={`h-full transition-all duration-500 ${(setMastery[set.id] || 0) >= 80 ? 'bg-primary' : 'bg-primary'}`}
+                  className={`h-full transition-all duration-500 ${(setMastery[set.id] || 0) >= 80 ? 'bg-primary shadow-glow' : 'bg-primary/40'}`}
                   style={{ width: `${Math.min(100, Math.max(0, setMastery[set.id] || 0))}%` }}
                 />
               </div>
@@ -330,7 +330,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             </span>
             <span className="flex items-center gap-1 font-mono">
               {language === 'pl' ? 'Opanowanie:' : 'Mastery:'} 
-              <span className={(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
+              <span className={(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-primary/60 font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
             </span>
             {lastPracticed[set.id] && (
               <span className="font-mono">
@@ -414,11 +414,11 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             <div className="space-y-1.5 mb-2">
               <div className="flex justify-between text-xs font-medium">
                 <span className="text-content-muted">{language === 'pl' ? 'Opanowanie' : 'Mastery'}</span>
-                <span className={(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
+                <span className={(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-primary/60 font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
               </div>
               <div className="w-full bg-base-300 h-1.5 rounded-full overflow-hidden">
                 <div 
-                  className={`h-full transition-all duration-500 ${(setMastery[set.id] || 0) >= 80 ? 'bg-primary' : 'bg-primary'}`}
+                  className={`h-full transition-all duration-500 ${(setMastery[set.id] || 0) >= 80 ? 'bg-primary shadow-glow' : 'bg-primary/40'}`}
                   style={{ width: `${Math.min(100, Math.max(0, setMastery[set.id] || 0))}%` }}
                 />
               </div>
@@ -434,7 +434,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             <Button variant="secondary" onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }} disabled={set.cardCount === 0} className="px-3" title={language === 'pl' ? 'Podgląd' : 'Preview'}>
               👀
             </Button>
-            <Button variant="secondary" onClick={(e) => { e.stopPropagation(); setSetToDelete(set.id); }} className="px-3 border-danger/30 text-danger hover:text-danger hover:bg-danger/10" title={language === 'pl' ? 'Usuń zestaw' : 'Delete set'}>
+            <Button variant="secondary" onClick={(e) => { e.stopPropagation(); setSetToDelete(set.id); }} className="px-3 border-danger/30 text-danger hover:opacity-80 hover:bg-danger/10" title={language === 'pl' ? 'Usuń zestaw' : 'Delete set'}>
               🗑️
             </Button>
           </div>
@@ -470,7 +470,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             </span>
             <span className="flex items-center gap-1 font-mono">
               {language === 'pl' ? 'Opanowanie:' : 'Mastery:'} 
-              <span className={(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-primary font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
+              <span className={(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-primary/60 font-bold'}>{Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%</span>
             </span>
           </div>
         </div>
@@ -493,7 +493,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           <Button variant="secondary" onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }} disabled={set.cardCount === 0} className="px-3" title={language === 'pl' ? 'Podgląd' : 'Preview'}>
             👀
           </Button>
-          <Button variant="secondary" onClick={(e) => { e.stopPropagation(); setSetToDelete(set.id); }} className="px-3 border-danger/30 text-danger hover:text-danger hover:bg-danger/10" title={language === 'pl' ? 'Usuń zestaw' : 'Delete set'}>
+          <Button variant="secondary" onClick={(e) => { e.stopPropagation(); setSetToDelete(set.id); }} className="px-3 border-danger/30 text-danger hover:opacity-80 hover:bg-danger/10" title={language === 'pl' ? 'Usuń zestaw' : 'Delete set'}>
             🗑️
           </Button>
         </div>

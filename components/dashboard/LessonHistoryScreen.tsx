@@ -371,7 +371,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                   </div>
 
                   {/* Bottom Footer Action */}
-                  <div className="flex items-center justify-between text-xs font-bold text-primary group-hover:text-primary mt-5 pt-3 border-t border-white/5 relative z-10">
+                  <div className="flex items-center justify-between text-xs font-bold text-primary group-hover:text-accent-soft mt-5 pt-3 border-t border-white/5 relative z-10">
                     <span>{language === 'pl' ? 'Zobacz notatki' : 'View notes'}</span>
                     <div className="flex items-center gap-2">
                       {vocabCount > 0 && onStudySet && (
@@ -730,7 +730,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                              setSelectedLesson(null);
                              onStudySet(`lesson_${lId}`);
                            }}
-                           className="bg-primary hover:bg-primary text-accent-ink font-bold flex-1 sm:flex-none shadow-md"
+                           className="bg-primary hover:brightness-110 text-accent-ink font-bold flex-1 sm:flex-none shadow-md"
                          >
                            🎴 {language === 'pl' ? 'Generuj / Ucz się Fiszek' : 'Study Flashcards'}
                          </Button>

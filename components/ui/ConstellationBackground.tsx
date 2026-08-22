@@ -122,11 +122,16 @@ const ConstellationBackground: React.FC = () => {
 
     // Przy prefers-reduced-motion: jedna statyczna klatka, bez pętli.
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      seed();
-      draw();
-      stop();
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
+      // Jedna statyczna klatka zamiast pętli — ale po zmianie rozmiaru trzeba
+      // ją przerysować, inaczej kanwa zostaje wyczyszczona i tło znika.
+      const redrawStatic = () => {
+        seed();
+        draw();
+        stop();
+      };
+      redrawStatic();
+      window.addEventListener('resize', redrawStatic);
+      return () => window.removeEventListener('resize', redrawStatic);
     }
 
     seed();

@@ -113,7 +113,7 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
             {currentWord?.word && <div className="absolute top-4 right-4"><TTSButtons text={currentWord.word} /></div>}
           </div>
           {/* Back of card */}
-          <div className="absolute w-full h-full p-6 backface-hidden bg-primary/40 backdrop-blur-xl border border-white/20 text-primary rounded-xl shadow-2xl flex flex-col justify-center text-center" style={{ transform: 'rotateY(180deg)' }}>
+          <div className="absolute w-full h-full p-6 backface-hidden bg-primary/40 backdrop-blur-xl border border-white/20 text-content rounded-xl shadow-2xl flex flex-col justify-center text-center" style={{ transform: 'rotateY(180deg)' }}>
             <p className="text-xl font-semibold">{currentWord?.definition}</p>
             <p className="mt-4 text-base italic opacity-80">"{currentWord?.example}"</p>
           </div>

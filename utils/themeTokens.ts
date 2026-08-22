@@ -65,8 +65,30 @@ export function accentRamp(steps: number): string[] {
   if (steps <= 0) return [];
   const min = 0.28;
   const max = 1;
+  // Krycie nakładamy na wartość tokenu, żeby zmiana --accent przenosiła się
+  // także na wykresy — inaczej ten moduł przeczyłby własnemu założeniu.
+  const accent = token('--accent');
   return Array.from({ length: steps }, (_, i) => {
     const t = steps === 1 ? max : min + ((max - min) * i) / (steps - 1);
-    return `rgba(114, 240, 180, ${t.toFixed(2)})`;
+    return withAlpha(accent, t);
   });
+}
+
+/** Dokłada krycie do koloru z tokenu (#rgb, #rrggbb albo gotowe rgb/rgba). */
+function withAlpha(color: string, alpha: number): string {
+  const hex = color.trim();
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex);
+  if (m) {
+    const h = m[1].length === 3 ? m[1].split('').map(c => c + c).join('') : m[1];
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(2)})`;
+  }
+  const rgb = /rgba?\(([^)]+)\)/.exec(hex);
+  if (rgb) {
+    const [r, g, b] = rgb[1].split(',').map(v => parseFloat(v));
+    return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(2)})`;
+  }
+  return color;
 }

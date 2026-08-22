@@ -53,7 +53,7 @@ class GlobalErrorBoundary extends Component<Props, State> {
               </button>
               <button 
                 onClick={this.handleReset}
-                className="px-6 py-2 bg-danger hover:bg-danger rounded-xl transition-colors"
+                className="px-6 py-2 bg-danger hover:brightness-110 rounded-xl transition-colors"
               >
                 Spróbuj kontynuować
               </button>

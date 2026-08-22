@@ -273,7 +273,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                       {language === 'pl' ? 'Poprzednie' : 'Previous'}
                     </button>
                     <div className="flex flex-wrap gap-3">
-                      <button className="px-6 py-3 rounded-xl bg-primary/40 border border-primary/20 text-primary font-bold text-sm">
+                      <button className="px-6 py-3 rounded-xl bg-primary/40 border border-primary/20 text-content font-bold text-sm">
                         {language === 'pl' ? 'Sprawdź' : 'Check'}
                       </button>
                       <button className="px-6 py-3 rounded-xl bg-primary text-accent-ink font-bold text-sm">
@@ -584,7 +584,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                     href="https://www.maciej.pro" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="w-full px-6 py-3.5 rounded-xl bg-primary text-accent-ink hover:bg-primary-hover font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 group/link"
+                    className="w-full px-6 py-3.5 rounded-xl bg-primary text-accent-ink hover:brightness-110-hover font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 group/link"
                   >
                     <Globe className="w-4 h-4 group-hover/link:rotate-12 transition-transform" />
                     <span>www.maciej.pro</span>

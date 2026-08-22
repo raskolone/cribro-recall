@@ -456,7 +456,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="px-4 py-2 rounded-xl bg-primary hover:bg-primary text-accent-ink font-extrabold text-xs transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-primary hover:brightness-110 text-accent-ink font-extrabold text-xs transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] flex items-center gap-1.5 active:scale-95 cursor-pointer"
                 >
                   {currentStep < steps.length - 1 ? (
                     <>

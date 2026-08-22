@@ -390,7 +390,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
               <span>Widok aktywny tylko dla administratorów</span>
               <button
                 onClick={() => setIsExpanded(false)}
-                className="text-primary hover:text-primary font-semibold"
+                className="text-primary hover:text-accent-soft font-semibold"
               >
                 Zminimalizuj
               </button>

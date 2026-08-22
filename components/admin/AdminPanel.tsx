@@ -1303,7 +1303,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     </span>
                   )}
                   <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
-                    selectedUser.role === 'admin' ? 'bg-danger/10 text-danger border-danger/30' : selectedUser.role === 'teacher' ? 'bg-primary/10 text-primary border-primary/30' : 'bg-primary/10 text-primary border-primary/30'
+                    selectedUser.role === 'admin' ? 'bg-danger/12 text-danger border-danger/30' : selectedUser.role === 'teacher' ? 'bg-primary/12 text-primary border-primary/30' : 'bg-white/5 text-text-2 border-line-strong'
                   }`}>
                     {selectedUser.role === 'teacher' ? 'Nauczyciel' : selectedUser.role === 'admin' ? 'Admin' : 'Kursant'}
                   </span>
@@ -1570,7 +1570,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       size="sm" 
                       onClick={handleExportLessonsToPDF} 
                       disabled={isExportingPDF}
-                      className="bg-primary hover:bg-primary text-accent-ink flex items-center gap-1.5 shadow-sm font-bold"
+                      className="bg-primary hover:brightness-110 text-accent-ink flex items-center gap-1.5 shadow-sm font-bold"
                     >
                       <Download className="w-4 h-4" />
                       {isExportingPDF ? 'Generowanie PDF...' : 'Eksportuj do PDF'}
@@ -3027,7 +3027,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     </Button>
                     <Button 
                       variant="ghost" 
-                      className="text-danger hover:text-danger hover:bg-danger/10"
+                      className="text-danger hover:opacity-80 hover:bg-danger/10"
                       onClick={() => handleDeleteLessonRecord(viewingRecord!)}
                     >
                       {i18n.t("Usuń")}
@@ -3675,7 +3675,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         </span>
                       )}
                       <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider border ${
-                        u.role === 'admin' ? 'bg-danger/10 text-danger border-danger/30' : u.role === 'teacher' ? 'bg-primary/10 text-primary border-primary/30' : 'bg-primary/10 text-primary border-primary/30'
+                        u.role === 'admin' ? 'bg-danger/12 text-danger border-danger/30' : u.role === 'teacher' ? 'bg-primary/12 text-primary border-primary/30' : 'bg-white/5 text-text-2 border-line-strong'
                       }`}>
                         {u.role === 'teacher' ? 'Nauczyciel' : u.role === 'admin' ? 'Admin' : 'Kursant'}
                       </span>

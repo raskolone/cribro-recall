@@ -1039,7 +1039,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                                   }
                                 }}
                                 disabled={(typeCounts[type.id] || 1) <= 1}
-                                className="w-6 h-6 rounded-md bg-white/5 hover:bg-primary/20 text-primary hover:text-primary disabled:opacity-25 flex items-center justify-center font-bold text-xs transition-all active:scale-95"
+                                className="w-6 h-6 rounded-md bg-white/5 hover:bg-primary/20 text-primary hover:text-accent-soft disabled:opacity-25 flex items-center justify-center font-bold text-xs transition-all active:scale-95"
                               >
                                 -
                               </button>
@@ -1054,7 +1054,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                                     setTypeCounts(prev => ({ ...prev, [type.id]: cur + 1 }));
                                   }
                                 }}
-                                className="w-6 h-6 rounded-md bg-white/5 hover:bg-primary/20 text-primary hover:text-primary flex items-center justify-center font-bold text-xs transition-all active:scale-95"
+                                className="w-6 h-6 rounded-md bg-white/5 hover:bg-primary/20 text-primary hover:text-accent-soft flex items-center justify-center font-bold text-xs transition-all active:scale-95"
                               >
                                 +
                               </button>

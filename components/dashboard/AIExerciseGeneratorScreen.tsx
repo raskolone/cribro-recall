@@ -2927,7 +2927,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                                   e.stopPropagation();
                                                   setPreviewVocabSet(set);
                                                 }}
-                                                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-primary hover:text-primary transition-colors flex-shrink-0 flex items-center gap-1 text-xs font-semibold"
+                                                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-primary hover:text-accent-soft transition-colors flex-shrink-0 flex items-center gap-1 text-xs font-semibold"
                                               >
                                                 <Eye className="w-3.5 h-3.5" />
                                                 <span className="hidden sm:inline">{language === 'pl' ? 'Podgląd' : 'Preview'}</span>
@@ -3092,7 +3092,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                                             updatedAt: new Date().toISOString()
                                                           });
                                                         }}
-                                                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-primary hover:text-primary transition-colors flex-shrink-0 flex items-center gap-1 text-xs font-semibold"
+                                                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-primary hover:text-accent-soft transition-colors flex-shrink-0 flex items-center gap-1 text-xs font-semibold"
                                                       >
                                                         <Eye className="w-3.5 h-3.5" />
                                                         <span className="hidden sm:inline">{language === 'pl' ? 'Podgląd' : 'Preview'}</span>
@@ -3171,7 +3171,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                           previewVocabSet.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()
                                         );
                                       }}
-                                      className="text-xs px-3 py-1.5 rounded-lg bg-primary text-accent-ink font-bold hover:bg-primary transition-colors flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                                      className="text-xs px-3 py-1.5 rounded-lg bg-primary text-accent-ink font-bold hover:brightness-110 transition-colors flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
                                     >
                                       <Plus className="w-3.5 h-3.5" />
                                       <span>{language === 'pl' ? 'Dodaj wszystkie do koszyka' : 'Add all to basket'}</span>
@@ -3455,8 +3455,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                       setupCheckedWordIds.size === 0 || isLoading
                                         ? 'bg-base-200 text-text-mute cursor-not-allowed border-none'
                                         : practiceSetupType === 'match'
-                                          ? 'bg-warn hover:bg-warn shadow-[0_0_20px_rgba(245,158,11,0.3)]'
-                                          : 'bg-primary hover:bg-primary shadow-[0_0_20px_rgba(168,85,247,0.3)]'
+                                          ? 'bg-warn hover:brightness-110 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
+                                          : 'bg-primary hover:brightness-110 shadow-[0_0_20px_rgba(168,85,247,0.3)]'
                                     }`}
                                   >
                                     {isLoading ? (
@@ -3521,7 +3521,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                     <button
                                       type="button"
                                       onClick={clearBasket}
-                                      className="text-xs text-danger hover:text-danger flex items-center gap-1 font-medium px-2 py-1 rounded hover:bg-danger/10 transition-colors"
+                                      className="text-xs text-danger hover:opacity-80 flex items-center gap-1 font-medium px-2 py-1 rounded hover:bg-danger/10 transition-colors"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
                                       <span>{language === 'pl' ? 'Wyczyść koszyk' : 'Clear basket'}</span>
@@ -3784,7 +3784,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   <button
                     type="button"
                     onClick={() => toggleHint(activeSentenceIndex)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-warn hover:text-warn transition-colors mx-auto"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-warn hover:opacity-80 transition-colors mx-auto"
                   >
                     <Lightbulb className="w-3.5 h-3.5" />
                     {showHints[activeSentenceIndex] 

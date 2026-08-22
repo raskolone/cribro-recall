@@ -513,7 +513,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                     <div className="whitespace-pre-wrap">{turn.content}</div>
 
                     {turn.summaryText && (
-                      <div className="p-2.5 bg-info/40 border border-info/20 rounded-xl text-xs text-info mt-2">
+                      <div className="p-2.5 bg-info/40 border border-info/20 rounded-xl text-xs text-content mt-2">
                         <div className="font-bold text-info mb-1 flex items-center gap-1.5">
                           <Sparkles className="w-3.5 h-3.5 text-info" />
                           Analiza Gemini 3.1 Flash:
@@ -538,7 +538,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                 <div className="w-8 h-8 rounded-xl bg-info/30 border border-info/30 text-info flex items-center justify-center shrink-0 text-xs">
                   <div className="w-4 h-4 border-2 border-info border-t-transparent rounded-full animate-spin" />
                 </div>
-                <div className="p-3 bg-info/40 border border-info/30 rounded-2xl rounded-tl-none text-xs text-info flex items-center gap-2">
+                <div className="p-3 bg-info/40 border border-info/30 rounded-2xl rounded-tl-none text-xs text-content flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-info animate-pulse" />
                   <span>{statusUpdate || 'Przetwarzanie przez pipeline AI...'}</span>
                 </div>

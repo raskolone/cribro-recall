@@ -17,6 +17,10 @@ lerna-debug.log*
 node_modules
 *.local
 
+# Build output — zawiera wkompilowane klucze klienta, nigdy nie trafia do repo
+dist
+dist-ssr
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
