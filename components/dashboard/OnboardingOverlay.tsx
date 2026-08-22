@@ -116,7 +116,7 @@ const steps: StepData[] = [
     },
     renderMockup: (lang) => (
       <div className="space-y-2 text-xs">
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-primary/20 border border-primary/40 text-primary shadow-[0_0_15px_rgba(168,85,247,0.15)]">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-primary/20 border border-primary/40 text-primary shadow-[0_0_15px_rgba(114, 240, 180,0.15)]">
           <div className="flex items-center gap-2.5">
             <div className="w-6 h-6 rounded-lg bg-primary/30 text-primary flex items-center justify-center font-bold">
               <Check className="w-3.5 h-3.5" />
@@ -162,7 +162,7 @@ const steps: StepData[] = [
       en: 'We recommend starting with the "Puzzle" mode. Assembling sentences from interactive blocks helps you internalize new vocabulary and master English word order without stress.'
     },
     renderMockup: (lang) => (
-      <div className="p-3.5 bg-primary/60 rounded-2xl border-2 border-primary/40 space-y-2.5 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+      <div className="p-3.5 bg-primary/60 rounded-2xl border-2 border-primary/40 space-y-2.5 shadow-[0_0_20px_rgba(114, 240, 180,0.15)]">
         <div className="text-[11px] text-primary font-semibold text-center">
           {lang === 'pl' ? '🇵🇱 Lubię czytać książki po pracy.' : '🇵🇱 Lubię czytać książki po pracy.'}
         </div>
@@ -191,7 +191,7 @@ const steps: StepData[] = [
       en: 'After completing the puzzle, switch to the "Real Challenge". The AI generates full sentences for you to translate and type directly from memory.'
     },
     renderMockup: (lang) => (
-      <div className="p-3.5 bg-primary/60 rounded-2xl border-2 border-primary/40 space-y-2 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
+      <div className="p-3.5 bg-primary/60 rounded-2xl border-2 border-primary/40 space-y-2 shadow-[0_0_20px_rgba(114, 240, 180,0.15)]">
         <div className="text-[11px] text-primary font-semibold">
           {lang === 'pl' ? 'Tłumacz z pamięci: Zwykle chodzę na siłownię wieczorem.' : 'Translate: Zwykle chodzę na siłownię wieczorem.'}
         </div>
@@ -362,7 +362,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
             left: targetRect.left - 8,
             width: targetRect.width + 16,
             height: targetRect.height + 16,
-            boxShadow: '0 0 0 9999px rgba(0,0,0,0.75), 0 0 35px rgba(16,185,129,0.6)'
+            boxShadow: '0 0 0 9999px rgba(0,0,0,0.75), 0 0 35px rgba(114, 240, 180,0.6)'
           }}
         >
           <div className="absolute -top-3 left-6 px-3 py-0.5 rounded-full bg-primary text-accent-ink font-extrabold text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-1.5">
@@ -386,7 +386,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
               isDesktop && targetRect 
                 ? 'absolute' 
                 : 'max-w-md w-full'
-            } bg-ink-2 border-2 border-primary/40 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(16,185,129,0.25)] p-6 text-white overflow-hidden`}
+            } bg-ink-2 border-2 border-primary/40 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(114, 240, 180,0.25)] p-6 text-white overflow-hidden`}
           >
             {/* Top decorative gradient bar */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-primary to-primary" />
@@ -431,7 +431,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
                     onClick={() => setCurrentStep(idx)}
                     className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
                       idx === currentStep 
-                        ? 'w-6 bg-primary shadow-[0_0_8px_rgba(16,185,129,0.8)]' 
+                        ? 'w-6 bg-primary shadow-[0_0_8px_rgba(114, 240, 180,0.8)]' 
                         : idx < currentStep 
                           ? 'w-2 bg-primary/40' 
                           : 'w-2 bg-white/20 hover:bg-white/40'
@@ -456,7 +456,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="px-4 py-2 rounded-xl bg-primary hover:brightness-110 text-accent-ink font-extrabold text-xs transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-primary hover:brightness-110 text-accent-ink font-extrabold text-xs transition-all shadow-[0_0_15px_rgba(114, 240, 180,0.4)] flex items-center gap-1.5 active:scale-95 cursor-pointer"
                 >
                   {currentStep < steps.length - 1 ? (
                     <>

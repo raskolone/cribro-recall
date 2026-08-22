@@ -199,7 +199,7 @@ export const AllTestsTeacherView: React.FC = () => {
                 key={`${test.studentId}-${test.id}`}
                 className={`p-4 transition-all border ${
                   isUnread
-                    ? 'bg-danger/10 border-danger/40 shadow-[0_0_15px_rgba(239,68,68,0.2)] animate-pulse'
+                    ? 'bg-danger/10 border-danger/40 shadow-[0_0_15px_rgba(240, 114, 111,0.2)] animate-pulse'
                     : 'bg-base-200/40 border-white/10 hover:border-white/20'
                 }`}
               >

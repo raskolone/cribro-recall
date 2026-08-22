@@ -157,7 +157,7 @@ const SettingsScreen: React.FC = () => {
                         disabled={isTestingAudio}
                         className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
                             audioTestSuccess
-                                ? 'bg-primary text-accent-ink shadow-[0_0_15px_rgba(16,185,129,0.5)]'
+                                ? 'bg-primary text-accent-ink shadow-[0_0_15px_rgba(114, 240, 180,0.5)]'
                                 : 'bg-primary/20 text-primary border border-primary/40 hover:bg-primary/30'
                         }`}
                         title={language === 'pl' ? 'Odsłuchaj próbkę głosu' : 'Play voice sample'}
@@ -235,7 +235,7 @@ const SettingsScreen: React.FC = () => {
                                 onClick={() => handleSettingChange('ttsAccent', 'en-US')}
                                 className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-bold transition-all ${
                                     soundSettings.ttsAccent === 'en-US'
-                                        ? 'bg-primary/20 text-primary border-primary/50 shadow-[0_0_10px_rgba(6,182,212,0.25)]'
+                                        ? 'bg-primary/20 text-primary border-primary/50 shadow-[0_0_10px_rgba(114, 240, 180,0.25)]'
                                         : 'bg-black/30 text-text-2 border-white/10 hover:bg-white/5 hover:text-white'
                                 }`}
                             >
@@ -248,7 +248,7 @@ const SettingsScreen: React.FC = () => {
                                 onClick={() => handleSettingChange('ttsAccent', 'en-GB')}
                                 className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-bold transition-all ${
                                     soundSettings.ttsAccent === 'en-GB'
-                                        ? 'bg-primary/20 text-primary border-primary/50 shadow-[0_0_10px_rgba(16,185,129,0.25)]'
+                                        ? 'bg-primary/20 text-primary border-primary/50 shadow-[0_0_10px_rgba(114, 240, 180,0.25)]'
                                         : 'bg-black/30 text-text-2 border-white/10 hover:bg-white/5 hover:text-white'
                                 }`}
                             >

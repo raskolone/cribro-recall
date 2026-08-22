@@ -241,7 +241,7 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate 
                     const hwId = currentHomework?.id || ('generic_homework_' + user.id);
                     handleHomeworkAction(hwId, true);
                   }}
-                  className="w-full py-3.5 px-6 bg-primary hover:bg-primary/90 text-accent-ink font-extrabold rounded-2xl text-sm md:text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(114,240,180,0.35)] hover:scale-[1.02] cursor-pointer"
+                  className="w-full py-3.5 px-6 bg-primary hover:brightness-110/90 text-accent-ink font-extrabold rounded-2xl text-sm md:text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(114,240,180,0.35)] hover:scale-[1.02] cursor-pointer"
                 >
                   <span>{language === 'pl' ? 'Przejdź do pracy domowej' : 'Go to Homework'}</span>
                   <ChevronRight size={20} />

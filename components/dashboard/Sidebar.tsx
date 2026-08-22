@@ -420,7 +420,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               <div className={`flex items-center p-1 bg-black/30 rounded-xl border border-white/5 ${isDesktopCollapsed ? 'flex-col mx-auto' : 'w-full'}`}>
                 <button 
                   onClick={() => setLanguage('en')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all ${language === 'en' ? 'bg-white/10 shadow-sm' : 'opacity-50 hover:opacity-100 hover:bg-white/5'}`}
+                  className={`flex-1 flex items-center justify-center gap-2 min-h-11 px-3 rounded-lg transition-all ${language === 'en' ? 'bg-white/10 shadow-sm' : 'opacity-50 hover:opacity-100 hover:bg-white/5'}`}
                   title="English"
                 >
                   <span className="text-lg leading-none">🇬🇧</span>
@@ -428,7 +428,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
                 </button>
                 <button 
                   onClick={() => setLanguage('pl')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all ${language === 'pl' ? 'bg-white/10 shadow-sm' : 'opacity-50 hover:opacity-100 hover:bg-white/5'}`}
+                  className={`flex-1 flex items-center justify-center gap-2 min-h-11 px-3 rounded-lg transition-all ${language === 'pl' ? 'bg-white/10 shadow-sm' : 'opacity-50 hover:opacity-100 hover:bg-white/5'}`}
                   title="Polski"
                 >
                   <span className="text-lg leading-none">🇵🇱</span>

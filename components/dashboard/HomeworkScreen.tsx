@@ -1150,7 +1150,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
           <div className={`p-5 rounded-2xl border-2 transition-all space-y-4 ${
             selectedStudentId 
               ? 'bg-primary/10 border-primary shadow-[0_0_25px_rgba(114,240,180,0.25)]' 
-              : 'bg-warn/10 border-warn animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.25)]'
+              : 'bg-warn/10 border-warn animate-pulse shadow-[0_0_20px_rgba(224, 168, 58,0.25)]'
           }`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
@@ -1704,7 +1704,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({ initialTaskId = 
                     key={task.id}
                     className={`liquid-glass relative transition-all border ${
                       isSubmitted
-                        ? 'border-primary/40 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                        ? 'border-primary/40 shadow-[0_0_15px_rgba(114, 240, 180,0.1)]'
                         : isGraded
                         ? 'border-primary/40'
                         : 'border-white/10'

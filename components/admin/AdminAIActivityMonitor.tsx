@@ -110,7 +110,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
           >
             <div 
               onClick={() => setIsExpanded(true)}
-              className="cursor-pointer group flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-ink-2/95 hover:bg-[var(--ink-2)] border border-primary/40 hover:border-primary text-primary shadow-[0_10px_35px_rgba(0,0,0,0.7),0_0_20px_rgba(6,182,212,0.25)] backdrop-blur-xl transition-all duration-300 active:scale-98 max-w-md"
+              className="cursor-pointer group flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-ink-2/95 hover:brightness-125 border border-primary/40 hover:border-primary text-primary shadow-[0_10px_35px_rgba(0,0,0,0.7),0_0_20px_rgba(114, 240, 180,0.25)] backdrop-blur-xl transition-all duration-300 active:scale-98 max-w-md"
             >
               {/* Pulsing indicator */}
               <div className="flex items-center gap-2 shrink-0">
@@ -186,10 +186,10 @@ export const AdminAIActivityMonitor: React.FC = () => {
             setIsExpanded(!isExpanded);
           }}
           title="Panel zapytań AI & Kluczy API (Admin)"
-          className={`flex items-center gap-2 px-3 py-2 rounded-2xl backdrop-blur-xl border transition-all duration-300 shadow-xl cursor-pointer ${
+          className={`flex items-center gap-2 px-3 min-h-11 rounded-2xl backdrop-blur-xl border transition-all duration-300 shadow-xl cursor-pointer ${
             activeCount > 0
-              ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(6,182,212,0.3)] animate-pulse'
-              : 'bg-ink-2/90 hover:bg-[var(--ink-2)] border-white/10 hover:border-primary/40 text-white/70 hover:text-white'
+              ? 'bg-primary/20 border-primary text-primary shadow-glow animate-pulse'
+              : 'bg-ink-2/90 hover:brightness-125 border-white/10 hover:border-primary/40 text-white/70 hover:text-white'
           }`}
         >
           {activeCount > 0 ? (
@@ -217,7 +217,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="w-[92vw] sm:w-[480px] max-h-[600px] flex flex-col rounded-3xl bg-ink/95 border border-primary/30 text-white shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(6,182,212,0.2)] backdrop-blur-2xl overflow-hidden mt-2"
+            className="w-[92vw] sm:w-[480px] max-h-[600px] flex flex-col rounded-3xl bg-ink/95 border border-primary/30 text-white shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(114, 240, 180,0.2)] backdrop-blur-2xl overflow-hidden mt-2"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-primary/30">
@@ -299,7 +299,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
                       key={evt.id}
                       className={`p-3.5 rounded-2xl border transition-all ${
                         isPending
-                          ? 'bg-primary/30 border-primary/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                          ? 'bg-primary/30 border-primary/40 shadow-[0_0_15px_rgba(114, 240, 180,0.15)]'
                           : isSuccess
                           ? 'bg-white/[0.03] border-white/10 hover:border-white/20'
                           : 'bg-danger/20 border-danger/30'

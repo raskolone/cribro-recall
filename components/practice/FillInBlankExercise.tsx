@@ -132,7 +132,7 @@ const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit
                         isSubmitted 
                           ? (isCorrect 
                               ? 'border-primary bg-primary/10 shadow-[0_0_25px_rgba(34,197,94,0.5)] ring-2 ring-primary/50 scale-105' 
-                              : 'border-danger bg-danger/10 shadow-[0_0_25px_rgba(239,68,68,0.5)] ring-2 ring-danger/50 animate-shake') 
+                              : 'border-danger bg-danger/10 shadow-[0_0_25px_rgba(240, 114, 111,0.5)] ring-2 ring-danger/50 animate-shake') 
                           : 'border-line-strong focus:border-primary focus:bg-primary/5 focus:shadow-[0_0_20px_rgba(var(--color-primary),0.2)]'
                     }`}
                     style={{ minWidth: `${Math.max(currentWord.word.length * 0.8, 5)}em`, padding: '4px 8px' }}
@@ -149,7 +149,7 @@ const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit
                     {isCorrect ? (
                         <p className="text-primary font-bold text-xl drop-shadow-[0_0_10px_rgba(34,197,94,0.4)]">{i18n.t("Correct!")}</p>
                     ) : (
-                        <p className="text-danger font-bold text-xl drop-shadow-[0_0_10px_rgba(239,68,68,0.4)]">
+                        <p className="text-danger font-bold text-xl drop-shadow-[0_0_10px_rgba(240, 114, 111,0.4)]">
                             
                                                                       {i18n.t("Not quite. The correct answer is:")} <strong className="underline decoration-2 underline-offset-4 decoration-danger">{currentWord.word}</strong>
                         </p>

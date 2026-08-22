@@ -509,7 +509,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                 <div>
                   <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 mb-6">
                     {/* Waist-up Business Portrait Placeholder */}
-                    <div className="relative w-28 h-36 sm:w-32 sm:h-40 rounded-2xl overflow-hidden border-2 border-primary/30 group-hover:border-primary transition-all duration-300 shadow-[0_0_25px_rgba(16,185,129,0.15)] flex-shrink-0 bg-base-300/50">
+                    <div className="relative w-28 h-36 sm:w-32 sm:h-40 rounded-2xl overflow-hidden border-2 border-primary/30 group-hover:border-primary transition-all duration-300 shadow-[0_0_25px_rgba(114, 240, 180,0.15)] flex-shrink-0 bg-base-300/50">
                       <img 
                         src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800&auto=format&fit=crop&q=80" 
                         alt="Maciej Wyrozumski - Twórca Cribro" 
@@ -559,7 +559,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
 
                 <div>
                   <div className="flex items-center justify-between mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-[0_0_15px_rgba(114, 240, 180,0.15)]">
                       <Globe className="w-6 h-6" />
                     </div>
                     <span className="text-[11px] text-primary font-mono uppercase tracking-wider bg-primary/10 px-3 py-1 rounded-full border border-primary/20 flex items-center gap-1.5">

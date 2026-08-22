@@ -433,7 +433,7 @@ const AILoadingButton = ({ isLoading, onClick, children, className, disabled, lo
       disabled={isLoading || disabled}
       className={`relative overflow-hidden ${className} ${
         variant === 'primary' 
-          ? 'bg-primary text-accent-ink hover:bg-primary/95' 
+          ? 'bg-primary text-accent-ink hover:brightness-110/95' 
           : 'bg-base-200 text-white hover:bg-base-300 border border-white/10'
       } rounded-xl font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed`}
     >
@@ -2068,7 +2068,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="mb-6 bg-gradient-to-r from-danger/20 to-danger/20 border border-danger/30 backdrop-blur-md text-danger p-4 rounded-2xl shadow-[0_8px_30px_rgba(239,68,68,0.15)] flex flex-col gap-3 relative overflow-hidden"
+            className="mb-6 bg-gradient-to-r from-danger/20 to-danger/20 border border-danger/30 backdrop-blur-md text-danger p-4 rounded-2xl shadow-[0_8px_30px_rgba(240, 114, 111,0.15)] flex flex-col gap-3 relative overflow-hidden"
           >
             <div className="absolute top-0 left-0 w-1 h-full bg-danger/50" />
             <div className="flex items-start gap-3">
@@ -2119,9 +2119,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               id="tour-help-button"
                               onClick={onShowOnboarding}
                               title={language === "pl" ? "Pomoc i Przewodnik po aplikacji" : "Help & App Guide"}
-                              className="group relative flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary text-primary hover:text-accent-soft shadow-[0_0_12px_rgba(16,185,129,0.15)] transition-all duration-300 active:scale-95 cursor-pointer"
+                              className="group relative flex items-center gap-2 px-3 min-h-11 rounded-2xl bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary text-primary hover:text-accent-soft shadow-[0_0_12px_rgba(114, 240, 180,0.15)] transition-all duration-300 active:scale-95 cursor-pointer"
                             >
-                              <HelpCircle className="w-4 h-4 text-primary group-hover:scale-110 transition-transform drop-shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
+                              <HelpCircle className="w-4 h-4 text-primary group-hover:scale-110 transition-transform drop-shadow-[0_0_6px_rgba(114, 240, 180,0.6)]" />
                               <span className="text-xs font-bold font-sans tracking-wide">
                                 {language === "pl" ? "Pomoc" : "Help"}
                               </span>
@@ -2132,8 +2132,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         <div className="flex items-center gap-2 ml-auto">
                           
                           {/* Streak Counter Badge */}
-                          <div className="flex items-center gap-2 bg-gradient-to-r from-warn/15 via-warn/15 to-danger/15 border border-warn/30 px-3 py-1.5 rounded-2xl shadow-[0_0_15px_rgba(245,158,11,0.15)] shrink-0">
-                            <div className="p-1 rounded-lg bg-gradient-to-tr from-warn to-warn text-text-faint font-black shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                          <div className="flex items-center gap-2 bg-gradient-to-r from-warn/15 via-warn/15 to-danger/15 border border-warn/30 px-3 py-1.5 rounded-2xl shadow-[0_0_15px_rgba(224, 168, 58,0.15)] shrink-0">
+                            <div className="p-1 rounded-lg bg-gradient-to-tr from-warn to-warn text-text-faint font-black shadow-[0_0_8px_rgba(224, 168, 58,0.5)]">
                               <Flame className="w-4 h-4 text-text-faint fill-warn animate-bounce" />
                             </div>
                             <div className="flex items-center gap-1 text-xs font-black text-white">
@@ -2220,7 +2220,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                       onChangeView('homework', { taskId: hwTask.id });
                                     }
                                   }}
-                                  className="text-xs py-1.5 px-3 bg-primary hover:bg-primary/90 text-accent-ink font-bold rounded-xl flex items-center gap-1.5 shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:scale-105 transition-all cursor-pointer"
+                                  className="text-xs py-1.5 px-3 bg-primary hover:brightness-110/90 text-accent-ink font-bold rounded-xl flex items-center gap-1.5 shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:scale-105 transition-all cursor-pointer"
                                 >
                                   <Edit3 size={13} />
                                   <span>{language === 'pl' ? 'Rozwiąż zadanie' : 'Start homework'}</span>
@@ -2268,13 +2268,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             }}
                             className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[160px] ${
                               exerciseFormat === 'puzzle'
-                                ? 'bg-[var(--ink-2)]/90 backdrop-blur-md border-2 border-primary shadow-[0_0_35px_rgba(16,185,129,0.45)] scale-[1.01]'
-                                : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-primary/30 hover:border-primary/70 hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] hover:-translate-y-0.5'
+                                ? 'bg-[var(--ink-2)]/90 backdrop-blur-md border-2 border-primary shadow-[0_0_35px_rgba(114, 240, 180,0.45)] scale-[1.01]'
+                                : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-primary/30 hover:border-primary/70 hover:shadow-[0_0_25px_rgba(114, 240, 180,0.25)] hover:-translate-y-0.5'
                             }`}
                           >
                             <div className="flex items-center justify-between w-full z-10">
-                              <div className={`w-11 h-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover/card:scale-110 transition-transform ${exerciseFormat === 'puzzle' ? 'text-primary bg-primary/20 border-primary shadow-[0_0_15px_rgba(16,185,129,0.5)]' : ''}`}>
-                                <LayoutGrid className="w-5 h-5 drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                              <div className={`w-11 h-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover/card:scale-110 transition-transform ${exerciseFormat === 'puzzle' ? 'text-primary bg-primary/20 border-primary shadow-[0_0_15px_rgba(114, 240, 180,0.5)]' : ''}`}>
+                                <LayoutGrid className="w-5 h-5 drop-shadow-[0_0_8px_rgba(114, 240, 180,0.8)]" />
                               </div>
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold text-primary bg-primary/10 border border-primary/20">
                                 {language === 'pl' ? 'Rekomendowane' : 'Recommended'}
@@ -2303,13 +2303,13 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             }}
                             className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[160px] ${
                               exerciseFormat === 'typing'
-                                ? 'bg-[var(--ink-2)]/90 backdrop-blur-md border-2 border-primary shadow-[0_0_35px_rgba(6,182,212,0.45)] scale-[1.01]'
-                                : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-primary/30 hover:border-primary/70 hover:shadow-[0_0_25px_rgba(6,182,212,0.25)] hover:-translate-y-0.5'
+                                ? 'bg-[var(--ink-2)]/90 backdrop-blur-md border-2 border-primary shadow-[0_0_35px_rgba(114, 240, 180,0.45)] scale-[1.01]'
+                                : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-primary/30 hover:border-primary/70 hover:shadow-[0_0_25px_rgba(114, 240, 180,0.25)] hover:-translate-y-0.5'
                             }`}
                           >
                             <div className="flex items-center justify-between w-full z-10">
-                              <div className={`w-11 h-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover/card:scale-110 transition-transform ${exerciseFormat === 'typing' ? 'text-primary bg-primary/20 border-primary shadow-[0_0_15px_rgba(6,182,212,0.5)]' : ''}`}>
-                                <Keyboard className="w-5 h-5 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                              <div className={`w-11 h-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover/card:scale-110 transition-transform ${exerciseFormat === 'typing' ? 'text-primary bg-primary/20 border-primary shadow-[0_0_15px_rgba(114, 240, 180,0.5)]' : ''}`}>
+                                <Keyboard className="w-5 h-5 drop-shadow-[0_0_8px_rgba(114, 240, 180,0.8)]" />
                               </div>
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold text-primary bg-primary/10 border border-primary/20">
                                 {language === 'pl' ? 'Wpisywanie' : 'Typing'}
@@ -2335,7 +2335,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <button
                             type="button"
                             onClick={() => handleStartOtherPractice('flashcards')}
-                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-primary/30 hover:border-primary/70 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:-translate-y-0.5 text-left min-h-[105px]"
+                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-primary/30 hover:border-primary/70 hover:shadow-[0_0_20px_rgba(114, 240, 180,0.25)] hover:-translate-y-0.5 text-left min-h-[105px]"
                           >
                             <div className="flex items-center justify-between w-full z-10">
                               <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-lg group-hover/card:scale-110 transition-transform">
@@ -2358,7 +2358,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <button
                             type="button"
                             onClick={() => handleStartOtherPractice('match')}
-                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-warn/30 hover:border-warn/70 hover:shadow-[0_0_20px_rgba(245,158,11,0.25)] hover:-translate-y-0.5 text-left min-h-[105px]"
+                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-warn/30 hover:border-warn/70 hover:shadow-[0_0_20px_rgba(224, 168, 58,0.25)] hover:-translate-y-0.5 text-left min-h-[105px]"
                           >
                             <div className="flex items-center justify-between w-full z-10">
                               <div className="w-9 h-9 rounded-xl bg-warn/10 border border-warn/20 flex items-center justify-center text-warn text-lg group-hover/card:scale-110 transition-transform">
@@ -2391,12 +2391,12 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         <button
                           type="button"
                           onClick={() => setIsLessonSelectorOpen(true)}
-                          className="w-full group relative flex items-center justify-between px-4 py-3.5 rounded-2xl bg-ink border border-white/20 hover:border-primary/60 shadow-[0_4px_15px_rgba(0,0,0,0.4)] hover:shadow-[0_0_20px_rgba(16,185,129,0.25)] transition-all duration-300 cursor-pointer overflow-hidden text-left"
+                          className="w-full group relative flex items-center justify-between px-4 py-3.5 rounded-2xl bg-ink border border-white/20 hover:border-primary/60 shadow-[0_4px_15px_rgba(0,0,0,0.4)] hover:shadow-[0_0_20px_rgba(114, 240, 180,0.25)] transition-all duration-300 cursor-pointer overflow-hidden text-left"
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                           
                           <div className="flex items-center gap-3 z-10 min-w-0 flex-1 mr-2">
-                            <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary group-hover:scale-110 transition-transform shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                            <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary group-hover:scale-110 transition-transform shrink-0 shadow-[0_0_10px_rgba(114, 240, 180,0.2)]">
                               {selectedSetId === 'basket' ? <ShoppingBag className="w-4.5 h-4.5" /> : <BookOpen className="w-4.5 h-4.5" />}
                             </div>
                             <div className="flex flex-col min-w-0">
@@ -2435,7 +2435,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         {/* Selected chips list */}
                         <div className="flex flex-wrap items-center gap-1.5 px-1 pt-1">
                           {selectedSetId === 'basket' ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/15 border border-primary/30 text-primary shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/15 border border-primary/30 text-primary shadow-[0_0_12px_rgba(114, 240, 180,0.15)]">
                               <ShoppingBag className="w-3.5 h-3.5 text-primary" />
                               {language === 'pl' ? `Koszyk Słówek (${basketWords.length} słów)` : `Word Basket (${basketWords.length} words)`}
                             </span>
@@ -2443,7 +2443,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             vocabularySets
                               .filter(s => selectedLessonIds.includes(s.id))
                               .map((set, i) => (
-                                <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/15 border border-primary/30 text-primary shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+                                <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/15 border border-primary/30 text-primary shadow-[0_0_12px_rgba(114, 240, 180,0.15)]">
                                   <BookOpen className="w-3.5 h-3.5 text-primary" />
                                   {set.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()}
                                 </span>
@@ -2509,9 +2509,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                         onClick={() => handleGenerate(false)}
                         isLoading={isLoading}
                         loadingText={language === 'pl' ? 'AI przygotowuje ćwiczenie...' : 'AI is preparing the exercise...'}
-                        className="w-full py-4 px-6 rounded-2xl border border-primary/50 bg-gradient-to-r from-primary/80 via-primary/10 to-primary/80 hover:from-primary/90 hover:to-primary/90 text-white font-bold text-base flex items-center justify-center gap-3 transition-all duration-300 shadow-[0_0_25px_rgba(16,185,129,0.2)] hover:shadow-[0_0_35px_rgba(16,185,129,0.35)] hover:scale-[1.008] active:scale-[0.995] group"
+                        className="w-full py-4 px-6 rounded-2xl border border-primary/50 bg-gradient-to-r from-primary/80 via-primary/10 to-primary/80 hover:from-primary/90 hover:to-primary/90 text-white font-bold text-base flex items-center justify-center gap-3 transition-all duration-300 shadow-[0_0_25px_rgba(114, 240, 180,0.2)] hover:shadow-[0_0_35px_rgba(114, 240, 180,0.35)] hover:scale-[1.008] active:scale-[0.995] group"
                       >
-                        <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse shrink-0" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(114, 240, 180,0.9)] animate-pulse shrink-0" />
                         <span>
                           {language === 'pl'
                             ? `Wygeneruj ${numSentences === 1 ? '1 zdanie' : numSentences >= 2 && numSentences <= 4 ? `${numSentences} zdania` : `${numSentences} zdań`}`
@@ -2546,8 +2546,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                             <div className="flex items-center gap-3">
                               <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border ${
                                 exerciseFormat === 'puzzle'
-                                  ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-                                  : 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(6,182,212,0.4)]'
+                                  ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(114, 240, 180,0.4)]'
+                                  : 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(114, 240, 180,0.4)]'
                               }`}>
                                 {exerciseFormat === 'puzzle' ? (
                                   <LayoutGrid className="w-5 h-5" />
@@ -2583,7 +2583,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               onClick={() => setExerciseFormat('puzzle')}
                               className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                                 exerciseFormat === 'puzzle'
-                                  ? 'bg-primary/20 border border-primary text-primary shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                                  ? 'bg-primary/20 border border-primary text-primary shadow-[0_0_10px_rgba(114, 240, 180,0.3)]'
                                   : 'bg-white/5 border border-white/10 text-text-2 hover:text-white'
                               }`}
                             >
@@ -2596,7 +2596,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               onClick={() => setExerciseFormat('typing')}
                               className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                                 exerciseFormat === 'typing'
-                                  ? 'bg-primary/20 border border-primary text-primary shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                                  ? 'bg-primary/20 border border-primary text-primary shadow-[0_0_10px_rgba(114, 240, 180,0.3)]'
                                   : 'bg-white/5 border border-white/10 text-text-2 hover:text-white'
                               }`}
                             >
@@ -2722,9 +2722,9 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                               }}
                               isLoading={isLoading}
                               loadingText={language === 'pl' ? 'AI przygotowuje ćwiczenie...' : 'AI is preparing...'}
-                              className="w-full py-4 px-6 rounded-2xl border border-primary/50 bg-gradient-to-r from-primary/90 via-primary/10 to-primary/90 hover:from-primary hover:to-primary text-white font-bold text-base flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(16,185,129,0.3)] transition-all cursor-pointer"
+                              className="w-full py-4 px-6 rounded-2xl border border-primary/50 bg-gradient-to-r from-primary/90 via-primary/10 to-primary/90 hover:from-primary hover:to-primary text-white font-bold text-base flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(114, 240, 180,0.3)] transition-all cursor-pointer"
                             >
-                              <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse shrink-0" />
+                              <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(114, 240, 180,0.9)] animate-pulse shrink-0" />
                               <span>
                                 {language === 'pl'
                                   ? `Wygeneruj ${numSentences === 1 ? '1 zdanie' : numSentences >= 2 && numSentences <= 4 ? `${numSentences} zdania` : `${numSentences} zdań`}`
@@ -2801,7 +2801,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   >
                                     {/* Option 1: Słownictwo ogólne: miks i koszyk */}
                                     <label className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${
-                                      selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
+                                      selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(114, 240, 180,0.15)]' : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
                                     }`}>
                                       <input 
                                         type="radio" 
@@ -2825,7 +2825,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
                                     {/* Option 2: Mój koszyk */}
                                     <label className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${
-                                      selectedSetId === 'basket' ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
+                                      selectedSetId === 'basket' ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(114, 240, 180,0.15)]' : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
                                     }`}>
                                       <input 
                                         type="radio" 
@@ -2863,7 +2863,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                     {/* Option 3: Dedykowane zadania od nauczyciela (if present) */}
                                     {specialTasks.length > 0 && specialTasks.map(task => (
                                       <label key={task.id} className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${
-                                        selectedSetId === 'special-task-' + task.id ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
+                                        selectedSetId === 'special-task-' + task.id ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(114, 240, 180,0.15)]' : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
                                       }`}>
                                         <input 
                                           type="radio" 
@@ -2896,7 +2896,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                               key={set.id} 
                                               className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                                                 
-                                                isSelected ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
+                                                isSelected ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(114, 240, 180,0.15)]' : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
                                               }`}
                                             >
                                               <input 
@@ -2952,7 +2952,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                             <label 
                                               key={set.id} 
                                               className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
-                                                isSelected ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
+                                                isSelected ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(114, 240, 180,0.15)]' : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
                                               }`}
                                             >
                                               <input 
@@ -3049,7 +3049,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                                       key={gSet.id}
                                                       className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                                                         isSelected
-                                                          ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                                                          ? 'bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(114, 240, 180,0.15)]'
                                                           : 'bg-[var(--surface-flat)] border-white/5 hover:border-white/10'
                                                       }`}
                                                     >
@@ -3116,7 +3116,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                           <div className="mt-4 pt-4 border-t border-white/10">
                             <button 
                               onClick={() => setIsLessonSelectorOpen(false)}
-                              className="w-full py-3.5 rounded-2xl bg-[var(--accent)] text-accent-ink font-bold text-base shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:bg-primary transition-colors"
+                              className="w-full py-3.5 rounded-2xl bg-[var(--accent)] text-accent-ink font-bold text-base shadow-[0_0_20px_rgba(114, 240, 180,0.3)] hover:bg-primary transition-colors"
                             >
                               {language === 'pl' ? 'Zatwierdź' : 'Confirm'}
                             </button>
@@ -3171,7 +3171,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                           previewVocabSet.topic.replace(/^\d+\.\s*/, '').replace(/\(Lekcja\s*\d+\)\s*/gi, '').trim()
                                         );
                                       }}
-                                      className="text-xs px-3 py-1.5 rounded-lg bg-primary text-accent-ink font-bold hover:brightness-110 transition-colors flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                                      className="text-xs px-3 py-1.5 rounded-lg bg-primary text-accent-ink font-bold hover:brightness-110 transition-colors flex items-center gap-1 shadow-[0_0_10px_rgba(114, 240, 180,0.3)]"
                                     >
                                       <Plus className="w-3.5 h-3.5" />
                                       <span>{language === 'pl' ? 'Dodaj wszystkie do koszyka' : 'Add all to basket'}</span>
@@ -3208,7 +3208,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                               onClick={() => toggleBasketWord(wordItem)}
                                               className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all shrink-0 ${
                                                 inBasket
-                                                  ? 'bg-primary text-accent-ink shadow-[0_0_10px_rgba(16,185,129,0.4)]'
+                                                  ? 'bg-primary text-accent-ink shadow-[0_0_10px_rgba(114, 240, 180,0.4)]'
                                                   : 'bg-white/10 hover:bg-primary/20 hover:text-primary text-content border border-white/10'
                                               }`}
                                               title={inBasket ? 'Usuń z koszyka' : 'Dodaj do koszyka'}
@@ -3240,7 +3240,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                   )}
                                   <button 
                                     onClick={() => setPreviewVocabSet(null)}
-                                    className="flex-1 py-3.5 rounded-xl bg-[var(--accent)] text-black font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                                    className="flex-1 py-3.5 rounded-xl bg-[var(--accent)] text-black font-bold text-sm shadow-[0_0_20px_rgba(114, 240, 180,0.3)]"
                                   >
                                     {language === 'pl' ? 'Gotowe' : 'Done'}
                                   </button>
@@ -3455,8 +3455,8 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                       setupCheckedWordIds.size === 0 || isLoading
                                         ? 'bg-base-200 text-text-mute cursor-not-allowed border-none'
                                         : practiceSetupType === 'match'
-                                          ? 'bg-warn hover:brightness-110 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
-                                          : 'bg-primary hover:brightness-110 shadow-[0_0_20px_rgba(168,85,247,0.3)]'
+                                          ? 'bg-warn hover:brightness-110 shadow-[0_0_20px_rgba(224, 168, 58,0.3)]'
+                                          : 'bg-primary hover:brightness-110 shadow-[0_0_20px_rgba(114, 240, 180,0.3)]'
                                     }`}
                                   >
                                     {isLoading ? (
@@ -3582,7 +3582,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                                           setIsBasketModalOpen(false);
                                           handleGenerate(false);
                                         }}
-                                        className="py-3 px-3 rounded-xl bg-gradient-to-r from-primary to-primary text-black font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                        className="py-3 px-3 rounded-xl bg-gradient-to-r from-primary to-primary text-black font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(114, 240, 180,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
                                       >
                                         <Sparkles className="w-4 h-4 fill-black" />
                                         <span>{language === 'pl' ? 'Trening AI' : 'AI Sentences'}</span>
@@ -3980,7 +3980,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     <AILoadingButton
                       onClick={handleFinishAll}
                       disabled={studentAnswers[activeSentenceIndex] !== exercises[activeSentenceIndex].englishTranslation}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm w-full sm:w-auto"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:brightness-110/95 text-accent-ink font-extrabold text-sm w-full sm:w-auto"
                     >
                       {language === 'pl' ? 'Zakończ rozgrzewkę' : 'Finish warmup'}
                     </AILoadingButton>
@@ -3990,7 +3990,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       disabled={studentAnswers[activeSentenceIndex] !== exercises[activeSentenceIndex].englishTranslation || isGeneratingMore}
                       isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
                       loadingText={language === 'pl' ? 'Ładowanie...' : 'Loading...'}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm w-full sm:w-auto"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:brightness-110/95 text-accent-ink font-extrabold text-sm w-full sm:w-auto"
                     >
                       {language === 'pl' ? 'Następne' : 'Next'}
                     </AILoadingButton>
@@ -4003,7 +4003,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                     disabled={!studentAnswers[activeSentenceIndex]?.trim()}
                     isLoading={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
                     loadingText={language === 'pl' ? '...' : '...'}
-                    className="px-4 md:px-6 py-2 md:py-3 bg-base-300 hover:bg-base-300/80 text-white font-bold text-sm"
+                    className="px-4 md:px-6 py-2 md:py-3 bg-base-300 hover:brightness-125/80 text-white font-bold text-sm"
                   >
                     {language === 'pl' ? 'Sprawdź' : 'Check'}
                   </AILoadingButton>
@@ -4014,7 +4014,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       disabled={!studentAnswers[activeSentenceIndex]?.trim() || isGeneratingMore}
                       isLoading={isGeneratingMore}
                       loadingText={language === 'pl' ? '...' : '...'}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:brightness-110/95 text-accent-ink font-extrabold text-sm"
                     >
                       {language === 'pl' ? 'Zakończ' : 'Finish'}
                     </AILoadingButton>
@@ -4024,7 +4024,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       disabled={!studentAnswers[activeSentenceIndex]?.trim() || isGeneratingMore}
                       isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
                       loadingText={language === 'pl' ? '...' : '...'}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:brightness-110/95 text-accent-ink font-extrabold text-sm"
                     >
                       {language === 'pl' ? 'Dalej' : 'Next'}
                     </AILoadingButton>
@@ -4035,7 +4035,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                   {activeSentenceIndex === exercises.length - 1 && practiceMode === 'fixed' ? (
                     <AILoadingButton
                       onClick={handleFinishAll}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:brightness-110/95 text-accent-ink font-extrabold text-sm"
                     >
                       {language === 'pl' ? 'Zakończ i podsumuj' : 'Finish & Summarize'}
                     </AILoadingButton>
@@ -4045,7 +4045,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
                       disabled={isGeneratingMore}
                       isLoading={isGeneratingMore && activeSentenceIndex === exercises.length - 1}
                       loadingText={language === 'pl' ? '...' : '...'}
-                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/95 text-accent-ink font-extrabold text-sm"
+                      className="px-4 md:px-6 py-2 md:py-3 bg-primary hover:brightness-110/95 text-accent-ink font-extrabold text-sm"
                     >
                       {language === 'pl' ? 'Dalej' : 'Next'}
                     </AILoadingButton>
@@ -4056,7 +4056,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
 
             {(evaluationStatuses[activeSentenceIndex] === 'evaluating' || isGeneratingMore) && (
               <div className="w-full flex justify-center mt-3 animate-fade-in">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/30 text-primary text-xs font-semibold shadow-[0_0_15px_rgba(6,182,212,0.15)]">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/30 text-primary text-xs font-semibold shadow-[0_0_15px_rgba(114, 240, 180,0.15)]">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
@@ -4124,7 +4124,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: "spring", bounce: 0.6, duration: 1 }}
-              className="w-28 h-28 bg-gradient-to-br from-primary to-primary rounded-3xl flex items-center justify-center relative z-10 shadow-[0_0_60px_rgba(52,211,153,0.8)] backdrop-blur-xl border border-white/30 pointer-events-auto"
+              className="w-28 h-28 bg-gradient-to-br from-primary to-primary rounded-3xl flex items-center justify-center relative z-10 shadow-[0_0_60px_rgba(114, 240, 180,0.8)] backdrop-blur-xl border border-white/30 pointer-events-auto"
             >
               <Puzzle className="w-14 h-14 text-black/90 drop-shadow-lg" />
             </motion.div>
@@ -4146,7 +4146,7 @@ ${user?.description ? user.description : 'Brak dodatkowego opisu.'}
               onClick={handleProceedToTrueChallenge} 
               isLoading={isLoading}
               loadingText={language === 'pl' ? 'Przygotowywanie...' : 'Preparing...'}
-              className="relative w-full py-5 text-xl font-black text-white rounded-2xl overflow-hidden group border border-primary/40 bg-gradient-to-b from-primary/50 to-primary/50 backdrop-blur-xl shadow-[0_8px_32px_rgba(52,211,153,0.3)] transition-all hover:scale-[1.02] hover:shadow-[0_8px_40px_rgba(52,211,153,0.5)]"
+              className="relative w-full py-5 text-xl font-black text-white rounded-2xl overflow-hidden group border border-primary/40 bg-gradient-to-b from-primary/50 to-primary/50 backdrop-blur-xl shadow-[0_8px_32px_rgba(114, 240, 180,0.3)] transition-all hover:scale-[1.02] hover:shadow-[0_8px_40px_rgba(114, 240, 180,0.5)]"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-[150%] skew-x-[-30deg] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
               <span className="relative z-10 drop-shadow-md">

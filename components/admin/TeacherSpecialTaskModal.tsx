@@ -368,7 +368,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
               type="button"
               onClick={() => handleSendChatMessage(`Wygeneruj ${numSentences} zdań do tłumaczenia ze słownictwa z lekcji "${initialLesson.topic}": ${selectedWords.join(', ')}`)}
               disabled={isGenerating || selectedWords.length === 0}
-              className="bg-primary hover:bg-primary/90 text-accent-ink font-bold px-3 py-1.5 rounded-xl shadow-[0_0_12px_rgba(114,240,180,0.3)] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 text-xs hover:scale-105"
+              className="bg-primary hover:brightness-110/90 text-accent-ink font-bold px-3 py-1.5 rounded-xl shadow-[0_0_12px_rgba(114,240,180,0.3)] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 text-xs hover:scale-105"
             >
               <Sparkles size={13} /> {isGenerating ? 'Generowanie...' : 'Generuj zdania teraz'}
             </button>

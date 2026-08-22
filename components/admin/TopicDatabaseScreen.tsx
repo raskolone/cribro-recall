@@ -648,7 +648,7 @@ export default function TopicDatabaseScreen() {
           {/* Tile 1: Gramatyka */}
           <div
             onClick={() => setSelectedSection('grammar')}
-            className="group relative overflow-hidden rounded-3xl p-8 backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-white/20 hover:border-primary/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(251,191,36,0.25)] transition-all duration-500 hover:-translate-y-2 cursor-pointer flex flex-col justify-between min-h-[220px]"
+            className="group relative overflow-hidden rounded-3xl p-8 backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-white/20 hover:border-primary/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(224, 168, 58,0.25)] transition-all duration-500 hover:-translate-y-2 cursor-pointer flex flex-col justify-between min-h-[220px]"
           >
             {/* Shimmer overlay */}
             <div className="absolute inset-0 bg-gradient-to-tr from-primary/0 via-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
@@ -677,7 +677,7 @@ export default function TopicDatabaseScreen() {
           {/* Tile 2: Baza Słownictwa */}
           <div
             onClick={() => setSelectedSection('vocabulary')}
-            className="group relative overflow-hidden rounded-3xl p-8 backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-white/20 hover:border-primary/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(16,185,129,0.25)] transition-all duration-500 hover:-translate-y-2 cursor-pointer flex flex-col justify-between min-h-[220px]"
+            className="group relative overflow-hidden rounded-3xl p-8 backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-white/20 hover:border-primary/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(114, 240, 180,0.25)] transition-all duration-500 hover:-translate-y-2 cursor-pointer flex flex-col justify-between min-h-[220px]"
           >
             <div className="absolute inset-0 bg-gradient-to-tr from-primary/0 via-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
@@ -704,7 +704,7 @@ export default function TopicDatabaseScreen() {
           {/* Tile 3: Idiomy */}
           <div
             onClick={() => setSelectedSection('idioms')}
-            className="group relative overflow-hidden rounded-3xl p-8 backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-white/20 hover:border-primary/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(168,85,247,0.25)] transition-all duration-500 hover:-translate-y-2 cursor-pointer flex flex-col justify-between min-h-[220px]"
+            className="group relative overflow-hidden rounded-3xl p-8 backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-white/20 hover:border-primary/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(114, 240, 180,0.25)] transition-all duration-500 hover:-translate-y-2 cursor-pointer flex flex-col justify-between min-h-[220px]"
           >
             <div className="absolute inset-0 bg-gradient-to-tr from-primary/0 via-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
@@ -731,7 +731,7 @@ export default function TopicDatabaseScreen() {
           {/* Tile 4: Phrasal verbs */}
           <div
             onClick={() => setSelectedSection('phrasal')}
-            className="group relative overflow-hidden rounded-3xl p-8 backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-white/20 hover:border-primary/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(6,182,212,0.25)] transition-all duration-500 hover:-translate-y-2 cursor-pointer flex flex-col justify-between min-h-[220px]"
+            className="group relative overflow-hidden rounded-3xl p-8 backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-white/20 hover:border-primary/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(114, 240, 180,0.25)] transition-all duration-500 hover:-translate-y-2 cursor-pointer flex flex-col justify-between min-h-[220px]"
           >
             <div className="absolute inset-0 bg-gradient-to-tr from-primary/0 via-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
@@ -922,7 +922,7 @@ export default function TopicDatabaseScreen() {
               onClick={() => setVocabCategory('student_lessons')}
               className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
                 vocabCategory === 'student_lessons'
-                  ? 'bg-primary text-accent-ink shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                  ? 'bg-primary text-accent-ink shadow-[0_0_20px_rgba(114, 240, 180,0.3)]'
                   : 'text-content-muted hover:text-white hover:bg-white/5'
               }`}
             >
@@ -939,7 +939,7 @@ export default function TopicDatabaseScreen() {
               onClick={() => setVocabCategory('general')}
               className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
                 vocabCategory === 'general'
-                  ? 'bg-primary text-accent-ink shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                  ? 'bg-primary text-accent-ink shadow-[0_0_20px_rgba(114, 240, 180,0.3)]'
                   : 'text-content-muted hover:text-white hover:bg-white/5'
               }`}
             >

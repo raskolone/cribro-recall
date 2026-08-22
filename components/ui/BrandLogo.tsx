@@ -5,7 +5,7 @@ export const BrandLogo: React.FC<{ className?: string; showTagline?: boolean; is
   return (
     <div className={`flex items-center gap-[0.5em] ${className}`}>
       <div className="relative flex-shrink-0 h-[2.5em] w-[2.5em] flex items-center justify-center">
-        <svg viewBox="0 0 100 100" className="w-full h-full text-primary drop-shadow-[0_0_12px_rgba(74,222,128,0.5)]">
+        <svg viewBox="0 0 100 100" className="w-full h-full text-primary drop-shadow-[0_0_12px_rgba(114, 240, 180,0.5)]">
           {/* Outer arc: Center 50,50 R=40, from -35 deg to +35 deg around the left */}
           <path d="M 82.7 27 A 40 40 0 1 0 82.7 73" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
           

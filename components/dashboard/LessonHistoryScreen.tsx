@@ -251,7 +251,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                 onClick={() => setViewMode('grid')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   viewMode === 'grid'
-                    ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                    ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_12px_rgba(114, 240, 180,0.4)]'
                     : 'text-text-2 hover:text-white'
                 }`}
                 title={language === 'pl' ? 'Widok kafelkowy' : 'Tile view'}
@@ -264,7 +264,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                 onClick={() => setViewMode('list')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   viewMode === 'list'
-                    ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                    ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_12px_rgba(114, 240, 180,0.4)]'
                     : 'text-text-2 hover:text-white'
                 }`}
                 title={language === 'pl' ? 'Widok listy' : 'List view'}
@@ -279,14 +279,14 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
           <div className="flex liquid-glass-tile p-1 rounded-xl border border-white/10">
              <button 
                onClick={() => setActiveTab('lessons')}
-               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'lessons' ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-content-muted hover:text-white'}`}
+               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'lessons' ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_15px_rgba(114, 240, 180,0.3)]' : 'text-content-muted hover:text-white'}`}
              >
                <FileText className="w-4 h-4" />
                {language === 'pl' ? 'Historia lekcji' : 'Lesson History'}
              </button>
              <button 
                onClick={() => setActiveTab('sessions')}
-               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'sessions' ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-content-muted hover:text-white'}`}
+               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'sessions' ? 'bg-gradient-to-r from-primary to-primary text-black shadow-[0_0_15px_rgba(114, 240, 180,0.3)]' : 'text-content-muted hover:text-white'}`}
              >
                <Clock className="w-4 h-4" />
                {language === 'pl' ? 'Historia Sesji' : 'Session History'}
@@ -325,7 +325,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                 <div
                   key={lesson.id}
                   onClick={() => handleLessonSelect(lesson)}
-                  className={`bg-[var(--ink-2)] hover:border-primary/50 hover:bg-ink-2 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_36px_rgba(16,185,129,0.25)] rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 relative overflow-hidden group cursor-pointer hover:-translate-y-1.5 min-h-[220px] ${isRecentLesson(lesson) ? 'border-primary/80 animate-pulse drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-white/10'}`}
+                  className={`bg-[var(--ink-2)] hover:border-primary/50 hover:bg-ink-2 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_36px_rgba(114, 240, 180,0.25)] rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 relative overflow-hidden group cursor-pointer hover:-translate-y-1.5 min-h-[220px] ${isRecentLesson(lesson) ? 'border-primary/80 animate-pulse drop-shadow-[0_0_15px_rgba(114, 240, 180,0.3)]' : 'border-white/10'}`}
                 >
                   {/* Glass & Shiny Effects */}
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -710,7 +710,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
 
               {selectedLesson.vocabularyText && getVocabList(selectedLesson.vocabularyText).length > 0 && (
                 <div className="space-y-4 pt-4">
-                   <div className="bg-primary/10 border border-primary/30 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+                   <div className="bg-primary/10 border border-primary/30 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[0_0_20px_rgba(114, 240, 180,0.15)]">
                      <div>
                        <div className="font-bold text-white text-base flex items-center gap-2">
                          <span>🎴</span> {language === 'pl' ? 'Ćwiczenia ze słownictwa z tej lekcji' : 'Vocabulary exercises from this lesson'}

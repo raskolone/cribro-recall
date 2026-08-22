@@ -104,7 +104,7 @@ const FlashcardPresentationScreen: React.FC<FlashcardPresentationScreenProps> = 
         <div className="flex items-center gap-4">
           <button 
             onClick={onBack}
-            className="w-10 h-10 rounded-full bg-base-300 flex items-center justify-center hover:bg-base-300/80 hover:text-white transition-colors"
+            className="w-10 h-10 rounded-full bg-base-300 flex items-center justify-center hover:brightness-125/80 hover:text-white transition-colors"
           >
             ✕
           </button>
@@ -193,7 +193,7 @@ const FlashcardPresentationScreen: React.FC<FlashcardPresentationScreenProps> = 
             if (step < 2) handleNextStep();
             else handleNextCard();
           }}
-          className="w-32 text-black font-bold shadow-[0_0_15px_rgba(74,222,128,0.3)]"
+          className="w-32 text-black font-bold shadow-[0_0_15px_rgba(114, 240, 180,0.3)]"
           disabled={step === 2 && currentIndex === cards.length - 1}
         >
           {language === 'pl' ? 'Dalej' : 'Next'}

@@ -24,7 +24,7 @@ const CuteMascot = ({ state }: { state: 'idle' | 'happy' | 'error' | 'thinking' 
         }}
         className="w-full h-full"
       >
-        <svg viewBox="0 0 120 120" className="w-full h-full drop-shadow-[0_10px_20px_rgba(52,211,153,0.3)]">
+        <svg viewBox="0 0 120 120" className="w-full h-full drop-shadow-[0_10px_20px_rgba(114, 240, 180,0.3)]">
           {/* Main Body - Liquid Blob */}
           <motion.path 
             d="M 60,10 C 90,10 110,30 110,60 C 110,90 85,110 60,110 C 35,110 10,90 10,60 C 10,30 30,10 60,10 Z"
@@ -426,7 +426,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, displaySenten
               className={`px-3 py-1.5 rounded-lg font-bold transition-all shadow-sm z-20 backdrop-blur-md ${
                 isCompleted 
                   ? 'bg-primary text-accent-ink border border-primary/50 cursor-default' 
-                  : `${st.colorClass} border hover:bg-danger/80 hover:text-white hover:border-danger hover:shadow-[0_0_15px_rgba(239,68,68,0.6)] cursor-pointer`
+                  : `${st.colorClass} border hover:bg-danger/80 hover:text-white hover:border-danger hover:shadow-[0_0_15px_rgba(240, 114, 111,0.6)] cursor-pointer`
               }`}
             >
               {st.text}
@@ -457,7 +457,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, displaySenten
                   disabled={isCompleted}
                   className={`pr-8 pl-4 py-3 rounded-xl font-bold text-base shadow-lg z-10 transition-all duration-300 relative overflow-hidden
                     ${isError 
-                      ? 'bg-danger text-white border-danger shadow-[0_0_25px_rgba(239,68,68,0.9)] scale-105 animate-shake' 
+                      ? 'bg-danger text-white border-danger shadow-[0_0_25px_rgba(240, 114, 111,0.9)] scale-105 animate-shake' 
                       : `${tile.colorClass} hover:scale-105 cursor-pointer active:scale-95`
                     }`}
                 >

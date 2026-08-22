@@ -286,8 +286,8 @@ export const WordBankFillInBlankTask: React.FC<WordBankFillInBlankTaskProps> = (
                           placedWords[gapIdx]
                             ? showFeedback
                               ? placedWords[gapIdx].text.toLowerCase() === (correctParts[gapIdx] || '').toLowerCase()
-                                ? 'border-primary bg-primary/20 text-primary shadow-[0_0_12px_rgba(16,185,129,0.3)]'
-                                : 'border-danger bg-danger/20 text-danger animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.4)]'
+                                ? 'border-primary bg-primary/20 text-primary shadow-[0_0_12px_rgba(114, 240, 180,0.3)]'
+                                : 'border-danger bg-danger/20 text-danger animate-pulse shadow-[0_0_12px_rgba(240, 114, 111,0.4)]'
                               : 'border-primary/80 bg-primary/20 text-primary shadow-[0_0_15px_rgba(114,240,180,0.25)]'
                             : selectedWordFromBank
                             ? 'border-warn bg-warn/10 border-dashed text-warn animate-pulse'

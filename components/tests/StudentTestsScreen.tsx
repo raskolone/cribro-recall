@@ -70,7 +70,7 @@ const StudentTestsScreen: React.FC<StudentTestsScreenProps> = ({ onBack }) => {
                 <Download className="w-4 h-4" />
                 {i18n.t("Pobierz raport (PDF)")}
               </Button>
-              <Button onClick={() => setFeedbackTest(null)} className="bg-primary text-accent-ink hover:bg-primary/90">
+              <Button onClick={() => setFeedbackTest(null)} className="bg-primary text-accent-ink hover:brightness-110/90">
                 {i18n.t("Zamknij")}
               </Button>
             </div>
@@ -100,7 +100,7 @@ const StudentTestsScreen: React.FC<StudentTestsScreenProps> = ({ onBack }) => {
               <div className="flex-shrink-0 text-center">
                 {(test.status === 'pending' || (test.attemptsLimit && (test.attemptsUsed || 0) < test.attemptsLimit)) ? (
                   <div className="flex flex-col items-center gap-2">
-                    <Button onClick={() => setActiveTest(test)} className="bg-primary text-accent-ink hover:bg-primary/90 font-bold w-full md:w-auto">
+                    <Button onClick={() => setActiveTest(test)} className="bg-primary text-accent-ink hover:brightness-110/90 font-bold w-full md:w-auto">
                       {test.status === 'pending' ? 'Rozpocznij Test' : 'Spróbuj ponownie'}
                     </Button>
                     {test.attemptsLimit && test.attemptsLimit < 999 && (
