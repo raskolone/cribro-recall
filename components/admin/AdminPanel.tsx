@@ -1263,14 +1263,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setShowAIModal(true)}
-            className="px-3.5 py-2 bg-base-200/80 text-primary border border-primary/40 rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/10 transition-colors flex items-center gap-2"
+            className="px-3.5 min-h-11 bg-base-200/80 text-primary border border-primary/40 rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/10 transition-colors flex items-center justify-center gap-2"
           >
             <Sparkles size={16} />
             {i18n.t("✨ AI Lesson Generator")}
           </button>
           <button
             onClick={() => setShowCreateStudentModal(true)}
-            className="px-3.5 py-2 bg-primary text-accent-ink rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-lg"
+            className="px-3.5 min-h-11 bg-primary text-accent-ink rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 shadow-btn"
           >
             <Plus size={16} />
             {i18n.t("Dodaj kursanta")}

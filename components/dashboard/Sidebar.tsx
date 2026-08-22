@@ -411,28 +411,26 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               {language === 'pl' ? 'Pomoc' : 'Help'}
             </NavLink>
             <div className={`flex flex-col gap-2`}>
-              <button onClick={() => logout()} className={`group relative z-10 hover:z-20 w-full flex items-center ${isDesktopCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border border-transparent text-danger hover:bg-danger/10`}>
+              <button onClick={() => logout()} className={`group relative z-10 hover:z-20 w-full flex items-center ${isDesktopCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border border-transparent text-text-2 hover:text-danger hover:bg-danger/10`}>
                 <div className={`flex items-center justify-center transition-transform duration-300 ${isDesktopCollapsed ? 'mr-3 md:mr-0' : 'mr-3'}`}>
                   <LogOut size={20} />
                 </div>
                 <span className={`transition-all duration-300 group-hover:translate-x-0.5 ${isDesktopCollapsed ? 'md:hidden' : 'block'}`}>{language === 'pl' ? 'Wyloguj się' : 'Logout'}</span>
               </button>
-              <div className={`flex items-center p-1 bg-black/30 rounded-xl border border-white/5 ${isDesktopCollapsed ? 'flex-col mx-auto' : 'w-full'}`}>
+              <div className={`flex items-center gap-1 p-1 bg-ink/72 rounded-xl border border-line ${isDesktopCollapsed ? 'flex-col mx-auto' : 'w-full'}`}>
                 <button 
                   onClick={() => setLanguage('en')}
-                  className={`flex-1 flex items-center justify-center gap-2 min-h-11 px-3 rounded-lg transition-all ${language === 'en' ? 'bg-white/10 shadow-sm' : 'opacity-50 hover:opacity-100 hover:bg-white/5'}`}
+                  className={`flex-1 flex items-center justify-center gap-2 min-h-11 px-3 rounded-lg transition-all ${language === 'en' ? 'bg-primary/12 border border-primary/30 text-primary' : 'border border-transparent text-text-mute hover:text-content'}`}
                   title="English"
                 >
-                  <span className="text-lg leading-none">🇬🇧</span>
-                  <span className={`font-bold text-sm ${isDesktopCollapsed ? 'md:hidden' : 'block'}`}>EN</span>
+                                    <span className={`font-mono font-bold text-xs tracking-[0.1em] ${isDesktopCollapsed ? 'md:hidden' : 'block'}`}>EN</span>
                 </button>
                 <button 
                   onClick={() => setLanguage('pl')}
-                  className={`flex-1 flex items-center justify-center gap-2 min-h-11 px-3 rounded-lg transition-all ${language === 'pl' ? 'bg-white/10 shadow-sm' : 'opacity-50 hover:opacity-100 hover:bg-white/5'}`}
+                  className={`flex-1 flex items-center justify-center gap-2 min-h-11 px-3 rounded-lg transition-all ${language === 'pl' ? 'bg-primary/12 border border-primary/30 text-primary' : 'border border-transparent text-text-mute hover:text-content'}`}
                   title="Polski"
                 >
-                  <span className="text-lg leading-none">🇵🇱</span>
-                  <span className={`font-bold text-sm ${isDesktopCollapsed ? 'md:hidden' : 'block'}`}>PL</span>
+                                    <span className={`font-mono font-bold text-xs tracking-[0.1em] ${isDesktopCollapsed ? 'md:hidden' : 'block'}`}>PL</span>
                 </button>
               </div>
             </div>

@@ -46,14 +46,10 @@ const Dashboard: React.FC = () => {
   const { language } = useLanguage();
   const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
   
-  const [view, setView] = useState<View>(() => {
-    const isMobile = window.innerWidth < 768;
-    if (isTeacher) {
-      return isMobile ? 'ai-generator' : 'dashboard';
-    } else {
-      return 'dashboard';
-    }
-  });
+  // Nauczyciel ląduje we własnym panelu niezależnie od szerokości ekranu.
+  // Wcześniej telefon rzucał go do generatora ćwiczeń, czyli do widoku
+  // kursanta — obejście z czasów, gdy panel nie był responsywny. Jest.
+  const [view, setView] = useState<View>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(() => {
     try {

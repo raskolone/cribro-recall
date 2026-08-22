@@ -19,6 +19,10 @@ export default defineConfig(({ mode }) => {
         tailwindcss(),
         VitePWA({
           registerType: 'autoUpdate',
+          // injectManifest zamiast generateSW — powód w sw.ts.
+          strategies: 'injectManifest',
+          srcDir: '.',
+          filename: 'sw.ts',
           includeAssets: ['favicon.svg', 'cribro-logo.svg', 'apple-touch-icon.png', 'cribro-icon.svg'],
           manifest: {
             name: 'CRIBRO ENGLISH',
@@ -58,10 +62,9 @@ export default defineConfig(({ mode }) => {
               }
             ]
           },
-          workbox: {
+          injectManifest: {
             globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
             maximumFileSizeToCacheInBytes: 5000000,
-            navigateFallbackDenylist: [/^\/api/]
           }
         })
       ],

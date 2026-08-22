@@ -177,7 +177,7 @@ const TeacherOverview: React.FC<TeacherOverviewProps> = ({ students, language })
         onClick={() => setIsOpen(v => !v)}
         aria-expanded={isOpen}
         title={isOpen ? t.collapse : t.expand}
-        className="w-full flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 text-left hover:bg-white/[0.02] transition-colors"
+        className="w-full flex flex-wrap items-center justify-between gap-x-4 gap-y-3 p-4 sm:p-5 text-left hover:bg-white/[0.02] transition-colors"
       >
         <div className="flex items-center gap-3 min-w-0">
           <span className="p-2.5 rounded-2xl bg-primary/12 text-primary border border-primary/30 shrink-0">
@@ -191,8 +191,8 @@ const TeacherOverview: React.FC<TeacherOverviewProps> = ({ students, language })
           </span>
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-5">
-          <span className="flex items-center gap-4 sm:gap-6">
+        <div className="flex items-center gap-3 sm:gap-5 min-w-0">
+          <span className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-x-6 min-w-0">
             <Figure value={stats.total} label={t.students} />
             <Figure value={stats.active7} label={t.active7} />
             <Figure value={stats.new30} label={t.new30} />
@@ -297,9 +297,9 @@ const TeacherOverview: React.FC<TeacherOverviewProps> = ({ students, language })
 };
 
 const Figure: React.FC<{ value: number; label: string }> = ({ value, label }) => (
-  <span className="text-right">
+  <span className="text-right min-w-0">
     <span className="block font-display text-2xl font-bold leading-none text-primary">{value}</span>
-    <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-mute whitespace-nowrap">
+    <span className="block font-mono text-[10px] uppercase tracking-[0.12em] text-text-mute">
       {label}
     </span>
   </span>
