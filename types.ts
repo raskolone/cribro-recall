@@ -305,8 +305,16 @@ export interface FillInTheBlankExercise {
 
 export interface SpecialTask {
   id?: string;
+  /**
+   * UID konta, do którego zadanie należy — pole rozstrzygające dla reguł
+   * Firestore i dla zapytań kursanta (patrz utils/homework.ts). `studentId`
+   * zostaje dla zgodności ze starszymi widokami.
+   */
+  studentUid?: string;
   studentId: string;
   studentName?: string;
+  /** Znacznik wysłania powiadomienia e-mail, zapisywany przez Cloud Function. */
+  notificationSentAt?: any;
   assignedBy?: string;
   title: string;
   type?: HomeworkType;

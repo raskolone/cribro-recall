@@ -120,14 +120,15 @@ const Dashboard: React.FC = () => {
     const slogans: { text: string; color: string }[] = [];
     const colors = ['text-primary', 'text-accent-soft', 'text-content', 'text-primary', 'text-text-2'];
     
+    // Hasła o passie („Niesamowita passa! X dni z rzędu") wypadły razem
+    // z licznikiem na górze panelu — passa nie ma być mechanizmem, wokół
+    // którego kręci się główny widok. Liczba zostaje w Statystykach.
     const baseSlogans: string[] = [];
     if (language === 'pl') {
-      if (user?.streakCount && user.streakCount > 2) baseSlogans.push('Niesamowita passa! Masz już ' + user.streakCount + ' dni z rzędu.');
       baseSlogans.push('Wierzę w Ciebie!');
       baseSlogans.push('Każde słowo ma znaczenie.');
       baseSlogans.push('Sukces to suma małych wysiłków.');
     } else {
-      if (user?.streakCount && user.streakCount > 2) baseSlogans.push('Amazing streak! ' + user.streakCount + ' days in a row.');
       baseSlogans.push('I believe in you!');
       baseSlogans.push('Every word matters.');
       baseSlogans.push('Success is the sum of small efforts.');
@@ -162,7 +163,7 @@ const Dashboard: React.FC = () => {
     const interval = setInterval(animateSlogan, 10000); // Change slogan every 10 seconds
     
     return () => clearInterval(interval);
-  }, [language, user?.streakCount, words, difficultWords, dueWords]);
+  }, [language, words, difficultWords, dueWords]);
 
   const renderContent = () => {
     if (view === 'student-stats') {
