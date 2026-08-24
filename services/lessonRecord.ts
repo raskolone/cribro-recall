@@ -1,7 +1,7 @@
 import { db } from '../firebase';
 import { doc, setDoc, collection, getDocs, query, orderBy, where, serverTimestamp, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { LessonRecord, VocabularySet } from '../types';
-import { buildVocabularySetTitle, countVocabularyItems } from '../utils/vocabulary';
+import { buildVocabularySetTitle, countVocabularyItems, getApprovedVocabularyText, splitVocabularyLines } from '../utils/vocabulary';
 
 export function parseVocabularyTextToCards(vocabularyText: string) {
   if (!vocabularyText) return [];
@@ -99,6 +99,8 @@ export async function createLessonRecordWithVocabularySet(input: {
   studentSpeaking?: string;
   thingsToImprove?: string;
   suggestedFollowUp?: string;
+  /** Pozycje zatwierdzone do powtórek. Pominięcie = cały `vocabularyText`. */
+  approvedItems?: string[];
 }): Promise<{ lessonRecordId: string; vocabularySetId: string }> {
   // Generate IDs
   const randomSuffix = Math.floor(Math.random() * 1000000);
@@ -133,6 +135,7 @@ export async function createLessonRecordWithVocabularySet(input: {
     date: input.date,
     topic: input.topic,
     vocabularyText: input.vocabularyText,
+    approvedItems: input.approvedItems ?? splitVocabularyLines(input.vocabularyText),
     itemCount: countVocabularyItems(input.vocabularyText),
     status: 'draft',
     source: 'lesson_record',
@@ -168,7 +171,10 @@ export async function createLessonRecordWithVocabularySet(input: {
       input.studentId,
       input.date,
       input.topic,
-      input.vocabularyText
+      getApprovedVocabularyText({
+        vocabularyText: input.vocabularyText,
+        approvedItems: input.approvedItems,
+      })
     );
   }
 

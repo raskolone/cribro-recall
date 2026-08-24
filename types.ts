@@ -253,6 +253,64 @@ export interface LessonRecord {
   updatedAt: string;
 }
 
+export type RecallLearningType =
+  | 'fraza'
+  | 'kolokacja'
+  | 'gramatyka'
+  | 'wymowa'
+  | 'funkcja'
+  | 'korekta';
+
+export type RecallApprovalStatus = 'draft' | 'approved' | 'archived';
+
+/** Wynik jednej próby przypomnienia sobie elementu. */
+export type RetrievalResult = 'fail' | 'effort' | 'confident';
+
+export interface RetrievalAttempt {
+  /** ISO, dzień próby. */
+  date: string;
+  result: RetrievalResult;
+  /** ISO, kiedy element wraca do kolejki. */
+  nextDueAt: string;
+}
+
+/**
+ * Jeden konkretny element do zapamiętania — nie wpis lekcji, nie zestaw słówek.
+ *
+ * To jest jedyne źródło materiału do powtórek. Elementy powstają wyłącznie
+ * w momencie zapisu lekcji (szkic AI → zatwierdzenie lektora); nic nie tworzy
+ * ich „w locie" przy otwarciu panelu kursanta.
+ */
+export interface RecallItem {
+  id: string;
+  studentId: string;
+  /** Lekcja źródłowa — kontekst, z którego element pochodzi. */
+  lessonId: string;
+  targetForm: string;
+  meaningOrFunction: string;
+  learningType: RecallLearningType;
+  /** Wyjątek metodyczny kontrolowany przez lektora. */
+  teacherNote?: string;
+  approvalStatus: RecallApprovalStatus;
+  retrievalHistory: RetrievalAttempt[];
+  /**
+   * Kopia `nextDueAt` z ostatniej próby, wyciągnięta na wierzch dokumentu.
+   * Firestore nie potrafi filtrować po polu wewnątrz tablicy, więc bez tego
+   * kolejka „na dziś" wymagałaby ściągnięcia wszystkich elementów kursanta.
+   */
+  nextDueAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+/** Kandydat ze szkicu AI, zanim stanie się dokumentem w bazie. */
+export interface RecallCandidate {
+  targetForm: string;
+  meaningOrFunction: string;
+  learningType: RecallLearningType;
+  teacherNote?: string;
+}
+
 export interface VocabularySet {
   id: string;
   studentId: string;
@@ -261,6 +319,13 @@ export interface VocabularySet {
   date: string;
   topic: string;
   vocabularyText: string;
+  /**
+   * Pozycje zatwierdzone po lekcji — to z nich, i tylko z nich, biorą się
+   * powtórki. Puste albo brak pola znaczy „wszystko z `vocabularyText`":
+   * tak zachowują się zestawy sprzed wprowadzenia zatwierdzania oraz te
+   * odtwarzane ze starych `lessonRecords`.
+   */
+  approvedItems?: string[];
   itemCount: number;
   status: "draft" | "ready";
   source: "lesson_record";

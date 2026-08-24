@@ -1,5 +1,9 @@
 import { createLessonRecordWithVocabularySet, syncFlashcardSetForLesson, getLessonRecordsForStudent, deleteLessonRecord } from '../../services/lessonRecord';
-import { countVocabularyItems, buildVocabularySetTitle } from '../../utils/vocabulary';
+import PreLessonContext from './PreLessonContext';
+import VocabularyApproval from './VocabularyApproval';
+import RecallItemsReview, { ReviewedCandidate } from './RecallItemsReview';
+import { saveRecallReview } from '../../services/recallItems';
+import { countVocabularyItems, buildVocabularySetTitle, splitVocabularyLines } from '../../utils/vocabulary';
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { motion, AnimatePresence } from 'motion/react';
@@ -27,7 +31,7 @@ import {
   Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
   User as UserIcon, Users, Search, X, ChevronRight, ChevronDown, ChevronUp, Sparkles, BarChart2, Clock, 
   BookOpen, BookMarked, UserCheck, Filter, Award, Activity, Calendar, 
-  RefreshCw, Plus, Eye, Shield, Target
+  RefreshCw, Plus, Eye, Shield, Target, CalendarClock
 } from 'lucide-react';
 import i18n from "i18next";
 import html2pdf from 'html2pdf.js';
@@ -640,6 +644,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       alert("Wybierz przynajmniej jednego kursanta.");
       return;
     }
+    // Zatwierdzone = wszystko, co wklejono, minus ręcznie odznaczone.
+    const approvedItems = splitVocabularyLines(lessonFormWords)
+      .filter(line => !lessonFormExcludedItems.includes(line));
+
     setIsSavingLessonRecord(true);
     try {
       if (editingRecordId) {
@@ -671,9 +679,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
               topic: lessonFormTopic,
               title: buildVocabularySetTitle(lessonFormDate, lessonFormTopic),
               vocabularyText: lessonFormWords,
+              approvedItems: approvedItems,
               itemCount: countVocabularyItems(lessonFormWords),
               updatedAt: new Date().toISOString()
            });
+        }
+
+        // Elementy powstają tylko wtedy, gdy lektor faktycznie przygotował je
+        // w tej sesji. Pusta lista przy edycji znaczy „nie dotykam powtórek",
+        // a nie „skasuj to, co już zatwierdzone".
+        if (lessonFormRecallCandidates.length > 0) {
+          await saveRecallReview(primaryStudentId, editingRecordId, lessonFormRecallCandidates);
         }
 
         if (lessonFormWords && lessonFormWords.trim().length > 0) {
@@ -682,14 +698,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
             primaryStudentId,
             lessonFormDate,
             lessonFormTopic,
-            lessonFormWords
+            approvedItems.join('\n')
           );
         }
 
         // If additional students were selected during edit, create record for them too
         for (const sId of targetStudentIds) {
           if (sId === primaryStudentId) continue;
-          await createLessonRecordWithVocabularySet({
+          const extra = await createLessonRecordWithVocabularySet({
             studentId: sId,
             date: lessonFormDate,
             topic: lessonFormTopic,
@@ -697,8 +713,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
             lessonSummary: lessonFormSummary,
             studentSpeaking: lessonFormStudentSpeaking,
             thingsToImprove: lessonFormThingsToImprove,
-            suggestedFollowUp: lessonFormSuggestedFollowUp
+            suggestedFollowUp: lessonFormSuggestedFollowUp,
+            approvedItems: approvedItems
           });
+          if (lessonFormRecallCandidates.length > 0) {
+            await saveRecallReview(sId, extra.lessonRecordId, lessonFormRecallCandidates);
+          }
           await updateDoc(doc(db, 'users', sId), {
              hasNewLesson: true,
              hasNewVocabulary: true
@@ -707,7 +727,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       } else {
         // Create lesson record for all selected students
         for (const sId of targetStudentIds) {
-          await createLessonRecordWithVocabularySet({
+          const created = await createLessonRecordWithVocabularySet({
             studentId: sId,
             date: lessonFormDate,
             topic: lessonFormTopic,
@@ -715,9 +735,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
             lessonSummary: lessonFormSummary,
             studentSpeaking: lessonFormStudentSpeaking,
             thingsToImprove: lessonFormThingsToImprove,
-            suggestedFollowUp: lessonFormSuggestedFollowUp
+            suggestedFollowUp: lessonFormSuggestedFollowUp,
+            approvedItems: approvedItems
           });
-          
+
+          if (lessonFormRecallCandidates.length > 0) {
+            await saveRecallReview(sId, created.lessonRecordId, lessonFormRecallCandidates);
+          }
+
           await updateDoc(doc(db, 'users', sId), {
              hasNewLesson: true,
              hasNewVocabulary: true
@@ -982,6 +1007,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [lessonFormDate, setLessonFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [lessonFormTopic, setLessonFormTopic] = useState('');
   const [lessonFormWords, setLessonFormWords] = useState('');
+  // Pozycje odrzucone przy zatwierdzaniu materiału po lekcji; puste = wszystko idzie do powtórek.
+  const [lessonFormExcludedItems, setLessonFormExcludedItems] = useState<string[]>([]);
+  // Kandydaci do powtórek — zatwierdzani przy zapisie lekcji (Priorytet 0).
+  const [lessonFormRecallCandidates, setLessonFormRecallCandidates] = useState<ReviewedCandidate[]>([]);
   const [lessonFormSummary, setLessonFormSummary] = useState('');
   const [lessonFormStudentSpeaking, setLessonFormStudentSpeaking] = useState('');
   const [lessonFormThingsToImprove, setLessonFormThingsToImprove] = useState('');
@@ -1088,6 +1117,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       setLessonFormDate(record.date);
       setLessonFormTopic(record.topic);
       setLessonFormWords(record.vocabularyText || (record as any).words || '');
+      setLessonFormExcludedItems([]);
+      setLessonFormRecallCandidates([]);
       setLessonFormSummary(record.lessonSummary || (record as any).summary || '');
       setLessonFormStudentSpeaking(record.studentSpeaking || '');
       setLessonFormThingsToImprove(record.thingsToImprove || '');
@@ -1103,6 +1134,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         setLessonFormDate(new Date().toISOString().split('T')[0]);
         setLessonFormTopic('');
         setLessonFormWords('');
+        setLessonFormExcludedItems([]);
+        setLessonFormRecallCandidates([]);
         setLessonFormSummary('');
         setLessonFormStudentSpeaking('');
         setLessonFormThingsToImprove('');
@@ -1118,6 +1151,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     setEditingRecordId(null);
     setLessonFormTopic('');
     setLessonFormWords('');
+    setLessonFormExcludedItems([]);
+    setLessonFormRecallCandidates([]);
     setLessonFormSummary('');
   };
 
@@ -1394,6 +1429,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-4.5">
           {[
             {
+              id: 'context',
+              title: 'Kontekst przed lekcją',
+              badge: 'Przed zajęciami',
+              desc: 'Ostatnia lekcja, elementy i błędy w jednym miejscu',
+              icon: CalendarClock
+            },
+            {
               id: 'profile',
               title: 'Profil kursanta',
               badge: 'Dane i AI',
@@ -1494,6 +1536,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           <div className="flex items-center gap-3">
             <span className="w-3 h-3 rounded-full bg-primary animate-pulse" />
             <h2 className="text-xl font-extrabold text-white">
+              {activeTab === 'context' && 'Kontekst kursanta przed lekcją'}
               {activeTab === 'profile' && 'Profil i parametry kursanta'}
               {activeTab === 'stats' && 'Statystyki i aktywność kursanta'}
               {activeTab === 'history' && 'Historia lekcji oraz sesji nauki w aplikacji'}
@@ -1510,6 +1553,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
       {/* Active Tab Container */}
       <div ref={tabContentRef}>
+          {activeTab === 'context' && selectedUser && (
+            <PreLessonContext
+              studentId={selectedUser.id}
+              studentName={selectedUser.firstName || selectedUser.username}
+              lessonRecords={lessonRecords}
+              onOpenHistory={() => handleTileClick('history')}
+            />
+          )}
+
           {activeTab === 'stats' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
@@ -2765,6 +2817,21 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                           className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white font-mono text-sm min-h-[120px] resize-y"
                           placeholder={i18n.t("apple - jabłko&#10;banana - banan")}
                           rows={5}
+                        />
+                        <VocabularyApproval
+                          vocabularyText={lessonFormWords}
+                          excludedItems={lessonFormExcludedItems}
+                          onChange={setLessonFormExcludedItems}
+                        />
+                      </div>
+                      <div>
+                        <RecallItemsReview
+                          lessonTopic={lessonFormTopic}
+                          vocabularyText={lessonFormWords}
+                          lessonNotes={lessonFormSummary}
+                          thingsToImprove={lessonFormThingsToImprove}
+                          candidates={lessonFormRecallCandidates}
+                          onChange={setLessonFormRecallCandidates}
                         />
                       </div>
                       <div>

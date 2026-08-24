@@ -13,6 +13,7 @@ import { generateSpeech, createSpeechAudio, formatTextForTTS, playSpeech } from 
 import TTSButtons from '../flashcards/TTSButtons';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog, canUserViewAiMonitor } from '../../types';
 import { studentTasksQuery } from '../../utils/homework';
+import { getApprovedVocabularyText } from '../../utils/vocabulary';
 
 export interface CachedExerciseSet {
   id: string;
@@ -954,7 +955,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         );
         if (selectedSet) {
           if (selectedSet.vocabularyText) {
-            wordsList = selectedSet.vocabularyText
+            // Zatwierdzone po lekcji, nie cały wklej — patrz utils/vocabulary.ts.
+            wordsList = getApprovedVocabularyText(selectedSet)
               // Split on newlines/semicolons, or on a comma only when it's followed
               // by a real "term — translation" pair (so synonym commas inside a
               // single definition, e.g. "creek — mała rzeka, strumień", survive intact).
@@ -1460,7 +1462,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
               const allWords: string[] = [];
               selectedSets.forEach(set => {
                 if (set.vocabularyText) {
-                  const items = set.vocabularyText.split(/[\n,;]+/).map(i => i.trim()).filter(i => i.length > 0);
+                  const items = getApprovedVocabularyText(set).split(/[\n,;]+/).map(i => i.trim()).filter(i => i.length > 0);
                   allWords.push(...items);
                 }
               });
@@ -1468,7 +1470,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
             } else if (selectedSetId.startsWith('vocab-')) {
               const matchedVocab = vocabularySets.find(s => `vocab-${s.id}` === selectedSetId);
               if (matchedVocab && matchedVocab.vocabularyText) {
-                 const items = matchedVocab.vocabularyText.split(/[\n,;]+/).map(i => i.trim()).filter(i => i.length > 0);
+                 const items = getApprovedVocabularyText(matchedVocab).split(/[\n,;]+/).map(i => i.trim()).filter(i => i.length > 0);
                  wordsToUse = Array.from(new Set(items)).sort(() => 0.5 - Math.random()).slice(0, 20);
               }
             } else if (selectedSetId.startsWith('gen-')) {

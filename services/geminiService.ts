@@ -6,7 +6,7 @@ import { db } from '../firebase';
 // Ze SDK zostały już tylko stałe (enumy konfiguracji). Sam klient Gemini żyje
 // na serwerze — patrz getAI() niżej.
 import { Type, Modality } from "@google/genai";
-import { Language, Difficulty, Word, AISuggestion, AudioVocabulary, TranslationExercise, TranslationEvaluationResult } from '../types';
+import { Language, Difficulty, Word, AISuggestion, AudioVocabulary, TranslationExercise, TranslationEvaluationResult, RecallCandidate, RecallLearningType } from '../types';
 import { aiMonitor } from './aiMonitorService';
 
 
@@ -2141,5 +2141,79 @@ Return a JSON array of objects.`;
   } catch (err) {
     console.error("Error generating flashcards from text with GPT:", err);
     throw new Error("Failed to parse vocabulary from text using GPT-4o-mini.");
+  }
+};
+
+/**
+ * Szkic elementów do powtórek z materiału jednej lekcji.
+ *
+ * Jedno wywołanie, wykonywane wyłącznie przy zapisie lekcji — nigdy przy
+ * otwarciu panelu kursanta. Wynik to *kandydaci* (`draft`); dopóki lektor ich
+ * nie zatwierdzi, nie istnieją dla kursanta.
+ *
+ * Prompt jest celowo restrykcyjny: model ma wyciągać to, co faktycznie padło
+ * na lekcji, i nie dokładać własnych propozycji. Brief zabrania tworzenia
+ * nowych celów lekcyjnych — AI syntetyzuje dane kursanta, nie wymyśla materiału.
+ */
+export const generateRecallCandidates = async (
+  lessonTopic: string,
+  vocabularyText: string,
+  lessonNotes: string,
+  thingsToImprove: string
+): Promise<RecallCandidate[]> => {
+  const prompt = `Jesteś asystentem lektora języka angielskiego. Na podstawie materiału z JEDNEJ konkretnej lekcji wybierz elementy, które kursant ma sobie aktywnie przypomnieć na kolejnych powtórkach.
+
+ZASADY (bezwzględne):
+- Wybieraj WYŁĄCZNIE to, co faktycznie występuje w materiale poniżej. Nie dodawaj własnych słów, zwrotów ani zagadnień.
+- Nie wymyślaj nowych celów lekcyjnych. Twoim zadaniem jest wybór i uporządkowanie, nie tworzenie.
+- Zwróć od 3 do 10 elementów. Jeśli materiału starcza na mniej niż 3 — zwróć tyle, ile jest.
+- Jeden element = jedna konkretna rzecz do zapamiętania, nie ogólny temat.
+- \`targetForm\` to dokładna forma po angielsku, którą kursant ma odtworzyć z pamięci.
+- \`meaningOrFunction\` to sens lub funkcja komunikacyjna po polsku.
+- \`learningType\` musi być jedną z wartości: "fraza", "kolokacja", "gramatyka", "wymowa", "funkcja", "korekta".
+- Błędy kursanta z sekcji "Do poprawy" zapisuj jako typ "korekta", z poprawną formą w \`targetForm\`.
+
+Temat lekcji: ${lessonTopic || '(brak)'}
+
+Słownictwo z lekcji:
+${vocabularyText || '(brak)'}
+
+Notatki z lekcji:
+${lessonNotes || '(brak)'}
+
+Do poprawy (błędy kursanta):
+${thingsToImprove || '(brak)'}
+
+Zwróć WYŁĄCZNIE poprawny JSON w postaci:
+{"items":[{"targetForm":"...","meaningOrFunction":"...","learningType":"fraza"}]}`;
+
+  try {
+    const response = await generateContentWithFallback({
+      contents: prompt,
+      config: { responseMimeType: 'application/json' },
+      taskName: 'Szkic elementów do powtórek',
+    });
+
+    const parsed = JSON.parse(extractJSON(response?.text || '{}'));
+    const raw = Array.isArray(parsed?.items) ? parsed.items : [];
+
+    const allowedTypes: RecallLearningType[] = [
+      'fraza', 'kolokacja', 'gramatyka', 'wymowa', 'funkcja', 'korekta',
+    ];
+
+    return raw
+      .filter((i: any) => i && typeof i.targetForm === 'string' && i.targetForm.trim().length > 0)
+      .map((i: any) => ({
+        targetForm: String(i.targetForm).trim(),
+        meaningOrFunction: typeof i.meaningOrFunction === 'string' ? i.meaningOrFunction.trim() : '',
+        // Model potrafi zwrócić typ spoza listy albo po angielsku; wtedy
+        // „fraza" jest bezpieczniejsze niż odrzucenie całego elementu, bo
+        // lektor i tak przegląda każdy z nich przed zatwierdzeniem.
+        learningType: allowedTypes.includes(i.learningType) ? i.learningType : 'fraza',
+      }))
+      .slice(0, 10);
+  } catch (error) {
+    console.error('Nie udało się wygenerować kandydatów do powtórek:', error);
+    throw new Error('Nie udało się przygotować elementów do powtórek.');
   }
 };

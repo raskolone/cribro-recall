@@ -263,6 +263,21 @@ service cloud.firestore {
         allow update: if isOwner(userId) || isAdmin();
         allow delete: if isAdmin();
       }
+      // Elementy do powtórek. Tworzy i zatwierdza wyłącznie lektor — kursant
+      // może jedynie dopisać wynik próby, i tylko do tych dwóch pól. Bez tego
+      // ograniczenia przeglądarka kursanta mogłaby przestawić `approvalStatus`
+      // i wpuścić sobie do kolejki elementy, których lektor nie zatwierdził.
+      match /recallItems/{itemId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isAdmin();
+        allow update: if isAdmin() || (
+          isOwner(userId) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['retrievalHistory', 'nextDueAt', 'updatedAt'])
+        );
+        allow delete: if isAdmin();
+      }
+
       match /weaknesses/{weaknessId} {
         allow read: if isOwner(userId) || isAdmin();
         allow create: if isAdmin();
