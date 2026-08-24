@@ -696,11 +696,13 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                 </div>
               )}
 
-              {isTeacher && selectedLesson.suggestedFollowUp && (
+              {selectedLesson.suggestedFollowUp && (
                 <div className="space-y-3">
                    <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
                      <Clock className="w-4 h-4 text-warn" />
-                     {language === 'pl' ? 'Zadanie / Następna lekcja' : 'Suggested Follow-up'}
+                     {isTeacher
+                       ? (language === 'pl' ? 'Zadanie / Następna lekcja' : 'Suggested Follow-up')
+                       : (language === 'pl' ? 'Twój następny krok' : 'Your next step')}
                    </h3>
                    <div className="bg-warn/5 border border-warn/10 rounded-2xl p-6 text-content text-sm whitespace-pre-wrap">
                       <Markdown>{selectedLesson.suggestedFollowUp}</Markdown>

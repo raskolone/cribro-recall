@@ -35,9 +35,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  HelpCircle
+  HelpCircle,
+  FlaskConical
 } from 'lucide-react';
 import BrandLogo from '../ui/BrandLogo';
+import { isModuleVisible } from '../../config/featureFlags';
 
 const NavLink: React.FC<{
   id?: string;
@@ -271,12 +273,25 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
         </div>
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto scrollbar-hide">
           <NavLink id="tour-generator" icon={<LayoutDashboard size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('dashboard')} isActive={currentView === 'dashboard'}>
-              {isTeacher ? (language === 'pl' ? 'Panel nauczyciela' : 'Dashboard') : (language === 'pl' ? 'Panel kursanta' : 'Practice Panel')}
+              {isTeacher ? (language === 'pl' ? 'Panel nauczyciela' : 'Dashboard') : (language === 'pl' ? 'Dzisiaj' : 'Today')}
           </NavLink>
 
           {isTeacher && (
-            <NavLink icon={<Sparkles size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('ai-generator')} isActive={currentView === 'ai-generator'}>
+            <NavLink icon={<Sparkles size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('student-today')} isActive={currentView === 'student-today'}>
                 {language === 'pl' ? 'Panel kursanta' : 'Student View'}
+            </NavLink>
+          )}
+
+          {/* Otwarty generator zdań. Zostaje dostępny, ale nigdy nie jest
+              domyślnym wejściem — patrz config/featureFlags.ts. */}
+          {isModuleVisible('extraPractice') && (
+            <NavLink
+              icon={<FlaskConical size={20} />}
+              isCollapsed={isDesktopCollapsed}
+              onClick={() => handleNavigate('extra-practice')}
+              isActive={currentView === 'extra-practice'}
+            >
+              {language === 'pl' ? 'Praktyka dodatkowa' : 'Extra Practice'}
             </NavLink>
           )}
 

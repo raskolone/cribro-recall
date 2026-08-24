@@ -21,11 +21,13 @@ import { ChevronDown, Sparkles, Menu } from 'lucide-react';
 import AssignedTasks from './AssignedTasks';
 import i18n from "i18next";
 
-type View = 'dashboard' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats' | 'homework';
+type View = 'dashboard' | 'extra-practice' | 'student-today' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats' | 'homework';
 
 import AdminPanel from '../admin/AdminPanel';
 import StudentStatsScreen from './StudentStatsScreen';
 import LessonHistoryScreen from './LessonHistoryScreen';
+import TodayScreen from './TodayScreen';
+import { isModuleVisible } from '../../config/featureFlags';
 import StudentTestsScreen from '../tests/StudentTestsScreen';
 import AdminStatsScreen from '../admin/AdminStatsScreen';
 import FlashcardSetsScreen from '../flashcards/FlashcardSetsScreen';
@@ -120,15 +122,18 @@ const Dashboard: React.FC = () => {
     const slogans: { text: string; color: string }[] = [];
     const colors = ['text-primary', 'text-accent-soft', 'text-content', 'text-primary', 'text-text-2'];
     
-    // Hasła o passie („Niesamowita passa! X dni z rzędu") wypadły razem
-    // z licznikiem na górze panelu — passa nie ma być mechanizmem, wokół
-    // którego kręci się główny widok. Liczba zostaje w Statystykach.
+    // Hasła o passie wracają wyłącznie przez flagę `streak` — passa nie ma być
+    // mechanizmem, wokół którego kręci się główny widok, ale kod zostaje na
+    // miejscu i wystarczy przestawić jedną wartość w config/featureFlags.ts.
+    const showStreak = isModuleVisible('streak');
     const baseSlogans: string[] = [];
     if (language === 'pl') {
+      if (showStreak && user?.streakCount && user.streakCount > 2) baseSlogans.push('Niesamowita passa! Masz już ' + user.streakCount + ' dni z rzędu.');
       baseSlogans.push('Wierzę w Ciebie!');
       baseSlogans.push('Każde słowo ma znaczenie.');
       baseSlogans.push('Sukces to suma małych wysiłków.');
     } else {
+      if (showStreak && user?.streakCount && user.streakCount > 2) baseSlogans.push('Amazing streak! ' + user.streakCount + ' days in a row.');
       baseSlogans.push('I believe in you!');
       baseSlogans.push('Every word matters.');
       baseSlogans.push('Success is the sum of small efforts.');
@@ -163,7 +168,7 @@ const Dashboard: React.FC = () => {
     const interval = setInterval(animateSlogan, 10000); // Change slogan every 10 seconds
     
     return () => clearInterval(interval);
-  }, [language, words, difficultWords, dueWords]);
+  }, [language, user?.streakCount, words, difficultWords, dueWords]);
 
   const renderContent = () => {
     if (view === 'student-stats') {
@@ -286,6 +291,22 @@ const Dashboard: React.FC = () => {
     if (view === 'admin' || (isTeacher && view === 'dashboard')) {
       return <AdminPanel />;
     }
+
+    // Domyślne wejście kursanta to kolejka zatwierdzonych elementów, nie
+    // generator. Generator nadal istnieje i działa pod dwoma wejściami:
+    // „Praktyka dodatkowa" w menu oraz `ai-generator`, którego używają
+    // przyciski „Generuj zdania AI z tego zestawu" w zestawach, fiszkach
+    // i historii lekcji. Gdyby `ai-generator` też trafiał tutaj, te przyciski
+    // przestałyby cokolwiek robić.
+    if (view !== 'extra-practice' && view !== 'ai-generator') {
+      return (
+        <TodayScreen
+          onOpenExtraPractice={() => handleNavigate('extra-practice')}
+          onOpenLastLesson={() => handleNavigate('lesson-history')}
+        />
+      );
+    }
+
     return <AIExerciseGeneratorScreen 
       onShowOnboarding={() => setShowOnboarding(true)}
       initialSetId={activeSetId}
