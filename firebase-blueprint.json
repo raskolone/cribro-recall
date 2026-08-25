@@ -66,6 +66,60 @@
         "lastReviewedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["flashcardId", "setId", "userId", "repetitions", "interval", "easeFactor", "nextReviewDate", "lastReviewedAt"]
+    },
+    "RecallItem": {
+      "title": "RecallItem",
+      "description": "Spaced recall item created and approved by teacher for student practice.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "lessonId": { "type": "string" },
+        "targetForm": { "type": "string" },
+        "meaningOrFunction": { "type": "string" },
+        "learningType": { "type": "string" },
+        "teacherNote": { "type": "string" },
+        "approvalStatus": { "type": "string", "enum": ["draft", "approved", "rejected"] },
+        "retrievalHistory": { "type": "array" },
+        "nextDueAt": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "lessonId", "targetForm", "learningType", "approvalStatus", "createdAt", "updatedAt"]
+    },
+    "LessonRecord": {
+      "title": "LessonRecord",
+      "description": "Teacher lesson notes, summary, and assigned vocabulary.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "date": { "type": "string" },
+        "topic": { "type": "string" },
+        "vocabularyText": { "type": "string" },
+        "lessonSummary": { "type": "string" },
+        "vocabularySetId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "date", "topic", "vocabularyText", "createdAt", "updatedAt"]
+    },
+    "VocabularySet": {
+      "title": "VocabularySet",
+      "description": "Vocabulary set derived from a lesson record.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "lessonRecordId": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "topic": { "type": "string" },
+        "vocabularyText": { "type": "string" },
+        "itemCount": { "type": "number" },
+        "status": { "type": "string" },
+        "source": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "lessonRecordId", "title", "date", "topic", "vocabularyText", "itemCount", "status", "source", "createdAt", "updatedAt"]
     }
   },
   "firestore": {
@@ -88,6 +142,18 @@
     "/users/{userId}/flashcardProgress/{progressId}": {
       "schema": { "$ref": "#/entities/FlashcardProgress" },
       "description": "User's spaced repetition card progress records."
+    },
+    "/users/{userId}/recallItems/{itemId}": {
+      "schema": { "$ref": "#/entities/RecallItem" },
+      "description": "User's recall queue items for daily practice."
+    },
+    "/users/{userId}/lessonRecords/{recordId}": {
+      "schema": { "$ref": "#/entities/LessonRecord" },
+      "description": "User's lesson history records."
+    },
+    "/users/{userId}/vocabularySets/{setId}": {
+      "schema": { "$ref": "#/entities/VocabularySet" },
+      "description": "User's vocabulary sets from lessons."
     }
   }
 }

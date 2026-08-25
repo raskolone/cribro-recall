@@ -1,4 +1,4 @@
-import { db } from '../firebase';
+import { auth, db } from '../firebase';
 import {
   collection,
   doc,
@@ -63,31 +63,36 @@ export async function createRecallDrafts(
   lessonId: string,
   candidates: RecallCandidate[]
 ): Promise<string[]> {
-  if (!studentId || !lessonId || candidates.length === 0) return [];
+  if (!studentId || studentId === 'demo-id' || !lessonId || candidates.length === 0) return [];
 
-  const batch = writeBatch(db);
-  const now = new Date().toISOString();
-  const ids: string[] = [];
+  try {
+    const batch = writeBatch(db);
+    const now = new Date().toISOString();
+    const ids: string[] = [];
 
-  candidates.forEach((candidate, idx) => {
-    const id = `recall-${Date.now()}-${idx}-${Math.floor(Math.random() * 10000)}`;
-    ids.push(id);
-    batch.set(doc(itemsRef(studentId), id), {
-      studentId,
-      lessonId,
-      targetForm: candidate.targetForm,
-      meaningOrFunction: candidate.meaningOrFunction,
-      learningType: candidate.learningType,
-      ...(candidate.teacherNote ? { teacherNote: candidate.teacherNote } : {}),
-      approvalStatus: 'draft',
-      retrievalHistory: [],
-      createdAt: now,
-      updatedAt: now,
+    candidates.forEach((candidate, idx) => {
+      const id = `recall-${Date.now()}-${idx}-${Math.floor(Math.random() * 10000)}`;
+      ids.push(id);
+      batch.set(doc(itemsRef(studentId), id), {
+        studentId,
+        lessonId,
+        targetForm: candidate.targetForm,
+        meaningOrFunction: candidate.meaningOrFunction,
+        learningType: candidate.learningType,
+        ...(candidate.teacherNote ? { teacherNote: candidate.teacherNote } : {}),
+        approvalStatus: 'draft',
+        retrievalHistory: [],
+        createdAt: now,
+        updatedAt: now,
+      });
     });
-  });
 
-  await batch.commit();
-  return ids;
+    await batch.commit();
+    return ids;
+  } catch (error) {
+    console.error('Błąd podczas tworzenia szkiców powtórek:', error);
+    return [];
+  }
 }
 
 /**
@@ -101,40 +106,52 @@ export async function saveRecallReview(
   lessonId: string,
   reviewed: Array<RecallCandidate & { approved: boolean }>
 ): Promise<{ approved: number; drafts: number }> {
-  if (!studentId || !lessonId || reviewed.length === 0) return { approved: 0, drafts: 0 };
+  if (!studentId || studentId === 'demo-id' || !lessonId || reviewed.length === 0) return { approved: 0, drafts: 0 };
 
-  const batch = writeBatch(db);
-  const now = new Date().toISOString();
-  let approved = 0;
-  let drafts = 0;
+  try {
+    const batch = writeBatch(db);
+    const now = new Date().toISOString();
+    let approved = 0;
+    let drafts = 0;
 
-  reviewed.forEach((item, idx) => {
-    const id = `recall-${Date.now()}-${idx}-${Math.floor(Math.random() * 10000)}`;
-    if (item.approved) approved += 1;
-    else drafts += 1;
-    batch.set(doc(itemsRef(studentId), id), {
-      studentId,
-      lessonId,
-      targetForm: item.targetForm,
-      meaningOrFunction: item.meaningOrFunction,
-      learningType: item.learningType,
-      ...(item.teacherNote ? { teacherNote: item.teacherNote } : {}),
-      approvalStatus: item.approved ? 'approved' : 'draft',
-      retrievalHistory: [],
-      createdAt: now,
-      updatedAt: now,
+    reviewed.forEach((item, idx) => {
+      const id = `recall-${Date.now()}-${idx}-${Math.floor(Math.random() * 10000)}`;
+      if (item.approved) approved += 1;
+      else drafts += 1;
+      batch.set(doc(itemsRef(studentId), id), {
+        studentId,
+        lessonId,
+        targetForm: item.targetForm,
+        meaningOrFunction: item.meaningOrFunction,
+        learningType: item.learningType,
+        ...(item.teacherNote ? { teacherNote: item.teacherNote } : {}),
+        approvalStatus: item.approved ? 'approved' : 'draft',
+        retrievalHistory: [],
+        createdAt: now,
+        updatedAt: now,
+      });
     });
-  });
 
-  await batch.commit();
-  return { approved, drafts };
+    await batch.commit();
+    return { approved, drafts };
+  } catch (error) {
+    console.error('Błąd podczas zapisywania przeglądu powtórek:', error);
+    return { approved: 0, drafts: 0 };
+  }
 }
 
 /** Wszystkie elementy kursanta — dla widoku lektora. */
 export async function getRecallItems(studentId: string): Promise<RecallItem[]> {
-  if (!studentId) return [];
-  const snapshot = await getDocs(query(itemsRef(studentId), orderBy('createdAt', 'desc')));
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as RecallItem));
+  if (!studentId || studentId === 'demo-id' || !auth.currentUser) return [];
+  try {
+    const snapshot = await getDocs(query(itemsRef(studentId), orderBy('createdAt', 'desc')));
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as RecallItem));
+  } catch (error: any) {
+    if (error?.code !== 'permission-denied') {
+      console.error('Błąd podczas pobierania elementów powtórek:', error);
+    }
+    return [];
+  }
 }
 
 /**
@@ -150,30 +167,37 @@ export async function getDueRecallItems(
   studentId: string,
   max: number = 10
 ): Promise<RecallItem[]> {
-  if (!studentId) return [];
+  if (!studentId || studentId === 'demo-id' || !auth.currentUser) return [];
 
-  const snapshot = await getDocs(
-    query(itemsRef(studentId), where('approvalStatus', '==', 'approved'))
-  );
-  const today = toDayString(new Date());
+  try {
+    const snapshot = await getDocs(
+      query(itemsRef(studentId), where('approvalStatus', '==', 'approved'))
+    );
+    const today = toDayString(new Date());
 
-  const items = snapshot.docs
-    .map((d) => ({ id: d.id, ...d.data() } as RecallItem))
-    .filter((item) => {
-      const noHistory = !item.retrievalHistory || item.retrievalHistory.length === 0;
-      if (noHistory) return true;
-      return !item.nextDueAt || item.nextDueAt <= today;
+    const items = snapshot.docs
+      .map((d) => ({ id: d.id, ...d.data() } as RecallItem))
+      .filter((item) => {
+        const noHistory = !item.retrievalHistory || item.retrievalHistory.length === 0;
+        if (noHistory) return true;
+        return !item.nextDueAt || item.nextDueAt <= today;
+      });
+
+    // Nowe przed powtarzanymi, a w obrębie grupy — najdawniej widziane pierwsze.
+    items.sort((a, b) => {
+      const aNew = !a.retrievalHistory?.length;
+      const bNew = !b.retrievalHistory?.length;
+      if (aNew !== bNew) return aNew ? -1 : 1;
+      return (a.nextDueAt || a.createdAt).localeCompare(b.nextDueAt || b.createdAt);
     });
 
-  // Nowe przed powtarzanymi, a w obrębie grupy — najdawniej widziane pierwsze.
-  items.sort((a, b) => {
-    const aNew = !a.retrievalHistory?.length;
-    const bNew = !b.retrievalHistory?.length;
-    if (aNew !== bNew) return aNew ? -1 : 1;
-    return (a.nextDueAt || a.createdAt).localeCompare(b.nextDueAt || b.createdAt);
-  });
-
-  return items.slice(0, max);
+    return items.slice(0, max);
+  } catch (error: any) {
+    if (error?.code !== 'permission-denied') {
+      console.error('Nie udało się wczytać kolejki powtórek:', error);
+    }
+    return [];
+  }
 }
 
 /** Dopisuje próbę do historii i przesuwa termin kolejnej powtórki. */
@@ -188,12 +212,20 @@ export async function recordRetrievalAttempt(
     nextDueAt: scheduleNextDue(result),
   };
 
-  await updateDoc(doc(itemsRef(studentId), itemId), {
-    retrievalHistory: arrayUnion(attempt),
-    // Duplikat na wierzchu dokumentu — patrz komentarz przy `nextDueAt` w types.ts.
-    nextDueAt: attempt.nextDueAt,
-    updatedAt: new Date().toISOString(),
-  });
+  if (!studentId || studentId === 'demo-id') {
+    return attempt;
+  }
+
+  try {
+    await updateDoc(doc(itemsRef(studentId), itemId), {
+      retrievalHistory: arrayUnion(attempt),
+      // Duplikat na wierzchu dokumentu — patrz komentarz przy `nextDueAt` w types.ts.
+      nextDueAt: attempt.nextDueAt,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Błąd podczas zapisywania próby powtórki:', error);
+  }
 
   return attempt;
 }
@@ -204,8 +236,13 @@ export async function setRecallItemStatus(
   itemId: string,
   approvalStatus: RecallItem['approvalStatus']
 ): Promise<void> {
-  await updateDoc(doc(itemsRef(studentId), itemId), {
-    approvalStatus,
-    updatedAt: new Date().toISOString(),
-  });
+  if (!studentId || studentId === 'demo-id') return;
+  try {
+    await updateDoc(doc(itemsRef(studentId), itemId), {
+      approvalStatus,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Błąd podczas zmiany statusu elementu powtórki:', error);
+  }
 }

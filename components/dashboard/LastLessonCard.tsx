@@ -137,9 +137,10 @@ const LastLessonCard: React.FC<LastLessonCardProps> = ({ onOpenHistory }) => {
     });
   })();
 
+  const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
   const visibleItems = items.slice(0, MAX_VISIBLE_ITEMS);
   const hiddenCount = items.length - visibleItems.length;
-  const hasContent = Boolean(lesson.lessonSummary) || items.length > 0 || Boolean(lesson.suggestedFollowUp);
+  const hasContent = Boolean(lesson.lessonSummary) || items.length > 0 || (isTeacher && Boolean(lesson.suggestedFollowUp));
 
   return (
     <section className="rounded-2xl border border-white/10 bg-base-200/50 overflow-hidden">
@@ -192,7 +193,7 @@ const LastLessonCard: React.FC<LastLessonCardProps> = ({ onOpenHistory }) => {
           </div>
         )}
 
-        {lesson.suggestedFollowUp && (
+        {isTeacher && lesson.suggestedFollowUp && (
           <div className="rounded-xl bg-warn/5 border border-warn/15 p-4 space-y-2">
             <h3 className="flex items-center gap-1.5 text-[11px] font-bold text-warn uppercase tracking-wider">
               <Target size={12} />

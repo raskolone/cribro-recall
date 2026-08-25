@@ -14,31 +14,15 @@ import { useLanguage } from '../../context/LanguageContext';
 import { RecallItem, RetrievalResult } from '../../types';
 import { getDueRecallItems, recordRetrievalAttempt } from '../../services/recallItems';
 import PuzzleExercise from './PuzzleExercise';
-import LastLessonCard from './LastLessonCard';
-
-/**
- * „Dzisiaj" — domyślne wejście kursanta.
- *
- * Ekran nie generuje niczego. Sesja powtórek to wyłącznie elementy, które
- * lektor zatwierdził po konkretnych lekcjach i którym minął termin. Jeśli
- * kolejka jest pusta, sesji po prostu nie ma — to jest zamierzone. Wcześniej
- * panel kursanta dogenerowywał treść z całej historii lekcji, przez co kursant
- * dostawał materiał, którego lektor nigdy nie zatwierdził.
- *
- * Pusta kolejka nie może jednak znaczyć pustego ekranu. Elementy powstają
- * dopiero przy zapisie lekcji z krokiem zatwierdzania, więc zanim lektor zapisze
- * pierwszą taką lekcję, kolejka każdego kursanta jest pusta. Dlatego poza samą
- * sesją ekran zawsze pokazuje `LastLessonCard` — streszczenie, materiał
- * i następny krok z ostatniej lekcji. To druga pozycja panelu kursanta ze
- * specyfikacji („wiesz, co wynosisz ze spotkania"), a nie wypełniacz.
- *
- * Bez feedu, bez rankingu, bez licznika passy.
- */
+import StudentLessonHistory from './StudentLessonHistory';
+import StudentAssignedHomework from './StudentAssignedHomework';
 
 interface TodayScreenProps {
   /** Wejście w „Praktykę dodatkową" — otwarty generator, nigdy jako domyślne. */
   onOpenExtraPractice?: () => void;
   onOpenLastLesson?: () => void;
+  onStudySet?: (setId: string) => void;
+  onNavigate?: (view: string, extra?: any) => void;
 }
 
 /** Ile elementów wchodzi do jednej sesji. */
@@ -74,7 +58,12 @@ const plItems = (n: number): string => {
 type Phase = 'loading' | 'ready' | 'empty' | 'session' | 'done';
 type Feedback = null | 'correct' | 'wrong';
 
-const TodayScreen: React.FC<TodayScreenProps> = ({ onOpenExtraPractice, onOpenLastLesson }) => {
+const TodayScreen: React.FC<TodayScreenProps> = ({
+  onOpenExtraPractice,
+  onOpenLastLesson,
+  onStudySet,
+  onNavigate,
+}) => {
   const { user } = useAuth();
   const { language } = useLanguage();
 
@@ -225,22 +214,23 @@ const TodayScreen: React.FC<TodayScreenProps> = ({ onOpenExtraPractice, onOpenLa
 
   if (phase === 'empty') {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-10 sm:py-14 space-y-8">
-        <header className="text-center">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/25 flex items-center justify-center mx-auto mb-5">
-            <Check className="w-7 h-7 text-primary" />
+      <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12 space-y-8">
+        <header className="rounded-2xl border border-white/10 bg-base-200/40 p-6 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/25 flex items-center justify-center mx-auto mb-3">
+            <Check className="w-6 h-6 text-primary" />
           </div>
-          <h1 className="text-2xl font-extrabold text-white">{L.emptyTitle}</h1>
-          <p className="text-content-muted mt-2 text-sm leading-relaxed">{L.emptyBody}</p>
+          <h1 className="text-xl font-extrabold text-white">{L.emptyTitle}</h1>
+          <p className="text-content-muted mt-1.5 text-sm leading-relaxed max-w-lg mx-auto">{L.emptyBody}</p>
+          {extraPracticeButton && (
+            <div className="flex justify-center mt-4">{extraPracticeButton}</div>
+          )}
         </header>
 
-        {/* Kolejka pusta nie znaczy „nie ma nic do roboty" — z ostatniej lekcji
-            zostaje streszczenie, materiał i następny krok. */}
-        <LastLessonCard onOpenHistory={onOpenLastLesson} />
+        {/* Przypisane powtórki i prace domowe od lektora */}
+        <StudentAssignedHomework onNavigate={onNavigate} />
 
-        {extraPracticeButton && (
-          <div className="flex justify-center">{extraPracticeButton}</div>
-        )}
+        {/* Historia lekcji widoczna wprost w panelu kursanta */}
+        <StudentLessonHistory onStudySet={onStudySet} onNavigate={onNavigate} />
       </div>
     );
   }
@@ -248,22 +238,26 @@ const TodayScreen: React.FC<TodayScreenProps> = ({ onOpenExtraPractice, onOpenLa
   if (phase === 'ready') {
     const minutes = Math.max(3, Math.round(items.length * 0.6));
     return (
-      <div className="max-w-2xl mx-auto px-4 py-10 sm:py-14 space-y-8">
-        <header className="text-center">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/25 flex items-center justify-center mx-auto mb-5">
-            <Sparkles className="w-7 h-7 text-primary" />
+      <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12 space-y-8">
+        <header className="rounded-2xl border border-primary/30 bg-primary/5 p-6 text-center shadow-lg shadow-black/20">
+          <div className="w-12 h-12 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center mx-auto mb-3">
+            <Sparkles className="w-6 h-6 text-primary" />
           </div>
-          <h1 className="text-2xl font-extrabold text-white">{L.readyTitle}</h1>
-          <p className="text-content-muted mt-2 text-sm">{L.readyBody(items.length, minutes)}</p>
+          <h1 className="text-xl font-extrabold text-white">{L.readyTitle}</h1>
+          <p className="text-content-muted mt-1.5 text-sm max-w-md mx-auto">{L.readyBody(items.length, minutes)}</p>
           <button
             onClick={() => setPhase('session')}
-            className="mt-7 px-6 py-3 rounded-xl bg-primary text-accent-ink font-bold"
+            className="mt-5 px-6 py-2.5 rounded-xl bg-primary text-accent-ink font-bold text-sm shadow-md hover:brightness-110 active:scale-95 transition-all"
           >
             {L.start}
           </button>
         </header>
 
-        <LastLessonCard onOpenHistory={onOpenLastLesson} />
+        {/* Przypisane powtórki i prace domowe od lektora */}
+        <StudentAssignedHomework onNavigate={onNavigate} />
+
+        {/* Historia lekcji widoczna wprost w panelu kursanta */}
+        <StudentLessonHistory onStudySet={onStudySet} onNavigate={onNavigate} />
       </div>
     );
   }
@@ -271,16 +265,16 @@ const TodayScreen: React.FC<TodayScreenProps> = ({ onOpenExtraPractice, onOpenLa
   if (phase === 'done') {
     const confident = results.filter((r) => r === 'confident').length;
     return (
-      <div className="max-w-2xl mx-auto px-4 py-10 sm:py-14 space-y-8">
-        <header className="text-center">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/25 flex items-center justify-center mx-auto mb-5">
-            <Check className="w-7 h-7 text-primary" />
+      <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12 space-y-8">
+        <header className="rounded-2xl border border-white/10 bg-base-200/40 p-6 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/25 flex items-center justify-center mx-auto mb-3">
+            <Check className="w-6 h-6 text-primary" />
           </div>
-          <h1 className="text-2xl font-extrabold text-white">{L.doneTitle}</h1>
-          <p className="text-content-muted mt-2 text-sm">
+          <h1 className="text-xl font-extrabold text-white">{L.doneTitle}</h1>
+          <p className="text-content-muted mt-1.5 text-sm max-w-lg mx-auto">
             {L.doneBody(results.length, confident)}
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-3 mt-7">
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
             <button
               onClick={() => {
                 setIndex(0);
@@ -288,15 +282,19 @@ const TodayScreen: React.FC<TodayScreenProps> = ({ onOpenExtraPractice, onOpenLa
                 resetItemState();
                 load();
               }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/15 text-content-muted font-semibold text-sm hover:border-primary/40 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/15 text-content-muted font-semibold text-xs hover:border-primary/40 transition-colors"
             >
-              <RotateCcw size={14} /> {L.recheck}
+              <RotateCcw size={13} /> {L.recheck}
             </button>
             {extraPracticeButton}
           </div>
         </header>
 
-        <LastLessonCard onOpenHistory={onOpenLastLesson} />
+        {/* Przypisane powtórki i prace domowe od lektora */}
+        <StudentAssignedHomework onNavigate={onNavigate} />
+
+        {/* Historia lekcji widoczna wprost w panelu kursanta */}
+        <StudentLessonHistory onStudySet={onStudySet} onNavigate={onNavigate} />
       </div>
     );
   }

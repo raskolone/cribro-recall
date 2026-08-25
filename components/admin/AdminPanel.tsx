@@ -26,6 +26,7 @@ import AssignVocabularyModal from './AssignVocabularyModal';
 import HomeworkScreen from '../dashboard/HomeworkScreen';
 import { isTaskForStudent } from '../../utils/homework';
 import TeacherOverview from './TeacherOverview';
+import LessonPlanner from './LessonPlanner';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
@@ -55,6 +56,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   });
   const { createUser, deleteUser, changeUserRole: updateRoleApi, changeUserPassword } = useFirebaseAdminApi();
   const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'admin';
   const [profileSaveModal, setProfileSaveModal] = useState<{ isOpen: boolean; success: boolean; title: string; message: string } | null>(null);
   
 
@@ -201,6 +203,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   };
 
   const handleTileClick = (tabId: string) => {
+    if (tabId === 'lesson-planner') {
+      setActiveTab(tabId);
+      if (onViewChange) onViewChange(`admin-${tabId}`);
+      return;
+    }
     if (!selectedUser) {
       setTargetTabAfterSelect(tabId);
       setIsStudentPickerOpen(true);
@@ -1428,6 +1435,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         {/* 6 KAFELKÓW GRID (Tiles view) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-4.5">
           {[
+            ...(isAdmin ? [{
+              id: 'lesson-planner',
+              title: 'Planer lekcji',
+              badge: 'AI Planer',
+              desc: 'Inteligentny asystent AI do planowania i tworzenia lekcji',
+              icon: Sparkles
+            }] : []),
             {
               id: 'context',
               title: 'Kontekst przed lekcją',
@@ -1479,7 +1493,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             }
           ].map((tile) => {
             const IconComp = tile.icon;
-            const isActive = selectedUser && activeTab === tile.id;
+            const isActive = activeTab === tile.id;
 
             return (
                             <div
@@ -1488,7 +1502,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 className={`p-4 sm:p-4.5 cursor-pointer flex flex-col justify-between liquid-glass-tile select-none ${
                   isActive
                     ? 'border-primary/80 shadow-[0_0_24px_rgba(114,240,180,0.25)] ring-1 ring-primary/40 bg-ink-2 z-10'
-                    : selectedUser
+                    : selectedUser || tile.id === 'lesson-planner'
                     ? 'hover:border-primary/50'
                     : 'opacity-85 hover:border-warn/40'
                 }`}
@@ -1520,7 +1534,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
                 <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-xs font-semibold">
                   <span className={isActive ? 'text-primary font-bold' : 'text-content-muted'}>
-                    {isActive ? 'Przeglądasz ten widok' : selectedUser ? 'Otwórz widok' : 'Wybierz kursanta'}
+                    {isActive ? 'Przeglądasz ten widok' : tile.id === 'lesson-planner' ? 'Otwórz planer AI' : selectedUser ? 'Otwórz widok' : 'Wybierz kursanta'}
                   </span>
                   <ChevronRight size={14} className={`transition-transform group-hover:translate-x-0.5 ${isActive ? 'text-primary' : 'text-content-muted'}`} />
                 </div>
@@ -1531,11 +1545,12 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       </div>
 
       {/* Active Tab Content Header Banner */}
-      {selectedUser && activeTab && (
+      {((selectedUser && activeTab) || (activeTab === 'lesson-planner')) && (
         <div className="flex items-center justify-between p-4 rounded-2xl bg-base-200/50 border border-white/10">
           <div className="flex items-center gap-3">
             <span className="w-3 h-3 rounded-full bg-primary animate-pulse" />
             <h2 className="text-xl font-extrabold text-white">
+              {activeTab === 'lesson-planner' && 'Planer lekcji AI (Wersja robocza)'}
               {activeTab === 'context' && 'Kontekst kursanta przed lekcją'}
               {activeTab === 'profile' && 'Profil i parametry kursanta'}
               {activeTab === 'stats' && 'Statystyki i aktywność kursanta'}
@@ -1545,14 +1560,35 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               {activeTab === 'homework' && 'Praca domowa kursanta'}
             </h2>
           </div>
-          <span className="text-xs font-mono text-content-muted hidden sm:inline">
-            Otwarty profil: <strong className="text-white">{selectedUser.firstName || selectedUser.username}</strong>
-          </span>
+          {selectedUser ? (
+            <span className="text-xs font-mono text-content-muted hidden sm:inline">
+              Otwarty profil: <strong className="text-white">{selectedUser.firstName || selectedUser.username}</strong>
+            </span>
+          ) : (
+            <span className="text-xs font-mono text-content-muted hidden sm:inline">
+              Tryb ogólny / Wybierz kursanta w planerze
+            </span>
+          )}
         </div>
       )}
 
       {/* Active Tab Container */}
       <div ref={tabContentRef}>
+          {activeTab === 'lesson-planner' && (
+            <LessonPlanner
+              selectedUser={selectedUser}
+              users={users}
+              onSelectUser={(u) => {
+                if (u) {
+                  handleSelectUser(u, 'lesson-planner');
+                } else {
+                  setSelectedUser(null);
+                }
+              }}
+              recentLessons={lessonRecords}
+            />
+          )}
+
           {activeTab === 'context' && selectedUser && (
             <PreLessonContext
               studentId={selectedUser.id}

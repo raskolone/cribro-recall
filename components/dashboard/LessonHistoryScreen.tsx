@@ -7,7 +7,7 @@ import { LessonRecord, PracticeLog } from '../../types';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import TTSButtons from '../flashcards/TTSButtons';
-import { Calendar, Tag, Sparkles, X, FileText, Clock, Search, BookOpen, AlertCircle, ArrowLeft, LayoutGrid, List, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Tag, Sparkles, X, FileText, Clock, Search, BookOpen, AlertCircle, ArrowLeft, LayoutGrid, List, ChevronRight, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import Markdown from 'react-markdown';
 import gsap from 'gsap';
 import Badge from '../ui/Badge';
@@ -231,6 +231,18 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
         subtitle={sectionMeta('lesson-history', language)?.subtitle}
         actions={
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+          {/* Quick Repeat Latest Lesson Button */}
+          {activeTab === 'lessons' && lessons.length > 0 && onStudySet && (
+            <button
+              onClick={() => onStudySet(`lesson_${lessons[0].id}`)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-accent-ink hover:brightness-110 font-bold text-xs shadow-md transition-all active:scale-95 shrink-0"
+              title={language === 'pl' ? 'Powtórz materiał z ostatniej lekcji' : 'Repeat latest lesson material'}
+            >
+              <RotateCcw size={14} />
+              <span>{language === 'pl' ? 'Powtórz ostatnią lekcję' : 'Repeat latest lesson'}</span>
+            </button>
+          )}
+
           {/* Toggle for month grouping when in list view */}
           {activeTab === 'lessons' && viewMode === 'list' && lessons.length > 0 && (
             <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-content-muted hover:text-white transition-colors mr-2">
@@ -665,7 +677,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                      {language === 'pl' ? 'Podsumowanie Lekcji' : 'Lesson Summary'}
                    </h3>
                    <div className="bg-primary/5 border border-primary/10 rounded-2xl p-6 text-content">
-                      <div className="markdown-body text-sm leading-relaxed prose prose-invert max-w-none">
+                      <div className="markdown-body text-sm leading-relaxed text-justify [text-align:justify] hyphens-auto prose prose-invert max-w-none [&>p]:text-justify [&>p]:leading-relaxed">
                         <Markdown>{selectedLesson.lessonSummary}</Markdown>
                       </div>
                    </div>
@@ -696,13 +708,11 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
                 </div>
               )}
 
-              {selectedLesson.suggestedFollowUp && (
+              {isTeacher && selectedLesson.suggestedFollowUp && (
                 <div className="space-y-3">
                    <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
                      <Clock className="w-4 h-4 text-warn" />
-                     {isTeacher
-                       ? (language === 'pl' ? 'Zadanie / Następna lekcja' : 'Suggested Follow-up')
-                       : (language === 'pl' ? 'Twój następny krok' : 'Your next step')}
+                     {language === 'pl' ? 'Zadanie / Następna lekcja' : 'Suggested Follow-up'}
                    </h3>
                    <div className="bg-warn/5 border border-warn/10 rounded-2xl p-6 text-content text-sm whitespace-pre-wrap">
                       <Markdown>{selectedLesson.suggestedFollowUp}</Markdown>

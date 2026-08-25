@@ -155,7 +155,7 @@ const LessonHistory: React.FC = () => {
                     {lesson.lessonSummary && (
                       <div>
                         <div className="text-xs font-bold text-content-muted uppercase mb-1">{i18n.t("Podsumowanie")}</div>
-                        <div className="text-sm text-content whitespace-pre-wrap">{lesson.lessonSummary}</div>
+                        <div className="text-sm text-content whitespace-pre-wrap text-justify [text-align:justify] hyphens-auto leading-relaxed">{lesson.lessonSummary}</div>
                       </div>
                     )}
                     {lesson.vocabularyText && (

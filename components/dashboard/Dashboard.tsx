@@ -303,6 +303,16 @@ const Dashboard: React.FC = () => {
         <TodayScreen
           onOpenExtraPractice={() => handleNavigate('extra-practice')}
           onOpenLastLesson={() => handleNavigate('lesson-history')}
+          onStudySet={(setId) => {
+            (window as any)._initialStudyMode = 'flashcards';
+            handleNavigate('flashcard-study', { setId });
+          }}
+          onNavigate={(v: any, extra?: any) => {
+            if (extra && (extra.setId || extra.activeSetId)) {
+              setActiveSetId(extra.setId || extra.activeSetId);
+            }
+            setView(v as View);
+          }}
         />
       );
     }
