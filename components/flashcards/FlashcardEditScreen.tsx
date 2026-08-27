@@ -10,6 +10,7 @@ import { Flashcard, FlashcardSet } from '../../types';
 import { getAISuggestions } from '../../services/aiSuggestions';
 import { generateFlashcardsFromText, generateFlashcardsFromTextWithGPT, formatFlashcardsWithAI, generateContextSentence, generateImageForTerm } from '../../services/geminiService';
 import i18n from "i18next";
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface FlashcardEditScreenProps {
   setId: string;
@@ -117,15 +118,9 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
   const [isGeneratingImageFor, setIsGeneratingImageFor] = useState<number | null>(null);
   const [isGeneratingContextFor, setIsGeneratingContextFor] = useState<number | null>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsImportModalOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  useEscapeModal(isImportModalOpen, () => setIsImportModalOpen(false));
+  useEscapeModal(isAIGenModalOpen, () => setIsAIGenModalOpen(false));
+  useEscapeModal(showDriveModal, () => setShowDriveModal(false), 5);
 
   // Toolbar State
   const [focusedField, setFocusedField] = useState<{index: number, field: 'term' | 'definition'} | null>(null);

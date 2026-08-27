@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import Card from './Card';
 import Button from './Button';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -21,13 +22,15 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onConfirm,
   onCancel
 }) => {
+  useEscapeModal(isOpen, onCancel, 10); // Higher priority since confirm modals are top overlays
+
   useEffect(() => {
     const handleCloseModal = () => {
-      onCancel();
+      if (isOpen) onCancel();
     };
     window.addEventListener('close-modal', handleCloseModal);
     return () => window.removeEventListener('close-modal', handleCloseModal);
-  }, [onCancel]);
+  }, [isOpen, onCancel]);
 
   if (!isOpen) return null;
 

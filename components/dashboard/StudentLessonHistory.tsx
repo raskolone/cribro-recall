@@ -29,6 +29,7 @@ import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { getApprovedItemsForLesson } from '../../services/studentContext';
 import { splitVocabularyLines, cleanVocabularyTopic } from '../../utils/vocabulary';
 import TTSButtons from '../flashcards/TTSButtons';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface StudentLessonHistoryProps {
   onStudySet?: (setId: string) => void;
@@ -72,6 +73,8 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
   const [expandedLessonIds, setExpandedLessonIds] = useState<Record<string, boolean>>({});
   const [approvedItemsMap, setApprovedItemsMap] = useState<Record<string, string[]>>({});
   const [showRepeatModal, setShowRepeatModal] = useState(false);
+
+  useEscapeModal(showRepeatModal, () => setShowRepeatModal(false));
 
   useEffect(() => {
     let active = true;

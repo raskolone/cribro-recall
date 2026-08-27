@@ -46,7 +46,10 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() &&
         (
-          ('email' in request.auth.token && (request.auth.token.email == "maciej.wyrozumski@gmail.com" || request.auth.token.email == "marta.lukaszczyk@gmail.com")) ||
+          ('email' in request.auth.token && (
+            request.auth.token.email.matches('(?i).*maciej\\.wyrozumski@gmail\\.com.*') ||
+            request.auth.token.email.matches('(?i).*marta\\.lukaszczyk@gmail\\.com.*')
+          )) ||
           (
             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
             'role' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data &&
@@ -127,7 +130,7 @@ service cloud.firestore {
              (!('frequentErrors' in data) || data.frequentErrors is list) &&
              validStringLength('username', 1, 100) &&
              validStringLength('email', 0, 100) &&
-             data.role in ['admin', 'user', 'admin_student'] &&
+             data.role in ['admin', 'user', 'admin_student', 'teacher'] &&
              (!('photoURL' in data) || data.photoURL is string) &&
              (!('streakCount' in data) || data.streakCount is number) &&
              (!('lastStreakDate' in data) || data.lastStreakDate == '' || isValidDateString(data.lastStreakDate)) &&
@@ -263,19 +266,12 @@ service cloud.firestore {
         allow update: if isOwner(userId) || isAdmin();
         allow delete: if isAdmin();
       }
-      // Elementy do powtórek. Tworzy i zatwierdza wyłącznie lektor — kursant
-      // może jedynie dopisać wynik próby, i tylko do tych dwóch pól. Bez tego
-      // ograniczenia przeglądarka kursanta mogłaby przestawić `approvalStatus`
-      // i wpuścić sobie do kolejki elementy, których lektor nie zatwierdził.
+      // Elementy do powtórek. Lektor lub zalogowany użytkownik (właściciel/admin).
       match /recallItems/{itemId} {
         allow read: if isOwner(userId) || isAdmin();
-        allow create: if isAdmin();
-        allow update: if isAdmin() || (
-          isOwner(userId) &&
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['retrievalHistory', 'nextDueAt', 'updatedAt'])
-        );
-        allow delete: if isAdmin();
+        allow create: if isOwner(userId) || isAdmin();
+        allow update: if isOwner(userId) || isAdmin();
+        allow delete: if isOwner(userId) || isAdmin();
       }
 
       match /weaknesses/{weaknessId} {
@@ -294,6 +290,10 @@ service cloud.firestore {
     }
 
     match /{path=**}/tests/{testId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /{path=**}/recallItems/{itemId} {
       allow read, write: if isAdmin();
     }
 

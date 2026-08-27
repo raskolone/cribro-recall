@@ -5,6 +5,7 @@ import Card from '../ui/Card';
 import { X, CheckCircle, XCircle, Clock, User, Calendar, Award } from 'lucide-react';
 import i18n from 'i18next';
 import { normalizePromptLines, parseNumberedItems, parseSubAnswers } from '../../utils/testFormatters';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface TestPreviewModalProps {
   test: StudentTest | null;
@@ -13,6 +14,8 @@ interface TestPreviewModalProps {
 }
 
 export const TestPreviewModal: React.FC<TestPreviewModalProps> = ({ test, isOpen, onClose }) => {
+  useEscapeModal(isOpen && !!test, onClose);
+
   if (!isOpen || !test) return null;
 
   return (

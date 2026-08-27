@@ -1,4 +1,4 @@
-import { auth, db } from '../firebase';
+import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import {
   collection,
   doc,
@@ -90,6 +90,7 @@ export async function createRecallDrafts(
     await batch.commit();
     return ids;
   } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `users/${studentId}/recallItems`);
     console.error('Błąd podczas tworzenia szkiców powtórek:', error);
     return [];
   }
@@ -135,6 +136,7 @@ export async function saveRecallReview(
     await batch.commit();
     return { approved, drafts };
   } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `users/${studentId}/recallItems`);
     console.error('Błąd podczas zapisywania przeglądu powtórek:', error);
     return { approved: 0, drafts: 0 };
   }

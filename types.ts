@@ -429,3 +429,31 @@ export interface BugReport {
   status: 'new' | 'investigating' | 'resolved';
   createdAt: string;
 }
+
+export interface LessonModuleConfig {
+  id: string;
+  order: number;
+  title: string;
+  duration?: string;
+  placeholderInstruction: string;
+  enabled: boolean;
+  isCustom?: boolean;
+}
+
+export interface LessonPlanPreset {
+  id: string;
+  name: string;
+  description: string;
+  defaultDuration: string;
+  modules: LessonModuleConfig[];
+  customPrompt?: string;
+  isCustom?: boolean;
+}
+
+export interface LessonPlannerCustomSettings {
+  customPrompt: string;
+  englishVariety: 'any' | 'british' | 'american';
+  explanationStyle: 'concise' | 'detailed';
+  homeworkType: 'translation' | 'writing' | 'speaking' | 'mixed';
+  vocabCount: number;
+}

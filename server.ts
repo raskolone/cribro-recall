@@ -1491,16 +1491,46 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
         return res.status(503).json({ error: "Usługa AI jest chwilowo niedostępna." });
       }
 
-      const ai = new GoogleGenAI({ apiKey });
-      const response: any = await ai.models.generateContent({ model, contents, config });
+      const modelsToTry = Array.from(new Set([
+        model,
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+        'gemini-3.7-flash'
+      ]));
 
-      // Zwracamy dokładnie te dwa pola, po które sięgają wywołania w kliencie
-      // (response.text oraz response.candidates[].content.parts) — reszta
-      // odpowiedzi SDK nie jest nigdzie używana.
-      return res.json({
-        text: response?.text ?? "",
-        candidates: response?.candidates ?? [],
-      });
+      let lastErr: any;
+      for (const m of modelsToTry) {
+        let retries = 2;
+        while (retries > 0) {
+          try {
+            const ai = new GoogleGenAI({ apiKey });
+            const response: any = await ai.models.generateContent({ model: m, contents, config });
+
+            return res.json({
+              text: response?.text ?? "",
+              candidates: response?.candidates ?? [],
+              modelUsed: m,
+            });
+          } catch (err: any) {
+            lastErr = err;
+            const errMsg = err?.message || String(err);
+            const status = Number(err?.status);
+            console.warn(`[Gemini Proxy] Model ${m} failed (status ${status || 'unknown'}, retries left ${retries - 1}):`, errMsg);
+
+            const isRetryable = status === 503 || status === 429 || errMsg.includes('503') || errMsg.includes('429') || errMsg.toLowerCase().includes('demand') || errMsg.toLowerCase().includes('unavailable');
+            if (isRetryable) {
+              retries--;
+              if (retries > 0) {
+                await new Promise(r => setTimeout(r, 1200));
+                continue;
+              }
+            }
+            break; // Try next fallback model
+          }
+        }
+      }
+
+      throw lastErr;
     } catch (err: any) {
       console.error("[Gemini] proxy error:", err?.message || err);
       const status = Number(err?.status);
@@ -1510,11 +1540,14 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
     }
   });
 
-  // Trasy AI wymagają zalogowania. Wcześniej auth było opcjonalne, więc
-  // dowolny adres w internecie mógł wołać te endpointy i zużywać limit
-  // płatnych kluczy — koszt szedł na właściciela projektu.
+  // Trasy AI wymagają zalogowania.
   app.post("/api/openai", requireFirebaseAuth, handleOpenAI);
   app.post("/api/openai/generate", requireFirebaseAuth, handleOpenAI);
+
+  // Blokada dla nieznanych tras /api, aby nie zwracały index.html (SPA)
+  app.use('/api', (req, res) => {
+    res.status(404).json({ error: `Nie odnaleziono endpointu API: ${req.method} ${req.originalUrl || req.path}` });
+  });
 
   return app;
 }

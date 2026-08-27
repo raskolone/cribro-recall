@@ -8,6 +8,7 @@ import Button from '../ui/Button';
 import TTSButtons from './TTSButtons';
 import { FlashcardSet } from '../../types';
 import { cleanVocabularyTopic } from '../../utils/vocabulary';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface FlashcardSetsScreenProps {
   onStudySet: (setId: string) => void;
@@ -27,18 +28,10 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
   const [previewCards, setPreviewCards] = useState<any[]>([]);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-    const { getFlashcards } = useFlashcards();
+  const { getFlashcards } = useFlashcards();
 
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setSetToDelete(null);
-        setPreviewSetId(null);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  useEscapeModal(!!previewSetId, () => setPreviewSetId(null));
+  useEscapeModal(!!setToDelete, () => setSetToDelete(null), 5);
 
   const handlePreviewSet = async (setId: string) => {
     try {

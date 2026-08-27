@@ -9,6 +9,7 @@ import { db } from '../../firebase';
 import i18n from "i18next";
 import { LessonSelectionModal } from '../dashboard/LessonSelectionModal';
 import { taskOwnerFields } from '../../utils/homework';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface TeacherSpecialTaskModalProps {
   user: User;
@@ -90,6 +91,10 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [showVocabPreview, setShowVocabPreview] = useState(false);
   const [editingSentenceId, setEditingSentenceId] = useState<string | null>(null);
+
+  useEscapeModal(true, onClose, 0);
+  useEscapeModal(isLessonModalOpen, () => setIsLessonModalOpen(false), 5);
+  useEscapeModal(showVocabPreview, () => setShowVocabPreview(false), 5);
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
 

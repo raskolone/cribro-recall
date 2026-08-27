@@ -13,6 +13,7 @@ import gsap from 'gsap';
 import Badge from '../ui/Badge';
 import SectionHeader from '../ui/SectionHeader';
 import { sectionMeta } from '../../utils/sectionMeta';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface LessonHistoryScreenProps {
   onStudySet?: (setId: string) => void;
@@ -31,6 +32,9 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ onStudySet, o
   const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({});
   const [selectedLesson, setSelectedLesson] = useState<LessonRecord | null>(null);
   const [selectedLog, setSelectedLog] = useState<PracticeLog | null>(null);
+
+  useEscapeModal(!!selectedLesson, () => setSelectedLesson(null));
+  useEscapeModal(!!selectedLog, () => setSelectedLog(null));
 
   const isRecentLesson = (lesson: LessonRecord) => {
     if (!lesson || (!lesson.createdAt && !lesson.date)) return false;

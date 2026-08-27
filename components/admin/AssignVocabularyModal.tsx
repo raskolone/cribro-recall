@@ -7,6 +7,7 @@ import { db } from '../../firebase';
 import { collection, getDocs, doc, writeBatch, query, orderBy } from 'firebase/firestore';
 import { cleanVocabularyTopic } from '../../utils/vocabulary';
 import AddResourceModal from './AddResourceModal';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface WordItem {
   id: string;
@@ -66,6 +67,9 @@ export default function AssignVocabularyModal({
   const [customTitle, setCustomTitle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAddResourceModalOpen, setIsAddResourceModalOpen] = useState(false);
+
+  useEscapeModal(isOpen, onClose, 0);
+  useEscapeModal(isAddResourceModalOpen, () => setIsAddResourceModalOpen(false), 5);
 
   useEffect(() => {
     if (isOpen) {

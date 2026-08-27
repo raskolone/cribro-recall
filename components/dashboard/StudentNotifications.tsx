@@ -8,6 +8,7 @@ import { collection, query, orderBy, where, getDocs, doc, updateDoc, onSnapshot 
 import { db } from '../../firebase';
 import { StudentTest, SpecialTask } from '../../types';
 import { studentTasksQuery } from '../../utils/homework';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface StudentNotificationsProps {
   onNavigate: (view: any, extra?: any) => void;
@@ -166,6 +167,12 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate 
   };
 
   const currentHomework = assignedHomework[0];
+  const isHomeworkModalOpen = assignedHomework.length > 0 || shouldShowGenericHomework;
+
+  useEscapeModal(isHomeworkModalOpen, () => {
+    const hwId = currentHomework?.id || ('generic_homework_' + (user?.id || ''));
+    handleHomeworkAction(hwId, false);
+  });
 
   return (
     <>

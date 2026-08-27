@@ -5,6 +5,7 @@ import { X, Plus, Trash2, ArrowUp, ArrowDown, Save } from 'lucide-react';
 import { updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import i18n from 'i18next';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface TestEditModalProps {
   test: StudentTest | null;
@@ -21,6 +22,8 @@ export const TestEditModal: React.FC<TestEditModalProps> = ({ test, isOpen, onCl
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  useEscapeModal(isOpen && !!test, onClose);
 
   useEffect(() => {
     if (test) {

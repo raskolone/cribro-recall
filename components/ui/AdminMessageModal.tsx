@@ -5,11 +5,16 @@ import { useAuth } from '../../context/AuthContext';
 import { doc, updateDoc, deleteField } from 'firebase/firestore';
 import { db } from '../../firebase';
 import Button from './Button';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 const AdminMessageModal: React.FC = () => {
   const { user } = useAuth();
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);
+
+  useEscapeModal(isVisible, () => {
+    handleDismiss();
+  });
 
   useEffect(() => {
     if (user?.adminMessage) {

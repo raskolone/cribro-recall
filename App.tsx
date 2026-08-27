@@ -13,12 +13,16 @@ import GlobalErrorBoundary from './components/ui/GlobalErrorBoundary';
 import ConstellationBackground from './components/ui/ConstellationBackground';
 import StarterVocabularyApp from './components/starter/StarterVocabularyApp';
 import { AdminAIActivityMonitor } from './components/admin/AdminAIActivityMonitor';
+import { handleGlobalEscape } from './utils/modalStack';
 
 const App: React.FC = () => {
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        window.dispatchEvent(new CustomEvent('close-modal'));
+        const handled = handleGlobalEscape();
+        if (!handled) {
+          window.dispatchEvent(new CustomEvent('close-modal'));
+        }
       }
     };
     window.addEventListener('keydown', handleEsc);

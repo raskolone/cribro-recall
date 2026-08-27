@@ -5,6 +5,7 @@ import Button from '../ui/Button';
 import { addDoc, collection, doc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { generateTextWithUnifiedFallback } from '../../services/geminiService';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface AddResourceModalProps {
   isOpen: boolean;
@@ -16,6 +17,8 @@ const AddResourceModal: React.FC<AddResourceModalProps> = ({ isOpen, onClose, on
   const [rawText, setRawText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEscapeModal(isOpen, onClose);
 
   const handleProcess = async () => {
     if (!rawText.trim()) return;

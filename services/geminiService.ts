@@ -274,19 +274,31 @@ const generateContentWithFallback = async (params: any) => {
   throw lastError;
 };
 
-const callOpenAI = async (prompt: string, systemInstruction: string, model: string = "gpt-4o-mini", isJson: boolean = true): Promise<{ text: string, modelUsed?: string }> => {
+const callOpenAI = async (
+  promptOrMessages: string | Array<{ role: string; content: string }>,
+  systemInstruction?: string,
+  model: string = "gpt-4o-mini",
+  isJson: boolean = true
+): Promise<{ text: string, modelUsed?: string }> => {
   console.log("Wysyłam zapytanie do OpenAI przez proxy (" + model + ")...");
   
   try {
+    const isMessages = Array.isArray(promptOrMessages);
+    const bodyPayload: any = {
+      systemInstruction,
+      isJson,
+      model
+    };
+    if (isMessages) {
+      bodyPayload.messages = promptOrMessages;
+    } else {
+      bodyPayload.prompt = promptOrMessages;
+    }
+
     const res = await fetch('/api/openai', {
       method: 'POST',
       headers: await authHeaders(),
-      body: JSON.stringify({
-        prompt,
-        systemInstruction,
-        isJson,
-        model
-      })
+      body: JSON.stringify(bodyPayload)
     });
     
     const rawText = await res.text();
@@ -307,6 +319,107 @@ const callOpenAI = async (prompt: string, systemInstruction: string, model: stri
     console.error("Błąd wywołania OpenAI:", error);
     throw error;
   }
+};
+
+export const generateLessonPlannerAI = async ({
+  prompt,
+  systemInstruction,
+  conversationHistory = [],
+  preferredModels = PREFERRED_AI_MODELS,
+  onModelAttempt
+}: {
+  prompt: string;
+  systemInstruction: string;
+  conversationHistory?: Array<{ role: 'user' | 'assistant' | 'model' | 'system'; content: string }>;
+  preferredModels?: string[];
+  onModelAttempt?: (modelName: string) => void;
+}): Promise<{ text: string; modelUsed: string }> => {
+  const reqId = aiMonitor.startRequest({
+    taskName: 'Planer lekcji AI',
+    initialModel: preferredModels[0] || 'openai/gpt-4o-mini',
+    category: 'general',
+    promptSnippet: prompt,
+    statusMessage: `Planer lekcji: inicjalizacja...`
+  });
+
+  let lastError: any;
+  for (const model of preferredModels) {
+    try {
+      aiMonitor.updateModelAttempt(reqId, model, `Planer lekcji: odpytywanie ${formatAIModelName(model)}...`);
+      if (onModelAttempt) onModelAttempt(model);
+
+      if (model.startsWith('openai')) {
+        const messages = [
+          ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
+          ...conversationHistory.map(m => ({
+            role: m.role === 'assistant' ? 'assistant' : 'user',
+            content: m.content
+          })),
+          { role: 'user', content: prompt }
+        ];
+
+        const openAiRes = await callOpenAI(messages, undefined, model.replace('openai/', ''), false);
+        if (openAiRes?.text) {
+          const usedModel = openAiRes.modelUsed || model;
+          aiMonitor.completeRequest(reqId, { modelUsed: usedModel });
+          return { text: openAiRes.text, modelUsed: usedModel };
+        }
+      } else if (model.startsWith('gemini')) {
+        let retries = 2;
+        while (retries > 0) {
+          try {
+            const geminiContents = [
+              ...conversationHistory.map(m => ({
+                role: m.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: m.content }]
+              })),
+              {
+                role: 'user',
+                parts: [{ text: prompt }]
+              }
+            ];
+
+            const timeoutPromise = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error("Zapytanie do modelu AI przekroczyło limit czasu (60s)")), 60000);
+            });
+
+            const apiCall = getAI().models.generateContent({
+              model,
+              contents: geminiContents,
+              config: {
+                systemInstruction,
+                temperature: 0.7
+              }
+            });
+
+            const response: any = await Promise.race([apiCall, timeoutPromise]);
+            const text = response?.text;
+            if (text) {
+              aiMonitor.completeRequest(reqId, { modelUsed: model });
+              return { text, modelUsed: model };
+            }
+          } catch (gErr: any) {
+            console.warn(`Gemini model ${model} attempt failed (retries left ${retries - 1}):`, gErr?.message || gErr);
+            retries--;
+            if (retries > 0) {
+              aiMonitor.updateStatus(reqId, `Ponawianie próby dla ${formatAIModelName(model)}...`);
+              await new Promise(r => setTimeout(r, 1200));
+            } else {
+              throw gErr;
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn(`Model ${model} failed in lesson planner:`, err?.message || err);
+      lastError = err;
+      aiMonitor.updateStatus(reqId, `Model ${formatAIModelName(model)} niedostępny (${err?.status || '503/429'}). Przełączanie...`);
+      continue;
+    }
+  }
+
+  aiMonitor.failRequest(reqId, lastError?.message || "Wszystkie modele AI dla planera zawiodły.");
+  throw lastError || new Error("Wszystkie modele AI dla planera lekcji są chwilowo niedostępne.");
 };
 
 export const PREFERRED_AI_MODELS = [

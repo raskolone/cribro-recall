@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import i18n from "i18next";
 import html2pdf from 'html2pdf.js';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface UserWithId extends User {
   id: string;
@@ -1252,24 +1253,26 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     fetchUsers();
   }, []);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowAssignModal(false);
-        setShowCreateStudentModal(false);
-        setCreateStudentError('');
-        setNewStudentPassword('');
-        setNewStudentUsername('');
-        setUserToDelete(null);
-        setShowChangePasswordModal(false);
-        setChangePasswordError('');
-        closeLessonRecordModal();
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  useEscapeModal(isStudentPickerOpen, () => setIsStudentPickerOpen(false));
+  useEscapeModal(showCreateStudentModal, () => {
+    setShowCreateStudentModal(false);
+    setCreateStudentError('');
+    setNewStudentPassword('');
+    setNewStudentUsername('');
+  });
+  useEscapeModal(showChangePasswordModal, () => {
+    setShowChangePasswordModal(false);
+    setChangePasswordError('');
+    setNewPasswordForUser('');
+  });
+  useEscapeModal(showMessageModal, () => setShowMessageModal(false));
+  useEscapeModal(showDriveModal, () => setShowDriveModal(false), 5);
+  useEscapeModal(showAIModal, () => setShowAIModal(false));
+  useEscapeModal(showBulkModal, () => setShowBulkModal(false));
+  useEscapeModal(showBulkPreviewModal, () => setShowBulkPreviewModal(false));
+  useEscapeModal(showLessonRecordModal, () => closeLessonRecordModal());
+  useEscapeModal(!!userToDelete, () => setUserToDelete(null), 5);
+  useEscapeModal(!!(profileSaveModal && profileSaveModal.isOpen), () => setProfileSaveModal(null), 5);
   
   const handleRoleChange = async (newRole: 'admin' | 'user' | 'teacher') => {
     if (!selectedUser) return;
@@ -1432,115 +1435,172 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           )}
         </div>
 
-        {/* 6 KAFELKÓW GRID (Tiles view) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-4.5">
-          {[
-            ...(isAdmin ? [{
-              id: 'lesson-planner',
-              title: 'Planer lekcji',
-              badge: 'AI Planer',
-              desc: 'Inteligentny asystent AI do planowania i tworzenia lekcji',
-              icon: Sparkles
-            }] : []),
-            {
-              id: 'context',
-              title: 'Kontekst przed lekcją',
-              badge: 'Przed zajęciami',
-              desc: 'Ostatnia lekcja, elementy i błędy w jednym miejscu',
-              icon: CalendarClock
-            },
-            {
-              id: 'profile',
-              title: 'Profil kursanta',
-              badge: 'Dane i AI',
-              desc: 'Dane osobowe, poziom i wytyczne dla AI',
-              icon: UserIcon
-            },
-            {
-              id: 'stats',
-              title: 'Statystyki',
-              badge: 'Analityka',
-              desc: 'Logowania, zadania, zdania i wyniki',
-              icon: BarChart2
-            },
-            {
-              id: 'history',
-              title: 'Historia lekcji i sesji',
-              badge: 'Lekcje + App',
-              desc: 'Dziennik lekcji oraz ćwiczenia w aplikacji',
-              icon: Clock
-            },
-            {
-              id: 'tests',
-              title: 'Testy i sprawdziany',
-              badge: 'Sprawdziany',
-              desc: 'Generowanie i podgląd testów AI',
-              icon: Award
-            },
-            {
-              id: 'homework',
-              title: 'Praca domowa',
-              badge: 'Zadania domowe',
-              desc: 'Przypisuj prace domowe wybranym kursantom',
-              icon: BookOpen
-            },
-            {
-              id: 'vocabulary',
-              title: 'Słownictwo i zadania',
-              badge: 'Słówka + AI',
-              desc: 'Zestawy słówek i Zadania Specjalne AI',
-              icon: BookMarked
-            }
-          ].map((tile) => {
-            const IconComp = tile.icon;
-            const isActive = activeTab === tile.id;
+        {/* KAFELKI GŁÓWNE (3 DUŻE KAFELKI) */}
+        <div className="space-y-2.5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
+            {[
+              {
+                id: 'lesson-planner',
+                title: 'Planer lekcji',
+                badge: 'AI Planer',
+                desc: 'Inteligentny asystent AI do planowania i tworzenia scenariuszy lekcji',
+                icon: Sparkles
+              },
+              {
+                id: 'context',
+                title: 'Kontekst przed lekcją',
+                badge: 'Przed zajęciami',
+                desc: 'Ostatnia lekcja, kluczowe słownictwo i błędy w jednym miejscu',
+                icon: CalendarClock
+              },
+              {
+                id: 'history',
+                title: 'Historia lekcji i sesji',
+                badge: 'Lekcje + App',
+                desc: 'Dziennik przeprowadzonych lekcji oraz ćwiczenia w aplikacji',
+                icon: Clock
+              }
+            ].map((tile) => {
+              const IconComp = tile.icon;
+              const isActive = activeTab === tile.id;
 
-            return (
-                            <div
-                key={tile.id}
-                onClick={() => handleTileClick(tile.id)}
-                className={`p-4 sm:p-4.5 cursor-pointer flex flex-col justify-between liquid-glass-tile select-none ${
-                  isActive
-                    ? 'border-primary/80 shadow-[0_0_24px_rgba(114,240,180,0.25)] ring-1 ring-primary/40 bg-ink-2 z-10'
-                    : selectedUser || tile.id === 'lesson-planner'
-                    ? 'hover:border-primary/50'
-                    : 'opacity-85 hover:border-warn/40'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2.5">
-                    <div className={`p-2 rounded-xl transition-colors ${
-                      isActive
-                        ? 'bg-primary text-accent-ink shadow-[0_0_12px_rgba(114,240,180,0.4)]'
-                        : 'bg-ink/72 text-primary border border-white/10 group-hover:border-primary/40'
-                    }`}>
-                      <IconComp size={18} />
+              return (
+                <div
+                  key={tile.id}
+                  onClick={() => handleTileClick(tile.id)}
+                  className={`p-4.5 sm:p-5 cursor-pointer flex flex-col justify-between liquid-glass-tile select-none transition-all rounded-2xl ${
+                    isActive
+                      ? 'border-primary/80 shadow-[0_0_24px_rgba(114,240,180,0.25)] ring-1 ring-primary/40 bg-ink-2 z-10'
+                      : selectedUser || tile.id === 'lesson-planner'
+                      ? 'hover:border-primary/50'
+                      : 'opacity-85 hover:border-warn/40'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className={`p-2.5 rounded-xl transition-colors ${
+                        isActive
+                          ? 'bg-primary text-accent-ink shadow-[0_0_14px_rgba(114,240,180,0.4)]'
+                          : 'bg-ink/72 text-primary border border-white/10 group-hover:border-primary/40'
+                      }`}>
+                        <IconComp size={20} />
+                      </div>
+                      <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md border font-mono ${
+                        isActive
+                          ? 'bg-primary/20 text-primary border-primary/40'
+                          : 'bg-base-100/70 text-content-muted border-white/5'
+                      }`}>
+                        {isActive ? 'Aktywny' : tile.badge}
+                      </span>
                     </div>
-                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md border font-mono ${
-                      isActive
-                        ? 'bg-primary/20 text-primary border-primary/40'
-                        : 'bg-base-100/70 text-content-muted border-white/5'
-                    }`}>
-                      {isActive ? 'Aktywny' : tile.badge}
-                    </span>
+                    <h3 className="font-extrabold text-base sm:text-lg text-white group-hover:text-primary transition-colors truncate">
+                      {tile.title}
+                    </h3>
+                    <p className="text-xs sm:text-[13px] text-content-muted mt-1 leading-relaxed line-clamp-2 min-h-[2.5rem]">
+                      {tile.desc}
+                    </p>
                   </div>
-                  <h3 className="font-bold text-sm sm:text-base text-white group-hover:text-primary transition-colors truncate">
-                    {tile.title}
-                  </h3>
-                  <p className="text-xs text-content-muted mt-0.5 leading-snug line-clamp-2 min-h-[2.2rem]">
-                    {tile.desc}
-                  </p>
-                </div>
 
-                <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-xs font-semibold">
-                  <span className={isActive ? 'text-primary font-bold' : 'text-content-muted'}>
-                    {isActive ? 'Przeglądasz ten widok' : tile.id === 'lesson-planner' ? 'Otwórz planer AI' : selectedUser ? 'Otwórz widok' : 'Wybierz kursanta'}
-                  </span>
-                  <ChevronRight size={14} className={`transition-transform group-hover:translate-x-0.5 ${isActive ? 'text-primary' : 'text-content-muted'}`} />
+                  <div className="mt-4 pt-2.5 border-t border-white/5 flex items-center justify-between text-xs font-semibold">
+                    <span className={isActive ? 'text-primary font-bold' : 'text-content-muted'}>
+                      {isActive ? 'Przeglądasz ten widok' : tile.id === 'lesson-planner' ? 'Otwórz planer AI' : selectedUser ? 'Otwórz widok' : 'Wybierz kursanta'}
+                    </span>
+                    <ChevronRight size={14} className={`transition-transform group-hover:translate-x-0.5 ${isActive ? 'text-primary' : 'text-content-muted'}`} />
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {/* POZOSTAŁE KAFELKI (KOMPAKTOWY RZĄD 5 KAFELKÓW) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
+            {[
+              {
+                id: 'profile',
+                title: 'Profil kursanta',
+                badge: 'Dane i AI',
+                desc: 'Poziom i wytyczne AI',
+                icon: UserIcon
+              },
+              {
+                id: 'stats',
+                title: 'Statystyki',
+                badge: 'Analityka',
+                desc: 'Aktywność i wyniki',
+                icon: BarChart2
+              },
+              {
+                id: 'tests',
+                title: 'Testy',
+                badge: 'Sprawdziany',
+                desc: 'Generowanie testów AI',
+                icon: Award
+              },
+              {
+                id: 'homework',
+                title: 'Praca domowa',
+                badge: 'Zadania',
+                desc: 'Zadania i oceny',
+                icon: BookOpen
+              },
+              {
+                id: 'vocabulary',
+                title: 'Słownictwo',
+                badge: 'Słówka + AI',
+                desc: 'Zestawy i Zadania AI',
+                icon: BookMarked
+              }
+            ].map((tile) => {
+              const IconComp = tile.icon;
+              const isActive = activeTab === tile.id;
+
+              return (
+                <div
+                  key={tile.id}
+                  onClick={() => handleTileClick(tile.id)}
+                  className={`p-3 sm:p-3.5 cursor-pointer flex flex-col justify-between liquid-glass-tile select-none transition-all rounded-xl ${
+                    isActive
+                      ? 'border-primary/80 shadow-[0_0_18px_rgba(114,240,180,0.2)] ring-1 ring-primary/40 bg-ink-2 z-10'
+                      : selectedUser
+                      ? 'hover:border-primary/50'
+                      : 'opacity-80 hover:border-warn/40'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className={`p-1.5 rounded-lg transition-colors ${
+                        isActive
+                          ? 'bg-primary text-accent-ink shadow-[0_0_10px_rgba(114,240,180,0.3)]'
+                          : 'bg-ink/72 text-primary border border-white/10 group-hover:border-primary/40'
+                      }`}>
+                        <IconComp size={15} />
+                      </div>
+                      <span className={`text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border font-mono ${
+                        isActive
+                          ? 'bg-primary/20 text-primary border-primary/40'
+                          : 'bg-base-100/70 text-content-muted border-white/5'
+                      }`}>
+                        {isActive ? 'Aktywny' : tile.badge}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-xs sm:text-sm text-white group-hover:text-primary transition-colors truncate">
+                      {tile.title}
+                    </h3>
+                    <p className="text-[11px] text-content-muted mt-0.5 leading-snug line-clamp-1">
+                      {tile.desc}
+                    </p>
+                  </div>
+
+                  <div className="mt-2.5 pt-1.5 border-t border-white/5 flex items-center justify-between text-[11px] font-semibold">
+                    <span className={isActive ? 'text-primary font-bold' : 'text-content-muted'}>
+                      {isActive ? 'Aktywny' : selectedUser ? 'Otwórz' : 'Wybierz'}
+                    </span>
+                    <ChevronRight size={12} className={`transition-transform group-hover:translate-x-0.5 ${isActive ? 'text-primary' : 'text-content-muted'}`} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -1586,6 +1646,22 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 }
               }}
               recentLessons={lessonRecords}
+              onInsertLessonRecord={(data) => {
+                setEditingRecordId(null);
+                setViewingRecord(null);
+                const sId = selectedUser?.id || '';
+                setLessonFormStudentId(sId);
+                setLessonFormStudentIds(sId ? [sId] : []);
+                setLessonFormDate(new Date().toISOString().split('T')[0]);
+                setLessonFormTopic(data.topic || '');
+                setLessonFormSummary(data.summary || '');
+                setLessonFormWords(data.vocabulary || '');
+                setLessonFormSuggestedFollowUp(data.followUp || '');
+                setLessonFormThingsToImprove('');
+                setLessonFormStudentSpeaking('');
+                openLessonRecordModal('edit', undefined, true);
+                showToast('Przeniesiono scenariusz do nowej notatki z lekcji!');
+              }}
             />
           )}
 

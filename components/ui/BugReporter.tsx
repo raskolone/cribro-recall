@@ -4,6 +4,7 @@ import { Bug, X, AlertCircle } from 'lucide-react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 import i18n from "i18next";
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface BugReporterProps {
   errorContext?: string;
@@ -17,6 +18,11 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  useEscapeModal(isOpen, () => {
+    setIsOpen(false);
+    if (onCloseError) onCloseError();
+  });
 
   useEffect(() => {
     if (errorContext) {

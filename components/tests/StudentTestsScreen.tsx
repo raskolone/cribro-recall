@@ -11,6 +11,7 @@ import i18n from "i18next";
 import { exportTestToPDF } from "../../utils/pdfExport";
 import { Download, Eye, X } from "lucide-react";
 import Markdown from 'react-markdown';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 interface StudentTestsScreenProps {
   onBack: () => void;
 }
@@ -22,6 +23,8 @@ const StudentTestsScreen: React.FC<StudentTestsScreenProps> = ({ onBack }) => {
   
   const [activeTest, setActiveTest] = useState<StudentTest | null>(null);
   const [feedbackTest, setFeedbackTest] = useState<StudentTest | null>(null);
+
+  useEscapeModal(!!feedbackTest, () => setFeedbackTest(null));
 
   useEffect(() => {
     fetchTests();

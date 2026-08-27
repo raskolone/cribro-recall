@@ -1,17 +1,20 @@
 import React, { useEffect, useRef } from 'react';
 import gsap from 'gsap';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 export const GSAPModal = ({ children, isOpen, onClose, maxWidth = 'max-w-lg', className = '' }: { children: React.ReactNode, isOpen: boolean, onClose?: () => void, maxWidth?: string, className?: string }) => {
   const overlayRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  useEscapeModal(isOpen, onClose);
+
   useEffect(() => {
     const handleCloseModal = () => {
-      if (onClose) onClose();
+      if (isOpen && onClose) onClose();
     };
     window.addEventListener('close-modal', handleCloseModal);
     return () => window.removeEventListener('close-modal', handleCloseModal);
-  }, [onClose]);
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     if (isOpen) {

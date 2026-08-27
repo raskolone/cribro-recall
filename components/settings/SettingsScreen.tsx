@@ -13,6 +13,7 @@ import { RevisionFrequency, TTSAccent, VoiceGender, VoiceSpeed, SoundEngine, can
 import { LogOut, Volume2, Play, CheckCircle2, RefreshCw, VolumeX, Sparkles, Sliders, Check } from 'lucide-react';
 import { playSpeech } from '../../services/ttsService';
 import i18n from "i18next";
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 const SettingsScreen: React.FC = () => {
     const { frequency, setFrequency, deleteAllWords, words } = useVocabulary();
@@ -25,20 +26,12 @@ const SettingsScreen: React.FC = () => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+    useEscapeModal(showDeleteModal, () => setShowDeleteModal(false));
+
     // Audio test state
     const [isTestingAudio, setIsTestingAudio] = useState(false);
     const [audioTestSuccess, setAudioTestSuccess] = useState(false);
     const [saveSuccessMessage, setSaveSuccessMessage] = useState(false);
-
-    React.useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                setShowDeleteModal(false);
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
 
     const executeDeleteAll = async () => {
         setIsDeleting(true);

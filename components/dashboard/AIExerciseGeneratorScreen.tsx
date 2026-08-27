@@ -32,6 +32,7 @@ import PuzzleExercise from './PuzzleExercise';
 import Button from '../ui/Button';
 import ConfirmModal from '../ui/ConfirmModal';
 import { motion, AnimatePresence } from 'motion/react';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 import {    
   Sparkles, 
   Settings, 
@@ -980,6 +981,14 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     // By default, check all words
     setSetupCheckedWordIds(new Set(wordsList.map(w => w.id)));
   }, [setupSelectedSource, practiceSetupOpen, basketWords, vocabularySets]);
+
+  useEscapeModal(isConfigModalOpen, () => setIsConfigModalOpen(false), 0);
+  useEscapeModal(isLessonSelectorOpen, () => setIsLessonSelectorOpen(false), 0);
+  useEscapeModal(isTopicModalOpen, () => setIsTopicModalOpen(false), 0);
+  useEscapeModal(!!previewVocabSet, () => setPreviewVocabSet(null), 5);
+  useEscapeModal(practiceSetupOpen, () => setPracticeSetupOpen(false), 5);
+  useEscapeModal(isBasketModalOpen, () => setIsBasketModalOpen(false), 5);
+
   const [specialTasks, setSpecialTasks] = useState<any[]>([]);
   const [isLessonsExpanded, setIsLessonsExpanded] = useState<boolean>(false);
   const [isCustomSetsExpanded, setIsCustomSetsExpanded] = useState<boolean>(false);

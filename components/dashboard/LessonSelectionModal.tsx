@@ -3,6 +3,7 @@ import { LessonRecord } from '../../types';
 import { X, BookOpen, Check, Search, Calendar, FileText, Sparkles, Filter, RefreshCw } from 'lucide-react';
 import Button from '../ui/Button';
 import { useAuth } from '../../context/AuthContext';
+import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface LessonSelectionModalProps {
   isOpen: boolean;
@@ -28,6 +29,8 @@ export const LessonSelectionModal: React.FC<LessonSelectionModalProps> = ({
   const [tempSelectedIds, setTempSelectedIds] = useState<string[]>(selectedLessonIds);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
+
+  useEscapeModal(isOpen, onClose);
 
   // Sync temp state whenever modal opens
   React.useEffect(() => {
