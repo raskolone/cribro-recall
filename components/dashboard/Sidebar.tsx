@@ -27,6 +27,7 @@ import {
   History, 
   ClipboardList, 
   BookOpen,
+  Mail,
   Settings, 
   ShieldAlert, 
   BarChart2, 
@@ -388,6 +389,18 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
             <span className={unreadTestsCount > 0 ? "text-primary font-bold" : ""}>
               {language === 'pl' ? 'Testy' : 'Tests'}
               {unreadTestsCount > 0 && ` (${unreadTestsCount})`}
+            </span>
+          </NavLink>
+
+          <NavLink 
+            id="tour-gmail"
+            icon={<Mail size={20} />} 
+            isCollapsed={isDesktopCollapsed} 
+            onClick={() => handleNavigate('gmail')} 
+            isActive={currentView === 'gmail'}
+          >
+            <span>
+              Gmail
             </span>
           </NavLink>
           

@@ -21,7 +21,7 @@ import { ChevronDown, Sparkles, Menu } from 'lucide-react';
 import AssignedTasks from './AssignedTasks';
 import i18n from "i18next";
 
-type View = 'dashboard' | 'extra-practice' | 'student-today' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats' | 'homework';
+type View = 'dashboard' | 'extra-practice' | 'student-today' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats' | 'homework' | 'gmail';
 
 import AdminPanel from '../admin/AdminPanel';
 import StudentStatsScreen from './StudentStatsScreen';
@@ -40,6 +40,7 @@ import TopicDatabaseScreen from '../admin/TopicDatabaseScreen';
 import HomeworkScreen from './HomeworkScreen';
 import AdminDebuggingScreen from '../admin/AdminDebuggingScreen';
 import OnboardingOverlay from './OnboardingOverlay';
+import GmailView from '../gmail/GmailView';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -287,6 +288,9 @@ const Dashboard: React.FC = () => {
     }
     if (view === 'admin-debugging') {
       return <AdminDebuggingScreen onBack={() => handleNavigate('dashboard')} />;
+    }
+    if (view === 'gmail') {
+      return <GmailView />;
     }
     if (view === 'admin' || (isTeacher && view === 'dashboard')) {
       return <AdminPanel />;

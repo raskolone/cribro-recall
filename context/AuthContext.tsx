@@ -26,6 +26,7 @@ interface AuthContextType {
   connectGoogleDrive: () => Promise<string>;
   connectGoogleWorkspace: () => Promise<string>;
   connectGoogleCalendar: () => Promise<string>;
+  connectGmail: () => Promise<string>;
   linkGoogleAccount: () => Promise<void>;
 }
 
@@ -321,6 +322,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const connectGmail = async (): Promise<string> => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://mail.google.com/');
+      provider.addScope('https://www.googleapis.com/auth/gmail.modify');
+      provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
+      provider.addScope('https://www.googleapis.com/auth/gmail.send');
+      provider.addScope('https://www.googleapis.com/auth/gmail.compose');
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      
+      if (credential?.accessToken) {
+        try { localStorage.setItem('gmail_cached_access_token', credential.accessToken); } catch(e) {}
+        return credential.accessToken;
+      }
+      throw new Error('No access token received');
+    } catch (error: any) {
+      if (error.code !== 'auth/popup-closed-by-user') {
+        console.error('Failed to connect Gmail:', error);
+      }
+      throw error;
+    }
+  };
+
   const loginAnonymously = async () => {
     try {
       await signInAnonymously(auth);
@@ -432,7 +457,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthReady, login, loginWithEmail, registerWithEmail, loginAnonymously, logout, updateUserStreak, connectGoogleDrive, connectGoogleWorkspace, connectGoogleCalendar, linkGoogleAccount }}>
+    <AuthContext.Provider value={{ user, isAuthReady, login, loginWithEmail, registerWithEmail, loginAnonymously, logout, updateUserStreak, connectGoogleDrive, connectGoogleWorkspace, connectGoogleCalendar, connectGmail, linkGoogleAccount }}>
       {children}
     </AuthContext.Provider>
   );
