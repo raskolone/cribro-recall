@@ -99,6 +99,9 @@ export async function createLessonRecordWithVocabularySet(input: {
   studentSpeaking?: string;
   thingsToImprove?: string;
   suggestedFollowUp?: string;
+  scenarioId?: string;
+  scenarioTopic?: string;
+  scenarioContent?: string;
   /** Pozycje zatwierdzone do powtórek. Pominięcie = cały `vocabularyText`. */
   approvedItems?: string[];
 }): Promise<{ lessonRecordId: string; vocabularySetId: string }> {
@@ -122,6 +125,9 @@ export async function createLessonRecordWithVocabularySet(input: {
     thingsToImprove: input.thingsToImprove,
     suggestedFollowUp: input.suggestedFollowUp,
     vocabularySetId: vocabularySetId,
+    scenarioId: input.scenarioId,
+    scenarioTopic: input.scenarioTopic,
+    scenarioContent: input.scenarioContent,
     createdAt: now,
     updatedAt: now,
   };

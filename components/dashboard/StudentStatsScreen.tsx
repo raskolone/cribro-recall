@@ -374,7 +374,7 @@ const StudentStatsScreen: React.FC = () => {
 
       const reqId = aiMonitor.startRequest({
         taskName: 'Podsumowanie pedagogiczne ucznia AI',
-        initialModel: 'openai/gpt-4o-mini',
+        initialModel: 'openai/gpt-5.6-luna',
         category: 'stats',
         provider: 'OpenAI',
         statusMessage: 'Generowanie analizy postępów i wskazówek dla ucznia...'

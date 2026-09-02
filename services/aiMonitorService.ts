@@ -101,7 +101,7 @@ class AIMonitorService {
     statusMessage?: string;
   }): string {
     const id = params.id || `req_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    const model = params.initialModel || 'openai/gpt-4o-mini';
+    const model = params.initialModel || 'openai/gpt-5.6-luna';
     const provider = params.provider || (
       model.includes('tts') || model.startsWith('openai') 
         ? 'OpenAI' 

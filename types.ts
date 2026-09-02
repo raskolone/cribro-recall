@@ -238,6 +238,30 @@ export interface TranslationEvaluationResult {
   modelUsed?: string;
 }
 
+export interface LessonScenarioStage {
+  id: string;
+  title: string;
+  duration?: string;
+  body: string;
+}
+
+export interface GeneratedLessonScenario {
+  id: string;
+  title: string;
+  topic: string;
+  content: string;
+  studentId?: string | null;
+  studentName?: string | null;
+  targetLevel?: string;
+  lessonDuration?: string;
+  lessonType?: string;
+  vocabularyText?: string;
+  stages?: LessonScenarioStage[];
+  createdAt: string;
+  updatedAt?: string;
+  tags?: string[];
+}
+
 export interface LessonRecord {
   id: string;
   studentId: string;
@@ -249,6 +273,9 @@ export interface LessonRecord {
   thingsToImprove?: string;
   suggestedFollowUp?: string;
   vocabularySetId?: string;
+  scenarioId?: string;
+  scenarioTopic?: string;
+  scenarioContent?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -456,4 +483,94 @@ export interface LessonPlannerCustomSettings {
   explanationStyle: 'concise' | 'detailed';
   homeworkType: 'translation' | 'writing' | 'speaking' | 'mixed';
   vocabCount: number;
+}
+
+export type PresentationSlideType = 
+  | 'title' 
+  | 'warmup' 
+  | 'vocabulary' 
+  | 'grammar' 
+  | 'speaking' 
+  | 'practice' 
+  | 'enclosure' 
+  | 'correction' 
+  | 'summary' 
+  | 'freeform';
+
+export interface PresentationExerciseOption {
+  id: string;
+  text: string;
+  isCorrect?: boolean;
+}
+
+export interface PresentationSlideItem {
+  id: string;
+  term?: string;
+  ipa?: string;
+  definition?: string;
+  example?: string;
+  question?: string;
+  errorText?: string;
+  correctionText?: string;
+  explanation?: string;
+  hint?: string;
+  answer?: string;
+  revealed?: boolean;
+  // Interactive exercise extensions
+  exerciseType?: 'fill-gap' | 'transform' | 'multiple-choice' | 'matching' | 'roleplay' | 'qa';
+  options?: string[];
+  correctOptionIndex?: number;
+  // Role-play extensions
+  roleUser?: string;
+  roleTeacher?: string;
+  scenarioContext?: string;
+  taskGoal?: string;
+}
+
+export interface PresentationSlide {
+  id: string;
+  type: PresentationSlideType;
+  title: string;
+  subtitle?: string;
+  content?: string;
+  items?: PresentationSlideItem[];
+  timerMinutes?: number;
+  speakerNotes?: string;
+  bgTheme?: 'dark' | 'midnight' | 'emerald' | 'amber' | 'clean-light';
+  // Enclosure and pedagogical metrics
+  quickCheck?: Array<{ question: string; answer: string; hint?: string }>;
+  exitTicketChallenge?: string;
+  aiModelUsed?: string;
+}
+
+export interface LiveCorrectionItem {
+  id: string;
+  studentSaid: string;
+  betterWay: string;
+  explanation?: string;
+  timestamp: string;
+}
+
+export interface LiveVocabItem {
+  id: string;
+  term: string;
+  translation: string;
+  example?: string;
+  timestamp: string;
+}
+
+export interface LessonPresentation {
+  id: string;
+  title: string;
+  topic: string;
+  targetLevel?: string;
+  studentId?: string | null;
+  studentName?: string | null;
+  slides: PresentationSlide[];
+  liveCorrections: LiveCorrectionItem[];
+  liveVocab: LiveVocabItem[];
+  liveNotes: string;
+  aiModelUsed?: string;
+  createdAt: string;
+  updatedAt: string;
 }

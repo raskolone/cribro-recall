@@ -4,12 +4,14 @@ import VocabularyApproval from './VocabularyApproval';
 import RecallItemsReview, { ReviewedCandidate } from './RecallItemsReview';
 import { saveRecallReview } from '../../services/recallItems';
 import { countVocabularyItems, buildVocabularySetTitle, splitVocabularyLines } from '../../utils/vocabulary';
+import { CascadingLessonDetails } from './CascadingLessonDetails';
+import { getGeneratedScenarios } from '../../services/scenarioService';
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, getDocs, getDoc, doc, deleteDoc, query, orderBy, setDoc, writeBatch, updateDoc, addDoc, where } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
-import { User, PracticeLog, FlashcardSet, LessonRecord } from '../../types';
+import { User, PracticeLog, FlashcardSet, LessonRecord, GeneratedLessonScenario } from '../../types';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
 import { generateLessonSummary, generateBulkLessonSummary } from '../../services/geminiService';
@@ -27,12 +29,13 @@ import HomeworkScreen from '../dashboard/HomeworkScreen';
 import { isTaskForStudent } from '../../utils/homework';
 import TeacherOverview from './TeacherOverview';
 import LessonPlanner from './LessonPlanner';
+import { LessonPresentationView } from './presentation/LessonPresentationView';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
   User as UserIcon, Users, Search, X, ChevronRight, ChevronDown, ChevronUp, Sparkles, BarChart2, Clock, 
   BookOpen, BookMarked, UserCheck, Filter, Award, Activity, Calendar, 
-  RefreshCw, Plus, Eye, Shield, Target, CalendarClock
+  RefreshCw, Plus, Eye, Shield, Target, CalendarClock, Layers, Link as LinkIcon, Airplay
 } from 'lucide-react';
 import i18n from "i18next";
 import html2pdf from 'html2pdf.js';
@@ -204,7 +207,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   };
 
   const handleTileClick = (tabId: string) => {
-    if (tabId === 'lesson-planner') {
+    if (tabId === 'lesson-planner' || tabId === 'presentation') {
       setActiveTab(tabId);
       if (onViewChange) onViewChange(`admin-${tabId}`);
       return;
@@ -669,6 +672,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
           studentSpeaking: lessonFormStudentSpeaking,
           thingsToImprove: lessonFormThingsToImprove,
           suggestedFollowUp: lessonFormSuggestedFollowUp,
+          scenarioId: lessonFormScenarioId || '',
+          scenarioTopic: lessonFormScenarioTopic || '',
+          scenarioContent: lessonFormScenarioContent || '',
           updatedAt: new Date().toISOString()
         };
         
@@ -722,6 +728,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
             studentSpeaking: lessonFormStudentSpeaking,
             thingsToImprove: lessonFormThingsToImprove,
             suggestedFollowUp: lessonFormSuggestedFollowUp,
+            scenarioId: lessonFormScenarioId || '',
+            scenarioTopic: lessonFormScenarioTopic || '',
+            scenarioContent: lessonFormScenarioContent || '',
             approvedItems: approvedItems
           });
           if (lessonFormRecallCandidates.length > 0) {
@@ -744,6 +753,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
             studentSpeaking: lessonFormStudentSpeaking,
             thingsToImprove: lessonFormThingsToImprove,
             suggestedFollowUp: lessonFormSuggestedFollowUp,
+            scenarioId: lessonFormScenarioId || '',
+            scenarioTopic: lessonFormScenarioTopic || '',
+            scenarioContent: lessonFormScenarioContent || '',
             approvedItems: approvedItems
           });
 
@@ -1023,6 +1035,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [lessonFormStudentSpeaking, setLessonFormStudentSpeaking] = useState('');
   const [lessonFormThingsToImprove, setLessonFormThingsToImprove] = useState('');
   const [lessonFormSuggestedFollowUp, setLessonFormSuggestedFollowUp] = useState('');
+  const [lessonFormScenarioId, setLessonFormScenarioId] = useState('');
+  const [lessonFormScenarioTopic, setLessonFormScenarioTopic] = useState('');
+  const [lessonFormScenarioContent, setLessonFormScenarioContent] = useState('');
+  const [availableScenariosForForm, setAvailableScenariosForForm] = useState<GeneratedLessonScenario[]>([]);
   const [lessonRecordModalMode, setLessonRecordModalMode] = useState<'view' | 'edit'>('view');
   
   // Lesson Database clone States
@@ -1116,6 +1132,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     setActiveLessonFormTab('manual');
     setLessonsDbSearch('');
     setSelectedDbLessonKeys([]);
+    getGeneratedScenarios().then(setAvailableScenariosForForm).catch(() => {});
     if (record) {
       setEditingRecordId(record.id);
       setViewingRecord(record);
@@ -1131,6 +1148,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       setLessonFormStudentSpeaking(record.studentSpeaking || '');
       setLessonFormThingsToImprove(record.thingsToImprove || '');
       setLessonFormSuggestedFollowUp(record.suggestedFollowUp || '');
+      setLessonFormScenarioId(record.scenarioId || '');
+      setLessonFormScenarioTopic(record.scenarioTopic || '');
+      setLessonFormScenarioContent(record.scenarioContent || '');
       setRawMeetingNotes('');
     } else {
       if (!preserveData) {
@@ -1148,6 +1168,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         setLessonFormStudentSpeaking('');
         setLessonFormThingsToImprove('');
         setLessonFormSuggestedFollowUp('');
+        setLessonFormScenarioId('');
+        setLessonFormScenarioTopic('');
+        setLessonFormScenarioContent('');
         setRawMeetingNotes('');
       }
     }
@@ -1162,6 +1185,33 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     setLessonFormExcludedItems([]);
     setLessonFormRecallCandidates([]);
     setLessonFormSummary('');
+    setLessonFormScenarioId('');
+    setLessonFormScenarioTopic('');
+    setLessonFormScenarioContent('');
+  };
+
+  const handleLinkScenarioToRecord = async (scenario: GeneratedLessonScenario) => {
+    if (!viewingRecord || !selectedUser) return;
+    try {
+      const updated: LessonRecord = {
+        ...viewingRecord,
+        scenarioId: scenario.id,
+        scenarioTopic: scenario.topic || scenario.title,
+        scenarioContent: scenario.content,
+        updatedAt: new Date().toISOString()
+      };
+      await updateDoc(doc(db, `users/${selectedUser.id}/lessonRecords`, viewingRecord.id), {
+        scenarioId: scenario.id,
+        scenarioTopic: scenario.topic || scenario.title,
+        scenarioContent: scenario.content,
+        updatedAt: new Date().toISOString()
+      });
+      setViewingRecord(updated);
+      setLessonRecords(prev => prev.map(r => r.id === viewingRecord.id ? updated : r));
+      showToast('Powiązano scenariusz z lekcją kursanta!');
+    } catch (err: any) {
+      alert('Błąd podczas powiązywania scenariusza: ' + err.message);
+    }
   };
 
 
@@ -1435,9 +1485,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           )}
         </div>
 
-        {/* KAFELKI GŁÓWNE (3 DUŻE KAFELKI) */}
+        {/* KAFELKI GŁÓWNE (4 DUŻE KAFELKI) */}
         <div className="space-y-2.5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
             {[
               {
                 id: 'lesson-planner',
@@ -1445,6 +1495,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 badge: 'AI Planer',
                 desc: 'Inteligentny asystent AI do planowania i tworzenia scenariuszy lekcji',
                 icon: Sparkles
+              },
+              {
+                id: 'presentation',
+                title: 'Prezentacja & Notatnik',
+                badge: 'Live Lekcja',
+                desc: 'Interaktywne slajdy z wymową audio i wspólny notatnik z kursantem',
+                icon: Airplay
               },
               {
                 id: 'context',
@@ -1471,7 +1528,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   className={`p-4.5 sm:p-5 cursor-pointer flex flex-col justify-between liquid-glass-tile select-none transition-all rounded-2xl ${
                     isActive
                       ? 'border-primary/80 shadow-[0_0_24px_rgba(114,240,180,0.25)] ring-1 ring-primary/40 bg-ink-2 z-10'
-                      : selectedUser || tile.id === 'lesson-planner'
+                      : selectedUser || tile.id === 'lesson-planner' || tile.id === 'presentation'
                       ? 'hover:border-primary/50'
                       : 'opacity-85 hover:border-warn/40'
                   }`}
@@ -1503,7 +1560,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
                   <div className="mt-4 pt-2.5 border-t border-white/5 flex items-center justify-between text-xs font-semibold">
                     <span className={isActive ? 'text-primary font-bold' : 'text-content-muted'}>
-                      {isActive ? 'Przeglądasz ten widok' : tile.id === 'lesson-planner' ? 'Otwórz planer AI' : selectedUser ? 'Otwórz widok' : 'Wybierz kursanta'}
+                      {isActive ? 'Przeglądasz ten widok' : tile.id === 'lesson-planner' || tile.id === 'presentation' ? 'Otwórz moduł' : selectedUser ? 'Otwórz widok' : 'Wybierz kursanta'}
                     </span>
                     <ChevronRight size={14} className={`transition-transform group-hover:translate-x-0.5 ${isActive ? 'text-primary' : 'text-content-muted'}`} />
                   </div>
@@ -1605,12 +1662,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       </div>
 
       {/* Active Tab Content Header Banner */}
-      {((selectedUser && activeTab) || (activeTab === 'lesson-planner')) && (
+      {((selectedUser && activeTab) || activeTab === 'lesson-planner' || activeTab === 'presentation') && (
         <div className="flex items-center justify-between p-4 rounded-2xl bg-base-200/50 border border-white/10">
           <div className="flex items-center gap-3">
             <span className="w-3 h-3 rounded-full bg-primary animate-pulse" />
             <h2 className="text-xl font-extrabold text-white">
               {activeTab === 'lesson-planner' && 'Planer lekcji AI (Wersja robocza)'}
+              {activeTab === 'presentation' && 'Interaktywna Prezentacja i Wspólny Notatnik Live'}
               {activeTab === 'context' && 'Kontekst kursanta przed lekcją'}
               {activeTab === 'profile' && 'Profil i parametry kursanta'}
               {activeTab === 'stats' && 'Statystyki i aktywność kursanta'}
@@ -1626,7 +1684,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             </span>
           ) : (
             <span className="text-xs font-mono text-content-muted hidden sm:inline">
-              Tryb ogólny / Wybierz kursanta w planerze
+              Tryb ogólny / Wybierz kursanta
             </span>
           )}
         </div>
@@ -1634,6 +1692,29 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
       {/* Active Tab Container */}
       <div ref={tabContentRef}>
+          {activeTab === 'presentation' && (
+            <LessonPresentationView
+              selectedUser={selectedUser}
+              lessonRecords={lessonRecords}
+              onOpenLessonFormWithData={(data) => {
+                setEditingRecordId(null);
+                setViewingRecord(null);
+                const sId = selectedUser?.id || '';
+                setLessonFormStudentId(sId);
+                setLessonFormStudentIds(sId ? [sId] : []);
+                setLessonFormDate(new Date().toISOString().split('T')[0]);
+                setLessonFormTopic(data.topic || '');
+                setLessonFormSummary(data.summary || '');
+                setLessonFormWords(data.words || '');
+                setLessonFormThingsToImprove(data.thingsToImprove || '');
+                setLessonFormSuggestedFollowUp(data.followUp || '');
+                setLessonFormStudentSpeaking('');
+                openLessonRecordModal('edit', undefined, true);
+                showToast('Przeniesiono podsumowanie prezentacji do formularza lekcji!');
+              }}
+            />
+          )}
+
           {activeTab === 'lesson-planner' && (
             <LessonPlanner
               selectedUser={selectedUser}
@@ -1659,6 +1740,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 setLessonFormSuggestedFollowUp(data.followUp || '');
                 setLessonFormThingsToImprove('');
                 setLessonFormStudentSpeaking('');
+                setLessonFormScenarioId(data.scenarioId || '');
+                setLessonFormScenarioTopic(data.scenarioTopic || data.topic || '');
+                setLessonFormScenarioContent(data.scenarioContent || '');
                 openLessonRecordModal('edit', undefined, true);
                 showToast('Przeniesiono scenariusz do nowej notatki z lekcji!');
               }}
@@ -1797,7 +1881,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                     #{lessonRecords.length - index}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                     <h4 className="font-bold text-base line-clamp-1">{record.topic}</h4>
+                                     <div className="flex items-center gap-2 flex-wrap">
+                                       <h4 className="font-bold text-base line-clamp-1">{record.topic}</h4>
+                                       {record.scenarioTopic && (
+                                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25 truncate max-w-[220px]" title={`Podstawa lekcji: ${record.scenarioTopic}`}>
+                                           🔗 {record.scenarioTopic}
+                                         </span>
+                                       )}
+                                     </div>
                                      <span className="text-xs font-mono text-content-muted">{record.date}</span>
                                   </div>
                                 </div>
@@ -1910,7 +2001,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                                         #{lessonNumber}
                                                       </div>
                                                       <div className="flex-1 min-w-0">
-                                                         <h4 className="font-bold text-base line-clamp-1">{record.topic}</h4>
+                                                         <div className="flex items-center gap-2 flex-wrap">
+                                                           <h4 className="font-bold text-base line-clamp-1">{record.topic}</h4>
+                                                           {record.scenarioTopic && (
+                                                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25 truncate max-w-[220px]" title={`Podstawa lekcji: ${record.scenarioTopic}`}>
+                                                               🔗 {record.scenarioTopic}
+                                                             </span>
+                                                           )}
+                                                         </div>
                                                          <span className="text-xs font-mono text-content-muted">{record.date}</span>
                                                       </div>
                                                     </div>
@@ -2902,6 +3000,62 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                           />
                         </div>
                       </div>
+
+                      {/* Powiązanie z Podstawą Lekcji (Scenariuszem bazowym) */}
+                      <div className="p-3.5 rounded-xl bg-base-200/90 border border-primary/20 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="text-xs font-bold text-primary flex items-center gap-1.5">
+                            <Layers size={14} /> Podstawa lekcji (Powiązany scenariusz bazowy)
+                          </label>
+                          {lessonFormScenarioTopic && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLessonFormScenarioId('');
+                                setLessonFormScenarioTopic('');
+                                setLessonFormScenarioContent('');
+                              }}
+                              className="text-[11px] text-content-muted hover:text-danger cursor-pointer transition-colors"
+                            >
+                              Odłącz scenariusz
+                            </button>
+                          )}
+                        </div>
+                        <select
+                          value={lessonFormScenarioId}
+                          onChange={(e) => {
+                            const sId = e.target.value;
+                            setLessonFormScenarioId(sId);
+                            const sc = availableScenariosForForm.find(s => s.id === sId);
+                            if (sc) {
+                              setLessonFormScenarioTopic(sc.topic || sc.title);
+                              setLessonFormScenarioContent(sc.content);
+                              if (!lessonFormTopic.trim()) {
+                                setLessonFormTopic(sc.topic || sc.title);
+                              }
+                              if (!lessonFormWords.trim() && sc.vocabularyText) {
+                                setLessonFormWords(sc.vocabularyText);
+                              }
+                            } else {
+                              setLessonFormScenarioTopic('');
+                              setLessonFormScenarioContent('');
+                            }
+                          }}
+                          className="w-full bg-base-300 border border-white/10 rounded-lg p-2 text-white text-xs"
+                        >
+                          <option value="">-- Wybierz wygenerowany scenariusz (opcjonalnie) --</option>
+                          {availableScenariosForForm.map(sc => (
+                            <option key={sc.id} value={sc.id}>
+                              {sc.topic || sc.title} {sc.studentName ? `(${sc.studentName})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {lessonFormScenarioTopic && (
+                          <div className="text-[11px] text-primary/80 font-medium">
+                            🔗 Powiązano z konspektem: <span className="text-white font-bold">{lessonFormScenarioTopic}</span>
+                          </div>
+                        )}
+                      </div>
                       <div>
                         <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Revision Notes")}</label>
                         <textarea 
@@ -3253,59 +3407,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     </Button>
                   </div>
                   
-                  {viewingRecord?.lessonSummary && (
-                    <div className="rounded-xl overflow-hidden border border-white/5 bg-surface-flat">
-                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-content">
-                        <span className="w-2 h-2 rounded-full bg-info"></span>
-                        
-                                                                          {i18n.t("Revision Notes")}
-                                                                        </div>
-                      <div className="p-4 text-sm text-content whitespace-pre-wrap">{viewingRecord.lessonSummary}</div>
-                    </div>
-                  )}
-
-                  {viewingRecord?.studentSpeaking && (
-                    <div className="rounded-xl overflow-hidden border border-white/5 bg-surface-flat">
-                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-content">
-                        <span className="w-2 h-2 rounded-full bg-text-faint"></span>
-                        
-                                                                          {i18n.t("Kursant — o czym mówił")}
-                                                                        </div>
-                      <div className="p-4 text-sm text-content whitespace-pre-wrap">{viewingRecord.studentSpeaking}</div>
-                    </div>
-                  )}
-
-                  {viewingRecord?.vocabularyText && (
-                    <div className="rounded-xl overflow-hidden border border-white/5 bg-primary/10">
-                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-content">
-                        <span className="w-2 h-2 rounded-full bg-primary"></span>
-                        
-                                                                          {i18n.t("Słownictwo & Wymowa")}
-                                                                        </div>
-                      <div className="p-4 text-sm font-mono text-content whitespace-pre-wrap">{viewingRecord.vocabularyText}</div>
-                    </div>
-                  )}
-
-                  {viewingRecord?.thingsToImprove && (
-                    <div className="rounded-xl overflow-hidden border border-white/5 bg-danger/10">
-                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-content">
-                        <span className="w-2 h-2 rounded-full bg-danger"></span>
-                        
-                                                                          {i18n.t("Things to Improve")}
-                                                                        </div>
-                      <div className="p-4 text-sm text-content whitespace-pre-wrap">{viewingRecord.thingsToImprove}</div>
-                    </div>
-                  )}
-
-                  {viewingRecord?.suggestedFollowUp && (
-                    <div className="rounded-xl overflow-hidden border border-white/5 bg-warn/10">
-                      <div className="px-4 py-3 font-bold flex items-center gap-2 border-b border-white/5 text-content">
-                        <span className="w-2 h-2 rounded-full bg-warn"></span>
-                        
-                                                                          {i18n.t("Suggested follow-up")}
-                                                                        </div>
-                      <div className="p-4 text-sm text-content whitespace-pre-wrap">{viewingRecord.suggestedFollowUp}</div>
-                    </div>
+                  {/* Cascading Lesson Details view */}
+                  {viewingRecord && (
+                    <CascadingLessonDetails
+                      record={viewingRecord}
+                      studentName={selectedUser ? `${selectedUser.firstName || ''} ${selectedUser.lastName || selectedUser.username}`.trim() : undefined}
+                      onLinkScenario={handleLinkScenarioToRecord}
+                      onGenerateHomework={() => handleGenerateHomeworkFromLesson(viewingRecord)}
+                      onEdit={() => openLessonRecordModal('edit', viewingRecord)}
+                      onDelete={() => handleDeleteLessonRecord(viewingRecord)}
+                      onClose={() => setShowLessonRecordModal(false)}
+                    />
                   )}
                 </div>
               </Card>

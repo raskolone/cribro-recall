@@ -430,6 +430,9 @@ service cloud.firestore {
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
+    match /lessonScenarios/{scenarioId} {
+      allow read, write: if isAdmin();
+    }
     // Baza tematów i inne wspólne ustawienia — czyta każdy zalogowany,
     // zapisuje wyłącznie nauczyciel. Rolę "teacher" obsługuje już isAdmin(),
     // więc osobny warunek na nią był zbędny i tylko powielał odczyt dokumentu.

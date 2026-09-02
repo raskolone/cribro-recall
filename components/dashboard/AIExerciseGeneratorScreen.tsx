@@ -846,7 +846,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   // Loading & error states
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
-  const [activeGeneratingModel, setActiveGeneratingModel] = useState<string>('openai/gpt-4o-mini');
+  const [activeGeneratingModel, setActiveGeneratingModel] = useState<string>('openai/gpt-5.6-luna');
   const [lastUsedWords, setLastUsedWords] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [debugLogs, setDebugLogs] = useState<string>('');

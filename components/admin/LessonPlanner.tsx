@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Sparkles, Send, Bot, User as UserIcon, Copy, Check, Clock, 
   BookOpen, Target, Layers, Lightbulb, RefreshCw, ChevronRight, 
-  Trash2, AlertCircle, ArrowRight, FileText, Zap, Brain, MessageSquare,
-  ListPlus, Settings2, Sliders, RotateCcw, History, ArrowUpRight
+  Trash2, AlertCircle, FileText, Brain, MessageSquare,
+  Settings2, RotateCcw, History
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useAuth } from '../../context/AuthContext';
@@ -13,6 +13,8 @@ import { User, LessonRecord, LessonModuleConfig, LessonPlanPreset, LessonPlanner
 import { LessonModulesConfig } from './LessonModulesConfig';
 import { LessonScenarioAccordion } from './LessonScenarioAccordion';
 import { DEFAULT_LESSON_MODULES, LESSON_PRESETS } from './lessonPlannerPresets';
+import { GeneratedScenariosSection } from './GeneratedScenariosSection';
+import { saveGeneratedScenario } from '../../services/scenarioService';
 
 interface UserWithId extends User {
   id: string;
@@ -32,31 +34,16 @@ interface LessonPlannerProps {
   users: UserWithId[];
   onSelectUser?: (user: UserWithId | null) => void;
   recentLessons?: LessonRecord[];
-  onInsertLessonRecord?: (data: { topic: string; summary: string; vocabulary: string; followUp: string }) => void;
+  onInsertLessonRecord?: (data: { 
+    topic: string; 
+    summary: string; 
+    vocabulary: string; 
+    followUp: string;
+    scenarioId?: string;
+    scenarioTopic?: string;
+    scenarioContent?: string;
+  }) => void;
 }
-
-const QUICK_PROMPTS = [
-  {
-    title: 'Finishing, Upgrading & Choices',
-    desc: 'Wzór 5 modułów: Warm-up, Main Topic, Language Focus, Practice, Homework',
-    prompt: 'Przygotuj kompletny scenariusz lekcji na temat "Finishing, Upgrading & Choosing What Deserves Your Time" (zarządzanie czasem, selekcja priorytetów i jakość realizacji zadań). Zbuduj lekcję ściśle według skonfigurowanych modułów.'
-  },
-  {
-    title: 'Business English: Negocjacje',
-    desc: 'Zwroty dyplomatyczne, argumentacja i symulacja spotkania',
-    prompt: 'Stwórz scenariusz lekcji Business English na temat "Wpływowe negocjacje i dyplomatyczny język w relacjach z klientem". Przygotuj zwroty z polskim tłumaczeniem oraz zadania praktyczne.'
-  },
-  {
-    title: 'Sztuczna Inteligencja i Rynek Pracy',
-    desc: 'Dyskusja, zaawansowane kolokacje C1 i debata',
-    prompt: 'Przygotuj scenariusz lekcji konwersacyjnej na temat "Sztuczna inteligencja, automatyzacja i przyszłość rynku pracy". Skup się na naturalnych kolokacjach i angażującej dyskusji.'
-  },
-  {
-    title: 'Gramatyka: Mixed Conditionals',
-    desc: 'Okresy warunkowe mieszane w żywym dialogu i ćwiczeniach',
-    prompt: 'Przygotuj scenariusz lekcji skupionej na "Mixed Conditionals (okresy warunkowe mieszane)". Wyjaśnij zasady zwięźle po polsku, podaj przykłady, pytania do rozmowy oraz zdania do tłumaczenia PL->EN.'
-  }
-];
 
 const LOCAL_STORAGE_PRESETS_KEY = 'cribro_lesson_planner_custom_presets_v2';
 const LOCAL_STORAGE_SETTINGS_KEY = 'cribro_lesson_planner_custom_settings_v2';
@@ -72,6 +59,7 @@ export const LessonPlanner: React.FC<LessonPlannerProps> = ({
   const { user: currentUser } = useAuth();
   const { language } = useLanguage();
   const isAdmin = currentUser?.role === 'admin';
+  const [scenariosTimestamp, setScenariosTimestamp] = useState<number>(Date.now());
 
   // Configured modules for lesson generator (with localStorage fallback)
   const [modules, setModules] = useState<LessonModuleConfig[]>(() => {
@@ -451,6 +439,25 @@ TRYBY INTERAKCJI Z LEKTOREM:
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Auto-save generated scenario into database / local storage
+      if (responseText && responseText.length > 100) {
+        const presetObj = LESSON_PRESETS.find(p => p.id === selectedPresetId) || customPresets.find(p => p.id === selectedPresetId);
+        saveGeneratedScenario({
+          title: inputPrompt || 'Scenariusz lekcji',
+          content: responseText,
+          studentId: selectedUser?.id || null,
+          studentName: selectedUser ? (selectedUser.firstName ? `${selectedUser.firstName} ${selectedUser.lastName || ''}`.trim() : selectedUser.username) : null,
+          targetLevel: selectedUser?.level || 'B2',
+          lessonDuration: presetObj?.defaultDuration || '60 min',
+          lessonType: presetObj?.name || 'Standardowy',
+          vocabularyText: extractedVocab
+        }).then(() => {
+          setScenariosTimestamp(Date.now());
+        }).catch(err => {
+          console.warn('Could not auto-save scenario to storage:', err);
+        });
+      }
     } catch (err: any) {
       console.error('Błąd generatora planera lekcji:', err);
       const errorMessage: ChatMessage = {
@@ -702,39 +709,6 @@ TRYBY INTERAKCJI Z LEKTOREM:
         </div>
       )}
 
-      {/* Quick Prompts Chips when no student is chosen */}
-      {!selectedUser && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-xs font-bold text-content-muted uppercase tracking-wider">
-            <Lightbulb size={13} className="text-warn" />
-            <span>Szybkie propozycje tematów:</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-            {QUICK_PROMPTS.map((qp, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSendMessage(qp.prompt)}
-                disabled={isLoading}
-                className="p-3.5 rounded-2xl bg-base-200/70 hover:bg-base-200 border border-white/10 hover:border-primary/50 text-left transition-all group active:scale-[0.98] flex flex-col justify-between hover:shadow-[0_0_16px_rgba(114,240,180,0.2)] cursor-pointer"
-              >
-                <div>
-                  <h4 className="font-black text-white text-xs group-hover:text-primary transition-colors flex items-center justify-between">
-                    <span>{qp.title}</span>
-                    <Zap size={12} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </h4>
-                  <p className="text-[11px] text-content-muted mt-1.5 line-clamp-2 leading-relaxed">
-                    {qp.desc}
-                  </p>
-                </div>
-                <span className="text-[10px] text-primary font-bold mt-2.5 flex items-center gap-1">
-                  Generuj scenariusz <ArrowRight size={11} className="group-hover:translate-x-1 transition-transform" />
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Main Chat Stream Container */}
       <div className="rounded-3xl border border-white/15 bg-base-200/50 backdrop-blur-md overflow-hidden flex flex-col min-h-[480px] shadow-2xl">
         {/* Messages List */}
@@ -921,6 +895,19 @@ TRYBY INTERAKCJI Z LEKTOREM:
         customPresets={customPresets}
         onSaveCustomPreset={handleSaveCustomPreset}
         onDeleteCustomPreset={handleDeleteCustomPreset}
+      />
+
+      {/* SECTION: WYGENEROWANE SCENARIUSZE (DEDICATED SECTION WITH DIVIDER AT BOTTOM) */}
+      <GeneratedScenariosSection
+        selectedUser={selectedUser}
+        onInsertToLessonRecord={onInsertLessonRecord}
+        onSelectTopicPrompt={(prompt) => {
+          setInputPrompt(prompt);
+          if (textareaRef.current) {
+            textareaRef.current.focus();
+          }
+        }}
+        lastUpdatedTimestamp={scenariosTimestamp}
       />
     </div>
   );
