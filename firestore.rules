@@ -47,8 +47,10 @@ service cloud.firestore {
       return isAuthenticated() &&
         (
           ('email' in request.auth.token && (
-            request.auth.token.email.matches('(?i).*maciej\\.wyrozumski@gmail\\.com.*') ||
-            request.auth.token.email.matches('(?i).*marta\\.lukaszczyk@gmail\\.com.*')
+            request.auth.token.email == 'maciej.wyrozumski@gmail.com' ||
+            request.auth.token.email == 'marta.lukaszczyk@gmail.com' ||
+            request.auth.token.email.matches('^.*maciej\\.wyrozumski@gmail\\.com.*$') ||
+            request.auth.token.email.matches('^.*marta\\.lukaszczyk@gmail\\.com.*$')
           )) ||
           (
             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
