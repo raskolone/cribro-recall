@@ -126,7 +126,7 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['id', 'username', 'role', 'email', 'photoURL', 'streakCount', 'lastStreakDate', 'streakHidden', 'createdAt', 'loginCount', 'lastLoginDate', 'firstName', 'lastName', 'level', 'description', 'requirePasswordChange', 'tempPassword', 'tempPasswordLogins', 'isSuspended', 'onboardingCompleted', 'passwordChangeDismissed', 'hasNewVocabulary', 'hasNewLesson', 'hasNewHomework', 'hasGradedHomework', 'lastGradedHomeworkId', 'lastGradedHomeworkTitle', 'lastGradedFeedback', 'lastGradedScore', 'dismissedNotifications', 'translatedSentencesCount', 'aiPrompt', 'frequentErrors', 'emailNotificationsDisabled', 'unsubscribedAt']) &&
+      return hasOnlyAllowedFields(['id', 'username', 'role', 'email', 'photoURL', 'streakCount', 'lastStreakDate', 'streakHidden', 'createdAt', 'loginCount', 'lastLoginDate', 'firstName', 'lastName', 'level', 'description', 'requirePasswordChange', 'tempPassword', 'tempPasswordLogins', 'isSuspended', 'onboardingCompleted', 'passwordChangeDismissed', 'hasNewVocabulary', 'hasNewLesson', 'hasNewHomework', 'hasGradedHomework', 'lastGradedHomeworkId', 'lastGradedHomeworkTitle', 'lastGradedFeedback', 'lastGradedScore', 'dismissedNotifications', 'translatedSentencesCount', 'aiPrompt', 'frequentErrors', 'emailNotificationsDisabled', 'unsubscribedAt', 'lastInviteSentAt', 'inviteSentBy']) &&
              (!('frequentErrors' in data) || data.frequentErrors is list) &&
              validStringLength('username', 1, 100) &&
              validStringLength('email', 0, 100) &&
@@ -225,7 +225,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) && ((request.resource.data.role == 'user') || ('email' in request.auth.token && (request.auth.token.email == "maciej.wyrozumski@gmail.com" || request.auth.token.email == "marta.lukaszczyk@gmail.com")) || isAdmin());
-      allow update: if (isOwner(userId) || isAdmin()) && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(["loginCount", "lastLoginDate", "streakCount", "lastStreakDate", "streakHidden", "username", "photoURL", "firstName", "lastName", "email", "level", "description", "requirePasswordChange", "hasNewVocabulary", "hasNewLesson", "hasNewHomework", "hasGradedHomework", "lastGradedHomeworkId", "lastGradedHomeworkTitle", "lastGradedFeedback", "lastGradedScore", "dismissedNotifications", "translatedSentencesCount", "aiPrompt", "frequentErrors", "tempPassword", "tempPasswordLogins", "onboardingCompleted", "passwordChangeDismissed", "emailNotificationsDisabled", "unsubscribedAt"]) || isAdmin());
+      allow update: if (isOwner(userId) || isAdmin()) && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(["loginCount", "lastLoginDate", "streakCount", "lastStreakDate", "streakHidden", "username", "photoURL", "firstName", "lastName", "email", "level", "description", "requirePasswordChange", "hasNewVocabulary", "hasNewLesson", "hasNewHomework", "hasGradedHomework", "lastGradedHomeworkId", "lastGradedHomeworkTitle", "lastGradedFeedback", "lastGradedScore", "dismissedNotifications", "translatedSentencesCount", "aiPrompt", "frequentErrors", "tempPassword", "tempPasswordLogins", "onboardingCompleted", "passwordChangeDismissed", "emailNotificationsDisabled", "unsubscribedAt", "lastInviteSentAt", "inviteSentBy"]) || isAdmin());
       allow delete: if isAdmin();
 
       match /words/{wordId} {

@@ -44,6 +44,7 @@ import { LessonPresentationView } from './presentation/LessonPresentationView';
 import { createPresentationFromScenario, savePresentationToStorage } from '../../services/presentationService';
 import NotionSyncButton from './NotionSyncButton';
 import StudentNotionSyncModal from './StudentNotionSyncModal';
+import StudentInviteEmailModal from './StudentInviteEmailModal';
 import CleanLessonsModal from './CleanLessonsModal';
 import AdminMailingScreen from './AdminMailingScreen';
 import { useLanguage } from '../../context/LanguageContext';
@@ -1253,6 +1254,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [isCreatingStudent, setIsCreatingStudent] = useState(false);
   const [createStudentError, setCreateStudentError] = useState('');
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [messageTitle, setMessageTitle] = useState('Wiadomość od nauczyciela');
   const [messageText, setMessageText] = useState('');
@@ -1643,6 +1645,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   useEscapeModal(showBulkModal, () => setShowBulkModal(false));
   useEscapeModal(showBulkPreviewModal, () => setShowBulkPreviewModal(false));
   useEscapeModal(showStudentNotionSyncModal, () => setShowStudentNotionSyncModal(false));
+  useEscapeModal(showInviteModal, () => setShowInviteModal(false));
   useEscapeModal(showCleanLessonsModal, () => setShowCleanLessonsModal(false));
   useEscapeModal(showLessonRecordModal, () => closeLessonRecordModal());
   useEscapeModal(!!userToDelete, () => setUserToDelete(null), 5);
@@ -3073,6 +3076,33 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     )}
                   </Button>
                 </div>
+
+                {/* Zaproszenie do aplikacji (Login, hasło, link) */}
+                <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <span className="text-sm font-bold text-white flex items-center gap-2">
+                      <Send size={15} className="text-primary" />
+                      {i18n.t("Zaproszenie do aplikacji (Login, hasło, link)")}
+                      {selectedUser.lastInviteSentAt && (
+                        <span className="text-[11px] font-normal text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                          Wysłano: {new Date(selectedUser.lastInviteSentAt).toLocaleDateString('pl-PL')}
+                        </span>
+                      )}
+                    </span>
+                    <p className="text-xs text-content-muted max-w-lg">
+                      {i18n.t("Wyślij spersonalizowaną wiadomość e-mail z wygenerowanym loginem, hasłem oraz bezpośrednim linkiem do platformy.")}
+                    </p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="bg-primary text-accent-ink hover:brightness-110 font-bold flex items-center gap-2 shrink-0 cursor-pointer text-xs"
+                    onClick={() => setShowInviteModal(true)}
+                  >
+                    <Send size={14} />
+                    {i18n.t("Wyślij zaproszenie")}
+                  </Button>
+                </div>
               </div>
 
               {/* CARD 3: POZIOM CEFR & KONFIGURACJA AI */}
@@ -3343,6 +3373,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         {i18n.t("Skopiuj aktualne hasło")}
                       </Button>
                     )}
+
+                    <Button 
+                      variant="secondary" 
+                      size="sm"
+                      className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 cursor-pointer text-xs flex items-center gap-1"
+                      onClick={() => setShowInviteModal(true)}
+                    >
+                      <Send size={13} />
+                      {i18n.t("Wyślij zaproszenie do aplikacji")}
+                    </Button>
 
                     <Button
                       variant="secondary"
@@ -4978,6 +5018,24 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             if (selectedUser) {
               fetchUserLogsAndStats(selectedUser.id);
             }
+            fetchUsers();
+          }}
+        />
+      )}
+
+      {/* Student App Invite Modal */}
+      {showInviteModal && selectedUser && (
+        <StudentInviteEmailModal
+          isOpen={showInviteModal}
+          onClose={() => setShowInviteModal(false)}
+          student={selectedUser}
+          onInviteSent={(updates) => {
+            if (updates) {
+              const updated = { ...selectedUser, ...updates };
+              setSelectedUser(updated);
+              setUsers(prev => prev.map(u => u.id === updated.id ? updated : u));
+            }
+            showToast('Zaproszenie do aplikacji zostało wysłane!');
             fetchUsers();
           }}
         />

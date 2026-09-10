@@ -29,7 +29,8 @@ import {
   MoreVertical,
   Trash2,
   Layers,
-  Check
+  Check,
+  Send
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import { User } from '../../types';
@@ -38,6 +39,7 @@ import Card from '../ui/Card';
 import Badge from '../ui/Badge';
 import { useLanguage } from '../../context/LanguageContext';
 import StudentNotionSyncModal from './StudentNotionSyncModal';
+import StudentInviteEmailModal from './StudentInviteEmailModal';
 import {
   buildBulkUpdatePayload,
   calculateIsAllSelected,
@@ -97,6 +99,10 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
   // Notion Fetch / Sync Modal State
   const [notionSyncUser, setNotionSyncUser] = useState<User | null>(null);
   const [showNotionSyncModal, setShowNotionSyncModal] = useState<boolean>(false);
+
+  // App Invite Modal State
+  const [inviteStudent, setInviteStudent] = useState<User | null>(null);
+  const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
 
   // Single user deletion state
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
@@ -865,6 +871,11 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                               ) : (
                                 <span className="text-primary/80 font-semibold">Powiadomienia aktywne</span>
                               )}
+                              {user.lastInviteSentAt && (
+                                <span className="text-emerald-400 font-mono ml-1.5" title={`Ostatnie zaproszenie: ${new Date(user.lastInviteSentAt).toLocaleString('pl-PL')}`}>
+                                  • Zaproszono
+                                </span>
+                              )}
                             </div>
                           </div>
 
@@ -971,6 +982,20 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                             <span className="hidden sm:inline">Prace</span>
                           </button>
 
+                          {/* Quick Invite Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setInviteStudent(user);
+                              setShowInviteModal(true);
+                            }}
+                            className="px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-semibold transition-colors flex items-center gap-1 border border-primary/20 hover:border-primary/40 cursor-pointer"
+                            title="Wyślij zaproszenie do aplikacji z loginem i hasłem"
+                          >
+                            <Send size={12} />
+                            <span className="hidden md:inline">Zaproszenie</span>
+                          </button>
+
                           {/* "Więcej opcji" Dropdown Button */}
                           <div className="relative inline-block text-left">
                             <button
@@ -996,6 +1021,17 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                                 <div className="px-2.5 py-1 text-[10px] font-bold text-content-muted uppercase tracking-wider border-b border-white/5 mb-1">
                                   Opcje: {fullName}
                                 </div>
+                                <button
+                                  onClick={() => {
+                                    setOpenMenuUserId(null);
+                                    setInviteStudent(user);
+                                    setShowInviteModal(true);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 rounded-lg hover:bg-primary/15 text-primary flex items-center gap-2 transition-colors cursor-pointer text-left font-semibold"
+                                >
+                                  <Send size={13} className="shrink-0" />
+                                  <span>Wyślij zaproszenie do aplikacji</span>
+                                </button>
                                 <button
                                   onClick={() => {
                                     setOpenMenuUserId(null);
@@ -1149,6 +1185,23 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
           onSyncComplete={() => {
             if (onRefreshUsers) {
               onRefreshUsers();
+            }
+          }}
+        />
+      )}
+
+      {/* Student App Invite Modal */}
+      {showInviteModal && inviteStudent && (
+        <StudentInviteEmailModal
+          isOpen={showInviteModal}
+          onClose={() => {
+            setShowInviteModal(false);
+            setInviteStudent(null);
+          }}
+          student={inviteStudent}
+          onInviteSent={async () => {
+            if (onRefreshUsers) {
+              await onRefreshUsers();
             }
           }}
         />

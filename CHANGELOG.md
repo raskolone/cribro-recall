@@ -47,7 +47,26 @@ CRIBRO ENGLISH (Recall) to zaawansowana platforma edukacyjna do intensywnej nauk
 
 ## 3. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
-### Nowość: Narzędzie E-Learningu, Pokoje na PIN & Live Sync dla Kursantów (`/live` i `/join`)
+### Nowość: Okno Zaproszenia do Aplikacji w Bazie Kursantów i Profilu Kursanta (`StudentInviteEmailModal.tsx`)
+- **Dedykowany komponent okna zaproszenia (`StudentInviteEmailModal.tsx`)**:
+  - Utworzono modal wzorowany na widoku mailingu oraz oknie potwierdzenia wysyłki prac domowych (`HomeworkEmailConfirmationModal.tsx`).
+  - Umożliwia wysłanie spersonalizowanego e-maila powitalnego zawierającego wygenerowany login (`username`), hasło (istniejące `tempPassword` lub nowe wygenerowane jednym kliknięciem), bezpośredni link do logowania w aplikacji (`appUrl`) oraz opcjonalną notatkę/instrukcje od lektora.
+  - Wyposażony w podgląd na żywo (HTML oraz Plain text), symulację nagłówka klienta poczty, opcję kopii ukrytej (BCC) dla lektora oraz przyciski szybkiego kopiowania danych logowania (do wysyłki np. przez WhatsApp / SMS) i pełnej treści wiadomości.
+  - Automatycznie synchronizuje zaktualizowane hasło tymczasowe w Firestore (`tempPassword`, `requirePasswordChange: true`) oraz w Firebase Authentication (`/api/admin-users/users/:uid/password`), a także opcjonalnie aktualizuje docelowy adres e-mail kursanta.
+  - Zapisuje metadane wysyłki w profilu kursanta (`lastInviteSentAt`, `inviteSentBy`).
+- **Integracja w Bazie Kursantów (`StudentDatabaseScreen.tsx`)**:
+  - Dodano szybki przycisk **„Zaproszenie”** w kolumnie akcji wiersza każdego kursanta.
+  - Dodano pozycję **„Wyślij zaproszenie do aplikacji”** w rozwijanym menu opcji wiersza (`MoreVertical`).
+  - W kolumnie e-mail dodano wskaźnik informujący o dacie wysłania ostatniego zaproszenia.
+- **Integracja w Profilu Kursanta (`AdminPanel.tsx`)**:
+  - Dodano wyróżniony kafelek z przyciskiem **„Wyślij zaproszenie”** w karcie *„Komunikacja i powiadomienia e-mail (Mailing)”*.
+  - Dodano przycisk **„Wyślij zaproszenie do aplikacji”** w sekcji *„Akcje i zabezpieczenia konta”* obok opcji zmiany i kopiowania hasła.
+- **Rozszerzenie szablonu e-maila powitalnego (`services/homeworkEmail.ts`)**:
+  - Rozbudowano `buildWelcomeEmail` oraz interfejs `WelcomeEmailParams` o obsługę pól `customNote`, `assignedBy` oraz `subject`, dodając estetyczny blok notatki w ciemnej stylistyce CRIBRO.
+- **Aktualizacja reguł Firestore i typów (`types.ts`, `firestore.rules`)**:
+  - Dodano pola `lastInviteSentAt` i `inviteSentBy` do interfejsu `User` oraz białej listy walidacji w regułach Firestore.
+
+### Poprzedni etap: Narzędzie E-Learningu, Pokoje na PIN & Live Sync dla Kursantów (`/live` i `/join`)
 - **Architektura sesji chmurowych z kodem PIN (`liveSessions/{pin}`)**:
   - Wdrożono moduł prezentacji i lekcji e-learningowych na żywo wzorowany na Articulate 360 oraz Nearpod/Kahoot.
   - Kompletny dokument planu, architektury i kolejnych faz znajduje się w pliku **[ELEARNING_CLASSROOM_PLAN.md](./ELEARNING_CLASSROOM_PLAN.md)**.

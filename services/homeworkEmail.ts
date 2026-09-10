@@ -301,6 +301,9 @@ export interface WelcomeEmailParams {
   tempPassword: string;
   appUrl?: string;
   unsubscribeUrl?: string;
+  customNote?: string;
+  assignedBy?: string;
+  subject?: string;
 }
 
 export function buildWelcomeEmail(params: WelcomeEmailParams): {
@@ -314,10 +317,20 @@ export function buildWelcomeEmail(params: WelcomeEmailParams): {
     tempPassword,
     appUrl = 'https://app.maciej.pro',
     unsubscribeUrl,
+    customNote,
+    assignedBy = 'Maciej Wyrozumski',
+    subject: customSubject,
   } = params;
 
   const greeting = formatPolishGreeting(studentName);
-  const subject = 'Witaj w CRIBRO ENGLISH — Twoje dane logowania';
+  const subject = customSubject?.trim() || 'Witaj w CRIBRO ENGLISH — Twoje dane logowania';
+
+  const customNoteHtml = customNote
+    ? `<div style="margin:20px 0;background:rgba(234,179,8,0.1);border-left:4px solid #eab308;padding:14px 18px;border-radius:0 10px 10px 0;">
+         <p style="margin:0;font-size:11px;font-weight:800;color:#facc15;text-transform:uppercase;letter-spacing:0.08em;">Wiadomość od lektora:</p>
+         <p style="margin:6px 0 0;color:#fef08a;font-size:14px;line-height:1.5;">${escapeHtml(customNote)}</p>
+       </div>`
+    : '';
 
   const unsubscribeHtml = unsubscribeUrl
     ? `<p style="margin:16px 0 0;color:#64748b;font-size:11px;line-height:1.5;text-align:center;">
@@ -350,6 +363,8 @@ export function buildWelcomeEmail(params: WelcomeEmailParams): {
           <p style="margin:0;color:#cbd5e1;font-size:15px;line-height:1.65;">
             Twoje konto na platformie <strong style="color:#f1f5f9;">CRIBRO ENGLISH</strong> jest już aktywne! Poniżej znajdziesz dane logowania — zapamiętaj je lub zmień hasło po pierwszym zalogowaniu.
           </p>
+
+          ${customNoteHtml}
 
           <!-- Dane logowania w karcie -->
           <div style="margin:24px 0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:20px 20px;overflow:hidden;">
@@ -400,10 +415,17 @@ export function buildWelcomeEmail(params: WelcomeEmailParams): {
   </body>
 </html>`;
 
-  const text = [
+  const textLines: (string | null)[] = [
     greeting,
     '',
     'Twoje konto na platformie CRIBRO ENGLISH jest gotowe!',
+  ];
+
+  if (customNote) {
+    textLines.push('', 'Wiadomość od lektora:', customNote);
+  }
+
+  textLines.push(
     '',
     `Login: ${username}`,
     `Hasło: ${tempPassword}`,
@@ -414,9 +436,11 @@ export function buildWelcomeEmail(params: WelcomeEmailParams): {
     unsubscribeUrl ? `\nWypisz się z powiadomień: ${unsubscribeUrl}` : null,
     '',
     '—',
-    'Maciej Wyrozumski',
+    assignedBy,
     'CRIBRO ENGLISH',
-  ].filter((line) => line !== null).join('\n');
+  );
+
+  const text = textLines.filter((line) => line !== null).join('\n');
 
   return { subject, html, text };
 }

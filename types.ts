@@ -78,6 +78,10 @@ export interface User {
   /** Wyłączenie powiadomień e-mail o zadaniach i przypomnieniach (Resend). */
   emailNotificationsDisabled?: boolean;
   unsubscribedAt?: string;
+  /** Data i godzina ostatniego wysłania zaproszenia do aplikacji z danymi logowania. */
+  lastInviteSentAt?: string;
+  /** Adres lektora, który wysłał zaproszenie. */
+  inviteSentBy?: string;
 }
 
 export interface EmailTemplate {
