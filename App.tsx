@@ -19,6 +19,8 @@ import { handleGlobalEscape } from './utils/modalStack';
 import AppAlertModal from './components/ui/AppAlertModal';
 import UnsubscribeScreen from './components/auth/UnsubscribeScreen';
 import DirectHomeworkScreen from './components/dashboard/DirectHomeworkScreen';
+import LiveJoinScreen from './components/presentation/LiveJoinScreen';
+
 
 const App: React.FC = () => {
   useEffect(() => {
@@ -102,6 +104,17 @@ const AppContent: React.FC = () => {
       </SettingsProvider>
     );
   }
+
+  // Prezentacja i lekcja na żywo (E-learning z kodem PIN lub linkiem /live?pin=...)
+  // Kursant dołącza bez rejestracji i widzi prezentację sterowaną w czasie rzeczywistym przez lektora.
+  if (typeof window !== 'undefined' && (window.location.pathname.startsWith('/live') || window.location.pathname.startsWith('/join'))) {
+    return (
+      <SettingsProvider>
+        <LiveJoinScreen />
+      </SettingsProvider>
+    );
+  }
+
 
   if (!isAuthReady) {
     return <div className="min-h-screen flex items-center justify-center">

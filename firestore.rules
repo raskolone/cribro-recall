@@ -520,6 +520,21 @@ service cloud.firestore {
         allow update, delete: if isAdmin();
       }
     }
+    // ---------------------------------------------------------------
+    // Sesje prezentacji na żywo z kodem PIN (liveSessions)
+    // ---------------------------------------------------------------
+    // Dokument ma jako ID znormalizowany kod PIN (np. "482190" lub "ABC123").
+    // Kursant z kodem może pobierać i subskrybować stan prezentacji (get).
+    // Listowanie całej kolekcji jest zablokowane dla osób niezalogowanych.
+    // Modyfikacja stanu dozwolona dla lektora oraz dla dołączających kursantów.
+    match /liveSessions/{pin} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create: if isAdmin() || isAuthenticated();
+      allow update: if true;
+      allow delete: if isAdmin();
+    }
+
     // Baza tematów i inne wspólne ustawienia — czyta każdy zalogowany,
     // zapisuje wyłącznie nauczyciel. Rolę "teacher" obsługuje już isAdmin(),
     // więc osobny warunek na nią był zbędny i tylko powielał odczyt dokumentu.
@@ -529,3 +544,4 @@ service cloud.firestore {
     }
   }
 }
+

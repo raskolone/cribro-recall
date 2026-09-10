@@ -5,12 +5,13 @@ Dokument dla każdego asystenta i edytora AI (Antigravity, Cursor, Windsurf, Cla
 ---
 
 ## ⚡ 1. Obowiązkowy Pierwszy Krok
-Przed przystąpieniem do jakichkolwiek modyfikacji kodu lub analizy, **bezwzględnie zapoznaj się z plikiem [CHANGELOG.md](./CHANGELOG.md)**.
-Zawiera on:
+Przed przystąpieniem do jakichkolwiek modyfikacji kodu lub analizy, **bezwzględnie zapoznaj się z plikiem [CHANGELOG.md](./CHANGELOG.md)** oraz **[ELEARNING_CLASSROOM_PLAN.md](./ELEARNING_CLASSROOM_PLAN.md)** (dla prac związanych z e-learningiem i prezentacjami).
+Zawierają one:
 - Pełny przegląd funkcjonalności platformy i ról użytkowników (`user`, `teacher`, `admin`),
-- Architekturę techniczną i integracje (Firebase, Notion, Resend, Gemini/OpenAI, TTS),
-- Kompletny rejestr zmian wdrożonych w ciągu ostatnich 24 godzin (Mailing, Notion sync, format 4 bloków, prace domowe, potwierdzenia wysyłek e-mail),
-- Spis kluczowych plików źródłowych.
+- Architekturę techniczną i integracje (Firebase, Notion, Resend, Gemini/OpenAI, TTS, LiveSession PIN),
+- Kompletny rejestr zmian wdrożonych w ciągu ostatnich 24 godzin (Mailing, Notion sync, format 4 bloków, prace domowe, sesje live na PIN),
+- Spis kluczowych plików źródłowych oraz roadmapę modułu e-learningu.
+
 
 ---
 

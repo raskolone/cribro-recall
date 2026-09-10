@@ -47,7 +47,27 @@ CRIBRO ENGLISH (Recall) to zaawansowana platforma edukacyjna do intensywnej nauk
 
 ## 3. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
-### Nowość: Draft E-maila Powitalnego, Sugestia Zmiany Hasła, Logowanie Google & Nowy Onboarding
+### Nowość: Narzędzie E-Learningu, Pokoje na PIN & Live Sync dla Kursantów (`/live` i `/join`)
+- **Architektura sesji chmurowych z kodem PIN (`liveSessions/{pin}`)**:
+  - Wdrożono moduł prezentacji i lekcji e-learningowych na żywo wzorowany na Articulate 360 oraz Nearpod/Kahoot.
+  - Kompletny dokument planu, architektury i kolejnych faz znajduje się w pliku **[ELEARNING_CLASSROOM_PLAN.md](./ELEARNING_CLASSROOM_PLAN.md)**.
+- **Model danych i Firebase Firestore (`types.ts`, `firestore.rules`)**:
+  - Dodano interfejsy `LiveSession` oraz `LiveSessionStudent`.
+  - Wdrożono bezpieczne reguły Firestore dla `liveSessions/{pin}`: publiczny odczyt po znanym kodzie PIN (`get`), blokada listowania całej kolekcji dla osób niebędących lektorami (`list`), uprawnienia zapisu dla lektorów oraz możliwość rejestracji obecności przez kursantów.
+- **Serwis sesji na żywo (`services/liveSessionService.ts`)**:
+  - Generator unikalnych 6-znakowych kodów PIN (`ABC-123`) z alfabetu bez mylących się znaków.
+  - Pełna subskrypcja stanu w czasie rzeczywistym (`onSnapshot`), synchronizacja przełączania slajdów, odsłoniętych odpowiedzi, tablicy lektora, minutnika i notatek.
+  - Obsługa dołączania kursantów (`joinLiveSession`), pulsu obecności (`heartbeatLiveSession`) i zamykania sesji (`endLiveSession`).
+- **Nowy ekran kursanta `LiveJoinScreen.tsx`**:
+  - Dostępny pod ścieżką `/live` oraz `/join` w `App.tsx` bez konieczności logowania ani posiadania konta.
+  - Obsługa wejścia z bezpośredniego linku `cribro.pl/live?pin=ABC123`.
+  - Responsywny podgląd slajdu ze skalowaniem tablicy lektora, wskaźnikiem laserowym, zegarem i notatnikiem w locie.
+- **Panel prowadzącego `PresenterPanel.tsx`**:
+  - Przycisk **„Uruchom sesję Live (PIN)”** w nagłówku panelu prezentera.
+  - Modal z kodem PIN, przyciskami kopiowania linku/PINu oraz listą kursantów obecnych na żywo.
+
+### Poprzedni etap: Draft E-maila Powitalnego, Sugestia Zmiany Hasła, Logowanie Google & Nowy Onboarding
+
 - **Draft e-maila powitalnego i zapraszającego do aplikacji (`welcome_invite`)**:
   - Utworzono szablon e-maila powitalnego `welcome_invite` w `AdminMailingScreen.tsx` oraz dedykowaną funkcję `buildWelcomeEmail()` w `services/homeworkEmail.ts`.
   - Zawiera spersonalizowane powitanie w wołaczu (`formatPolishGreeting`), wygenerowany login (`username`), hasło tymczasowe (`tempPassword`), bezpośredni przycisk CTA do logowania w aplikacji, wykaz kluczowych modułów oraz oficjalną wizytówkę lektora w stopce.

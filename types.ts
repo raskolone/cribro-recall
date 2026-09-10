@@ -750,6 +750,58 @@ export interface LessonPresentation {
   updatedAt: string;
 }
 
+export interface LiveSessionStudent {
+  id: string;
+  name: string;
+  joinedAt: string;
+  lastSeenAt: string;
+}
+
+export interface LiveSession {
+  /** Kod PIN sesji (np. 6 znaków alfanumerycznych, np. "482190" lub "ABC123") */
+  pin: string;
+  sessionId: string;
+  teacherUid: string;
+  teacherName: string;
+  deckTitle: string;
+  deck: LessonPresentation;
+  currentSlideIndex: number;
+  totalSlides: number;
+  /**
+   * Co lektor odkrył i podświetlił na slajdzie.
+   */
+  interaction: {
+    revealedAnswers: Record<string, boolean>;
+    highlightedItemId: string | null;
+    randomQuestionIndex: number | null;
+  };
+  /** Rysunek z tablicy lektora wraz z rozmiarem płótna */
+  whiteboard?: {
+    shapes: any[];
+    width: number;
+    height: number;
+  } | null;
+  /** Znacznik czasu zakończenia odliczania */
+  timerEndsAt?: number | null;
+  /** Słownictwo i błędy notowane na bieżąco */
+  liveNotebook?: {
+    vocab: LiveVocabItem[];
+    corrections: LiveCorrectionItem[];
+  } | null;
+  /** Pozycja wskaźnika laserowego lektora */
+  laserPos?: {
+    x: number;
+    y: number;
+    active: boolean;
+  } | null;
+  status: 'active' | 'ended';
+  createdAt: string;
+  updatedAt: string;
+  connectedStudents: LiveSessionStudent[];
+  revision: number;
+}
+
+
 /**
  * Test otwarty — dla kandydatów, których nie ma jeszcze w bazie.
  *
