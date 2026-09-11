@@ -110,7 +110,10 @@ const StudentNotionSyncModal: React.FC<Props> = ({
   const [existingDocIds, setExistingDocIds] = useState<Set<string>>(new Set());
   const [existingNotionPageIds, setExistingNotionPageIds] = useState<Set<string>>(new Set());
   const [existingTopicKeys, setExistingTopicKeys] = useState<Set<string>>(new Set());
-  const [lessonFilter, setLessonFilter] = useState<'all' | 'new' | 'already_imported'>('all');
+  // Domyślnie tylko nowe wpisy: przy kilkudziesięciu lekcjach w Notion lista
+  // „wszystkie" to głównie rzeczy dawno zaimportowane, a lektor przychodzi tu
+  // po to, żeby dobrać to, czego jeszcze nie ma.
+  const [lessonFilter, setLessonFilter] = useState<'all' | 'new' | 'already_imported'>('new');
   const [lessonSearchTerm, setLessonSearchTerm] = useState<string>('');
 
   // Uruchomienie sprawdzania bazy Notion przy otwarciu okna
@@ -833,9 +836,22 @@ const StudentNotionSyncModal: React.FC<Props> = ({
                   {/* Lista tematów lekcji z Notion */}
                   <div className="max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-base-300/60 divide-y divide-white/5 custom-scrollbar">
                     {filteredNotionLessons.length === 0 ? (
-                      <div className="p-6 text-center text-xs text-content-muted">
-                        Brak tematów spełniających wybrane kryteria.
-                      </div>
+                      lessonFilter === 'new' && newLessonsCount === 0 ? (
+                        <div className="p-6 text-center space-y-1.5">
+                          <CheckCircle2 size={22} className="mx-auto text-primary" />
+                          <p className="text-xs font-bold text-white">
+                            Baza jest aktualna — nie ma nic nowego do pobrania
+                          </p>
+                          <p className="text-[11px] text-content-muted">
+                            Wszystkie {notionLessons.length} lekcji z Notion są już w historii kursanta.
+                            Przełącz na „Wszystkie”, jeśli chcesz obejrzeć zaimportowane wpisy.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="p-6 text-center text-xs text-content-muted">
+                          Brak tematów spełniających wybrane kryteria.
+                        </div>
+                      )
                     ) : (
                       filteredNotionLessons.map((lesson) => {
                         const isSelected = selectedLessonIds.has(lesson.id);
@@ -955,7 +971,9 @@ const StudentNotionSyncModal: React.FC<Props> = ({
                   <Sparkles size={14} />
                   {notionLessons.length > 0
                     ? selectedLessonIds.size > 0
-                      ? `Pobierz wybrane lekcje (${selectedLessonIds.size}) i przejdź do weryfikacji`
+                      ? `Importuj nowe lekcje (${selectedLessonIds.size})`
+                      : newLessonsCount === 0
+                      ? 'Brak nowych lekcji do importu'
                       : 'Zaznacz lekcje do importu'
                     : 'Pobierz i przejdź do weryfikacji bloków'}
                 </button>

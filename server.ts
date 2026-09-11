@@ -157,6 +157,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import defaultFirebaseConfig from "./firebase-applet-config.json";
 import { AI_MODEL_CASCADE, GEMINI_MODEL_CASCADE, openAiModelsFor } from "./services/aiModels";
 import { normalizeImportedLessons } from "./utils/lessonImport";
+import { shuffleDistinct } from "./utils/exerciseShuffle";
 let pdfParse: any;
 try {
   const loadedPdf = typeof require !== "undefined" ? require("pdf-parse") : null;
@@ -1365,10 +1366,10 @@ app.post('/api/gemini/generate-test', requireFirebaseAdmin, async (req, res) => 
       const typeRulesMap: Record<string, string> = {
         'translation': "- translation: 1 zadanie zbiorcze. W 'prompt' umieść N zdań polskich w punktach (1., 2., ...). Dodaj w nawiasie krótką wskazówkę, np. (past simple), aby kursant wiedział co zastosować. W 'correctAnswer' umieść N angielskich tłumaczeń w punktach (1., 2., ...).",
         'fill_in_blank': "- fill_in_blank: 1 zadanie zbiorcze w formie JEDNEGO SPÓJNEGO TEKSTU (np. krótka historyjka, opowiadanie). W 'prompt' umieść tekst z lukami '___', oznaczonymi numerami lub po prostu w tekście. W 'correctAnswer' umieść N poprawnych słów w punktach (1., 2., ...).",
-        'fill_in_blank_bank': "- fill_in_blank_bank: 1 zadanie zbiorcze w formie JEDNEGO SPÓJNEGO TEKSTU (np. krótka historyjka). W 'wordBank' umieść słowa w rozsypce do wstawienia. W 'prompt' umieść tekst z lukami '___'. W 'correctAnswer' umieść N odpowiedzi.",
+        'fill_in_blank_bank': "- fill_in_blank_bank: 1 zadanie zbiorcze w formie JEDNEGO SPÓJNEGO TEKSTU (np. krótka historyjka). W 'wordBank' umieść słowa w rozsypce do wstawienia. W 'prompt' umieść tekst z lukami '___'. W 'correctAnswer' umieść N odpowiedzi. KOLEJNOŚĆ SŁÓW W 'wordBank' MUSI BYĆ LOSOWA I RÓŻNA OD KOLEJNOŚCI LUK W TEKŚCIE — słowo do pierwszej luki nie może być pierwsze na liście. Rozsypka ułożona po kolei zamienia ćwiczenie w przepisywanie.",
         'matching': "- matching: 1 zadanie zbiorcze. W 'options' zamieść listę wszystkich N par w formacie [\"słowo1 = word1\", \"słowo2 = word2\", ...].",
-        'find_mistake': "- find_mistake: 1 zadanie zbiorcze polegające na korekcie błędów w zdaniach. W 'prompt' umieść N zdań w języku angielskim zawierających celowe błędy (gramatyczne, leksykalne, przyimkowe lub szyku) w punktach (1., 2., ...). Do KAŻDEGO zdania z błędem OBOWIĄZKOWO dodaj na końcu w nawiasie zwięzłą wskazówkę naprowadzającą w formacie: (wskazówka: treść wskazówki), np. (wskazówka: zły przyimek), (wskazówka: 3. osoba l. pojedynczej), (wskazówka: zły czasownik). W 'correctAnswer' umieść N w pełni poprawnych zdań w punktach (1., 2., ...). Nie wypełniaj pola options dla tego typu.",
-        'multiple_choice': "- multiple_choice: 1 zadanie zbiorcze. W 'prompt' umieść JEDEN SPÓJNY TEKST z lukami '___', albo N pytań wielokrotnego wyboru, w zależności od kontekstu. Jeśli to test z gramatyki np. czasowniki, to krótka historyjka jest preferowana. Podaj opcje A/B/C.",
+        'find_mistake': "- find_mistake: 1 zadanie zbiorcze polegające na korekcie błędów w zdaniach. W 'prompt' umieść N zdań w języku angielskim zawierających celowe błędy w punktach (1., 2., ...). RODZAJE BŁĘDÓW DO WYMIESZANIA: gramatyczne, leksykalne, przyimkowe ORAZ OBOWIĄZKOWO BŁĘDNY SZYK ZDANIA (wrong syntax / word order) — co najmniej jedno zdanie na zestaw musi mieć przestawiony szyk, np. źle umiejscowiony okolicznik czasu, przysłówek częstotliwości w złym miejscu albo szyk pytający w zdaniu twierdzącym. Do KAŻDEGO zdania z błędem OBOWIĄZKOWO dodaj na końcu w nawiasie zwięzłą wskazówkę naprowadzającą w formacie: (wskazówka: treść wskazówki), np. (wskazówka: zły przyimek), (wskazówka: 3. osoba l. pojedynczej), (wskazówka: zły szyk zdania). W 'correctAnswer' umieść N w pełni poprawnych zdań w punktach (1., 2., ...). Nie wypełniaj pola options dla tego typu.",
+        'multiple_choice': "- multiple_choice: 1 zadanie zbiorcze. W 'prompt' umieść JEDEN SPÓJNY TEKST z lukami '___', albo N pytań wielokrotnego wyboru, w zależności od kontekstu. Jeśli to test z gramatyki np. czasowniki, to krótka historyjka jest preferowana. Podaj opcje A/B/C. ROZŁÓŻ POPRAWNE ODPOWIEDZI RÓWNOMIERNIE MIĘDZY POZYCJE A, B i C — poprawna odpowiedź nie może stale wypadać jako pierwsza, bo kursant rozwiąże zadanie bez czytania opcji.",
         'writing': "- writing: 1 zadanie z dłuższą wypowiedzią pisemną."
       };
       
@@ -1526,7 +1527,19 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawną tablicę JSON, zachowując 
       } catch (e) {
         return res.status(500).json({ error: `Failed to parse AI response: ${response.text}` });
       }
-      
+
+      // Model mimo instrukcji układa rozsypkę w kolejności luk, przez co słowo
+      // do pierwszej luki leży pierwsze i ćwiczenie sprawdza tylko przepisywanie.
+      // Tasujemy po stronie serwera, bo to jedyny sposób, który działa zawsze.
+      // Ocena porównuje treść, nie pozycję, więc kolejność jest bez znaczenia.
+      if (Array.isArray(parsed)) {
+        parsed = parsed.map((question: any) =>
+          Array.isArray(question?.wordBank) && question.wordBank.length > 1
+            ? { ...question, wordBank: shuffleDistinct(question.wordBank) }
+            : question
+        );
+      }
+
       return res.json({ questions: parsed });
     } catch (error: any) {
       console.error(error);

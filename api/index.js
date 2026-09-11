@@ -115,6 +115,34 @@ function normalizeImportedLessons(payload, options) {
   );
 }
 
+// utils/exerciseShuffle.ts
+function shuffleArray(items, random = Math.random) {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+function shuffleDistinct(items, random = Math.random) {
+  if (items.length < 2) return [...items];
+  const allIdentical = items.every((item) => item === items[0]);
+  if (allIdentical) return [...items];
+  const isSameOrder = (candidate) => candidate.every((item, index) => item === items[index]);
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const candidate = shuffleArray(items, random);
+    if (!isSameOrder(candidate)) return candidate;
+  }
+  const fallback = [...items];
+  for (let i = 0; i < fallback.length - 1; i++) {
+    if (fallback[i] !== fallback[i + 1]) {
+      [fallback[i], fallback[i + 1]] = [fallback[i + 1], fallback[i]];
+      break;
+    }
+  }
+  return fallback;
+}
+
 // server.ts
 function mapToActualOpenAIModel(modelName) {
   const clean = String(modelName || "").replace(/^openai\//, "").trim().toLowerCase();
@@ -1233,10 +1261,10 @@ Ka\u017Cdy z wybranych typ\xF3w ma stanowi\u0107 DOK\u0141ADNIE JEDNO POJEDYNCZE
       const typeRulesMap = {
         "translation": "- translation: 1 zadanie zbiorcze. W 'prompt' umie\u015B\u0107 N zda\u0144 polskich w punktach (1., 2., ...). Dodaj w nawiasie kr\xF3tk\u0105 wskaz\xF3wk\u0119, np. (past simple), aby kursant wiedzia\u0142 co zastosowa\u0107. W 'correctAnswer' umie\u015B\u0107 N angielskich t\u0142umacze\u0144 w punktach (1., 2., ...).",
         "fill_in_blank": "- fill_in_blank: 1 zadanie zbiorcze w formie JEDNEGO SP\xD3JNEGO TEKSTU (np. kr\xF3tka historyjka, opowiadanie). W 'prompt' umie\u015B\u0107 tekst z lukami '___', oznaczonymi numerami lub po prostu w tek\u015Bcie. W 'correctAnswer' umie\u015B\u0107 N poprawnych s\u0142\xF3w w punktach (1., 2., ...).",
-        "fill_in_blank_bank": "- fill_in_blank_bank: 1 zadanie zbiorcze w formie JEDNEGO SP\xD3JNEGO TEKSTU (np. kr\xF3tka historyjka). W 'wordBank' umie\u015B\u0107 s\u0142owa w rozsypce do wstawienia. W 'prompt' umie\u015B\u0107 tekst z lukami '___'. W 'correctAnswer' umie\u015B\u0107 N odpowiedzi.",
+        "fill_in_blank_bank": "- fill_in_blank_bank: 1 zadanie zbiorcze w formie JEDNEGO SP\xD3JNEGO TEKSTU (np. kr\xF3tka historyjka). W 'wordBank' umie\u015B\u0107 s\u0142owa w rozsypce do wstawienia. W 'prompt' umie\u015B\u0107 tekst z lukami '___'. W 'correctAnswer' umie\u015B\u0107 N odpowiedzi. KOLEJNO\u015A\u0106 S\u0141\xD3W W 'wordBank' MUSI BY\u0106 LOSOWA I R\xD3\u017BNA OD KOLEJNO\u015ACI LUK W TEK\u015ACIE \u2014 s\u0142owo do pierwszej luki nie mo\u017Ce by\u0107 pierwsze na li\u015Bcie. Rozsypka u\u0142o\u017Cona po kolei zamienia \u0107wiczenie w przepisywanie.",
         "matching": `- matching: 1 zadanie zbiorcze. W 'options' zamie\u015B\u0107 list\u0119 wszystkich N par w formacie ["s\u0142owo1 = word1", "s\u0142owo2 = word2", ...].`,
-        "find_mistake": "- find_mistake: 1 zadanie zbiorcze polegaj\u0105ce na korekcie b\u0142\u0119d\xF3w w zdaniach. W 'prompt' umie\u015B\u0107 N zda\u0144 w j\u0119zyku angielskim zawieraj\u0105cych celowe b\u0142\u0119dy (gramatyczne, leksykalne, przyimkowe lub szyku) w punktach (1., 2., ...). Do KA\u017BDEGO zdania z b\u0142\u0119dem OBOWI\u0104ZKOWO dodaj na ko\u0144cu w nawiasie zwi\u0119z\u0142\u0105 wskaz\xF3wk\u0119 naprowadzaj\u0105c\u0105 w formacie: (wskaz\xF3wka: tre\u015B\u0107 wskaz\xF3wki), np. (wskaz\xF3wka: z\u0142y przyimek), (wskaz\xF3wka: 3. osoba l. pojedynczej), (wskaz\xF3wka: z\u0142y czasownik). W 'correctAnswer' umie\u015B\u0107 N w pe\u0142ni poprawnych zda\u0144 w punktach (1., 2., ...). Nie wype\u0142niaj pola options dla tego typu.",
-        "multiple_choice": "- multiple_choice: 1 zadanie zbiorcze. W 'prompt' umie\u015B\u0107 JEDEN SP\xD3JNY TEKST z lukami '___', albo N pyta\u0144 wielokrotnego wyboru, w zale\u017Cno\u015Bci od kontekstu. Je\u015Bli to test z gramatyki np. czasowniki, to kr\xF3tka historyjka jest preferowana. Podaj opcje A/B/C.",
+        "find_mistake": "- find_mistake: 1 zadanie zbiorcze polegaj\u0105ce na korekcie b\u0142\u0119d\xF3w w zdaniach. W 'prompt' umie\u015B\u0107 N zda\u0144 w j\u0119zyku angielskim zawieraj\u0105cych celowe b\u0142\u0119dy w punktach (1., 2., ...). RODZAJE B\u0141\u0118D\xD3W DO WYMIESZANIA: gramatyczne, leksykalne, przyimkowe ORAZ OBOWI\u0104ZKOWO B\u0141\u0118DNY SZYK ZDANIA (wrong syntax / word order) \u2014 co najmniej jedno zdanie na zestaw musi mie\u0107 przestawiony szyk, np. \u017Ale umiejscowiony okolicznik czasu, przys\u0142\xF3wek cz\u0119stotliwo\u015Bci w z\u0142ym miejscu albo szyk pytaj\u0105cy w zdaniu twierdz\u0105cym. Do KA\u017BDEGO zdania z b\u0142\u0119dem OBOWI\u0104ZKOWO dodaj na ko\u0144cu w nawiasie zwi\u0119z\u0142\u0105 wskaz\xF3wk\u0119 naprowadzaj\u0105c\u0105 w formacie: (wskaz\xF3wka: tre\u015B\u0107 wskaz\xF3wki), np. (wskaz\xF3wka: z\u0142y przyimek), (wskaz\xF3wka: 3. osoba l. pojedynczej), (wskaz\xF3wka: z\u0142y szyk zdania). W 'correctAnswer' umie\u015B\u0107 N w pe\u0142ni poprawnych zda\u0144 w punktach (1., 2., ...). Nie wype\u0142niaj pola options dla tego typu.",
+        "multiple_choice": "- multiple_choice: 1 zadanie zbiorcze. W 'prompt' umie\u015B\u0107 JEDEN SP\xD3JNY TEKST z lukami '___', albo N pyta\u0144 wielokrotnego wyboru, w zale\u017Cno\u015Bci od kontekstu. Je\u015Bli to test z gramatyki np. czasowniki, to kr\xF3tka historyjka jest preferowana. Podaj opcje A/B/C. ROZ\u0141\xD3\u017B POPRAWNE ODPOWIEDZI R\xD3WNOMIERNIE MI\u0118DZY POZYCJE A, B i C \u2014 poprawna odpowied\u017A nie mo\u017Ce stale wypada\u0107 jako pierwsza, bo kursant rozwi\u0105\u017Ce zadanie bez czytania opcji.",
         "writing": "- writing: 1 zadanie z d\u0142u\u017Csz\u0105 wypowiedzi\u0105 pisemn\u0105."
       };
       const activeTypes = selectedTypes || ["multiple_choice", "fill_in_blank", "fill_in_blank_bank", "translation"];
@@ -1386,6 +1414,11 @@ Zwr\xF3\u0107 skorygowany wynik WY\u0141\u0104CZNIE jako poprawn\u0105 tablic\u0
         parsed = JSON.parse(cleanText);
       } catch (e) {
         return res.status(500).json({ error: `Failed to parse AI response: ${response.text}` });
+      }
+      if (Array.isArray(parsed)) {
+        parsed = parsed.map(
+          (question) => Array.isArray(question?.wordBank) && question.wordBank.length > 1 ? { ...question, wordBank: shuffleDistinct(question.wordBank) } : question
+        );
       }
       return res.json({ questions: parsed });
     } catch (error) {

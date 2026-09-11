@@ -528,6 +528,7 @@ const Dashboard: React.FC = () => {
           handleNavigate('flashcard-study', { setId });
         },
         onPracticeAI: (setId: string) => handleNavigate('ai-generator', { setId }),
+        onOpenScratchpad: () => handleNavigate('scratchpad'),
       };
 
       // Fallback obsługuje wyłącznie panel własny kursanta

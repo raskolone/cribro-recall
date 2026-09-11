@@ -21,7 +21,7 @@ Przed zatwierdzeniem jakichkolwiek zmian uruchom:
 # Sprawdzenie błędów typowania TypeScript:
 npx tsc --noEmit
 
-# Uruchomienie testów jednostkowych (150 testów):
+# Uruchomienie testów jednostkowych (163 testy):
 npm test
 
 # Sprawdzenie poprawnego budowania bundle:

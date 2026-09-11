@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Puzzle } from 'lucide-react';
 import { TestQuestion } from '../../types';
 import { MatchingTask } from './MatchingTask';
 import { WordBankFillInBlankTask } from './WordBankFillInBlankTask';
@@ -8,6 +9,7 @@ import {
   parseNumberedItems,
   parseSubAnswers,
 } from '../../utils/testFormatters';
+import { buildShuffledTiles } from '../../utils/exerciseShuffle';
 
 /**
  * Jedno pytanie testu wraz z polem odpowiedzi — wspólne dla obu ekranów.
@@ -78,14 +80,124 @@ export const extractSentenceHint = (
  * Wklejanie jest zablokowane celowo — to zadanie sprawdza, co kursant umie
  * napisać sam, a nie co potrafi skopiować z translatora w drugiej karcie.
  */
+/** Paleta klocków układanki — kolor odróżnia fragmenty, nie niesie znaczenia. */
+const TILE_TONES = [
+  'bg-sky-500/20 border-sky-400/40 text-sky-100 hover:bg-sky-500/30',
+  'bg-violet-500/20 border-violet-400/40 text-violet-100 hover:bg-violet-500/30',
+  'bg-emerald-500/20 border-emerald-400/40 text-emerald-100 hover:bg-emerald-500/30',
+  'bg-amber-500/20 border-amber-400/40 text-amber-100 hover:bg-amber-500/30',
+  'bg-rose-500/20 border-rose-400/40 text-rose-100 hover:bg-rose-500/30',
+  'bg-cyan-500/20 border-cyan-400/40 text-cyan-100 hover:bg-cyan-500/30',
+];
+
+/**
+ * Układanka z klocków — tryb łatwiejszy niż wpisywanie z pamięci.
+ *
+ * Kursant dostaje pocięte i wymieszane zdanie i odtwarza z niego szyk. Kolor
+ * przypisany jest do treści klocka, nie do pozycji, żeby po przeniesieniu
+ * fragment dało się odszukać wzrokiem.
+ */
+export const SentenceTilePuzzle: React.FC<{
+  /** Zdanie docelowe — z niego powstają klocki. */
+  sentence: string;
+  value: string;
+  onChange: (assembled: string) => void;
+}> = ({ sentence, value, onChange }) => {
+  // Tasujemy raz na zdanie: przetasowanie przy każdym renderze przestawiałoby
+  // klocki pod palcami kursanta w trakcie układania.
+  const { tiles } = useMemo(() => buildShuffledTiles(sentence), [sentence]);
+
+  const toneOf = (tile: string) => {
+    const hash = [...tile].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    return TILE_TONES[hash % TILE_TONES.length];
+  };
+
+  // Ułożone klocki trzymamy w treści odpowiedzi, nie w osobnym stanie — dzięki
+  // temu wersja robocza wraca po powrocie do zadania.
+  const placed = value ? value.split(' ‧ ').filter(Boolean) : [];
+
+  const remaining = useMemo(() => {
+    const pool = [...tiles];
+    placed.forEach(tile => {
+      const at = pool.indexOf(tile);
+      if (at >= 0) pool.splice(at, 1);
+    });
+    return pool;
+  }, [tiles, value]);
+
+  const commit = (next: string[]) => onChange(next.join(' ‧ '));
+
+  return (
+    <div className="space-y-2.5">
+      <div
+        className="min-h-[3.25rem] p-2.5 rounded-xl bg-black/60 border border-white/15 flex flex-wrap items-start gap-1.5"
+        aria-label="Twoje ułożone zdanie"
+      >
+        {placed.length === 0 ? (
+          <span className="text-xs text-content-muted/60 px-1 py-1.5">
+            Klikaj klocki poniżej, aby ułożyć zdanie…
+          </span>
+        ) : (
+          placed.map((tile, index) => (
+            <button
+              key={`${tile}-${index}`}
+              type="button"
+              onClick={() => commit(placed.filter((_, i) => i !== index))}
+              title="Kliknij, aby zdjąć klocek"
+              className={`px-2.5 py-1.5 rounded-lg border text-sm font-semibold transition-colors cursor-pointer ${toneOf(tile)}`}
+            >
+              {tile}
+            </button>
+          ))
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-start gap-1.5">
+        {remaining.map((tile, index) => (
+          <button
+            key={`${tile}-${index}`}
+            type="button"
+            onClick={() => commit([...placed, tile])}
+            className={`px-2.5 py-1.5 rounded-lg border text-sm font-semibold transition-colors cursor-pointer ${toneOf(tile)}`}
+          >
+            {tile}
+          </button>
+        ))}
+        {remaining.length === 0 && placed.length > 0 && (
+          <button
+            type="button"
+            onClick={() => commit([])}
+            className="px-2.5 py-1.5 rounded-lg border border-white/15 bg-white/[0.04] text-xs font-semibold text-content-muted hover:text-white transition-colors cursor-pointer"
+          >
+            Ułóż od nowa
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const SentenceListTask: React.FC<{
   type: 'translation' | 'fill_in_blank' | 'find_mistake';
   prompt: string;
   questionHint?: string;
   initialAnswer?: string;
+  /** Wzorcowe zdania — z nich powstają klocki układanki. */
+  correctAnswer?: string;
   onChange: (ans: string) => void;
-}> = ({ type, prompt, questionHint, initialAnswer, onChange }) => {
+}> = ({ type, prompt, questionHint, initialAnswer, correctAnswer, onChange }) => {
   const sentences = useMemo(() => parseNumberedItems(prompt), [prompt]);
+  const solutions = useMemo(
+    () => parseNumberedItems(correctAnswer || ''),
+    [correctAnswer]
+  );
+
+  /**
+   * Tłumaczenie ma dwa poziomy. Domyślnie „Hard" — wpisywanie z pamięci jest
+   * właściwym ćwiczeniem, a układanka służy tym, dla których puste pole przy
+   * złożonym zdaniu jest ścianą nie do przejścia.
+   */
+  const [difficulty, setDifficulty] = useState<'easy' | 'hard'>('hard');
   const [subAnswers, setSubAnswers] = useState<Record<number, string>>(() =>
     parseSubAnswers(initialAnswer || '', sentences.length)
   );
@@ -103,11 +215,62 @@ export const SentenceListTask: React.FC<{
   };
 
   const isFindMistake = type === 'find_mistake';
+  const isTranslation = type === 'translation';
+
+  /** Wzorcowe zdanie dla danego numeru — układanka bez niego nie ma z czego powstać. */
+  const solutionFor = (index: number): string =>
+    (solutions[index]?.text || '').replace(/\s*\(wskazówka:[^)]*\)\s*$/i, '').trim();
 
   return (
     <div className="space-y-5">
+      {isTranslation && (
+        <div className="flex items-center justify-between gap-3 flex-wrap p-3 rounded-2xl bg-base-200/60 border border-white/10">
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-white">Poziom trudności</p>
+            <p className="text-[11px] text-content-muted mt-0.5">
+              {difficulty === 'hard'
+                ? 'Wpisujesz tłumaczenie samodzielnie — pełne ćwiczenie z pamięci.'
+                : 'Układasz zdanie z gotowych fragmentów — łatwiej przy długich zdaniach.'}
+            </p>
+          </div>
+          <div
+            className="flex items-center gap-1 p-1 rounded-xl bg-black/40 border border-white/10"
+            role="group"
+            aria-label="Poziom trudności tłumaczenia"
+          >
+            {([
+              { id: 'easy' as const, label: 'Easy — układanka' },
+              { id: 'hard' as const, label: 'Hard — wpisywanie' },
+            ]).map(option => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setDifficulty(option.id)}
+                aria-pressed={difficulty === option.id}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
+                  difficulty === option.id
+                    ? 'bg-primary text-accent-ink'
+                    : 'text-content-muted hover:text-white'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {sentences.map((s, idx) => {
         const { cleanSentence, hint } = extractSentenceHint(s.text, questionHint);
+        const solution = solutionFor(idx);
+
+        // Korekta błędów miesza dwa sposoby podpowiadania: co drugie zdanie
+        // kursant układa z klocków, resztę poprawia wpisując. Naprzemiennie,
+        // a nie losowo — losowanie przestawiałoby tryb przy każdym renderze.
+        const usePuzzle = Boolean(
+          solution &&
+            ((isFindMistake && idx % 2 === 1) || (isTranslation && difficulty === 'easy'))
+        );
 
         return (
           <div
@@ -119,18 +282,24 @@ export const SentenceListTask: React.FC<{
             }`}
           >
             {isFindMistake && (
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
                   <span>⚠️</span> Zdanie z błędem {s.num}:
                 </span>
-                <button
-                  type="button"
-                  onClick={() => handleTextChange(idx, cleanSentence)}
-                  className="text-[11px] text-primary hover:underline font-bold cursor-pointer"
-                  title="Wstaw czyste zdanie do pola edycji, aby szybko poprawić felerny fragment"
-                >
-                  Kopiuj do edycji
-                </button>
+                {usePuzzle ? (
+                  <span className="text-[11px] font-bold text-sky-300 flex items-center gap-1.5">
+                    <Puzzle size={12} /> Ułóż poprawną wersję z klocków
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleTextChange(idx, cleanSentence)}
+                    className="text-[11px] text-primary hover:underline font-bold cursor-pointer"
+                    title="Wstaw czyste zdanie do pola edycji, aby szybko poprawić felerny fragment"
+                  >
+                    Kopiuj do edycji
+                  </button>
+                )}
               </div>
             )}
 
@@ -166,6 +335,13 @@ export const SentenceListTask: React.FC<{
                   ? `Twoja poprawiona wersja zdania ${s.num}:`
                   : `Twoja odpowiedź dla zdania ${s.num}:`}
               </label>
+              {usePuzzle ? (
+                <SentenceTilePuzzle
+                  sentence={solution}
+                  value={subAnswers[idx] || ''}
+                  onChange={(assembled) => handleTextChange(idx, assembled)}
+                />
+              ) : (
               <input
                 type="text"
                 value={subAnswers[idx] || ''}
@@ -191,6 +367,7 @@ export const SentenceListTask: React.FC<{
                 }
                 className="w-full bg-black/60 border border-white/15 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl p-3.5 text-base text-white outline-none transition-all placeholder:text-content-muted/40 font-medium cursor-text"
               />
+              )}
             </div>
           </div>
         );
@@ -294,6 +471,7 @@ const TestQuestionFields: React.FC<TestQuestionFieldsProps> = ({ question: q, an
         prompt={String(q.prompt || '')}
         questionHint={q.hint}
         initialAnswer={answer}
+        correctAnswer={typeof q.correctAnswer === 'string' ? q.correctAnswer : undefined}
         onChange={onChange}
       />
     );

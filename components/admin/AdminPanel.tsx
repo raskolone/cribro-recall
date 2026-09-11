@@ -48,6 +48,7 @@ import StudentInviteEmailModal from './StudentInviteEmailModal';
 import CleanLessonsModal from './CleanLessonsModal';
 import AdminMailingScreen from './AdminMailingScreen';
 import ScratchpadModal from '../scratchpad/ScratchpadModal';
+import ScratchpadStudentPicker from '../scratchpad/ScratchpadStudentPicker';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
@@ -1247,6 +1248,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
 
   const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
+
+  /** Brudnopis otwierany z górnego paska — najpierw wybór kursanta, potem dokument. */
+  const [showScratchpadPicker, setShowScratchpadPicker] = useState(false);
+  const [scratchpadStudent, setScratchpadStudent] = useState<{ id: string; name: string } | null>(null);
   const [newStudentUsername, setNewStudentUsername] = useState('');
   const [newStudentEmail, setNewStudentEmail] = useState('');
   const [createdStudentEmail, setCreatedStudentEmail] = useState('');
@@ -1693,6 +1698,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Brudnopis jest jeden na kursanta, więc wejście z górnego paska
+              najpierw pyta, czyje notatki otworzyć. */}
+          <button
+            onClick={() => setShowScratchpadPicker(true)}
+            className="px-3.5 min-h-11 bg-base-200/80 text-content border border-white/15 rounded-xl text-xs sm:text-sm font-bold hover:bg-white/[0.08] transition-colors flex items-center justify-center gap-2"
+            title="Otwórz wspólny brudnopis wybranego kursanta"
+          >
+            <FileEdit size={16} />
+            Brudnopis
+          </button>
           <button
             onClick={() => setShowAIModal(true)}
             className="px-3.5 min-h-11 bg-base-200/80 text-primary border border-primary/40 rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/10 transition-colors flex items-center justify-center gap-2"
@@ -1709,6 +1724,22 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </button>
         </div>
       </div>
+
+      <ScratchpadStudentPicker
+        isOpen={showScratchpadPicker}
+        onClose={() => setShowScratchpadPicker(false)}
+        students={activeUsers}
+        onPick={student => {
+          setScratchpadStudent(student);
+          setShowScratchpadPicker(false);
+        }}
+      />
+
+      <ScratchpadModal
+        isOpen={!!scratchpadStudent}
+        onClose={() => setScratchpadStudent(null)}
+        student={{ id: scratchpadStudent?.id || null, name: scratchpadStudent?.name || 'Kursant' }}
+      />
 
       <TeacherOverview students={activeUsers} language={language} />
 

@@ -47,7 +47,42 @@ CRIBRO ENGLISH (Recall) to zaawansowana platforma edukacyjna do intensywnej nauk
 
 ## 3. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
-### Nowość: Przebudowa Interfejsu Prezentacji i Brudnopisu („Mniej znaczy lepiej") + Samouczek z Dymkami
+### Nowość: Brudnopis Dostępny z Każdego Panelu, Backend Udostępniania i Poprawki Ćwiczeń
+
+- **Zamykanie brudnopisu (`ScratchpadEditor.tsx`, `ScratchpadModal.tsx`)**:
+  - Przycisk zamknięcia przeniesiony z pływającego krzyżyka nad oknem do paska nagłówka edytora — stary krzyżyk nachodził na przyciski udostępniania po przebudowie nagłówka.
+  - Nowy opcjonalny prop `onClose`: bez niego przycisk się nie pojawia (ekran kursanta i widok publiczny mają własną nawigację).
+- **Wejście do brudnopisu z górnego paska panelu lektora (`AdminPanel.tsx`, `ScratchpadStudentPicker.tsx`)**:
+  - Nowy przycisk **„Brudnopis"** obok generatora AI i dodawania kursanta.
+  - Nowy komponent `ScratchpadStudentPicker.tsx`: okno wyboru kursanta z wyszukiwarką po imieniu, loginie i adresie e-mail, sortowaniem alfabetycznym i awatarami. Po wybraniu kursanta od razu otwiera jego stały brudnopis — bez wchodzenia w profil.
+- **Wejście do brudnopisu z panelu kursanta (`TodayScreen.tsx`, `Dashboard.tsx`)**:
+  - Na panelu głównym kursanta pojawiła się karta **„Mój brudnopis z lektorem"** prowadząca wprost do wspólnego dokumentu (dotąd wejście było wyłącznie w menu bocznym).
+- **Naprawa backendu udostępniania (`services/scratchpadService.ts`)**:
+  - **Kluczowa poprawka:** `saveScratchpadContent` i `updateScratchpadSettings` używały `updateDoc`, które wymaga istniejącego dokumentu. Jeśli pierwszy zapis do chmury się nie udał, brudnopis istniał wyłącznie lokalnie, a **każdy kolejny zapis leciał na `not-found` w nieskończoność** — notatki nigdy nie docierały do kursanta, mimo że lektor widział je u siebie. Teraz przy błędzie `not-found` dokument jest odtwarzany w chmurze z pełnej kopii lokalnej (`setDoc`), co samoczynnie naprawia rozjechane brudnopisy.
+- **Import historii lekcji z Notion — tylko nowe wpisy (`StudentNotionSyncModal.tsx`)**:
+  - Lista lekcji domyślnie filtruje się do **„Nowe"** zamiast „Wszystkie" — przy kilkudziesięciu lekcjach w Notion widok był zdominowany przez wpisy dawno zaimportowane.
+  - Przycisk importu nazywa się teraz **„Importuj nowe lekcje (N)"** i jasno komunikuje stan „Brak nowych lekcji do importu".
+  - Gdy nie ma nic nowego, zamiast pustej listy pojawia się czytelny komunikat „Baza jest aktualna — nie ma nic nowego do pobrania" z liczbą już zaimportowanych lekcji.
+- **Powiadomienia pop-up w każdym panelu (`TeacherHomeworkNotification.tsx`)**:
+  - Powiadomienie o odesłanej przez kursanta pracy (prawy dolny róg, animacja sprężynowa + delikatny dźwięk) renderuje się teraz przez **portal do `<body>`**. Wcześniej wisiało wewnątrz `<main>`, więc wystarczyło, że któryś panel animował się transformem, a `position: fixed` liczyło się względem tego przodka — powiadomienie lądowało w losowym miejscu albo znikało pod krawędzią panelu.
+
+### Poprawki ćwiczeń i prac domowych
+
+- **Rozsypka w zadaniach na uzupełnianie luk (`utils/exerciseShuffle.ts`, `server.ts`)**:
+  - Model układał `wordBank` w kolejności luk, więc poprawne słowo do pierwszej luki było pierwsze na liście i ćwiczenie sprawdzało wyłącznie przepisywanie. Dodano **tasowanie po stronie serwera** (`shuffleDistinct`) — jedyny sposób, który działa niezależnie od tego, czy model posłucha promptu. Ocena porównuje treść, nie pozycję, więc kolejność nie wpływa na sprawdzanie.
+  - Instrukcje w promptach uzupełnione: `wordBank` ma być losowy, a w `multiple_choice` poprawne odpowiedzi mają być **rozłożone równomiernie między A, B i C**.
+- **Błędny szyk zdania w korekcie błędów (`server.ts`)**:
+  - Prompt `find_mistake` wymaga teraz, aby **co najmniej jedno zdanie w zestawie zawierało błędny szyk** (wrong syntax / word order): źle umiejscowiony okolicznik czasu, przysłówek częstotliwości w złym miejscu albo szyk pytający w zdaniu twierdzącym.
+- **Mieszany sposób podpowiadania w korekcie błędów (`TestQuestionFields.tsx`)**:
+  - Zadanie łączy teraz dwa tryby: część zdań kursant poprawia wpisując (z opcją „Kopiuj do edycji"), a co drugie **układa z wymieszanych klocków**. Tryb przydzielany jest naprzemiennie według numeru zdania, a nie losowo — losowanie przestawiałoby tryb przy każdym renderze.
+- **Poziomy trudności Easy / Hard w tłumaczeniu zdań (`TestQuestionFields.tsx`)**:
+  - Nowy przełącznik nad listą zdań. **Hard (domyślny)** to wpisywanie tłumaczenia z pamięci, **Easy** zamienia pole tekstowe na **układankę z różnokolorowych klocków** — zdanie pocięte na fragmenty i wymieszane.
+  - Nowy komponent `SentenceTilePuzzle`: klocki wybiera się kliknięciem, kliknięcie w ułożony klocek zdejmuje go z powrotem, a kolor przypisany jest do treści fragmentu (nie do pozycji), żeby po przeniesieniu dało się go odszukać wzrokiem. Klocki tasowane są raz na zdanie, żeby nie przestawiały się pod palcami.
+  - Nowy moduł `utils/exerciseShuffle.ts` z 13 testami: `shuffleArray`, `shuffleDistinct` (gwarantuje kolejność inną niż wejściowa — układanka podana już ułożona nie jest zadaniem), `splitSentenceIntoTiles` (grupuje słowa, żeby z długiego zdania nie zrobiło się dwadzieścia klocków) i `buildShuffledTiles`.
+- **Wyraźne oznaczenie automatycznego feedbacku (`StudentHomeworkScreen.tsx`)**:
+  - Po odesłaniu pracy kursant widzi na górze duży baner **„To jest automatyczny feedback"** (czcionka szeryfowa, 2xl, plakietka „Ocena wstępna") z informacją, że komentarz od lektora dostanie później i to on jest oceną wiążącą. Wcześniej w tym miejscu stała niepozorna notka o oczekiwaniu na weryfikację, przez co ocena automatu czytała się jak werdykt nauczyciela.
+
+### Poprzedni etap: Przebudowa Interfejsu Prezentacji i Brudnopisu („Mniej znaczy lepiej") + Samouczek z Dymkami
 
 **Cel przebudowy:** Paski narzędzi Prezentacji i Brudnopisu rozrosły się do kilkunastu równorzędnych przycisków w jednym rzędzie, w pięciu konkurujących kolorach. Interfejs został zredukowany do narzędzi używanych w trakcie mówienia, a operacje przygotowawcze zeszły do menu rozwijanych. Każda funkcja ma teraz opis w samouczku wyświetlanym jako dymek przypięty do konkretnego przycisku.
 
@@ -81,7 +116,7 @@ CRIBRO ENGLISH (Recall) to zaawansowana platforma edukacyjna do intensywnej nauk
   - Każdy krok zawiera nazwę grupy, tytuł, opis działania funkcji językiem lektora oraz opcjonalną wskazówkę praktyczną i skrót klawiszowy.
   - Kroki Brudnopisu dobierają się do roli i trybu: kursant w trybie podglądu nie dostaje opisu paska formatowania ani przełączników uprawnień, których nie ma na swoim ekranie.
 
-### Poprawka: Zamrożona Pierwsza Kolumna w Bazie Kursantów (`StudentDatabaseScreen.tsx`)
+### Poprzedni etap — poprawka: Zamrożona Pierwsza Kolumna w Bazie Kursantów (`StudentDatabaseScreen.tsx`)
 - Kolumna zaznaczenia i kolumna z nazwiskiem kursanta są **przyklejone przy przewijaniu tabeli w bok** (`position: sticky`), dzięki czemu po dojściu do kolumny logowań nadal widać, czyj to wiersz.
 - Szerokość kolumny zaznaczenia ustalona sztywno (48 px), bo kolumna nazwiska przykleja się dokładnie za nią — przy szerokości wyliczanej przez tabelę obie rozjechałyby się o kilka pikseli.
 - Tła zamrożonych komórek są nieprzezroczyste (inaczej przewijane kolumny prześwitują pod spodem), a podświetlenia zaznaczenia i najechania wracają jako warstwa `background-image`, żeby nie skasować krycia ustawionego kolorem tła.

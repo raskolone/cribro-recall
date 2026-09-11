@@ -1041,13 +1041,32 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             <span>Lektor sprawdził Twoje odpowiedzi i zatwierdził zadania bez dodatkowego komentarza ogólnego.</span>
           </div>
         ) : (
-          <div className="rounded-2xl bg-warn/[0.08] border border-warn/30 p-4 sm:p-5 flex items-start gap-3">
-            <Clock className="w-5 h-5 text-warn shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white">Praca czeka na weryfikację lektora</h3>
-              <p className="text-xs text-content-muted leading-relaxed">
-                Twoje odpowiedzi zostały przekazane nauczycielowi. Po sprawdzeniu pojawi się tutaj ocena końcowa oraz szczegółowe uwagi.
-              </p>
+          /* Wynik pod spodem wystawia automat, nie lektor. Kursant musi to
+             wiedzieć, zanim przeczyta ocenę — inaczej bierze podpowiedź
+             maszyny za werdykt nauczyciela i albo się nim niepotrzebnie
+             przejmuje, albo uznaje pracę za zamkniętą. */
+          <div className="rounded-3xl bg-gradient-to-br from-info/[0.12] via-base-200 to-base-200 border-2 border-info/40 p-5 sm:p-6 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-info/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex items-start gap-3.5">
+              <span className="p-2.5 rounded-2xl bg-info/15 text-info border border-info/30 shrink-0">
+                <Sparkles size={20} />
+              </span>
+              <div className="space-y-1.5 min-w-0">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-[0.14em] bg-info/15 text-info border border-info/30">
+                  Ocena wstępna
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black font-serif text-white leading-tight">
+                  To jest automatyczny feedback
+                </h3>
+                <p className="text-sm text-content leading-relaxed">
+                  Poniższa ocena i uwagi powstały automatycznie, zaraz po odesłaniu pracy — żebyś
+                  nie czekał na pierwszą informację zwrotną.{' '}
+                  <strong className="text-white font-bold">
+                    Komentarz od lektora dostaniesz później
+                  </strong>{' '}
+                  i to on jest oceną wiążącą.
+                </p>
+              </div>
             </div>
           </div>
         )}

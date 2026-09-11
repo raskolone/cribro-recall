@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ArrowRight,
   Check,
+  ChevronRight,
   Eye,
+  FileEdit,
   Puzzle,
   RotateCcw,
   Sparkles,
@@ -48,6 +50,8 @@ interface TodayScreenProps {
   onOpenHomework?: (taskId?: string) => void;
   /** Wejście w testy kursanta. */
   onOpenTests?: (testId?: string) => void;
+  /** Wejście we wspólny brudnopis z lektorem. */
+  onOpenScratchpad?: () => void;
   /** Podgląd panelu konkretnego kursanta (lektor). Bez zapisu powtórek. */
   studentId?: string;
   onStudySet?: (setId: string) => void;
@@ -91,6 +95,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
   onOpenExtraPractice,
   onOpenHomework,
   onOpenTests,
+  onOpenScratchpad,
   studentId,
   onStudySet,
   onPracticeAI,
@@ -484,6 +489,30 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
           onStudySet={onStudySet}
           onPracticeAI={onPracticeAI}
         />
+
+        {/* Wspólny brudnopis z lektorem — wejście z panelu, nie tylko z menu
+            bocznego, bo kursant wraca do tych notatek między lekcjami. */}
+        {onOpenScratchpad && (
+          <button
+            type="button"
+            onClick={onOpenScratchpad}
+            className="w-full text-left p-4 rounded-2xl bg-base-200/60 border border-white/10 hover:border-accent/40 hover:bg-base-200/80 transition-all flex items-center gap-3.5 cursor-pointer group"
+          >
+            <span className="p-2.5 rounded-xl bg-accent/12 text-accent border border-accent/25 shrink-0">
+              <FileEdit size={18} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-text-hi">Mój brudnopis z lektorem</span>
+              <span className="block text-xs text-content-muted mt-0.5">
+                Wspólne notatki z lekcji — słownictwo, poprawki i ustalenia w jednym miejscu
+              </span>
+            </span>
+            <ChevronRight
+              size={18}
+              className="shrink-0 text-content-muted group-hover:text-accent transition-colors"
+            />
+          </button>
+        )}
 
         {/* Sekcja prac domowych — spójna z resztą zwijanych paneli */}
         <div className="pt-1">

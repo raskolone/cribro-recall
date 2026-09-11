@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, collectionGroup, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -171,8 +172,14 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
 
   if (activeNotifications.length === 0) return null;
 
-  return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-[calc(100vw-2.5rem)] pointer-events-none">
+  // Portal do <body>, bo komponent wisi wewnątrz <main> panelu. Wystarczy, że
+  // któryś z paneli po drodze animuje się transformem (a robi to niejeden
+  // ekran na motion/react), a `position: fixed` zaczyna się liczyć względem
+  // tego przodka — powiadomienie ląduje wtedy w losowym miejscu albo znika
+  // pod krawędzią panelu. W portalu wychodzi w prawym dolnym rogu zawsze,
+  // niezależnie od tego, w którym panelu akurat jest lektor.
+  return createPortal(
+    <div className="fixed bottom-5 right-5 z-[350] flex flex-col gap-2.5 max-w-sm w-[calc(100vw-2.5rem)] pointer-events-none">
       <AnimatePresence>
         {activeNotifications.map((item) => (
           <motion.div
@@ -237,7 +244,8 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
           </motion.div>
         ))}
       </AnimatePresence>
-    </div>
+    </div>,
+    document.body
   );
 };
 

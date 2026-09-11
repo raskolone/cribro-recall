@@ -318,6 +318,23 @@ export async function saveScratchpadContent(
     await updateDoc(ref, patch);
     result.cloud = true;
   } catch (err: any) {
+    // `updateDoc` wymaga istniejącego dokumentu. Gdy pierwszy zapis do chmury
+    // się nie udał (np. reguły nie były jeszcze wdrożone), brudnopis istnieje
+    // tylko lokalnie i każdy kolejny zapis leciałby na `not-found` w kółko —
+    // notatki nigdy nie trafiłyby do kursanta. Zakładamy wtedy dokument od nowa
+    // z pełnej kopii lokalnej, zamiast zostawiać lektora z samą pamięcią karty.
+    if (err?.code === 'not-found') {
+      try {
+        await setDoc(scratchpadDocRef(id), updatedDoc);
+        result.cloud = true;
+        return result;
+      } catch (createErr: any) {
+        result.cloudError = createErr?.message || String(createErr);
+        console.warn('[Scratchpad] Odtworzenie dokumentu w chmurze nie powiodło się:', createErr?.message || createErr);
+        return result;
+      }
+    }
+
     result.cloudError = err?.message || String(err);
     console.warn('[Scratchpad] Zapis do Cloud Firestore nie powiódł się (zapisano w pamięci lokalnej):', err?.message || err);
   }
@@ -333,12 +350,10 @@ export async function updateScratchpadSettings(
   patch: Partial<ScratchpadDocument>
 ): Promise<void> {
   const current = getLocalScratchpad(id);
-  if (current) {
-    const updated = {
-      ...current,
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    };
+  const updated = current
+    ? { ...current, ...patch, updatedAt: new Date().toISOString() }
+    : null;
+  if (updated) {
     saveLocalScratchpad(updated);
   }
 
@@ -349,6 +364,18 @@ export async function updateScratchpadSettings(
       updatedAt: new Date().toISOString(),
     });
   } catch (err: any) {
+    // Tak samo jak przy treści: bez dokumentu w chmurze przełącznik uprawnień
+    // zmieniałby wyłącznie stan w przeglądarce lektora, a kursant po drugiej
+    // stronie linku nigdy nie dostałby prawa zapisu.
+    if (err?.code === 'not-found' && updated) {
+      try {
+        await setDoc(scratchpadDocRef(id), updated);
+        return;
+      } catch (createErr: any) {
+        console.warn('[Scratchpad] Odtworzenie dokumentu przy zmianie ustawień nie powiodło się:', createErr?.message || createErr);
+        return;
+      }
+    }
     console.warn('[Scratchpad] Błąd aktualizacji ustawień w chmurze:', err?.message || err);
   }
 }

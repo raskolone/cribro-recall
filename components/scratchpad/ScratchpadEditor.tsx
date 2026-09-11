@@ -29,6 +29,7 @@ import {
   Plus,
   Type,
   GraduationCap,
+  X,
 } from 'lucide-react';
 import { ScratchpadDocument } from '../../types';
 import { buildScratchpadUrl } from '../../services/scratchpadService';
@@ -80,6 +81,8 @@ interface ScratchpadEditorProps {
   readOnly?: boolean;
   className?: string;
   autoFocus?: boolean;
+  /** Zamknięcie brudnopisu. Bez tego przycisk zamykania się nie pojawia. */
+  onClose?: () => void;
 }
 
 export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
@@ -92,6 +95,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   readOnly: explicitReadOnly,
   className = '',
   autoFocus = false,
+  onClose,
 }) => {
   const isTeacher = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
   
@@ -473,6 +477,23 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           >
             <GraduationCap size={15} />
           </button>
+
+          {/* Zamknięcie siedzi w pasku nagłówka, a nie pływa nad nim — pływający
+              krzyżyk nachodził na przyciski udostępniania. */}
+          {onClose && (
+            <>
+              <div className="w-px h-6 bg-line-strong mx-0.5" aria-hidden />
+              <button
+                type="button"
+                onClick={onClose}
+                title="Zamknij brudnopis"
+                aria-label="Zamknij brudnopis"
+                className="h-9 w-9 rounded-xl border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </>
+          )}
         </div>
       </header>
 

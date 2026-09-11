@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { ScratchpadDocument } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -128,17 +128,8 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-fadeIn">
       <div className="relative w-full max-w-5xl h-[90vh] max-h-[920px] bg-base-100 rounded-3xl border border-white/15 shadow-2xl flex flex-col overflow-hidden">
-        {/* Przycisk zamknięcia */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-3.5 right-4 z-20 p-2 rounded-xl bg-base-300/80 text-content-muted hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-          title="Zamknij brudnopis"
-        >
-          <X size={18} />
-        </button>
-
-        {/* Zawartość okna */}
+        {/* Zawartość okna. Zamknięcie renderuje sam edytor w swoim pasku
+            nagłówka — pływający krzyżyk nachodził na przyciski udostępniania. */}
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-4">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
@@ -174,6 +165,7 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
               }}
               className="h-full rounded-none border-0 shadow-none"
               autoFocus
+              onClose={onClose}
             />
           </div>
         ) : null}
