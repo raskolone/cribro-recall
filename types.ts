@@ -870,6 +870,7 @@ export interface ScratchpadDocument {
     role: 'teacher' | 'student';
   };
   allowStudentEdit: boolean;
+  requirePin?: boolean;
   version: number;
 }
 

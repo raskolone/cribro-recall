@@ -16,6 +16,7 @@ import {
   generateAccessCode,
   normalizeAccessCode,
   formatAccessCode,
+  isValidAccessCode,
 } from '../utils/accessCode';
 
 export const scratchpadDocRef = (id: string) => doc(db, 'scratchpads', id);
@@ -132,6 +133,7 @@ export async function getOrCreateStudentScratchpad(
     contentHtml: initial.html,
     contentText: initial.text,
     allowStudentEdit: false, // Domyślnie bezpieczny tryb podglądu na żywo dla kursanta
+    requirePin: false, // Domyślnie link bezpośredni nie wymaga PINu (PIN opcjonalny na życzenie nauczyciela)
     createdAt: now,
     updatedAt: now,
     lastEditedBy: {
@@ -352,12 +354,54 @@ export async function updateScratchpadSettings(
 }
 
 /**
- * Generuje pełny bezpośredni link do Scratchpada z kodem PIN.
+ * Pobiera dokument Scratchpada bezpośrednio po unikalnym identyfikatorze dokumentu.
  */
-export function buildScratchpadUrl(pin: string): string {
-  const formatted = formatAccessCode(pin);
-  if (typeof window === 'undefined') {
-    return `https://cribro.pl/scratchpad?pin=${formatted}`;
+export async function getScratchpadById(
+  id: string
+): Promise<ScratchpadDocument | null> {
+  if (!id) return null;
+  const cleanId = id.trim();
+
+  // 1. Sprawdź pamięć lokalną
+  const local = getLocalScratchpad(cleanId);
+  if (local) return local;
+
+  // 2. Pobierz z Firestore
+  try {
+    const snap = await getDoc(scratchpadDocRef(cleanId));
+    if (snap.exists()) {
+      const cloudDoc = snap.data() as ScratchpadDocument;
+      saveLocalScratchpad(cloudDoc);
+      return cloudDoc;
+    }
+  } catch (err: any) {
+    console.warn('[Scratchpad] Błąd pobierania po ID z chmury:', err?.message || err);
   }
-  return `${window.location.origin}/scratchpad?pin=${formatted}`;
+
+  return null;
+}
+
+/**
+ * Generuje unikalny bezpośredni link do konkretnego brudnopisu.
+ * Domyślnie link otwiera dokument bezpośrednio bez wymogu wpisywania PINu.
+ * PIN jest opcjonalną formą ochrony, jeśli nauczyciel go włączy.
+ */
+export function buildScratchpadUrl(
+  idOrPin: string,
+  options?: { pin?: string }
+): string {
+  const origin = typeof window === 'undefined' ? 'https://cribro.pl/scratchpad' : `${window.location.origin}/scratchpad`;
+  const clean = (idOrPin || '').trim();
+
+  // Wsteczna kompatybilność: jeśli przekazano sam 6-znakowy PIN bez 'sp_'
+  if (isValidAccessCode(clean) && !clean.startsWith('sp_')) {
+    return `${origin}?pin=${formatAccessCode(clean)}`;
+  }
+
+  const url = new URL(origin);
+  url.searchParams.set('id', clean);
+  if (options?.pin) {
+    url.searchParams.set('pin', formatAccessCode(options.pin));
+  }
+  return url.toString();
 }

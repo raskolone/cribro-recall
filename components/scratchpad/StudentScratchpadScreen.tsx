@@ -80,7 +80,7 @@ export const StudentScratchpadScreen: React.FC = () => {
 
   const handleCopyLink = () => {
     if (!document) return;
-    const url = buildScratchpadUrl(document.pin);
+    const url = buildScratchpadUrl(document.id);
     navigator.clipboard.writeText(url);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);

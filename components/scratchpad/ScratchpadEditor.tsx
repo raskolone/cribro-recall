@@ -25,6 +25,8 @@ import {
   AlertCircle,
   CloudCheck,
   CloudUpload,
+  ShieldCheck,
+  ShieldAlert,
 } from 'lucide-react';
 import { ScratchpadDocument } from '../../types';
 import { buildScratchpadUrl } from '../../services/scratchpadService';
@@ -35,6 +37,7 @@ interface ScratchpadEditorProps {
   document: ScratchpadDocument;
   onSaveContent?: (html: string, text: string) => Promise<any> | void;
   onToggleStudentEdit?: (allow: boolean) => Promise<void>;
+  onToggleRequirePin?: (require: boolean) => Promise<void>;
   onPushToLessonRecord?: (data: {
     topic: string;
     words: string;
@@ -56,6 +59,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   document: docData,
   onSaveContent,
   onToggleStudentEdit,
+  onToggleRequirePin,
   onPushToLessonRecord,
   currentUser,
   readOnly: explicitReadOnly,
@@ -220,7 +224,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
   // Kopiowanie linku lub kodu PIN
   const handleCopyLink = () => {
-    const url = buildScratchpadUrl(docData.pin);
+    const url = buildScratchpadUrl(docData.id);
     navigator.clipboard.writeText(url);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
@@ -327,7 +331,9 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         <div className="flex items-center gap-2 flex-wrap">
           {/* Kod PIN */}
           <div className="flex items-center bg-base-200 px-2.5 py-1 rounded-xl border border-white/10 text-xs gap-2">
-            <span className="text-content-muted text-[10px] uppercase font-mono">PIN:</span>
+            <span className="text-content-muted text-[10px] uppercase font-mono">
+              {docData.requirePin ? 'PIN (wymagany):' : 'PIN (opcja):'}
+            </span>
             <span className="font-mono font-bold text-primary tracking-wider">
               {formatAccessCode(docData.pin)}
             </span>
@@ -341,17 +347,39 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
             </button>
           </div>
 
-          {/* Przycisk Kopiuj link */}
+          {/* Przycisk Kopiuj unikalny link */}
           <Button
             type="button"
             variant="secondary"
             size="sm"
             onClick={handleCopyLink}
             className="text-xs flex items-center gap-1.5 px-3 py-1.5"
+            title="Kopiuj unikalny link bezpośredni (bez wymogu wpisywania PINu)"
           >
             {copiedLink ? <Check size={13} className="text-emerald-400" /> : <Share2 size={13} />}
-            <span>{copiedLink ? 'Skopiowano!' : 'Udostępnij link'}</span>
+            <span>{copiedLink ? 'Skopiowano link!' : 'Udostępnij link'}</span>
           </Button>
+
+          {/* Przełącznik wymogu PIN dla lektora */}
+          {isTeacher && onToggleRequirePin && (
+            <button
+              type="button"
+              onClick={() => onToggleRequirePin(!docData.requirePin)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                docData.requirePin
+                  ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
+                  : 'bg-base-200 border-white/10 text-content-muted hover:text-white'
+              }`}
+              title={
+                docData.requirePin
+                  ? 'Wymóg kodu PIN jest włączony. Kursant wchodzący z linku musi wpisać PIN. Kliknij, aby umożliwić bezpośredni dostęp bez PINu.'
+                  : 'Link otwiera brudnopis bezpośrednio bez PINu. Kliknij, jeśli chcesz zabezpieczyć dokument kodem PIN.'
+              }
+            >
+              {docData.requirePin ? <ShieldAlert size={13} /> : <ShieldCheck size={13} />}
+              <span>{docData.requirePin ? 'PIN: Wymagany' : 'PIN: Opcjonalny (wył.)'}</span>
+            </button>
+          )}
 
           {/* Przełącznik uprawnień dla lektora */}
           {isTeacher && onToggleStudentEdit && (

@@ -112,6 +112,12 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
     setScratchpadDoc(prev => prev ? { ...prev, allowStudentEdit: allow } : null);
   };
 
+  const handleToggleRequirePin = async (require: boolean) => {
+    if (!scratchpadDoc?.id) return;
+    await updateScratchpadSettings(scratchpadDoc.id, { requirePin: require });
+    setScratchpadDoc(prev => prev ? { ...prev, requirePin: require } : null);
+  };
+
   const handlePush = (data: any) => {
     if (onPushToLessonRecord) {
       onPushToLessonRecord(data);
@@ -159,6 +165,7 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
               document={scratchpadDoc}
               onSaveContent={handleSaveContent}
               onToggleStudentEdit={handleToggleStudentEdit}
+              onToggleRequirePin={handleToggleRequirePin}
               onPushToLessonRecord={onPushToLessonRecord ? handlePush : undefined}
               currentUser={{
                 uid: user?.id || 'teacher',

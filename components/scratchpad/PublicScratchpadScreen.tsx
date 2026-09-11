@@ -9,9 +9,13 @@ import {
   Sparkles,
   Lock,
   Unlock,
+  ShieldCheck,
+  ShieldAlert,
+  Loader2,
 } from 'lucide-react';
 import { ScratchpadDocument } from '../../types';
 import {
+  getScratchpadById,
   findScratchpadByPin,
   subscribeScratchpad,
   saveScratchpadContent,
@@ -22,25 +26,29 @@ import Button from '../ui/Button';
 
 export const PublicScratchpadScreen: React.FC = () => {
   const [pinInput, setPinInput] = useState('');
-  const [activePin, setActivePin] = useState<string | null>(null);
   const [document, setDocument] = useState<ScratchpadDocument | null>(null);
+  const [lockedDoc, setLockedDoc] = useState<ScratchpadDocument | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
 
-  // 1. Sprawdź, czy w adresie URL jest parametr ?pin=...
+  // 1. Sprawdź parametry URL: ?id=... (unikalny link) lub ?pin=... (kod dostępu)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
+    const idParam = params.get('id') || params.get('doc');
     const pinParam = params.get('pin') || params.get('code') || params.get('p');
-    if (pinParam) {
+
+    if (idParam) {
+      loadScratchpadById(idParam, pinParam);
+    } else if (pinParam) {
       const normalized = normalizeAccessCode(pinParam);
       setPinInput(formatAccessCode(normalized));
-      loadScratchpad(normalized);
+      loadScratchpadByPin(normalized);
     }
   }, []);
 
-  // 2. Subskrypcja Firestore na żywo, gdy dokument jest załadowany
+  // 2. Subskrypcja Firestore na żywo, gdy dokument jest odblokowany i załadowany
   useEffect(() => {
     if (!document?.id) return;
 
@@ -59,7 +67,54 @@ export const PublicScratchpadScreen: React.FC = () => {
     return () => unsubscribe();
   }, [document?.id]);
 
-  const loadScratchpad = async (targetPin: string) => {
+  /**
+   * Otwiera brudnopis bezpośrednio po unikalnym identyfikatorze dokumentu.
+   * Domyślnie NIE wymaga PINu, chyba że lektor włączył flagę requirePin.
+   */
+  const loadScratchpadById = async (id: string, providedPin?: string | null) => {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const doc = await getScratchpadById(id);
+      if (!doc) {
+        setErrorMessage('Nie znaleziono brudnopisu o podanym identyfikatorze. Upewnij się, że link jest poprawny.');
+        setDocument(null);
+        setLockedDoc(null);
+        return;
+      }
+
+      // Sprawdź, czy lektor włączył opcję wymagania kodu PIN
+      if (doc.requirePin) {
+        // Jeśli PIN został przekazany w parametrze URL i jest poprawny, odblokuj od razu
+        if (providedPin && normalizeAccessCode(providedPin) === normalizeAccessCode(doc.pin)) {
+          setDocument(doc);
+          setLockedDoc(null);
+        } else {
+          // Wymagaj podania PINu przez kursanta
+          setLockedDoc(doc);
+          setDocument(null);
+          if (providedPin) {
+            setErrorMessage('Podany kod PIN jest nieprawidłowy dla tego dokumentu.');
+          }
+        }
+      } else {
+        // Dostęp bezpośredni — brak wymogu PINu!
+        setDocument(doc);
+        setLockedDoc(null);
+      }
+    } catch (err: any) {
+      console.error('Błąd ładowania brudnopisu po ID:', err);
+      setErrorMessage(err.message || 'Wystąpił błąd podczas otwierania dokumentu.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Wyszukuje i otwiera brudnopis po kodzie PIN wpisanym w formularzu.
+   */
+  const loadScratchpadByPin = async (targetPin: string) => {
     if (!isValidAccessCode(targetPin)) {
       setErrorMessage('Wprowadź poprawny 6-znakowy kod PIN (np. ABC-123).');
       return;
@@ -73,13 +128,13 @@ export const PublicScratchpadScreen: React.FC = () => {
       if (!doc) {
         setErrorMessage('Nie znaleziono brudnopisu o podanym kodzie PIN. Upewnij się, że kod jest poprawny.');
         setDocument(null);
-        setActivePin(null);
+        setLockedDoc(null);
       } else {
         setDocument(doc);
-        setActivePin(targetPin);
+        setLockedDoc(null);
       }
     } catch (err: any) {
-      console.error('Błąd ładowania brudnopisu:', err);
+      console.error('Błąd ładowania brudnopisu po PIN:', err);
       setErrorMessage(err.message || 'Wystąpił błąd podczas otwierania dokumentu.');
     } finally {
       setIsLoading(false);
@@ -89,12 +144,27 @@ export const PublicScratchpadScreen: React.FC = () => {
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const normalized = normalizeAccessCode(pinInput);
-    loadScratchpad(normalized);
+
+    // Jeśli dokument wymaga PINu i jest już załadowany w stanie lockedDoc
+    if (lockedDoc) {
+      if (normalized === normalizeAccessCode(lockedDoc.pin)) {
+        setDocument(lockedDoc);
+        setLockedDoc(null);
+        setErrorMessage(null);
+      } else {
+        setErrorMessage('Niepoprawny kod PIN dla tego brudnopisu. Spróbuj ponownie.');
+      }
+      return;
+    }
+
+    // Ogólne wyszukiwanie po kodzie PIN
+    loadScratchpadByPin(normalized);
   };
 
   const handleLeave = () => {
     setDocument(null);
-    setActivePin(null);
+    setLockedDoc(null);
+    setPinInput('');
     setErrorMessage(null);
     if (typeof window !== 'undefined' && window.history) {
       window.history.replaceState({}, '', window.location.pathname);
@@ -121,21 +191,37 @@ export const PublicScratchpadScreen: React.FC = () => {
     window.print();
   };
 
-  // EKRAN 1: FORMULARZ KODU PIN (Brak załadowanego dokumentu)
+  // EKRAN 1: Ładowanie bezpośredniego linku
+  if (isLoading && !document && !lockedDoc) {
+    return (
+      <div className="min-h-screen bg-base-100 flex flex-col items-center justify-center p-6 space-y-4">
+        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+        <p className="text-sm font-semibold text-content-muted">Ładowanie brudnopisu...</p>
+      </div>
+    );
+  }
+
+  // EKRAN 2: FORMULARZ KODU PIN (Brak załadowanego dokumentu lub dokument wymaga PINu)
   if (!document) {
     return (
       <div className="min-h-screen bg-base-100 flex items-center justify-center p-4 selection:bg-primary/30">
         <div className="w-full max-w-md">
           {/* Nagłówek i Ikona */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/30 mb-4 shadow-xl shadow-primary/10">
-              <FileText className="w-8 h-8 text-primary" />
+            <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl border mb-4 shadow-xl ${
+              lockedDoc
+                ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 shadow-amber-500/10'
+                : 'bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border-primary/30 text-primary shadow-primary/10'
+            }`}>
+              {lockedDoc ? <ShieldAlert className="w-8 h-8" /> : <FileText className="w-8 h-8" />}
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              Cribro <span className="text-primary font-normal">Scratchpad</span>
+              {lockedDoc ? 'Brudnopis chroniony PINem' : <>Cribro <span className="text-primary font-normal">Scratchpad</span></>}
             </h1>
             <p className="text-content-muted text-sm mt-2">
-              Współdzielony brudnopis notatek z lekcji i wspólnej pracy na żywo
+              {lockedDoc
+                ? `Wymagane potwierdzenie dostępu do notatek: ${lockedDoc.studentName}`
+                : 'Współdzielony brudnopis notatek z lekcji i wspólnej pracy na żywo'}
             </p>
           </div>
 
@@ -151,7 +237,7 @@ export const PublicScratchpadScreen: React.FC = () => {
             <form onSubmit={handleFormSubmit} className="space-y-5">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-content-muted mb-2">
-                  Wprowadź kod PIN dokumentu
+                  {lockedDoc ? 'Wprowadź kod PIN tego brudnopisu' : 'Wprowadź kod PIN dokumentu'}
                 </label>
                 <div className="relative">
                   <input
@@ -168,7 +254,9 @@ export const PublicScratchpadScreen: React.FC = () => {
                   </div>
                 </div>
                 <p className="text-[11px] text-content-muted/70 mt-2 text-center">
-                  Kod PIN otrzymasz od swojego lektora lub znajdziesz w podsumowaniu lekcji.
+                  {lockedDoc
+                    ? 'Lektor ustawił wymóg podania kodu PIN. Kod znajdziesz w podsumowaniu zajęć.'
+                    : 'Kod PIN otrzymasz od swojego lektora lub znajdziesz w podsumowaniu lekcji.'}
                 </p>
               </div>
 
@@ -178,8 +266,18 @@ export const PublicScratchpadScreen: React.FC = () => {
                 disabled={isLoading || !pinInput.trim()}
                 className="w-full py-3 text-sm font-bold shadow-lg shadow-primary/20"
               >
-                {isLoading ? 'Łączenie z dokumentem...' : 'Otwórz brudnopis →'}
+                {isLoading ? 'Weryfikacja kodu...' : lockedDoc ? 'Odblokuj notatki →' : 'Otwórz brudnopis →'}
               </Button>
+
+              {lockedDoc && (
+                <button
+                  type="button"
+                  onClick={handleLeave}
+                  className="w-full text-center text-xs text-content-muted hover:text-white transition-colors cursor-pointer pt-2"
+                >
+                  ← Wróć do ekranu głównego
+                </button>
+              )}
             </form>
           </div>
 

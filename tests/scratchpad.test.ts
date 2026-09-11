@@ -83,3 +83,20 @@ Temat: Negocjacje biznesowe
   assert.equal(corrections.length, 2);
   assert.ok(corrections[0].includes('I went yesterday'));
 });
+
+test('buildScratchpadUrl generuje unikalny link bezpośredni po ID dokumentu bez wymogu PINu', () => {
+  const docId = 'sp_student_456';
+  const url = buildScratchpadUrl(docId);
+
+  assert.ok(url.includes('/scratchpad?id=sp_student_456'));
+  assert.ok(!url.includes('pin='));
+});
+
+test('buildScratchpadUrl pozwala na opcjonalne dołączenie kodu PIN, jeśli lektor tak zdecyduje', () => {
+  const docId = 'sp_student_789';
+  const pin = 'ACDEF2';
+  const url = buildScratchpadUrl(docId, { pin });
+
+  assert.ok(url.includes('id=sp_student_789'));
+  assert.ok(url.includes('pin=ACD-EF2'));
+});
