@@ -20,6 +20,39 @@ import {
 
 export const scratchpadDocRef = (id: string) => doc(db, 'scratchpads', id);
 
+const LOCAL_STORAGE_PREFIX = 'cribro_scratchpad_';
+const PIN_MAP_PREFIX = 'cribro_sp_pin_';
+const INDEX_KEY = 'cribro_scratchpads_index';
+
+export function getLocalScratchpad(id: string): ScratchpadDocument | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}${id}`);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn('LocalStorage read error:', e);
+  }
+  return null;
+}
+
+export function saveLocalScratchpad(docData: ScratchpadDocument): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(`${LOCAL_STORAGE_PREFIX}${docData.id}`, JSON.stringify(docData));
+    if (docData.pin) {
+      localStorage.setItem(`${PIN_MAP_PREFIX}${normalizeAccessCode(docData.pin)}`, docData.id);
+    }
+    const indexRaw = localStorage.getItem(INDEX_KEY);
+    const index: string[] = indexRaw ? JSON.parse(indexRaw) : [];
+    if (!index.includes(docData.id)) {
+      index.push(docData.id);
+      localStorage.setItem(INDEX_KEY, JSON.stringify(index));
+    }
+  } catch (e) {
+    console.warn('LocalStorage write error:', e);
+  }
+}
+
 /**
  * Zwraca bazowy szablon HTML dla nowo tworzonego dokumentu brudnopisu.
  */
@@ -42,7 +75,7 @@ export function getInitialScratchpadContent(studentName: string): {
 
 /**
  * Pobiera istniejący stały brudnopis kursanta lub tworzy dokładnie jeden unikalny
- * dokument dla danej osoby. Gwarantuje, że kursant ma 1 stały link / PIN na całą naukę.
+ * dokument dla danej osoby. Działa local-first z automatyczną odpornością na błędy uprawnień Firestore.
  */
 export async function getOrCreateStudentScratchpad(
   student: { id?: string | null; name: string },
@@ -52,32 +85,39 @@ export async function getOrCreateStudentScratchpad(
   const docId = studentId ? `sp_${studentId}` : `sp_${Date.now()}`;
   const ref = scratchpadDocRef(docId);
 
-  // 1. Sprawdź, czy dokument już istnieje
-  const snap = await getDoc(ref);
-  if (snap.exists()) {
-    return snap.data() as ScratchpadDocument;
-  }
+  // 1. Sprawdź lokalną kopię brudnopisu (dla odporności i natychmiastowego startu)
+  const localDoc = getLocalScratchpad(docId);
 
-  // 2. Jeśli nie istnieje, wygeneruj unikalny kod PIN
-  let pin = '';
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const candidate = normalizeAccessCode(generateAccessCode(6));
-    // Sprawdź unikalność PIN-u w kolekcji
-    const q = query(
-      collection(db, 'scratchpads'),
-      where('pin', '==', candidate)
+  // 2. Spróbuj pobrać z Firestore
+  try {
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const cloudDoc = snap.data() as ScratchpadDocument;
+      saveLocalScratchpad(cloudDoc);
+      return cloudDoc;
+    }
+  } catch (firestoreErr: any) {
+    console.warn(
+      '[Scratchpad] Błąd odczytu z Cloud Firestore (używam lokalnej pamięci podręcznej):',
+      firestoreErr?.message || firestoreErr
     );
-    const existing = await getDocs(q);
-    if (existing.empty) {
-      pin = candidate;
-      break;
+    if (localDoc) {
+      return localDoc;
     }
   }
 
-  if (!pin) {
-    pin = normalizeAccessCode(generateAccessCode(6));
+  // Jeśli mamy już dokument w pamięci lokalnej, zwróć go i w tle ponów próbę zapisu do chmury
+  if (localDoc) {
+    try {
+      await setDoc(ref, localDoc, { merge: true });
+    } catch (e: any) {
+      console.warn('[Scratchpad] Cicha synchronizacja do chmury nie powiodła się:', e?.message || e);
+    }
+    return localDoc;
   }
 
+  // 3. Jeśli dokument nie istnieje nigdzie, wygeneruj nowy z unikalnym kodem PIN
+  const pin = normalizeAccessCode(generateAccessCode(6));
   const now = new Date().toISOString();
   const initial = getInitialScratchpadContent(student.name);
 
@@ -102,7 +142,19 @@ export async function getOrCreateStudentScratchpad(
     version: 1,
   };
 
-  await setDoc(ref, newDoc);
+  // Zapisz lokalnie od razu, by użytkownik mógł natychmiast edytować
+  saveLocalScratchpad(newDoc);
+
+  // Spróbuj zapisać w chmurze
+  try {
+    await setDoc(ref, newDoc);
+  } catch (cloudErr: any) {
+    console.warn(
+      '[Scratchpad] Zapis nowego dokumentu do chmury nie powiódł się (zapisano lokalnie):',
+      cloudErr?.message || cloudErr
+    );
+  }
+
   return newDoc;
 }
 
@@ -115,18 +167,47 @@ export async function findScratchpadByPin(
   if (!rawPin) return null;
   const pin = normalizeAccessCode(rawPin);
 
-  // Najpierw zapytanie po indeksie pola `pin`
-  const q = query(collection(db, 'scratchpads'), where('pin', '==', pin));
-  const snap = await getDocs(q);
+  // 1. Sprawdź lokalną pamięć
+  if (typeof window !== 'undefined') {
+    const mappedId = localStorage.getItem(`${PIN_MAP_PREFIX}${pin}`);
+    if (mappedId) {
+      const local = getLocalScratchpad(mappedId);
+      if (local) return local;
+    }
 
-  if (!snap.empty) {
-    return snap.docs[0].data() as ScratchpadDocument;
+    try {
+      const indexRaw = localStorage.getItem(INDEX_KEY);
+      if (indexRaw) {
+        const ids: string[] = JSON.parse(indexRaw);
+        for (const id of ids) {
+          const docItem = getLocalScratchpad(id);
+          if (docItem && normalizeAccessCode(docItem.pin) === pin) {
+            return docItem;
+          }
+        }
+      }
+    } catch (e) {}
   }
 
-  // Sprawdź czy ID to `sp_${pin}`
-  const directSnap = await getDoc(scratchpadDocRef(`sp_${pin}`));
-  if (directSnap.exists()) {
-    return directSnap.data() as ScratchpadDocument;
+  // 2. Sprawdź bezpośrednio po ID w Firestore
+  try {
+    const directSnap = await getDoc(scratchpadDocRef(`sp_${pin}`));
+    if (directSnap.exists()) {
+      const cloudDoc = directSnap.data() as ScratchpadDocument;
+      saveLocalScratchpad(cloudDoc);
+      return cloudDoc;
+    }
+
+    const q = query(collection(db, 'scratchpads'), where('pin', '==', pin));
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      const cloudDoc = snap.docs[0].data() as ScratchpadDocument;
+      saveLocalScratchpad(cloudDoc);
+      return cloudDoc;
+    }
+  } catch (err: any) {
+    console.warn('[Scratchpad] Błąd wyszukiwania po PIN w chmurze:', err?.message || err);
   }
 
   return null;
@@ -141,20 +222,49 @@ export function subscribeScratchpad(
   onError?: (err: Error) => void
 ): () => void {
   const ref = scratchpadDocRef(id);
-  return onSnapshot(
-    ref,
-    (snap) => {
-      if (snap.exists()) {
-        onUpdate(snap.data() as ScratchpadDocument);
-      } else {
-        onUpdate(null);
+
+  // Natychmiast zasil widok danymi lokalnymi
+  const local = getLocalScratchpad(id);
+  if (local) {
+    onUpdate(local);
+  }
+
+  try {
+    return onSnapshot(
+      ref,
+      (snap) => {
+        if (snap.exists()) {
+          const cloudDoc = snap.data() as ScratchpadDocument;
+          saveLocalScratchpad(cloudDoc);
+          onUpdate(cloudDoc);
+        } else {
+          const fallback = getLocalScratchpad(id);
+          if (fallback) {
+            onUpdate(fallback);
+          } else {
+            onUpdate(null);
+          }
+        }
+      },
+      (err) => {
+        console.warn('[Scratchpad] Błąd subskrypcji Firestore (używam stanu lokalnego):', err?.message || err);
+        const fallback = getLocalScratchpad(id);
+        if (fallback) {
+          onUpdate(fallback);
+        }
+        if (onError) onError(err);
       }
-    },
-    (err) => {
-      console.error('Błąd subskrypcji Scratchpada:', err);
-      if (onError) onError(err);
-    }
-  );
+    );
+  } catch (err: any) {
+    console.warn('[Scratchpad] Nie udało się zainicjować subskrypcji:', err);
+    return () => {};
+  }
+}
+
+export interface ScratchpadSaveResult {
+  local: boolean;
+  cloud: boolean;
+  cloudError?: string;
 }
 
 /**
@@ -165,20 +275,52 @@ export async function saveScratchpadContent(
   contentHtml: string,
   contentText: string,
   editorMeta?: { uid: string; name: string; role: 'teacher' | 'student' }
-): Promise<void> {
-  const ref = scratchpadDocRef(id);
-  const patch: any = {
+): Promise<ScratchpadSaveResult> {
+  const now = new Date().toISOString();
+  const current = getLocalScratchpad(id);
+  const updatedDoc: ScratchpadDocument = {
+    ...(current || {
+      id,
+      pin: '',
+      studentName: 'Kursant',
+      teacherUid: 'teacher',
+      teacherName: 'Lektor',
+      title: 'Brudnopis lekcyjny',
+      allowStudentEdit: false,
+      createdAt: now,
+      version: 1,
+    }),
     contentHtml,
     contentText,
-    updatedAt: new Date().toISOString(),
-    version: increment(1),
+    updatedAt: now,
+    version: (current?.version || 1) + 1,
+    lastEditedBy: editorMeta || current?.lastEditedBy,
   };
 
-  if (editorMeta) {
-    patch.lastEditedBy = editorMeta;
+  saveLocalScratchpad(updatedDoc);
+  const result: ScratchpadSaveResult = { local: true, cloud: false };
+
+  try {
+    const ref = scratchpadDocRef(id);
+    const patch: any = {
+      contentHtml,
+      contentText,
+      updatedAt: now,
+      version: increment(1),
+    };
+
+    if (editorMeta) {
+      patch.lastEditedBy = editorMeta;
+    }
+
+    await updateDoc(ref, patch);
+    result.cloud = true;
+  } catch (err: any) {
+    result.cloudError = err?.message || String(err);
+    console.warn('[Scratchpad] Zapis do Cloud Firestore nie powiódł się (zapisano w pamięci lokalnej):', err?.message || err);
   }
 
-  await updateDoc(ref, patch);
+  return result;
 }
 
 /**
@@ -188,11 +330,25 @@ export async function updateScratchpadSettings(
   id: string,
   patch: Partial<ScratchpadDocument>
 ): Promise<void> {
-  const ref = scratchpadDocRef(id);
-  await updateDoc(ref, {
-    ...patch,
-    updatedAt: new Date().toISOString(),
-  });
+  const current = getLocalScratchpad(id);
+  if (current) {
+    const updated = {
+      ...current,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    };
+    saveLocalScratchpad(updated);
+  }
+
+  try {
+    const ref = scratchpadDocRef(id);
+    await updateDoc(ref, {
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    console.warn('[Scratchpad] Błąd aktualizacji ustawień w chmurze:', err?.message || err);
+  }
 }
 
 /**

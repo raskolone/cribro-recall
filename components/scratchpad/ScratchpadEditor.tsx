@@ -33,7 +33,7 @@ import Button from '../ui/Button';
 
 interface ScratchpadEditorProps {
   document: ScratchpadDocument;
-  onSaveContent?: (html: string, text: string) => Promise<void>;
+  onSaveContent?: (html: string, text: string) => Promise<any> | void;
   onToggleStudentEdit?: (allow: boolean) => Promise<void>;
   onPushToLessonRecord?: (data: {
     topic: string;
@@ -72,7 +72,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const typingResetTimeoutRef = useRef<any>(null);
   const saveTimeoutRef = useRef<any>(null);
 
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'synced'>('saved');
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'synced' | 'local_only'>('saved');
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPin, setCopiedPin] = useState(false);
   const [wordCount, setWordCount] = useState(0);
@@ -105,7 +105,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     }
   }, [autoFocus, isReadOnly]);
 
-  // Obsługa zapisu z debouncem (~500ms)
+  // Debounce zapisu zmian do Firestore / LocalStorage
   const triggerDebouncedSave = useCallback(
     (html: string) => {
       if (isReadOnly || !onSaveContent) return;
@@ -116,11 +116,15 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       saveTimeoutRef.current = setTimeout(async () => {
         try {
           const text = extractText(html);
-          await onSaveContent(html, text);
-          setSaveStatus('saved');
+          const res = await onSaveContent(html, text);
+          if (res && typeof res === 'object' && res.cloud === false) {
+            setSaveStatus('local_only');
+          } else {
+            setSaveStatus('saved');
+          }
         } catch (err) {
           console.error('Błąd zapisu Scratchpada:', err);
-          setSaveStatus('saved');
+          setSaveStatus('local_only');
         }
       }, 600);
     },
@@ -308,6 +312,11 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
               {saveStatus === 'synced' && (
                 <span className="text-cyan-400 flex items-center gap-1">
                   <CloudCheck size={12} /> Zsynchronizowano
+                </span>
+              )}
+              {saveStatus === 'local_only' && (
+                <span className="text-amber-400 flex items-center gap-1" title="Zapisano w tej przeglądarce (wdrożenie reguł Firestore w toku)">
+                  <CloudUpload size={12} /> Zapisano lokalnie
                 </span>
               )}
             </div>

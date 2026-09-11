@@ -71,7 +71,7 @@ export const StudentScratchpadScreen: React.FC = () => {
 
   const handleSaveContent = async (html: string, text: string) => {
     if (!document?.id || !user) return;
-    await saveScratchpadContent(document.id, html, text, {
+    return await saveScratchpadContent(document.id, html, text, {
       uid: user.id,
       name: studentName,
       role: 'student',

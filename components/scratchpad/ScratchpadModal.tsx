@@ -99,7 +99,7 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
       ? `${user.firstName} ${user.lastName || ''}`.trim()
       : user?.username || 'Lektor';
 
-    await saveScratchpadContent(scratchpadDoc.id, html, text, {
+    return await saveScratchpadContent(scratchpadDoc.id, html, text, {
       uid: teacherUid,
       name: teacherName,
       role: 'teacher',
