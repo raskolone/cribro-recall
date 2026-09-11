@@ -6,8 +6,37 @@ import Button from '../ui/Button';
 import Card from '../ui/Card';
 import { generateTest, modifyTest } from '../../services/geminiService';
 import { useAuth } from '../../context/AuthContext';
-import { MessageSquare, BookOpen, Calendar, ChevronRight, CheckCircle, X, ChevronUp, ChevronDown, Edit2, Trash2, Plus, Eye, Sparkles, Link2, Copy } from 'lucide-react';
+import { MessageSquare, BookOpen, Calendar, ChevronRight, CheckCircle, X, ChevronUp, ChevronDown, Edit2, Trash2, Plus, Eye, Sparkles, Link2, Copy, Layers } from 'lucide-react';
+import { extractLessonBlocks } from '../../utils/lessonBlocks';
 import TestPreviewModal from './TestPreviewModal';
+
+/**
+ * Materiał lekcji podany modelowi w pełnym układzie 4 bloków Notion.
+ *
+ * Wcześniej szedł tylko temat, streszczenie i słownictwo — czyli test powstawał
+ * bez znajomości poprawek błędów i zadania domowego, a to właśnie tam jest
+ * zapisane, z czym kursant ma realny problem. Puste bloki pomijamy, żeby nie
+ * zasypywać promptu nagłówkami bez treści.
+ */
+const buildLessonContext = (record: LessonRecord): string => {
+  const blocks = extractLessonBlocks(record);
+  const sections: string[] = [
+    `LEKCJA ${record.date || 'bez daty'} — ${record.topic || 'bez tematu'}`,
+  ];
+
+  const add = (label: string, value?: string) => {
+    const text = (value || '').trim();
+    if (text) sections.push(`${label}:\n${text}`);
+  };
+
+  add('Podsumowanie', blocks.summary);
+  add('Słownictwo i zwroty', blocks.vocabulary);
+  add('Poprawki i błędy kursanta', blocks.corrections);
+  add('Zadanie domowe', blocks.homework);
+  add('Do poprawy', record.thingsToImprove);
+
+  return sections.join('\n');
+};
 import ConfirmModal from '../ui/ConfirmModal';
 import TestEditModal from './TestEditModal';
 import i18n from "i18next";
@@ -304,14 +333,15 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
     
     try {
       const selectedLessonRecords = lessons.filter(l => selectedLessons.includes(l.id));
-      const lessonContext = selectedLessonRecords.map((lr, idx) => 
-        `Lesson ${lr.date}: Topic: ${lr.topic}. Summary: ${lr.lessonSummary || ''}. Words: ${lr.vocabularyText || ''}`
+      const lessonContext = selectedLessonRecords.map(buildLessonContext).join('\n\n');
+
+      // Pełne archiwum tylko skrótowo — to tło, a nie materiał testu. Rozpisane
+      // w czterech blokach przekroczyłoby okno kontekstu przy kilkudziesięciu
+      // lekcjach i wypchnęłoby stamtąd lekcje faktycznie wybrane przez lektora.
+      const allLessonsContext = lessons.map((lr) =>
+        `Lekcja ${lr.date}: ${lr.topic}. Słownictwo: ${(lr.vocabularyText || '').slice(0, 300)}`
       ).join('\n\n');
-      
-      const allLessonsContext = lessons.map((lr, idx) => 
-        `Lesson ${lr.date}: Topic: ${lr.topic}. Summary: ${lr.lessonSummary || ''}. Words: ${lr.vocabularyText || ''}`
-      ).join('\n\n');
-      
+
       const profile = `Imię: ${user.firstName || ''}, Zainteresowania/Opis: ${user.description || ''}`;
       
       let fileData = null;
@@ -349,9 +379,11 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
       }));
       setGeneratedQuestions(withIds);
       setIsPreviewModalOpen(true);
-    } catch (err) {
-      alert("Błąd generowania testu");
-      console.error(err);
+    } catch (err: any) {
+      // Ogólne „Błąd generowania testu" nie mówiło, czy padł klucz API, limit
+      // modelu, czy zbyt duży plik — a to trzy zupełnie różne decyzje lektora.
+      console.error('Generowanie testu nie powiodło się:', err);
+      alert(`Nie udało się wygenerować testu.\n\n${err?.message || 'Nieznany błąd po stronie modelu.'}`);
     } finally {
       setIsGenerating(false);
     }
@@ -362,11 +394,9 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
     setIsModifying(true);
     try {
       const selectedLessonRecords = lessons.filter(l => selectedLessons.includes(l.id));
-      const lessonContext = selectedLessonRecords.map((lr, idx) => 
-        `Lesson ${lr.date}: Topic: ${lr.topic}. Summary: ${lr.lessonSummary || ''}. Words: ${lr.vocabularyText || ''}`
-      ).join('\n\n');
+      const lessonContext = selectedLessonRecords.map(buildLessonContext).join('\n\n');
       const profile = `Imię: ${user.firstName || ''}, Opis: ${user.description || ''}`;
-      
+
       const newQuestions = await modifyTest(generatedQuestions, feedback, user.level || 'B1', profile, lessonContext);
       const withIds = newQuestions.map(q => ({
         ...q,
@@ -1256,6 +1286,34 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                                                         </Button>
             </Card>
           )}
+
+          {/* Miejsce na testy poziomujące — gotowe zestawy wstawiane ręcznie,
+              nie generowane z lekcji. Sekcja stoi tu z pustym stanem, żeby
+              było widać, gdzie trafią, zanim pojawi się pierwszy zestaw. */}
+          <Card className="p-6 bg-base-200/40 backdrop-blur-md border border-white/10">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="min-w-0">
+                <h3 className="font-bold text-lg flex items-center gap-2">
+                  <Layers size={18} className="text-content-muted shrink-0" />
+                  <span>Testy poziomujące</span>
+                </h3>
+                <p className="text-xs text-content-muted mt-0.5">
+                  Gotowe zestawy sprawdzające poziom (A1–C2), niezależne od historii lekcji
+                </p>
+              </div>
+              <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-white/[0.07] border border-line text-text-faint">
+                Wkrótce
+              </span>
+            </div>
+
+            <div className="rounded-xl border border-dashed border-white/12 p-5 text-center space-y-1.5">
+              <p className="text-xs font-semibold text-content">Brak zestawów poziomujących</p>
+              <p className="text-[11px] text-content-muted max-w-md mx-auto leading-relaxed">
+                Tutaj pojawią się testy plasujące kursanta na skali CEFR. Dodasz je z czasem — do tego
+                momentu poziom ustawiasz ręcznie w profilu kursanta.
+              </p>
+            </div>
+          </Card>
 
           <Card className="p-6 bg-base-200/40 backdrop-blur-md border border-white/10">
             <div className="flex items-center justify-between mb-4">

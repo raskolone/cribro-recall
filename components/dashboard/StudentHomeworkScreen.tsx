@@ -401,6 +401,9 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           showBlocks: 'Z czego się składa',
           hideBlocks: 'Zwiń',
           blockLabel: (label: string, at: number, of: number) => `${label} · ${at}/${of}`,
+          progressTitle: 'Twój postęp',
+          progressHint:
+            'Nie musisz robić wszystkiego naraz — odpowiedzi zapisują się same. Możesz zamknąć aplikację i wrócić do reszty później.',
         }
       : {
           title: 'Homework',
@@ -431,6 +434,9 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           showBlocks: "What's inside",
           hideBlocks: 'Collapse',
           blockLabel: (label: string, at: number, of: number) => `${label} · ${at}/${of}`,
+          progressTitle: 'Your progress',
+          progressHint:
+            'You do not have to finish in one go — your answers save themselves. Close the app and come back to the rest later.',
         };
 
   /** Nazwa rodzaju zadania w języku interfejsu. */
@@ -1278,6 +1284,31 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
     const blocks = blocksOf(activeTask);
     const block = blocks.find((b) => index >= b.from && index < b.from + b.count);
 
+    /**
+     * Czy na to zadanie padła jakakolwiek odpowiedź.
+     *
+     * Odpowiedzi bywają tekstem, tablicą (układanka, dobieranie) albo obiektem
+     * (luki), więc samo `Boolean(answers[i])` uznałoby pustą tablicę i `{}` za
+     * wypełnione i licznik pokazywałby komplet przy pustej pracy.
+     */
+    const isAnswered = (value: any): boolean => {
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'string') return value.trim().length > 0;
+      if (Array.isArray(value)) return value.some((entry) => isAnswered(entry));
+      if (typeof value === 'object') return Object.values(value).some((entry) => isAnswered(entry));
+      return true;
+    };
+
+    const countAnsweredIn = (from: number, count: number): number => {
+      let done = 0;
+      for (let i = from; i < from + count; i++) {
+        if (isAnswered(answers[i])) done += 1;
+      }
+      return done;
+    };
+
+    const answeredCount = countAnsweredIn(0, items.length);
+
     return (
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-5">
         <div className="flex items-center gap-3">
@@ -1306,6 +1337,53 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           <p className="px-1 text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-primary">
             {L.blockLabel(typeLabel(block.type), index - block.from + 1, block.count)}
           </p>
+        )}
+
+        {/* Mapa bloków z postępem.
+            Pracy domowej nie trzeba robić za jednym posiedzeniem — odpowiedzi
+            zapisują się same. Żeby to miało sens, kursant musi widzieć, co ma
+            już wypełnione i gdzie wrócić; bez tego po przerwie przewija
+            wszystko od początku, szukając pierwszej pustej luki. */}
+        {blocks.length > 1 && (
+          <div className="rounded-2xl border border-white/10 bg-base-200/40 p-3 space-y-2.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-[11px] font-bold text-white">{L.progressTitle}</span>
+              <span className="text-[11px] font-mono text-content-muted">
+                {answeredCount}/{items.length}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {blocks.map((b, bi) => {
+                const done = countAnsweredIn(b.from, b.count);
+                const isCurrent = index >= b.from && index < b.from + b.count;
+                const complete = done === b.count;
+                return (
+                  <button
+                    key={`${b.type}-${bi}`}
+                    type="button"
+                    onClick={() => setIndex(b.from)}
+                    title={`${typeLabel(b.type)} — ${done}/${b.count}`}
+                    className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                      isCurrent
+                        ? 'border-primary/50 bg-primary/12 text-primary'
+                        : complete
+                        ? 'border-white/10 bg-white/[0.05] text-content-muted'
+                        : 'border-white/12 bg-base-100/60 text-content hover:bg-white/[0.07]'
+                    }`}
+                  >
+                    {complete && <CheckCheck size={12} className="shrink-0" />}
+                    <span className="truncate max-w-[10rem]">{typeLabel(b.type)}</span>
+                    <span className="font-mono opacity-70">
+                      {done}/{b.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <p className="text-[11px] text-content-muted leading-relaxed">{L.progressHint}</p>
+          </div>
         )}
 
         <div className="rounded-2xl border border-white/10 bg-base-200/50 p-4 sm:p-6">

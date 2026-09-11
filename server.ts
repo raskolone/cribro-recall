@@ -1498,34 +1498,70 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
         }
       };
 
-            let response = await generateContentWithRetry(ai, contents, {
+      const draftResponse = await generateContentWithRetry(ai, contents, {
         responseMimeType: 'application/json',
         responseSchema: schema,
         temperature: 0.4
       });
 
+      /** Odpowiedź modelu bywa opakowana w ```json — zdejmujemy płot przed parsowaniem. */
+      const parseQuestions = (raw?: string): any[] | null => {
+        if (!raw) return null;
+        try {
+          const cleaned = raw.replace(/^```json\n?/g, '').replace(/```$/g, '').trim();
+          const value = JSON.parse(cleaned);
+          return Array.isArray(value) && value.length > 0 ? value : null;
+        } catch {
+          return null;
+        }
+      };
+
+      const draftQuestions = parseQuestions(draftResponse.text);
+
+      // Bez zadań z pierwszego przebiegu nie ma czego weryfikować ani ratować.
+      if (!draftQuestions) {
+        console.error('Generowanie testu: pierwszy przebieg nie zwrócił poprawnego JSON-a', {
+          snippet: (draftResponse.text || '').slice(0, 500)
+        });
+        return res.status(502).json({
+          error: 'Model nie zwrócił poprawnej listy zadań. Spróbuj ponownie lub zmniejsz liczbę zadań.'
+        });
+      }
+
       // Krok 2: Weryfikacja spójności logicznej testu
       const verificationPrompt = `Przeanalizuj poniższe wygenerowane zadania testowe w formacie JSON:
-${response.text}
+${draftResponse.text}
 
 TWOJE ZADANIE: Sprawdź spójność logiczną i sens wygenerowanych pytań. Upewnij się, że zadania i odpowiedzi są naturalne, poprawne merytorycznie i nie zawierają sztucznego, robotycznego języka.
 Jeśli to konieczne, popraw treść, aby była w 100% poprawna i praktyczna z punktu widzenia nauczania języka angielskiego.
 Zwróć skorygowany wynik WYŁĄCZNIE jako poprawną tablicę JSON, zachowując dokładnie tę samą strukturę.`;
 
-      response = await generateContentWithRetry(ai, [{ text: verificationPrompt }], {
-        responseMimeType: 'application/json',
-        responseSchema: schema,
-        temperature: 0.3
-      });
-        
-      
-      let parsed = [];
+      /**
+       * Weryfikacja jest ulepszeniem, nie warunkiem powodzenia.
+       *
+       * Wcześniej jej wynik nadpisywał `response` bezwarunkowo — wystarczyło,
+       * że drugi przebieg uciął długą tablicę albo zwrócił obiekt zamiast
+       * listy, a cały wygenerowany test przepadał i lektor dostawał samo
+       * „Błąd generowania testu". Teraz nieudana weryfikacja po prostu
+       * zostawia wersję z pierwszego przebiegu.
+       */
+      let parsed: any[] = draftQuestions;
       try {
-        let cleanText = response.text || '[]';
-        cleanText = cleanText.replace(/^```json\n?/g, '').replace(/```$/g, '').trim();
-        parsed = JSON.parse(cleanText);
-      } catch (e) {
-        return res.status(500).json({ error: `Failed to parse AI response: ${response.text}` });
+        const verified = await generateContentWithRetry(ai, [{ text: verificationPrompt }], {
+          responseMimeType: 'application/json',
+          responseSchema: schema,
+          temperature: 0.3
+        });
+        const verifiedQuestions = parseQuestions(verified.text);
+        if (verifiedQuestions) {
+          parsed = verifiedQuestions;
+        } else {
+          console.warn('Generowanie testu: weryfikacja nie zwróciła poprawnej listy — zostaje pierwszy przebieg');
+        }
+      } catch (verificationError: any) {
+        console.warn('Generowanie testu: weryfikacja nie powiodła się — zostaje pierwszy przebieg', {
+          error: verificationError?.message || String(verificationError)
+        });
       }
 
       // Model mimo instrukcji układa rozsypkę w kolejności luk, przez co słowo

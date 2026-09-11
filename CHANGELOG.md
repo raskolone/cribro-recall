@@ -76,7 +76,26 @@ Zmiany UI z etapów opisanych niżej (przebudowa paska Prezentacji i Brudnopisu,
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
-### Nowość: Naprawa Udostępniania Notatnika, Zamknięcie Dziury w Regułach i Przyspieszenie Importu z Notion
+### Nowość: Naprawa Generatora Testów, Postęp w Blokach Pracy Domowej i Placeholder Testów Poziomujących
+
+- **🔴 Przyczyna „Błąd generowania testu" (`server.ts`)**:
+  - Generowanie działa w dwóch przebiegach: model tworzy zadania, a drugi przebieg weryfikuje ich spójność. Wynik weryfikacji **nadpisywał `response` bezwarunkowo** — wystarczyło, że drugi przebieg uciął długą tablicę JSON albo zwrócił obiekt zamiast listy, a **cały poprawnie wygenerowany test przepadał** i lektor dostawał wyłącznie komunikat „Błąd generowania testu".
+  - Weryfikacja jest teraz **ulepszeniem, nie warunkiem powodzenia**: jej niepowodzenie (nieparsowalny JSON, pusta tablica, wyjątek) zostawia wersję z pierwszego przebiegu zamiast wywracać całą operację.
+  - Dodano wspólny `parseQuestions` zdejmujący płot ```` ```json ```` i wymagający niepustej tablicy, oraz osobny, czytelny błąd `502`, gdy to **pierwszy** przebieg nie zwrócił poprawnej listy.
+- **Prawdziwa treść błędu zamiast ogólnika (`AdminTestGenerator.tsx`)**:
+  - `catch` pokazywał `alert("Błąd generowania testu")` i wyrzucał `err.message` do kosza, więc brak klucza API, limit modelu i zbyt duży plik wyglądały identycznie. Komunikat zawiera teraz konkretną przyczynę zwróconą przez backend.
+- **Materiały z lekcji w pełnym układzie 4 bloków (`AdminTestGenerator.tsx`)**:
+  - Do modelu szedł wyłącznie temat, streszczenie i słownictwo. Test powstawał więc **bez znajomości poprawek błędów i zadania domowego** — czyli bez tego, gdzie zapisane jest, z czym kursant faktycznie ma problem.
+  - Nowy `buildLessonContext` przekazuje podsumowanie, słownictwo, **poprawki i błędy kursanta**, zadanie domowe oraz `thingsToImprove`. Puste bloki są pomijane, żeby nie zasypywać promptu nagłówkami bez treści.
+  - Kontekst pełnego archiwum przycięty do tematu i 300 znaków słownictwa na lekcję — przy kilkudziesięciu lekcjach rozpisany w blokach wypychał z okna kontekstu lekcje wybrane przez lektora.
+- **Placeholder testów poziomujących (`AdminTestGenerator.tsx`)**:
+  - Nowa sekcja **„Testy poziomujące"** z plakietką „Wkrótce" i pustym stanem, opisująca gotowe zestawy CEFR (A1–C2) niezależne od historii lekcji. Stoi w miejscu docelowym, żeby było widać, gdzie trafią zestawy dodawane z czasem.
+- **Postęp w blokach pracy domowej (`StudentHomeworkScreen.tsx`)**:
+  - Zapis odpowiedzi w toku **już działał** (`hooks/useDraftAnswers`, `localStorage`, ważność 7 dni) i praca była już dzielona na bloki według typu ćwiczenia — brakowało jednak widocznego postępu, więc kursant po przerwie przewijał wszystko od początku w poszukiwaniu pierwszej pustej luki.
+  - Dodano **mapę bloków**: każdy blok pokazuje licznik `wypełnione/wszystkie`, ukończone dostają ptaszka, bieżący jest wyróżniony, a kliknięcie przenosi wprost do początku bloku. Nad nią licznik całości, pod nią zdanie: „Nie musisz robić wszystkiego naraz — odpowiedzi zapisują się same".
+  - `isAnswered` rozpoznaje odpowiedzi tekstowe, tablicowe (układanka, dobieranie) i obiektowe (luki). Samo `Boolean(answers[i])` uznawało pustą tablicę i `{}` za wypełnione, przez co licznik pokazywałby komplet przy pustej pracy.
+
+### Poprzedni etap: Naprawa Udostępniania Notatnika, Zamknięcie Dziury w Regułach i Przyspieszenie Importu z Notion
 
 - **🔴 Przyczyna „nie znaleziono notatnika" u kursanta (`services/scratchpadService.ts`)**:
   - `getScratchpadById` i `findScratchpadByPin` łapały **każdy** błąd Firestore i zwracały `null`. Odmowa dostępu (`permission-denied`) była więc nie do odróżnienia od faktycznego braku dokumentu i kursant dostawał komunikat „Nie znaleziono notatnika o podanym identyfikatorze", mimo że notatnik istniał.

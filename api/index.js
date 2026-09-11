@@ -1391,29 +1391,53 @@ Zwr\xF3\u0107 wynik jako obiekt JSON zawieraj\u0105cy tablic\u0119 obiekt\xF3w p
           required: ["type", "instruction", "prompt", "correctAnswer"]
         }
       };
-      let response = await generateContentWithRetry(ai, contents, {
+      const draftResponse = await generateContentWithRetry(ai, contents, {
         responseMimeType: "application/json",
         responseSchema: schema,
         temperature: 0.4
       });
+      const parseQuestions = (raw) => {
+        if (!raw) return null;
+        try {
+          const cleaned = raw.replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
+          const value = JSON.parse(cleaned);
+          return Array.isArray(value) && value.length > 0 ? value : null;
+        } catch {
+          return null;
+        }
+      };
+      const draftQuestions = parseQuestions(draftResponse.text);
+      if (!draftQuestions) {
+        console.error("Generowanie testu: pierwszy przebieg nie zwr\xF3ci\u0142 poprawnego JSON-a", {
+          snippet: (draftResponse.text || "").slice(0, 500)
+        });
+        return res.status(502).json({
+          error: "Model nie zwr\xF3ci\u0142 poprawnej listy zada\u0144. Spr\xF3buj ponownie lub zmniejsz liczb\u0119 zada\u0144."
+        });
+      }
       const verificationPrompt = `Przeanalizuj poni\u017Csze wygenerowane zadania testowe w formacie JSON:
-${response.text}
+${draftResponse.text}
 
 TWOJE ZADANIE: Sprawd\u017A sp\xF3jno\u015B\u0107 logiczn\u0105 i sens wygenerowanych pyta\u0144. Upewnij si\u0119, \u017Ce zadania i odpowiedzi s\u0105 naturalne, poprawne merytorycznie i nie zawieraj\u0105 sztucznego, robotycznego j\u0119zyka.
 Je\u015Bli to konieczne, popraw tre\u015B\u0107, aby by\u0142a w 100% poprawna i praktyczna z punktu widzenia nauczania j\u0119zyka angielskiego.
 Zwr\xF3\u0107 skorygowany wynik WY\u0141\u0104CZNIE jako poprawn\u0105 tablic\u0119 JSON, zachowuj\u0105c dok\u0142adnie t\u0119 sam\u0105 struktur\u0119.`;
-      response = await generateContentWithRetry(ai, [{ text: verificationPrompt }], {
-        responseMimeType: "application/json",
-        responseSchema: schema,
-        temperature: 0.3
-      });
-      let parsed = [];
+      let parsed = draftQuestions;
       try {
-        let cleanText = response.text || "[]";
-        cleanText = cleanText.replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
-        parsed = JSON.parse(cleanText);
-      } catch (e) {
-        return res.status(500).json({ error: `Failed to parse AI response: ${response.text}` });
+        const verified = await generateContentWithRetry(ai, [{ text: verificationPrompt }], {
+          responseMimeType: "application/json",
+          responseSchema: schema,
+          temperature: 0.3
+        });
+        const verifiedQuestions = parseQuestions(verified.text);
+        if (verifiedQuestions) {
+          parsed = verifiedQuestions;
+        } else {
+          console.warn("Generowanie testu: weryfikacja nie zwr\xF3ci\u0142a poprawnej listy \u2014 zostaje pierwszy przebieg");
+        }
+      } catch (verificationError) {
+        console.warn("Generowanie testu: weryfikacja nie powiod\u0142a si\u0119 \u2014 zostaje pierwszy przebieg", {
+          error: verificationError?.message || String(verificationError)
+        });
       }
       if (Array.isArray(parsed)) {
         parsed = parsed.map(
