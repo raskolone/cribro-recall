@@ -333,8 +333,10 @@ const StudentNotionSyncModal: React.FC<Props> = ({
     setErrorMsg('');
 
     try {
-      const chosenLessonIdsArray =
-        selectedLessonIds.size > 0 ? Array.from(selectedLessonIds) : undefined;
+      // Zawsze jawna lista, nigdy `undefined`. Brak listy oznacza po stronie
+      // funkcji „importuj wszystko", więc pusty wybór zaciągał ponownie całe
+      // archiwum kursanta zamiast nie robić nic.
+      const chosenLessonIdsArray = Array.from(selectedLessonIds);
 
       // Krok 1: Wywołanie importu zaznaczonej karty z Notion z przekazaniem wybranych lekcji
       const report = await importNotionSelection([
@@ -358,19 +360,17 @@ const StudentNotionSyncModal: React.FC<Props> = ({
 
       // Krok 3: Przygotowanie lekcji do etapu Stagingu i Weryfikacji AI
       // Bierzemy DOKŁADNIE lekcje, które lektor wybrał do zaimportowania!
-      let recordsForStaging = allRecords;
-      if (chosenLessonIdsArray && chosenLessonIdsArray.length > 0) {
+      let recordsForStaging: LessonRecord[] = [];
+      if (chosenLessonIdsArray.length > 0) {
         const chosenSet = new Set(chosenLessonIdsArray);
         const filtered = allRecords.filter(
           (r) => chosenSet.has(r.id) || (r.notionPageId && chosenSet.has(r.notionPageId))
         );
-        if (filtered.length > 0) {
-          recordsForStaging = filtered;
-        } else {
-          recordsForStaging = allRecords.slice(0, chosenLessonIdsArray.length);
-        }
-      } else {
-        recordsForStaging = allRecords.slice(0, 15);
+        // Zapas na wypadek, gdyby import zapisał lekcję pod innym
+        // identyfikatorem niż ID strony Notion — bierzemy tyle najnowszych,
+        // ile lektor zaznaczył, zamiast pokazywać pusty staging.
+        recordsForStaging =
+          filtered.length > 0 ? filtered : allRecords.slice(0, chosenLessonIdsArray.length);
       }
 
       const stageItems: StagedLesson[] = recordsForStaging.map((rec) => {

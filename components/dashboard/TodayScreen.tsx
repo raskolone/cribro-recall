@@ -502,7 +502,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
               <FileEdit size={18} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold text-text-hi">Mój brudnopis z lektorem</span>
+              <span className="block text-sm font-bold text-text-hi">Mój notatnik</span>
               <span className="block text-xs text-content-muted mt-0.5">
                 Wspólne notatki z lekcji — słownictwo, poprawki i ustalenia w jednym miejscu
               </span>

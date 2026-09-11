@@ -78,7 +78,7 @@ export const PublicScratchpadScreen: React.FC = () => {
     try {
       const doc = await getScratchpadById(id);
       if (!doc) {
-        setErrorMessage('Nie znaleziono brudnopisu o podanym identyfikatorze. Upewnij się, że link jest poprawny.');
+        setErrorMessage('Nie znaleziono notatnika o podanym identyfikatorze. Upewnij się, że link jest poprawny.');
         setDocument(null);
         setLockedDoc(null);
         return;
@@ -126,7 +126,7 @@ export const PublicScratchpadScreen: React.FC = () => {
     try {
       const doc = await findScratchpadByPin(targetPin);
       if (!doc) {
-        setErrorMessage('Nie znaleziono brudnopisu o podanym kodzie PIN. Upewnij się, że kod jest poprawny.');
+        setErrorMessage('Nie znaleziono notatnika o podanym kodzie PIN. Upewnij się, że kod jest poprawny.');
         setDocument(null);
         setLockedDoc(null);
       } else {
@@ -152,7 +152,7 @@ export const PublicScratchpadScreen: React.FC = () => {
         setLockedDoc(null);
         setErrorMessage(null);
       } else {
-        setErrorMessage('Niepoprawny kod PIN dla tego brudnopisu. Spróbuj ponownie.');
+        setErrorMessage('Niepoprawny kod PIN dla tego notatnika. Spróbuj ponownie.');
       }
       return;
     }

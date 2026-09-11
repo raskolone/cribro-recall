@@ -164,6 +164,15 @@ const fetchLessons = async (token: string): Promise<NotionPage[]> =>
   });
 
 /**
+ * Ile treści lekcji pobieramy z Notion równolegle.
+ *
+ * Sekwencyjnie import kilkudziesięciu lekcji trwał tyle, że wyglądał na
+ * zawieszenie. Powyżej mniej więcej tej wartości Notion zaczyna odrzucać
+ * zapytania limitem tempa, więc nie ma sensu podnosić jej wyżej.
+ */
+const LESSON_FETCH_CONCURRENCY = 5;
+
+/**
  * Wiąże lekcję z kartą kursanta.
  *
  * Pierwszeństwo ma relacja, bo jest jednoznaczna. Pole wyboru zostaje jako
@@ -558,6 +567,17 @@ export const importSelection = async (
   }
 
   // ——— lekcje wybranych kursantów ———
+  /**
+   * Najpierw tanie odsianie, dopiero potem pobieranie treści.
+   *
+   * Treść każdej lekcji to osobne zapytanie do Notion. Poprzednio szły jedno
+   * po drugim wewnątrz pętli, więc import kursanta z trzydziestoma lekcjami
+   * oznaczał trzydzieści zapytań sekwencyjnie — z perspektywy lektora
+   * aplikacja po prostu wisiała, aż przeglądarka albo funkcja padały na
+   * timeout.
+   */
+  const queue: Array<{ ref: LessonRef; uid: string; topic: string }> = [];
+
   for (const ref of lessonRefs(lessons)) {
     const uid =
       (ref.notionStudentId && uidByNotionId.get(ref.notionStudentId)) ||
@@ -571,7 +591,10 @@ export const importSelection = async (
       Array.from(uidByNotionId.entries()).find(([, u]) => u === uid)?.[0];
     const selection = studentNotionId ? wanted.get(studentNotionId) : undefined;
 
-    if (selection?.lessonIds && selection.lessonIds.length > 0) {
+    // Pusta lista to świadomy wybór „nic nowego do pobrania", a nie brak
+    // filtra. Wcześniej rozróżnienia nie było i taki import zaciągał
+    // ponownie CAŁE archiwum kursanta.
+    if (selection?.lessonIds) {
       if (!selection.lessonIds.includes(ref.page.id)) {
         report.lessonsSkipped += 1;
         continue;
@@ -603,14 +626,62 @@ export const importSelection = async (
       continue;
     }
 
-    let parsed;
-    try {
-      parsed = parseLessonSummary(await pageToText(token, ref.page.id));
-    } catch (error) {
-      report.warnings.push(`Nie udało się odczytać lekcji „${topic}".`);
-      report.lessonsSkipped += 1;
-      continue;
+    queue.push({ ref, uid, topic });
+  }
+
+  logger.info('Notion: lekcje zakwalifikowane do pobrania', {
+    doPobrania: queue.length,
+    pominietych: report.lessonsSkipped,
+  });
+
+  /**
+   * Lekcja trafia do kursanta przez relację „Kursant (relacja)" albo przez
+   * zgodność nazwy. Gdy w Notion nie ma ani jednego, ani drugiego, lekcja
+   * wypadała z pętli po cichu i lektor widział import, który „nic nie zrobił".
+   * Teraz mówimy wprost, czego nie dało się powiązać.
+   */
+  const queuedPageIds = new Set(queue.map((job) => job.ref.page.id));
+  for (const selection of selections) {
+    const requested = selection.lessonIds;
+    if (!requested || requested.length === 0) continue;
+
+    const unmatched = requested.filter((id: string) => !queuedPageIds.has(id));
+    if (unmatched.length === requested.length) {
+      report.warnings.push(
+        `Żadnej z ${requested.length} zaznaczonych lekcji nie udało się powiązać z kursantem. ` +
+          'Sprawdź w Notion pole „Kursant (relacja)" na tych stronach.'
+      );
+    } else if (unmatched.length > 0) {
+      report.warnings.push(
+        `${unmatched.length} z ${requested.length} zaznaczonych lekcji pominięto — brak powiązania z kursantem w Notion.`
+      );
     }
+  }
+
+  // Treść pobieramy paczkami — równolegle, ale bez zalewania API Notion.
+  for (let offset = 0; offset < queue.length; offset += LESSON_FETCH_CONCURRENCY) {
+    const batch = queue.slice(offset, offset + LESSON_FETCH_CONCURRENCY);
+
+    const fetched = await Promise.all(
+      batch.map(async (job) => {
+        try {
+          return { job, parsed: parseLessonSummary(await pageToText(token, job.ref.page.id)) };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          logger.warn('Notion: nie udało się odczytać lekcji', { topic: job.topic, error: message });
+          return { job, parsed: null };
+        }
+      })
+    );
+
+    for (const { job, parsed } of fetched) {
+      if (!parsed) {
+        report.warnings.push(`Nie udało się odczytać lekcji „${job.topic}".`);
+        report.lessonsSkipped += 1;
+        continue;
+      }
+
+      const { ref, uid, topic } = job;
 
     const now = new Date().toISOString();
     const doc = db.collection('users').doc(uid).collection('lessonRecords').doc(ref.page.id);
@@ -661,8 +732,9 @@ export const importSelection = async (
       { merge: true }
     );
 
-    report.lessonsImported += 1;
-    if (isPending) report.needsReview += 1;
+      report.lessonsImported += 1;
+      if (isPending) report.needsReview += 1;
+    }
   }
 
   return report;

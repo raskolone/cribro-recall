@@ -512,7 +512,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               isActive={currentView === 'scratchpad'}
             >
               <span>
-                {language === 'pl' ? 'Mój brudnopis' : 'My Scratchpad'}
+                {language === 'pl' ? 'Mój notatnik' : 'Scratchpad'}
               </span>
             </NavLink>
           )}

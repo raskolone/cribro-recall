@@ -872,5 +872,12 @@ export interface ScratchpadDocument {
   allowStudentEdit: boolean;
   requirePin?: boolean;
   version: number;
+  /**
+   * Ustawione, gdy Firestore odmówił zapisu i notatnik żyje wyłącznie w tej
+   * przeglądarce. Nie jest zapisywane w chmurze — służy do ostrzeżenia
+   * lektora, zanim wyśle kursantowi link, który po drugiej stronie okaże się
+   * pusty.
+   */
+  cloudBlockedReason?: string;
 }
 

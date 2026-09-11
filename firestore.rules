@@ -541,9 +541,53 @@ service cloud.firestore {
     // Umożliwia dostęp po znanym ID lub kodzie PIN kursanta (get).
     // Tworzenie i listowanie przez zalogowanych użytkowników i lektorów.
     // Modyfikacja stanu zsynchronizowana w czasie rzeczywistym.
+    // Współdzielony notatnik lekcyjny.
+    //
+    // Identyfikator dokumentu to `sp_{firebaseUid}`, a UID Firebase to 28
+    // losowych znaków — samo ID pełni więc rolę przepustki, dokładnie jak
+    // nieodgadywalny link do dokumentu Google. Model docelowy: „widzi każdy,
+    // kto ma link".
     match /scratchpads/{scratchpadId} {
-      allow get, list: if true;
-      allow create, update: if true;
+      // Odczyt po znanym identyfikatorze jest zamierzony — to jest właśnie
+      // udostępnianie linkiem, działające bez zakładania konta.
+      allow get: if true;
+
+      // Zamknięte świadomie. To `list` był prawdziwą dziurą: pozwalał jednym
+      // zapytaniem wylistować notatki wszystkich kursantów, bez logowania
+      // i bez znajomości jakiegokolwiek linku. Wyszukiwanie po kodzie PIN
+      // obsługuje teraz indeks `scratchpadPins` poniżej.
+      allow list: if false;
+
+      allow create: if isAuthenticated();
+
+      // Trzy drogi zapisu: lektor-właściciel, administrator oraz gość
+      // z linkiem — ale gość wyłącznie wtedy, gdy lektor włączył edycję
+      // i wyłącznie w polach treści. Bez tego ograniczenia kursant mógłby
+      // jednym zapisem nadać sobie uprawnienia, podmienić PIN albo przejąć
+      // dokument, zmieniając `teacherUid`.
+      allow update: if isAdmin()
+        || (isAuthenticated() && request.auth.uid == resource.data.teacherUid)
+        || (
+             resource.data.allowStudentEdit == true
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                  'contentHtml', 'contentText', 'updatedAt', 'version', 'lastEditedBy'
+                ])
+           );
+
+      allow delete: if isAdmin();
+    }
+
+    // Indeks: kod PIN → identyfikator notatnika.
+    //
+    // Istnieje po to, żeby wejście po PIN-ie było zwykłym `get` po znanym
+    // kluczu, a nie zapytaniem kolekcyjnym — dzięki temu `list` na
+    // `scratchpads` może pozostać zamknięty. Wpis nie zawiera treści notatek,
+    // wyłącznie wskaźnik, więc jego odczyt niczego nie ujawnia osobie, która
+    // i tak musi znać PIN.
+    match /scratchpadPins/{pin} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAuthenticated();
       allow delete: if isAdmin();
     }
 

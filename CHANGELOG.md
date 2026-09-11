@@ -76,6 +76,28 @@ Zmiany UI z etapów opisanych niżej (przebudowa paska Prezentacji i Brudnopisu,
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
+### Nowość: Naprawa Udostępniania Notatnika, Zamknięcie Dziury w Regułach i Przyspieszenie Importu z Notion
+
+- **🔴 Przyczyna „nie znaleziono notatnika" u kursanta (`services/scratchpadService.ts`)**:
+  - `getScratchpadById` i `findScratchpadByPin` łapały **każdy** błąd Firestore i zwracały `null`. Odmowa dostępu (`permission-denied`) była więc nie do odróżnienia od faktycznego braku dokumentu i kursant dostawał komunikat „Nie znaleziono notatnika o podanym identyfikatorze", mimo że notatnik istniał.
+  - Objaw był mylący także dlatego, że u lektora wszystko wyglądało normalnie — treść siedzi w `localStorage`, więc problem widać było wyłącznie po drugiej stronie linku.
+  - Wprowadzono klasę błędu `ScratchpadAccessError` i rozróżnienie odmowy od braku dokumentu. Komunikat mówi teraz wprost, że reguły Firestore nie zostały wdrożone i podaje polecenie `npm run deploy:rules`.
+  - Nowe pole `cloudBlockedReason` w `ScratchpadDocument` oraz **baner ostrzegawczy w edytorze**: „Ten notatnik nie zapisał się w chmurze — kursant go nie zobaczy". Ostrzeżenie pada u lektora, zanim wyśle link, a nie dopiero w konsoli przeglądarki.
+- **Zamknięcie dziury w regułach Firestore (`firestore.rules`)**:
+  - `allow list` dla `scratchpads` ustawione na **`false`** — to ono pozwalało jednym zapytaniem wylistować notatki wszystkich kursantów, bez logowania i bez znajomości linku.
+  - `allow get` pozostaje otwarte **świadomie**: identyfikator dokumentu to `sp_{firebaseUid}`, a UID Firebase ma 28 losowych znaków, więc samo ID pełni rolę przepustki — dokładnie jak nieodgadywalny link do dokumentu Google. To realizuje model „widzi każdy, kto ma link".
+  - `allow update` rozbite na trzy drogi: administrator, lektor-właściciel (`request.auth.uid == resource.data.teacherUid`) oraz gość z linkiem — ten ostatni **wyłącznie** gdy lektor włączył `allowStudentEdit` i **wyłącznie** w polach treści (`diff().affectedKeys().hasOnly([...])`). Wcześniej `update: if true` pozwalało kursantowi jednym zapisem nadać sobie uprawnienia, podmienić PIN albo przejąć dokument przez zmianę `teacherUid`.
+  - Nowa kolekcja-indeks **`scratchpadPins/{pin}` → `{ scratchpadId }`**: dzięki niej wejście po kodzie PIN jest zwykłym `get` po znanym kluczu, a nie zapytaniem kolekcyjnym — i `list` może zostać zamknięty. Wpis nie zawiera treści notatek.
+  - `ensureScratchpadPinIndex` dopisuje wpis przy tworzeniu notatnika **oraz przy każdym otwarciu przez lektora**, więc dokumenty sprzed wprowadzenia indeksu naprawiają się same, bez osobnej migracji. Stare zapytanie kolekcyjne zostało jako cichy fallback.
+- **Zmiana nazwy na „Mój notatnik" / „Scratchpad"**:
+  - Menu boczne kursanta, karta na panelu głównym, nagłówek ekranu kursanta, tytuł nowo tworzonych dokumentów i komunikaty błędów. Słowo „brudnopis" znika z widoków kursanta.
+- **Import z Notion: koniec zawieszania (`functions/src/notion/sync.ts`)**:
+  - **Przyczyna zawieszania:** treść każdej lekcji to osobne zapytanie do Notion, a szły **sekwencyjnie** wewnątrz pętli po wszystkich lekcjach. Import kursanta z trzydziestoma lekcjami oznaczał trzydzieści zapytań jedno po drugim — aplikacja wyglądała na zawieszoną, aż funkcja padała na timeout.
+  - Pętlę rozbito na dwie fazy: najpierw **tanie odsianie** (dopasowanie kursanta, filtr wybranych lekcji, lista odrzuconych), potem pobieranie treści **paczkami po 5 równolegle** (`LESSON_FETCH_CONCURRENCY`).
+  - **Druga przyczyna:** warunek `if (selection?.lessonIds && selection.lessonIds.length > 0)` traktował pustą listę jak brak filtra, czyli „importuj wszystko". Pusty wybór zaciągał ponownie **całe archiwum** kursanta. Teraz pusta lista to świadome „nic do pobrania", a `StudentNotionSyncModal` zawsze wysyła jawną listę zamiast `undefined`.
+  - **Przyczyna „nie zaczytuje informacji o danym kursancie":** lekcja bez wypełnionego pola `Kursant (relacja)` i bez zgodnej nazwy wypadała z pętli po cichu — import kończył się „sukcesem", nie robiąc nic. Teraz raport zawiera ostrzeżenie mówiące, ilu z zaznaczonych lekcji nie udało się powiązać i gdzie to poprawić w Notion.
+  - Pierwsze uruchomienie dla profilu działa bez zmian: przy pustej historii wszystkie lekcje są „nowe", więc zaznaczają się wszystkie.
+
 ### Nowość: Brudnopis Dostępny z Każdego Panelu, Backend Udostępniania i Poprawki Ćwiczeń
 
 - **Zamykanie brudnopisu (`ScratchpadEditor.tsx`, `ScratchpadModal.tsx`)**:

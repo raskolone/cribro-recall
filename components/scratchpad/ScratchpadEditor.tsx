@@ -30,6 +30,7 @@ import {
   Type,
   GraduationCap,
   X,
+  AlertTriangle,
 } from 'lucide-react';
 import { ScratchpadDocument } from '../../types';
 import { buildScratchpadUrl } from '../../services/scratchpadService';
@@ -345,7 +346,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           </div>
           <div className="min-w-0">
             <h2 className="text-sm font-bold text-text-hi truncate flex items-center gap-2">
-              <span>{docData.title || 'Brudnopis lekcyjny'}</span>
+              <span>{docData.title || 'Notatnik'}</span>
               {isReadOnly && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/[0.07] border border-line text-text-2 flex items-center gap-1">
                   <Eye size={11} /> Podgląd
@@ -496,6 +497,25 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           )}
         </div>
       </header>
+
+      {/* Notatnik, który nie dotarł do chmury, wygląda u lektora normalnie —
+          treść siedzi w pamięci przeglądarki. Kursant po drugiej stronie linku
+          zobaczy pustkę, więc ostrzeżenie musi paść tutaj, zanim lektor wyśle
+          link, a nie dopiero w konsoli. */}
+      {(docData.cloudBlockedReason || saveStatus === 'local_only') && isTeacher && (
+        <div className="px-4 py-3 bg-warn/[0.1] border-b border-warn/30 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-warn shrink-0 mt-0.5" />
+          <div className="min-w-0 text-xs leading-relaxed">
+            <p className="font-bold text-white">
+              Ten notatnik nie zapisał się w chmurze — kursant go nie zobaczy
+            </p>
+            <p className="text-content-muted mt-0.5">
+              {docData.cloudBlockedReason ||
+                'Zmiany trafiają wyłącznie do pamięci tej przeglądarki. Nie wysyłaj jeszcze linku kursantowi.'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* 2. PASEK FORMATOWANIA
           Widoczne zostaje to, po co sięga się w trakcie notowania: pogrubienie,

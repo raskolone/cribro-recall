@@ -114,10 +114,10 @@ export const StudentScratchpadScreen: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 text-primary text-xs font-bold uppercase tracking-wider mb-1">
             <FileText size={15} />
-            <span>Współdzielony Brudnopis Lekcyjny</span>
+            <span>Wspólny notatnik z lektorem</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white">
-            Mój Brudnopis z Lektorem
+            Mój notatnik
           </h1>
           <p className="text-content-muted text-xs sm:text-sm mt-1">
             Jeden stały dokument, w którym lektor notuje nowe słownictwo, poprawki gramatyczne i ustalenia.

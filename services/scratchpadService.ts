@@ -21,6 +21,51 @@ import {
 
 export const scratchpadDocRef = (id: string) => doc(db, 'scratchpads', id);
 
+/** Wpis indeksu PIN → notatnik. Pozwala wejść po kodzie bez `list` na kolekcji. */
+const scratchpadPinRef = (pin: string) => doc(db, 'scratchpadPins', normalizeAccessCode(pin));
+
+/**
+ * Zapisuje (lub odświeża) wpis w indeksie PIN-ów.
+ *
+ * Wołane przy tworzeniu notatnika oraz przy każdym otwarciu go przez lektora —
+ * dzięki temu dokumenty założone przed wprowadzeniem indeksu dorabiają sobie
+ * wpis same, bez osobnej migracji.
+ */
+export async function ensureScratchpadPinIndex(pin: string, scratchpadId: string): Promise<void> {
+  if (!pin || !scratchpadId) return;
+  try {
+    await setDoc(
+      scratchpadPinRef(pin),
+      { scratchpadId, updatedAt: new Date().toISOString() },
+      { merge: true }
+    );
+  } catch (err: any) {
+    console.warn('[Scratchpad] Nie udało się zapisać indeksu PIN:', err?.message || err);
+  }
+}
+
+/**
+ * Czy Firestore odmówił dostępu, czy dokumentu naprawdę nie ma.
+ *
+ * Rozróżnienie jest istotne, bo objaw jest ten sam — pusty wynik — a przyczyna
+ * zupełnie inna. Odmowa oznacza niewdrożone reguły bezpieczeństwa i kursant
+ * dostawał wtedy komunikat „nie znaleziono notatnika", który wysyłał lektora
+ * w pogoń za nieistniejącym błędem w linku.
+ */
+export class ScratchpadAccessError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ScratchpadAccessError';
+  }
+}
+
+const isPermissionDenied = (err: any): boolean =>
+  err?.code === 'permission-denied' || err?.code === 'firestore/permission-denied';
+
+const ACCESS_DENIED_MESSAGE =
+  'Brak dostępu do notatnika w chmurze. Reguły bezpieczeństwa Firestore nie zostały jeszcze wdrożone ' +
+  '— uruchom `npm run deploy:rules`. Dopóki tego nie zrobisz, notatnik widzi wyłącznie osoba, która go utworzyła.';
+
 const LOCAL_STORAGE_PREFIX = 'cribro_scratchpad_';
 const PIN_MAP_PREFIX = 'cribro_sp_pin_';
 const INDEX_KEY = 'cribro_scratchpads_index';
@@ -95,6 +140,10 @@ export async function getOrCreateStudentScratchpad(
     if (snap.exists()) {
       const cloudDoc = snap.data() as ScratchpadDocument;
       saveLocalScratchpad(cloudDoc);
+      // Notatniki założone przed wprowadzeniem indeksu dorabiają wpis przy
+      // pierwszym otwarciu przez lektora — bez tego wejście po PIN-ie
+      // przestałoby działać po zamknięciu `list`.
+      ensureScratchpadPinIndex(cloudDoc.pin, cloudDoc.id);
       return cloudDoc;
     }
   } catch (firestoreErr: any) {
@@ -129,7 +178,7 @@ export async function getOrCreateStudentScratchpad(
     studentName: student.name || 'Kursant',
     teacherUid: teacher.uid,
     teacherName: teacher.name || 'Lektor CRIBRO',
-    title: `Brudnopis lekcyjny — ${student.name}`,
+    title: `Notatnik — ${student.name}`,
     contentHtml: initial.html,
     contentText: initial.text,
     allowStudentEdit: false, // Domyślnie bezpieczny tryb podglądu na żywo dla kursanta
@@ -150,11 +199,18 @@ export async function getOrCreateStudentScratchpad(
   // Spróbuj zapisać w chmurze
   try {
     await setDoc(ref, newDoc);
+    await ensureScratchpadPinIndex(newDoc.pin, newDoc.id);
   } catch (cloudErr: any) {
+    // Bez dokumentu w chmurze notatnik istnieje wyłącznie w tej przeglądarce,
+    // więc kursant otwierający link zobaczy pustkę. To nie jest szczegół do
+    // ukrycia w konsoli — lektor musi wiedzieć, zanim wyśle link.
     console.warn(
       '[Scratchpad] Zapis nowego dokumentu do chmury nie powiódł się (zapisano lokalnie):',
       cloudErr?.message || cloudErr
     );
+    if (isPermissionDenied(cloudErr)) {
+      newDoc.cloudBlockedReason = ACCESS_DENIED_MESSAGE;
+    }
   }
 
   return newDoc;
@@ -191,25 +247,41 @@ export async function findScratchpadByPin(
     } catch (e) {}
   }
 
-  // 2. Sprawdź bezpośrednio po ID w Firestore
+  // 2. Indeks PIN → identyfikator. Zwykły `get` po znanym kluczu, dzięki czemu
+  //    kolekcja `scratchpads` nie musi być otwarta na listowanie.
   try {
-    const directSnap = await getDoc(scratchpadDocRef(`sp_${pin}`));
-    if (directSnap.exists()) {
-      const cloudDoc = directSnap.data() as ScratchpadDocument;
-      saveLocalScratchpad(cloudDoc);
-      return cloudDoc;
+    const indexSnap = await getDoc(scratchpadPinRef(pin));
+    if (indexSnap.exists()) {
+      const targetId = indexSnap.data()?.scratchpadId;
+      if (targetId) {
+        const target = await getDoc(scratchpadDocRef(targetId));
+        if (target.exists()) {
+          const cloudDoc = target.data() as ScratchpadDocument;
+          saveLocalScratchpad(cloudDoc);
+          return cloudDoc;
+        }
+      }
     }
 
-    const q = query(collection(db, 'scratchpads'), where('pin', '==', pin));
-    const snap = await getDocs(q);
-
-    if (!snap.empty) {
-      const cloudDoc = snap.docs[0].data() as ScratchpadDocument;
-      saveLocalScratchpad(cloudDoc);
-      return cloudDoc;
+    // Zapas dla notatników sprzed wprowadzenia indeksu, których lektor jeszcze
+    // nie otworzył (otwarcie dorabia wpis). Zapytanie kolekcyjne zadziała
+    // tylko przy starych, otwartych regułach — po wdrożeniu nowych po prostu
+    // odmówi i zejdziemy do `null`, zamiast wywracać ekran.
+    try {
+      const q = query(collection(db, 'scratchpads'), where('pin', '==', pin));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const cloudDoc = snap.docs[0].data() as ScratchpadDocument;
+        saveLocalScratchpad(cloudDoc);
+        ensureScratchpadPinIndex(cloudDoc.pin, cloudDoc.id);
+        return cloudDoc;
+      }
+    } catch {
+      // Oczekiwane po zamknięciu `list` — nie jest błędem wartym zgłoszenia.
     }
   } catch (err: any) {
     console.warn('[Scratchpad] Błąd wyszukiwania po PIN w chmurze:', err?.message || err);
+    if (isPermissionDenied(err)) throw new ScratchpadAccessError(ACCESS_DENIED_MESSAGE);
   }
 
   return null;
@@ -287,7 +359,7 @@ export async function saveScratchpadContent(
       studentName: 'Kursant',
       teacherUid: 'teacher',
       teacherName: 'Lektor',
-      title: 'Brudnopis lekcyjny',
+      title: 'Notatnik',
       allowStudentEdit: false,
       createdAt: now,
       version: 1,
@@ -403,6 +475,10 @@ export async function getScratchpadById(
     }
   } catch (err: any) {
     console.warn('[Scratchpad] Błąd pobierania po ID z chmury:', err?.message || err);
+    // Odmowa dostępu to nie „brak dokumentu". Zwracanie `null` w obu
+    // przypadkach dawało kursantowi komunikat „nie znaleziono notatnika",
+    // choć notatnik istniał i problem leżał w niewdrożonych regułach.
+    if (isPermissionDenied(err)) throw new ScratchpadAccessError(ACCESS_DENIED_MESSAGE);
   }
 
   return null;
