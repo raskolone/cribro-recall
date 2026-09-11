@@ -10,8 +10,8 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "deploy": "npm run build && firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "deploy": "npm run build && PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" firebase deploy --only functions",
+    "logs": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" firebase functions:log"
   },
   "dependencies": {
     "firebase-admin": "^13.10.0",

@@ -30,6 +30,15 @@ npm test
 npm run build
 ```
 
+### Wdrożenia Firebase — zawsze przez skrypty npm
+Firebase CLI to skrypt `#!/usr/bin/env node`, więc bierze **pierwszy `node` z PATH**. Na systemowym node 26 zrywa połączenia i zgłasza to jako **mylący błąd logowania** (`Failed to authenticate, have you run firebase login?`), nawet gdy poświadczenia są w porządku. Dlatego każdy skrypt `firebase:*` i `deploy:*` wymusza `node@22` — nie wywołuj `firebase` bezpośrednio.
+```bash
+npm run firebase:whoami     # kto jest zalogowany
+npm run firebase:login      # logowanie (interaktywne, otwiera przeglądarkę)
+npm run deploy:rules        # reguły i indeksy Firestore
+npm run deploy:functions    # Cloud Functions (import z Notion)
+```
+
 ---
 
 ## 🛡️ 3. Kluczowe Zasady Projektu
