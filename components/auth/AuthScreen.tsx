@@ -67,7 +67,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
         {onBack && (
           <button 
             onClick={onBack}
-            className="absolute top-4 left-4 text-text-2 hover:text-white transition-colors"
+            className="absolute top-4 left-4 text-text-2 hover:text-text-hi transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -100,7 +100,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
               type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 bg-black/30 backdrop-blur-md border border-white/10 text-white placeholder-content-muted rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+              className="w-full px-4 py-2 bg-ink backdrop-blur-md border border-line-strong text-text-hi placeholder-content-muted rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
               placeholder={i18n.t("np. janek123")}
               required
             />
@@ -111,7 +111,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 bg-black/30 backdrop-blur-md border border-white/10 text-white placeholder-content-muted rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+              className="w-full px-4 py-2 bg-ink backdrop-blur-md border border-line-strong text-text-hi placeholder-content-muted rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
               placeholder={i18n.t("••••••••")}
               required
               minLength={6}

@@ -69,6 +69,14 @@ Bufor, który to łagodzi: przychodząca treść nie podmienia edytora, dopóki 
 
 **Czego z tego wynika:** brudnopis zastępuje Google Docs w scenariuszu „lektor notuje, kursant patrzy i czasem dopisuje", ale **nie** w scenariuszu równoległego pisania we dwoje. Zanim ktoś ogłosi pełne zastąpienie Google Docs, trzeba wprowadzić scalanie zmian na poziomie fragmentów.
 
+### 🟡 Tryb dzienny nieobejrzany na ekranach po zalogowaniu
+Ekran startowy i logowanie zostały poprawione i sprawdzone wzrokowo w obu motywach. Panele lektora,
+administratora i kursanta przełączają się przez tokeny, ale **nie były oglądane w trybie dziennym** —
+wymagają zalogowania. W komponentach zostaje ok. **1169 wystąpień surowego `text-white`**; część jest
+poprawna (biały napis na wypełnieniu akcentem), część powtórzy problem z ekranu startowego: biały tekst
+na papierowym tle. Przy pierwszej sesji z zalogowanym kontem warto przejść panele w trybie dziennym
+i zamienić pozostałe surowe biele na tokeny (`text-text-hi`, `border-line-strong`, `bg-line-soft`, `bg-ink`).
+
 ### 🟡 Interfejs nie był weryfikowany w przeglądarce
 Zmiany UI z etapów opisanych niżej (przebudowa paska Prezentacji i Brudnopisu, samouczek z dymkami, zamrożona kolumna w Bazie Kursantów, układanka z klocków, przełącznik Easy/Hard) przeszły `npx tsc --noEmit`, komplet testów jednostkowych i `npm run build`, ale **nie zostały obejrzane w działającej przeglądarce**. Przy kolejnych poprawkach w tych miejscach warto najpierw sprawdzić je wzrokowo.
 
@@ -76,7 +84,24 @@ Zmiany UI z etapów opisanych niżej (przebudowa paska Prezentacji i Brudnopisu,
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
-### Nowość: Tryb Dzienny (Day Mode), Powiadomienie o Przypisanym Teście i Uproszczenie Menu Kursanta
+### Poprawka: Tryb Dzienny Wstaje — Montaż `ThemeProvider`, Czytelny Ekran Startowy i Limit Precache
+
+Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywała czerwony ekran
+`useTheme must be used within a ThemeProvider`. Naprawione i **sprawdzone w przeglądarce**
+(Playwright, oba motywy, zero błędów w konsoli).
+
+- **`ThemeProvider` nie był nigdzie zamontowany (`index.tsx`)**:
+  - `ThemeContext` i `ThemeToggle` powstały w poprzednim commicie, ale drzewa aplikacji nikt nie opakował providerem. Pierwszy `useTheme()` w `Sidebar → ThemeToggle` rzucał wyjątek i cały panel zastępował ekran błędu.
+  - Provider stoi teraz **najwyżej**, nad `ErrorBoundary` i `App`, więc motyw obowiązuje tak samo na ekranach publicznych (test z linku, brudnopis, praca domowa z e-maila), które renderują się poza `Dashboard`.
+- **Mignięcie ciemnego tła przy trybie dziennym (`index.html`)**:
+  - `<html class="dark">` jest w szablonie na sztywno, więc kursant z wybranym trybem dziennym oglądał ciemny ekran do chwili zamontowania Reacta. Dodany **synchroniczny skrypt w `<head>`** ustawia klasę, `data-theme` i `color-scheme` z `localStorage` (albo z ustawienia systemowego) jeszcze przed pierwszym malowaniem. Klasa w szablonie zostaje jako zachowanie awaryjne przy wyłączonym JS.
+- **Ekran startowy i logowanie były nieczytelne w trybie dziennym (`LandingPage.tsx`, `AuthScreen.tsx`)**:
+  - Oba ekrany malowały tekst surowym `text-white` (32 wystąpienia) oraz tła `bg-black/30`, `bg-white/5`, obramowania `border-white/10`. To **nie są tokeny**, więc przełącznik ich nie dotykał: nagłówek „CRIBRO", „Start here" i podpisy kafelków zostawały białe na papierowym tle, a przycisk logowania e-mailem — ciemnoszary.
+  - Zamienione na tokeny: `text-white → text-text-hi`, `border-white/10 → border-line-strong`, `bg-white/5 → bg-line-soft`, `bg-black/30 → bg-ink` itd. W trybie nocnym wartości tokenów są niemal tożsame z poprzednimi (`--text-hi` to dokładnie `#ffffff`, `--line-strong` to `rgba(255,255,255,0.12)`), więc **wygląd nocny się nie zmienia** — potwierdzone zrzutem przed i po.
+- **Build wywalał się na limicie precache PWA (`vite.config.ts`)**:
+  - `maximumFileSizeToCacheInBytes` stało na `5 000 000`, a główny bundle ważył `4 999 820` B. Dołożenie **kilkuset bajtów** kodu przekraczało próg i `vite build` kończył się błędem workboxa (kod wyjścia 1), co wywróciłoby też deploy. Limit podniesiony do 8 MB; realnym rozwiązaniem jest podział bundla na chunki.
+
+### Poprzedni etap: Tryb Dzienny (Day Mode), Powiadomienie o Przypisanym Teście i Uproszczenie Menu Kursanta
 
 - **Tryb dzienny — pełny motyw jasny (`design/theme/tokens.css`, `index.css`)**:
   - Zrealizowany wg `design_handoff_day_mode/README.md` jako **drugi zestaw wartości dla tych samych nazw zmiennych** — zero nowych tokenów, zero zmian w komponentach.

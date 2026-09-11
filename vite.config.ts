@@ -64,7 +64,10 @@ export default defineConfig(({ mode }) => {
           },
           injectManifest: {
             globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-            maximumFileSizeToCacheInBytes: 5000000,
+            // Główny bundle ma ~5 MB i ocierał się o poprzedni limit 5 000 000 B:
+            // dodanie kilkuset bajtów kodu wywalało cały build z błędem workboxa.
+            // 8 MB daje zapas do czasu realnego podziału bundla na chunki.
+            maximumFileSizeToCacheInBytes: 8000000,
           }
         })
       ],

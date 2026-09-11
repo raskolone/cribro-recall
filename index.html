@@ -23,6 +23,25 @@
       window.process = window.process || { env: {} };
       window.global = window;
 
+      // Motyw ustawiamy synchronicznie w <head>, zanim cokolwiek zostanie
+      // narysowane. `<html class="dark">` jest tylko fallbackiem dla braku JS,
+      // więc bez tego kursant z trybem dziennym widziałby mignięcie ciemnego
+      // tła do czasu, aż zamontuje się ThemeProvider.
+      (function () {
+        try {
+          var saved = null;
+          try { saved = localStorage.getItem('theme'); } catch (e) {}
+          var theme = (saved === 'light' || saved === 'dark')
+            ? saved
+            : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          var root = document.documentElement;
+          root.classList.remove('light', 'dark');
+          root.classList.add(theme);
+          root.setAttribute('data-theme', theme);
+          root.style.colorScheme = theme;
+        } catch (e) {}
+      })();
+
       // Uncaught Error Reporter Overlay to prevent blank screens
       window.addEventListener('error', function(event) {
         if (isDevToolingNoise(event.error, event.filename)) return;
