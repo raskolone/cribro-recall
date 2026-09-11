@@ -535,6 +535,20 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ---------------------------------------------------------------
+    // Współdzielony dokument brudnopisu (Scratchpad / Google Docs)
+    // ---------------------------------------------------------------
+    // Umożliwia dostęp po znanym ID lub kodzie PIN kursanta (get).
+    // Tworzenie i listowanie przez zalogowanych użytkowników i lektorów.
+    // Modyfikacja stanu zsynchronizowana w czasie rzeczywistym.
+    match /scratchpads/{scratchpadId} {
+      allow get: if true;
+      allow list: if isAuthenticated() || isAdmin();
+      allow create: if isAuthenticated() || isAdmin();
+      allow update: if true;
+      allow delete: if isAdmin();
+    }
+
     // Baza tematów i inne wspólne ustawienia — czyta każdy zalogowany,
     // zapisuje wyłącznie nauczyciel. Rolę "teacher" obsługuje już isAdmin(),
     // więc osobny warunek na nią był zbędny i tylko powielał odczyt dokumentu.
@@ -544,4 +558,5 @@ service cloud.firestore {
     }
   }
 }
+
 

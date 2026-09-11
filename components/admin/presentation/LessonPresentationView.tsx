@@ -4,8 +4,9 @@ import {
   Plus, Edit2, Trash2, Save, Download, Share2, Eye, EyeOff, 
   Clock, BookOpen, Layers, FileText, CheckCircle2, RotateCcw,
   Zap, Copy, Check, MessageSquare, Volume2, Folder, Wand2,
-  Bookmark, Shield, AlertCircle, PenLine
+  Bookmark, Shield, AlertCircle, PenLine, FileEdit
 } from 'lucide-react';
+
 import { 
   User, 
   LessonRecord, 
@@ -31,6 +32,8 @@ import Whiteboard from './Whiteboard';
 import PresenterPanel from './PresenterPanel';
 import type { Shape } from './whiteboardShapes';
 import Button from '../../ui/Button';
+import ScratchpadModal from '../../scratchpad/ScratchpadModal';
+
 
 interface LessonPresentationViewProps {
   selectedUser?: User | null;
@@ -88,6 +91,8 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
   const [isSavedDecksOpen, setIsSavedDecksOpen] = useState(false);
   const [isGuidelinesModalOpen, setIsGuidelinesModalOpen] = useState(false);
   const [isSlideAssistantModalOpen, setIsSlideAssistantModalOpen] = useState(false);
+  const [isScratchpadModalOpen, setIsScratchpadModalOpen] = useState(false);
+
 
   // Extract recent student weaknesses for AI practice generation
   const studentRecentImprovements = lessonRecords.length > 0 
@@ -392,6 +397,19 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
             <PenLine size={14} />
             <span className="hidden sm:inline">Tablica</span>
           </Button>
+
+          {/* Współdzielony brudnopis lekcyjny (Google Docs) z kodem PIN */}
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setIsScratchpadModalOpen(true)}
+            className="text-xs font-bold flex items-center gap-1.5 bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25"
+            title="Współdzielony brudnopis notatek Google Docs z kodem PIN lub linkiem na żywo"
+          >
+            <FileEdit size={14} />
+            <span className="hidden sm:inline">Brudnopis (PIN)</span>
+          </Button>
+
 
           <Button
             size="sm"
@@ -805,6 +823,18 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
           }
         />
       )}
+
+      {/* Współdzielony brudnopis lekcyjny (Google Docs) */}
+      <ScratchpadModal
+        isOpen={isScratchpadModalOpen}
+        onClose={() => setIsScratchpadModalOpen(false)}
+        student={{
+          id: selectedUser?.id || null,
+          name: studentName || 'Kursant',
+        }}
+        onPushToLessonRecord={onOpenLessonFormWithData}
+      />
     </div>
   );
 };
+

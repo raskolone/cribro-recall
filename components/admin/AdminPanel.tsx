@@ -47,14 +47,16 @@ import StudentNotionSyncModal from './StudentNotionSyncModal';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
 import CleanLessonsModal from './CleanLessonsModal';
 import AdminMailingScreen from './AdminMailingScreen';
+import ScratchpadModal from '../scratchpad/ScratchpadModal';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
   User as UserIcon, Users, Search, X, ChevronRight, ChevronDown, ChevronUp, Sparkles, BarChart2, Clock, 
   BookOpen, BookMarked, UserCheck, Filter, Award, Activity, Calendar, 
   RefreshCw, Plus, Eye, Shield, Target, CalendarClock, Layers, Link as LinkIcon, Airplay, Mail, Database, Wand2,
-  AlertTriangle, Edit3, Save, Bell, BellOff, Lock, Copy, Key, Send, Archive, CheckSquare, Square, Edit2
+  AlertTriangle, Edit3, Save, Bell, BellOff, Lock, Copy, Key, Send, Archive, CheckSquare, Square, Edit2, FileEdit
 } from 'lucide-react';
+
 import i18n from "i18next";
 import html2pdf from 'html2pdf.js';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
@@ -1255,7 +1257,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [createStudentError, setCreateStudentError] = useState('');
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showScratchpadModal, setShowScratchpadModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
+
   const [messageTitle, setMessageTitle] = useState('Wiadomość od nauczyciela');
   const [messageText, setMessageText] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
@@ -3103,7 +3107,30 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     {i18n.t("Wyślij zaproszenie")}
                   </Button>
                 </div>
+
+                {/* Współdzielony Brudnopis lekcyjny (Scratchpad / Google Docs) */}
+                <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <span className="text-sm font-bold text-white flex items-center gap-2">
+                      <FileEdit size={15} className="text-emerald-400" />
+                      {i18n.t("Współdzielony Brudnopis (Scratchpad / Google Docs)")}
+                    </span>
+                    <p className="text-xs text-content-muted max-w-lg">
+                      {i18n.t("Stały dokument Google Docs z notatkami z lekcji. Kursant może zawsze sprawdzić notatki przez kod PIN lub link bez logowania.")}
+                    </p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 font-bold flex items-center gap-2 shrink-0 cursor-pointer text-xs"
+                    onClick={() => setShowScratchpadModal(true)}
+                  >
+                    <FileEdit size={14} />
+                    {i18n.t("Otwórz Brudnopis")}
+                  </Button>
+                </div>
               </div>
+
 
               {/* CARD 3: POZIOM CEFR & KONFIGURACJA AI */}
               <div className="bg-base-200/50 border border-white/10 rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
@@ -5041,7 +5068,36 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         />
       )}
 
+      {/* Student Scratchpad Modal */}
+      {showScratchpadModal && selectedUser && (
+        <ScratchpadModal
+          isOpen={showScratchpadModal}
+          onClose={() => setShowScratchpadModal(false)}
+          student={{
+            id: selectedUser.id,
+            name: selectedUser.firstName
+              ? `${selectedUser.firstName} ${selectedUser.lastName || ''}`.trim()
+              : selectedUser.username,
+          }}
+          onPushToLessonRecord={(data) => {
+            setLessonFormStudentId(selectedUser.id);
+            setLessonFormTopic(data.topic);
+            setLessonFormWords(data.words);
+            setLessonFormSummary(data.summary);
+            setLessonFormThingsToImprove(data.thingsToImprove);
+            setLessonFormSuggestedFollowUp(data.followUp);
+            setLessonRecordModalMode('edit');
+            setShowLessonRecordModal(true);
+            setShowScratchpadModal(false);
+            setActiveTab('history');
+            showToast('Przeniesiono dane z brudnopisu do formularza lekcji!');
+          }}
+        />
+      )}
+
+
       {showCleanLessonsModal && (
+
         <CleanLessonsModal
           isOpen={showCleanLessonsModal}
           onClose={() => setShowCleanLessonsModal(false)}

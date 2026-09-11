@@ -47,7 +47,41 @@ CRIBRO ENGLISH (Recall) to zaawansowana platforma edukacyjna do intensywnej nauk
 
 ## 3. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
+### Nowość: Współdzielony Brudnopis Google Docs z Kodem PIN i Dostępem przez Link (`Scratchpad`)
+- **Architektura jednego trwałego dokumentu per kursant (`scratchpads/{scratchpadId}`)**:
+  - Wdrożono moduł **Scratchpad (Współdzielony Brudnopis Lekcyjny)** działający na zasadzie współdzielonego dokumentu Google Docs / Notion.
+  - Zgodnie z założeniem kursant ma **dokładnie jeden stały brudnopis** powiązany ze swoją nauką, do którego lektor i kursant wracają na każdej lekcji, bez tworzenia osobnych plików.
+  - Dokument posiada unikalny 6-znakowy kod PIN (np. `ABC-123`) oraz stały bezpośredni link (`/scratchpad?pin=ABC-123` lub `/doc?pin=...`), umożliwiający natychmiastowe otwarcie na telefonie, tablecie czy drugim monitorze bez konieczności logowania.
+- **Model danych i Firestore (`types.ts`, `firestore.rules`)**:
+  - Utworzono interfejs `ScratchpadDocument` w `types.ts` z polami: `id`, `pin`, `studentId`, `studentName`, `teacherUid`, `teacherName`, `title`, `contentHtml`, `contentText`, `allowStudentEdit`, `lastEditedBy`, `version`, `createdAt`, `updatedAt`.
+  - Wdrożono reguły bezpieczeństwa Firestore dla kolekcji `scratchpads/{scratchpadId}`: publiczny odczyt po znanym ID lub PIN, bezpieczny zapis dla lektorów oraz edycja zsynchronizowana w czasie rzeczywistym.
+- **Serwis brudnopisu (`services/scratchpadService.ts`)**:
+  - `getOrCreateStudentScratchpad`: pobranie istniejącego lub utworzenie trwałego dokumentu z inicjalnym szablonem lekcji i unikalnym kodem PIN.
+  - `findScratchpadByPin`: wyszukiwanie dokumentu po kodzie PIN z pełną normalizacją znaków mylących.
+  - `subscribeScratchpad`: subskrypcja zmian w czasie rzeczywistym przez Firestore `onSnapshot`.
+  - `saveScratchpadContent`: automatyczny debounced zapis treści z wersjonowaniem i metadanymi edytora.
+  - `updateScratchpadSettings`: przełączanie uprawnień (np. tryb tylko do odczytu vs zezwolenie na edycję dla kursanta).
+  - `buildScratchpadUrl`: generowanie gotowych linków do udostępnienia kursantowi.
+- **Edytor tekstu bogatego w stylu Google Docs (`components/scratchpad/ScratchpadEditor.tsx`)**:
+  - Pełny pasek narzędzi: nagłówki (p, H1, H2, H3), pogrubienie, kursywa, podkreślenie, przekreślenie, listy punktowane i numerowane, podziałka pozioma, cofanie i ponawianie.
+  - Szybkie zakreślacze językowe: ❌ błąd kursanta (czerwony), ✅ poprawna forma (zielony), 💡 nowe słówko (żółty/bursztynowy).
+  - Narzędzia lekcyjne: wstawianie dzisiejszej daty jako nagłówka lekcji (`📅 Lekcja — DD.MM.YYYY`) oraz wstawianie szablonu sekcji.
+  - Płynny wskaźnik zapisu w chmurze (*„Zapisano w chmurze”* / *„Zapisywanie...”*) oraz licznik słów.
+  - Przycisk zasilania Dziennika Lekcji (*„Przenieś do Dziennika lekcji”*) z automatyczną ekstrakcją słówek i poprawek do 4 bloków Notion.
+- **Ekrany i punkty wejścia**:
+  - `components/scratchpad/PublicScratchpadScreen.tsx`: publiczny ekran pod trasą `/scratchpad` oraz `/doc` z formularzem wpisania kodu PIN lub bezpośrednim odczytem z parametru `?pin=...`.
+  - `components/scratchpad/StudentScratchpadScreen.tsx`: dedykowany ekran w panelu kursanta zintegrowany z `Dashboard.tsx`.
+  - `components/scratchpad/ScratchpadModal.tsx`: uniwersalne okno modalne do otwierania brudnopisu z dowolnego miejsca.
+  - **Narzędzie Prezentacji (`LessonPresentationView.tsx`)**: przycisk **„Brudnopis (PIN)”** w pasku narzędzi obok tablicy i minutnika.
+  - **Baza Kursantów (`StudentDatabaseScreen.tsx`)**: przycisk **„Brudnopis”** w wierszu tabeli oraz opcja w menu rozwijanym.
+  - **Profil Kursanta (`AdminPanel.tsx`)**: wyróżniona karta **„Współdzielony Brudnopis (Scratchpad / Google Docs)”** z bezpośrednim otwarciem modalu.
+  - **Menu boczne (`Sidebar.tsx`)**: nowa pozycja **„Mój brudnopis”** dla zalogowanych uczniów.
+  - **Routing w `App.tsx`**: publiczne trasy `/scratchpad` oraz `/doc` dostępne przed ekranem logowania.
+- **Testy jednostkowe (`tests/scratchpad.test.ts`)**:
+  - Kompletny zestaw testów sprawdzających generowanie szablonu, formatowanie URL z kodem PIN, normalizację kodów dostępu oraz ekstrakcję sekcji do 4 bloków Notion (148 testów przechodzących).
+
 ### Nowość: Okno Zaproszenia do Aplikacji w Bazie Kursantów i Profilu Kursanta (`StudentInviteEmailModal.tsx`)
+
 - **Dedykowany komponent okna zaproszenia (`StudentInviteEmailModal.tsx`)**:
   - Utworzono modal wzorowany na widoku mailingu oraz oknie potwierdzenia wysyłki prac domowych (`HomeworkEmailConfirmationModal.tsx`).
   - Umożliwia wysłanie spersonalizowanego e-maila powitalnego zawierającego wygenerowany login (`username`), hasło (istniejące `tempPassword` lub nowe wygenerowane jednym kliknięciem), bezpośredni link do logowania w aplikacji (`appUrl`) oraz opcjonalną notatkę/instrukcje od lektora.

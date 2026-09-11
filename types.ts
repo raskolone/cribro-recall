@@ -846,3 +846,30 @@ export interface PublicTestSubmission {
   aiFeedback?: string;
   submittedAt: string;
 }
+
+/**
+ * Współdzielony dokument brudnopisu (Scratchpad / Google Docs dla lekcji).
+ * Zapewnia trwały, żywy dokument powiązany z kursem lub profilem kursanta,
+ * do którego lektor i uczeń mają dostęp w czasie rzeczywistym przez link lub kod PIN.
+ */
+export interface ScratchpadDocument {
+  id: string;
+  pin: string;
+  studentId?: string | null;
+  studentName: string;
+  teacherUid: string;
+  teacherName: string;
+  title: string;
+  contentHtml: string;
+  contentText: string;
+  createdAt: string;
+  updatedAt: string;
+  lastEditedBy?: {
+    uid: string;
+    name: string;
+    role: 'teacher' | 'student';
+  };
+  allowStudentEdit: boolean;
+  version: number;
+}
+

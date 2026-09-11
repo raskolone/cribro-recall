@@ -21,7 +21,7 @@ import { ChevronDown, Sparkles, Menu } from 'lucide-react';
 import AssignedTasks from './AssignedTasks';
 import i18n from "i18next";
 
-type View = 'dashboard' | 'extra-practice' | 'student-today' | 'preview-vocab' | 'preview-homework' | 'preview-history' | 'preview-tests' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats' | 'homework' | 'mailing' | 'admin-mailing' | 'students-database' | 'admin-students-database' | 'students' | 'lesson-scenarios' | 'admin-scenarios';
+type View = 'dashboard' | 'extra-practice' | 'student-today' | 'preview-vocab' | 'preview-homework' | 'preview-history' | 'preview-tests' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats' | 'homework' | 'mailing' | 'admin-mailing' | 'students-database' | 'admin-students-database' | 'students' | 'lesson-scenarios' | 'admin-scenarios' | 'scratchpad';
 
 import AdminPanel from '../admin/AdminPanel';
 import StandaloneStudentDatabaseScreen from '../admin/StandaloneStudentDatabaseScreen';
@@ -29,6 +29,8 @@ import StandaloneLessonScenariosScreen from '../admin/StandaloneLessonScenariosS
 import AdminMailingScreen from '../admin/AdminMailingScreen';
 import StudentStatsScreen from './StudentStatsScreen';
 import LessonHistoryScreen from './LessonHistoryScreen';
+import StudentScratchpadScreen from '../scratchpad/StudentScratchpadScreen';
+
 import TodayScreen from './TodayScreen';
 import StudentPreviewFrame from './StudentPreviewFrame';
 import StudentVocabPreview from './StudentVocabPreview';
@@ -256,7 +258,11 @@ const Dashboard: React.FC = () => {
         />
       );
     }
+    if (view === 'scratchpad') {
+      return <StudentScratchpadScreen />;
+    }
     if (view === 'tests') {
+
       if (isTeacher) {
         return (
           <AdminPanel

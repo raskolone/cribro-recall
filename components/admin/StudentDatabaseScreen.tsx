@@ -30,7 +30,8 @@ import {
   Trash2,
   Layers,
   Check,
-  Send
+  Send,
+  FileEdit
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import { User } from '../../types';
@@ -40,6 +41,8 @@ import Badge from '../ui/Badge';
 import { useLanguage } from '../../context/LanguageContext';
 import StudentNotionSyncModal from './StudentNotionSyncModal';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
+import ScratchpadModal from '../scratchpad/ScratchpadModal';
+
 import {
   buildBulkUpdatePayload,
   calculateIsAllSelected,
@@ -103,6 +106,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
   // App Invite Modal State
   const [inviteStudent, setInviteStudent] = useState<User | null>(null);
   const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
+  const [scratchpadStudent, setScratchpadStudent] = useState<User | null>(null);
 
   // Single user deletion state
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
@@ -996,6 +1000,20 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                             <span className="hidden md:inline">Zaproszenie</span>
                           </button>
 
+                          {/* Quick Scratchpad Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setScratchpadStudent(user);
+                            }}
+                            className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-semibold transition-colors flex items-center gap-1 border border-emerald-500/20 hover:border-emerald-500/40 cursor-pointer"
+                            title="Otwórz współdzielony brudnopis kursanta (kod PIN / Google Docs)"
+                          >
+                            <FileEdit size={12} />
+                            <span className="hidden lg:inline">Brudnopis</span>
+                          </button>
+
+
                           {/* "Więcej opcji" Dropdown Button */}
                           <div className="relative inline-block text-left">
                             <button
@@ -1032,6 +1050,17 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                                   <Send size={13} className="shrink-0" />
                                   <span>Wyślij zaproszenie do aplikacji</span>
                                 </button>
+                                <button
+                                  onClick={() => {
+                                    setOpenMenuUserId(null);
+                                    setScratchpadStudent(user);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 rounded-lg hover:bg-emerald-500/15 text-emerald-300 flex items-center gap-2 transition-colors cursor-pointer text-left font-semibold"
+                                >
+                                  <FileEdit size={13} className="shrink-0" />
+                                  <span>Otwórz współdzielony Brudnopis (PIN)</span>
+                                </button>
+
                                 <button
                                   onClick={() => {
                                     setOpenMenuUserId(null);
@@ -1551,9 +1580,24 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal Brudnopisu Lekcyjnego */}
+      {scratchpadStudent && (
+        <ScratchpadModal
+          isOpen={!!scratchpadStudent}
+          onClose={() => setScratchpadStudent(null)}
+          student={{
+            id: scratchpadStudent.id,
+            name: scratchpadStudent.firstName
+              ? `${scratchpadStudent.firstName} ${scratchpadStudent.lastName || ''}`.trim()
+              : scratchpadStudent.username,
+          }}
+        />
+      )}
     </div>
   );
 };
+
 
 export default StudentDatabaseScreen;
 

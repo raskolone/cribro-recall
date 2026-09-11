@@ -41,8 +41,10 @@ import {
   FlaskConical,
   Eye,
   Mail,
-  Layers
+  Layers,
+  FileEdit
 } from 'lucide-react';
+
 import BrandLogo from '../ui/BrandLogo';
 import { isModuleVisible } from '../../config/featureFlags';
 
@@ -500,7 +502,23 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               </span>
             </NavLink>
           )}
+
           {!isTeacher && (
+            <NavLink
+              id="tour-scratchpad"
+              icon={<FileEdit size={20} />}
+              isCollapsed={isDesktopCollapsed}
+              onClick={() => handleNavigate('scratchpad')}
+              isActive={currentView === 'scratchpad'}
+            >
+              <span>
+                {language === 'pl' ? 'Mój brudnopis' : 'My Scratchpad'}
+              </span>
+            </NavLink>
+          )}
+
+          {!isTeacher && (
+
             <NavLink
               icon={
                 <div className="relative">

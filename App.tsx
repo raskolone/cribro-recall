@@ -20,6 +20,7 @@ import AppAlertModal from './components/ui/AppAlertModal';
 import UnsubscribeScreen from './components/auth/UnsubscribeScreen';
 import DirectHomeworkScreen from './components/dashboard/DirectHomeworkScreen';
 import LiveJoinScreen from './components/presentation/LiveJoinScreen';
+import PublicScratchpadScreen from './components/scratchpad/PublicScratchpadScreen';
 
 
 const App: React.FC = () => {
@@ -114,6 +115,17 @@ const AppContent: React.FC = () => {
       </SettingsProvider>
     );
   }
+
+  // Współdzielony dokument brudnopisu (Scratchpad / Google Docs z kodem PIN lub linkiem /scratchpad?pin=...)
+  // Kursant może zawsze podejrzeć ten brudnopis lub edytować notatki bez konieczności logowania.
+  if (typeof window !== 'undefined' && (window.location.pathname.startsWith('/scratchpad') || window.location.pathname.startsWith('/doc'))) {
+    return (
+      <SettingsProvider>
+        <PublicScratchpadScreen />
+      </SettingsProvider>
+    );
+  }
+
 
 
   if (!isAuthReady) {
