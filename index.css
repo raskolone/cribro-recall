@@ -8,6 +8,68 @@
    nadpisywałaby każdą klasę text-* postawioną na linku. */
 @import "./design/theme/tokens.css" layer(base);
 
+/* Tryb dzienny dla aliasów Tailwinda.
+   `@theme` wypisuje tokeny jako zwykłe custom properties, a utilities czytają
+   je przez `var(--color-*)` — nadpisanie tych zmiennych przestawia więc
+   wszystkie ~2700 istniejących klas `bg-base-200`, `text-content-muted` itd.
+   bez ruszania choćby jednego komponentu. Wartości odpowiadają blokowi
+   trybu dziennego w `design/theme/tokens.css`. */
+:root[data-theme="light"],
+:root.light {
+  --color-primary: #14a06e;
+  --color-secondary: #6a7785;
+  --color-base-100: #f7f5f0;
+  --color-base-200: #ffffff;
+  --color-base-300: rgba(10, 18, 32, 0.06);
+  --color-content: #1e2630;
+  --color-content-muted: #6a7785;
+
+  --color-accent: #14a06e;
+  --color-accent-soft: #0d7d55;
+  --color-accent-ink: #ffffff;
+
+  --color-bg: #f7f5f0;
+  --color-bg-lift: #ffffff;
+  --color-ink: #ece9e0;
+  --color-ink-2: #f2f0e9;
+  --color-surface-flat: #ffffff;
+
+  --color-text-hi: #0a1220;
+  --color-text-2: #4d5a68;
+  --color-text-3: #55616f;
+  --color-text-mute: #6a7785;
+  --color-text-faint: #aeb6bf;
+
+  --color-warn: #a8701a;
+  --color-danger: #c2413d;
+  --color-info: #2f6cbe;
+
+  --color-line: rgba(10, 18, 32, 0.10);
+  --color-line-strong: rgba(10, 18, 32, 0.16);
+  --color-line-soft: rgba(10, 18, 32, 0.05);
+}
+
+/* Rozbłysk przełącznika motywu.
+   Domyślnie View Transitions przenika stary obraz w nowy — przenikanie
+   walczyłoby z przycinaniem okręgiem i dawało brudną, szarą klatkę pośrodku.
+   Wyłączamy więc własne animacje pseudoelementów i układamy nowy stan NAD
+   starym; resztę robi `clip-path` animowany w `ThemeToggle`. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) { z-index: 2; }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
 @theme {
   /* --- Aliasy zastane. Odpowiadają tokenom Nocturne, zostają bez zmian:
          primary = --accent, content = --text, content-muted = --text-mute,

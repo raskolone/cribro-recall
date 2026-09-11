@@ -76,7 +76,29 @@ Zmiany UI z etapów opisanych niżej (przebudowa paska Prezentacji i Brudnopisu,
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
-### Nowość: Naprawa Generatora Testów, Postęp w Blokach Pracy Domowej i Placeholder Testów Poziomujących
+### Nowość: Tryb Dzienny (Day Mode), Powiadomienie o Przypisanym Teście i Uproszczenie Menu Kursanta
+
+- **Tryb dzienny — pełny motyw jasny (`design/theme/tokens.css`, `index.css`)**:
+  - Zrealizowany wg `design_handoff_day_mode/README.md` jako **drugi zestaw wartości dla tych samych nazw zmiennych** — zero nowych tokenów, zero zmian w komponentach.
+  - **Kluczowe odkrycie:** aliasy Tailwinda (`bg-base-200`, `text-content-muted` i ~2700 innych użyć) mają w `@theme` zaszyte hexy, ale Tailwind v4 generuje utilities jako `background-color: var(--color-base-200)`. Nadpisanie tych zmiennych pod `:root[data-theme="light"]` przestawia więc **cały interfejs — panel lektora, administratora i kursanta — bez dotykania choćby jednego komponentu**. Zweryfikowane na zbudowanym CSS.
+  - Akcent w trybie dziennym jest ciemniejszy (`#14a06e` zamiast mięty `#72f0b4`): mięta na białym tle daje ok. 1.8:1 i drobny tekst staje się nieczytelny. Mięta zostaje w poświatach i dużych wypełnieniach. Analogicznie przyciemnione `--warn` / `--danger` / `--info`.
+  - Cienie oparte na barwie atramentu (`#1e2630`, krycie 0.16–0.20) zamiast czerni — czarne cienie na papierowej bieli czytają się jak brud.
+  - `ThemeContext` ustawia teraz `data-theme` **oraz** `color-scheme` na elemencie głównym; bez tego natywne kontrolki (paski przewijania, pola formularzy) zostawały ciemne na jasnym tle.
+- **Animacja przełączania — lepsza niż w handoffie (`components/ui/ThemeToggle.tsx`)**:
+  - Handoff opisywał nakładkę rysowaną GSAP-em: dysk skalowany **nad** treścią, potem wygaszany. Zamiast tego użyto natywnego **View Transitions API** — rosnący okrąg przycina migawkę *nowego* motywu, więc rozbłysk **odsłania prawdziwy interfejs**, zamiast przykrywać go kolorową płachtą. Animacja idzie przez kompozytor przeglądarki, a nie przez JS na każdej klatce, i nie wymaga dokładania warstwy nad aplikację.
+  - Fala rozchodzi się **ze środka klikniętego przycisku**, promień liczony do najdalszego rogu okna. Ikony słońca i księżyca leżą na sobie i wymieniają się obrotem ze sprężystym easingiem — bez przeskoku układu, który daje warunkowe renderowanie jednej z nich.
+  - Fallback dla przeglądarek bez View Transitions (Firefox, Safari) oraz dla `prefers-reduced-motion`: zwykłe przełączenie z 0,5-sekundowym przejściem kolorów.
+  - Atrybut `[data-morphing]` włącza przejście kolorów **tylko na czas zmiany** — na stałe spowolniłby każdy hover w aplikacji z 0,2 s do 0,5 s.
+  - **`ThemeToggle` nie był wcześniej nigdzie zamontowany** — dlatego przełącznika w ogóle nie było w interfejsie. Trafił do stopki menu bocznego, obok przełącznika języka.
+- **Powiadomienie o przypisanym teście (`components/ui/ActionToast.tsx`, `AdminTestGenerator.tsx`)**:
+  - Po przypisaniu testu kursantowi pojawia się pop-up w prawym dolnym rogu z animacją sprężynową i **tym samym sygnałem dźwiękowym**, co powiadomienie o odesłanej pracy — zamiast `alert()`, które zabiera fokus i trzeba je odklikać przy każdym teście.
+  - Dźwięk wyciągnięty do wspólnego `utils/notificationChime.ts` (dwuton D5→A5 generowany oscylatorem — bez żądania sieciowego, działa offline). `TeacherHomeworkNotification` korzysta teraz z tego samego modułu zamiast własnej kopii.
+- **Usunięcie zakładki „Testy" z menu kursanta (`Sidebar.tsx`)**:
+  - Kursant ma w menu tylko **„Mój panel"** — testy są jego częścią, a nie osobnym miejscem.
+  - O czekającym teście przypomina **pulsująca kropka** przy ikonie panelu plus plakietka „test". Kropka zamiast liczby, bo chodzi o sygnał „coś na Ciebie czeka", a nie o raport ilościowy.
+  - Dodano nasłuch testów przypisanych kursantowi (bez `completedAt`, status inny niż `completed`/`graded`). Poprzedni licznik przy tej zakładce liczył `teacherRead == false`, czyli metrykę **lektora**, i był wypełniany wyłącznie dla lektora — u kursanta zawsze pokazywał zero.
+
+### Poprzedni etap: Naprawa Generatora Testów, Postęp w Blokach Pracy Domowej i Placeholder Testów Poziomujących
 
 - **🔴 Przyczyna „Błąd generowania testu" (`server.ts`)**:
   - Generowanie działa w dwóch przebiegach: model tworzy zadania, a drugi przebieg weryfikuje ich spójność. Wynik weryfikacji **nadpisywał `response` bezwarunkowo** — wystarczyło, że drugi przebieg uciął długą tablicę JSON albo zwrócił obiekt zamiast listy, a **cały poprawnie wygenerowany test przepadał** i lektor dostawał wyłącznie komunikat „Błąd generowania testu".

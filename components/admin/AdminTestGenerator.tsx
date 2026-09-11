@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { MessageSquare, BookOpen, Calendar, ChevronRight, CheckCircle, X, ChevronUp, ChevronDown, Edit2, Trash2, Plus, Eye, Sparkles, Link2, Copy, Layers } from 'lucide-react';
 import { extractLessonBlocks } from '../../utils/lessonBlocks';
 import TestPreviewModal from './TestPreviewModal';
+import ActionToast, { ActionToastState } from '../ui/ActionToast';
 
 /**
  * Materiał lekcji podany modelowi w pełnym układzie 4 bloków Notion.
@@ -54,6 +55,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
   const user = initialUser || users.find(u => u.id === selectedUserId);
   const [lessons, setLessons] = useState<LessonRecord[]>([]);
   const [selectedLessons, setSelectedLessons] = useState<string[]>([]);
+  const [assignToast, setAssignToast] = useState<ActionToastState | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [feedback, setFeedback] = useState<string>('');
   const [isModifying, setIsModifying] = useState<boolean>(false);
@@ -447,7 +449,10 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
   const handleSaveTest = async () => {
     if (!generatedQuestions || !user.id || !dueDate) return alert("Wybierz datę wykonania testu!");
     setIsSaving(true);
-    
+    // Tytuł zapamiętany przed czyszczeniem formularza — `setTestTitle('')`
+    // niżej wyzerowałoby go, zanim powiadomienie zdąży go pokazać.
+    const activeTitleForToast = testTitle;
+
     try {
       const newTest: Omit<StudentTest, 'id'> = {
         studentId: user.id,
@@ -482,7 +487,12 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
       setDueDate('');
       setSelectedLessons([]);
       fetchTests();
-      alert("Test przypisany pomyślnie! Kursant otrzyma powiadomienie.");
+      // Pop-up z sygnałem dźwiękowym zamiast `alert()` — lektor przypisuje
+      // testy seryjnie, a okno modalne trzeba za każdym razem odklikać.
+      setAssignToast({
+        title: `Test przypisany: ${activeTitleForToast}`,
+        description: `${user.firstName || user.username} zobaczy go w swoim panelu.`,
+      });
     } catch (err) {
       console.error(err);
       alert("Błąd przypisywania testu");
@@ -574,6 +584,8 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
 
   return (
     <div className="space-y-8">
+      <ActionToast toast={assignToast} onDismiss={() => setAssignToast(null)} />
+
       {/* Kod świeżo wystawionego testu otwartego. Stoi na górze i nie znika sam:
           to jedyny moment, w którym lektor go widzi, a bez niego test jest
           nie do otwarcia dla nikogo. */}

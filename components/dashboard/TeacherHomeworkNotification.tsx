@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { collection, collectionGroup, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { BookOpenCheck, ChevronRight, GraduationCap, X } from 'lucide-react';
+import { playNotificationChime } from '../../utils/notificationChime';
 
 interface TeacherHomeworkNotificationProps {
   onOpenHomework?: (taskId: string) => void;
@@ -26,32 +27,6 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
   const knownTestIdsRef = useRef<Set<string>>(new Set());
   const isInitialLoadTasksRef = useRef(true);
   const isInitialLoadTestsRef = useRef(true);
-
-  // Play subtle gentle chime on submission
-  const playChime = () => {
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
-
-      gain.gain.setValueAtTime(0.12, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-      osc.stop(ctx.currentTime + 0.45);
-    } catch {
-      // Audio autoplay may be prevented by browser policy
-    }
-  };
 
   useEffect(() => {
     // 1. Nasłuchiwanie odesłanych prac domowych
@@ -85,7 +60,7 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
               };
 
               setActiveNotifications((prev) => [newItem, ...prev.slice(0, 2)]);
-              playChime();
+              playNotificationChime();
 
               setTimeout(() => {
                 setActiveNotifications((prev) => prev.filter((n) => n.id !== newItem.id));
@@ -136,7 +111,7 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
                 };
 
                 setActiveNotifications((prev) => [newItem, ...prev.slice(0, 2)]);
-                playChime();
+                playNotificationChime();
 
                 setTimeout(() => {
                   setActiveNotifications((prev) => prev.filter((n) => n.id !== newItem.id));

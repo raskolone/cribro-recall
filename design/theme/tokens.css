@@ -131,6 +131,88 @@ a:hover { color: var(--accent-soft); }
   color: var(--text-mute);
 }
 
+/* ——————————————————————————————————————————————————————————————
+   TRYB DZIENNY (Day Mode)
+
+   Drugi zestaw wartości dla TYCH SAMYCH nazw zmiennych — żadnych nowych
+   tokenów i żadnych zmian w komponentach. Wszystko, co czyta `var(--*)`,
+   przełącza się samo.
+
+   Selektor łapie i atrybut, i klasę: `ThemeContext` historycznie ustawiał
+   klasę `.light` na <html>, a handoff opisuje `data-theme`. Obsługa obu
+   znaczy, że przełącznik działa niezależnie od tego, który mechanizm
+   zadziała pierwszy.
+
+   Akcent jest ciemniejszy niż mięta z trybu nocnego (#14a06e zamiast
+   #72f0b4): mięta na białym tle daje około 1.8:1 i drobny tekst oraz ikony
+   stają się nieczytelne. Mięta zostaje wyłącznie w poświatach i dużych
+   wypełnieniach, gdzie kontrast nie decyduje o czytelności.
+   —————————————————————————————————————————————————————————————— */
+:root[data-theme="light"],
+:root.light {
+  --bg:              #f7f5f0;
+  --bg-lift:         #ffffff;
+  --ink:             #ece9e0;
+  --ink-2:           #f2f0e9;
+  --surface:         rgba(255, 255, 255, 0.78);
+  --surface-2:       rgba(247, 245, 240, 0.55);
+  --surface-flat:    #ffffff;
+  --glass:           rgba(255, 255, 255, 0.72);
+
+  --page-gradient: radial-gradient(circle at 50% -20%, #ffffff 0%, #f7f5f0 68%);
+
+  --accent:          #14a06e;
+  --accent-soft:     #0d7d55;
+  --accent-ink:      #ffffff;
+  --accent-04:       rgba(20, 160, 110, 0.04);
+  --accent-08:       rgba(20, 160, 110, 0.08);
+  --accent-12:       rgba(20, 160, 110, 0.12);
+  --accent-15:       rgba(20, 160, 110, 0.15);
+  --accent-25:       rgba(20, 160, 110, 0.25);
+  --accent-30:       rgba(20, 160, 110, 0.30);
+  --accent-55:       rgba(20, 160, 110, 0.55);
+
+  --text:            #1e2630;
+  --text-hi:         #0a1220;
+  --text-2:          #4d5a68;
+  --text-3:          #55616f;
+  --text-mute:       #6a7785;
+  --text-faint:      #aeb6bf;
+
+  /* Przyciemnione względem trybu nocnego — jasne barwy stanu na papierowym
+     tle schodzą poniżej progu czytelności. */
+  --warn:            #a8701a;
+  --danger:          #c2413d;
+  --info:            #2f6cbe;
+
+  --line:            rgba(10, 18, 32, 0.10);
+  --line-strong:     rgba(10, 18, 32, 0.16);
+  --line-soft:       rgba(10, 18, 32, 0.05);
+
+  /* Czarne cienie na białym czytają się jak brud — stąd barwa atramentu
+     i znacznie niższe krycie. */
+  --shadow-sm:       0 8px 24px -8px rgba(30, 38, 48, 0.16);
+  --shadow-md:       0 12px 32px -8px rgba(30, 38, 48, 0.18);
+  --shadow-lg:       0 16px 48px -12px rgba(30, 38, 48, 0.20);
+  --glow:            0 0 24px rgba(20, 160, 110, 0.20);
+  --glow-strong:     0 0 48px rgba(20, 160, 110, 0.30);
+  --glow-btn:        0 8px 24px -8px rgba(20, 160, 110, 0.55);
+}
+
+/* Przejście między trybami.
+   Włączane wyłącznie na czas przełączania (atrybut `data-morphing` zdejmowany
+   po animacji) — gdyby wisiało na stałe, spowolniłoby każdy hover w aplikacji
+   z 0.2 s do 0.5 s i interfejs zrobiłby się ospały. */
+:root[data-morphing] * {
+  transition:
+    background-color 0.5s var(--ease),
+    border-color 0.5s var(--ease),
+    color 0.5s var(--ease),
+    box-shadow 0.5s var(--ease),
+    fill 0.5s var(--ease),
+    stroke 0.5s var(--ease) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }

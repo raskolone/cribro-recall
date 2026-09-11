@@ -8,6 +8,7 @@ import { Database, LogOut, Bug } from 'lucide-react';
 import { collection, collectionGroup, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { studentTasksQuery } from '../../utils/homework';
+import ThemeToggle from '../ui/ThemeToggle';
 
 interface SidebarProps {
   currentView: string;
@@ -103,6 +104,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(isPreviewView);
   const [newBugsCount, setNewBugsCount] = useState(0);
   const [unreadTestsCount, setUnreadTestsCount] = useState(0);
+  /** Testy przypisane kursantowi, których jeszcze nie rozwiązał. */
+  const [pendingTestsCount, setPendingTestsCount] = useState(0);
   const [pendingHomeworkCount, setPendingHomeworkCount] = useState(0);
 
   useEffect(() => {
@@ -152,6 +155,37 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
       }
     }
   }, [isTeacher]);
+
+  /**
+   * Testy czekające na kursanta.
+   *
+   * Zakładka „Testy" zniknęła z menu, więc przypomnieniem jest kropka przy
+   * „Mój panel". Bez tego licznika kursant nie miałby skąd wiedzieć, że lektor
+   * coś przypisał — a test bez terminu łatwo przeoczyć między lekcjami.
+   */
+  useEffect(() => {
+    if (isTeacher || !user?.id) {
+      setPendingTestsCount(0);
+      return;
+    }
+    try {
+      const q = query(collection(db, `users/${user.id}/tests`));
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const pending = snapshot.docs.filter((docSnap) => {
+            const data = docSnap.data() as any;
+            return !data?.completedAt && data?.status !== 'completed' && data?.status !== 'graded';
+          });
+          setPendingTestsCount(pending.length);
+        },
+        (err) => console.error('Nie udało się odczytać testów kursanta:', err)
+      );
+      return () => unsubscribe();
+    } catch (err) {
+      console.error('Błąd nasłuchu testów kursanta:', err);
+    }
+  }, [isTeacher, user?.id]);
 
   useEffect(() => {
     if (isTeacher) {
@@ -310,8 +344,34 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           </div>
         </div>
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto scrollbar-hide">
-          <NavLink id="tour-generator" icon={<LayoutDashboard size={20} />} isCollapsed={isDesktopCollapsed} onClick={() => handleNavigate('dashboard')} isActive={currentView === 'dashboard'}>
+          <NavLink
+            id="tour-generator"
+            icon={
+              <div className="relative">
+                <LayoutDashboard size={20} className={pendingTestsCount > 0 ? 'text-primary' : ''} />
+                {/* Kropka zamiast liczby: chodzi o przypomnienie „coś na Ciebie
+                    czeka", a nie o raport ilościowy. */}
+                {pendingTestsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
+                  </span>
+                )}
+              </div>
+            }
+            isCollapsed={isDesktopCollapsed}
+            onClick={() => handleNavigate('dashboard')}
+            isActive={currentView === 'dashboard'}
+          >
               {isTeacher ? (language === 'pl' ? 'Panel nauczyciela' : 'Dashboard') : (language === 'pl' ? 'Mój panel' : 'My panel')}
+              {!isTeacher && pendingTestsCount > 0 && (
+                <span
+                  className="ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-primary/15 border border-primary/30 text-primary align-middle"
+                  title={language === 'pl' ? 'Masz test do rozwiązania' : 'You have a test to complete'}
+                >
+                  {language === 'pl' ? 'test' : 'test'}
+                </span>
+              )}
           </NavLink>
 
           {isTeacher && (() => {
@@ -517,30 +577,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
             </NavLink>
           )}
 
-          {!isTeacher && (
-
-            <NavLink
-              icon={
-                <div className="relative">
-                  <ClipboardList size={20} className={unreadTestsCount > 0 ? "text-primary animate-bounce" : ""} />
-                  {unreadTestsCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-danger border border-black"></span>
-                    </span>
-                  )}
-                </div>
-              }
-              isCollapsed={isDesktopCollapsed}
-              onClick={() => handleNavigate('tests')}
-              isActive={currentView === 'tests'}
-            >
-              <span className={unreadTestsCount > 0 ? "text-primary font-bold" : ""}>
-                {language === 'pl' ? 'Testy' : 'Tests'}
-                {unreadTestsCount > 0 && ` (${unreadTestsCount})`}
-              </span>
-            </NavLink>
-          )}
+          {/* Osobna zakładka „Testy" dla kursanta została usunięta — testy są
+              częścią panelu, a nie oddzielnym miejscem. O czekającym teście
+              przypomina pulsująca kropka przy „Mój panel" (wyżej). */}
 
           <div className="pt-4 mt-4 border-t border-base-300">
             {isAdmin && (
@@ -575,6 +614,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               {language === 'pl' ? 'Pomoc' : 'Help'}
             </NavLink>
             <div className={`flex flex-col gap-2`}>
+              {/* Przełącznik trybu dziennego stoi przy języku — to dwa
+                  ustawienia tego samego rodzaju: zmieniają wygląd aplikacji,
+                  a nie to, co się w niej robi. */}
+              <div className={`flex ${isDesktopCollapsed ? 'justify-center' : 'justify-start px-1'}`}>
+                <ThemeToggle />
+              </div>
               <button onClick={() => logout()} className={`group relative z-10 hover:z-20 w-full flex items-center ${isDesktopCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border border-transparent text-text-2 hover:text-danger hover:bg-danger/10`}>
                 <div className={`flex items-center justify-center transition-transform duration-300 ${isDesktopCollapsed ? 'mr-3 md:mr-0' : 'mr-3'}`}>
                   <LogOut size={20} />

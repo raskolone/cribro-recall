@@ -21,6 +21,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
     root.classList.add(theme);
+    // Atrybut obok klasy: tokeny w `design/theme/tokens.css` celują w
+    // `[data-theme]`, a `color-scheme` przestawia natywne kontrolki
+    // (paski przewijania, pola formularzy), które inaczej zostają ciemne
+    // na jasnym tle.
+    root.setAttribute('data-theme', theme);
+    root.style.colorScheme = theme;
     (function(){ try { localStorage.setItem('theme', theme); } catch(e) {} })();
   }, [theme]);
 
