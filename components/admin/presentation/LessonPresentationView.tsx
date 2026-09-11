@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { 
-  Sparkles, Maximize2, Minimize2, ChevronLeft, ChevronRight, 
-  Plus, Edit2, Trash2, Save, Download, Share2, Eye, EyeOff, 
-  Clock, BookOpen, Layers, FileText, CheckCircle2, RotateCcw,
-  Zap, Copy, Check, MessageSquare, Volume2, Folder, Wand2,
-  Bookmark, Shield, AlertCircle, PenLine, FileEdit
+import {
+  Sparkles, Maximize2, Minimize2, ChevronLeft, ChevronRight,
+  Plus, Edit2, Trash2, Save, CheckCircle2,
+  BookOpen, Layers, CloudUpload, CloudOff,
+  Zap, MessageSquare, Folder, Wand2,
+  PenLine, FileEdit, GraduationCap, SlidersHorizontal
 } from 'lucide-react';
 
 import { 
@@ -32,7 +32,44 @@ import Whiteboard from './Whiteboard';
 import PresenterPanel from './PresenterPanel';
 import type { Shape } from './whiteboardShapes';
 import Button from '../../ui/Button';
+import MenuDropdown, { MenuChevron } from '../../ui/MenuDropdown';
+import CoachMarks from '../../ui/CoachMarks';
+import { buildPresentationCoachSteps } from './presentationCoachSteps';
 import ScratchpadModal from '../../scratchpad/ScratchpadModal';
+
+/**
+ * Przycisk paska narzędzi — jeden kształt dla wszystkich narzędzi na żywo.
+ *
+ * Etykiety chowają się dopiero poniżej `lg` i wtedy wszystkie naraz, więc pasek
+ * ma dwa przewidywalne stany zamiast czterech progów `hidden sm/md/lg/xl`,
+ * które wcześniej zostawiały w połowie szerokości rząd nieopisanych ikon.
+ */
+const ToolbarButton: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  title: string;
+  active?: boolean;
+  coachId?: string;
+  labelHidden?: boolean;
+}> = ({ icon, label, onClick, title, active = false, coachId, labelHidden = false }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    title={title}
+    aria-label={label}
+    aria-pressed={active}
+    data-coach={coachId}
+    className={`h-9 px-2.5 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-all cursor-pointer ${
+      active
+        ? 'bg-accent/12 border-accent/40 text-accent'
+        : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
+    }`}
+  >
+    {icon}
+    {!labelHidden && <span className="hidden lg:inline">{label}</span>}
+  </button>
+);
 
 
 interface LessonPresentationViewProps {
@@ -92,6 +129,11 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
   const [isGuidelinesModalOpen, setIsGuidelinesModalOpen] = useState(false);
   const [isSlideAssistantModalOpen, setIsSlideAssistantModalOpen] = useState(false);
   const [isScratchpadModalOpen, setIsScratchpadModalOpen] = useState(false);
+  const [isDeckMenuOpen, setIsDeckMenuOpen] = useState(false);
+  const [isCoachOpen, setIsCoachOpen] = useState(false);
+
+  /** Stan autozapisu pokazywany przy tytule — zastępuje osobny przycisk „Zapisz". */
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'local'>('idle');
 
 
   // Extract recent student weaknesses for AI practice generation
@@ -155,6 +197,10 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
         return;
       }
 
+      // Samouczek przejmuje strzałki na swoje kroki — bez tego przewijałby
+      // jednocześnie slajdy pod spodem i kursant widziałby skakanie talii.
+      if (isCoachOpen) return;
+
       if (e.key === 'ArrowRight' || e.key === ' ') {
         e.preventDefault();
         setActiveSlideIndex(prev => Math.min(prev + 1, currentDeck.slides.length - 1));
@@ -180,7 +226,7 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentDeck.slides.length, isFullscreen]);
+  }, [currentDeck.slides.length, isFullscreen, isCoachOpen]);
 
   /**
    * Obiekt notatnika w pamięci, nie tworzony przy każdym renderze.
@@ -223,8 +269,10 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
 
   // Deck Saving
   const handleSaveDeck = async () => {
+    setSaveState('saving');
     const result = await savePresentationToStorage(currentDeck);
     refreshSavedDecks();
+    setSaveState(result.cloud ? 'saved' : 'local');
 
     if (result.cloud) {
       showToast('Zapisano prezentację i notatnik.');
@@ -257,9 +305,11 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
       isFirstDeckRender.current = false;
       return;
     }
+    setSaveState('saving');
     const timer = setTimeout(() => {
       savePresentationToStorage(currentDeck)
         .then((result) => {
+          setSaveState(result.cloud ? 'saved' : 'local');
           // Autozapis milczy, gdy się udał — komunikat w środku lekcji byłby
           // rozpraszaczem. O nieudanym zapisie do chmury mówimy raz, przy
           // pierwszym niepowodzeniu, żeby nie powtarzać go co dwie sekundy.
@@ -269,7 +319,10 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
           }
           if (result.cloud) cloudSaveWarned.current = false;
         })
-        .catch((e) => console.warn('Autozapis prezentacji nie powiódł się:', e));
+        .catch((e) => {
+          setSaveState('local');
+          console.warn('Autozapis prezentacji nie powiódł się:', e);
+        });
     }, 2000);
     return () => clearTimeout(timer);
   }, [currentDeck]);
@@ -329,6 +382,11 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
 
   const currentSlide = currentDeck.slides[activeSlideIndex] || currentDeck.slides[0];
 
+  const coachSteps = useMemo(
+    () => buildPresentationCoachSteps({ setDeckMenuOpen: setIsDeckMenuOpen }),
+    []
+  );
+
   return (
     <div 
       ref={containerRef}
@@ -355,178 +413,206 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
         </div>
       )}
 
-      {/* TOP TOOLBAR */}
-      <div className="flex items-center justify-between gap-3 flex-wrap p-4 rounded-2xl bg-base-200/95 border border-white/10 shadow-lg">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="p-2.5 rounded-xl bg-primary/15 text-primary border border-primary/25">
-            <Sparkles size={20} />
+      {/* PASEK NARZĘDZI
+          Trzy strefy: tożsamość talii, narzędzia sięgane w trakcie mówienia,
+          reszta schowana w menu. Widoczne zostaje tylko to, po co lektor sięga
+          bez zastanowienia — pozostałe operacje robi się przed lekcją. */}
+      <div className="flex items-center justify-between gap-3 flex-wrap p-3 rounded-2xl bg-base-200/95 border border-white/10 shadow-lg">
+        <div className="flex items-center gap-3 min-w-0" data-coach="pres-identity">
+          <div className="p-2 rounded-xl bg-accent/12 text-accent border border-accent/25 shrink-0">
+            <Sparkles size={18} />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base sm:text-lg font-extrabold text-white truncate">
+              <h2 className="text-sm sm:text-base font-bold text-text-hi truncate">
                 {currentDeck.title}
               </h2>
               {currentDeck.targetLevel && (
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-white/10 text-white">
+                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-white/[0.07] border border-line text-text-2">
                   {currentDeck.targetLevel}
                 </span>
               )}
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-text-faint truncate">
+              <span>{currentDeck.slides.length} slajdów</span>
               {studentName && (
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-primary/20 text-primary border border-primary/30">
-                  Kursant: {studentName}
+                <>
+                  <span aria-hidden>•</span>
+                  <span className="truncate">{studentName}</span>
+                </>
+              )}
+              <span aria-hidden>•</span>
+              {/* Stan zapisu zamiast przycisku „Zapisz": talia zapisuje się sama,
+                  więc lektor ma tu wiedzieć, czy trafiła do chmury — a nie
+                  pamiętać o kliknięciu. */}
+              {saveState === 'saving' ? (
+                <span className="flex items-center gap-1 text-text-2">
+                  <CloudUpload size={11} /> Zapisywanie…
+                </span>
+              ) : saveState === 'local' ? (
+                <span
+                  className="flex items-center gap-1 text-warn"
+                  title="Zapisano tylko w tej przeglądarce — prezentacja nie otworzy się na innym komputerze."
+                >
+                  <CloudOff size={11} /> Tylko lokalnie
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-text-faint">
+                  <CheckCircle2 size={11} /> Zapisano
                 </span>
               )}
             </div>
-            <p className="text-xs text-content-muted truncate">
-              {currentDeck.slides.length} slajdów • Interaktywna prezentacja & Wspólny notatnik live
-            </p>
           </div>
         </div>
 
-        {/* Toolbar Buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Tablica wchodzi na wierzch prezentacji: lektor rysuje w środku
-              zdania i wraca do slajdu tam, gdzie był. */}
-          <Button
-            size="sm"
-            variant="secondary"
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Narzędzia na żywo — jedyne, po które sięga się w środku zdania. */}
+          <ToolbarButton
+            icon={<PenLine size={15} />}
+            label="Tablica"
+            title="Tablica do rysowania na bieżącym slajdzie (skrót: W)"
             onClick={() => setIsWhiteboardOpen(true)}
-            className="text-xs font-bold flex items-center gap-1.5"
-            title="Tablica do rysowania"
-          >
-            <PenLine size={14} />
-            <span className="hidden sm:inline">Tablica</span>
-          </Button>
-
-          {/* Współdzielony brudnopis lekcyjny (Google Docs) z kodem PIN */}
-          <Button
-            size="sm"
-            variant="secondary"
+            coachId="pres-whiteboard"
+          />
+          <ToolbarButton
+            icon={<FileEdit size={15} />}
+            label="Brudnopis"
+            title="Współdzielony brudnopis kursanta — wspólna edycja na żywo, dostęp linkiem lub PIN-em"
             onClick={() => setIsScratchpadModalOpen(true)}
-            className="text-xs font-bold flex items-center gap-1.5 bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25"
-            title="Współdzielony brudnopis notatek Google Docs z kodem PIN lub linkiem na żywo"
-          >
-            <FileEdit size={14} />
-            <span className="hidden sm:inline">Brudnopis (PIN)</span>
-          </Button>
-
-
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setIsAiGeneratorOpen(true)}
-            className="text-xs font-bold flex items-center gap-1.5 bg-primary/15 text-primary border-primary/30 hover:bg-primary/25"
-            title="Generuj kompletną talię slajdów z OpenAI 5.6 Luna"
-          >
-            <Sparkles size={14} />
-            <span className="hidden sm:inline">Generuj z Luna 5.6</span>
-          </Button>
-
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setIsSlideAssistantModalOpen(true)}
-            className="text-xs font-bold flex items-center gap-1.5 bg-amber-400/15 text-amber-300 border-amber-400/30 hover:bg-amber-400/25"
-            title="AI Copilot dla pojedynczego slajdu (dodaj ćwiczenie, popraw błędy, rozbuduj)"
-          >
-            <Wand2 size={14} />
-            <span className="hidden md:inline">AI Slajd</span>
-          </Button>
-
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setIsGuidelinesModalOpen(true)}
-            className="text-xs font-semibold text-content-muted hover:text-primary flex items-center gap-1.5"
-            title="Wytyczne metodyczne CELTA/ESA oraz zasady OpenAI 5.6 Luna"
-          >
-            <BookOpen size={14} />
-            <span className="hidden xl:inline">Wytyczne CELTA</span>
-          </Button>
-
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setIsImportModalOpen(true)}
-            className="text-xs font-bold flex items-center gap-1.5 bg-info/15 text-info border-info/30 hover:bg-info/25"
-          >
-            <Layers size={14} />
-            <span className="hidden sm:inline">Importuj konspekt</span>
-          </Button>
-
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => {
-              setEditingSlide(null);
-              setIsSlideEditorOpen(true);
-            }}
-            className="text-xs font-bold flex items-center gap-1.5"
-          >
-            <Plus size={14} />
-            <span>Slajd</span>
-          </Button>
-
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setIsSavedDecksOpen(!isSavedDecksOpen)}
-            className="text-xs font-bold flex items-center gap-1.5"
-          >
-            <Folder size={14} />
-            <span className="hidden sm:inline">Zapisane ({savedDecks.length})</span>
-          </Button>
-
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={handleSaveDeck}
-            className="text-xs font-bold flex items-center gap-1.5 shadow-[0_0_15px_rgba(114,240,180,0.25)]"
-          >
-            <Save size={14} />
-            <span>Zapisz</span>
-          </Button>
-
-          <div className="h-6 w-px bg-white/10 mx-1 hidden sm:block" />
-
-          {/* Toggle Notebook Split Screen */}
-          <Button
-            size="sm"
-            variant={showNotebook ? 'primary' : 'ghost'}
-            onClick={() => setShowNotebook(!showNotebook)}
-            className={`text-xs font-bold flex items-center gap-1.5 ${
-              !showNotebook ? 'text-content-muted hover:text-white' : ''
-            }`}
-            title="Włącz/Wyłącz boczny notatnik live"
-          >
-            <MessageSquare size={14} />
-            <span className="hidden md:inline">Notatnik</span>
-          </Button>
-
-          {/* Laser Pointer toggle */}
-          <button
+            coachId="pres-scratchpad"
+          />
+          <ToolbarButton
+            icon={<Zap size={15} />}
+            label="Laser"
+            title="Wskaźnik laserowy (skrót: L)"
             onClick={() => setLaserPointerActive(!laserPointerActive)}
-            className={`p-2 rounded-xl transition-all border cursor-pointer ${
-              laserPointerActive
-                ? 'bg-rose-500 text-white border-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.4)]'
-                : 'bg-base-300 text-content-muted border-white/10 hover:text-white'
-            }`}
-            title="Wskaźnik laserowy (Skrót: L)"
-          >
-            <Zap size={15} />
-          </button>
+            active={laserPointerActive}
+            coachId="pres-laser"
+            labelHidden
+          />
 
-          {/* Fullscreen Mode */}
-          <Button
-            size="sm"
-            variant="ghost"
+          <div className="h-6 w-px bg-line-strong mx-0.5" aria-hidden />
+
+          {/* Operacje na talii — robione przed lekcją, więc pod jednym menu. */}
+          <MenuDropdown
+            open={isDeckMenuOpen}
+            onOpenChange={setIsDeckMenuOpen}
+            align="end"
+            width={288}
+            aria-label="Menu talii"
+            coachId="pres-deck-menu"
+            triggerTitle="Slajdy, generowanie AI, import i biblioteka prezentacji"
+            triggerClassName={`h-9 px-3 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-all cursor-pointer ${
+              isDeckMenuOpen
+                ? 'bg-white/[0.08] border-line-strong text-content'
+                : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
+            }`}
+            trigger={
+              <>
+                <SlidersHorizontal size={15} />
+                <span>Talia</span>
+                <MenuChevron open={isDeckMenuOpen} />
+              </>
+            }
+            sections={[
+              {
+                id: 'build',
+                label: 'Buduj lekcję',
+                items: [
+                  {
+                    id: 'new-slide',
+                    coachId: 'pres-menu-new-slide',
+                    label: 'Nowy slajd',
+                    description: 'Ręczna treść i typ ćwiczenia',
+                    icon: <Plus size={14} />,
+                    onSelect: () => {
+                      setEditingSlide(null);
+                      setIsSlideEditorOpen(true);
+                    },
+                  },
+                  {
+                    id: 'ai-deck',
+                    coachId: 'pres-menu-ai-deck',
+                    label: 'Generuj talię z AI',
+                    description: 'Cała prezentacja na temat i poziom',
+                    icon: <Sparkles size={14} />,
+                    onSelect: () => setIsAiGeneratorOpen(true),
+                  },
+                  {
+                    id: 'import',
+                    coachId: 'pres-menu-import',
+                    label: 'Importuj konspekt',
+                    description: 'Z notatek, podręcznika lub lekcji',
+                    icon: <Layers size={14} />,
+                    onSelect: () => setIsImportModalOpen(true),
+                  },
+                ],
+              },
+              {
+                id: 'library',
+                label: 'Biblioteka i zapis',
+                items: [
+                  {
+                    id: 'saved',
+                    coachId: 'pres-menu-library',
+                    label: `Zapisane prezentacje (${savedDecks.length})`,
+                    description: 'Wczytaj wcześniejszą talię',
+                    icon: <Folder size={14} />,
+                    onSelect: () => setIsSavedDecksOpen(!isSavedDecksOpen),
+                  },
+                  {
+                    id: 'save-now',
+                    label: 'Zapisz teraz',
+                    description: 'Poza autozapisem co 2 sekundy',
+                    icon: <Save size={14} />,
+                    onSelect: handleSaveDeck,
+                  },
+                ],
+              },
+              {
+                id: 'method',
+                label: 'Metodyka',
+                items: [
+                  {
+                    id: 'guidelines',
+                    coachId: 'pres-menu-guidelines',
+                    label: 'Wytyczne CELTA / ESA',
+                    description: 'Zasady budowy lekcji i generatora',
+                    icon: <BookOpen size={14} />,
+                    onSelect: () => setIsGuidelinesModalOpen(true),
+                  },
+                ],
+              },
+            ]}
+          />
+
+          <ToolbarButton
+            icon={<MessageSquare size={15} />}
+            label="Notatnik"
+            title="Pokaż lub ukryj boczny notatnik lekcyjny (skrót: N)"
+            onClick={() => setShowNotebook(!showNotebook)}
+            active={showNotebook}
+            coachId="pres-notebook"
+          />
+          <ToolbarButton
+            icon={isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            label={isFullscreen ? 'Zwiń' : 'Pełny ekran'}
+            title="Tryb pełnoekranowy (skrót: F)"
             onClick={toggleFullscreen}
-            className="text-xs font-bold text-white hover:bg-white/10 flex items-center gap-1.5"
-            title="Tryb pełnoekranowy (Skrót: F)"
-          >
-            {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-            <span className="hidden lg:inline">{isFullscreen ? 'Zwiń' : 'Pełny ekran'}</span>
-          </Button>
+            active={isFullscreen}
+            coachId="pres-fullscreen"
+            labelHidden
+          />
+
+          <div className="h-6 w-px bg-line-strong mx-0.5" aria-hidden />
+
+          <ToolbarButton
+            icon={<GraduationCap size={15} />}
+            label="Samouczek"
+            title="Samouczek — dymki opisujące każde narzędzie prezentacji"
+            onClick={() => setIsCoachOpen(true)}
+            labelHidden
+          />
         </div>
       </div>
 
@@ -613,17 +699,22 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
           {/* Panel prowadzącego: notatki, następny slajd i okno dla kursanta.
               Stoi pod slajdem, bo lektor patrzy tu między jednym a drugim
               przejściem dalej, a nie w trakcie mówienia. */}
-          <PresenterPanel
-            deck={currentDeck}
-            activeSlideIndex={activeSlideIndex}
-            onNavigate={setActiveSlideIndex}
-            interaction={slideInteraction}
-            whiteboard={whiteboardShapes}
-            liveNotebook={liveNotebookForStudent}
-          />
+          <div data-coach="pres-presenter-panel">
+            <PresenterPanel
+              deck={currentDeck}
+              activeSlideIndex={activeSlideIndex}
+              onNavigate={setActiveSlideIndex}
+              interaction={slideInteraction}
+              whiteboard={whiteboardShapes}
+              liveNotebook={liveNotebookForStudent}
+            />
+          </div>
 
           {/* SLIDE NAVIGATION CONTROLS */}
-          <div className="p-3 rounded-2xl bg-base-200/90 border border-white/10 flex items-center justify-between gap-2 shadow-md">
+          <div
+            data-coach="pres-slide-nav"
+            className="p-3 rounded-2xl bg-base-200/90 border border-white/10 flex items-center justify-between gap-2 shadow-md"
+          >
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
@@ -666,13 +757,13 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
               ))}
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5" data-coach="pres-slide-actions">
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => setIsSlideAssistantModalOpen(true)}
-                className="text-xs font-semibold text-amber-300 hover:text-white hover:bg-amber-400/20 p-2"
-                title="Ulepsz ten slajd z OpenAI 5.6 Luna"
+                className="text-xs font-semibold text-content-muted hover:text-white p-2"
+                title="Ulepsz ten slajd z pomocą AI"
               >
                 <Wand2 size={14} />
               </Button>
@@ -703,7 +794,7 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
 
         {/* RIGHT: LIVE COLLABORATIVE NOTEBOOK */}
         {showNotebook && (
-          <div className="lg:col-span-4 min-h-[580px]">
+          <div className="lg:col-span-4 min-h-[580px]" data-coach="pres-live-notebook">
             <LiveNotebookPanel
               liveNotes={currentDeck.liveNotes}
               onChangeLiveNotes={val => setCurrentDeck(prev => ({ ...prev, liveNotes: val }))}
@@ -723,11 +814,23 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-2xl bg-base-300/90 backdrop-blur-md border border-white/15 text-[11px] text-content-muted flex items-center gap-4 shadow-2xl font-mono">
           <span><strong className="text-white">Spacja / ➔</strong> Następny</span>
           <span><strong className="text-white">⬅</strong> Poprzedni</span>
+          <span><strong className="text-white">W</strong> Tablica</span>
           <span><strong className="text-white">L</strong> Laser</span>
           <span><strong className="text-white">N</strong> Notatnik</span>
           <span><strong className="text-white">F / Esc</strong> Wyjście</span>
         </div>
       )}
+
+      {/* Samouczek — dymki przypięte do narzędzi, łącznie ze schowanymi w menu. */}
+      <CoachMarks
+        steps={coachSteps}
+        isOpen={isCoachOpen}
+        onClose={() => {
+          setIsCoachOpen(false);
+          setIsDeckMenuOpen(false);
+        }}
+        title="Samouczek prezentacji"
+      />
 
       {/* MODALS */}
       <SlideEditorModal

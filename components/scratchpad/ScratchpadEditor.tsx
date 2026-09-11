@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Bold,
   Italic,
@@ -14,7 +14,6 @@ import {
   Layers,
   Sparkles,
   Share2,
-  Copy,
   Check,
   RotateCcw,
   RotateCw,
@@ -22,16 +21,44 @@ import {
   Unlock,
   Eye,
   FileText,
-  AlertCircle,
   CloudCheck,
   CloudUpload,
-  ShieldCheck,
-  ShieldAlert,
+  KeyRound,
+  Link2,
+  Pilcrow,
+  Plus,
+  Type,
+  GraduationCap,
 } from 'lucide-react';
 import { ScratchpadDocument } from '../../types';
 import { buildScratchpadUrl } from '../../services/scratchpadService';
 import { formatAccessCode } from '../../utils/accessCode';
 import Button from '../ui/Button';
+import MenuDropdown, { MenuChevron } from '../ui/MenuDropdown';
+import CoachMarks from '../ui/CoachMarks';
+import { buildScratchpadCoachSteps } from './scratchpadCoachSteps';
+
+/** Przycisk paska formatowania — jeden kształt dla wszystkich narzędzi edytora. */
+const FormatButton: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  onClick: () => void;
+  coachId?: string;
+}> = ({ icon, title, onClick, coachId }) => (
+  <button
+    type="button"
+    title={title}
+    aria-label={title}
+    data-coach={coachId}
+    // Bez tego kliknięcie zabiera fokus polu edycji i `execCommand` traci
+    // zaznaczenie, na którym ma zadziałać.
+    onMouseDown={event => event.preventDefault()}
+    onClick={onClick}
+    className="h-8 w-8 rounded-lg flex items-center justify-center text-text-2 hover:text-content hover:bg-white/[0.08] transition-colors cursor-pointer"
+  >
+    {icon}
+  </button>
+);
 
 interface ScratchpadEditorProps {
   document: ScratchpadDocument;
@@ -80,6 +107,11 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPin, setCopiedPin] = useState(false);
   const [wordCount, setWordCount] = useState(0);
+
+  const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
+  const [isInsertMenuOpen, setIsInsertMenuOpen] = useState(false);
+  const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+  const [isCoachOpen, setIsCoachOpen] = useState(false);
 
   // Funkcja wyciągająca czysty tekst z HTML
   const extractText = (html: string): string => {
@@ -283,319 +315,378 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     });
   };
 
+  const coachSteps = useMemo(
+    () =>
+      buildScratchpadCoachSteps({
+        setStyleMenuOpen: setIsStyleMenuOpen,
+        setInsertMenuOpen: setIsInsertMenuOpen,
+        setShareMenuOpen: setIsShareMenuOpen,
+        isTeacher,
+        canPushToLesson: isTeacher && !!onPushToLessonRecord,
+        canFormat: !isReadOnly,
+      }),
+    [isTeacher, onPushToLessonRecord, isReadOnly]
+  );
+
   return (
     <div className={`flex flex-col bg-base-200 rounded-2xl border border-white/10 shadow-xl overflow-hidden ${className}`}>
-      {/* 1. GÓRNY PASEK METADANYCH I UDOSTĘPNIANIA */}
+      {/* 1. NAGŁÓWEK DOKUMENTU
+          Tożsamość po lewej, jedna akcja końcowa i jedno menu dostępu po prawej.
+          Kod PIN i przełączniki uprawnień zeszły do menu — na ekranie zostaje
+          to, czego lektor używa w trakcie pisania. */}
       <header className="px-4 py-3 bg-base-300/80 border-b border-white/10 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="p-2 rounded-xl bg-primary/15 text-primary border border-primary/20 shrink-0">
+        <div className="flex items-center gap-3 min-w-0" data-coach="pad-identity">
+          <div className="p-2 rounded-xl bg-accent/12 text-accent border border-accent/25 shrink-0">
             <FileText size={18} />
           </div>
           <div className="min-w-0">
-            <h2 className="text-sm font-bold text-white truncate flex items-center gap-2">
+            <h2 className="text-sm font-bold text-text-hi truncate flex items-center gap-2">
               <span>{docData.title || 'Brudnopis lekcyjny'}</span>
               {isReadOnly && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/10 text-content-muted flex items-center gap-1">
-                  <Eye size={11} /> Podgląd na żywo
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/[0.07] border border-line text-text-2 flex items-center gap-1">
+                  <Eye size={11} /> Podgląd
                 </span>
               )}
             </h2>
-            <div className="flex items-center gap-2 text-[11px] text-content-muted">
-              <span>Kursant: <strong className="text-white/80">{docData.studentName}</strong></span>
-              <span>•</span>
-              {saveStatus === 'saving' && (
-                <span className="text-amber-400 flex items-center gap-1 animate-pulse">
-                  <CloudUpload size={12} /> Zapisywanie...
+            <div className="flex items-center gap-1.5 text-[11px] text-text-faint">
+              <span className="truncate">{docData.studentName}</span>
+              <span aria-hidden>•</span>
+              {saveStatus === 'saving' ? (
+                <span className="text-text-2 flex items-center gap-1">
+                  <CloudUpload size={11} /> Zapisywanie…
                 </span>
-              )}
-              {saveStatus === 'saved' && (
-                <span className="text-emerald-400 flex items-center gap-1">
-                  <CloudCheck size={12} /> Zapisano w chmurze
+              ) : saveStatus === 'local_only' ? (
+                <span
+                  className="text-warn flex items-center gap-1"
+                  title="Zapisano w tej przeglądarce — kursant nie zobaczy tych zmian."
+                >
+                  <CloudUpload size={11} /> Tylko lokalnie
                 </span>
-              )}
-              {saveStatus === 'synced' && (
-                <span className="text-cyan-400 flex items-center gap-1">
-                  <CloudCheck size={12} /> Zsynchronizowano
-                </span>
-              )}
-              {saveStatus === 'local_only' && (
-                <span className="text-amber-400 flex items-center gap-1" title="Zapisano w tej przeglądarce (wdrożenie reguł Firestore w toku)">
-                  <CloudUpload size={12} /> Zapisano lokalnie
+              ) : (
+                <span className="flex items-center gap-1">
+                  <CloudCheck size={11} /> Zapisano
                 </span>
               )}
             </div>
           </div>
         </div>
 
-        {/* Prawa strona: Kody PIN, Kopiowanie i Akcje Lektora */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Kod PIN */}
-          <div className="flex items-center bg-base-200 px-2.5 py-1 rounded-xl border border-white/10 text-xs gap-2">
-            <span className="text-content-muted text-[10px] uppercase font-mono">
-              {docData.requirePin ? 'PIN (wymagany):' : 'PIN (opcja):'}
-            </span>
-            <span className="font-mono font-bold text-primary tracking-wider">
-              {formatAccessCode(docData.pin)}
-            </span>
-            <button
-              type="button"
-              onClick={handleCopyPin}
-              className="text-content-muted hover:text-white transition-colors cursor-pointer p-0.5"
-              title="Kopiuj kod PIN"
-            >
-              {copiedPin ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
-            </button>
-          </div>
-
-          {/* Przycisk Kopiuj unikalny link */}
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={handleCopyLink}
-            className="text-xs flex items-center gap-1.5 px-3 py-1.5"
-            title="Kopiuj unikalny link bezpośredni (bez wymogu wpisywania PINu)"
-          >
-            {copiedLink ? <Check size={13} className="text-emerald-400" /> : <Share2 size={13} />}
-            <span>{copiedLink ? 'Skopiowano link!' : 'Udostępnij link'}</span>
-          </Button>
-
-          {/* Przełącznik wymogu PIN dla lektora */}
-          {isTeacher && onToggleRequirePin && (
-            <button
-              type="button"
-              onClick={() => onToggleRequirePin(!docData.requirePin)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                docData.requirePin
-                  ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
-                  : 'bg-base-200 border-white/10 text-content-muted hover:text-white'
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {isTeacher && (
+            <MenuDropdown
+              open={isShareMenuOpen}
+              onOpenChange={setIsShareMenuOpen}
+              width={300}
+              align="end"
+              aria-label="Udostępnianie i uprawnienia"
+              coachId="pad-share"
+              triggerTitle="Link, kod PIN i uprawnienia kursanta"
+              triggerClassName={`h-9 px-3 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                isShareMenuOpen
+                  ? 'bg-white/[0.08] border-line-strong text-content'
+                  : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
               }`}
-              title={
-                docData.requirePin
-                  ? 'Wymóg kodu PIN jest włączony. Kursant wchodzący z linku musi wpisać PIN. Kliknij, aby umożliwić bezpośredni dostęp bez PINu.'
-                  : 'Link otwiera brudnopis bezpośrednio bez PINu. Kliknij, jeśli chcesz zabezpieczyć dokument kodem PIN.'
+              trigger={
+                <>
+                  <Share2 size={14} />
+                  <span>Udostępnij</span>
+                  <MenuChevron open={isShareMenuOpen} />
+                </>
               }
-            >
-              {docData.requirePin ? <ShieldAlert size={13} /> : <ShieldCheck size={13} />}
-              <span>{docData.requirePin ? 'PIN: Wymagany' : 'PIN: Opcjonalny (wył.)'}</span>
-            </button>
+              sections={[
+                {
+                  id: 'links',
+                  label: 'Dostęp dla kursanta',
+                  items: [
+                    {
+                      id: 'copy-link',
+                      label: copiedLink ? 'Skopiowano link' : 'Kopiuj link bezpośredni',
+                      description: 'Otwiera brudnopis bez logowania',
+                      icon: copiedLink ? <Check size={14} /> : <Link2 size={14} />,
+                      onSelect: handleCopyLink,
+                    },
+                    {
+                      id: 'copy-pin',
+                      label: copiedPin ? 'Skopiowano PIN' : `Kopiuj kod PIN — ${formatAccessCode(docData.pin)}`,
+                      description: 'Do wpisania na stronie /scratchpad',
+                      icon: copiedPin ? <Check size={14} /> : <KeyRound size={14} />,
+                      onSelect: handleCopyPin,
+                    },
+                  ],
+                },
+                {
+                  id: 'permissions',
+                  label: 'Uprawnienia',
+                  items: [
+                    ...(onToggleRequirePin
+                      ? [
+                          {
+                            id: 'require-pin',
+                            label: 'Wymagaj kodu PIN',
+                            description: 'Dodatkowa zapora przy wejściu z linku',
+                            icon: <Lock size={14} />,
+                            checked: !!docData.requirePin,
+                            onSelect: () => onToggleRequirePin(!docData.requirePin),
+                          },
+                        ]
+                      : []),
+                    ...(onToggleStudentEdit
+                      ? [
+                          {
+                            id: 'student-edit',
+                            coachId: 'pad-menu-student-edit',
+                            label: 'Kursant może pisać',
+                            description: 'Wyłączone = sam podgląd na żywo',
+                            icon: <Unlock size={14} />,
+                            checked: !!docData.allowStudentEdit,
+                            onSelect: () => onToggleStudentEdit(!docData.allowStudentEdit),
+                          },
+                        ]
+                      : []),
+                  ],
+                },
+              ]}
+            />
           )}
 
-          {/* Przełącznik uprawnień dla lektora */}
-          {isTeacher && onToggleStudentEdit && (
-            <button
-              type="button"
-              onClick={() => onToggleStudentEdit(!docData.allowStudentEdit)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                docData.allowStudentEdit
-                  ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25'
-                  : 'bg-base-200 border-white/10 text-content-muted hover:text-white'
-              }`}
-              title={
-                docData.allowStudentEdit
-                  ? 'Kursant może obecnie edytować notatki. Kliknij, aby zablokować do podglądu.'
-                  : 'Kursant ma tylko podgląd. Kliknij, aby zezwolić mu na pisanie.'
-              }
-            >
-              {docData.allowStudentEdit ? <Unlock size={13} /> : <Lock size={13} />}
-              <span>{docData.allowStudentEdit ? 'Edycja ucznia włączona' : 'Tylko podgląd ucznia'}</span>
-            </button>
-          )}
-
-          {/* Przycisk Przenieś do Historii Lekcji */}
           {isTeacher && onPushToLessonRecord && (
             <Button
               type="button"
-              variant="primary"
+              variant="secondary"
               size="sm"
               onClick={handlePushToLesson}
-              className="text-xs flex items-center gap-1.5 px-3 py-1.5"
+              data-coach="pad-push"
+              className="h-9 text-xs flex items-center gap-1.5"
+              title="Rozłóż notatki na 4 bloki Notion i otwórz formularz lekcji"
             >
-              <Layers size={13} />
-              <span className="hidden sm:inline">Przenieś do Dziennika lekcji</span>
+              <Layers size={14} />
+              <span className="hidden sm:inline">Do dziennika</span>
             </Button>
           )}
+
+          <button
+            type="button"
+            onClick={() => setIsCoachOpen(true)}
+            title="Samouczek — dymki opisujące każdą funkcję brudnopisu"
+            aria-label="Samouczek"
+            className="h-9 w-9 rounded-xl border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
+          >
+            <GraduationCap size={15} />
+          </button>
         </div>
       </header>
 
-      {/* 2. PASEK NARZĘDZI EDYTORA (WYSIWYG GOOGLE DOCS STYLE) */}
+      {/* 2. PASEK FORMATOWANIA
+          Widoczne zostaje to, po co sięga się w trakcie notowania: pogrubienie,
+          trzy zakreślacze lektorskie i lista. Nagłówki, pozostałe style oraz
+          wstawki lekcyjne schowane są w dwóch menu. */}
       {!isReadOnly && (
-        <div className="px-3 py-2 bg-base-300/40 border-b border-white/10 flex items-center gap-1 flex-wrap text-content-muted select-none">
-          {/* Formaty blokowe */}
-          <div className="flex items-center gap-0.5 bg-base-200/80 p-0.5 rounded-lg border border-white/5">
-            <button
-              type="button"
-              onClick={() => handleFormatBlock('p')}
-              className="px-2 py-1 text-xs rounded hover:bg-white/10 hover:text-white transition-colors"
-              title="Zwykły akapit"
-            >
-              Zwykły
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFormatBlock('h1')}
-              className="p-1.5 rounded hover:bg-white/10 hover:text-white transition-colors"
-              title="Nagłówek 1"
-            >
-              <Heading1 size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFormatBlock('h2')}
-              className="p-1.5 rounded hover:bg-white/10 hover:text-white transition-colors"
-              title="Nagłówek 2 (Lekcja)"
-            >
-              <Heading2 size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFormatBlock('h3')}
-              className="p-1.5 rounded hover:bg-white/10 hover:text-white transition-colors"
-              title="Nagłówek 3 (Sekcja)"
-            >
-              <Heading3 size={15} />
-            </button>
-          </div>
+        <div className="px-3 py-2 bg-base-300/40 border-b border-white/10 flex items-center gap-1.5 flex-wrap select-none">
+          <MenuDropdown
+            open={isStyleMenuOpen}
+            onOpenChange={setIsStyleMenuOpen}
+            preserveSelection
+            width={252}
+            align="start"
+            aria-label="Styl tekstu"
+            coachId="pad-style"
+            triggerTitle="Nagłówki i style zapisu"
+            triggerClassName={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+              isStyleMenuOpen
+                ? 'bg-white/[0.08] border-line-strong text-content'
+                : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
+            }`}
+            trigger={
+              <>
+                <Type size={14} />
+                <span>Styl</span>
+                <MenuChevron open={isStyleMenuOpen} />
+              </>
+            }
+            sections={[
+              {
+                id: 'blocks',
+                label: 'Blok tekstu',
+                items: [
+                  {
+                    id: 'p',
+                    label: 'Zwykły akapit',
+                    icon: <Pilcrow size={14} />,
+                    onSelect: () => handleFormatBlock('p'),
+                  },
+                  {
+                    id: 'h1',
+                    label: 'Nagłówek 1',
+                    description: 'Tytuł dokumentu',
+                    icon: <Heading1 size={14} />,
+                    onSelect: () => handleFormatBlock('h1'),
+                  },
+                  {
+                    id: 'h2',
+                    label: 'Nagłówek 2',
+                    description: 'Data lekcji',
+                    icon: <Heading2 size={14} />,
+                    onSelect: () => handleFormatBlock('h2'),
+                  },
+                  {
+                    id: 'h3',
+                    label: 'Nagłówek 3',
+                    description: 'Sekcja w lekcji',
+                    icon: <Heading3 size={14} />,
+                    onSelect: () => handleFormatBlock('h3'),
+                  },
+                ],
+              },
+              {
+                id: 'inline',
+                label: 'Styl znaku',
+                items: [
+                  {
+                    id: 'underline',
+                    label: 'Podkreślenie',
+                    shortcut: 'Ctrl+U',
+                    icon: <Underline size={14} />,
+                    onSelect: () => execCmd('underline'),
+                  },
+                  {
+                    id: 'strike',
+                    label: 'Przekreślenie',
+                    icon: <Strikethrough size={14} />,
+                    onSelect: () => execCmd('strikeThrough'),
+                  },
+                ],
+              },
+            ]}
+          />
 
-          <div className="w-px h-5 bg-white/10 mx-1" />
+          <div className="w-px h-5 bg-line-strong" aria-hidden />
 
-          {/* Style tekstu */}
-          <div className="flex items-center gap-0.5 bg-base-200/80 p-0.5 rounded-lg border border-white/5">
-            <button
-              type="button"
-              onClick={() => execCmd('bold')}
-              className="p-1.5 rounded hover:bg-white/10 hover:text-white transition-colors"
-              title="Pogrubienie (Ctrl+B)"
-            >
-              <Bold size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => execCmd('italic')}
-              className="p-1.5 rounded hover:bg-white/10 hover:text-white transition-colors"
-              title="Kursywa (Ctrl+I)"
-            >
-              <Italic size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => execCmd('underline')}
-              className="p-1.5 rounded hover:bg-white/10 hover:text-white transition-colors"
-              title="Podkreślenie (Ctrl+U)"
-            >
-              <Underline size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => execCmd('strikeThrough')}
-              className="p-1.5 rounded hover:bg-white/10 hover:text-white transition-colors"
-              title="Przekreślenie"
-            >
-              <Strikethrough size={15} />
-            </button>
-          </div>
+          <FormatButton
+            icon={<Bold size={15} />}
+            title="Pogrubienie (Ctrl+B)"
+            onClick={() => execCmd('bold')}
+          />
+          <FormatButton
+            icon={<Italic size={15} />}
+            title="Kursywa (Ctrl+I)"
+            onClick={() => execCmd('italic')}
+          />
+          <FormatButton
+            icon={<List size={15} />}
+            title="Lista wypunktowana"
+            onClick={() => execCmd('insertUnorderedList')}
+          />
 
-          <div className="w-px h-5 bg-white/10 mx-1" />
+          <div className="w-px h-5 bg-line-strong" aria-hidden />
 
-          {/* Zakreślacze językowe */}
-          <div className="flex items-center gap-1 bg-base-200/80 p-1 rounded-lg border border-white/5">
+          {/* Zakreślacze zostają na wierzchu — to one odróżniają brudnopis
+              lektorski od zwykłego edytora i używa się ich co kilka zdań. */}
+          <div className="flex items-center gap-1" data-coach="pad-highlighters">
             <button
               type="button"
+              onMouseDown={event => event.preventDefault()}
               onClick={() => handleHighlight('rgba(239, 68, 68, 0.25)', '#fca5a5')}
-              className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border border-rose-500/30 transition-all"
-              title="Zaznacz jako błąd kursanta"
+              className="h-8 px-2.5 rounded-lg text-[11px] font-bold bg-danger/15 text-danger border border-danger/30 hover:bg-danger/25 transition-colors cursor-pointer"
+              title="Zaznacz fragment jako błąd kursanta"
             >
               ❌ Błąd
             </button>
             <button
               type="button"
+              onMouseDown={event => event.preventDefault()}
               onClick={() => handleHighlight('rgba(16, 185, 129, 0.25)', '#6ee7b7')}
-              className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/30 transition-all"
-              title="Zaznacz jako poprawną formę"
+              className="h-8 px-2.5 rounded-lg text-[11px] font-bold bg-accent/12 text-accent border border-accent/30 hover:bg-accent/20 transition-colors cursor-pointer"
+              title="Zaznacz fragment jako poprawną formę"
             >
               ✅ Poprawnie
             </button>
             <button
               type="button"
+              onMouseDown={event => event.preventDefault()}
               onClick={() => handleHighlight('rgba(245, 158, 11, 0.25)', '#fcd34d')}
-              className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/30 transition-all"
+              className="h-8 px-2.5 rounded-lg text-[11px] font-bold bg-warn/15 text-warn border border-warn/30 hover:bg-warn/25 transition-colors cursor-pointer"
               title="Wyróżnij nowe słówko"
             >
               💡 Słówko
             </button>
           </div>
 
-          <div className="w-px h-5 bg-white/10 mx-1" />
+          <div className="w-px h-5 bg-line-strong" aria-hidden />
 
-          {/* Listy */}
-          <div className="flex items-center gap-0.5 bg-base-200/80 p-0.5 rounded-lg border border-white/5">
-            <button
-              type="button"
-              onClick={() => execCmd('insertUnorderedList')}
-              className="p-1.5 rounded hover:bg-white/10 hover:text-white transition-colors"
-              title="Lista wypunktowana"
-            >
-              <List size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => execCmd('insertOrderedList')}
-              className="p-1.5 rounded hover:bg-white/10 hover:text-white transition-colors"
-              title="Lista numerowana"
-            >
-              <ListOrdered size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => execCmd('insertHorizontalRule')}
-              className="p-1.5 rounded hover:bg-white/10 hover:text-white transition-colors"
-              title="Linia pozioma"
-            >
-              <Minus size={15} />
-            </button>
-          </div>
+          <MenuDropdown
+            open={isInsertMenuOpen}
+            onOpenChange={setIsInsertMenuOpen}
+            preserveSelection
+            width={264}
+            align="start"
+            aria-label="Wstaw element"
+            coachId="pad-insert"
+            triggerTitle="Data lekcji, szablon sekcji, listy i linia"
+            triggerClassName={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+              isInsertMenuOpen
+                ? 'bg-white/[0.08] border-line-strong text-content'
+                : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
+            }`}
+            trigger={
+              <>
+                <Plus size={14} />
+                <span>Wstaw</span>
+                <MenuChevron open={isInsertMenuOpen} />
+              </>
+            }
+            sections={[
+              {
+                id: 'lesson',
+                label: 'Elementy lekcji',
+                items: [
+                  {
+                    id: 'date',
+                    label: 'Nagłówek z dzisiejszą datą',
+                    description: 'Otwiera nową lekcję w dokumencie',
+                    icon: <Calendar size={14} />,
+                    onSelect: handleInsertDate,
+                  },
+                  {
+                    id: 'template',
+                    label: 'Szablon sekcji',
+                    description: 'Słownictwo, poprawki, ustalenia',
+                    icon: <Sparkles size={14} />,
+                    onSelect: handleInsertTemplate,
+                  },
+                ],
+              },
+              {
+                id: 'structure',
+                label: 'Struktura',
+                items: [
+                  {
+                    id: 'ol',
+                    label: 'Lista numerowana',
+                    icon: <ListOrdered size={14} />,
+                    onSelect: () => execCmd('insertOrderedList'),
+                  },
+                  {
+                    id: 'hr',
+                    label: 'Linia pozioma',
+                    icon: <Minus size={14} />,
+                    onSelect: () => execCmd('insertHorizontalRule'),
+                  },
+                ],
+              },
+            ]}
+          />
 
-          <div className="w-px h-5 bg-white/10 mx-1" />
-
-          {/* Szybkie wstawianie daty i szablonu */}
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={handleInsertDate}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-base-200 text-content-muted hover:text-white hover:bg-white/10 border border-white/5 transition-colors"
-              title="Wstaw dzisiejszą datę jako nagłówek lekcji"
-            >
-              <Calendar size={13} />
-              <span>Data lekcji</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleInsertTemplate}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-base-200 text-content-muted hover:text-white hover:bg-white/10 border border-white/5 transition-colors"
-              title="Wstaw strukturę sekcji lekcji"
-            >
-              <Sparkles size={13} />
-              <span>Szablon</span>
-            </button>
-          </div>
-
-          <div className="ml-auto flex items-center gap-0.5">
-            <button
-              type="button"
-              onClick={() => execCmd('undo')}
-              className="p-1.5 rounded hover:bg-white/10 hover:text-white transition-colors"
+          <div className="ml-auto flex items-center gap-0.5" data-coach="pad-history">
+            <FormatButton
+              icon={<RotateCcw size={14} />}
               title="Cofnij (Ctrl+Z)"
-            >
-              <RotateCcw size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => execCmd('redo')}
-              className="p-1.5 rounded hover:bg-white/10 hover:text-white transition-colors"
+              onClick={() => execCmd('undo')}
+            />
+            <FormatButton
+              icon={<RotateCw size={14} />}
               title="Ponów (Ctrl+Y)"
-            >
-              <RotateCw size={14} />
-            </button>
+              onClick={() => execCmd('redo')}
+            />
           </div>
         </div>
       )}
@@ -604,6 +695,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       <div className="p-4 md:p-8 flex-1 overflow-y-auto bg-base-100/60 min-h-[500px]">
         <div
           ref={editorRef}
+          data-coach="pad-editor"
           contentEditable={!isReadOnly}
           onInput={handleInput}
           suppressContentEditableWarning
@@ -632,16 +724,29 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
         <div>
           {isReadOnly ? (
-            <span className="text-amber-400/80 flex items-center gap-1">
-              <Lock size={12} /> Dokument w trybie podglądu na żywo
+            <span className="text-text-2 flex items-center gap-1">
+              <Lock size={12} /> Tryb podglądu na żywo
             </span>
           ) : (
-            <span className="text-emerald-400/80 flex items-center gap-1">
+            <span className="text-text-2 flex items-center gap-1">
               <Check size={12} /> Współdzielona edycja na żywo
             </span>
           )}
         </div>
       </footer>
+
+      {/* Samouczek — dymki przypięte do narzędzi brudnopisu. */}
+      <CoachMarks
+        steps={coachSteps}
+        isOpen={isCoachOpen}
+        onClose={() => {
+          setIsCoachOpen(false);
+          setIsStyleMenuOpen(false);
+          setIsInsertMenuOpen(false);
+          setIsShareMenuOpen(false);
+        }}
+        title="Samouczek brudnopisu"
+      />
     </div>
   );
 };

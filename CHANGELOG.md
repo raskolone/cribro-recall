@@ -47,7 +47,47 @@ CRIBRO ENGLISH (Recall) to zaawansowana platforma edukacyjna do intensywnej nauk
 
 ## 3. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
-### Nowość: Współdzielony Brudnopis Google Docs z Kodem PIN i Dostępem przez Link (`Scratchpad`)
+### Nowość: Przebudowa Interfejsu Prezentacji i Brudnopisu („Mniej znaczy lepiej") + Samouczek z Dymkami
+
+**Cel przebudowy:** Paski narzędzi Prezentacji i Brudnopisu rozrosły się do kilkunastu równorzędnych przycisków w jednym rzędzie, w pięciu konkurujących kolorach. Interfejs został zredukowany do narzędzi używanych w trakcie mówienia, a operacje przygotowawcze zeszły do menu rozwijanych. Każda funkcja ma teraz opis w samouczku wyświetlanym jako dymek przypięty do konkretnego przycisku.
+
+- **Nowy komponent `components/ui/MenuDropdown.tsx` (menu rozwijane)**:
+  - Pierwsze w projekcie menu rozwijane uruchamiane lewym przyciskiem — istniejący `ContextMenu.tsx` obsługuje wyłącznie menu kontekstowe (prawy przycisk).
+  - Panel renderowany w portalu na `position: fixed`, z automatycznym odwracaniem w górę przy braku miejsca i przyklejaniem do krawędzi ekranu (paski narzędzi bywają w kontenerach z `overflow: hidden`).
+  - Obsługa klawiatury (strzałki, `Home`/`End`, `Enter`, `Escape`, `Tab`), role ARIA `menu` / `menuitem` / `menuitemcheckbox`, sekcje z nagłówkami, pozycje-przełączniki z ptaszkiem, skróty klawiszowe i opisy pod etykietą.
+  - Tryb `preserveSelection` blokujący przejęcie fokusu (`onMouseDown → preventDefault`) — konieczny w pasku edytora, bo `execCommand` działa na zaznaczeniu, które ginie przy ucieczce fokusu do przycisku.
+  - Kontrola z zewnątrz (`open` / `onOpenChange`) pozwalająca samouczkowi rozwinąć menu i wskazać schowane w nim pozycje.
+- **Nowy komponent `components/ui/CoachMarks.tsx` (samouczek z dymkami)**:
+  - Silnik samouczka wyświetlający **dymek z ogonkiem (speech bubble) przypięty do konkretnego elementu** wskazanego atrybutem `data-coach`.
+  - Automatyczny dobór strony dymka (góra / dół / lewo / prawo) z odwróceniem przy braku miejsca, ogonek celujący w środek opisywanego elementu, wariant dolnego panelu na ekranach < 860 px.
+  - Podświetlenie elementu (spotlight) rozdzielone na **dwie warstwy z-index**: przyciemnienie pod menu (`z-400`), obwódka i dymek nad menu (`z-600`), a samo menu pomiędzy (`z-500`) — dzięki temu samouczek opisuje również pozycje ukryte w menu, zamiast wskazywać przyciemniony element.
+  - Kroki mogą przygotować scenę (`onBeforeShow` rozwija menu) i posprzątać po sobie (`onAfterShow`); pomiar prostokąta następuje po dwóch klatkach i po zakończeniu płynnego przewinięcia.
+  - Nawigacja klawiaturą (strzałki, `Enter`, `Escape`) przechwytywana w fazie capture, żeby nie przewijać slajdów pod spodem.
+- **Przebudowa paska Prezentacji (`LessonPresentationView.tsx`)**:
+  - Z **12 równorzędnych przycisków zrobiło się 6 widocznych** w trzech strefach: tożsamość talii, narzędzia na żywo (Tablica, Brudnopis, Laser), widok (Notatnik, Pełny ekran) oraz Samouczek.
+  - Operacje przygotowawcze — nowy slajd, generowanie talii AI, import konspektu, biblioteka zapisanych prezentacji, ręczny zapis i Wytyczne CELTA — schowane pod jednym menu **„Talia"** z podziałem na sekcje *Buduj lekcję*, *Biblioteka i zapis*, *Metodyka*.
+  - **Usunięto dekoracyjne kolory** (emerald / amber / info / rose) niezgodne z regułą `index.css`: „Stan — jedyne nasycone barwy poza akcentem. Nie do dekoracji". Akcent oznacza teraz wyłącznie stan włączony (aktywny laser, otwarty notatnik, pełny ekran).
+  - **Usunięto przycisk „Zapisz"** z paska — talia zapisuje się sama co 2 sekundy, więc jego miejsce zajął **wskaźnik stanu zapisu** przy tytule (`Zapisywanie…` / `Zapisano` / `Tylko lokalnie` z ostrzeżeniem o braku synchronizacji z chmurą). Ręczny zapis pozostaje w menu.
+  - **Usunięto duplikat „AI Slajd"** z górnego paska — asystent pojedynczego slajdu został wyłącznie przy pasku nawigacji slajdów, gdzie jest akcją kontekstową.
+  - Ujednolicono chowanie etykiet: zamiast czterech progów `hidden sm/md/lg/xl` (dających w połowie szerokości rząd nieopisanych ikon) obowiązuje jeden próg `lg` dla wszystkich przycisków naraz.
+  - Skrót **`W`** (Tablica) dopisany do ściągawki skrótów w trybie pełnoekranowym.
+- **Przebudowa Brudnopisu (`ScratchpadEditor.tsx`)**:
+  - Nagłówek: z 5 kontrolek (chip PIN, kopiuj link, przełącznik PIN, przełącznik edycji, przenieś do dziennika) zrobiły się **3** — menu **„Udostępnij"** (link bezpośredni, kod PIN, wymóg PIN-u, zgoda na edycję przez kursanta), przycisk **„Do dziennika"** i ikona Samouczka.
+  - Pasek formatowania: z **20 przycisków w płaskim rzędzie zrobiło się 9 elementów**. Na wierzchu zostały zakreślacze lektorskie (❌ Błąd / ✅ Poprawnie / 💡 Słówko), pogrubienie, kursywa i lista; nagłówki i pozostałe style trafiły do menu **„Styl"**, a data lekcji, szablon sekcji, lista numerowana i linia — do menu **„Wstaw"**.
+  - Wszystkie przyciski formatowania blokują przejęcie fokusu, dzięki czemu zaznaczenie tekstu przeżywa kliknięcie w pasek.
+  - Kolory zakreślaczy przeniesione na tokeny stanu (`danger` / `accent` / `warn`) zamiast surowych klas `rose` / `emerald` / `amber`.
+- **Treść samouczków (`presentationCoachSteps.ts`, `scratchpadCoachSteps.ts`)**:
+  - **16 kroków dla Prezentacji** (Podstawy, Narzędzia na żywo, Widok, Menu talii, Nawigacja, Prowadzenie) i **do 9 kroków dla Brudnopisu** (Podstawy, Formatowanie, Dostęp, Po lekcji).
+  - Każdy krok zawiera nazwę grupy, tytuł, opis działania funkcji językiem lektora oraz opcjonalną wskazówkę praktyczną i skrót klawiszowy.
+  - Kroki Brudnopisu dobierają się do roli i trybu: kursant w trybie podglądu nie dostaje opisu paska formatowania ani przełączników uprawnień, których nie ma na swoim ekranie.
+
+### Poprawka: Zamrożona Pierwsza Kolumna w Bazie Kursantów (`StudentDatabaseScreen.tsx`)
+- Kolumna zaznaczenia i kolumna z nazwiskiem kursanta są **przyklejone przy przewijaniu tabeli w bok** (`position: sticky`), dzięki czemu po dojściu do kolumny logowań nadal widać, czyj to wiersz.
+- Szerokość kolumny zaznaczenia ustalona sztywno (48 px), bo kolumna nazwiska przykleja się dokładnie za nią — przy szerokości wyliczanej przez tabelę obie rozjechałyby się o kilka pikseli.
+- Tła zamrożonych komórek są nieprzezroczyste (inaczej przewijane kolumny prześwitują pod spodem), a podświetlenia zaznaczenia i najechania wracają jako warstwa `background-image`, żeby nie skasować krycia ustawionego kolorem tła.
+- Zamrożone kolumny oddziela od reszty tabeli subtelna krawędź (`shadow-[1px_0_0_0_...]`).
+
+### Poprzedni etap: Współdzielony Brudnopis Google Docs z Kodem PIN i Dostępem przez Link (`Scratchpad`)
 - **Architektura jednego trwałego dokumentu per kursant (`scratchpads/{scratchpadId}`)**:
   - Wdrożono moduł **Scratchpad (Współdzielony Brudnopis Lekcyjny)** działający na zasadzie współdzielonego dokumentu Google Docs / Notion.
   - Zgodnie z założeniem kursant ma **dokładnie jeden stały brudnopis** powiązany ze swoją nauką, do którego lektor i kursant wracają na każdej lekcji, bez tworzenia osobnych plików.
@@ -80,7 +120,7 @@ CRIBRO ENGLISH (Recall) to zaawansowana platforma edukacyjna do intensywnej nauk
 - **Testy jednostkowe (`tests/scratchpad.test.ts`)**:
   - Kompletny zestaw testów sprawdzających generowanie szablonu, formatowanie URL z kodem PIN, normalizację kodów dostępu oraz ekstrakcję sekcji do 4 bloków Notion (148 testów przechodzących).
 
-### Nowość: Okno Zaproszenia do Aplikacji w Bazie Kursantów i Profilu Kursanta (`StudentInviteEmailModal.tsx`)
+### Poprzedni etap: Okno Zaproszenia do Aplikacji w Bazie Kursantów i Profilu Kursanta (`StudentInviteEmailModal.tsx`)
 
 - **Dedykowany komponent okna zaproszenia (`StudentInviteEmailModal.tsx`)**:
   - Utworzono modal wzorowany na widoku mailingu oraz oknie potwierdzenia wysyłki prac domowych (`HomeworkEmailConfirmationModal.tsx`).

@@ -68,6 +68,44 @@ type ViewTab = 'all' | 'students' | 'staff' | 'placeholder';
 type SortField = 'name' | 'email' | 'level' | 'logins' | 'lastActive';
 type SortOrder = 'asc' | 'desc';
 
+/**
+ * Zamrożone kolumny tabeli kursantów.
+ *
+ * Przy przewijaniu w bok nazwisko zostaje na ekranie — bez tego, po dojściu do
+ * kolumny logowań, nie wiadomo już, czyj to wiersz.
+ *
+ * Szerokość kolumny zaznaczenia jest sztywna, bo kolumna nazwiska przykleja się
+ * dokładnie za nią; przy szerokości wyliczanej przez tabelę obie rozjechałyby
+ * się o kilka pikseli i tekst przebijałby spod spodu.
+ */
+const CHECKBOX_COLUMN_WIDTH = 48;
+
+const CHECKBOX_COLUMN_STYLE: React.CSSProperties = {
+  width: CHECKBOX_COLUMN_WIDTH,
+  minWidth: CHECKBOX_COLUMN_WIDTH,
+  maxWidth: CHECKBOX_COLUMN_WIDTH,
+};
+
+const NAME_COLUMN_STYLE: React.CSSProperties = {
+  left: CHECKBOX_COLUMN_WIDTH,
+  minWidth: 210,
+};
+
+/** Krawędź oddzielająca zamrożone kolumny od przewijanej reszty tabeli. */
+const STICKY_EDGE = 'shadow-[1px_0_0_0_rgba(255,255,255,0.10)]';
+
+/**
+ * Tła zamrożonych komórek muszą być nieprzezroczyste, inaczej przewijane
+ * kolumny prześwitują pod spodem. Podświetlenia wiersza wracają jako warstwa
+ * `background-image`, żeby nie skasować krycia ustawionego kolorem tła.
+ */
+const STICKY_HEADER_BG = 'bg-base-100 bg-[image:linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4))]';
+
+const stickyRowBg = (isSelected: boolean) =>
+  `bg-base-100 ${
+    isSelected ? 'bg-[image:linear-gradient(rgba(114,240,180,0.05),rgba(114,240,180,0.05))]' : ''
+  } group-hover:bg-[image:linear-gradient(rgba(255,255,255,0.05),rgba(255,255,255,0.05))]`;
+
 export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
   users,
   onSelectUser,
@@ -722,8 +760,11 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
             {/* Table Header */}
             <thead>
               <tr className="border-b border-white/10 bg-black/40 text-content-muted font-bold uppercase tracking-wider select-none text-[11px]">
-                {/* Select All Column */}
-                <th className="py-3 px-3 w-10 text-center">
+                {/* Select All Column — przymarznięta przy przewijaniu w bok */}
+                <th
+                  style={CHECKBOX_COLUMN_STYLE}
+                  className={`py-3 px-3 text-center sticky left-0 z-20 ${STICKY_HEADER_BG}`}
+                >
                   <button
                     type="button"
                     onClick={toggleSelectAllFiltered}
@@ -741,7 +782,8 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                 </th>
                 <th
                   onClick={() => handleSortToggle('name')}
-                  className="py-3 px-4 cursor-pointer hover:text-white transition-colors"
+                  style={NAME_COLUMN_STYLE}
+                  className={`py-3 px-4 cursor-pointer hover:text-white transition-colors sticky z-20 ${STICKY_HEADER_BG} ${STICKY_EDGE}`}
                 >
                   <div className="flex items-center gap-1.5">
                     <span>Aa Kursant</span>
@@ -811,8 +853,11 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                         isSelected ? 'bg-primary/5' : ''
                       }`}
                     >
-                      {/* Tick Box / Checkbox Column */}
-                      <td className="py-3.5 px-3 text-center">
+                      {/* Tick Box / Checkbox Column — przymarznięta przy przewijaniu w bok */}
+                      <td
+                        style={CHECKBOX_COLUMN_STYLE}
+                        className={`py-3.5 px-3 text-center sticky left-0 z-10 ${stickyRowBg(isSelected)}`}
+                      >
                         <button
                           type="button"
                           onClick={(e) => {
@@ -830,8 +875,11 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                         </button>
                       </td>
 
-                      {/* Name & Avatar Column */}
-                      <td className="py-3.5 px-4">
+                      {/* Name & Avatar Column — przymarznięta przy przewijaniu w bok */}
+                      <td
+                        style={NAME_COLUMN_STYLE}
+                        className={`py-3.5 px-4 sticky z-10 ${stickyRowBg(isSelected)} ${STICKY_EDGE}`}
+                      >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-bold text-primary text-sm flex-shrink-0 border border-primary/30 overflow-hidden shadow-inner">
                             {user.photoURL ? (
