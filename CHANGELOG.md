@@ -45,7 +45,36 @@ CRIBRO ENGLISH (Recall) to zaawansowana platforma edukacyjna do intensywnej nauk
 
 ---
 
-## 3. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
+## 3. Znane Ograniczenia i Dług Techniczny — PRZECZYTAJ PRZED ZMIANAMI
+
+> Rzeczy, których **nie widać w kodzie na pierwszy rzut oka**, a które zmieniają sposób,
+> w jaki należy do niego podchodzić. Stan na 2026-09-11.
+
+### 🔴 Reguły Firestore dla brudnopisu są całkowicie otwarte
+W `firestore.rules` kolekcja `scratchpads/{scratchpadId}` ma reguły:
+```
+allow get, list: if true;
+allow create, update: if true;
+```
+**Konsekwencje:** każda osoba w internecie może odczytać i nadpisać dowolny brudnopis, a uprawnienie `list` pozwala **wylistować całą kolekcję**, czyli notatki wszystkich kursantów, bez logowania.
+
+**Dlaczego tak jest:** anonimowy dostęp po kodzie PIN realizowany jest zapytaniem `query(collection('scratchpads'), where('pin','==',pin))` w `findScratchpadByPin`, a zapytanie kolekcyjne wymaga uprawnienia `list`. Otwarte reguły to najprostszy sposób, żeby kursant wszedł z linku bez konta.
+
+**Jak to naprawić, gdy przyjdzie czas:** utworzyć osobną kolekcję-indeks `scratchpadPins/{pin}` → `{ scratchpadId }`. Wyszukiwanie po PIN-ie stanie się wtedy zwykłym `get` po znanym identyfikatorze, `list` na `scratchpads` będzie można zamknąć, a zapis ograniczyć do lektora i kursanta przypisanego do dokumentu. Wymaga migracji istniejących dokumentów (dla każdego `scratchpads/*` dopisać wpis w indeksie).
+
+### 🟡 Wspólna edycja brudnopisu działa w trybie „ostatni zapis wygrywa"
+`ScratchpadEditor` synchronizuje całą zawartość HTML dokumentu, bez algorytmu scalania zmian (OT ani CRDT). Jeśli lektor i kursant piszą **jednocześnie w tym samym miejscu**, zapis jednej strony nadpisze tekst drugiej.
+
+Bufor, który to łagodzi: przychodząca treść nie podmienia edytora, dopóki użytkownik pisze (`isUserTypingRef`, reset 1,5 s po ostatnim klawiszu), a zapis jest opóźniony o 600 ms. Przy naprzemiennym pisaniu w trakcie lekcji to wystarcza.
+
+**Czego z tego wynika:** brudnopis zastępuje Google Docs w scenariuszu „lektor notuje, kursant patrzy i czasem dopisuje", ale **nie** w scenariuszu równoległego pisania we dwoje. Zanim ktoś ogłosi pełne zastąpienie Google Docs, trzeba wprowadzić scalanie zmian na poziomie fragmentów.
+
+### 🟡 Interfejs nie był weryfikowany w przeglądarce
+Zmiany UI z etapów opisanych niżej (przebudowa paska Prezentacji i Brudnopisu, samouczek z dymkami, zamrożona kolumna w Bazie Kursantów, układanka z klocków, przełącznik Easy/Hard) przeszły `npx tsc --noEmit`, komplet testów jednostkowych i `npm run build`, ale **nie zostały obejrzane w działającej przeglądarce**. Przy kolejnych poprawkach w tych miejscach warto najpierw sprawdzić je wzrokowo.
+
+---
+
+## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
 ### Nowość: Brudnopis Dostępny z Każdego Panelu, Backend Udostępniania i Poprawki Ćwiczeń
 
@@ -522,7 +551,7 @@ CRIBRO ENGLISH (Recall) to zaawansowana platforma edukacyjna do intensywnej nauk
 ---
 
 
-## 4. Przewodnik Szybkiego Startu dla Nowych Sesji i AI
+## 5. Przewodnik Szybkiego Startu dla Nowych Sesji i AI
 
 ### Kluczowe Komendy
 ```bash

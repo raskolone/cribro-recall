@@ -12,6 +12,8 @@ Zawierają one:
 - Kompletny rejestr zmian wdrożonych w ciągu ostatnich 24 godzin (Mailing, Notion sync, format 4 bloków, prace domowe, sesje live na PIN),
 - Spis kluczowych plików źródłowych oraz roadmapę modułu e-learningu.
 
+⚠️ **Zacznij od sekcji „3. Znane Ograniczenia i Dług Techniczny" w CHANGELOG.md.** Opisuje rzeczy, których nie widać w kodzie na pierwszy rzut oka (otwarte reguły Firestore dla brudnopisu, brak scalania równoczesnych zmian, zakres nieprzetestowany wizualnie), a które zmieniają sposób podejścia do zadania.
+
 
 ---
 
