@@ -29,7 +29,8 @@ Wartości tego projektu:
 |---|---|---|
 | `specialTasks/{taskId}` | **dopisuje** dokumenty z `engineVersion: 2` | Nie mutuje dokumentów v1 |
 | `specialTasks/{taskId}/attempts/{attemptId}` | nowa podkolekcja | Nie istnieje w v1 — nie ma czego zepsuć |
-| `users/{uid}/profile/learningCurve` | zapis wyników przez `LearningProfileUpdater` | **Współdzielone z v1** — patrz §5 poniżej |
+| `users/{uid}/profile/homeworkV2` | zapis wyników przez `LearningProfileUpdater` | Nowy dokument, **osobny** od profilu v1 — patrz §5 |
+| `specialTasks/{taskId}/drafts/{draftId}` | szkice kursanta (autosave, wznowienie) | Nie istnieje w v1 |
 | `users/{uid}/lessonRecords` | **tylko odczyt** (paliwo generatora) | Brak |
 
 ---
@@ -125,12 +126,16 @@ Bazę testową skasuj po weryfikacji — kosztuje.
 
 Obie flagi muszą być włączone, żeby v2 zadziałało (fail-safe).
 
-**Jedyny punkt styku z danymi v1** to `users/{uid}/profile/learningCurve` —
-v2 dopisze tam wyniki przez `LearningProfileUpdater`. Profil jest agregatem
-(jeden dokument, nie kolekcja prób), więc zapis v2 **zmieni** liczby, na których
-opiera się v1. Do rozstrzygnięcia w Etapie 4: albo v2 pisze do osobnego
-dokumentu profilu, albo świadomie zasila wspólny. Domyślnie proponuję osobny —
-rollback flagi ma zostawiać v1 dokładnie tak, jak było.
+**Rozstrzygnięte w Etapie 4: v2 NIE dotyka profilu v1.** Wyniki idą do
+`users/{uid}/profile/homeworkV2`, a `users/{uid}/profile/learningCurve` zostaje
+wyłącznie dla v1. Profil v1 jest agregatem — dopisanie do niego wyników v2
+przesunęłoby wyliczony poziom kursanta bez możliwości cofnięcia, a rollback ma
+przywracać v1 do stanu sprzed, nie do stanu „v1 z domieszką liczb, których nigdy
+nie policzył".
+
+**W praktyce v2 nie mutuje ŻADNYCH danych v1.** Dopisuje dokumenty
+`specialTasks` z `engineVersion: 2`, dwie nowe podkolekcje i jeden nowy dokument
+profilu. Nic poza tym.
 
 ---
 
@@ -138,7 +143,8 @@ rollback flagi ma zostawiać v1 dokładnie tak, jak było.
 
 | Sprawdzenie | Jak |
 |---|---|
-| Ekran kursanta v1 nie widzi zadań v2 | filtr `isV2Task()` w `StudentHomeworkScreen` |
+| Ekran kursanta v1 nie widzi zadań v2 | filtr `isV1Task()` w `StudentHomeworkScreen` i `AIExerciseGeneratorScreen` |
+| Kursant bez zestawów v2 widzi swoją historię v1 | `fallback` w `StudentHomeworkV2Screen` |
 | Panel lektora liczy zadania poprawnie | `AdminPanel`, `TeacherOverview` |
 | Mail o pracy domowej nadal ma właściwą liczbę zadań | v2 zachowuje pole `sentences` |
 | `notifyStudentOnHomework` nadal wychodzi wcześnie | v2 ustawia `skipAutoEmail: true` |
@@ -202,7 +208,25 @@ uzgodnij z Maciejem przed włączeniem flagi komukolwiek poza nim.
 | 3 | Ręczny backup przed wdrożeniem | ⏳ do wykonania przed Etapem 3 |
 | 4 | Sprawdzony restore | ⏳ do wykonania przed Etapem 3 |
 | 5 | Schemat v2 za flagą | ✅ Etap 1 |
-| 6 | Zestawy v1 działają | ⏳ testy powstają w Etapach 2–4 |
-| 7 | Pełny przepływ na emulatorze | ⏳ Etap 4 |
-| 8 | Sprawdzony rollback | ⏳ Etap 4 |
+| 6 | Zestawy v1 działają | ✅ straznik `isV1Task` + 33/33 testów reguł |
+| 7 | Pełny przepływ na emulatorze | 🟡 reguły sprawdzone; pełny przebieg z modelem wymaga sekretu |
+| 8 | Sprawdzony rollback | 🟡 flaga zaimplementowana po obu stronach, nieprzetestowana na wdrożeniu |
 | 9 | Rollout | ⏳ po akceptacji |
+
+### Co zostało do sprawdzenia ręcznie
+
+Kod Etapów 1–4 jest napisany i przetestowany jednostkowo, ale **żaden
+przebieg end-to-end z prawdziwym modelem nie został wykonany** — brakuje
+sekretu `OPENAI_API_KEY` po stronie Cloud Functions. Do zrobienia w tej
+kolejności:
+
+1. `firebase functions:secrets:set OPENAI_API_KEY`
+2. `HOMEWORK_ENGINE_V2=true` w `functions/.env`
+3. `npm run deploy:functions`
+4. `HOMEWORK_ENGINE_V2 = true` w `config/featureFlags.ts`, potem `npm run deploy:hosting`
+5. Wygenerowanie jednego zestawu na koncie testowym — sprawdzić w logach
+   funkcji linię `[hw-v2] wywołanie modelu` (koszt i latency).
+6. Przejście zestawu jako kursant: trzy próby, podpowiedzi, wzorzec,
+   poprawiona wersja, autosave i wznowienie na drugim urządzeniu.
+7. Rollback: wyłączenie flagi po obu stronach i sprawdzenie, że panel
+   wraca do kreatora v1, a kursant widzi swoje stare zadania.

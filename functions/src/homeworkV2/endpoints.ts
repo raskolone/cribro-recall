@@ -303,11 +303,16 @@ export const submitHomeworkV2Attempt = onCall(
     const isCorrectionAfterModelAnswer = attemptNumber > MAX_ATTEMPTS;
     const effectiveAttempt = Math.min(attemptNumber, MAX_ATTEMPTS) as AttemptNumber;
 
+    // Stan sprzed tej próby bierzemy z NAJWYŻSZEGO numeru próby, a nie
+    // z ostatniego dokumentu w wyniku zapytania: zapytanie bez `orderBy`
+    // nie gwarantuje kolejności, więc `.pop()` potrafiłby zwrócić stan
+    // sprzed dwóch prób i cofnąć kursantowi postęp.
     const previousState: MasteryState =
-      (previous.docs
-        .map((d) => d.data().masteryState)
-        .filter((s): s is MasteryState => typeof s === 'string')
-        .pop() as MasteryState) || 'nowe';
+      previous.docs
+        .map((d) => d.data())
+        .filter((d) => typeof d.masteryState === 'string')
+        .sort((a, b) => (a.attemptNumber || 0) - (b.attemptNumber || 0))
+        .pop()?.masteryState || 'nowe';
 
     // --- ocena i feedback ----------------------------------------------------
     const call = createOpenAiCall(OPENAI_API_KEY.value());

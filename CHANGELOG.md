@@ -77,6 +77,30 @@ Zmiany UI z etapów opisanych niżej (przebudowa paska Prezentacji i Brudnopisu,
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
+### 🆕 Silnik prac domowych v2 — Etapy 0–4 (2026-09-12)
+
+Wdrożenie zlecenia z Notion („Cribro Recall — kanoniczna specyfikacja silnika v2", §18). Całość **za flagą `HOMEWORK_ENGINE_V2`, domyślnie wyłączoną**. Ścieżka v1 nietknięta.
+
+**Pętla, która działa:** zatwierdzona lekcja → plan 3 typów → zadania JSON → osobny walidator → 1 ekran podglądu → Wyślij → 3 próby → rubryka 40/40/20 → feedback Asystenta Cribro → stan `nowe|ćwiczymy|opanowane` → propozycja powtórki.
+
+- **Etap 0 — audyt** (`docs/audyt-homework-v2.md`): mapa kodu i 18 różnic. Trzy ustalenia zmieniły plan: Express **nie jest** tylko lokalny (stoi na Vercelu przez `api/serverless.ts`), kaskada modeli v1 schodzi do Gemini, a reguła `specialTasks.update` nie przepuściłaby pól potrzebnych na próby i wznowienie.
+- **Etap 1 — kontrakty i flaga**: `functions/src/homeworkV2/contracts.ts` — zamrożona rubryka (znaczenie 40 / materiał docelowy 40 / poprawność 20, skala 0/0,5/1), próg pewności 0,6, drabinka podpowiedzi, stan opanowania. Ręczne strażniki typów zamiast `zod` (zlecenie zabrania nowych bibliotek, a w repo nie było żadnego walidatora schematu).
+- **Etap 2 — serwisy w Cloud Functions**: Assembler, Planner, Generator, Validator, Grading, Feedback, profil, ReviewPlanner. Kaskada **wyłącznie OpenAI** (`gpt-5.6-luna` → `gpt-4o-mini`; nazwa logiczna mapuje się na `gpt-4o`, jak w `server.ts:4`). Wywołanie modelu jest wstrzykiwane, więc wszystko da się testować bez klucza i bez sieci.
+- **Etap 3 — ekran lektora**: `HomeworkComposerV2` — jeden ekran podglądu i Wyślij, kontrakt pod rozwinięciem. Zadania, których walidator nie przepuścił po dwóch regeneracjach, nie idą automatycznie.
+- **Etap 4 — flow kursanta**: `StudentHomeworkV2Screen` — mobile-first, jedno zadanie na ekran, bez procentu i bez słupka. Autosave i wznowienie przez Firestore (w v1 szkic żył tylko w `localStorage`, więc nie przeżywał zmiany urządzenia).
+
+**`firestore.rules` — dwa nowe bloki wewnątrz `specialTasks`, reguła bazowa nietknięta:**
+- `attempts/{attemptId}` — odczyt dla właściciela i lektora, **zapis dla nikogo**. Werdykt pisze wyłącznie Cloud Function przez Admin SDK. Kursant nie ma jak podstawić sobie `masteryState: 'opanowane'`. Historia prób jest niezmienna.
+- `drafts/{draftId}` — autosave kursanta, pola wyliczone wprost, żeby nie dało się przemycić werdyktu szkicem.
+
+**Czego to NIE rusza:** `server.ts`, `geminiService.ts`, `homeworkGenerator.ts`, mailingu, fiszek, SRS, testów postępu, syncu Notion. `notifyStudentOnHomework` działa dalej — zestaw v2 zachowuje pole `sentences` (wyzwalacz liczy z niego pozycje do maila) i ustawia `skipAutoEmail`, czyli wchodzi w ten sam tryb co kreatory v1.
+
+**Stan weryfikacji:** `tsc --noEmit` czysto, 224/224 testów jednostkowych, 33/33 testów reguł na emulatorze, oba buildy przechodzą. **Żaden przebieg end-to-end z prawdziwym modelem nie został wykonany** — brakuje sekretu `OPENAI_API_KEY` po stronie Cloud Functions. Kroki do uruchomienia: `docs/backup-restore-homework-v2.md`.
+
+**Blokada przed wdrożeniem:** projekt nie ma żadnego automatycznego backupu Firestore poza bazą produkcyjną. Polecenia `gcloud` w `docs/backup-restore-homework-v2.md` §2 — wymaga uprawnień billingowych.
+
+
+
 ### Dokumentacja: `CLAUDE.md` i `AGENT_LOG.md`
 
 Dodano `CLAUDE.md` — stały kontekst dla agentów AI pracujących nad repo

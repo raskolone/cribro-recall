@@ -149,3 +149,77 @@ Ryzyka: NIE dotknięto `firestore.rules` (mimo posiadanej zgody — blok
 sprawdzą), autoryzacji ani ścieżek tokenowych bez logowania. Nie dotknięto
 `server.ts`, `geminiService.ts`, `homeworkGenerator.ts`, mailingu ani
 żadnego ekranu. Ścieżka v1 jest bitowo nietknięta — flaga domyślnie `false`.
+
+---
+
+2026-09-12 — Claude Code / Opus 5 (Etapy 2–4)
+
+Zadanie: „dokończ co zostało do zrobienia" — czyli Etapy 2, 3 i 4
+zlecenia z Notion §18, po zamknięciu Etapów 0 i 1.
+
+Zrobione:
+- Etap 2 — serwisy rdzenia w `functions/src/homeworkV2/`: `openai.ts`
+  (kaskada wyłącznie OpenAI, log kosztu/latency bez treści odpowiedzi),
+  `coreKnowledge.ts` (globalny rdzeń w plikach repo), `contextAssembler.ts`,
+  `exercisePlanner.ts`, `exerciseGenerator.ts`, `qualityValidator.ts`,
+  `gradingEngine.ts`, `feedbackComposer.ts`, `learningProfile.ts`,
+  `pipeline.ts`, `endpoints.ts`, `db.ts`. Cztery `onCall` re-eksportowane
+  z `functions/src/index.ts`.
+- Etap 3 — `services/homeworkV2Client.ts`, `components/admin/HomeworkComposerV2.tsx`
+  (1 ekran podglądu), wpięcie za flagą w `HomeworkScreen.tsx`, strażnik
+  `isV1Task` w `utils/homework.ts` zastosowany w `StudentHomeworkScreen`
+  i `AIExerciseGeneratorScreen`.
+- Etap 4 — `components/dashboard/StudentHomeworkV2Screen.tsx`, wpięcie
+  w `Dashboard.tsx` z fallbackiem na ekran v1, dwa nowe bloki `match`
+  w `firestore.rules` (`attempts`, `drafts`), 11 nowych testów reguł.
+- `tests/homeworkV2Pipeline.test.ts` (19 testów),
+  `tests/homeworkV2Grading.test.ts` (15 testów, w tym złoty zbiór).
+- `CHANGELOG.md` sekcja 4 i `docs/backup-restore-homework-v2.md`
+  zaktualizowane.
+
+Weryfikacja: `npx tsc --noEmit` czysto, `npm test` 224/224,
+`npm run test:rules` 33/33 na emulatorze, `npm run build` i
+`npm --prefix functions run build` przechodzą.
+
+Nie dokończone / do sprawdzenia:
+- ŻADEN przebieg end-to-end z prawdziwym modelem nie został wykonany —
+  brakuje sekretu `OPENAI_API_KEY` po stronie Cloud Functions. Wszystkie
+  testy używają podstawionego `ModelCall`.
+- Interfejs (kreator v2 i ekran kursanta v2) NIE był oglądany w
+  przeglądarce — przeszedł tylko `tsc` i build. To ten sam dług, który
+  `CHANGELOG.md` sekcja 3 odnotowuje dla poprzednich zmian UI.
+- Backup Firestore nadal nie istnieje — blokada przed wdrożeniem.
+- Typy 4–6 z banku (ułóż i odtwórz, parafraza, reakcja w sytuacji),
+  testy postępu i KnowledgeSync z Notion są świadomie poza zakresem.
+
+Dwa błędy poprawności znalezione i naprawione w trakcie, oba takie, które
+przeszłyby kompilację:
+- `getFirestore()` na poziomie modułu wywalałby wdrożenie, bo
+  `export ... from` w `index.ts` jest hoistowany i moduły v2 wykonywały
+  się przed `initializeApp()`. Stąd leniwy `db.ts`.
+- `previousState` w `submitHomeworkV2Attempt` brany był przez `.pop()`
+  z wyniku zapytania bez `orderBy` — Firestore nie gwarantuje tam
+  kolejności, więc kursantowi mógł się cofnąć postęp. Teraz sortowanie
+  po `attemptNumber`.
+
+Decyzje architektoniczne:
+- Profil v2 w `users/{uid}/profile/homeworkV2`, osobno od
+  `profile/learningCurve` v1. Powód: profil v1 jest agregatem, więc zapis
+  v2 przesunąłby wyliczony poziom kursanta bez możliwości cofnięcia, a
+  rollback ma przywracać v1 do stanu sprzed.
+- Szkice w osobnej podkolekcji `drafts`, nie w `attempts`. Pozwala dać
+  kursantowi prawo zapisu na brudnopis, nie otwierając niczego przy
+  werdykcie.
+- Ekran v2 ma `fallback` na ekran v1. Bez tego włączenie flagi schowałoby
+  kursantowi całą dotychczasową pracę domową.
+- Planner jest deterministyczny, bez pytania modelu — jedno wywołanie
+  mniej, jeden powód awarii mniej, rozkład przewidywalny dla lektora.
+
+Ryzyka: DOTKNIĘTO `firestore.rules` — dodane dwa bloki `match` wewnątrz
+`specialTasks` (`attempts`, `drafts`). Maciej wyraził na to zgodę wprost
+przed Etapem 1. Reguła bazowa `specialTasks` NIE została zmieniona, co
+potwierdza osobny test („zestawy v1 nie zyskały nowych uprawnień przy
+okazji"). NIE dotknięto middleware autoryzacji w `server.ts` ani ścieżek
+tokenowych bez logowania. Odnotowany wcześniej dług v1 — kursant może
+zapisać `evaluationResults` i `status` na własnym zadaniu — celowo
+zostaje nietknięty, bo jego zamknięcie zmieniłoby zachowanie v1.
