@@ -15,6 +15,8 @@
     "test:rules": "PATH=\"/opt/homebrew/opt/openjdk/bin:$PATH\" firebase emulators:exec --project demo-cribro --only firestore \"tsx --test tests/rules/*.test.ts\"",
     "firebase:login": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" firebase login",
     "firebase:whoami": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" firebase login:list",
+    "firebase:secrets:set": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" firebase functions:secrets:set",
+    "firebase:secrets:list": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" firebase functions:secrets:access",
     "deploy:rules": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" firebase deploy --only firestore:rules,firestore:indexes",
     "deploy:functions": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" firebase deploy --only functions",
     "deploy:hosting": "npm run build && PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" firebase deploy --only hosting",
