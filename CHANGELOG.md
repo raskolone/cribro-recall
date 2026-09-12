@@ -77,6 +77,15 @@ Zmiany UI z etapów opisanych niżej (przebudowa paska Prezentacji i Brudnopisu,
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
+### Dokumentacja: `CLAUDE.md` i `AGENT_LOG.md`
+
+Dodano `CLAUDE.md` — stały kontekst dla agentów AI pracujących nad repo
+(architektura, obszary wysokiego ryzyka, konwencje kodu, komendy
+operacyjne, dług techniczny, zasady commitowania i logowania pracy).
+Szkic przygotował Maciej, uzupełniono go realnymi danymi z repo,
+`AGENTS.md` i tej sekcji CHANGELOG. Dodano też `AGENT_LOG.md` — dziennik
+pracy kolejnych agentów AI, z pierwszym wpisem opisującym to zadanie.
+
 ### Bezpieczeństwo: Zamknięcie dziury w regułach brudnopisu i indeks PIN-ów
 
 Kolekcja `scratchpadPins` (dodana wcześniej razem z zamknięciem `list` na `scratchpads`,
