@@ -41,9 +41,9 @@ export const buildPresentationCoachSteps = ({ setDeckMenuOpen }: CoachControls):
     {
       coachId: 'pres-scratchpad',
       group: 'Narzędzia na żywo',
-      title: 'Brudnopis kursanta',
+      title: 'Notatnik kursanta',
       description:
-        'Otwiera stały, współdzielony dokument kursanta — jeden na całą naukę, w stylu Google Docs. Piszecie w nim oboje w czasie rzeczywistym, a kursant otwiera go linkiem na telefonie bez logowania.',
+        'Otwiera stały, współdzielony notatnik kursanta — jeden na całą naukę. Piszecie w nim oboje w czasie rzeczywistym, a kursant otwiera go linkiem na telefonie bez logowania.',
       tip: 'Wracasz do tego samego dokumentu na każdej lekcji. Wstaw na początku datę, a historia nauki zbuduje się sama.',
       preferredPlacement: 'bottom',
     },

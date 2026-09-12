@@ -35,3 +35,6 @@ dist-ssr
 # Tauri — katalog budowania Rusta (gigabajty artefaktów)
 src-tauri/target/
 src-tauri/gen/schemas/
+
+# Worktree'y agentów Claude Code — robocze kopie repo, nigdy nie trafiają do repo
+.claude/worktrees/

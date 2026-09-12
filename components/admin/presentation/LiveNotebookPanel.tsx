@@ -172,7 +172,7 @@ export const LiveNotebookPanel: React.FC<LiveNotebookPanelProps> = ({
             }`}
           >
             <FileText size={14} />
-            <span>Brudnopis</span>
+            <span>Notatnik</span>
           </button>
           <button
             onClick={() => setActiveTab('timer')}

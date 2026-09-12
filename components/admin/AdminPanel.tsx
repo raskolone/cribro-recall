@@ -49,6 +49,7 @@ import CleanLessonsModal from './CleanLessonsModal';
 import AdminMailingScreen from './AdminMailingScreen';
 import ScratchpadModal from '../scratchpad/ScratchpadModal';
 import ScratchpadStudentPicker from '../scratchpad/ScratchpadStudentPicker';
+import TeacherAttentionBanner from './TeacherAttentionBanner';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
@@ -66,7 +67,19 @@ interface UserWithId extends User {
   id: string;
 }
 
-interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: any) => void; initialSelectedUserId?: string | null; onUserSelect?: (userId: string | null) => void; }
+interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: any, extra?: any) => void; initialSelectedUserId?: string | null; onUserSelect?: (userId: string | null) => void; }
+
+/**
+ * Przebudowa panelu wg docs/kolejka-przebudowa-panelu.md: Przegląd panelu i
+ * skróty "AI Lesson Generator" / "Dodaj kursanta" chowają się stąd (nie są
+ * kasowane — kod zostaje pod spodem), bo:
+ * - "Dodaj kursanta" ma już własny, pełny odpowiednik w zakładce sidebara
+ *   "Baza kursantów" (StandaloneStudentDatabaseScreen.tsx) — bez regresji.
+ * - "AI Lesson Generator" i "Przegląd panelu" to świadomie odłożone na
+ *   później, mniej używane narzędzia (brief: "mniej znaczy lepiej").
+ * Odwrócenie: jedna zmiana tej stałej na `true`.
+ */
+const SHOW_LEGACY_PANEL_TOOLS = false;
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId, onUserSelect }) => {
   const { sets: adminSets, getFlashcards } = useFlashcards();
@@ -241,6 +254,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   const handleTileClick = (tabId: string) => {
     if (tabId === 'mailing') {
       setIsMailingModalOpen(true);
+      return;
+    }
+    if (tabId === 'notatnik') {
+      setShowScratchpadPicker(true);
       return;
     }
     // Moduły ogólne (niezwiązane z profilem) — przełączane bezpośrednio
@@ -1249,7 +1266,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
   const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
 
-  /** Brudnopis otwierany z górnego paska — najpierw wybór kursanta, potem dokument. */
+  /** Notatnik otwierany z kafelka/listwy — najpierw wybór kursanta, potem dokument. */
   const [showScratchpadPicker, setShowScratchpadPicker] = useState(false);
   const [scratchpadStudent, setScratchpadStudent] = useState<{ id: string; name: string } | null>(null);
   const [newStudentUsername, setNewStudentUsername] = useState('');
@@ -1697,33 +1714,39 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Brudnopis jest jeden na kursanta, więc wejście z górnego paska
-              najpierw pyta, czyje notatki otworzyć. */}
-          <button
-            onClick={() => setShowScratchpadPicker(true)}
-            className="px-3.5 min-h-11 bg-base-200/80 text-content border border-white/15 rounded-xl text-xs sm:text-sm font-bold hover:bg-white/[0.08] transition-colors flex items-center justify-center gap-2"
-            title="Otwórz wspólny brudnopis wybranego kursanta"
-          >
-            <FileEdit size={16} />
-            Brudnopis
-          </button>
-          <button
-            onClick={() => setShowAIModal(true)}
-            className="px-3.5 min-h-11 bg-base-200/80 text-primary border border-primary/40 rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/10 transition-colors flex items-center justify-center gap-2"
-          >
-            <Sparkles size={16} />
-            {i18n.t("✨ AI Lesson Generator")}
-          </button>
-          <button
-            onClick={() => setShowCreateStudentModal(true)}
-            className="px-3.5 min-h-11 bg-primary text-accent-ink rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 shadow-btn"
-          >
-            <Plus size={16} />
-            {i18n.t("Dodaj kursanta")}
-          </button>
-        </div>
+        {SHOW_LEGACY_PANEL_TOOLS && (
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => setShowScratchpadPicker(true)}
+              className="px-3.5 min-h-11 bg-base-200/80 text-content border border-white/15 rounded-xl text-xs sm:text-sm font-bold hover:bg-white/[0.08] transition-colors flex items-center justify-center gap-2"
+              title="Otwórz wspólny notatnik wybranego kursanta"
+            >
+              <FileEdit size={16} />
+              Notatnik
+            </button>
+            <button
+              onClick={() => setShowAIModal(true)}
+              className="px-3.5 min-h-11 bg-base-200/80 text-primary border border-primary/40 rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/10 transition-colors flex items-center justify-center gap-2"
+            >
+              <Sparkles size={16} />
+              {i18n.t("✨ AI Lesson Generator")}
+            </button>
+            <button
+              onClick={() => setShowCreateStudentModal(true)}
+              className="px-3.5 min-h-11 bg-primary text-accent-ink rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 shadow-btn"
+            >
+              <Plus size={16} />
+              {i18n.t("Dodaj kursanta")}
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Sygnał "wymaga uwagi" — trwały nad treścią panelu, patrz
+          docs/kolejka-przebudowa-panelu.md pkt 1 i docs/plan-weekend-2026-09-12.md Etap C. */}
+      <TeacherAttentionBanner
+        onOpenHomework={(filterStatus) => onViewChange?.('homework', { filterStatus })}
+      />
 
       <ScratchpadStudentPicker
         isOpen={showScratchpadPicker}
@@ -1741,11 +1764,12 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         student={{ id: scratchpadStudent?.id || null, name: scratchpadStudent?.name || 'Kursant' }}
       />
 
-      <TeacherOverview students={activeUsers} language={language} />
+      {SHOW_LEGACY_PANEL_TOOLS && <TeacherOverview students={activeUsers} language={language} />}
 
-      <NotionSyncButton onImported={fetchUsers} />
-
-      {/* GŁÓWNE MODUŁY LEKTORA (TYLKO KAFELKI OGÓLNE — BEZ BEZPOŚREDNIEGO ZWIĄZKU Z PROFILEM) */}
+      {/* GŁÓWNE KAFELKI LEKTORA — trzy najczęściej używane narzędzia.
+          Kolejność i wybór wg docs/kolejka-przebudowa-panelu.md §2 i §5:
+          Notatnik jako trzeci kafelek, bo jest używany na każdej lekcji
+          (Planer, używany rzadziej, zostaje w listwie poniżej). */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-extrabold uppercase tracking-wider text-content-muted flex items-center gap-2">
@@ -1767,33 +1791,32 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         <div ref={mainMenuRef} className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
           {[
             {
-              id: 'lesson-planner',
-              title: 'Planer lekcji AI',
-              badge: 'AI Planer',
-              desc: 'Inteligentny asystent AI do planowania i tworzenia scenariuszy lekcji',
-              icon: Sparkles
+              id: 'profile',
+              title: 'Profil kursantów',
+              badge: 'Kursanci',
+              // Rozstrzygnięcie z kolejki §5: to NIE to samo, co "Baza kursantów"
+              // w sidebarze (tam jest zarządzanie kontami — dodawanie/edycja/usuwanie).
+              desc: 'Wybierz kursanta, żeby zobaczyć jego historię lekcji, prace domowe i statystyki',
+              icon: Users
             },
             {
               id: 'presentation',
-              title: 'Prezentacja & Notatnik',
+              title: 'Prezentacja',
               badge: 'Live Lekcja',
-              desc: 'Interaktywne slajdy z wymową audio i wspólny notatnik na żywo z kursantem',
+              desc: 'Interaktywne slajdy z wymową audio na żywo z kursantem',
               icon: Airplay
             },
             {
-              id: 'mailing',
-              title: 'Mailing',
-              badge: unreadMailingCount > 0 ? `${unreadMailingCount} NOWYCH` : 'Poczta & Resend',
-              desc: unreadMailingCount > 0
-                ? `Masz ${unreadMailingCount} ${unreadMailingCount === 1 ? 'nową wiadomość' : 'nowych wiadomości'} w skrzynce odbiorczej.`
-                : 'Szablony wiadomości, skrzynka odbiorcza oraz monitoring dostarczalności',
-              icon: Mail,
-              hasNotification: unreadMailingCount > 0,
-              notificationCount: unreadMailingCount,
+              id: 'notatnik',
+              title: 'Notatnik',
+              badge: 'Na każdej lekcji',
+              desc: 'Wspólny notatnik na żywo — treść widzi i edytuje kursant razem z Tobą',
+              icon: FileEdit
             }
           ].map((tile) => {
             const IconComp = tile.icon;
-            const isActive = activeTab === tile.id || (tile.id === 'mailing' && isMailingModalOpen);
+            const isActive =
+              tile.id === 'notatnik' ? !!scratchpadStudent : activeTab === tile.id;
             const hasNotification = Boolean((tile as any).hasNotification);
             const notificationCount = Number((tile as any).notificationCount || 0);
 
@@ -1858,6 +1881,47 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             );
           })}
         </div>
+      </div>
+
+      {/* LISTWA NARZĘDZI — wszystkie narzędzia lektora w jednym miejscu, ok.
+          połowę niższa niż kafelek (docs/kolejka-przebudowa-panelu.md §2).
+          Prezentacja i Notatnik duplikują wejście z kafelków wyżej — to
+          zamierzone: tu jest pełna lista, wyżej tylko trzy najważniejsze. */}
+      <div className="flex flex-wrap items-center gap-2">
+        {[
+          { id: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
+          { id: 'presentation', title: 'Prezentacja', icon: Airplay },
+          { id: 'notatnik', title: 'Notatnik', icon: FileEdit },
+          {
+            id: 'mailing',
+            title: unreadMailingCount > 0 ? `Mailing (${unreadMailingCount})` : 'Mailing',
+            icon: Mail,
+            hasNotification: unreadMailingCount > 0,
+          },
+        ].map((item) => {
+          const IconComp = item.icon;
+          const isActive =
+            item.id === 'notatnik'
+              ? !!scratchpadStudent
+              : activeTab === item.id || (item.id === 'mailing' && isMailingModalOpen);
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleTileClick(item.id)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-semibold transition-colors ${
+                item.hasNotification
+                  ? 'border-amber-400/60 bg-amber-500/10 text-amber-200'
+                  : isActive
+                  ? 'border-primary/60 bg-primary/15 text-primary'
+                  : 'border-line-strong bg-line-soft/40 text-content-muted hover:text-text-hi hover:border-primary/40'
+              }`}
+            >
+              <IconComp size={15} />
+              {item.title}
+            </button>
+          );
+        })}
+        <NotionSyncButton onImported={fetchUsers} />
       </div>
 
       {/* JEŚLI AKTYWNY JEST MODUŁ OGÓLNY (Planer, Prezentacja) */}
@@ -3139,15 +3203,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </Button>
                 </div>
 
-                {/* Współdzielony Brudnopis lekcyjny (Scratchpad / Google Docs) */}
+                {/* Współdzielony Notatnik lekcyjny */}
                 <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="space-y-0.5">
                     <span className="text-sm font-bold text-white flex items-center gap-2">
                       <FileEdit size={15} className="text-emerald-400" />
-                      {i18n.t("Współdzielony Brudnopis (Scratchpad / Google Docs)")}
+                      {i18n.t("Współdzielony Notatnik")}
                     </span>
                     <p className="text-xs text-content-muted max-w-lg">
-                      {i18n.t("Stały dokument Google Docs z notatkami z lekcji. Kursant może zawsze sprawdzić notatki przez kod PIN lub link bez logowania.")}
+                      {i18n.t("Stały notatnik z notatkami z lekcji. Kursant może zawsze sprawdzić notatki przez kod PIN lub link bez logowania.")}
                     </p>
                   </div>
                   <Button
@@ -3157,7 +3221,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     onClick={() => setShowScratchpadModal(true)}
                   >
                     <FileEdit size={14} />
-                    {i18n.t("Otwórz Brudnopis")}
+                    {i18n.t("Otwórz Notatnik")}
                   </Button>
                 </div>
               </div>

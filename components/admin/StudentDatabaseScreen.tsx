@@ -1055,10 +1055,10 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                               setScratchpadStudent(user);
                             }}
                             className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-semibold transition-colors flex items-center gap-1 border border-emerald-500/20 hover:border-emerald-500/40 cursor-pointer"
-                            title="Otwórz współdzielony brudnopis kursanta (kod PIN / Google Docs)"
+                            title="Otwórz współdzielony notatnik kursanta (kod PIN)"
                           >
                             <FileEdit size={12} />
-                            <span className="hidden lg:inline">Brudnopis</span>
+                            <span className="hidden lg:inline">Notatnik</span>
                           </button>
 
 
@@ -1106,7 +1106,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                                   className="w-full px-2.5 py-1.5 rounded-lg hover:bg-emerald-500/15 text-emerald-300 flex items-center gap-2 transition-colors cursor-pointer text-left font-semibold"
                                 >
                                   <FileEdit size={13} className="shrink-0" />
-                                  <span>Otwórz współdzielony Brudnopis (PIN)</span>
+                                  <span>Otwórz współdzielony Notatnik (PIN)</span>
                                 </button>
 
                                 <button
@@ -1629,7 +1629,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
         </div>
       )}
 
-      {/* Modal Brudnopisu Lekcyjnego */}
+      {/* Modal Notatnika Lekcyjnego */}
       {scratchpadStudent && (
         <ScratchpadModal
           isOpen={!!scratchpadStudent}

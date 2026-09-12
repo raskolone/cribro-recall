@@ -476,8 +476,8 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
           />
           <ToolbarButton
             icon={<FileEdit size={15} />}
-            label="Brudnopis"
-            title="Współdzielony brudnopis kursanta — wspólna edycja na żywo, dostęp linkiem lub PIN-em"
+            label="Notatnik"
+            title="Współdzielony notatnik kursanta — wspólna edycja na żywo, dostęp linkiem lub PIN-em"
             onClick={() => setIsScratchpadModalOpen(true)}
             coachId="pres-scratchpad"
           />
