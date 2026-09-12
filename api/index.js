@@ -51,6 +51,28 @@ var require_firebase_applet_config = __commonJS({
   }
 });
 
+// utils/modelJsonList.ts
+var stripFence = (raw) => raw.replace(/^\s*```(?:json)?\s*/i, "").replace(/```\s*$/g, "").trim();
+var extractListFromModelJson = (raw) => {
+  if (!raw) return null;
+  let value;
+  try {
+    value = JSON.parse(stripFence(String(raw)));
+  } catch {
+    return null;
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value : null;
+  }
+  if (value && typeof value === "object") {
+    const arrays = Object.values(value).filter(
+      (v) => Array.isArray(v) && v.length > 0
+    );
+    if (arrays.length === 1) return arrays[0];
+  }
+  return null;
+};
+
 // server.ts
 var import_firebase_applet_config = __toESM(require_firebase_applet_config(), 1);
 import express from "express";
@@ -1396,16 +1418,7 @@ Zwr\xF3\u0107 wynik jako obiekt JSON zawieraj\u0105cy tablic\u0119 obiekt\xF3w p
         responseSchema: schema,
         temperature: 0.4
       });
-      const parseQuestions = (raw) => {
-        if (!raw) return null;
-        try {
-          const cleaned = raw.replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
-          const value = JSON.parse(cleaned);
-          return Array.isArray(value) && value.length > 0 ? value : null;
-        } catch {
-          return null;
-        }
-      };
+      const parseQuestions = extractListFromModelJson;
       const draftQuestions = parseQuestions(draftResponse.text);
       if (!draftQuestions) {
         console.error("Generowanie testu: pierwszy przebieg nie zwr\xF3ci\u0142 poprawnego JSON-a", {

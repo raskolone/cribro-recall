@@ -145,6 +145,7 @@ async function callOpenAIServerFallback(prompt, system, schema) {
   return null;
 }
 
+import { extractListFromModelJson } from "./utils/modelJsonList";
 import express from "express";
 import path from "path";
 import fs from "fs";
@@ -1504,17 +1505,16 @@ Zwróć wynik jako obiekt JSON zawierający tablicę obiektów pytań.`;
         temperature: 0.4
       });
 
-      /** Odpowiedź modelu bywa opakowana w ```json — zdejmujemy płot przed parsowaniem. */
-      const parseQuestions = (raw?: string): any[] | null => {
-        if (!raw) return null;
-        try {
-          const cleaned = raw.replace(/^```json\n?/g, '').replace(/```$/g, '').trim();
-          const value = JSON.parse(cleaned);
-          return Array.isArray(value) && value.length > 0 ? value : null;
-        } catch {
-          return null;
-        }
-      };
+      /**
+       * Lista zadań z odpowiedzi modelu.
+       *
+       * Kształt zależy od tego, kto odpowiedział: Gemini z `responseSchema`
+       * oddaje gołą tablicę, OpenAI w trybie `json_object` — obiekt z tablicą
+       * w środku. Wcześniej sprawdzaliśmy tu wyłącznie `Array.isArray`, przez
+       * co odpowiedź OpenAI była odrzucana jako niepoprawna, mimo że była
+       * poprawna. Szczegóły: utils/modelJsonList.ts.
+       */
+      const parseQuestions = extractListFromModelJson;
 
       const draftQuestions = parseQuestions(draftResponse.text);
 
