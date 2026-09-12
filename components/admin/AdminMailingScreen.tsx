@@ -2149,11 +2149,11 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
             </div>
 
             {/* Message Body */}
-            <div className="flex-1 overflow-y-auto p-4 rounded-xl bg-ink/60 border border-white/10 text-xs text-white/90 leading-relaxed space-y-3 whitespace-pre-wrap font-sans">
+            <div className="flex-1 overflow-y-auto p-4 rounded-xl bg-ink/60 border border-line-strong text-xs text-content leading-relaxed space-y-3 whitespace-pre-wrap font-sans">
               {selectedInboundMsg.text || (
                 <div
                   dangerouslySetInnerHTML={{ __html: selectedInboundMsg.html || '' }}
-                  className="prose prose-invert max-w-none text-xs"
+                  className="prose prose-headings:text-text-hi prose-strong:text-text-hi prose-a:text-primary max-w-none text-xs text-content"
                 />
               )}
             </div>

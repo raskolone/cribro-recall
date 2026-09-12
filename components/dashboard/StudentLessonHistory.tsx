@@ -394,7 +394,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                   <Sparkles size={13} className="text-primary" />
                   {L.summary}
                 </h4>
-                <div className="text-sm text-content leading-relaxed text-justify [text-align:justify] hyphens-auto prose prose-invert max-w-none [&>p]:text-justify [&>p]:leading-relaxed bg-black/20 p-4 rounded-xl border border-white/5">
+                <div className="text-sm text-content leading-relaxed text-justify [text-align:justify] hyphens-auto prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none [&>p]:text-justify [&>p]:leading-relaxed bg-ink/20 p-4 rounded-xl border border-line-soft">
                   <Markdown>{latestBlocks.summary || latestLesson.lessonSummary}</Markdown>
                 </div>
               </div>
@@ -443,7 +443,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                   <AlertCircle size={13} />
                   {L.thingsToImprove}
                 </h4>
-                <div className="text-sm text-content leading-relaxed prose prose-invert max-w-none bg-danger/10 p-4 rounded-xl border border-danger/20">
+                <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none bg-danger/10 p-4 rounded-xl border border-danger/20">
                   <Markdown>{latestBlocks.corrections || latestLesson.thingsToImprove}</Markdown>
                 </div>
               </div>
@@ -456,7 +456,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                   <Sparkles size={13} />
                   Zadanie z lekcji (Homework)
                 </h4>
-                <div className="text-sm text-content leading-relaxed prose prose-invert max-w-none bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">
+                <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">
                   <Markdown>{latestBlocks.homework}</Markdown>
                 </div>
               </div>
@@ -469,7 +469,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                   <AlertCircle size={13} />
                   {L.teacherSpeaking}
                 </h4>
-                <div className="text-sm text-content leading-relaxed prose prose-invert max-w-none bg-info/10 p-4 rounded-xl border border-info/20">
+                <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none bg-info/10 p-4 rounded-xl border border-info/20">
                   <Markdown>{latestLesson.studentSpeaking}</Markdown>
                 </div>
               </div>
@@ -482,7 +482,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                   <Target size={14} />
                   {L.nextStep}
                 </h4>
-                <div className="text-sm text-content leading-relaxed prose prose-invert max-w-none">
+                <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none">
                   <Markdown>{latestLesson.suggestedFollowUp}</Markdown>
                 </div>
               </div>
@@ -552,7 +552,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                             <Sparkles size={13} className="text-primary" />
                             {L.summary}
                           </h5>
-                          <div className="text-sm text-content leading-relaxed text-justify [text-align:justify] hyphens-auto prose prose-invert max-w-none [&>p]:text-justify [&>p]:leading-relaxed bg-black/20 p-4 rounded-xl border border-white/5">
+                          <div className="text-sm text-content leading-relaxed text-justify [text-align:justify] hyphens-auto prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none [&>p]:text-justify [&>p]:leading-relaxed bg-ink/20 p-4 rounded-xl border border-line-soft">
                             <Markdown>{lesson.lessonSummary}</Markdown>
                           </div>
                         </div>
@@ -598,7 +598,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                                   <AlertCircle size={13} />
                                   {L.thingsToImprove}
                                 </h5>
-                                <div className="text-sm text-content leading-relaxed prose prose-invert max-w-none bg-danger/10 p-4 rounded-xl border border-danger/20">
+                                <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none bg-danger/10 p-4 rounded-xl border border-danger/20">
                                   <Markdown>{corrs}</Markdown>
                                 </div>
                               </div>
@@ -609,7 +609,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                                   <Sparkles size={13} />
                                   Zadanie z lekcji (Homework)
                                 </h5>
-                                <div className="text-sm text-content leading-relaxed prose prose-invert max-w-none bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">
+                                <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">
                                   <Markdown>{lessonBlocks.homework}</Markdown>
                                 </div>
                               </div>
@@ -625,7 +625,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                             <AlertCircle size={13} />
                             {L.teacherSpeaking}
                           </h5>
-                          <div className="text-sm text-content leading-relaxed prose prose-invert max-w-none bg-info/10 p-4 rounded-xl border border-info/20">
+                          <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none bg-info/10 p-4 rounded-xl border border-info/20">
                             <Markdown>{lesson.studentSpeaking}</Markdown>
                           </div>
                         </div>
@@ -637,7 +637,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                           <h5 className="text-xs font-bold text-warn uppercase tracking-wider mb-1 flex items-center gap-1.5">
                             <Target size={13} /> {L.nextStep}
                           </h5>
-                          <div className="text-sm text-content prose prose-invert max-w-none">
+                          <div className="text-sm text-content prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none">
                             <Markdown>{lesson.suggestedFollowUp}</Markdown>
                           </div>
                         </div>
@@ -788,7 +788,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                               <Sparkles size={13} className="text-primary" />
                               {L.summary}
                             </h5>
-                            <div className="text-sm text-content leading-relaxed text-justify [text-align:justify] hyphens-auto prose prose-invert max-w-none [&>p]:text-justify [&>p]:leading-relaxed bg-black/20 p-4 rounded-xl border border-white/5">
+                            <div className="text-sm text-content leading-relaxed text-justify [text-align:justify] hyphens-auto prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none [&>p]:text-justify [&>p]:leading-relaxed bg-ink/20 p-4 rounded-xl border border-line-soft">
                               <Markdown>{lesson.lessonSummary}</Markdown>
                             </div>
                           </div>
@@ -833,7 +833,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                               <AlertCircle size={13} />
                               {L.thingsToImprove}
                             </h5>
-                            <div className="text-sm text-content leading-relaxed prose prose-invert max-w-none bg-danger/10 p-4 rounded-xl border border-danger/20">
+                            <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none bg-danger/10 p-4 rounded-xl border border-danger/20">
                               <Markdown>{lesson.thingsToImprove}</Markdown>
                             </div>
                           </div>
@@ -846,7 +846,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                               <AlertCircle size={13} />
                               {L.teacherSpeaking}
                             </h5>
-                            <div className="text-sm text-content leading-relaxed prose prose-invert max-w-none bg-info/10 p-4 rounded-xl border border-info/20">
+                            <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none bg-info/10 p-4 rounded-xl border border-info/20">
                               <Markdown>{lesson.studentSpeaking}</Markdown>
                             </div>
                           </div>
@@ -859,7 +859,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                               <Target size={13} />
                               {L.nextStep}
                             </h5>
-                            <div className="text-sm text-content leading-relaxed prose prose-invert max-w-none">
+                            <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none">
                               <Markdown>{lesson.suggestedFollowUp}</Markdown>
                             </div>
                           </div>

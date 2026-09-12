@@ -148,7 +148,7 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
               </div>
             )}
 
-            <div className="bg-black/30 backdrop-blur-sm border border-white/10 p-6 rounded-2xl prose prose-invert max-w-none text-white/90">
+            <div className="bg-base-200/60 backdrop-blur-sm border border-line-strong p-6 rounded-2xl prose prose-headings:text-text-hi prose-strong:text-text-hi prose-a:text-primary max-w-none text-content">
               <Markdown>{gradingResult.feedback}</Markdown>
             </div>
           </div>

@@ -203,7 +203,7 @@ const LessonHistory: React.FC = () => {
                 <h5 className="font-bold text-sm text-primary mb-2">
                   {language === 'pl' ? 'Praca domowa:' : 'Homework:'}
                 </h5>
-                <div className="text-sm prose prose-invert max-w-none">
+                <div className="text-sm text-content prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none">
                   <Markdown>{generatedHomework[lesson.id]}</Markdown>
                 </div>
               </div>
