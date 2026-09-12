@@ -523,3 +523,102 @@ bajt w bajt bez zmian; potwierdzone przez pełny przebieg `npm run
 test:rules` (37/37, w tym wszystkie stare testy dla tych dwóch kolekcji).
 `services/scratchpadService.ts` nietknięty. Middleware autoryzacji w
 `server.ts` i ścieżki tokenowe bez logowania — nietknięte.
+
+---
+
+2026-09-12 — Claude Code / Sonnet 5
+
+Zadanie: zlecenie weekendowe Macieja — dokończyć funkcjonowanie prac
+domowych, powiadomień związanych z pracami domowymi i wspólnego notatnika
+z szablonami/eksportem, plus przebudowa panelu lektora wg wcześniej
+zakolejkowanej specyfikacji (`docs/kolejka-przebudowa-panelu.md`) i dalsza
+naprawa trybu dziennego. Rozstrzygnięcia otwartych pytań i pełny plan
+(przeanalizowany dwa razy pod kątem błędów, jedna realna korekta
+znaleziona i naniesiona przed wdrożeniem) w
+`docs/plan-weekend-2026-09-12.md`.
+
+Zrobione (Etapy A, B, C, E — szczegóły też w `CHANGELOG.md`):
+- **Etap A** (`81377a2`): `components/admin/HomeworkV2ReviewScreen.tsx` —
+  brakujący ekran wglądu lektora w zadania silnika prac domowych v2, który
+  jest już domyślnie włączony na produkcji (`config/featureFlags.ts`), ale
+  nie miał żadnego ekranu przeglądu. To było prawdopodobnie realną
+  przyczyną, dla której Maciej zgłosił "prace domowe nie działają".
+  `types.ts`: `SpecialTask` +4 opcjonalne pola.
+- **Etap B** (`178df72`): naprawiony bug w `notifyStudentOnHomework`
+  (ignorował `MailingSettings.enableHomeworkAssigned`), nowy trigger
+  `notifyStudentOnHomeworkGraded` + szablon `buildHomeworkGradedEmail`,
+  trzeci nasłuch w `TeacherHomeworkNotification.tsx` dla prób v2
+  wymagających uwagi, `enableDueDateReminder` oznaczony "Wkrótce" w UI.
+- **Etap C** (`f4ee716`): przebudowa `AdminPanel.tsx` — trzy kafelki
+  (Profil kursantów / Prezentacja / Notatnik), nowa listwa narzędzi, nowy
+  `TeacherAttentionBanner.tsx`, schowanie (flaga `SHOW_LEGACY_PANEL_TOOLS`)
+  Przeglądu panelu / AI Lesson Generator / "Dodaj kursanta" (ten ostatni
+  ma już pełny odpowiednik w "Bazie kursantów" — bez regresji),
+  przemianowanie "Brudnopis"→"Notatnik" poza `components/scratchpad/`.
+- **Etap E, częściowo** (`00652dc`): 284 wystąpienia
+  `hover:text-white`/`group-hover:text-white`/`focus:text-white` (wzorzec
+  identyczny z już raz naprawionym błędem na ekranie startowym) zamienione
+  na `text-text-hi` w `components/admin/` i `components/dashboard/`
+  (54 pliki). Tryb nocny bez zmian (token = `#ffffff`), tryb dzienny
+  czytelny na hover. Reszta surowego `text-white` (~880 wystąpień)
+  świadomie nieruszona.
+- **Etap D** (`6078752`, zmergowany do `main`): wykonany równolegle przez
+  drugiego agenta w izolowanym git worktree (`isolation: worktree`), żeby
+  uniknąć kolizji z pracą nad panelem — notatnik dostał realny system
+  szablonów (`scratchpadTemplates` w Firestore, `isAdmin()`-only) i eksport
+  do PDF/Worda. Pierwsza próba padła w połowie na limicie API bez commita
+  (worktree zostało automatycznie posprzątane, bo nic nie było
+  zacommitowane) — druga próba dokończyła zadanie. Osobny wpis tego agenta
+  wyżej w tym pliku ma pełne szczegóły.
+- Merge: zweryfikowałem samodzielnie zgłoszone przez agenta D "2
+  przedistniejące awarie" (2 testy Notion + błędy `tsc` o brakującym
+  `firebase-functions/logger`) i potwierdziłem, że to artefakt izolowanego
+  worktree (brak `functions/node_modules`), nie prawdziwy problem — po
+  zmergowaniu do `main` (który ma zainstalowane zależności) pełny zestaw
+  weryfikacji przechodzi czysto: `tsc --noEmit` bez błędów, `npm test`
+  268/268, `npm run build` bez błędów, `npm run test:rules` 37/37.
+
+Nie dokończone / do sprawdzenia:
+- **Zero weryfikacji wzrokowej w przeglądarce** dla całości tej sesji
+  (nowy ekran przeglądu v2, przebudowany panel lektora, notatnik z
+  szablonami, eksport PDF/Word) — brak dostępu do zalogowanej sesji w
+  środowisku agenta. Wszystko przeszło `tsc`/testy/build, nic nie zostało
+  obejrzane na żywo. To największe ryzyko tej sesji — pierwsza rzecz do
+  zrobienia przy najbliższym logowaniu.
+- Pierwszy realny przebieg silnika v2 z prawdziwym modelem OpenAI —
+  wymaga ustawienia sekretu `OPENAI_API_KEY` w Cloud Functions, czego nie
+  mogłem zrobić (odmowa środowiska agenta na materiał uwierzytelniający).
+  Do zrobienia przez Macieja: `npm run firebase:secrets:set --
+  OPENAI_API_KEY`, potem jedna realna praca domowa v2 jako smoke test.
+- `enableDueDateReminder` pozostaje wyłącznie etykietą UI — wymaga
+  Cloud Scheduler + nowej funkcji, świadomie odłożone.
+- Plik `.doc` z eksportu notatnika nie został ręcznie otwarty w Wordzie
+  ani Google Docs po wygenerowaniu (patrz wpis agenta D wyżej).
+- Pozostałe ok. 880 wystąpień surowego `text-white` (nie `hover:`) — pełne
+  przejście wymaga oceny per przypadek, nie ślepej zamiany.
+
+Decyzje architektoniczne:
+- `proposeHomeworkV2Review` NIE jest funkcją zatwierdzania oceny (błędne
+  założenie w pierwszej wersji planu, poprawione po przeczytaniu kodu
+  `functions/src/homeworkV2/endpoints.ts` — to generator propozycji
+  powtórki). Werdykt AI dla v2 jest natychmiastowy i niemutowalny z
+  założenia (`attempts.update: if false` dla każdego, łącznie z adminem),
+  więc ekran w Etapie A daje wyłącznie wgląd + ręczną notatkę na
+  `specialTasks`, nie "zatwierdzanie".
+- Eksport notatnika "do Google Docs" zrealizowany jako plik `.doc`
+  (format zgodny z Wordem), nie integracja OAuth z Google API — decyzja
+  podjęta z Maciejem wprost w rozmowie, opisana w
+  `docs/plan-weekend-2026-09-12.md` Etap D, żeby nie obiecywać integracji
+  wymagającej zgody użytkownika w konsoli Google Cloud, której nie da się
+  wdrożyć w jedną sesję.
+- Etap D wykonany w osobnym worktree równolegle z resztą (Etapy A-C, E)
+  w głównym katalogu roboczym — podział wg katalogów
+  (`components/scratchpad/` vs reszta) był rozłączny, więc merge przeszedł
+  bez konfliktów.
+
+Ryzyka: `firestore.rules` dotknięty wyłącznie przez Etap D (agent D, opis
+wyżej) — jeden nowy, w pełni izolowany blok `scratchpadTemplates`. Etapy
+A, B, C, E **nie dotykają** `firestore.rules`, middleware autoryzacji w
+`server.ts` ani ścieżek tokenowych bez logowania. `.gitignore` dostał nowy
+wpis `.claude/worktrees/` — infrastruktura agentów, nigdy nie powinna
+trafiać do repo.

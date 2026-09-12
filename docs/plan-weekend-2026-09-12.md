@@ -289,3 +289,20 @@ wzrokowego kluczowych ekranów.
 Jeden commit na etap (A–E), zgodnie z CLAUDE.md §7.4 — nie mieszam
 naprawy powiadomień z przebudową UI. Push po każdym zamkniętym etapie
 (§7.1), nie czekam do końca całości.
+
+## 7. Stan (aktualizowany na bieżąco)
+
+- ✅ Etap A — `81377a2`. HomeworkV2ReviewScreen wdrożony, zero zmian w regułach.
+- ✅ Etap B — `178df72`. Naprawa `enableHomeworkAssigned`, nowy trigger
+  `notifyStudentOnHomeworkGraded`, sygnał v2 w TeacherHomeworkNotification.
+- ✅ Etap C — `f4ee716`. Nowy układ kafelków, TeacherAttentionBanner,
+  schowanie starszych narzędzi, przemianowanie poza `components/scratchpad/`.
+- ⏳ Etap D — w toku, agent w osobnym worktree (`components/scratchpad/`,
+  `utils/pdfExport.ts`, `firestore.rules` — nowa kolekcja `scratchpadTemplates`).
+  Pierwsza próba padła na limicie API bez commita (worktree posprzątane,
+  zaczęta od zera) — druga próba w trakcie.
+- ⏳ Etap E — częściowo zrobiony przy okazji: `00652dc`
+  (`hover:text-white` → `text-text-hi` w components/admin i
+  components/dashboard, 284 wystąpienia). Pełny zakres z sekcji 2 pkt 3
+  (zrzuty ekranu, weryfikacja wzrokowa) i pozostałe bare `text-white`
+  świadomie nie ruszone — patrz opis descope w sekcji 4.

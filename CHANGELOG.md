@@ -62,20 +62,134 @@ Bufor, który to łagodzi: przychodząca treść nie podmienia edytora, dopóki 
 
 **Czego z tego wynika:** brudnopis zastępuje Google Docs w scenariuszu „lektor notuje, kursant patrzy i czasem dopisuje", ale **nie** w scenariuszu równoległego pisania we dwoje. Zanim ktoś ogłosi pełne zastąpienie Google Docs, trzeba wprowadzić scalanie zmian na poziomie fragmentów.
 
-### 🟡 Tryb dzienny nieobejrzany na ekranach po zalogowaniu
+### 🟡 Tryb dzienny nieobejrzany na ekranach po zalogowaniu (częściowo naprawione 2026-09-12)
 Ekran startowy i logowanie zostały poprawione i sprawdzone wzrokowo w obu motywach. Panele lektora,
-administratora i kursanta przełączają się przez tokeny, ale **nie były oglądane w trybie dziennym** —
-wymagają zalogowania. W komponentach zostaje ok. **1169 wystąpień surowego `text-white`**; część jest
-poprawna (biały napis na wypełnieniu akcentem), część powtórzy problem z ekranu startowego: biały tekst
-na papierowym tle. Przy pierwszej sesji z zalogowanym kontem warto przejść panele w trybie dziennym
-i zamienić pozostałe surowe biele na tokeny (`text-text-hi`, `border-line-strong`, `bg-line-soft`, `bg-ink`).
+administratora i kursanta przełączają się przez tokeny, ale **nadal nie były oglądane w trybie dziennym
+w przeglądarce** — wymagają zalogowania.
+
+2026-09-12: naprawiono **284 wystąpienia** wzorca `hover:text-white`/`group-hover:text-white`/
+`focus:text-white` w połączeniu z `hover:bg-white/5`/`bg-white/10` w `components/admin/` i
+`components/dashboard/` (54 plików) — dokładnie ten sam wzorzec błędu, co na ekranie startowym: hover
+podświetla się niemal-białym tłem i tekst staje się niemal niewidoczny na jasnej stronie. Zamienione na
+`text-text-hi` (w trybie nocnym token równa się `#ffffff`, więc wygląd ciemnego motywu się nie zmienił —
+zweryfikowane przez brak zmian w `tsc`/testach/buildzie po zamianie).
+
+Nadal zostaje ok. **880+ wystąpień** samego, statycznego (nie tylko `hover:`) surowego `text-white` w
+komponentach — część jest poprawna (biały napis na wypełnieniu akcentem), część może powtarzać ten sam
+problem. Świadomie nieruszone w tej sesji — pełne przejście wymaga weryfikacji wzrokowej per przypadek,
+nie ślepej zamiany (patrz `docs/plan-weekend-2026-09-12.md`, Etap E).
 
 ### 🟡 Interfejs nie był weryfikowany w przeglądarce
 Zmiany UI z etapów opisanych niżej (przebudowa paska Prezentacji i Brudnopisu, samouczek z dymkami, zamrożona kolumna w Bazie Kursantów, układanka z klocków, przełącznik Easy/Hard) przeszły `npx tsc --noEmit`, komplet testów jednostkowych i `npm run build`, ale **nie zostały obejrzane w działającej przeglądarce**. Przy kolejnych poprawkach w tych miejscach warto najpierw sprawdzić je wzrokowo.
 
+To samo dotyczy przebudowy panelu lektora, ekranu przeglądu prac v2 i nowego notatnika z 2026-09-12
+(sekcja 4 niżej) — brak dostępu do zalogowanej sesji przeglądarki w tej sesji agenta. Zweryfikowano
+wyłącznie `tsc --noEmit`, `npm test`, `npm run build`, `npm run test:rules`.
+
 ---
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
+
+### 🆕 Prace domowe v2, powiadomienia i przebudowa panelu lektora (2026-09-12)
+
+Zlecenie weekendowe Macieja: dokończyć funkcjonowanie prac domowych,
+powiadomień z nimi związanych i wspólnego notatnika, plus przebudowa UI
+panelu lektora i dalsza naprawa trybu dziennego. Pełny plan i analiza:
+`docs/plan-weekend-2026-09-12.md`. Cztery etapy (A–C, E) w tym wpisie;
+Etap D (notatnik) opisany osobno niżej — budowany równolegle przez
+drugiego agenta w izolowanym worktree.
+
+**Kluczowe odkrycie audytu, które zmieniło priorytety:** silnik prac
+domowych v2 (`config/featureFlags.ts: HOMEWORK_ENGINE_V2 = true`) jest już
+domyślnie włączony na produkcji — kreator lektora od razu tworzy zadania
+v2, nie v1. Ale **nie istniał żaden ekran, przez który lektor mógłby te
+zadania zobaczyć albo sprawdzić**. `proposeHomeworkV2Review`
+(`functions/src/homeworkV2/endpoints.ts`) był martwym kodem — i tak
+naprawdę to nie funkcja zatwierdzania oceny, tylko generator propozycji
+powtórki (spaced repetition), niezwiązany z pojedynczym zadaniem. To był
+błąd w pierwszej wersji tego planu, wykryty i poprawiony po przeczytaniu
+kodu funkcji, zanim cokolwiek napisano — werdykt AI dla v2 jest
+natychmiastowy i **niemutowalny** (`attempts.update: if false` w
+`firestore.rules`, dotyczy każdego, łącznie z adminem), więc "zatwierdzanie
+oceny" nie jest w ogóle możliwe w tej architekturze.
+
+**Etap A — `components/admin/HomeworkV2ReviewScreen.tsx` (nowy plik).**
+Nowa zakładka "Przegląd v2" w `HomeworkScreen.tsx`: lista wszystkich
+zestawów v2 z rozwinięciem do ćwiczeń i pełnej historii prób
+(`specialTasks/{id}/attempts`), sekcja "Wymaga uwagi" zbierająca próby z
+`requiresTeacherReview: true` przez `collectionGroup('attempts')` — reguły
+już na to pozwalały (`isAdmin()` obejmuje rolę `teacher`), zero zmian w
+`firestore.rules`. Jedyna dostępna akcja lektora: odnotowanie przeglądu i
+opcjonalna notatka, zapisywane na `specialTasks` (nie na niemutowalnym
+`attempts`) przez zwykły `updateDoc`. `types.ts`: `SpecialTask` dostał
+opcjonalne pola `engineVersion`, `teacherId`, `teacherReviewedAt`,
+`teacherReviewNote`.
+
+**Etap B — powiadomienia.** Dwie naprawy w `functions/src/index.ts`:
+1. `notifyStudentOnHomework` (trigger na nową pracę domową) ignorował
+   globalny przełącznik `MailingSettings.enableHomeworkAssigned` z panelu
+   Mailingu — czytał tylko flagi na samym dokumencie zadania. Teraz
+   sprawdza `system/mailing` przed wysyłką.
+2. Nowy trigger `notifyStudentOnHomeworkGraded` (`onDocumentUpdated` na
+   `specialTasks`, przejście `status` → `graded`) wysyła mail przez nowy
+   szablon `buildHomeworkGradedEmail` (`functions/src/emailTemplate.ts`) —
+   `MailingSettings.enableHomeworkReviewed` miał przełącznik w UI od
+   dawna, ale żadna funkcja go nie czytała. Dotyczy wyłącznie v1: silnik
+   v2 daje feedback kursantowi od razu przy próbie, nie przez późniejszą
+   ocenę lektora, więc nie ma tu odpowiednika zdarzenia do zamailowania.
+
+`TeacherHomeworkNotification.tsx` dostał trzeci nasłuch (próby v2 z
+`requiresTeacherReview`) w tym samym toastcie co odesłane prace/testy.
+`enableDueDateReminder` w `AdminMailingScreen.tsx` oznaczony jako
+"Wkrótce" — przełącznik istniał, ale nic za nim nie stoi (wymaga
+harmonogramu Cloud Scheduler), więc nie miał dalej sugerować działania.
+
+**Etap C — przebudowa panelu lektora**, realizacja zakolejkowanej wcześniej
+specyfikacji z `docs/kolejka-przebudowa-panelu.md` (rozstrzygnięcia
+otwartych pytań w `docs/plan-weekend-2026-09-12.md` §1):
+- Trzy główne kafelki w `AdminPanel.tsx`: **Profil kursantów** → Prezentacja
+  → **Notatnik** (Notatnik jako trzeci, bo używany na każdej lekcji; Planer,
+  rzadziej używany, schodzi do listwy). "Profil kursantów" (kafelek) i
+  "Baza kursantów" (zakładka sidebara, zarządzanie kontami) rozróżnione
+  opisem — to nie jest to samo miejsce.
+- Nowa listwa narzędzi pod kafelkami: Planer, Prezentacja, Notatnik,
+  Mailing, Synchronizacja z Notion — wszystkie narzędzia lektora w jednym
+  miejscu.
+- Nowy `components/admin/TeacherAttentionBanner.tsx`: trwały sygnał
+  "Wymaga Twojej uwagi" (prace v1 odesłane + próby v2 do przeglądu) nad
+  treścią panelu — widoczny też w karcie kursanta, bo `AdminPanel` nie
+  odmontowuje się między widokami wewnętrznymi.
+- Schowane przełącznikiem `SHOW_LEGACY_PANEL_TOOLS = false` (nie
+  skasowane): "Przegląd panelu" (`TeacherOverview`), "AI Lesson
+  Generator", "Dodaj kursanta" z górnego paska — ten ostatni ma już pełny
+  odpowiednik w zakładce "Baza kursantów"
+  (`StandaloneStudentDatabaseScreen.tsx`), więc bez regresji.
+- "Brudnopis" → "Notatnik" w UI poza `components/scratchpad/` (ten dostał
+  przemianowanie osobno w Etapie D). Przy okazji poprawione dwa mylące
+  odwołania do "Google Docs" w opisach w `AdminPanel.tsx` — notatnik nim
+  nie jest.
+
+**Etap E (częściowy) — tryb dzienny.** Patrz zaktualizowany wpis w sekcji
+3 wyżej: 284 wystąpienia `hover:text-white` naprawione w
+`components/admin/` i `components/dashboard/`.
+
+**Świadomie poza zakresem tego zlecenia** (patrz
+`docs/plan-weekend-2026-09-12.md` §4): pierwszy realny przebieg silnika v2
+z prawdziwym kluczem OpenAI (sekret Cloud Functions — wymaga akcji
+Macieja, agent nie ma dostępu do materiału uwierzytelniającego),
+`enableDueDateReminder` jako działający mechanizm, pełne rozwiązanie
+"ostatni zapis wygrywa" w notatniku (OT/CRDT), wyczerpujące zamienienie
+wszystkich pozostałych ok. 880 wystąpień surowego `text-white`,
+prawdziwa integracja z Google Docs API.
+
+**Weryfikacja:** `npx tsc --noEmit`, `npm test` (268/268), `npm run
+build` — czysto po każdym z czterech commitów (`81377a2`, `178df72`,
+`f4ee716`, `00652dc`). Brak dostępu do zalogowanej sesji przeglądarki w
+tej sesji agenta — zero weryfikacji wzrokowej, patrz sekcja 3.
+
+**Ryzyka:** `firestore.rules` **nietknięty** przez tę część pracy (zero
+zmian w Etapach A/B/C/E). Middleware autoryzacji w `server.ts` i ścieżki
+tokenowe bez logowania — nietknięte.
 
 ### 🆕 Notatnik: szablony lektora i eksport do PDF/Worda (2026-09-12)
 
