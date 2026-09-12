@@ -28,7 +28,6 @@ import {
   History, 
   ClipboardList,
   BookOpen,
-  BookOpenCheck,
   Settings,
   ShieldAlert, 
   BarChart2, 
@@ -103,7 +102,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
     currentView.startsWith('preview-');
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(isPreviewView);
   const [newBugsCount, setNewBugsCount] = useState(0);
-  const [unreadTestsCount, setUnreadTestsCount] = useState(0);
   /** Testy przypisane kursantowi, których jeszcze nie rozwiązał. */
   const [pendingTestsCount, setPendingTestsCount] = useState(0);
   const [pendingHomeworkCount, setPendingHomeworkCount] = useState(0);
@@ -133,28 +131,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
       return () => unsubscribe();
     }
   }, [isAdmin]);
-
-  const [submittedHomeworkCount, setSubmittedHomeworkCount] = useState(0);
-
-  useEffect(() => {
-    if (isTeacher) {
-      try {
-        const q = query(collection(db, 'specialTasks'), where('status', '==', 'submitted'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-          const unreadTasks = snapshot.docs.filter((d) => {
-            const data = d.data();
-            return data.teacherRead !== true;
-          });
-          setSubmittedHomeworkCount(unreadTasks.length);
-        }, (err) => {
-          console.error("specialTasks submitted snapshot error:", err);
-        });
-        return () => unsubscribe();
-      } catch (err) {
-        console.error("Error setting up submitted specialTasks snapshot listener:", err);
-      }
-    }
-  }, [isTeacher]);
 
   /**
    * Testy czekające na kursanta.
@@ -186,22 +162,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
       console.error('Błąd nasłuchu testów kursanta:', err);
     }
   }, [isTeacher, user?.id]);
-
-  useEffect(() => {
-    if (isTeacher) {
-      try {
-        const q = query(collectionGroup(db, 'tests'), where('teacherRead', '==', false));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-          setUnreadTestsCount(snapshot.size);
-        }, (err) => {
-          console.error("collectionGroup tests snapshot error:", err);
-        });
-        return () => unsubscribe();
-      } catch (err) {
-        console.error("Error setting up tests snapshot listener:", err);
-      }
-    }
-  }, [isTeacher]);
 
   React.useEffect(() => {
     if (currentView.startsWith('admin')) setIsAdminExpanded(true);
@@ -374,45 +334,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               )}
           </NavLink>
 
-          {isTeacher && (() => {
-            const totalSubmittedToReview = submittedHomeworkCount + unreadTestsCount;
-            return (
-              <NavLink
-                icon={
-                  <div className="relative">
-                    <BookOpenCheck size={20} className={totalSubmittedToReview > 0 ? "text-primary" : ""} />
-                    {totalSubmittedToReview > 0 && isDesktopCollapsed && (
-                      <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
-                      </span>
-                    )}
-                  </div>
-                }
-                isCollapsed={isDesktopCollapsed}
-                onClick={() => handleNavigate('homework', { filterStatus: 'submitted' })}
-                isActive={currentView === 'homework'}
-                badge={
-                  totalSubmittedToReview > 0 ? (
-                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 text-[11px] font-bold">
-                      <span className="flex h-1.5 w-1.5 relative">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
-                      </span>
-                      {totalSubmittedToReview}
-                    </span>
-                  ) : undefined
-                }
-              >
-                <span>
-                  {language === 'pl' ? 'Odesłane prace' : 'Submitted Homework'}
-                  {totalSubmittedToReview > 0 && !isDesktopCollapsed && (
-                    <span className="ml-1 text-primary font-bold">({totalSubmittedToReview})</span>
-                  )}
-                </span>
-              </NavLink>
-            );
-          })()}
+          {/* "Odesłane prace" usunięte z sidebara na życzenie 2026-09-12 —
+              sygnał o odesłanych pracach i próbach v2 wymagających uwagi
+              żyje teraz wyłącznie w widgecie w prawym dolnym rogu
+              (TeacherHomeworkNotification.tsx), nie dubluje się tutaj. */}
 
           {isTeacher && (
             <NavLink

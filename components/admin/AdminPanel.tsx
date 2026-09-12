@@ -1883,20 +1883,24 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         </div>
       </div>
 
-      {/* LISTWA NARZĘDZI — wszystkie narzędzia lektora w jednym miejscu, ok.
-          połowę niższa niż kafelek (docs/kolejka-przebudowa-panelu.md §2).
-          Prezentacja i Notatnik duplikują wejście z kafelków wyżej — to
-          zamierzone: tu jest pełna lista, wyżej tylko trzy najważniejsze. */}
-      <div className="flex flex-wrap items-center gap-2">
+      {/* LISTWA NARZĘDZI — wszystkie narzędzia lektora w jednym miejscu,
+          w siatce rozprowadzonej tak samo jak trzy kafelki wyżej, tylko
+          niższej (docs/kolejka-przebudowa-panelu.md §2). Prezentacja i
+          Notatnik duplikują wejście z kafelków wyżej — zamierzone: tu jest
+          pełna lista, wyżej tylko trzy najważniejsze. "Prace domowe"
+          dołączone na życzenie 2026-09-12, żeby mieć jedno miejsce wejścia
+          zamiast tylko powiadomień. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
           { id: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
           { id: 'presentation', title: 'Prezentacja', icon: Airplay },
           { id: 'notatnik', title: 'Notatnik', icon: FileEdit },
+          { id: 'homework', title: 'Prace domowe', icon: FileText, isRoute: true },
           {
             id: 'mailing',
-            title: unreadMailingCount > 0 ? `Mailing (${unreadMailingCount})` : 'Mailing',
+            title: 'Mailing',
             icon: Mail,
-            hasNotification: unreadMailingCount > 0,
+            badge: unreadMailingCount > 0 ? String(unreadMailingCount) : undefined,
           },
         ].map((item) => {
           const IconComp = item.icon;
@@ -1907,20 +1911,28 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           return (
             <button
               key={item.id}
-              onClick={() => handleTileClick(item.id)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-semibold transition-colors ${
-                item.hasNotification
+              onClick={() => (item.isRoute ? onViewChange?.('homework') : handleTileClick(item.id))}
+              className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-colors ${
+                item.badge
                   ? 'border-amber-400/60 bg-amber-500/10 text-amber-200'
                   : isActive
                   ? 'border-primary/60 bg-primary/15 text-primary'
                   : 'border-line-strong bg-line-soft/40 text-content-muted hover:text-text-hi hover:border-primary/40'
               }`}
             >
-              <IconComp size={15} />
-              {item.title}
+              {item.badge && (
+                <span className="absolute -top-1.5 -right-1.5 h-5 min-w-[1.25rem] px-1 rounded-full bg-amber-500 text-accent-ink text-[10px] font-bold flex items-center justify-center border border-black/20">
+                  {item.badge}
+                </span>
+              )}
+              <IconComp size={18} />
+              <span>{item.title}</span>
             </button>
           );
         })}
+      </div>
+
+      <div className="flex justify-end">
         <NotionSyncButton onImported={fetchUsers} />
       </div>
 
