@@ -14,6 +14,7 @@ import ConfirmModal from '../ui/ConfirmModal';
 import { LessonSelectionModal } from './LessonSelectionModal';
 import HomeworkComposer from '../admin/HomeworkComposer';
 import HomeworkComposerV2 from '../admin/HomeworkComposerV2';
+import HomeworkV2ReviewScreen from '../admin/HomeworkV2ReviewScreen';
 import { HOMEWORK_ENGINE_V2 } from '../../config/featureFlags';
 import HomeworkEmailConfirmationModal from '../admin/HomeworkEmailConfirmationModal';
 import { TestPreviewModal } from '../admin/TestPreviewModal';
@@ -50,6 +51,7 @@ import {
   RotateCcw,
   Calendar,
   ChevronUp,
+  ShieldCheck,
   ChevronDown
 } from 'lucide-react';
 
@@ -261,7 +263,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSavingHomework, setIsSavingHomework] = useState<boolean>(false);
   const isSavingRef = React.useRef<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'list' | 'create' | 'flashcards'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'create' | 'flashcards' | 'v2review'>('list');
 
   // Filter state for teacher
   const [filterStudentId, setFilterStudentId] = useState<string>('all');
@@ -1474,6 +1476,16 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                 </>
               )}
             </Button>
+            {HOMEWORK_ENGINE_V2 && (
+              <Button
+                onClick={() => setActiveTab('v2review')}
+                variant={activeTab === 'v2review' ? 'primary' : 'secondary'}
+                className="flex items-center gap-2 text-sm"
+              >
+                <ShieldCheck size={16} />
+                Przegląd v2
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -1713,6 +1725,11 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
           )}
         </Card>
       ) : null}
+
+      {/* ---------------- TEACHER V2 REVIEW ---------------- */}
+      {isTeacher && activeTab === 'v2review' && !activeTask && (
+        <HomeworkV2ReviewScreen />
+      )}
 
       {/* ---------------- TEACHER CREATE / EDIT HOMEWORK WORKSPACE ---------------- */}
       {/* Nowe zadanie układa kreator: kursant, materiał, typy ćwiczeń, termin.

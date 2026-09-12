@@ -570,6 +570,16 @@ export interface SpecialTask {
   accessExpiresAt?: string;
   accessUrl?: string;
   submittedViaDirectLink?: boolean;
+  /**
+   * Silnik v2 (`functions/src/homeworkV2`). Ocena i feedback żyją w
+   * subkolekcji `attempts`, nie w tym dokumencie — patrz
+   * `services/homeworkV2/contracts.ts`.
+   */
+  engineVersion?: number;
+  teacherId?: string;
+  /** Ustawiane ręcznie z ekranu przeglądu v2 — werdyktu AI nie da się zmienić. */
+  teacherReviewedAt?: string;
+  teacherReviewNote?: string;
 }
 
 export interface InboundMessage {
