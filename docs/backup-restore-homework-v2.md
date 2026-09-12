@@ -10,6 +10,7 @@ Wartości tego projektu:
 | Projekt Google Cloud | `gen-lang-client-0425391821` |
 | Baza Firestore | `ai-studio-520a4841-33d0-41ef-829a-838ebc44072d` (**nie** `(default)`) |
 | Region funkcji | `us-central1` |
+| Lokalizacja bazy | `nam5` (multi-region US) |
 | Flaga aplikacji | `HOMEWORK_ENGINE_V2` w `config/featureFlags.ts` |
 | Flaga funkcji | zmienna środowiskowa `HOMEWORK_ENGINE_V2` |
 
@@ -35,85 +36,111 @@ Wartości tego projektu:
 
 ---
 
-## 2. Niezależny, automatyczny backup poza bazą produkcyjną — ⛔ NIE ISTNIEJE
+## 2. Backup — przez Firebase CLI, bez gcloud
 
-**To jest blokada przed wdrożeniem, nie uwaga na marginesie.** W repo nie ma
-żadnego skryptu eksportu ani harmonogramu backupu; `scripts/` zawiera wyłącznie
-jednorazowe migracje (`backfill-task-owners.mjs`, `backfill-scratchpad-pins.mjs`).
+> **Poprawka wobec pierwszej wersji tego dokumentu.** Pierwotnie opisywałem
+> eksport przez `gcloud` do kubełka GCS z regionem `us-central1`. To było
+> niepotrzebnie skomplikowane i w dodatku błędne: baza stoi w **`nam5`**
+> (multi-region US), więc kubełek `us-central1` odrzuciłby eksport. Firebase CLI
+> ma zarządzane backupy, które nie wymagają ani gcloud, ani kubełka.
 
-Do wykonania **raz**, przez właściciela projektu (wymaga uprawnień
-billingowych — agent AI tego nie założy):
+### Stan zastany (sprawdzony 2026-09-12)
 
-```bash
-# Kubełek na eksporty. Region musi odpowiadać lokalizacji bazy.
-gcloud storage buckets create gs://cribro-recall-backups \
-  --project=gen-lang-client-0425391821 \
-  --location=us-central1 \
-  --uniform-bucket-level-access
+| Właściwość bazy produkcyjnej | Wartość |
+|---|---|
+| Lokalizacja | `nam5` |
+| Point In Time Recovery | ⛔ **wyłączone** |
+| Delete Protection | ⛔ **wyłączone** |
+| Harmonogram backupów | ⛔ **brak** |
 
-# Harmonogram dzienny, retencja 7 dni.
-gcloud firestore backups schedules create \
-  --project=gen-lang-client-0425391821 \
-  --database=ai-studio-520a4841-33d0-41ef-829a-838ebc44072d \
-  --recurrence=daily \
-  --retention=7d
+### ⚠️ W projekcie jest SZEŚĆ baz Firestore
 
-# Sprawdzenie, że harmonogram istnieje.
-gcloud firestore backups schedules list \
-  --project=gen-lang-client-0425391821 \
-  --database=ai-studio-520a4841-33d0-41ef-829a-838ebc44072d
+```
+ai-studio-103bf60d-6134-4dcf-97f6-1080bc759669
+ai-studio-2c7f7324-d34d-49b9-b106-2c9fb49bbb23
+ai-studio-520a4841-33d0-41ef-829a-838ebc44072d          ← PRODUKCJA
+ai-studio-758dfd29-f476-4c27-b7fb-0590db65d0cd
+ai-studio-cribro-db
+ai-studio-cribrorecall-520a4841-33d0-41ef-829a-838ebc44072d
 ```
 
-Backup wewnątrz tej samej bazy backupem nie jest — §2 specyfikacji mówi o tym
-wprost przy Firestore („produkcyjna baza aplikacji, nie jest sama w sobie backupem").
+Ostatnia pozycja zawiera **ten sam sufiks UUID** co produkcja i różni się
+wyłącznie wstawką `cribrorecall`. Przy kopiowaniu nazwy z terminala to jest
+pułapka gotowa do zadziałania — backup zrobiony „prawie tej" bazy jest
+bezwartościowy i zorientujesz się przy restore.
+
+**Zawsze podawaj `-d ai-studio-520a4841-33d0-41ef-829a-838ebc44072d`.**
+
+### Krok 1 — PITR i ochrona przed skasowaniem (30 sekund, największy zysk)
+
+```bash
+cd /Users/maciej/Code/cribro/recall
+
+npm run firebase:db:protect
+```
+
+Skrypt włącza naraz:
+- **Point In Time Recovery** — cofnięcie bazy do dowolnej chwili z ostatnich
+  7 dni. To jest realna siatka bezpieczeństwa przy błędzie silnika, i to
+  działająca od zaraz, bez czekania na nocny backup.
+- **Delete Protection** — bazy produkcyjnej nie da się skasować jednym
+  poleceniem.
+
+### Krok 2 — harmonogram backupów
+
+```bash
+npm run firebase:backup:schedule
+```
+
+Codziennie, retencja 7 dni. Backupy są zarządzane przez Firestore i leżą poza
+bazą — spełniają wymóg §15 („niezależny, automatyczny backup poza bazą
+produkcyjną").
+
+Sprawdzenie, że harmonogram istnieje:
+
+```bash
+npm run firebase:backup:list
+```
 
 ---
 
-## 3. Ręczny backup bezpośrednio przed wdrożeniem
+## 3. Backup przed samym wdrożeniem
+
+Przy włączonym PITR osobny ręczny backup nie jest konieczny — cofnięcie do
+punktu sprzed wdrożenia masz z automatu. Wystarczy **zanotować czas**
+przed włączeniem flagi:
 
 ```bash
-STAMP=$(date +%Y%m%d-%H%M)
-gcloud firestore export gs://cribro-recall-backups/pre-hw-v2-$STAMP \
-  --project=gen-lang-client-0425391821 \
-  --database=ai-studio-520a4841-33d0-41ef-829a-838ebc44072d
+date -u +%Y-%m-%dT%H:%M:%SZ
 ```
 
-Zanotuj nazwę operacji z odpowiedzi i poczekaj na jej zakończenie:
-
-```bash
-gcloud firestore operations list \
-  --project=gen-lang-client-0425391821 \
-  --database=ai-studio-520a4841-33d0-41ef-829a-838ebc44072d
-```
-
-**Kryterium przejścia:** operacja w stanie `done: true`, a
-`gcloud storage ls gs://cribro-recall-backups/pre-hw-v2-$STAMP` pokazuje pliki.
+Ten znacznik jest tym, co podasz przy ewentualnym przywracaniu.
 
 ---
 
-## 4. Sprawdzony restore do środowiska testowego
+## 4. Sprawdzony restore
 
-Restore ma być **sprawdzony**, nie założony. Przywracamy do osobnej bazy, nigdy
-na produkcyjną:
+Restore ma być **sprawdzony**, nie założony. Przywracamy do osobnej bazy,
+nigdy na produkcyjną:
 
 ```bash
-# Baza testowa w tym samym projekcie.
-gcloud firestore databases create \
-  --project=gen-lang-client-0425391821 \
-  --database=cribro-restore-test \
-  --location=us-central1 \
-  --type=firestore-native
+# Co w ogóle jest do przywrócenia
+npm run firebase:backup:list
 
-gcloud firestore import gs://cribro-recall-backups/pre-hw-v2-$STAMP \
-  --project=gen-lang-client-0425391821 \
-  --database=cribro-restore-test
+# Przywrócenie do NOWEJ bazy (nie podmienia produkcji)
+PATH="/opt/homebrew/opt/node@22/bin:$PATH" firebase firestore:databases:restore \
+  --database cribro-restore-test \
+  --backup <nazwa-backupu-z-listy>
 ```
 
-**Kryterium przejścia:** w bazie `cribro-restore-test` liczba dokumentów w
-`specialTasks` zgadza się z produkcją, a losowy dokument ma komplet pól
-(`studentUid`, `sentences`, `status`).
+**Kryterium przejścia:** baza `cribro-restore-test` powstaje, a liczba
+dokumentów w `specialTasks` zgadza się z produkcją.
 
-Bazę testową skasuj po weryfikacji — kosztuje.
+Skasuj ją po weryfikacji — kosztuje:
+
+```bash
+PATH="/opt/homebrew/opt/node@22/bin:$PATH" firebase firestore:databases:delete cribro-restore-test
+```
 
 ---
 
@@ -204,9 +231,9 @@ uzgodnij z Maciejem przed włączeniem flagi komukolwiek poza nim.
 | # | Punkt | Stan |
 |---|---|---|
 | 1 | Audyt kolekcji | ✅ `docs/audyt-homework-v2.md` |
-| 2 | Automatyczny backup poza bazą | ⛔ **nie istnieje — blokada** |
-| 3 | Ręczny backup przed wdrożeniem | ⏳ do wykonania przed Etapem 3 |
-| 4 | Sprawdzony restore | ⏳ do wykonania przed Etapem 3 |
+| 2 | PITR + harmonogram backupów | ⏳ dwa polecenia npm, bez gcloud |
+| 3 | Znacznik czasu przed wdrożeniem | ⏳ zbędny osobny backup, gdy PITR działa |
+| 4 | Sprawdzony restore do osobnej bazy | ⏳ przed włączeniem flagi |
 | 5 | Schemat v2 za flagą | ✅ Etap 1 |
 | 6 | Zestawy v1 działają | ✅ straznik `isV1Task` + 33/33 testów reguł |
 | 7 | Pełny przepływ na emulatorze | 🟡 reguły sprawdzone; pełny przebieg z modelem wymaga sekretu |
