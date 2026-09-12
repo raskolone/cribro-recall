@@ -15,6 +15,20 @@ import { sendEmail } from './resend';
 import { importSelection, previewSync } from './notion/sync';
 
 /**
+ * Silnik prac domowych v2 — wyłącznie re-eksport.
+ *
+ * Endpointy żyją w `homeworkV2/endpoints.ts`, żeby ten plik pozostał tym,
+ * czym był: mailingiem i importem z Notion. Cała ścieżka v2 jest za flagą
+ * `HOMEWORK_ENGINE_V2` i nie dotyka niczego powyżej.
+ */
+export {
+  generateHomeworkV2,
+  assignHomeworkV2,
+  submitHomeworkV2Attempt,
+  proposeHomeworkV2Review,
+} from './homeworkV2/endpoints';
+
+/**
  * Powiadomienie e-mail o nowej pracy domowej.
  *
  * Wyzwalacz siedzi po stronie Firestore, a nie w serwerze Express z `server.ts`,
