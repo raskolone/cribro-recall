@@ -90,6 +90,28 @@ wyłącznie `tsc --noEmit`, `npm test`, `npm run build`, `npm run test:rules`.
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
+### 🆕 Notatnik jak Google Docs, widget powiadomień, automat Notion (2026-09-12, runda 2)
+
+Ciąg dalszy tego samego dnia. **Krytyczny bug wykryty i naprawiony w 10
+plikach**: `prose-invert` (Tailwind Typography) razem z hardkodowanym
+`text-white` dawały dosłownie niewidoczny biały tekst na białym tle w
+trybie jasnym — dotyczyło m.in. pola PIN-u notatnika. Poza tym: notatnik
+dostał prawdziwy szablon domyślny (edytowalny, odzwierciedla realny
+szablon lekcji Macieja z Google Docs), naprawiony bug z PIN-em nigdy nie
+trafiającym do kopiowanego linku, szerszy pasek formatowania (wyrównanie,
+kolory, linki, checklisty), fioletowy akcent (`--accent-2`) na kości
+słoniowej. Podstrona przeżywa teraz odświeżenie strony (F5) —
+`sessionStorage`. "Odesłane prace" zniknęły z sidebara, zastąpione trwałym
+widgetem w prawym dolnym rogu pokazującym komplet nieprzejrzanych spraw
+(nie tylko nowe zdarzenia z bieżącej sesji). Listwa narzędzi w panelu
+lektora to teraz kafelki tej samej szerokości co trzy główne, z nową
+pozycją "Prace domowe". Nowa scheduled Cloud Function `checkNotionDaily`
+sprawdza Notion raz dziennie (6:00) i pokazuje kartę w panelu wyłącznie,
+gdy jest coś naprawdę nowego — **wdrożone na produkcję**, razem z
+`notifyStudentOnHomeworkGraded` z poprzedniej rundy tego dnia. Zero zmian
+w `firestore.rules`. Zero weryfikacji wzrokowej w przeglądarce — patrz
+sekcja 3. Pełne szczegóły: `AGENT_LOG.md`.
+
 ### 🆕 Prace domowe v2, powiadomienia i przebudowa panelu lektora (2026-09-12)
 
 Zlecenie weekendowe Macieja: dokończyć funkcjonowanie prac domowych,

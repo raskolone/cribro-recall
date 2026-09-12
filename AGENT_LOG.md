@@ -622,3 +622,90 @@ A, B, C, E **nie dotykają** `firestore.rules`, middleware autoryzacji w
 `server.ts` ani ścieżek tokenowych bez logowania. `.gitignore` dostał nowy
 wpis `.claude/worktrees/` — infrastruktura agentów, nigdy nie powinna
 trafiać do repo.
+
+---
+
+2026-09-12 — Claude Code / Sonnet 5 (runda 2, ten sam dzień)
+
+Zadanie: kolejny pakiet zgłoszeń Macieja w trakcie tej samej sesji —
+cienie na kartach, podstrona ma przeżywać F5, refaktor trybu jasnego
+(nagłówki nieczytelne, biały tekst na białym), notatnik "dokładnie jak
+Google Docs" (formatowanie, PIN, szablon domyślny), usunięcie "odesłanych
+prac" z sidebara na rzecz widgetu w rogu, listwa narzędzi jako kafelki +
+zakładka "Prace domowe", automatyczne codzienne sprawdzenie Notion.
+
+Zrobione (commity `64ca190`..`6cb1925`):
+- **Krytyczny bug znaleziony w trakcie pracy**: `prose-invert` (Tailwind
+  Typography, kolory na sztywno pod ciemne tło) razem z hardkodowanym
+  `text-white`, bez względu na motyw, w 10 plikach — w trybie jasnym dawało
+  to dosłownie niewidoczny biały tekst na białej/jasnej karcie, m.in. w
+  polu wpisywania PIN-u notatnika. Naprawione we wszystkich 10 (jeden
+  commit własny dla notatnika `64ca190`, dziewięć pozostałych przez
+  równoległego agenta w worktree, zmergowane w `4a27794`).
+- Notatnik: naprawiony bug (PIN nigdy nie trafiał do kopiowanego linku),
+  prawdziwy szablon domyślny (`ScratchpadTemplate.isDefault`,
+  `getDefaultTemplate`/`setDefaultTemplate`) z treścią odzwierciedlającą
+  realny szablon lekcji Macieja z Google Docs, szerszy pasek formatowania
+  (wyrównanie, 6 kolorów tekstu, linki, lista zadań), mocniejsze
+  theme-aware cienie, nowy token `--accent-2` (fioletowy w trybie jasnym).
+  Zero zmian w `firestore.rules`.
+- Podstrona przeżywa F5: stan panelu (`view` i siedem powiązanych pól)
+  lustrzany w `sessionStorage`, odczytywany przy starcie zamiast
+  twardego `'dashboard'`. Zabezpieczenie przed pokazaniem widoku
+  lektorskiego kursantowi na współdzielonym komputerze.
+- Panel lektora: listwa narzędzi zamieniona z pigułek na siatkę kafelków
+  (ta sama szerokość co trzy główne kafelki), dołączona pozycja "Prace
+  domowe". "Odesłane prace" usunięte z `Sidebar.tsx` (badge + link) —
+  `TeacherHomeworkNotification.tsx` przebudowany z auto-znikającego po
+  10s toastu na trwały widget w rogu, pokazujący KOMPLET aktualnie
+  nieprzejrzanych spraw (nie tylko nowe zdarzenia z tej sesji), z
+  rozwijaną listą i osobnym "Później" per pozycja (sessionStorage).
+- Notion: nowa scheduled Cloud Function `checkNotionDaily`
+  (`functions/src/notion/dailyCheck.ts`, codziennie 06:00 czasu
+  warszawskiego) — liczy naprawdę nowe lekcje/kursantów względem tego, co
+  już jest w aplikacji, zapisuje do `system/notionAutoCheck`. Karta
+  "Historia lekcji z Notion" w panelu zwinięta domyślnie do niepozornego
+  linku, rozwija się automatycznie tylko gdy jest coś nowego. **Wdrożone
+  na produkcję** (`npm run deploy:functions` — także
+  `notifyStudentOnHomeworkGraded` z poprzedniej rundy tego dnia, która
+  jeszcze nie była wdrożona).
+- Przy okazji naprawione dziesiątki innych miejsc z tym samym wzorcem
+  błędu (`hover:text-white`, `border-white/10`, bare `text-white`) w
+  plikach dotykanych w tej rundzie (`ScratchpadEditor.tsx`,
+  `PublicScratchpadScreen.tsx`, `StudentScratchpadScreen.tsx`,
+  `ScratchpadModal.tsx`, `NotionSyncButton.tsx`).
+
+Nie dokończone / do sprawdzenia:
+- **Zero weryfikacji wzrokowej w przeglądarce** — jak w poprzedniej
+  rundzie tego dnia, wszystko przeszło `tsc`/testy/build, nic nie zostało
+  obejrzane na żywo. Priorytet numer jeden przy najbliższym logowaniu,
+  szczególnie nowy pasek formatowania notatnika i widget w rogu.
+  Odesłane w wersji "Kolor tekstu" — sześć kolorów zaszytych na sztywno w
+  kodzie, nie wybór dowolny. Świadomie: to notatnik lekcyjny, nie edytor
+  grafiki.
+- Cień na kartach "jak na zrzucie" — zrzut, który pokazał Maciej, okazał
+  się zrzutem z jego RĘCZNEGO Google Docs, nie z aplikacji (research
+  potwierdził: taki tekst nigdzie w kodzie nie istniał). Zinterpretowane
+  jako prośba o mocniejszy, theme-aware cień na analogicznej karcie w
+  aplikacji (notatnik) — zrobione, ale warto potwierdzić z Maciejem, czy
+  o to chodziło, przy najbliższej rozmowie.
+- `checkNotionDaily` nie miał jeszcze pierwszego realnego przebiegu (cron
+  6:00 czasu warszawskiego) — dowiemy się jutro rano, czy zadziałał.
+- Notatnik nadal nie ma prawdziwej współpracy wielu kursorów na żywo, nie
+  ma tabel/obrazków, eksport "do Google Docs" to nadal plik `.doc`, nie
+  integracja API — świadomie, patrz commit `64ca190` i wcześniejszy plan.
+
+Decyzje architektoniczne:
+- `checkNotionDaily` tylko PATRZY, nic nie importuje samodzielnie —
+  decyzja, co i komu założyć konto, zostaje po stronie lektora, zgodnie
+  z istniejącą filozofią całego modułu Notion ("pojawienie się kogoś w
+  Notion nie jest zgodą na założenie mu konta").
+- "Później" w widgecie powiadomień i stan podstrony po F5 w
+  `sessionStorage`, nie `localStorage` — świeże otwarcie karty ma
+  zaczynać czysto, nie dziedziczyć stanu sprzed dni.
+
+Ryzyka: `firestore.rules` **nietknięty** w całej tej rundzie — odczyt
+`system/notionAutoCheck` i `scratchpadTemplates` (przy tworzeniu notatnika)
+korzysta z reguł, które już tam były. Wdrożone na produkcję Cloud
+Functions — `notifyStudentOnHomeworkGraded` i `checkNotionDaily` teraz
+faktycznie działają na żywo, nie tylko w repo.
