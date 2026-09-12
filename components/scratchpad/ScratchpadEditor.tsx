@@ -35,6 +35,11 @@ import {
   Download,
   FileDown,
   FileType2,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Palette,
+  CheckSquare,
 } from 'lucide-react';
 import { ScratchpadDocument, ScratchpadTemplate } from '../../types';
 import { buildScratchpadUrl } from '../../services/scratchpadService';
@@ -279,9 +284,47 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     }
   };
 
+  // Wstawienie linku — `execCommand('createLink', ...)` wymaga zaznaczenia;
+  // bez niego wstawiamy sam adres jako klikalny tekst, żeby przycisk nie
+  // robił po cichu nic.
+  const handleInsertLink = () => {
+    if (isReadOnly) return;
+    const url = window.prompt('Adres linku (https://…)');
+    if (!url || !url.trim()) return;
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+      execCmd('createLink', url.trim());
+    } else {
+      window.document.execCommand(
+        'insertHTML',
+        false,
+        `<a href="${url.trim()}" target="_blank" rel="noopener noreferrer">${url.trim()}</a>&nbsp;`
+      );
+      handleInput();
+    }
+  };
+
+  // Lista zadań — zwykły checkbox HTML, natywnie klikalny nawet w
+  // contentEditable. Bez śledzenia stanu w Reakcie (dokument to tylko HTML).
+  const handleInsertChecklist = () => {
+    if (isReadOnly) return;
+    window.document.execCommand(
+      'insertHTML',
+      false,
+      '<div><input type="checkbox" style="margin-right:6px;vertical-align:middle;" />&nbsp;</div>'
+    );
+    handleInput();
+  };
+
   // Kopiowanie linku lub kodu PIN
+  //
+  // PIN trafia do linku zawsze, nie tylko gdy `requirePin` jest włączone: ID
+  // dokumentu jest już "sekretem" samym w sobie (`allow get: if true` w
+  // firestore.rules — link niewidzialny), więc PIN w URL nie osłabia niczego,
+  // a bez niego przycisk "Kopiuj link" dawał martwy PIN — kursant musiałby
+  // wpisywać go ręcznie mimo posiadania linku jednym kliknięciem.
   const handleCopyLink = () => {
-    const url = buildScratchpadUrl(docData.id);
+    const url = buildScratchpadUrl(docData.id, docData.pin ? { pin: docData.pin } : undefined);
     navigator.clipboard.writeText(url);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
@@ -354,12 +397,12 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   );
 
   return (
-    <div className={`flex flex-col bg-base-200 rounded-2xl border border-white/10 shadow-xl overflow-hidden ${className}`}>
+    <div className={`flex flex-col bg-base-200 rounded-2xl border border-line-strong shadow-[var(--shadow-lg)] overflow-hidden ${className}`}>
       {/* 1. NAGŁÓWEK DOKUMENTU
           Tożsamość po lewej, jedna akcja końcowa i jedno menu dostępu po prawej.
           Kod PIN i przełączniki uprawnień zeszły do menu — na ekranie zostaje
           to, czego lektor używa w trakcie pisania. */}
-      <header className="px-4 py-3 bg-base-300/80 border-b border-white/10 flex items-center justify-between gap-3 flex-wrap">
+      <header className="px-4 py-3 bg-base-300/80 border-b border-line-strong flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3 min-w-0" data-coach="pad-identity">
           <div className="p-2 rounded-xl bg-accent/12 text-accent border border-accent/25 shrink-0">
             <FileText size={18} />
@@ -569,7 +612,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         <div className="px-4 py-3 bg-warn/[0.1] border-b border-warn/30 flex items-start gap-3">
           <AlertTriangle size={16} className="text-warn shrink-0 mt-0.5" />
           <div className="min-w-0 text-xs leading-relaxed">
-            <p className="font-bold text-white">
+            <p className="font-bold text-text-hi">
               Ten notatnik nie zapisał się w chmurze — kursant go nie zobaczy
             </p>
             <p className="text-content-muted mt-0.5">
@@ -585,7 +628,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           trzy zakreślacze lektorskie i lista. Nagłówki, pozostałe style oraz
           wstawki lekcyjne schowane są w dwóch menu. */}
       {!isReadOnly && (
-        <div className="px-3 py-2 bg-base-300/40 border-b border-white/10 flex items-center gap-1.5 flex-wrap select-none">
+        <div className="px-3 py-2 bg-base-300/40 border-b border-line-strong flex items-center gap-1.5 flex-wrap select-none">
           <MenuDropdown
             open={isStyleMenuOpen}
             onOpenChange={setIsStyleMenuOpen}
@@ -680,6 +723,51 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
             title="Lista wypunktowana"
             onClick={() => execCmd('insertUnorderedList')}
           />
+
+          <div className="w-px h-5 bg-line-strong" aria-hidden />
+
+          <FormatButton
+            icon={<AlignLeft size={15} />}
+            title="Wyrównaj do lewej"
+            onClick={() => execCmd('justifyLeft')}
+          />
+          <FormatButton
+            icon={<AlignCenter size={15} />}
+            title="Wyśrodkuj"
+            onClick={() => execCmd('justifyCenter')}
+          />
+          <FormatButton
+            icon={<AlignRight size={15} />}
+            title="Wyrównaj do prawej"
+            onClick={() => execCmd('justifyRight')}
+          />
+
+          <div className="w-px h-5 bg-line-strong" aria-hidden />
+
+          {/* Kolor tekstu — paleta zamknięta (6 kolorów), nie swobodny
+              wybór: to notatnik lekcyjny, nie edytor grafiki. */}
+          <div className="flex items-center gap-1" data-coach="pad-color" title="Kolor tekstu">
+            <Palette size={14} className="text-text-2 mx-0.5" />
+            {[
+              { name: 'Domyślny', value: 'inherit' },
+              { name: 'Czerwony', value: '#dc2626' },
+              { name: 'Niebieski', value: '#2563eb' },
+              { name: 'Zielony', value: '#16a34a' },
+              { name: 'Fioletowy', value: '#7c3aed' },
+              { name: 'Pomarańczowy', value: '#ea580c' },
+            ].map(swatch => (
+              <button
+                key={swatch.value}
+                type="button"
+                onMouseDown={event => event.preventDefault()}
+                onClick={() => execCmd('foreColor', swatch.value === 'inherit' ? '#1e2630' : swatch.value)}
+                title={swatch.name}
+                aria-label={`Kolor tekstu: ${swatch.name}`}
+                className="h-5 w-5 rounded-full border border-line-strong cursor-pointer transition-transform hover:scale-110"
+                style={{ backgroundColor: swatch.value === 'inherit' ? 'transparent' : swatch.value }}
+              />
+            ))}
+          </div>
 
           <div className="w-px h-5 bg-line-strong" aria-hidden />
 
@@ -803,6 +891,19 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
                     onSelect: () => execCmd('insertOrderedList'),
                   },
                   {
+                    id: 'checklist',
+                    label: 'Lista zadań',
+                    description: 'Klikalny checkbox',
+                    icon: <CheckSquare size={14} />,
+                    onSelect: handleInsertChecklist,
+                  },
+                  {
+                    id: 'link',
+                    label: 'Link',
+                    icon: <Link2 size={14} />,
+                    onSelect: handleInsertLink,
+                  },
+                  {
                     id: 'hr',
                     label: 'Linia pozioma',
                     icon: <Minus size={14} />,
@@ -836,7 +937,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           contentEditable={!isReadOnly}
           onInput={handleInput}
           suppressContentEditableWarning
-          className={`max-w-4xl mx-auto min-h-[480px] p-6 md:p-10 rounded-2xl bg-base-200/90 border border-white/10 text-white shadow-2xl focus:outline-none focus:border-primary/40 transition-colors leading-relaxed font-sans prose prose-invert prose-headings:text-white prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-p:my-2 prose-ul:my-2 prose-li:my-0.5 selection:bg-primary/30 ${
+          className={`max-w-4xl mx-auto min-h-[480px] p-6 md:p-10 rounded-2xl bg-base-200/90 border border-line-strong text-text-hi shadow-[var(--shadow-lg)] focus:outline-none focus:border-primary/40 transition-colors leading-relaxed font-sans prose prose-headings:text-text-hi prose-strong:text-text-hi prose-a:text-primary prose-p:text-text prose-li:text-text prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-p:my-2 prose-ul:my-2 prose-li:my-0.5 selection:bg-primary/30 ${
             isReadOnly ? 'cursor-default' : 'cursor-text'
           }`}
           style={{ wordBreak: 'break-word' }}
@@ -844,16 +945,16 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       </div>
 
       {/* 4. DYSKRETNA STOPKA DOKUMENTU */}
-      <footer className="px-4 py-2 bg-base-300/80 border-t border-white/10 flex items-center justify-between text-[11px] text-content-muted">
+      <footer className="px-4 py-2 bg-base-300/80 border-t border-line-strong flex items-center justify-between text-[11px] text-content-muted">
         <div className="flex items-center gap-3">
-          <span>Słowa: <strong className="text-white/80">{wordCount}</strong></span>
+          <span>Słowa: <strong className="text-text-hi">{wordCount}</strong></span>
           <span>•</span>
           <span>Wersja: #{docData.version}</span>
           {docData.lastEditedBy && (
             <>
               <span>•</span>
               <span>
-                Ostatnia edycja: <strong className="text-white/80">{docData.lastEditedBy.name}</strong> ({docData.lastEditedBy.role === 'teacher' ? 'Lektor' : 'Kursant'})
+                Ostatnia edycja: <strong className="text-text-hi">{docData.lastEditedBy.name}</strong> ({docData.lastEditedBy.role === 'teacher' ? 'Lektor' : 'Kursant'})
               </span>
             </>
           )}

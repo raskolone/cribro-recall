@@ -208,14 +208,14 @@ export const PublicScratchpadScreen: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Nagłówek i Ikona */}
           <div className="text-center mb-8">
-            <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl border mb-4 shadow-xl ${
+            <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl border mb-4 shadow-[var(--shadow-md)] ${
               lockedDoc
                 ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 shadow-amber-500/10'
                 : 'bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border-primary/30 text-primary shadow-primary/10'
             }`}>
               {lockedDoc ? <ShieldAlert className="w-8 h-8" /> : <FileText className="w-8 h-8" />}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-text-hi tracking-tight">
               {lockedDoc ? 'Notatnik chroniony PINem' : <>Cribro <span className="text-primary font-normal">Scratchpad</span></>}
             </h1>
             <p className="text-content-muted text-sm mt-2">
@@ -226,7 +226,7 @@ export const PublicScratchpadScreen: React.FC = () => {
           </div>
 
           {/* Karta z formularzem PIN */}
-          <div className="bg-base-200/90 border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
+          <div className="bg-base-200/90 border border-line-strong rounded-2xl p-6 sm:p-8 shadow-[var(--shadow-lg)] backdrop-blur-xl">
             {errorMessage && (
               <div className="mb-6 p-4 rounded-xl bg-error/15 border border-error/30 flex items-start gap-3 text-error text-sm animate-in fade-in">
                 <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
@@ -247,7 +247,7 @@ export const PublicScratchpadScreen: React.FC = () => {
                     placeholder="np. ABC-123"
                     maxLength={8}
                     autoFocus
-                    className="w-full px-4 py-3.5 bg-base-300/80 border border-white/10 rounded-xl text-center font-mono text-2xl font-bold text-white tracking-widest placeholder:text-content-muted/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all uppercase"
+                    className="w-full px-4 py-3.5 bg-base-300/80 border border-line-strong rounded-xl text-center font-mono text-2xl font-bold text-text-hi tracking-widest placeholder:text-content-muted/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all uppercase"
                   />
                   <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-content-muted/40 text-xs">
                     PIN
@@ -273,7 +273,7 @@ export const PublicScratchpadScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleLeave}
-                  className="w-full text-center text-xs text-content-muted hover:text-white transition-colors cursor-pointer pt-2"
+                  className="w-full text-center text-xs text-content-muted hover:text-text-hi transition-colors cursor-pointer pt-2"
                 >
                   ← Wróć do ekranu głównego
                 </button>
@@ -294,25 +294,25 @@ export const PublicScratchpadScreen: React.FC = () => {
   return (
     <div className="min-h-screen bg-base-100 flex flex-col selection:bg-primary/30">
       {/* Pasek nawigacyjny na samej górze */}
-      <nav className="bg-base-200/90 border-b border-white/10 px-4 py-3 sticky top-0 z-30 backdrop-blur-md flex items-center justify-between gap-4">
+      <nav className="bg-base-200/90 border-b border-line-strong px-4 py-3 sticky top-0 z-30 backdrop-blur-md flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
             onClick={handleLeave}
-            className="p-2 rounded-xl bg-base-300 text-content-muted hover:text-white transition-colors cursor-pointer"
+            className="p-2 rounded-xl bg-base-300 text-content-muted hover:text-text-hi transition-colors cursor-pointer"
             title="Wróć do ekranu głównego"
           >
             <ArrowLeft size={16} />
           </button>
           <div className="min-w-0">
-            <h1 className="text-sm sm:text-base font-bold text-white truncate flex items-center gap-2">
+            <h1 className="text-sm sm:text-base font-bold text-text-hi truncate flex items-center gap-2">
               <span>{document.title}</span>
               <span className="font-mono text-xs px-2 py-0.5 rounded-lg bg-primary/15 text-primary border border-primary/20">
                 {formatAccessCode(document.pin)}
               </span>
             </h1>
             <p className="text-[11px] text-content-muted truncate">
-              Prowadzący: <span className="text-white/80">{document.teacherName}</span>
+              Prowadzący: <span className="text-text-hi">{document.teacherName}</span>
             </p>
           </div>
         </div>

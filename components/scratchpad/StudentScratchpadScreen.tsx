@@ -110,13 +110,13 @@ export const StudentScratchpadScreen: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-6xl mx-auto animate-fadeIn">
       {/* Nagłówek sekcji */}
-      <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-white/10">
+      <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-line-strong">
         <div>
           <div className="flex items-center gap-2 text-primary text-xs font-bold uppercase tracking-wider mb-1">
             <FileText size={15} />
             <span>Wspólny notatnik z lektorem</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white">
+          <h1 className="text-2xl sm:text-3xl font-black text-text-hi">
             Mój notatnik
           </h1>
           <p className="text-content-muted text-xs sm:text-sm mt-1">
@@ -125,7 +125,7 @@ export const StudentScratchpadScreen: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center bg-base-200 px-3 py-1.5 rounded-xl border border-white/10 text-xs gap-2">
+          <div className="flex items-center bg-base-200 px-3 py-1.5 rounded-xl border border-line-strong text-xs gap-2">
             <span className="text-content-muted text-[10px] uppercase font-mono">Twój stały PIN:</span>
             <span className="font-mono font-bold text-primary tracking-widest text-sm">
               {formatAccessCode(document.pin)}
@@ -146,7 +146,7 @@ export const StudentScratchpadScreen: React.FC = () => {
       </div>
 
       {/* Dyskretna informacja o trybie */}
-      <div className="p-3.5 rounded-2xl bg-base-200/60 border border-white/5 flex items-center gap-3 text-xs text-content-muted">
+      <div className="p-3.5 rounded-2xl bg-base-200/60 border border-line-soft flex items-center gap-3 text-xs text-content-muted">
         <Info size={18} className="text-primary shrink-0" />
         <div>
           <span>

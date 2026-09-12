@@ -912,5 +912,7 @@ export interface ScratchpadTemplate {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  /** Wstawiany automatycznie do nowego notatnika — dokładnie jeden na raz. */
+  isDefault?: boolean;
 }
 

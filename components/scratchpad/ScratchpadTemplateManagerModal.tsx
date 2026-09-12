@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { AlertCircle, Loader2, Pencil, Plus, Star, Trash2, X } from 'lucide-react';
 import { ScratchpadTemplate } from '../../types';
 import {
+  clearDefaultTemplate,
   createScratchpadTemplate,
   deleteScratchpadTemplate,
   listScratchpadTemplates,
+  setDefaultTemplate,
   updateScratchpadTemplate,
 } from '../../services/scratchpadTemplateService';
 import Button from '../ui/Button';
+import Badge from '../ui/Badge';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface ScratchpadTemplateManagerModalProps {
@@ -107,6 +110,25 @@ export const ScratchpadTemplateManagerModal: React.FC<ScratchpadTemplateManagerM
     } catch (err: any) {
       console.error('[Scratchpad] Błąd zapisu szablonu:', err);
       setError(err?.message || 'Nie udało się zapisać szablonu.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleDefault = async (tpl: ScratchpadTemplate) => {
+    setIsSaving(true);
+    setError(null);
+    try {
+      if (tpl.isDefault) {
+        await clearDefaultTemplate(tpl.id);
+      } else {
+        await setDefaultTemplate(tpl.id);
+      }
+      await load();
+      onTemplatesChanged?.();
+    } catch (err: any) {
+      console.error('[Scratchpad] Błąd ustawiania szablonu domyślnego:', err);
+      setError(err?.message || 'Nie udało się ustawić szablonu domyślnego.');
     } finally {
       setIsSaving(false);
     }
@@ -218,9 +240,10 @@ export const ScratchpadTemplateManagerModal: React.FC<ScratchpadTemplateManagerM
                   <Loader2 size={20} className="animate-spin" />
                 </div>
               ) : templates.length === 0 ? (
-                <p className="text-xs text-text-faint py-4 text-center">
-                  Brak zapisanych szablonów — dodaj pierwszy powyżej.
-                </p>
+                <div className="text-xs text-text-faint py-4 text-center space-y-1">
+                  <p>Brak zapisanych szablonów — dodaj pierwszy powyżej.</p>
+                  <p>Bez szablonu domyślnego nowy notatnik dostaje wbudowaną strukturę lekcji.</p>
+                </div>
               ) : (
                 <ul className="space-y-1.5">
                   {templates.map(tpl => (
@@ -228,7 +251,10 @@ export const ScratchpadTemplateManagerModal: React.FC<ScratchpadTemplateManagerM
                       key={tpl.id}
                       className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-line-strong"
                     >
-                      <span className="text-xs font-semibold text-text-hi truncate">{tpl.title}</span>
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className="text-xs font-semibold text-text-hi truncate">{tpl.title}</span>
+                        {tpl.isDefault && <Badge tone="violet">Domyślny</Badge>}
+                      </span>
                       <div className="flex items-center gap-1 shrink-0">
                         {confirmDeleteId === tpl.id ? (
                           <>
@@ -251,6 +277,20 @@ export const ScratchpadTemplateManagerModal: React.FC<ScratchpadTemplateManagerM
                           </>
                         ) : (
                           <>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleDefault(tpl)}
+                              disabled={isSaving}
+                              title={tpl.isDefault ? 'Nie ustawiaj jako domyślny' : 'Ustaw jako domyślny szablon'}
+                              aria-label={tpl.isDefault ? 'Nie ustawiaj jako domyślny' : 'Ustaw jako domyślny szablon'}
+                              className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                                tpl.isDefault
+                                  ? 'text-accent-2 hover:bg-accent-2/10'
+                                  : 'text-text-2 hover:text-accent-2 hover:bg-white/[0.08]'
+                              }`}
+                            >
+                              <Star size={13} fill={tpl.isDefault ? 'currentColor' : 'none'} />
+                            </button>
                             <button
                               type="button"
                               onClick={() => startEdit(tpl)}

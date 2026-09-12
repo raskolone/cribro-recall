@@ -7,16 +7,20 @@ import {
 import { formatAccessCode, normalizeAccessCode } from '../utils/accessCode';
 
 test('getInitialScratchpadContent tworzy poprawny szkielet HTML i tekstowy z imieniem kursanta', () => {
+  // Struktura zgłoszona 2026-09-12 — pięć sekcji lekcji, które Maciej
+  // dotąd wklejał ręcznie w Google Docs przed każdą lekcją.
   const result = getInitialScratchpadContent('Jan Kowalski');
-  
+
   assert.ok(result.html.includes('Jan Kowalski'));
-  assert.ok(result.html.includes('Lekcja'));
-  assert.ok(result.html.includes('Nowe słownictwo'));
-  assert.ok(result.html.includes('Poprawki'));
+  assert.ok(result.html.includes('Revision'));
+  assert.ok(result.html.includes('Main topic / Practice'));
+  assert.ok(result.html.includes('Lesson Summary'));
+  assert.ok(result.html.includes('Key Language'));
+  assert.ok(result.html.includes('Homework'));
 
   assert.ok(result.text.includes('Jan Kowalski'));
-  assert.ok(result.text.includes('Nowe słownictwo i zwroty'));
-  assert.ok(result.text.includes('Poprawki i wymowa'));
+  assert.ok(result.text.includes('Revision'));
+  assert.ok(result.text.includes('Homework'));
 });
 
 test('buildScratchpadUrl generuje czytelny URL z sformatowanym kodem PIN', () => {

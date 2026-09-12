@@ -7,6 +7,8 @@ import {
   query,
   setDoc,
   updateDoc,
+  where,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { ScratchpadTemplate } from '../types';
@@ -68,4 +70,37 @@ export async function updateScratchpadTemplate(
 /** Usuwa szablon. */
 export async function deleteScratchpadTemplate(id: string): Promise<void> {
   await deleteDoc(templateDocRef(id));
+}
+
+/**
+ * Szablon domyślny — wstawiany automatycznie do treści KAŻDEGO nowego
+ * notatnika (patrz `getOrCreateStudentScratchpad` w `scratchpadService.ts`).
+ * Odczyt może się nie udać kursantowi (reguła `isAdmin()`-only) — wołający
+ * ma na to gotowy fallback, więc funkcja celowo nie łyka błędu tutaj.
+ */
+export async function getDefaultTemplate(): Promise<ScratchpadTemplate | null> {
+  const snap = await getDocs(query(templatesCollectionRef(), where('isDefault', '==', true)));
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, ...(d.data() as Omit<ScratchpadTemplate, 'id'>) };
+}
+
+/**
+ * Ustawia dany szablon jako domyślny i odznacza pozostałe — jeden batch,
+ * żeby nigdy nie było dwóch domyślnych naraz (co dałoby niezdeterminowany
+ * wybór w `getDefaultTemplate`, bo zapytanie nie sortuje wyników).
+ */
+export async function setDefaultTemplate(id: string): Promise<void> {
+  const snap = await getDocs(query(templatesCollectionRef(), where('isDefault', '==', true)));
+  const batch = writeBatch(db);
+  snap.docs.forEach(d => {
+    if (d.id !== id) batch.update(d.ref, { isDefault: false });
+  });
+  batch.update(templateDocRef(id), { isDefault: true, updatedAt: new Date().toISOString() });
+  await batch.commit();
+}
+
+/** Odznacza dany szablon jako domyślny (bez wskazywania nowego). */
+export async function clearDefaultTemplate(id: string): Promise<void> {
+  await updateDoc(templateDocRef(id), { isDefault: false, updatedAt: new Date().toISOString() });
 }

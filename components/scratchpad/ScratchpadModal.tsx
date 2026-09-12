@@ -127,7 +127,7 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-5xl h-[90vh] max-h-[920px] bg-base-100 rounded-3xl border border-white/15 shadow-2xl flex flex-col overflow-hidden">
+      <div className="relative w-full max-w-5xl h-[90vh] max-h-[920px] bg-base-100 rounded-3xl border border-line-strong shadow-[var(--shadow-lg)] flex flex-col overflow-hidden">
         {/* Zawartość okna. Zamknięcie renderuje sam edytor w swoim pasku
             nagłówka — pływający krzyżyk nachodził na przyciski udostępniania. */}
         {isLoading ? (
@@ -145,7 +145,7 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2 rounded-xl bg-base-300 text-white text-xs font-bold hover:bg-base-200"
+              className="px-5 py-2 rounded-xl bg-base-300 text-text-hi text-xs font-bold hover:bg-base-200"
             >
               Zamknij
             </button>

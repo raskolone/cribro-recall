@@ -18,6 +18,18 @@ import {
   formatAccessCode,
   isValidAccessCode,
 } from '../utils/accessCode';
+import { getDefaultTemplate } from './scratchpadTemplateService';
+
+/** Usuwa znaczniki HTML dla wersji tekstowej — wystarczające dla podglądu/wyszukiwania. */
+const stripHtmlToText = (html: string): string =>
+  html
+    .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|h[1-6]|li)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 
 export const scratchpadDocRef = (id: string) => doc(db, 'scratchpads', id);
 
@@ -100,7 +112,13 @@ export function saveLocalScratchpad(docData: ScratchpadDocument): void {
 }
 
 /**
- * Zwraca bazowy szablon HTML dla nowo tworzonego dokumentu brudnopisu.
+ * Zwraca bazowy szablon HTML dla nowo tworzonego dokumentu notatnika.
+ *
+ * Odzwierciedla strukturę, której Maciej używał ręcznie w Google Docs przed
+ * każdą lekcją (zgłoszenie 2026-09-12) — pięć sekcji z kolorowymi nagłówkami.
+ * To jest wyłącznie STATYCZNY fallback "w kodzie": jeśli lektor ustawi
+ * własny szablon jako domyślny w `scratchpadTemplates` (`isDefault: true`),
+ * `getOrCreateStudentScratchpad` użyje JEGO treści zamiast tej — patrz niżej.
  */
 export function getInitialScratchpadContent(studentName: string): {
   html: string;
@@ -112,9 +130,14 @@ export function getInitialScratchpadContent(studentName: string): {
     year: 'numeric',
   });
 
-  const html = `<h2>📝 Lekcja — ${today}</h2><p>Wspólny brudnopis notatek z zajęć z <strong>${studentName}</strong>.</p><h3>💡 Nowe słownictwo i zwroty</h3><ul><li>...</li></ul><h3>⚡ Poprawki i wymowa</h3><ul><li>...</li></ul><h3>🎯 Ustalenia i praca własna</h3><p>...</p>`;
+  const html = `<h2>Lesson Template — ${today}</h2><p>Wspólny notatnik z zajęć z <strong>${studentName}</strong>.</p>` +
+    `<h3 style="color:#db2777">Revision</h3><p>Tutaj wklejam powtórkę z poprzedniej lekcji lub robimy zadanie domowe, jeżeli nie zostało wykonane.</p>` +
+    `<h3 style="color:#0d9488">Main topic / Practice</h3><p>Tutaj wklejam pytania, które zadaję kursantowi, sugerowane odpowiedzi oraz ewentualne ćwiczenia z tematu lekcji.</p>` +
+    `<h3 style="color:#2563eb">Lesson Summary</h3><p>Po spotkaniu wklejam podsumowanie w kilku zwięzłych zdaniach.</p>` +
+    `<h3 style="color:#dc2626">Key Language &amp; Corrections (New words)</h3><p>W tym miejscu wrzucam listę słownictwa użytego podczas lekcji i wszystkie poprawki z delayed feedback.</p>` +
+    `<h3 style="color:#7c3aed">Homework</h3><p>Zadanie domowe w postaci tłumaczenia zdań lub przypisane zadanie w aplikacji Recall.</p>`;
 
-  const text = `## Lekcja — ${today}\nWspólny brudnopis notatek z zajęć z ${studentName}.\n\n### Nowe słownictwo i zwroty\n- ...\n\n### Poprawki i wymowa\n- ...\n\n### Ustalenia i praca własna\n...`;
+  const text = stripHtmlToText(html);
 
   return { html, text };
 }
@@ -169,7 +192,21 @@ export async function getOrCreateStudentScratchpad(
   // 3. Jeśli dokument nie istnieje nigdzie, wygeneruj nowy z unikalnym kodem PIN
   const pin = normalizeAccessCode(generateAccessCode(6));
   const now = new Date().toISOString();
-  const initial = getInitialScratchpadContent(student.name);
+
+  // Szablon domyślny lektora (jeśli ustawiony) wygrywa ze statycznym
+  // fallbackiem w kodzie. Odczyt `scratchpadTemplates` odmówi kursantowi
+  // (reguła `isAdmin()`-only) — to oczekiwane, nie błąd do zgłaszania:
+  // kursant zakładający swój notatnik jako pierwszy po prostu dostaje
+  // wbudowaną treść, tak jak dotychczas.
+  let initial: { html: string; text: string };
+  try {
+    const defaultTemplate = await getDefaultTemplate();
+    initial = defaultTemplate
+      ? { html: defaultTemplate.contentHtml, text: stripHtmlToText(defaultTemplate.contentHtml) }
+      : getInitialScratchpadContent(student.name);
+  } catch {
+    initial = getInitialScratchpadContent(student.name);
+  }
 
   const newDoc: ScratchpadDocument = {
     id: docId,

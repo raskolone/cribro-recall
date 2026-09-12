@@ -9,7 +9,7 @@ import React, { ReactNode } from 'react';
  * i „do omówienia" czyta się jako jedną rodzinę, a nie trzy osobne wynalazki.
  */
 
-export type BadgeTone = 'accent' | 'warn' | 'danger' | 'info' | 'neutral';
+export type BadgeTone = 'accent' | 'warn' | 'danger' | 'info' | 'neutral' | 'violet';
 
 /** Statusy testów i zadań wg design/app-spec/data-shapes.md. */
 export type BadgeStatus = 'ok' | 'wait' | 'low';
@@ -20,6 +20,8 @@ const TONES: Record<BadgeTone, string> = {
   danger: 'bg-danger/12 border-danger/30 text-danger',
   info: 'bg-info/12 border-info/30 text-info',
   neutral: 'bg-white/5 border-line-strong text-text-2',
+  /* Drugi akcent, używany oszczędnie — patrz design/theme/tokens.css. */
+  violet: 'bg-accent-2/12 border-accent-2/30 text-accent-2',
 };
 
 const STATUS_TONE: Record<BadgeStatus, BadgeTone> = {

@@ -27,6 +27,11 @@
   --accent-30:       rgba(114, 240, 180, 0.30);
   --accent-55:       rgba(114, 240, 180, 0.55);
 
+  /* Drugi akcent — używany oszczędnie (zaznaczenie tekstu, pojedyncze
+     wyróżnienia), nie jako drugi kolor marki. W trybie jasnym dostaje
+     wyraźniejszą, fioletową wartość — patrz blok trybu dziennego niżej. */
+  --accent-2:        #a78bfa;
+
   /* ---- Text ---- */
   --text:            #eae8e3;   /* body */
   --text-hi:         #ffffff;   /* display headings only */
@@ -172,6 +177,11 @@ a:hover { color: var(--accent-soft); }
   --accent-30:       rgba(20, 160, 110, 0.30);
   --accent-55:       rgba(20, 160, 110, 0.55);
 
+  /* Odrobina fioletu na kości słoniowej — wyłącznie akcent, nie drugi
+     kolor marki: zaznaczenie tekstu i pojedyncze wyróżnienia (np. domyślny
+     szablon notatnika). */
+  --accent-2:        #7c3aed;
+
   --text:            #1e2630;
   --text-hi:         #0a1220;
   --text-2:          #4d5a68;
@@ -190,13 +200,26 @@ a:hover { color: var(--accent-soft); }
   --line-soft:       rgba(10, 18, 32, 0.05);
 
   /* Czarne cienie na białym czytają się jak brud — stąd barwa atramentu
-     i znacznie niższe krycie. */
-  --shadow-sm:       0 8px 24px -8px rgba(30, 38, 48, 0.16);
-  --shadow-md:       0 12px 32px -8px rgba(30, 38, 48, 0.18);
-  --shadow-lg:       0 16px 48px -12px rgba(30, 38, 48, 0.20);
+     i niższe (ale, po zgłoszeniu Macieja 2026-09-12, nie za niskie) krycie:
+     karty mają się wyraźnie odklejać od tła koloru kości słoniowej, nie
+     tylko sugerować głębię obrysem. */
+  --shadow-sm:       0 8px 24px -8px rgba(30, 38, 48, 0.22);
+  --shadow-md:       0 14px 36px -8px rgba(30, 38, 48, 0.26);
+  --shadow-lg:       0 20px 56px -12px rgba(30, 38, 48, 0.30);
   --glow:            0 0 24px rgba(20, 160, 110, 0.20);
   --glow-strong:     0 0 48px rgba(20, 160, 110, 0.30);
   --glow-btn:        0 8px 24px -8px rgba(20, 160, 110, 0.55);
+
+  /* Zaznaczenie tekstu w trybie jasnym — fioletowy akcent zamiast
+     wspólnego z trybem nocnym `--accent` (zielony). */
+  --selection-bg:    rgba(124, 58, 237, 0.22);
+  --selection-fg:    #5b21b6;
+}
+
+:root[data-theme="light"] ::selection,
+:root.light ::selection {
+  background: var(--selection-bg);
+  color: var(--selection-fg);
 }
 
 /* Przejście między trybami.
