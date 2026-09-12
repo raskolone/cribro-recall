@@ -196,7 +196,7 @@ export const PublicScratchpadScreen: React.FC = () => {
     return (
       <div className="min-h-screen bg-base-100 flex flex-col items-center justify-center p-6 space-y-4">
         <Loader2 className="w-12 h-12 text-primary animate-spin" />
-        <p className="text-sm font-semibold text-content-muted">Ładowanie brudnopisu...</p>
+        <p className="text-sm font-semibold text-content-muted">Ładowanie notatnika...</p>
       </div>
     );
   }
@@ -216,12 +216,12 @@ export const PublicScratchpadScreen: React.FC = () => {
               {lockedDoc ? <ShieldAlert className="w-8 h-8" /> : <FileText className="w-8 h-8" />}
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              {lockedDoc ? 'Brudnopis chroniony PINem' : <>Cribro <span className="text-primary font-normal">Scratchpad</span></>}
+              {lockedDoc ? 'Notatnik chroniony PINem' : <>Cribro <span className="text-primary font-normal">Scratchpad</span></>}
             </h1>
             <p className="text-content-muted text-sm mt-2">
               {lockedDoc
                 ? `Wymagane potwierdzenie dostępu do notatek: ${lockedDoc.studentName}`
-                : 'Współdzielony brudnopis notatek z lekcji i wspólnej pracy na żywo'}
+                : 'Współdzielony notatnik z lekcji i wspólnej pracy na żywo'}
             </p>
           </div>
 
@@ -237,7 +237,7 @@ export const PublicScratchpadScreen: React.FC = () => {
             <form onSubmit={handleFormSubmit} className="space-y-5">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-content-muted mb-2">
-                  {lockedDoc ? 'Wprowadź kod PIN tego brudnopisu' : 'Wprowadź kod PIN dokumentu'}
+                  {lockedDoc ? 'Wprowadź kod PIN tego notatnika' : 'Wprowadź kod PIN dokumentu'}
                 </label>
                 <div className="relative">
                   <input
@@ -266,7 +266,7 @@ export const PublicScratchpadScreen: React.FC = () => {
                 disabled={isLoading || !pinInput.trim()}
                 className="w-full py-3 text-sm font-bold shadow-lg shadow-primary/20"
               >
-                {isLoading ? 'Weryfikacja kodu...' : lockedDoc ? 'Odblokuj notatki →' : 'Otwórz brudnopis →'}
+                {isLoading ? 'Weryfikacja kodu...' : lockedDoc ? 'Odblokuj notatki →' : 'Otwórz notatnik →'}
               </Button>
 
               {lockedDoc && (

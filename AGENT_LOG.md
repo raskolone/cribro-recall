@@ -435,3 +435,91 @@ na który była jawna zgoda), middleware autoryzacji ani ścieżek tokenowych
 bez logowania. Zmiany w `server.ts` ograniczają się do generatora testów:
 podmiana inline'owego parsera na wywołanie funkcji z `utils/` oraz dodanie
 bramki językowej. Trasy, autoryzacja i pozostałe endpointy bez zmian.
+
+---
+
+2026-09-12 — Claude Code / Sonnet 5
+
+Zadanie: Etap D z `docs/plan-weekend-2026-09-12.md` — wspólny notatnik:
+szablony zarządzane przez lektora (zastąpienie jednego zahardkodowanego
+przycisku) oraz eksport do PDF i do pliku `.doc` (Word/Google Docs bez
+integracji API). Plus kosmetyczna zmiana nazwy „Brudnopis" → „Notatnik"
+wyłącznie w `components/scratchpad/`. Praca wykonana w izolowanym git
+worktree na osobnej gałęzi (`worktree-agent-aa8a6bce431bb3b8d`), zakres
+ograniczony do `components/scratchpad/`, `utils/pdfExport.ts`,
+`firestore.rules` + `tests/rules/`, zgodnie ze zleceniem (równolegle inny
+agent pracował nad resztą panelu lektora w głównym katalogu roboczym).
+
+Zrobione:
+- `firestore.rules`: nowy, osobny blok `match /scratchpadTemplates/{id} {
+  allow read, write: if isAdmin(); }` — dodany zaraz po istniejącym bloku
+  `scratchpadPins`, przed `system`. Reguły `scratchpads`/`scratchpadPins`
+  nietknięte.
+- `tests/rules/firestore.rules.test.ts`: cztery nowe testy dla
+  `scratchpadTemplates` (lektor po e-mailu, admin po roli `teacher` w
+  dokumencie użytkownika, kursant odmówiony na czytaniu/pisaniu/kasowaniu,
+  gość niezalogowany odmówiony). `npm run test:rules` → 37/37 (33 stare +
+  4 nowe), żaden stary test się nie zepsuł.
+- `types.ts`: nowy interfejs `ScratchpadTemplate`.
+- `services/scratchpadTemplateService.ts` (nowy plik): `listScratchpadTemplates`,
+  `createScratchpadTemplate`, `updateScratchpadTemplate`,
+  `deleteScratchpadTemplate`.
+- `components/scratchpad/ScratchpadTemplateManagerModal.tsx` (nowy plik):
+  modal zarządzania szablonami — nowy pusty / nowy z aktualnej treści
+  edytora, edycja tytułu i HTML, usunięcie z potwierdzeniem inline.
+  Renderowany w `ScratchpadEditor.tsx` tylko dla `isTeacher`.
+- `components/scratchpad/ScratchpadEditor.tsx`: usunięty zahardkodowany
+  `handleInsertTemplate` (stały HTML) — zastąpiony wersją przyjmującą
+  dowolny HTML wstawianego szablonu. Menu „Wstaw” pokazuje teraz realną
+  listę zapisanych szablonów (sekcja „Szablony”, tylko dla lektora) plus
+  wejście „Zarządzaj szablonami…”. Nowy dropdown „Eksportuj” w nagłówku
+  (widoczny i dla lektora, i dla kursanta) z dwiema pozycjami: „Eksportuj
+  do PDF” i „Eksportuj do Worda” (opis: „Otwiera się też w Google Docs”).
+- `utils/pdfExport.ts`: nowe funkcje `exportScratchpadToPDF` (dokładnie wzorzec
+  `exportTestToPDF`, `html2pdf.js`, zero nowych zależności) i
+  `exportScratchpadToWord` (Blob HTML z nagłówkiem MS Office,
+  `Content-Type: application/msword`, rozszerzenie `.doc` — zero nowych
+  zależności, zero integracji Google API).
+- Zmiana nazwy „Brudnopis” → „Notatnik” w widocznym dla użytkownika tekście
+  (nagłówki, przyciski, opisy, tooltipy, samouczek) w plikach:
+  `ScratchpadEditor.tsx`, `ScratchpadModal.tsx`, `StudentScratchpadScreen.tsx`,
+  `PublicScratchpadScreen.tsx`, `ScratchpadStudentPicker.tsx`,
+  `scratchpadCoachSteps.ts`. Świadomie NIE zmienione: nazwy plików, nazwy
+  zmiennych/funkcji, nazwa kolekcji `scratchpads`, nazwa
+  `scratchpadService.ts`, komentarze w kodzie i komunikaty
+  `console.error`/`console.warn` (niewidoczne dla użytkownika w UI).
+  Repo nie używa i18next w `components/scratchpad/` (teksty są hardkodowane
+  bezpośrednio w JSX), więc `en.json`/`pl.json` nie wymagały zmian.
+
+Nie dokończone / do sprawdzenia:
+- Weryfikacja wzrokowa w przeglądarce (menu szablonów, modal zarządzania,
+  eksport PDF/Word) nie została wykonana — brak dostępu do przeglądarki w
+  tej sesji. Zweryfikowano wyłącznie `tsc --noEmit`, `npm test`, `npm run
+  build`, `npm run test:rules`.
+- Plik `.doc` z `exportScratchpadToWord` nie został ręcznie otwarty w
+  Wordzie ani w Google Docs po wygenerowaniu — wzorzec (nagłówek
+  `xmlns:w="urn:schemas-microsoft-com:office:word"`, `Content-Type:
+  application/msword`) jest standardowy, ale bez ręcznego testu nie mam
+  100% pewności co do renderowania w każdej wersji Worda.
+
+Decyzje architektoniczne:
+- Osobna kolekcja `scratchpadTemplates` zamiast rozszerzania `scratchpads`
+  — zero interakcji z wrażliwą logiką PIN/dostępu, zgodnie z briefem.
+- Serwis szablonów jako nowy plik `scratchpadTemplateService.ts`, nie
+  rozszerzenie `scratchpadService.ts` — inna domena (zarządzanie treścią
+  wielokrotnego użytku vs. cykl życia jednego dokumentu na kursanta),
+  osobny plik czytelniej rozdziela odpowiedzialność.
+- „Brudnopis” → „Notatnik” zastosowane tylko do tekstu faktycznie
+  renderowanego użytkownikowi (JSX, atrybuty `title`/`aria-label`,
+  wartości pól typu `tip`/`description` w samouczku) — komentarze i logi
+  konsoli zostawione, bo nie są „widoczne dla użytkownika” w sensie
+  dosłownym z briefu, a zmiana ich byłaby wykroczeniem poza zakres.
+
+Ryzyka: dotknięty `firestore.rules`, ale wyłącznie przez dodanie nowego,
+w pełni izolowanego bloku (`scratchpadTemplates`, `isAdmin()`-only, zero
+odczytu bez logowania, zero ścieżki PIN). Bloki `scratchpads` i
+`scratchpadPins` — obszar wysokiego ryzyka z CLAUDE.md §3 — pozostały
+bajt w bajt bez zmian; potwierdzone przez pełny przebieg `npm run
+test:rules` (37/37, w tym wszystkie stare testy dla tych dwóch kolekcji).
+`services/scratchpadService.ts` nietknięty. Middleware autoryzacji w
+`server.ts` i ścieżki tokenowe bez logowania — nietknięte.

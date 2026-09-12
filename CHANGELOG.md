@@ -77,6 +77,67 @@ Zmiany UI z etapów opisanych niżej (przebudowa paska Prezentacji i Brudnopisu,
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
+### 🆕 Notatnik: szablony lektora i eksport do PDF/Worda (2026-09-12)
+
+Zlecenie z `docs/plan-weekend-2026-09-12.md`, Etap D. Zakres wyłącznie
+`components/scratchpad/`, `utils/pdfExport.ts`, `firestore.rules` (jedna nowa,
+osobna kolekcja) i `tests/rules/`.
+
+**Szablony treści (dotąd był jeden zahardkodowany przycisk „Szablon sekcji"
+w `ScratchpadEditor.handleInsertTemplate`, wstawiający zawsze ten sam HTML).**
+Zastąpione prawdziwą, wieloszablonową funkcją zarządzaną przez lektora:
+- Nowa kolekcja `scratchpadTemplates/{id}` (`title`, `contentHtml`, `createdBy`,
+  `createdAt`/`updatedAt` jako ISO stringi) — **osobna od `scratchpads`/
+  `scratchpadPins`**, celowo zero interakcji z tą wrażliwą logiką dostępu
+  linkiem/PIN-em. Reguła: `allow read, write: if isAdmin();` — kursant nigdy
+  nie czyta ani nie zapisuje tej kolekcji, wybór i wstawienie szablonu robi
+  wyłącznie lektor.
+- `services/scratchpadTemplateService.ts` (nowy): lista/dodanie/edycja/
+  usunięcie szablonu.
+- `components/scratchpad/ScratchpadTemplateManagerModal.tsx` (nowy): prosty
+  modal zarządzania — nowy pusty szablon, nowy z aktualnej treści edytora,
+  edycja tytułu/HTML, usunięcie z potwierdzeniem. Widoczny wyłącznie dla
+  lektora/admina.
+- Menu „Wstaw” w `ScratchpadEditor.tsx` pokazuje teraz realną listę zapisanych
+  szablonów (sekcja „Szablony”) plus wejście „Zarządzaj szablonami…" —
+  wyłącznie w wersji lektorskiej; kursant widzi tylko wstawianie daty.
+- `tests/rules/firestore.rules.test.ts`: cztery nowe testy — lektor po
+  e-mailu i po roli `teacher` w dokumencie użytkownika czyta/zapisuje,
+  kursant nie czyta ani nie zapisuje (żadną drogą), gość niezalogowany nie ma
+  dostępu. `npm run test:rules` → 37/37 (33 stare + 4 nowe), żaden istniejący
+  test nie ruszył się.
+
+**Eksport do PDF.** `exportScratchpadToPDF` w `utils/pdfExport.ts` — dokładnie
+ten sam wzorzec co istniejące `exportTestToPDF` (`html2pdf.js`, zero nowych
+zależności). Dostępny z menu „Eksportuj” w nagłówku notatnika, dla lektora i
+kursanta.
+
+**Eksport „do Worda / Google Docs" — bez integracji API Google.** Zgodnie z
+decyzją zapisaną w planie: żadnego OAuth, żadnej biblioteki `googleapis`.
+`exportScratchpadToWord` (ten sam plik) generuje blob HTML z nagłówkiem
+zgodnym z formatem Worda (`xmlns:w="urn:schemas-microsoft-com:office:word"`),
+pobierany z `Content-Type: application/msword` i rozszerzeniem `.doc` — Word
+otwiera go bezpośrednio, Google Docs po wgraniu na Dysk („Otwórz za pomocą →
+Dokumenty Google"). Przycisk w UI podpisany uczciwie: „Eksportuj do Worda"
+z opisem „Otwiera się też w Google Docs" — nigdzie nie nazwane wprost
+eksportem „do Google Docs".
+
+**Nazewnictwo „Brudnopis" → „Notatnik".** Zmieniony wyłącznie widoczny dla
+użytkownika tekst w `components/scratchpad/` (nagłówki, tytuły, opisy,
+przyciski, samouczek) — nazwy plików, zmiennych, funkcji, kolekcji Firestore
+`scratchpads` i `scratchpadService.ts` zostają bez zmian, zgodnie z briefem.
+Komentarze w kodzie i komunikaty `console.error`/`console.warn` (niewidoczne
+dla użytkownika) też zostawione bez zmian.
+
+**Stan weryfikacji:** `npx tsc --noEmit` czysto (poza dwoma niepowiązanymi,
+przedistniejącymi błędami w `functions/src/notion/{client,sync}.ts` —
+brakujący moduł `firebase-functions/logger` w środowisku, potwierdzone przez
+odtworzenie tego samego błędu na commicie sprzed tej zmiany), `npm test` —
+251/253 (te same dwa niepowiązane, przedistniejące niepowodzenia w
+`tests/notionLevel.test.ts` i `tests/notionMatch.test.ts`, ten sam brakujący
+moduł, potwierdzone na commicie sprzed zmiany), `npm run test:rules` 37/37,
+`npm run build` przechodzi.
+
 ### 🔧 Generator testów — trzy naprawy (2026-09-12)
 
 Błędy wychwycone przez Macieja w trakcie testowania aplikacji. Wszystkie w kodzie v1, niezwiązane z silnikiem v2.

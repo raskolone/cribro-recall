@@ -31,7 +31,7 @@ export const buildScratchpadCoachSteps = ({
       group: 'Podstawy',
       title: 'Jeden dokument na całą naukę',
       description:
-        'To stały brudnopis tego kursanta — nie tworzy się nowego pliku na każdą lekcję. Obok tytułu widać, czy zmiany trafiły już do chmury, oraz kto pisał ostatni.',
+        'To stały notatnik tego kursanta — nie tworzy się nowego pliku na każdą lekcję. Obok tytułu widać, czy zmiany trafiły już do chmury, oraz kto pisał ostatni.',
       tip: 'Zapis idzie automatycznie, ułamek sekundy po tym, jak przestaniesz pisać.',
       preferredPlacement: 'bottom',
     },
@@ -70,8 +70,8 @@ export const buildScratchpadCoachSteps = ({
       group: 'Formatowanie',
       title: 'Wstawianie gotowych elementów',
       description:
-        'Listy, linia oddzielająca oraz dwa skróty lekcyjne: nagłówek z dzisiejszą datą i szablon sekcji (słownictwo, poprawki, ustalenia).',
-      tip: 'Zacznij lekcję od wstawienia daty — brudnopis sam ułoży się w chronologiczną historię nauki.',
+        'Listy, linia oddzielająca, nagłówek z dzisiejszą datą oraz — dla lektora — zapisane szablony sekcji (słownictwo, poprawki, ustalenia) do wstawienia jednym kliknięciem.',
+      tip: 'Zacznij lekcję od wstawienia daty — notatnik sam ułoży się w chronologiczną historię nauki.',
       preferredPlacement: 'bottom',
       onBeforeShow: () => setInsertMenuOpen(true),
       onAfterShow: () => setInsertMenuOpen(false),
@@ -95,7 +95,7 @@ export const buildScratchpadCoachSteps = ({
       title: 'Udostępnianie i uprawnienia',
       description:
         'Pod tym menu jest wszystko, co decyduje o dostępie kursanta: link bezpośredni, kod PIN, wymóg podania PIN-u oraz zgoda na to, by kursant sam pisał w dokumencie.',
-      tip: 'Domyślnie link otwiera brudnopis od razu. PIN włącz tylko wtedy, gdy zależy Ci na dodatkowej zaporze.',
+      tip: 'Domyślnie link otwiera notatnik od razu. PIN włącz tylko wtedy, gdy zależy Ci na dodatkowej zaporze.',
       preferredPlacement: 'bottom',
       onBeforeShow: () => setShareMenuOpen(true),
     });
@@ -118,7 +118,7 @@ export const buildScratchpadCoachSteps = ({
       group: 'Po lekcji',
       title: 'Przeniesienie do dziennika',
       description:
-        'Czyta brudnopis i rozkłada go na 4 bloki Notion: słownictwo, poprawki, podsumowanie i zadanie. Otwiera gotowy formularz lekcji, który wystarczy przejrzeć i zapisać.',
+        'Czyta notatnik i rozkłada go na 4 bloki Notion: słownictwo, poprawki, podsumowanie i zadanie. Otwiera gotowy formularz lekcji, który wystarczy przejrzeć i zapisać.',
       tip: 'Działa najlepiej, gdy notatki mają nagłówki sekcji — wstawisz je jednym kliknięciem z menu „Wstaw”.',
       preferredPlacement: 'bottom',
     });
