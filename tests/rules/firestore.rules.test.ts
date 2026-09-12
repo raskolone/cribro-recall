@@ -11,6 +11,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -294,6 +295,116 @@ test('kursant nie zapisuje profilu na cudzym koncie', async () => {
       totalCorrect: 1,
     })
   );
+});
+
+// ———————————————————— Notatnik (Scratchpad) po kodzie PIN ————————————————————
+
+test('notatnik otwiera się po znanym ID, ale lista notatników nie', async () => {
+  await seed((db) =>
+    setDoc(doc(db, 'scratchpads/sp_ala'), {
+      pin: 'ABCDEF',
+      teacherUid: 'teacher-uid',
+      studentId: 'ala',
+      contentHtml: '<p>notatki</p>',
+    })
+  );
+
+  const anon = env.unauthenticatedContext().firestore();
+
+  // Link ze znanym ID działa bez logowania — to jest zamierzone udostępnianie.
+  await assertSucceeds(getDoc(doc(anon, 'scratchpads/sp_ala')));
+
+  // `list` był prawdziwą dziurą: jedno zapytanie wylistowałoby notatniki
+  // wszystkich kursantów. Zamknięte bez wyjątku, nawet dla admina/lektora.
+  await assertFails(getDocs(collection(anon, 'scratchpads')));
+  await assertFails(getDocs(collection(teacherByEmail(), 'scratchpads')));
+});
+
+test('indeks PIN → ID odczytuje każdy, ale nie da się go wylistować', async () => {
+  await seed((db) =>
+    setDoc(doc(db, 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_ala' })
+  );
+
+  const anon = env.unauthenticatedContext().firestore();
+
+  await assertSucceeds(getDoc(doc(anon, 'scratchpadPins/ABCDEF')));
+  await assertFails(getDocs(collection(anon, 'scratchpadPins')));
+});
+
+test('lektor-właściciel i kursant, dla którego notatnik powstał, zapisują wpis w indeksie PIN', async () => {
+  await seed((db) =>
+    setDoc(doc(db, 'scratchpads/sp_ala'), {
+      pin: 'ABCDEF',
+      teacherUid: 'teacher-uid',
+      studentId: 'ala',
+    })
+  );
+
+  await assertSucceeds(
+    setDoc(doc(teacherByEmail(), 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_ala' })
+  );
+  await assertSucceeds(
+    setDoc(doc(student('ala'), 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_ala' })
+  );
+});
+
+test('kursant nie przejmuje cudzego PIN-u, przekierowując go na inny notatnik', async () => {
+  await seed(async (db) => {
+    await setDoc(doc(db, 'scratchpads/sp_ala'), {
+      pin: 'ABCDEF',
+      teacherUid: 'teacher-uid',
+      studentId: 'ala',
+    });
+    await setDoc(doc(db, 'scratchpads/sp_bob'), {
+      pin: 'GHJKMN',
+      teacherUid: 'teacher-uid',
+      studentId: 'bob',
+    });
+    // Wpis istnieje już wcześniej — atak to próba jego nadpisania.
+    await setDoc(doc(db, 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_ala' });
+  });
+
+  // Bob nie ma żadnego związku z notatnikiem Ali — nie może ani stworzyć
+  // nowego wpisu wskazującego na jej dokument, ani nadpisać istniejącego.
+  await assertFails(
+    setDoc(doc(student('bob'), 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_bob' })
+  );
+  await assertFails(
+    updateDoc(doc(student('bob'), 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_bob' })
+  );
+
+  // Wpis wskazujący na nieistniejący dokument też odpada — nie da się go
+  // zweryfikować, więc domyślnie brak zaufania.
+  await assertFails(
+    setDoc(doc(student('bob'), 'scratchpadPins/NOWY99'), { scratchpadId: 'nie-istnieje' })
+  );
+});
+
+test('admin zarządza indeksem PIN niezależnie od właściciela notatnika', async () => {
+  await seed((db) =>
+    setDoc(doc(db, 'scratchpads/sp_ala'), {
+      pin: 'ABCDEF',
+      teacherUid: 'inny-lektor',
+      studentId: 'ala',
+    })
+  );
+
+  await assertSucceeds(
+    setDoc(doc(teacherByEmail(), 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_ala' })
+  );
+});
+
+test('usunięcie wpisu z indeksu PIN zarezerwowane dla admina', async () => {
+  await seed((db) =>
+    setDoc(doc(db, 'scratchpads/sp_ala'), {
+      pin: 'ABCDEF',
+      teacherUid: 'teacher-uid',
+      studentId: 'ala',
+    }).then(() => setDoc(doc(db, 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_ala' }))
+  );
+
+  await assertFails(deleteDoc(doc(student('ala'), 'scratchpadPins/ABCDEF')));
+  await assertSucceeds(deleteDoc(doc(teacherByEmail(), 'scratchpadPins/ABCDEF')));
 });
 
 test('plik reguł jest wczytany — inaczej wszystkie testy przechodzą na pustych regułach', () => {

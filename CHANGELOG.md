@@ -50,17 +50,10 @@ CRIBRO ENGLISH (Recall) to zaawansowana platforma edukacyjna do intensywnej nauk
 > Rzeczy, których **nie widać w kodzie na pierwszy rzut oka**, a które zmieniają sposób,
 > w jaki należy do niego podchodzić. Stan na 2026-09-11.
 
-### 🔴 Reguły Firestore dla brudnopisu są całkowicie otwarte
-W `firestore.rules` kolekcja `scratchpads/{scratchpadId}` ma reguły:
-```
-allow get, list: if true;
-allow create, update: if true;
-```
-**Konsekwencje:** każda osoba w internecie może odczytać i nadpisać dowolny brudnopis, a uprawnienie `list` pozwala **wylistować całą kolekcję**, czyli notatki wszystkich kursantów, bez logowania.
+### ✅ (Naprawione 2026-09-12) Reguły Firestore dla brudnopisu były całkowicie otwarte
+Historyczny wpis — zostawiony jako ślad, bo dokładnie ten problem naprawia commit opisany w sekcji 4 poniżej („Zamknięcie dziury w regułach brudnopisu i indeks PIN-ów").
 
-**Dlaczego tak jest:** anonimowy dostęp po kodzie PIN realizowany jest zapytaniem `query(collection('scratchpads'), where('pin','==',pin))` w `findScratchpadByPin`, a zapytanie kolekcyjne wymaga uprawnienia `list`. Otwarte reguły to najprostszy sposób, żeby kursant wszedł z linku bez konta.
-
-**Jak to naprawić, gdy przyjdzie czas:** utworzyć osobną kolekcję-indeks `scratchpadPins/{pin}` → `{ scratchpadId }`. Wyszukiwanie po PIN-ie stanie się wtedy zwykłym `get` po znanym identyfikatorze, `list` na `scratchpads` będzie można zamknąć, a zapis ograniczyć do lektora i kursanta przypisanego do dokumentu. Wymaga migracji istniejących dokumentów (dla każdego `scratchpads/*` dopisać wpis w indeksie).
+Kolekcja `scratchpads/{scratchpadId}` miała `allow get, list: if true; allow create, update: if true;` — każda osoba w internecie mogła odczytać i nadpisać dowolny brudnopis, a `list` pozwalał wylistować notatki wszystkich kursantów bez logowania. Naprawa: `list` zamknięty bez wyjątku, dodany indeks `scratchpadPins/{pin} → { scratchpadId }` z odczytem po znanym kluczu i zapisem ograniczonym do właściciela dokumentu (lektor/kursant, dla którego notatnik powstał) albo admina — patrz `firestore.rules` i `tests/rules/firestore.rules.test.ts`.
 
 ### 🟡 Wspólna edycja brudnopisu działa w trybie „ostatni zapis wygrywa"
 `ScratchpadEditor` synchronizuje całą zawartość HTML dokumentu, bez algorytmu scalania zmian (OT ani CRDT). Jeśli lektor i kursant piszą **jednocześnie w tym samym miejscu**, zapis jednej strony nadpisze tekst drugiej.
@@ -83,6 +76,45 @@ Zmiany UI z etapów opisanych niżej (przebudowa paska Prezentacji i Brudnopisu,
 ---
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
+
+### Bezpieczeństwo: Zamknięcie dziury w regułach brudnopisu i indeks PIN-ów
+
+Kolekcja `scratchpadPins` (dodana wcześniej razem z zamknięciem `list` na `scratchpads`,
+patrz sekcja 3) miała zapis otwarty dla każdego zalogowanego (`allow create, update: if
+isAuthenticated()`). To było zbyt szerokie: dowolny zalogowany kursant mógł nadpisać wpis
+`scratchpadPins/{PIN}` i przekierować **czyjś** kod PIN na **własny** notatnik — przejęcie
+linku bez znajomości hasła, tylko przez odgadnięcie/podsłuchanie kodu innego kursanta.
+
+- **`firestore.rules`**: `create`/`update` na `scratchpadPins/{pin}` wymaga teraz albo
+  `isAdmin()`, albo bycia stroną notatnika, na który wpis wskazuje (`teacherUid` lub
+  `studentId` dokumentu `scratchpads/{scratchpadId}` musi się zgadzać z `request.auth.uid`)
+  **i** zgodności ID dokumentu (`pin`) z polem `pin` w tym notatniku — bez tego drugiego
+  warunku kursant mógł nadal przejąć cudzy PIN, wskazując go na **własny** (poprawnie
+  należący do niego) notatnik, bo sama własność dokumentu docelowego nie potwierdza, że kod
+  PIN też do niego należy. Wykryte przez test, nie przez przegląd kodu — patrz niżej.
+- **`tests/rules/firestore.rules.test.ts`**: nowe testy na emulatorze — `list` na
+  `scratchpads` odmawia każdemu (łącznie z adminem), `get`/`list` na `scratchpadPins`
+  zachowuje się jak zaprojektowano, właściciel (lektor i kursant) zapisuje swój wpis, admin
+  zapisuje niezależnie od właściciela, a próba przejęcia cudzego PIN-u (`setDoc`/`updateDoc`
+  wskazujący na inny notatnik) jest odrzucana. `npm run test:rules` → 23/23.
+- **`scripts/backfill-scratchpad-pins.mjs`** (nowy, jednorazowy): dopisuje wpisy w
+  `scratchpadPins` dla notatników założonych przed wprowadzeniem indeksu. Aplikacja dorabia
+  taki wpis też sama przy pierwszym otwarciu (`ensureScratchpadPinIndex` w
+  `services/scratchpadService.ts`), ale tylko dla dokumentów z deterministycznym ID
+  (`sp_{studentId}`) — notatniki bez `studentId` (stare `sp_{timestamp}`) nikt od tamtej
+  pory mógł nie otworzyć, więc same się nie naprawią. Skrypt wykrywa i zgłasza kolizje PIN-ów
+  (dwa notatniki z tym samym kodem) zamiast zgadywać, który jest właściwy. Suchy przebieg
+  domyślnie, `--apply` żeby zapisać.
+- **Rozważona i odrzucona decyzja**: opakowanie zapisu `scratchpads` + `scratchpadPins` przy
+  tworzeniu notatnika w jeden atomowy `runTransaction`. Sprawdzone empirycznie na emulatorze:
+  dla lektora/admina (rola z `isAdmin()`) transakcja działa, ale dla kursanta tworzącego
+  własny notatnik po raz pierwszy (`StudentScratchpadScreen`, `teacherUid` to placeholder
+  `teacher_default`) — pada, bo reguła własności PIN-indeksu odczytuje (`get()`) dokument
+  `scratchpads`, którego w tej samej, jeszcze niezatwierdzonej transakcji Firestore nie widzi.
+  Obecny sekwencyjny zapis (dwa kolejne `await`, bez zmian w tym kroku) działa poprawnie pod
+  nowymi regułami dla obu ścieżek — potwierdzone testami. Zdecydowano zostać przy nim: okno
+  niekonsystencji jest już ograniczone przez samoleczenie przy każdym kolejnym otwarciu i przez
+  skrypt migracji powyżej.
 
 ### Poprawka: Tryb Dzienny Wstaje — Montaż `ThemeProvider`, Czytelny Ekran Startowy i Limit Precache
 

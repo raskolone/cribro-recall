@@ -587,7 +587,29 @@ service cloud.firestore {
     match /scratchpadPins/{pin} {
       allow get: if true;
       allow list: if false;
-      allow create, update: if isAuthenticated();
+
+      // Zapis tylko przez stronę, do której notatnik naprawdę należy —
+      // lektora-właściciela albo kursanta, dla którego go utworzono — albo
+      // admina. `isAuthenticated()` samo w sobie było zbyt szerokie: dowolny
+      // zalogowany kursant mógłby przekierować czyjś PIN na inny dokument
+      // (przejęcie linku) albo nadpisać istniejący wpis i odciąć prawowitego
+      // właściciela od jego notatnika.
+      //
+      // Sama własność dokumentu docelowego nie wystarczy: bez sprawdzenia,
+      // że `pin` (ID tego dokumentu) zgadza się z polem `pin` we wskazanym
+      // notatniku, kursant mógłby przejąć CUDZY kod PIN i przekierować go na
+      // WŁASNY notatnik — właściciel docelowego dokumentu się zgadza, ale kod
+      // wciąż nie należy do piszącego.
+      allow create, update: if isAdmin() || (
+        isAuthenticated() &&
+        exists(/databases/$(database)/documents/scratchpads/$(request.resource.data.scratchpadId)) &&
+        get(/databases/$(database)/documents/scratchpads/$(request.resource.data.scratchpadId)).data.pin == pin &&
+        (
+          get(/databases/$(database)/documents/scratchpads/$(request.resource.data.scratchpadId)).data.teacherUid == request.auth.uid ||
+          get(/databases/$(database)/documents/scratchpads/$(request.resource.data.scratchpadId)).data.studentId == request.auth.uid
+        )
+      );
+
       allow delete: if isAdmin();
     }
 
