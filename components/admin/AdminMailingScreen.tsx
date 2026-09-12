@@ -1800,9 +1800,16 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                       className="mt-1 rounded text-primary focus:ring-0 focus:ring-offset-0 bg-ink-2 border-white/20"
                     />
                     <div className="space-y-0.5">
-                      <span className="text-xs font-bold text-white block">Przypomnienie przed terminem (Due Date Reminder)</span>
+                      <span className="text-xs font-bold text-white block flex items-center gap-2">
+                        Przypomnienie przed terminem (Due Date Reminder)
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-warn bg-warn/10 border border-warn/30 rounded-full px-2 py-0.5">
+                          Wkrótce
+                        </span>
+                      </span>
                       <span className="text-[11px] text-content-muted block">
-                        Automatyczne przypomnienie o zbliżającym się deadline na oddanie pracy.
+                        Automatyczne przypomnienie o zbliżającym się deadline na oddanie pracy —
+                        przełącznik jest przygotowany, ale mechanizm (harmonogram) jeszcze nie
+                        działa. Włączenie go tutaj na razie nic nie wysyła.
                       </span>
                     </div>
                   </label>

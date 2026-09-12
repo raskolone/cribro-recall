@@ -593,6 +593,7 @@ const Dashboard: React.FC = () => {
             onOpenHomework={(taskId) =>
               handleNavigate('homework', { taskId, filterStatus: 'submitted' })
             }
+            onOpenV2Review={() => handleNavigate('homework', { filterStatus: 'v2review' })}
           />
         )}
         {!isTeacher && view !== 'homework' && (

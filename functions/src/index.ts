@@ -1,4 +1,4 @@
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import * as logger from 'firebase-functions/logger';
@@ -10,7 +10,7 @@ import {
   FUNCTION_REGION,
   PLACEHOLDER_EMAIL_DOMAINS,
 } from './config';
-import { buildHomeworkEmail, buildUnsubscribeUrl } from './emailTemplate';
+import { buildHomeworkEmail, buildHomeworkGradedEmail, buildUnsubscribeUrl } from './emailTemplate';
 import { sendEmail } from './resend';
 import { importSelection, previewSync } from './notion/sync';
 
@@ -42,6 +42,26 @@ const NOTION_TOKEN = defineSecret('NOTION_TOKEN');
 
 initializeApp();
 const db = getFirestore(DATABASE_ID);
+
+/**
+ * Globalny przełącznik z panelu Mailingu (`system/mailing`, ustawiany w
+ * `AdminMailingScreen.tsx`). Domyślnie `true`, kiedy dokument albo pole
+ * jeszcze nie istnieje — tak samo, jak domyślny stan checkboxa w panelu,
+ * żeby świeża instalacja bez otwartego ekranu Mailingu nie wyciszała
+ * powiadomień po cichu.
+ */
+const isMailingEventEnabled = async (
+  field: 'enableHomeworkAssigned' | 'enableHomeworkReviewed'
+): Promise<boolean> => {
+  try {
+    const snap = await db.collection('system').doc('mailing').get();
+    const value = snap.data()?.[field];
+    return value !== false;
+  } catch (err) {
+    logger.warn('Nie udało się odczytać ustawień mailingu — wysyłam mimo to', { field, err });
+    return true;
+  }
+};
 
 /** Czy pod ten adres w ogóle da się coś wysłać. */
 const isDeliverable = (email: string): boolean => {
@@ -79,6 +99,11 @@ export const notifyStudentOnHomework = onDocumentCreated(
         skipAutoEmail: task.skipAutoEmail ?? false,
         emailNotificationSent: task.emailNotificationSent ?? false,
       });
+      return;
+    }
+
+    if (!(await isMailingEventEnabled('enableHomeworkAssigned'))) {
+      logger.info('Powiadomienia o nowej pracy domowej wyłączone globalnie w ustawieniach Mailingu', { taskId });
       return;
     }
 
@@ -176,6 +201,88 @@ export const notifyStudentOnHomework = onDocumentCreated(
     } catch (err) {
       logger.warn('Nie udało się zapisać znacznika wysyłki', { taskId, err });
     }
+  }
+);
+
+/**
+ * Powiadomienie e-mail o sprawdzonej pracy domowej (v1).
+ *
+ * Odpala się na przejściu `status` → `graded`, czyli dokładnie w momencie
+ * `HomeworkScreen.tsx:handleSaveReview` (jedyne miejsce w kodzie, które
+ * robi taką zmianę statusu). Silnik v2 nie ma tu odpowiednika: kursant
+ * dostaje ocenę i feedback od razu przy każdej próbie
+ * (`submitHomeworkV2Attempt`), nie przez późniejszą akcję lektora — patrz
+ * `docs/plan-weekend-2026-09-12.md`, Etap A/B.
+ *
+ * Przełącznik `MailingSettings.enableHomeworkReviewed` istniał w panelu
+ * Mailingu od dawna, ale żadna funkcja go nie czytała — to naprawia.
+ */
+export const notifyStudentOnHomeworkGraded = onDocumentUpdated(
+  {
+    document: 'specialTasks/{taskId}',
+    database: DATABASE_ID,
+    region: FUNCTION_REGION,
+    secrets: [RESEND_API_KEY],
+    retry: false,
+  },
+  async (event) => {
+    const taskId = event.params.taskId;
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!before || !after) return;
+
+    // Tylko przejście w stan `graded` — nie każda kolejna edycja zadania,
+    // która akurat też ma `status === 'graded'` (np. poprawka komentarza).
+    if (before.status === 'graded' || after.status !== 'graded') return;
+
+    if (!(await isMailingEventEnabled('enableHomeworkReviewed'))) {
+      logger.info('Powiadomienia o sprawdzonej pracy domowej wyłączone globalnie w ustawieniach Mailingu', { taskId });
+      return;
+    }
+
+    const studentUid: string | undefined =
+      typeof after.studentUid === 'string' && after.studentUid ? after.studentUid : undefined;
+    if (!studentUid) {
+      logger.error('Ocenione zadanie bez studentUid — nie wiadomo, do kogo wysłać', { taskId });
+      return;
+    }
+
+    const userSnap = await db.collection('users').doc(studentUid).get();
+    if (!userSnap.exists) {
+      logger.error('Profil kursanta nie istnieje', { taskId, studentUid });
+      return;
+    }
+    const user = userSnap.data() || {};
+
+    if (user.emailNotificationsDisabled === true) {
+      logger.info('Kursant wyłączył powiadomienia e-mail — pomijam wysyłkę oceny', { taskId, studentUid });
+      return;
+    }
+
+    const email = typeof user.email === 'string' ? user.email.trim() : '';
+    if (!email || !isDeliverable(email)) {
+      logger.warn('Brak dostarczalnego adresu kursanta — pomijam powiadomienie o ocenie', { taskId, studentUid, email });
+      return;
+    }
+
+    const studentName =
+      `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'Kursancie';
+
+    const { subject, html, text } = buildHomeworkGradedEmail({
+      studentName,
+      title: typeof after.title === 'string' && after.title ? after.title : 'Praca domowa',
+      teacherFeedback: typeof after.teacherFeedback === 'string' ? after.teacherFeedback : undefined,
+      grade: typeof after.grade === 'number' ? after.grade : undefined,
+      unsubscribeUrl: buildUnsubscribeUrl(studentUid),
+    });
+
+    const result = await sendEmail(RESEND_API_KEY.value(), email, subject, html, text);
+    if (!result.ok) {
+      logger.error('Nie udało się wysłać powiadomienia o ocenie', { taskId, studentUid, error: result.error });
+      return;
+    }
+
+    logger.info('Powiadomienie o ocenie wysłane', { taskId, studentUid, messageId: result.id });
   }
 );
 

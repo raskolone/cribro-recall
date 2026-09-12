@@ -3,11 +3,13 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, collectionGroup, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { BookOpenCheck, ChevronRight, GraduationCap, X } from 'lucide-react';
+import { AlertTriangle, BookOpenCheck, ChevronRight, GraduationCap, X } from 'lucide-react';
 import { playNotificationChime } from '../../utils/notificationChime';
 
 interface TeacherHomeworkNotificationProps {
   onOpenHomework?: (taskId: string) => void;
+  /** Zgłoszenia v2 nie mają jednego `taskId` do otwarcia — prowadzą do kolejki. */
+  onOpenV2Review?: () => void;
 }
 
 interface NotificationItem {
@@ -16,17 +18,20 @@ interface NotificationItem {
   studentName: string;
   title: string;
   timestamp: number;
-  itemType?: 'homework' | 'test';
+  itemType?: 'homework' | 'test' | 'v2review';
 }
 
 export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationProps> = ({
   onOpenHomework,
+  onOpenV2Review,
 }) => {
   const [activeNotifications, setActiveNotifications] = useState<NotificationItem[]>([]);
   const knownTaskIdsRef = useRef<Set<string>>(new Set());
   const knownTestIdsRef = useRef<Set<string>>(new Set());
+  const knownFlaggedAttemptIdsRef = useRef<Set<string>>(new Set());
   const isInitialLoadTasksRef = useRef(true);
   const isInitialLoadTestsRef = useRef(true);
+  const isInitialLoadFlaggedRef = useRef(true);
 
   useEffect(() => {
     // 1. Nasłuchiwanie odesłanych prac domowych
@@ -128,9 +133,54 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
       console.warn('TeacherHomeworkNotification setup tests error:', e);
     }
 
+    // 3. Nasłuchiwanie prób v2 oznaczonych do przeglądu przez lektora
+    let unsubFlagged: (() => void) | undefined;
+    try {
+      const qFlagged = query(collectionGroup(db, 'attempts'), where('requiresTeacherReview', '==', true));
+      unsubFlagged = onSnapshot(
+        qFlagged,
+        (snapshot) => {
+          if (isInitialLoadFlaggedRef.current) {
+            snapshot.docs.forEach((d) => knownFlaggedAttemptIdsRef.current.add(d.id));
+            isInitialLoadFlaggedRef.current = false;
+            return;
+          }
+
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added' && !knownFlaggedAttemptIdsRef.current.has(change.doc.id)) {
+              knownFlaggedAttemptIdsRef.current.add(change.doc.id);
+              const data = change.doc.data() as any;
+
+              const newItem: NotificationItem = {
+                id: `v2review-${change.doc.id}-${Date.now()}`,
+                taskId: change.doc.ref.parent.parent?.id || '',
+                studentName: 'Praca domowa v2',
+                title: `Próba ${data.attemptNumber ?? ''} wymaga uwagi`.trim(),
+                timestamp: Date.now(),
+                itemType: 'v2review',
+              };
+
+              setActiveNotifications((prev) => [newItem, ...prev.slice(0, 2)]);
+              playNotificationChime();
+
+              setTimeout(() => {
+                setActiveNotifications((prev) => prev.filter((n) => n.id !== newItem.id));
+              }, 10000);
+            }
+          });
+        },
+        (error) => {
+          console.warn('TeacherHomeworkNotification flagged attempts snapshot error:', error);
+        }
+      );
+    } catch (e) {
+      console.warn('TeacherHomeworkNotification setup flagged attempts error:', e);
+    }
+
     return () => {
       unsubTasks();
       if (unsubTests) unsubTests();
+      if (unsubFlagged) unsubFlagged();
     };
   }, []);
 
@@ -140,6 +190,10 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
 
   const handleAction = (item: NotificationItem) => {
     handleDismiss(item.id);
+    if (item.itemType === 'v2review') {
+      onOpenV2Review?.();
+      return;
+    }
     if (onOpenHomework) {
       onOpenHomework(item.taskId);
     }
@@ -170,7 +224,13 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
 
             <div className="flex items-start gap-3 relative z-10">
               <div className="p-2.5 rounded-xl bg-primary/20 text-primary border border-primary/30 shrink-0 shadow-[0_0_15px_rgba(114,240,180,0.3)]">
-                {item.itemType === 'test' ? <GraduationCap size={20} /> : <BookOpenCheck size={20} />}
+                {item.itemType === 'test' ? (
+                  <GraduationCap size={20} />
+                ) : item.itemType === 'v2review' ? (
+                  <AlertTriangle size={20} />
+                ) : (
+                  <BookOpenCheck size={20} />
+                )}
               </div>
 
               <div className="flex-1 min-w-0 pr-5">
@@ -180,7 +240,11 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                   </span>
                   <span className="text-[11px] font-bold font-mono uppercase tracking-wider text-primary">
-                    {item.itemType === 'test' ? 'Odesłano test' : 'Odesłano pracę'}
+                    {item.itemType === 'test'
+                      ? 'Odesłano test'
+                      : item.itemType === 'v2review'
+                      ? 'Wymaga uwagi (v2)'
+                      : 'Odesłano pracę'}
                   </span>
                 </div>
 
@@ -196,7 +260,13 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
                     onClick={() => handleAction(item)}
                     className="flex-1 min-h-[2.25rem] px-3.5 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-accent-ink font-bold text-xs shadow-md shadow-primary/20 hover:shadow-primary/40 active:scale-98 transition-all"
                   >
-                    <span>{item.itemType === 'test' ? 'Zobacz test' : 'Sprawdź i oceń'}</span>
+                    <span>
+                      {item.itemType === 'test'
+                        ? 'Zobacz test'
+                        : item.itemType === 'v2review'
+                        ? 'Zobacz kolejkę'
+                        : 'Sprawdź i oceń'}
+                    </span>
                     <ChevronRight size={14} />
                   </button>
                   <button

@@ -263,11 +263,18 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSavingHomework, setIsSavingHomework] = useState<boolean>(false);
   const isSavingRef = React.useRef<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'list' | 'create' | 'flashcards' | 'v2review'>('list');
+  // Sentinel: toast "Wymaga uwagi" (v2) nawiguje tu przez `filterStatus`,
+  // bo to jedyny "extra" kanał, którym Sidebar/TeacherHomeworkNotification
+  // już umie sterować tym ekranem — patrz Dashboard.tsx `handleNavigate`.
+  const [activeTab, setActiveTab] = useState<'list' | 'create' | 'flashcards' | 'v2review'>(
+    initialFilterStatus === 'v2review' ? 'v2review' : 'list'
+  );
 
   // Filter state for teacher
   const [filterStudentId, setFilterStudentId] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>(initialFilterStatus || 'all');
+  const [filterStatus, setFilterStatus] = useState<string>(
+    initialFilterStatus === 'v2review' ? 'all' : initialFilterStatus || 'all'
+  );
   const [studentTests, setStudentTests] = useState<StudentTest[]>([]);
   const [previewTest, setPreviewTest] = useState<StudentTest | null>(null);
 
