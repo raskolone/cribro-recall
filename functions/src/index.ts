@@ -13,6 +13,7 @@ import {
 import { buildHomeworkEmail, buildHomeworkGradedEmail, buildUnsubscribeUrl } from './emailTemplate';
 import { sendEmail } from './resend';
 import { importSelection, previewSync } from './notion/sync';
+export { checkNotionDaily } from './notion/dailyCheck';
 
 /**
  * Silnik prac domowych v2 — wyłącznie re-eksport.

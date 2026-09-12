@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { AlertTriangle, Download, Loader2, RefreshCw } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { AlertTriangle, ChevronDown, Download, Loader2, RefreshCw, Sparkles, X } from 'lucide-react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../../firebase';
 import NotionSyncResultModal from './NotionSyncResultModal';
 import {
   ImportReport,
@@ -9,6 +11,14 @@ import {
   importNotionSelection,
   previewNotionSync,
 } from '../../services/notionSync';
+
+interface NotionAutoCheckStatus {
+  lastCheckedAt?: string;
+  newLessonsCount?: number;
+  newStudentsCount?: number;
+  orphanLessons?: number;
+  hasNew?: boolean;
+}
 
 /**
  * Import historii lekcji i kursantów z Notion.
@@ -36,6 +46,21 @@ interface Props {
 }
 
 const NotionSyncButton: React.FC<Props> = ({ onImported }) => {
+  // Zlecenie 2026-09-12: karta nie ma stać stale otwarta w panelu — pojawia
+  // się w skrócie i rozwija dopiero na kliknięcie (albo od razu, gdy
+  // automat znajdzie coś nowego).
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [autoCheck, setAutoCheck] = useState<NotionAutoCheckStatus | null>(null);
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      doc(db, 'system', 'notionAutoCheck'),
+      (snap) => setAutoCheck(snap.exists() ? (snap.data() as NotionAutoCheckStatus) : null),
+      (err) => console.warn('NotionSyncButton auto-check snapshot error:', err)
+    );
+    return unsub;
+  }, []);
+
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const [createAccounts, setCreateAccounts] = useState<Set<string>>(new Set());
@@ -102,32 +127,87 @@ const NotionSyncButton: React.FC<Props> = ({ onImported }) => {
   const rowTone = (s: StudentPreview): string => {
     if (s.inactive) return 'opacity-55';
     if (!s.uid) return 'border-warn/25';
-    return 'border-white/10';
+    return 'border-line-strong';
   };
 
+  const openPanel = () => {
+    setReport(null);
+    setImportError('');
+    setIsExpanded(true);
+    if (!preview) loadPreview();
+  };
+
+  // Zwinięte domyślnie (zlecenie 2026-09-12): karta nie stoi stale w panelu.
+  // Automat codziennie sprawdza Notion sam (`checkNotionDaily`, Cloud
+  // Functions) i pisze wynik do `system/notionAutoCheck` — gdy jest coś
+  // nowego, to WŁAŚNIE to sprawia, że coś się tu w ogóle pokazuje. Bez tego
+  // (nic nowego, albo automat jeszcze nie odpalił) zostaje wyłącznie
+  // niepozorny link, żeby ręczne sprawdzenie było wciąż możliwe.
+  if (!isExpanded) {
+    const hasNew = !!autoCheck?.hasNew;
+    return (
+      <div className="flex items-center justify-end">
+        {hasNew ? (
+          <button
+            onClick={openPanel}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-warn/50 bg-warn/10 text-warn text-xs sm:text-sm font-bold hover:bg-warn/20 transition-colors"
+          >
+            <Sparkles size={15} />
+            Notion:{' '}
+            {[
+              autoCheck?.newLessonsCount ? `${autoCheck.newLessonsCount} nowych lekcji` : null,
+              autoCheck?.newStudentsCount ? `${autoCheck.newStudentsCount} nowych kursantów` : null,
+            ]
+              .filter(Boolean)
+              .join(', ') || 'coś nowego'}
+            <ChevronDown size={14} />
+          </button>
+        ) : (
+          <button
+            onClick={openPanel}
+            className="text-[11px] text-content-muted hover:text-text-hi transition-colors underline decoration-dotted underline-offset-2"
+          >
+            Sprawdź Notion ręcznie
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <section className="rounded-2xl border border-white/10 bg-base-200/40 p-4 sm:p-5 space-y-4">
+    <section className="rounded-2xl border border-line-strong bg-base-200/40 p-4 sm:p-5 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-sm font-bold text-white">Historia lekcji z Notion</h3>
+          <h3 className="text-sm font-bold text-text-hi">Historia lekcji z Notion</h3>
           <p className="text-xs text-content-muted mt-0.5 max-w-xl">
             Najpierw sprawdź, kogo widać w Notion i kto ma już konto. Potem zaznacz,
             co ma wejść do aplikacji. Notion pozostaje źródłem — ponowny import
             aktualizuje te same lekcje, nie tworzy kopii.
           </p>
         </div>
-        <button
-          onClick={() => {
-            setReport(null);
-            setImportError('');
-            loadPreview();
-          }}
-          disabled={busy !== null}
-          className="min-h-[2.75rem] px-4 inline-flex items-center gap-2 rounded-xl bg-primary text-accent-ink font-bold text-sm disabled:opacity-60"
-        >
-          {busy === 'preview' ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
-          {busy === 'preview' ? 'Sprawdzam…' : preview ? 'Odśwież listę' : 'Sprawdź Notion'}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => {
+              setReport(null);
+              setImportError('');
+              loadPreview();
+            }}
+            disabled={busy !== null}
+            className="min-h-[2.75rem] px-4 inline-flex items-center gap-2 rounded-xl bg-primary text-accent-ink font-bold text-sm disabled:opacity-60"
+          >
+            {busy === 'preview' ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+            {busy === 'preview' ? 'Sprawdzam…' : preview ? 'Odśwież listę' : 'Sprawdź Notion'}
+          </button>
+          <button
+            onClick={() => setIsExpanded(false)}
+            disabled={busy !== null}
+            title="Zwiń"
+            aria-label="Zwiń"
+            className="h-9 w-9 rounded-xl flex items-center justify-center text-content-muted hover:text-text-hi hover:bg-white/10 transition-colors disabled:opacity-50"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -158,7 +238,7 @@ const NotionSyncButton: React.FC<Props> = ({ onImported }) => {
                   key={action.label}
                   onClick={() => setChosen(new Set(action.pick()))}
                   disabled={busy !== null}
-                  className="min-h-[2rem] px-2.5 rounded-lg border border-white/12 text-[11px] font-bold text-content-muted hover:text-text-hi hover:border-white/25 disabled:opacity-50"
+                  className="min-h-[2rem] px-2.5 rounded-lg border border-line-strong text-[11px] font-bold text-content-muted hover:text-text-hi hover:border-primary/40 disabled:opacity-50"
                 >
                   {action.label}
                 </button>
@@ -184,7 +264,7 @@ const NotionSyncButton: React.FC<Props> = ({ onImported }) => {
                     />
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-baseline gap-x-2">
-                        <span className="font-bold text-white text-sm">{s.name}</span>
+                        <span className="font-bold text-text-hi text-sm">{s.name}</span>
                         {s.isGroup && <span className="text-[11px] text-content-muted">grupa</span>}
                         {s.inactive && (
                           <span className="text-[11px] text-content-muted">nieaktywny</span>
