@@ -146,7 +146,7 @@ export const LiveNotebookPanel: React.FC<LiveNotebookPanelProps> = ({
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'vocab'
                 ? 'bg-primary text-accent-ink shadow-[0_0_12px_rgba(114,240,180,0.3)]'
-                : 'text-content-muted hover:text-white hover:bg-white/5'
+                : 'text-content-muted hover:text-text-hi hover:bg-white/5'
             }`}
           >
             <BookMarked size={14} />
@@ -157,7 +157,7 @@ export const LiveNotebookPanel: React.FC<LiveNotebookPanelProps> = ({
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'corrections'
                 ? 'bg-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.3)]'
-                : 'text-content-muted hover:text-white hover:bg-white/5'
+                : 'text-content-muted hover:text-text-hi hover:bg-white/5'
             }`}
           >
             <AlertTriangle size={14} />
@@ -168,7 +168,7 @@ export const LiveNotebookPanel: React.FC<LiveNotebookPanelProps> = ({
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'notes'
                 ? 'bg-info text-black shadow-[0_0_12px_rgba(56,189,248,0.3)]'
-                : 'text-content-muted hover:text-white hover:bg-white/5'
+                : 'text-content-muted hover:text-text-hi hover:bg-white/5'
             }`}
           >
             <FileText size={14} />
@@ -179,7 +179,7 @@ export const LiveNotebookPanel: React.FC<LiveNotebookPanelProps> = ({
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'timer'
                 ? 'bg-amber-400 text-black shadow-[0_0_12px_rgba(251,191,36,0.3)]'
-                : 'text-content-muted hover:text-white hover:bg-white/5'
+                : 'text-content-muted hover:text-text-hi hover:bg-white/5'
             }`}
           >
             <Clock size={14} />
@@ -189,7 +189,7 @@ export const LiveNotebookPanel: React.FC<LiveNotebookPanelProps> = ({
 
         <button
           onClick={handleCopyAllNotes}
-          className="p-1.5 rounded-lg bg-base-100 hover:bg-white/10 text-content-muted hover:text-white transition-colors text-xs font-semibold flex items-center gap-1 cursor-pointer border border-white/5"
+          className="p-1.5 rounded-lg bg-base-100 hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors text-xs font-semibold flex items-center gap-1 cursor-pointer border border-white/5"
           title="Kopiuj całe podsumowanie notatnika"
         >
           {copied ? <Check size={13} className="text-primary" /> : <Copy size={13} />}
@@ -348,21 +348,21 @@ export const LiveNotebookPanel: React.FC<LiveNotebookPanelProps> = ({
               <button
                 type="button"
                 onClick={() => onChangeLiveNotes(liveNotes + '\n- ')}
-                className="px-2 py-1 rounded bg-base-300 text-[11px] text-content-muted hover:text-white font-mono"
+                className="px-2 py-1 rounded bg-base-300 text-[11px] text-content-muted hover:text-text-hi font-mono"
               >
                 • Lista
               </button>
               <button
                 type="button"
                 onClick={() => onChangeLiveNotes(liveNotes + '\n### ')}
-                className="px-2 py-1 rounded bg-base-300 text-[11px] text-content-muted hover:text-white font-mono"
+                className="px-2 py-1 rounded bg-base-300 text-[11px] text-content-muted hover:text-text-hi font-mono"
               >
                 Nagłówek
               </button>
               <button
                 type="button"
                 onClick={() => onChangeLiveNotes(liveNotes + '\n**Ważne:** ')}
-                className="px-2 py-1 rounded bg-base-300 text-[11px] text-content-muted hover:text-white font-mono"
+                className="px-2 py-1 rounded bg-base-300 text-[11px] text-content-muted hover:text-text-hi font-mono"
               >
                 **Wytłuszczenie**
               </button>
@@ -399,7 +399,7 @@ export const LiveNotebookPanel: React.FC<LiveNotebookPanelProps> = ({
                   setIsTimerRunning(false);
                   setTimerSeconds(300);
                 }}
-                className="p-2.5 text-content-muted hover:text-white"
+                className="p-2.5 text-content-muted hover:text-text-hi"
                 title="Resetuj timer"
               >
                 <RotateCcw size={18} />
@@ -417,7 +417,7 @@ export const LiveNotebookPanel: React.FC<LiveNotebookPanelProps> = ({
                   className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
                     timerSeconds === sec
                       ? 'bg-amber-400 text-black'
-                      : 'bg-base-300 text-content-muted hover:text-white'
+                      : 'bg-base-300 text-content-muted hover:text-text-hi'
                   }`}
                 >
                   {sec / 60} min

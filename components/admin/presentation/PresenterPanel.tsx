@@ -270,7 +270,7 @@ const PresenterPanel: React.FC<PresenterPanelProps> = ({
             className={`inline-flex items-center gap-1.5 min-h-[2.5rem] px-3 rounded-xl border text-sm font-mono font-bold ${
               isRunning
                 ? 'border-primary/35 text-primary bg-primary/10'
-                : 'border-white/12 text-content-muted hover:text-white'
+                : 'border-white/12 text-content-muted hover:text-text-hi'
             }`}
           >
             <Timer size={14} />
@@ -291,7 +291,7 @@ const PresenterPanel: React.FC<PresenterPanelProps> = ({
               <button
                 onClick={() => setTimerEndsAt(Date.now() + current.timerMinutes! * 60_000)}
                 title={`Odlicz ${current.timerMinutes} min na to ćwiczenie`}
-                className="inline-flex items-center gap-1.5 min-h-[2.5rem] px-3 rounded-xl border border-white/12 text-content-muted text-sm font-bold hover:text-white"
+                className="inline-flex items-center gap-1.5 min-h-[2.5rem] px-3 rounded-xl border border-white/12 text-content-muted text-sm font-bold hover:text-text-hi"
               >
                 <Play size={13} /> {current.timerMinutes} min
               </button>
@@ -382,7 +382,7 @@ const PresenterPanel: React.FC<PresenterPanelProps> = ({
           <div className="w-full max-w-lg bg-base-200 border border-white/10 rounded-2xl p-6 sm:p-8 space-y-6 shadow-2xl relative">
             <button
               onClick={() => setIsLiveModalOpen(false)}
-              className="absolute top-4 right-4 p-2 rounded-xl text-content-muted hover:text-white hover:bg-white/10 transition-all"
+              className="absolute top-4 right-4 p-2 rounded-xl text-content-muted hover:text-text-hi hover:bg-white/10 transition-all"
             >
               <X size={18} />
             </button>
@@ -476,7 +476,7 @@ const PresenterPanel: React.FC<PresenterPanelProps> = ({
             <div className="pt-2 border-t border-white/10 flex items-center justify-between">
               <button
                 onClick={() => setIsLiveModalOpen(false)}
-                className="text-xs text-content-muted hover:text-white transition-colors"
+                className="text-xs text-content-muted hover:text-text-hi transition-colors"
               >
                 Ukryj to okno (sesja trwa dalej)
               </button>

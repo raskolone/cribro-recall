@@ -178,7 +178,7 @@ const StudentHomeworkGradedModal: React.FC<StudentHomeworkGradedModalProps> = ({
             <button
               onClick={handleDismiss}
               disabled={isClosing}
-              className="absolute top-4 right-4 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white transition-colors disabled:opacity-50 cursor-pointer"
+              className="absolute top-4 right-4 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors disabled:opacity-50 cursor-pointer"
               aria-label="Zamknij"
             >
               <X size={18} />

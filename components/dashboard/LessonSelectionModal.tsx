@@ -100,7 +100,7 @@ export const LessonSelectionModal: React.FC<LessonSelectionModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-text-2 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+            className="p-1.5 text-text-2 hover:text-text-hi hover:bg-white/10 rounded-xl transition-all"
           >
             <X className="w-5 h-5" />
           </button>
@@ -244,7 +244,7 @@ export const LessonSelectionModal: React.FC<LessonSelectionModalProps> = ({
                           e.stopPropagation();
                           setExpandedLessonId(isExpanded ? null : record.id);
                         }}
-                        className="px-2 py-1 text-[11px] text-text-2 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg shrink-0 transition-all"
+                        className="px-2 py-1 text-[11px] text-text-2 hover:text-text-hi bg-white/5 hover:bg-white/10 rounded-lg shrink-0 transition-all"
                       >
                         {isExpanded ? 'Ukryj podgląd' : 'Podgląd'}
                       </button>
@@ -304,7 +304,7 @@ export const LessonSelectionModal: React.FC<LessonSelectionModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-content hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all"
+              className="px-4 py-2 text-xs font-semibold text-content hover:text-text-hi bg-white/5 hover:bg-white/10 rounded-xl transition-all"
             >
               Anuluj
             </button>

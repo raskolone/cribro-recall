@@ -625,7 +625,7 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
             </span>
             <button
               onClick={() => setIsSavedDecksOpen(false)}
-              className="text-xs text-content-muted hover:text-white"
+              className="text-xs text-content-muted hover:text-text-hi"
             >
               Zamknij
             </button>
@@ -748,7 +748,7 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
                   className={`w-7 h-7 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer flex items-center justify-center ${
                     activeSlideIndex === idx
                       ? 'bg-primary text-accent-ink shadow-[0_0_10px_rgba(114,240,180,0.4)] scale-110'
-                      : 'bg-base-300 text-content-muted hover:text-white hover:bg-white/10'
+                      : 'bg-base-300 text-content-muted hover:text-text-hi hover:bg-white/10'
                   }`}
                   title={`${idx + 1}. ${s.title}`}
                 >
@@ -762,7 +762,7 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
                 size="sm"
                 variant="ghost"
                 onClick={() => setIsSlideAssistantModalOpen(true)}
-                className="text-xs font-semibold text-content-muted hover:text-white p-2"
+                className="text-xs font-semibold text-content-muted hover:text-text-hi p-2"
                 title="Ulepsz ten slajd z pomocą AI"
               >
                 <Wand2 size={14} />
@@ -774,7 +774,7 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
                   setEditingSlide(currentSlide);
                   setIsSlideEditorOpen(true);
                 }}
-                className="text-xs font-semibold text-content-muted hover:text-white p-2"
+                className="text-xs font-semibold text-content-muted hover:text-text-hi p-2"
                 title="Edytuj bieżący slajd ręcznie"
               >
                 <Edit2 size={14} />

@@ -44,7 +44,7 @@ const NotionSyncResultModal: React.FC<Props> = ({ report, error, onClose }) => {
           <button
             onClick={onClose}
             aria-label="Zamknij"
-            className="w-9 h-9 shrink-0 flex items-center justify-center rounded-lg border border-white/12 text-content-muted hover:text-white"
+            className="w-9 h-9 shrink-0 flex items-center justify-center rounded-lg border border-white/12 text-content-muted hover:text-text-hi"
           >
             <X size={16} />
           </button>

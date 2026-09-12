@@ -2010,7 +2010,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                   className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 transition-all ${
                     selectedLessonIds.length > 0
                       ? 'bg-primary/10 border-primary/40 text-primary hover:bg-primary/15 shadow-[0_0_12px_rgba(114,240,180,0.1)]'
-                      : 'bg-base-100 border-white/10 text-content hover:border-white/20 hover:text-white'
+                      : 'bg-base-100 border-white/10 text-content hover:border-white/20 hover:text-text-hi'
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
@@ -2137,7 +2137,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                             onClick={() => moveTranslationItem(idx, 'up')}
                             disabled={idx === 0}
                             title="Przesuń zdanie w górę"
-                            className="p-1 rounded text-content-muted hover:text-white disabled:opacity-20 transition-colors"
+                            className="p-1 rounded text-content-muted hover:text-text-hi disabled:opacity-20 transition-colors"
                           >
                             <ChevronUp size={15} />
                           </button>
@@ -2146,7 +2146,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                             onClick={() => moveTranslationItem(idx, 'down')}
                             disabled={idx === translationItems.length - 1}
                             title="Przesuń zdanie w dół"
-                            className="p-1 rounded text-content-muted hover:text-white disabled:opacity-20 transition-colors"
+                            className="p-1 rounded text-content-muted hover:text-text-hi disabled:opacity-20 transition-colors"
                           >
                             <ChevronDown size={15} />
                           </button>
@@ -2231,7 +2231,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                             onClick={() => moveErrorCorrectionItem(idx, 'up')}
                             disabled={idx === 0}
                             title="Przesuń zdanie w górę"
-                            className="p-1 rounded text-content-muted hover:text-white disabled:opacity-20 transition-colors"
+                            className="p-1 rounded text-content-muted hover:text-text-hi disabled:opacity-20 transition-colors"
                           >
                             <ChevronUp size={15} />
                           </button>
@@ -2240,7 +2240,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                             onClick={() => moveErrorCorrectionItem(idx, 'down')}
                             disabled={idx === errorCorrectionItems.length - 1}
                             title="Przesuń zdanie w dół"
-                            className="p-1 rounded text-content-muted hover:text-white disabled:opacity-20 transition-colors"
+                            className="p-1 rounded text-content-muted hover:text-text-hi disabled:opacity-20 transition-colors"
                           >
                             <ChevronDown size={15} />
                           </button>
@@ -2934,7 +2934,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               </div>
               <button
                 onClick={() => setReviewTask(null)}
-                className="p-1 rounded-lg text-content-muted hover:text-white"
+                className="p-1 rounded-lg text-content-muted hover:text-text-hi"
               >
                 <X size={20} />
               </button>
@@ -3011,7 +3011,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <FileText className="text-primary" /> Dodaj własne zdania hurtowo
                 </h2>
-                <button onClick={() => setShowBulkAddModal(false)} className="text-content-muted hover:text-white transition-colors p-1">
+                <button onClick={() => setShowBulkAddModal(false)} className="text-content-muted hover:text-text-hi transition-colors p-1">
                   <X size={20} />
                 </button>
               </div>
@@ -3092,7 +3092,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               <button
                 type="button"
                 onClick={() => setPreviewTask(null)}
-                className="p-1.5 rounded-xl text-content-muted hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                className="p-1.5 rounded-xl text-content-muted hover:text-text-hi hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <X size={20} />
               </button>

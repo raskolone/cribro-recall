@@ -112,7 +112,7 @@ export const TestEditModal: React.FC<TestEditModalProps> = ({ test, isOpen, onCl
             <h2 className="text-xl font-bold text-white">{i18n.t("Edycja przypisanego testu")}</h2>
             <p className="text-xs text-content-muted mt-0.5">{test.studentName ? `Kursant: ${test.studentName}` : ''}</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl text-content-muted hover:text-white hover:bg-white/10">
+          <button onClick={onClose} className="p-2 rounded-xl text-content-muted hover:text-text-hi hover:bg-white/10">
             <X size={20} />
           </button>
         </div>
@@ -201,7 +201,7 @@ export const TestEditModal: React.FC<TestEditModalProps> = ({ test, isOpen, onCl
                       type="button"
                       disabled={idx === 0}
                       onClick={() => handleMoveQuestion(idx, 'up')}
-                      className="p-1 rounded bg-white/5 text-content-muted hover:text-white disabled:opacity-30"
+                      className="p-1 rounded bg-white/5 text-content-muted hover:text-text-hi disabled:opacity-30"
                     >
                       <ArrowUp size={14} />
                     </button>
@@ -209,7 +209,7 @@ export const TestEditModal: React.FC<TestEditModalProps> = ({ test, isOpen, onCl
                       type="button"
                       disabled={idx === questions.length - 1}
                       onClick={() => handleMoveQuestion(idx, 'down')}
-                      className="p-1 rounded bg-white/5 text-content-muted hover:text-white disabled:opacity-30"
+                      className="p-1 rounded bg-white/5 text-content-muted hover:text-text-hi disabled:opacity-30"
                     >
                       <ArrowDown size={14} />
                     </button>

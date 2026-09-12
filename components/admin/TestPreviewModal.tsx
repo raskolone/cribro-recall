@@ -40,7 +40,7 @@ export const TestPreviewModal: React.FC<TestPreviewModalProps> = ({ test, isOpen
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-content-muted hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 rounded-xl text-content-muted hover:text-text-hi hover:bg-white/10 transition-colors"
           >
             <X size={20} />
           </button>

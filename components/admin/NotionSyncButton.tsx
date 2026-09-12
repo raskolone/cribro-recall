@@ -158,7 +158,7 @@ const NotionSyncButton: React.FC<Props> = ({ onImported }) => {
                   key={action.label}
                   onClick={() => setChosen(new Set(action.pick()))}
                   disabled={busy !== null}
-                  className="min-h-[2rem] px-2.5 rounded-lg border border-white/12 text-[11px] font-bold text-content-muted hover:text-white hover:border-white/25 disabled:opacity-50"
+                  className="min-h-[2rem] px-2.5 rounded-lg border border-white/12 text-[11px] font-bold text-content-muted hover:text-text-hi hover:border-white/25 disabled:opacity-50"
                 >
                   {action.label}
                 </button>

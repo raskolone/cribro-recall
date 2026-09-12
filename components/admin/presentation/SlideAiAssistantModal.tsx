@@ -113,7 +113,7 @@ export const SlideAiAssistantModal: React.FC<SlideAiAssistantModalProps> = ({
           <button
             onClick={onClose}
             disabled={loading}
-            className="p-1.5 rounded-lg text-content-muted hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg text-content-muted hover:text-text-hi hover:bg-white/10 transition-colors"
           >
             <X size={18} />
           </button>
@@ -128,7 +128,7 @@ export const SlideAiAssistantModal: React.FC<SlideAiAssistantModalProps> = ({
               className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                 mode === 'enhance-current' 
                   ? 'bg-primary text-black shadow-md' 
-                  : 'text-content-muted hover:text-white'
+                  : 'text-content-muted hover:text-text-hi'
               }`}
             >
               <RefreshCw size={13} /> Ulepsz obecny slajd
@@ -140,7 +140,7 @@ export const SlideAiAssistantModal: React.FC<SlideAiAssistantModalProps> = ({
             className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
               mode === 'create-slide' 
                 ? 'bg-primary text-black shadow-md' 
-                : 'text-content-muted hover:text-white'
+                : 'text-content-muted hover:text-text-hi'
             }`}
           >
             <Layers size={13} /> Stwórz nowy slajd AI

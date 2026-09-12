@@ -470,7 +470,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                   taskType === 'translation'
                     ? 'bg-primary text-base-100 shadow-sm'
-                    : 'text-content-muted hover:text-white'
+                    : 'text-content-muted hover:text-text-hi'
                 }`}
               >
                 <BookOpen size={13} /> Tłumaczenie
@@ -481,13 +481,13 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                   taskType === 'find_errors'
                     ? 'bg-primary text-base-100 shadow-sm'
-                    : 'text-content-muted hover:text-white'
+                    : 'text-content-muted hover:text-text-hi'
                 }`}
               >
                 <AlertTriangle size={13} /> Poprawianie błędów
               </button>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-colors text-content-muted hover:text-white">
+            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-colors text-content-muted hover:text-text-hi">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -529,7 +529,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                   className={`w-full px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 transition-all ${
                     selectedLessonIds.length > 0
                       ? 'bg-primary/10 border-primary/40 text-primary hover:bg-primary/15'
-                      : 'bg-base-100 border-white/10 text-content hover:border-white/20 hover:text-white'
+                      : 'bg-base-100 border-white/10 text-content hover:border-white/20 hover:text-text-hi'
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
@@ -601,7 +601,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                           className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
                             isChecked
                               ? 'bg-primary text-accent-ink font-bold border-primary shadow-[0_0_10px_rgba(114,240,180,0.2)]'
-                              : 'bg-base-100 border-white/10 text-content-muted hover:text-white hover:border-white/30'
+                              : 'bg-base-100 border-white/10 text-content-muted hover:text-text-hi hover:border-white/30'
                           }`}
                         >
                           {isChecked ? '✓ ' : '+ '}{word}
@@ -619,7 +619,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
             {error && (
               <div className="bg-danger/10 border border-danger/30 text-danger p-3 rounded-xl text-xs flex items-center justify-between">
                 <span>{error}</span>
-                <button onClick={() => setError('')} className="hover:text-white">✕</button>
+                <button onClick={() => setError('')} className="hover:text-text-hi">✕</button>
               </div>
             )}
 
@@ -835,7 +835,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                               type="button"
                               onClick={() => moveSentence(index, 'up')}
                               disabled={index === 0}
-                              className="p-1.5 text-content-muted hover:text-white rounded-lg hover:bg-white/5 disabled:opacity-20 transition-colors"
+                              className="p-1.5 text-content-muted hover:text-text-hi rounded-lg hover:bg-white/5 disabled:opacity-20 transition-colors"
                               title="Przesuń zdanie w górę"
                             >
                               <ChevronUp className="w-3.5 h-3.5" />
@@ -844,14 +844,14 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                               type="button"
                               onClick={() => moveSentence(index, 'down')}
                               disabled={index === generatedSentences.length - 1}
-                              className="p-1.5 text-content-muted hover:text-white rounded-lg hover:bg-white/5 disabled:opacity-20 transition-colors"
+                              className="p-1.5 text-content-muted hover:text-text-hi rounded-lg hover:bg-white/5 disabled:opacity-20 transition-colors"
                               title="Przesuń zdanie w dół"
                             >
                               <ChevronDown className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => setEditingSentenceId(s.id)}
-                              className="p-1.5 text-content-muted hover:text-white rounded-lg hover:bg-white/5"
+                              className="p-1.5 text-content-muted hover:text-text-hi rounded-lg hover:bg-white/5"
                               title="Edytuj zdanie"
                             >
                               <Edit2 className="w-3.5 h-3.5" />

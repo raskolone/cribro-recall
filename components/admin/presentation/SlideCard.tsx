@@ -593,7 +593,7 @@ export const SlideCard: React.FC<SlideCardProps> = ({
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => toggleReveal(qcId)}
-                                className="h-6 px-1 text-[10px] text-content-muted hover:text-white"
+                                className="h-6 px-1 text-[10px] text-content-muted hover:text-text-hi"
                               >
                                 <EyeOff size={12} />
                               </Button>

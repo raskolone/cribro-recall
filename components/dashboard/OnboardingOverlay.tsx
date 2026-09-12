@@ -455,7 +455,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete, langu
                 type="button"
                 onClick={onComplete}
                 title={language === 'pl' ? 'Zamknij / Pomiń przewodnik' : 'Close / Skip tour'}
-                className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-text-2 hover:text-white transition-colors cursor-pointer"
+                className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-text-2 hover:text-text-hi transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>

@@ -271,7 +271,7 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
                   </button>
                   <button
                     onClick={() => handleDismiss(item.id)}
-                    className="min-h-[2.25rem] px-2.5 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white text-xs font-semibold transition-colors"
+                    className="min-h-[2.25rem] px-2.5 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi text-xs font-semibold transition-colors"
                   >
                     Później
                   </button>
@@ -280,7 +280,7 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
 
               <button
                 onClick={() => handleDismiss(item.id)}
-                className="absolute top-1 right-1 p-1 rounded-lg text-content-muted hover:text-white hover:bg-white/10 transition-colors"
+                className="absolute top-1 right-1 p-1 rounded-lg text-content-muted hover:text-text-hi hover:bg-white/10 transition-colors"
                 aria-label="Zamknij powiadomienie"
               >
                 <X size={15} />

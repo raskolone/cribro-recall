@@ -212,7 +212,7 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
                     const hwId = currentHomework?.id || ('generic_homework_' + (user?.id || ''));
                     handleHomeworkAction(hwId, false);
                   }}
-                  className="p-1.5 text-content-muted hover:text-white rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                  className="p-1.5 text-content-muted hover:text-text-hi rounded-full hover:bg-white/10 transition-colors cursor-pointer"
                   title={language === 'pl' ? 'Zamknij' : 'Close'}
                 >
                   <X size={20} />
@@ -258,7 +258,7 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
                     const hwId = currentHomework?.id || ('generic_homework_' + user.id);
                     handleHomeworkAction(hwId, false);
                   }}
-                  className="w-full py-2.5 px-4 bg-ink/72 hover:bg-white/10 text-content-muted hover:text-white rounded-2xl text-xs md:text-sm font-semibold transition-all border border-white/10 flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full py-2.5 px-4 bg-ink/72 hover:bg-white/10 text-content-muted hover:text-text-hi rounded-2xl text-xs md:text-sm font-semibold transition-all border border-white/10 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <X size={16} />
                   <span>{language === 'pl' ? 'Odhacz i zamknij powiadomienie' : 'Dismiss notification'}</span>
@@ -312,7 +312,7 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
                 </button>
                 <button 
                   onClick={(e) => handleDismiss(e, item.id)}
-                  className="p-2 text-content-muted hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                  className="p-2 text-content-muted hover:text-text-hi rounded-lg hover:bg-white/10 transition-colors"
                   title={language === 'pl' ? 'Zamknij' : 'Close'}
                 >
                   <X size={20} />

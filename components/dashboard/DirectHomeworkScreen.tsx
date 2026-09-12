@@ -207,7 +207,7 @@ export const DirectHomeworkScreen: React.FC = () => {
             onClick={() => {
               window.location.href = '/';
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-content-muted hover:text-white hover:border-white/20 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-content-muted hover:text-text-hi hover:border-white/20 transition-colors"
           >
             <LogIn size={13} />
             <span>Logowanie do panelu</span>

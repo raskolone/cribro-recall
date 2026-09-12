@@ -94,7 +94,7 @@ export const CleanLessonsModal: React.FC<CleanLessonsModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-content-muted hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 rounded-xl text-content-muted hover:text-text-hi hover:bg-white/10 transition-colors"
           >
             <X size={20} />
           </button>
@@ -196,7 +196,7 @@ export const CleanLessonsModal: React.FC<CleanLessonsModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-white/10 text-xs font-semibold text-content-muted hover:text-white"
+              className="px-4 py-2 rounded-xl border border-white/10 text-xs font-semibold text-content-muted hover:text-text-hi"
             >
               Anuluj
             </button>

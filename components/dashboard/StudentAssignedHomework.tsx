@@ -155,7 +155,7 @@ export const StudentAssignedHomework: React.FC<StudentAssignedHomeworkProps> = (
             className={`px-3 py-1 rounded-lg font-medium transition-all ${
               filter === 'pending'
                 ? 'bg-primary text-accent-ink font-bold shadow-sm'
-                : 'text-content-muted hover:text-white'
+                : 'text-content-muted hover:text-text-hi'
             }`}
           >
             {language === 'pl' ? `Do zrobienia (${pendingTasks.length})` : `To do (${pendingTasks.length})`}
@@ -165,7 +165,7 @@ export const StudentAssignedHomework: React.FC<StudentAssignedHomeworkProps> = (
             className={`px-3 py-1 rounded-lg font-medium transition-all ${
               filter === 'completed'
                 ? 'bg-primary text-accent-ink font-bold shadow-sm'
-                : 'text-content-muted hover:text-white'
+                : 'text-content-muted hover:text-text-hi'
             }`}
           >
             {language === 'pl' ? `Oddane / Ocenione (${completedTasks.length})` : `Done (${completedTasks.length})`}
@@ -175,7 +175,7 @@ export const StudentAssignedHomework: React.FC<StudentAssignedHomeworkProps> = (
             className={`px-3 py-1 rounded-lg font-medium transition-all ${
               filter === 'all'
                 ? 'bg-primary text-accent-ink font-bold shadow-sm'
-                : 'text-content-muted hover:text-white'
+                : 'text-content-muted hover:text-text-hi'
             }`}
           >
             {language === 'pl' ? `Wszystkie (${tasks.length})` : `All (${tasks.length})`}

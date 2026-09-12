@@ -330,7 +330,7 @@ export const StudentInviteEmailModal: React.FC<StudentInviteEmailModalProps> = (
           <button
             onClick={onClose}
             disabled={isSending}
-            className="p-2 rounded-xl text-content-muted hover:text-white hover:bg-white/10 transition-colors shrink-0 cursor-pointer disabled:opacity-50"
+            className="p-2 rounded-xl text-content-muted hover:text-text-hi hover:bg-white/10 transition-colors shrink-0 cursor-pointer disabled:opacity-50"
             title="Zamknij okno (Esc)"
           >
             <X className="w-5 h-5" />
@@ -398,7 +398,7 @@ export const StudentInviteEmailModal: React.FC<StudentInviteEmailModalProps> = (
                       onChange={(e) => setUpdateProfileEmail(e.target.checked)}
                       className="rounded border-white/20 text-primary focus:ring-primary h-3.5 w-3.5 bg-base-300"
                     />
-                    <span className="text-[11px] text-content-muted hover:text-white transition-colors">
+                    <span className="text-[11px] text-content-muted hover:text-text-hi transition-colors">
                       Zaktualizuj ten adres e-mail w profilu kursanta
                     </span>
                   </label>
@@ -452,7 +452,7 @@ export const StudentInviteEmailModal: React.FC<StudentInviteEmailModalProps> = (
                       onChange={(e) => setSavePasswordToProfile(e.target.checked)}
                       className="rounded border-white/20 text-primary focus:ring-primary h-3.5 w-3.5 bg-base-300"
                     />
-                    <span className="text-[11px] text-content-muted hover:text-white transition-colors">
+                    <span className="text-[11px] text-content-muted hover:text-text-hi transition-colors">
                       Zapisz jako hasło tymczasowe w profilu kursanta (wymusza zmianę po zalogowaniu)
                     </span>
                   </label>
@@ -558,7 +558,7 @@ export const StudentInviteEmailModal: React.FC<StudentInviteEmailModalProps> = (
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                       activeTab === 'preview'
                         ? 'bg-primary text-accent-ink shadow-sm'
-                        : 'text-content-muted hover:text-white'
+                        : 'text-content-muted hover:text-text-hi'
                     }`}
                   >
                     <Eye size={13} /> Podgląd wizualny
@@ -569,7 +569,7 @@ export const StudentInviteEmailModal: React.FC<StudentInviteEmailModalProps> = (
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                       activeTab === 'text'
                         ? 'bg-primary text-accent-ink shadow-sm'
-                        : 'text-content-muted hover:text-white'
+                        : 'text-content-muted hover:text-text-hi'
                     }`}
                   >
                     <FileText size={13} /> Treść tekstowa

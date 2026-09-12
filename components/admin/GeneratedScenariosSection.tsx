@@ -124,7 +124,7 @@ export const GeneratedScenariosSection: React.FC<GeneratedScenariosSectionProps>
                 className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                   filterStudent === 'all'
                     ? 'bg-primary text-accent-ink shadow-sm'
-                    : 'text-content-muted hover:text-white'
+                    : 'text-content-muted hover:text-text-hi'
                 }`}
               >
                 Wszystkie ({scenarios.length})
@@ -134,7 +134,7 @@ export const GeneratedScenariosSection: React.FC<GeneratedScenariosSectionProps>
                 className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                   filterStudent === 'current'
                     ? 'bg-primary text-accent-ink shadow-sm'
-                    : 'text-content-muted hover:text-white'
+                    : 'text-content-muted hover:text-text-hi'
                 }`}
               >
                 Dla {selectedUser.firstName || selectedUser.username}
@@ -146,7 +146,7 @@ export const GeneratedScenariosSection: React.FC<GeneratedScenariosSectionProps>
             size="sm"
             variant="ghost"
             onClick={fetchScenarios}
-            className="text-xs text-content-muted hover:text-white"
+            className="text-xs text-content-muted hover:text-text-hi"
             title="Odśwież listę scenariuszy"
           >
             <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
@@ -168,7 +168,7 @@ export const GeneratedScenariosSection: React.FC<GeneratedScenariosSectionProps>
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-content-muted hover:text-white"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-content-muted hover:text-text-hi"
             >
               Wyczyść
             </button>
@@ -295,7 +295,7 @@ export const GeneratedScenariosSection: React.FC<GeneratedScenariosSectionProps>
                     )}
                     <button
                       onClick={e => handleCopy(scenario, e)}
-                      className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white transition-colors"
+                      className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors"
                       title="Kopiuj treść scenariusza"
                     >
                       {copiedId === scenario.id ? <Check size={14} className="text-primary" /> : <Copy size={14} />}

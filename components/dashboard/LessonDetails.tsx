@@ -242,7 +242,7 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
               <button
                 type="button"
                 onClick={() => setShowAnswerKey((v) => !v)}
-                className="text-[11px] font-bold text-content-muted hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
+                className="text-[11px] font-bold text-content-muted hover:text-text-hi flex items-center gap-1 cursor-pointer transition-colors"
               >
                 <KeyRound size={12} className="text-amber-400" />
                 {showAnswerKey ? L.hideAnswerKey : L.showAnswerKey}

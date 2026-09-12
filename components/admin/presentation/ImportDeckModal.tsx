@@ -82,7 +82,7 @@ export const ImportDeckModal: React.FC<ImportDeckModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-content-muted hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg text-content-muted hover:text-text-hi hover:bg-white/10 transition-colors"
           >
             <X size={18} />
           </button>
@@ -96,7 +96,7 @@ export const ImportDeckModal: React.FC<ImportDeckModalProps> = ({
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 tab === 'scenarios'
                   ? 'bg-primary text-accent-ink shadow-[0_0_12px_rgba(114,240,180,0.3)]'
-                  : 'text-content-muted hover:text-white hover:bg-white/5'
+                  : 'text-content-muted hover:text-text-hi hover:bg-white/5'
               }`}
             >
               <Sparkles size={14} />
@@ -107,7 +107,7 @@ export const ImportDeckModal: React.FC<ImportDeckModalProps> = ({
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 tab === 'records'
                   ? 'bg-info text-black shadow-[0_0_12px_rgba(56,189,248,0.3)]'
-                  : 'text-content-muted hover:text-white hover:bg-white/5'
+                  : 'text-content-muted hover:text-text-hi hover:bg-white/5'
               }`}
             >
               <Clock size={14} />

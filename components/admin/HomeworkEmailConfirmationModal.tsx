@@ -276,7 +276,7 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-xl transition-colors text-content-muted hover:text-white"
+            className="p-2 hover:bg-white/10 rounded-xl transition-colors text-content-muted hover:text-text-hi"
           >
             <X className="w-5 h-5" />
           </button>
@@ -379,7 +379,7 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
                     onChange={(e) => setUpdateProfileEmail(e.target.checked)}
                     className="checkbox checkbox-xs checkbox-primary"
                   />
-                  <span className="text-[11px] text-content-muted hover:text-white transition-colors">
+                  <span className="text-[11px] text-content-muted hover:text-text-hi transition-colors">
                     Zapisz ten adres w profilu kursanta w bazie danych
                   </span>
                 </label>
@@ -475,7 +475,7 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'preview'
                     ? 'bg-primary text-primary-content shadow-sm'
-                    : 'text-content-muted hover:text-white hover:bg-white/5'
+                    : 'text-content-muted hover:text-text-hi hover:bg-white/5'
                 }`}
               >
                 <Eye className="w-3.5 h-3.5" />
@@ -487,7 +487,7 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'exercises'
                     ? 'bg-primary text-primary-content shadow-sm'
-                    : 'text-content-muted hover:text-white hover:bg-white/5'
+                    : 'text-content-muted hover:text-text-hi hover:bg-white/5'
                 }`}
               >
                 <ListChecks className="w-3.5 h-3.5" />
@@ -639,7 +639,7 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
             type="button"
             onClick={handleSkipSending}
             disabled={isSending}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-xs text-content-muted hover:text-white transition-all font-medium"
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-xs text-content-muted hover:text-text-hi transition-all font-medium"
           >
             Pomiń wysyłkę e-mail (tylko zapisz w systemie)
           </button>

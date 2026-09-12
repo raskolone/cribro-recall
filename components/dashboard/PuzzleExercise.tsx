@@ -426,7 +426,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, displaySenten
               className={`px-3 py-1.5 rounded-lg font-bold transition-all shadow-sm z-20 backdrop-blur-md ${
                 isCompleted 
                   ? 'bg-primary text-accent-ink border border-primary/50 cursor-default' 
-                  : `${st.colorClass} border hover:bg-danger/80 hover:text-white hover:border-danger hover:shadow-[0_0_15px_rgba(240, 114, 111,0.6)] cursor-pointer`
+                  : `${st.colorClass} border hover:bg-danger/80 hover:text-text-hi hover:border-danger hover:shadow-[0_0_15px_rgba(240, 114, 111,0.6)] cursor-pointer`
               }`}
             >
               {st.text}
@@ -467,7 +467,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, displaySenten
                   type="button"
                   onClick={(e) => { e.stopPropagation(); playAudio(tile.text); }}
                   disabled={isPlayingAudio || isCompleted}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-white/20 text-white/70 hover:text-white transition-colors z-20"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-white/20 text-white/70 hover:text-text-hi transition-colors z-20"
                   title="Posłuchaj słowa"
                 >
                   <Volume2 className="w-3.5 h-3.5" />

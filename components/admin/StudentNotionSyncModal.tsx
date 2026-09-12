@@ -594,7 +594,7 @@ const StudentNotionSyncModal: React.FC<Props> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-content-muted hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 rounded-xl text-content-muted hover:text-text-hi hover:bg-white/10 transition-colors"
           >
             <X size={20} />
           </button>
@@ -629,7 +629,7 @@ const StudentNotionSyncModal: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl border border-white/10 text-xs font-semibold text-content-muted hover:text-white"
+                  className="px-4 py-2 rounded-xl border border-white/10 text-xs font-semibold text-content-muted hover:text-text-hi"
                 >
                   Zamknij
                 </button>
@@ -764,7 +764,7 @@ const StudentNotionSyncModal: React.FC<Props> = ({
                       <button
                         type="button"
                         onClick={selectAllLessons}
-                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-base-300 text-content-muted border border-white/10 hover:text-white hover:bg-base-200 transition-colors flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-base-300 text-content-muted border border-white/10 hover:text-text-hi hover:bg-base-200 transition-colors flex items-center gap-1 cursor-pointer"
                       >
                         <CheckSquare size={13} />
                         Wszystkie
@@ -772,7 +772,7 @@ const StudentNotionSyncModal: React.FC<Props> = ({
                       <button
                         type="button"
                         onClick={deselectAllLessons}
-                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-base-300 text-content-muted border border-white/10 hover:text-white hover:bg-base-200 transition-colors flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-base-300 text-content-muted border border-white/10 hover:text-text-hi hover:bg-base-200 transition-colors flex items-center gap-1 cursor-pointer"
                       >
                         <Square size={13} />
                         Odznacz
@@ -795,7 +795,7 @@ const StudentNotionSyncModal: React.FC<Props> = ({
                         <button
                           type="button"
                           onClick={() => setLessonSearchTerm('')}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-content-muted hover:text-white cursor-pointer"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-content-muted hover:text-text-hi cursor-pointer"
                         >
                           <X size={13} />
                         </button>
@@ -807,7 +807,7 @@ const StudentNotionSyncModal: React.FC<Props> = ({
                         type="button"
                         onClick={() => setLessonFilter('all')}
                         className={`px-2 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-                          lessonFilter === 'all' ? 'bg-base-100 text-white font-bold' : 'text-content-muted hover:text-white'
+                          lessonFilter === 'all' ? 'bg-base-100 text-white font-bold' : 'text-content-muted hover:text-text-hi'
                         }`}
                       >
                         Wszystkie ({notionLessons.length})
@@ -816,7 +816,7 @@ const StudentNotionSyncModal: React.FC<Props> = ({
                         type="button"
                         onClick={() => setLessonFilter('new')}
                         className={`px-2 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-                          lessonFilter === 'new' ? 'bg-primary/20 text-primary font-bold' : 'text-content-muted hover:text-white'
+                          lessonFilter === 'new' ? 'bg-primary/20 text-primary font-bold' : 'text-content-muted hover:text-text-hi'
                         }`}
                       >
                         Nowe ({newLessonItems.length})
@@ -825,7 +825,7 @@ const StudentNotionSyncModal: React.FC<Props> = ({
                         type="button"
                         onClick={() => setLessonFilter('already_imported')}
                         className={`px-2 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-                          lessonFilter === 'already_imported' ? 'bg-base-100 text-white font-bold' : 'text-content-muted hover:text-white'
+                          lessonFilter === 'already_imported' ? 'bg-base-100 text-white font-bold' : 'text-content-muted hover:text-text-hi'
                         }`}
                       >
                         W aplikacji ({importedLessonItemsCount})
@@ -871,7 +871,7 @@ const StudentNotionSyncModal: React.FC<Props> = ({
                                 {isSelected ? (
                                   <CheckSquare size={17} className="text-primary" />
                                 ) : (
-                                  <Square size={17} className="text-content-muted hover:text-white" />
+                                  <Square size={17} className="text-content-muted hover:text-text-hi" />
                                 )}
                               </div>
                               <div className="min-w-0">
@@ -912,7 +912,7 @@ const StudentNotionSyncModal: React.FC<Props> = ({
                                   target="_blank"
                                   rel="noreferrer"
                                   onClick={(e) => e.stopPropagation()}
-                                  className="p-1 text-content-muted hover:text-white transition-colors"
+                                  className="p-1 text-content-muted hover:text-text-hi transition-colors"
                                   title="Otwórz stronę w Notion"
                                 >
                                   <ExternalLink size={13} />
@@ -954,7 +954,7 @@ const StudentNotionSyncModal: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2.5 rounded-xl border border-white/10 text-xs font-semibold text-content-muted hover:text-white transition-colors"
+                  className="px-4 py-2.5 rounded-xl border border-white/10 text-xs font-semibold text-content-muted hover:text-text-hi transition-colors"
                 >
                   Anuluj
                 </button>
@@ -1007,7 +1007,7 @@ const StudentNotionSyncModal: React.FC<Props> = ({
                     className={`px-3 py-2 rounded-xl text-xs font-bold shrink-0 flex items-center gap-2 transition-all cursor-pointer border ${
                       idx === activeStagedIndex
                         ? 'bg-primary/20 border-primary text-primary shadow-sm'
-                        : 'bg-base-200/60 border-white/5 text-content-muted hover:text-white hover:bg-base-200'
+                        : 'bg-base-200/60 border-white/5 text-content-muted hover:text-text-hi hover:bg-base-200'
                     }`}
                   >
                     <span className="font-mono text-[10px]">#{idx + 1}</span>
@@ -1223,7 +1223,7 @@ const StudentNotionSyncModal: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => setStep('verification')}
-                  className="px-4 py-2.5 rounded-xl border border-white/10 text-xs font-semibold text-content-muted hover:text-white"
+                  className="px-4 py-2.5 rounded-xl border border-white/10 text-xs font-semibold text-content-muted hover:text-text-hi"
                 >
                   Wróć do wyboru
                 </button>

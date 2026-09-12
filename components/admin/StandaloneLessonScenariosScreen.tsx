@@ -106,7 +106,7 @@ export const StandaloneLessonScenariosScreen: React.FC<StandaloneLessonScenarios
           <div className="flex items-center gap-4">
             <button
               onClick={onBack}
-              className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white border border-white/10 transition-colors cursor-pointer"
+              className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi border border-white/10 transition-colors cursor-pointer"
               title="Wróć do panelu głównego"
             >
               <ArrowLeft size={20} />
@@ -140,7 +140,7 @@ export const StandaloneLessonScenariosScreen: React.FC<StandaloneLessonScenarios
             className={`px-4 py-2 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === 'curated'
                 ? 'bg-primary text-accent-ink shadow-[0_0_20px_rgba(114,240,180,0.3)]'
-                : 'bg-base-100/60 text-content-muted hover:text-white border border-white/10'
+                : 'bg-base-100/60 text-content-muted hover:text-text-hi border border-white/10'
             }`}
           >
             <Sparkles size={14} />
@@ -155,7 +155,7 @@ export const StandaloneLessonScenariosScreen: React.FC<StandaloneLessonScenarios
             className={`px-4 py-2 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === 'generated'
                 ? 'bg-primary text-accent-ink shadow-[0_0_20px_rgba(114,240,180,0.3)]'
-                : 'bg-base-100/60 text-content-muted hover:text-white border border-white/10'
+                : 'bg-base-100/60 text-content-muted hover:text-text-hi border border-white/10'
             }`}
           >
             <BookOpen size={14} />
@@ -264,7 +264,7 @@ export const StandaloneLessonScenariosScreen: React.FC<StandaloneLessonScenarios
 
                     <button
                       onClick={(e) => handleCopy(scenario, e)}
-                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-content-muted hover:text-white transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-content-muted hover:text-text-hi transition-colors cursor-pointer"
                       title="Kopiuj tekst scenariusza"
                     >
                       {copiedId === scenario.id ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
@@ -331,7 +331,7 @@ export const StandaloneLessonScenariosScreen: React.FC<StandaloneLessonScenarios
                     <button
                       type="button"
                       onClick={() => setPreviewingScenario(scenario)}
-                      className="hover:text-white flex items-center gap-1 font-semibold cursor-pointer"
+                      className="hover:text-text-hi flex items-center gap-1 font-semibold cursor-pointer"
                     >
                       <Eye size={12} />
                       <span>Podgląd konspektu</span>
@@ -374,7 +374,7 @@ export const StandaloneLessonScenariosScreen: React.FC<StandaloneLessonScenarios
               </div>
               <button
                 onClick={() => setPreviewingScenario(null)}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white cursor-pointer"
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi cursor-pointer"
               >
                 Zamknij
               </button>

@@ -33,7 +33,7 @@ const LessonHistoryScreen: React.FC<LessonHistoryScreenProps> = ({ studentId, on
     `px-4 min-h-[2.75rem] rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
       activeTab === tab
         ? 'bg-primary/12 text-primary border border-primary/30 shadow-glow'
-        : 'text-content-muted hover:text-white'
+        : 'text-content-muted hover:text-text-hi'
     }`;
 
   return (

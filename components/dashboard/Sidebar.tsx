@@ -62,7 +62,7 @@ const NavLink: React.FC<{
   <button id={id}
     onClick={onClick}
     title={isCollapsed ? (typeof children === 'string' ? children : undefined) : undefined}
-    className={`group relative z-10 hover:z-20 w-full flex items-center justify-between ${isCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border ${isActive ? 'bg-primary/10 border-primary/20 text-primary shadow-glow' : 'text-content-muted border-transparent hover:bg-white/5 hover:border-white/10 hover:text-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]'} ${className}`}
+    className={`group relative z-10 hover:z-20 w-full flex items-center justify-between ${isCollapsed ? 'px-4 md:px-0 md:justify-center' : 'px-4'} py-3 text-sm font-bold rounded-xl transition-all duration-200 border ${isActive ? 'bg-primary/10 border-primary/20 text-primary shadow-glow' : 'text-content-muted border-transparent hover:bg-white/5 hover:border-white/10 hover:text-text-hi hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]'} ${className}`}
   >
     <div className="flex items-center min-w-0">
       {icon && (
@@ -336,7 +336,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
           </div>
           
           <div className="flex items-center md:hidden">
-            <button onClick={onClose} className="p-2 text-content-muted hover:text-white rounded-lg hover:bg-white/5 transition-colors">
+            <button onClick={onClose} className="p-2 text-content-muted hover:text-text-hi rounded-lg hover:bg-white/5 transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>

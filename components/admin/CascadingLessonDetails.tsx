@@ -336,7 +336,7 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsAnswerKeyOpen(v => !v)}
-                      className="w-full p-2.5 flex items-center justify-between text-xs font-bold text-content-muted hover:text-white transition-colors cursor-pointer select-none"
+                      className="w-full p-2.5 flex items-center justify-between text-xs font-bold text-content-muted hover:text-text-hi transition-colors cursor-pointer select-none"
                     >
                       <span className="flex items-center gap-1.5">
                         <KeyRound size={13} className="text-amber-400" />

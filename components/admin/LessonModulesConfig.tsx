@@ -257,7 +257,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-content-muted hover:text-white transition-colors"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-content-muted hover:text-text-hi transition-colors"
               title="Zamknij okno ustawień"
             >
               <X size={18} />
@@ -274,7 +274,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
               className={`px-4 py-2 rounded-xl font-extrabold flex items-center gap-1.5 transition-all text-xs shrink-0 cursor-pointer ${
                 activeTab === 'modules'
                   ? 'bg-primary text-accent-ink shadow-[0_0_15px_rgba(114,240,180,0.35)]'
-                  : 'text-content-muted hover:text-white bg-white/5 hover:bg-white/10'
+                  : 'text-content-muted hover:text-text-hi bg-white/5 hover:bg-white/10'
               }`}
             >
               <Layers size={14} />
@@ -287,7 +287,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
               className={`px-4 py-2 rounded-xl font-extrabold flex items-center gap-1.5 transition-all text-xs shrink-0 cursor-pointer ${
                 activeTab === 'methodology'
                   ? 'bg-primary text-accent-ink shadow-[0_0_15px_rgba(114,240,180,0.35)]'
-                  : 'text-content-muted hover:text-white bg-white/5 hover:bg-white/10'
+                  : 'text-content-muted hover:text-text-hi bg-white/5 hover:bg-white/10'
               }`}
             >
               <SlidersHorizontal size={14} />
@@ -300,7 +300,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
               className={`px-4 py-2 rounded-xl font-extrabold flex items-center gap-1.5 transition-all text-xs shrink-0 cursor-pointer ${
                 activeTab === 'prompt'
                   ? 'bg-primary text-accent-ink shadow-[0_0_15px_rgba(114,240,180,0.35)]'
-                  : 'text-content-muted hover:text-white bg-white/5 hover:bg-white/10'
+                  : 'text-content-muted hover:text-text-hi bg-white/5 hover:bg-white/10'
               }`}
             >
               <Sliders size={14} />
@@ -316,7 +316,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
               className={`px-4 py-2 rounded-xl font-extrabold flex items-center gap-1.5 transition-all text-xs shrink-0 cursor-pointer ${
                 activeTab === 'presets'
                   ? 'bg-primary text-accent-ink shadow-[0_0_15px_rgba(114,240,180,0.35)]'
-                  : 'text-content-muted hover:text-white bg-white/5 hover:bg-white/10'
+                  : 'text-content-muted hover:text-text-hi bg-white/5 hover:bg-white/10'
               }`}
             >
               <Bookmark size={14} />
@@ -361,7 +361,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
                         className={`px-2.5 py-1 rounded-xl border text-[11px] font-semibold transition-all flex items-center gap-1 ${
                           isSelected
                             ? 'bg-primary text-accent-ink border-primary font-bold shadow-sm'
-                            : 'bg-base-200 text-content-muted border-white/10 hover:text-white hover:border-white/25'
+                            : 'bg-base-200 text-content-muted border-white/10 hover:text-text-hi hover:border-white/25'
                         }`}
                       >
                         <span>{preset.name}</span>
@@ -374,7 +374,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
                   <button
                     type="button"
                     onClick={handleResetToDefault}
-                    className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white border border-white/10 text-[11px] font-medium flex items-center gap-1 transition-colors"
+                    className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi border border-white/10 text-[11px] font-medium flex items-center gap-1 transition-colors"
                     title="Przywróć standardowy wzór 5 modułów ze zdjęcia"
                   >
                     <RotateCcw size={11} />
@@ -440,7 +440,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
                               <button
                                 type="button"
                                 onClick={handleCancelEdit}
-                                className="px-2.5 py-1.5 rounded-lg bg-white/10 text-content-muted hover:text-white text-xs flex items-center gap-1"
+                                className="px-2.5 py-1.5 rounded-lg bg-white/10 text-content-muted hover:text-text-hi text-xs flex items-center gap-1"
                               >
                                 <X size={13} />
                                 <span>Anuluj</span>
@@ -543,7 +543,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
                               type="button"
                               onClick={() => handleMoveUp(idx)}
                               disabled={idx === 0}
-                              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 disabled:opacity-20 text-content-muted hover:text-white transition-all cursor-pointer"
+                              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 disabled:opacity-20 text-content-muted hover:text-text-hi transition-all cursor-pointer"
                               title="Przesuń wyżej"
                             >
                               <ArrowUp size={14} />
@@ -552,7 +552,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
                               type="button"
                               onClick={() => handleMoveDown(idx)}
                               disabled={idx === modules.length - 1}
-                              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 disabled:opacity-20 text-content-muted hover:text-white transition-all cursor-pointer"
+                              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 disabled:opacity-20 text-content-muted hover:text-text-hi transition-all cursor-pointer"
                               title="Przesuń niżej"
                             >
                               <ArrowDown size={14} />
@@ -595,7 +595,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowAddCustomModal(true)}
-                  className="px-4 py-2.5 rounded-xl bg-primary/15 hover:bg-primary/25 border border-primary/40 hover:border-primary text-primary hover:text-white font-extrabold text-xs flex items-center gap-2 transition-all shadow-[0_0_12px_rgba(114,240,180,0.15)] hover:shadow-[0_0_18px_rgba(114,240,180,0.35)] cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-primary/15 hover:bg-primary/25 border border-primary/40 hover:border-primary text-primary hover:text-text-hi font-extrabold text-xs flex items-center gap-2 transition-all shadow-[0_0_12px_rgba(114,240,180,0.15)] hover:shadow-[0_0_18px_rgba(114,240,180,0.35)] cursor-pointer"
                 >
                   <Plus size={15} className="text-primary" />
                   <span>Stwórz własny moduł</span>
@@ -701,7 +701,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
                   <button
                     type="button"
                     onClick={() => onChangeCustomSettings({ ...customSettings, customPrompt: '' })}
-                    className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-content-muted hover:text-white text-[11px] transition-colors"
+                    className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi text-[11px] transition-colors"
                   >
                     Wyczyść prompt
                   </button>
@@ -733,7 +733,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
                         customPrompt: customSettings.customPrompt ? `${customSettings.customPrompt}\n${snippet}` : snippet
                       });
                     }}
-                    className="px-2.5 py-1.5 rounded-xl bg-base-200 hover:bg-base-200/80 border border-white/10 hover:border-primary/40 text-content-muted hover:text-white text-[11px] transition-all"
+                    className="px-2.5 py-1.5 rounded-xl bg-base-200 hover:bg-base-200/80 border border-white/10 hover:border-primary/40 text-content-muted hover:text-text-hi text-[11px] transition-all"
                   >
                     + Wymowa IPA & Synonimy
                   </button>
@@ -746,7 +746,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
                         customPrompt: customSettings.customPrompt ? `${customSettings.customPrompt}\n${snippet}` : snippet
                       });
                     }}
-                    className="px-2.5 py-1.5 rounded-xl bg-base-200 hover:bg-base-200/80 border border-white/10 hover:border-primary/40 text-content-muted hover:text-white text-[11px] transition-all"
+                    className="px-2.5 py-1.5 rounded-xl bg-base-200 hover:bg-base-200/80 border border-white/10 hover:border-primary/40 text-content-muted hover:text-text-hi text-[11px] transition-all"
                   >
                     + Dialogi biznesowe Role-play
                   </button>
@@ -759,7 +759,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
                         customPrompt: customSettings.customPrompt ? `${customSettings.customPrompt}\n${snippet}` : snippet
                       });
                     }}
-                    className="px-2.5 py-1.5 rounded-xl bg-base-200 hover:bg-base-200/80 border border-white/10 hover:border-primary/40 text-content-muted hover:text-white text-[11px] transition-all"
+                    className="px-2.5 py-1.5 rounded-xl bg-base-200 hover:bg-base-200/80 border border-white/10 hover:border-primary/40 text-content-muted hover:text-text-hi text-[11px] transition-all"
                   >
                     + Debata gramatyczna
                   </button>
@@ -894,7 +894,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
               <button
                 type="button"
                 onClick={() => setShowCatalogModal(false)}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white"
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi"
               >
                 <X size={16} />
               </button>
@@ -958,7 +958,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
               <button
                 type="button"
                 onClick={() => setShowAddCustomModal(false)}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white"
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi"
               >
                 <X size={16} />
               </button>
@@ -1009,7 +1009,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowAddCustomModal(false)}
-                  className="px-4 py-2 rounded-xl bg-white/10 text-content-muted hover:text-white text-xs font-semibold"
+                  className="px-4 py-2 rounded-xl bg-white/10 text-content-muted hover:text-text-hi text-xs font-semibold"
                 >
                   Anuluj
                 </button>
@@ -1047,7 +1047,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
               <button
                 type="button"
                 onClick={() => setShowSavePresetModal(false)}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white"
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi"
               >
                 <X size={16} />
               </button>
@@ -1085,7 +1085,7 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowSavePresetModal(false)}
-                  className="px-4 py-2 rounded-xl bg-white/10 text-content-muted hover:text-white text-xs font-semibold"
+                  className="px-4 py-2 rounded-xl bg-white/10 text-content-muted hover:text-text-hi text-xs font-semibold"
                 >
                   Anuluj
                 </button>

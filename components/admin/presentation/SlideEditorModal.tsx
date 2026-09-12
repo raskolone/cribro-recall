@@ -90,7 +90,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-content-muted hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg text-content-muted hover:text-text-hi hover:bg-white/10 transition-colors"
           >
             <X size={18} />
           </button>

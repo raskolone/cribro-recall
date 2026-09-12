@@ -232,7 +232,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
               <button
                 onClick={() => setActiveViewMode('both')}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                  activeViewMode === 'both' ? 'bg-primary text-accent-ink shadow-md' : 'text-content-muted hover:text-white'
+                  activeViewMode === 'both' ? 'bg-primary text-accent-ink shadow-md' : 'text-content-muted hover:text-text-hi'
                 }`}
               >
                 <BarChart2 size={13} />
@@ -241,7 +241,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
               <button
                 onClick={() => setActiveViewMode('chart')}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                  activeViewMode === 'chart' ? 'bg-primary text-accent-ink shadow-md' : 'text-content-muted hover:text-white'
+                  activeViewMode === 'chart' ? 'bg-primary text-accent-ink shadow-md' : 'text-content-muted hover:text-text-hi'
                 }`}
               >
                 <BarChart2 size={13} />
@@ -250,7 +250,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
               <button
                 onClick={() => setActiveViewMode('logs')}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                  activeViewMode === 'logs' ? 'bg-primary text-accent-ink shadow-md' : 'text-content-muted hover:text-white'
+                  activeViewMode === 'logs' ? 'bg-primary text-accent-ink shadow-md' : 'text-content-muted hover:text-text-hi'
                 }`}
               >
                 <ListFilter size={13} />
@@ -263,7 +263,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
               <button
                 onClick={() => setTypeFilter('all')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  typeFilter === 'all' ? 'bg-white/20 text-white' : 'bg-base-100/60 text-content-muted hover:text-white'
+                  typeFilter === 'all' ? 'bg-white/20 text-white' : 'bg-base-100/60 text-content-muted hover:text-text-hi'
                 }`}
               >
                 {i18n.t("Wszystkie")}
@@ -271,7 +271,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
               <button
                 onClick={() => setTypeFilter('login')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  typeFilter === 'login' ? 'bg-info/80 text-white' : 'bg-base-100/60 text-content-muted hover:text-white'
+                  typeFilter === 'login' ? 'bg-info/80 text-white' : 'bg-base-100/60 text-content-muted hover:text-text-hi'
                 }`}
               >
                 {i18n.t("Logowania")}
@@ -279,7 +279,7 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
               <button
                 onClick={() => setTypeFilter('practice')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  typeFilter === 'practice' ? 'bg-primary/80 text-content' : 'bg-base-100/60 text-content-muted hover:text-white'
+                  typeFilter === 'practice' ? 'bg-primary/80 text-content' : 'bg-base-100/60 text-content-muted hover:text-text-hi'
                 }`}
               >
                 {i18n.t("Ćwiczenia")}

@@ -1937,7 +1937,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             </div>
             <button
               onClick={() => setActiveTab(selectedUser ? 'profile' : null)}
-              className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-white/10"
+              className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-white/10"
             >
               <X size={14} />
               {selectedUser ? 'Wróć do profilu kursanta' : 'Zamknij moduł'}
@@ -2132,7 +2132,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   setPracticeLogs([]);
                   setLessonRecords([]);
                 }}
-                className="px-3 py-2 bg-ink/72 hover:bg-white/10 text-content-muted hover:text-white border border-white/10 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3 py-2 bg-ink/72 hover:bg-white/10 text-content-muted hover:text-text-hi border border-white/10 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <X size={16} />
                 Wyczyść
@@ -2166,7 +2166,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer shrink-0 ${
                     isActive
                       ? 'bg-primary text-black font-extrabold shadow-md shadow-primary/20 border border-primary/50'
-                      : 'text-content-muted hover:text-white hover:bg-white/10 border border-transparent'
+                      : 'text-content-muted hover:text-text-hi hover:bg-white/10 border border-transparent'
                   }`}
                 >
                   <Icon size={16} className={isActive ? 'text-black' : 'text-primary'} />
@@ -2246,7 +2246,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   <div className="flex items-center gap-4">
                     <h3 className="text-lg font-bold">{i18n.t("Historia lekcji")}</h3>
                     {lessonRecords.length > 0 && (
-                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-content-muted hover:text-white transition-colors">
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-content-muted hover:text-text-hi transition-colors">
                         <input 
                           type="checkbox" 
                           className="toggle toggle-primary toggle-sm"
@@ -2536,7 +2536,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                             size="sm"
                                             variant="secondary"
                                             onClick={() => openLessonRecordModal('edit', record)}
-                                            className="text-xs font-bold text-content-muted hover:text-white flex items-center gap-1"
+                                            className="text-xs font-bold text-content-muted hover:text-text-hi flex items-center gap-1"
                                             title="Edytuj treść przed aktualizacją"
                                           >
                                             <Edit3 size={12} />
@@ -3387,7 +3387,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-2 ${
                         (profileForm.role || selectedUser.role) === 'user' 
                           ? 'bg-primary text-accent-ink shadow-md scale-[1.02]' 
-                          : 'bg-base-100/60 text-content-muted hover:text-white border border-white/10'
+                          : 'bg-base-100/60 text-content-muted hover:text-text-hi border border-white/10'
                       }`}
                     >
                       <UserIcon size={14} />
@@ -3402,7 +3402,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-2 ${
                         (profileForm.role || selectedUser.role) === 'teacher' 
                           ? 'bg-blue-500 text-white shadow-md scale-[1.02]' 
-                          : 'bg-base-100/60 text-content-muted hover:text-white border border-white/10'
+                          : 'bg-base-100/60 text-content-muted hover:text-text-hi border border-white/10'
                       }`}
                     >
                       <Sparkles size={14} />
@@ -3417,7 +3417,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-2 ${
                         (profileForm.role || selectedUser.role) === 'admin' 
                           ? 'bg-danger text-white shadow-md scale-[1.02]' 
-                          : 'bg-base-100/60 text-content-muted hover:text-white border border-white/10'
+                          : 'bg-base-100/60 text-content-muted hover:text-text-hi border border-white/10'
                       }`}
                     >
                       <Shield size={14} />
@@ -3443,7 +3443,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   <Button
                     variant="secondary"
                     size="sm"
-                    className={selectedUser.showAiMonitor || selectedUser.canViewAiMonitor ? "bg-primary/20 text-primary hover:bg-primary/30 border border-primary/40 shrink-0 cursor-pointer" : "bg-base-300 text-content-muted hover:text-white shrink-0 cursor-pointer"}
+                    className={selectedUser.showAiMonitor || selectedUser.canViewAiMonitor ? "bg-primary/20 text-primary hover:bg-primary/30 border border-primary/40 shrink-0 cursor-pointer" : "bg-base-300 text-content-muted hover:text-text-hi shrink-0 cursor-pointer"}
                     onClick={() => {
                       const currentVal = Boolean(selectedUser.showAiMonitor || selectedUser.canViewAiMonitor);
                       const newStatus = !currentVal;
@@ -3916,7 +3916,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                               className={`text-xs px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 ${
                                 isAssigned 
                                   ? 'bg-primary/20 border-primary/50 text-primary font-semibold' 
-                                  : 'bg-base-300/40 border-white/10 text-content-muted/60 hover:text-white hover:bg-white/10'
+                                  : 'bg-base-300/40 border-white/10 text-content-muted/60 hover:text-text-hi hover:bg-white/10'
                               }`}
                             >
                               <span>{isAssigned ? '✓' : '+'}</span>
@@ -4026,7 +4026,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${
                         activeLessonFormTab === 'manual'
                           ? 'bg-primary text-accent-ink shadow-md'
-                          : 'text-content-muted hover:text-white'
+                          : 'text-content-muted hover:text-text-hi'
                       }`}
                     >
                       Ręczny wpis
@@ -4037,7 +4037,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${
                         activeLessonFormTab === 'database'
                           ? 'bg-primary text-accent-ink shadow-md'
-                          : 'text-content-muted hover:text-white'
+                          : 'text-content-muted hover:text-text-hi'
                       }`}
                     >
                       Baza gotowych lekcji innych kursantów
@@ -4072,7 +4072,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                 setLessonFormStudentIds([]);
                                 setLessonFormStudentId('');
                               }}
-                              className="text-xs text-content-muted hover:text-white hover:underline font-medium"
+                              className="text-xs text-content-muted hover:text-text-hi hover:underline font-medium"
                             >
                               {i18n.t("Wyczyść")}
                             </button>
@@ -4259,7 +4259,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-xs text-content-muted hover:text-white flex-1 sm:flex-none"
+                            className="text-xs text-content-muted hover:text-text-hi flex-1 sm:flex-none"
                             onClick={() => setSelectedDbLessonKeys([])}
                           >
                             Wyczyść
@@ -4996,7 +4996,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
               <button
                 onClick={() => setIsStudentPickerOpen(false)}
-                className="p-2 text-content-muted hover:text-white rounded-xl hover:bg-white/10 transition-colors"
+                className="p-2 text-content-muted hover:text-text-hi rounded-xl hover:bg-white/10 transition-colors"
               >
                 <X size={20} />
               </button>
@@ -5017,7 +5017,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-content-muted hover:text-white p-1"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-content-muted hover:text-text-hi p-1"
                   >
                     <X size={14} />
                   </button>
@@ -5118,7 +5118,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               {archivedCount > 0 && (
                 <button
                   onClick={() => setShowArchived(v => !v)}
-                  className="ml-3 text-xs font-bold text-content-muted hover:text-white underline underline-offset-2"
+                  className="ml-3 text-xs font-bold text-content-muted hover:text-text-hi underline underline-offset-2"
                 >
                   {showArchived ? 'Ukryj archiwum' : `Pokaż archiwum (${archivedCount})`}
                 </button>
@@ -5235,7 +5235,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
               <button
                 onClick={() => setIsMailingModalOpen(false)}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white transition-colors border border-white/10 flex items-center gap-1 text-xs font-bold cursor-pointer"
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors border border-white/10 flex items-center gap-1 text-xs font-bold cursor-pointer"
                 title="Zamknij okno mailingu (Esc)"
               >
                 <X size={16} />

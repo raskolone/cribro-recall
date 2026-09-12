@@ -368,7 +368,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                   onClick={() =>
                     onNavigate('ai-generator', { setId: `lesson_${latestLesson.id}` })
                   }
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-content hover:text-white font-bold text-xs border border-white/10 hover:border-primary/30 transition-all active:scale-95"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-content hover:text-text-hi font-bold text-xs border border-white/10 hover:border-primary/30 transition-all active:scale-95"
                   title={L.practiceAI}
                 >
                   <Sparkles size={13} className="text-primary" />
@@ -741,7 +741,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                           {isExpanded ? L.hideNotes : L.viewNotes}
                         </span>
                         <div
-                          className={`p-1.5 rounded-lg bg-white/5 text-content-muted group-hover:text-white transition-transform duration-200 ${
+                          className={`p-1.5 rounded-lg bg-white/5 text-content-muted group-hover:text-text-hi transition-transform duration-200 ${
                             isExpanded ? 'rotate-180 text-primary' : ''
                           }`}
                         >
@@ -773,7 +773,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                                 e.stopPropagation();
                                 onNavigate('ai-generator', { setId: `lesson_${lesson.id}` });
                               }}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-content hover:text-white font-bold text-xs border border-white/10 hover:border-primary/30 transition-all active:scale-95"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-content hover:text-text-hi font-bold text-xs border border-white/10 hover:border-primary/30 transition-all active:scale-95"
                             >
                               <Sparkles size={13} className="text-primary" />
                               <span>{L.practiceAI}</span>
@@ -888,7 +888,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
             <div className="p-6 bg-gradient-to-b from-primary/15 via-base-100 to-base-100 border-b border-white/10 relative">
               <button 
                 onClick={() => setShowRepeatModal(false)}
-                className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-content-muted hover:text-white transition-colors"
+                className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-content-muted hover:text-text-hi transition-colors"
               >
                 <X size={16} />
               </button>
@@ -984,7 +984,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
             <div className="p-4 px-6 bg-white/5 border-t border-white/10 flex justify-end">
               <button
                 onClick={() => setShowRepeatModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-content-muted hover:text-white transition-colors"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-content-muted hover:text-text-hi transition-colors"
               >
                 {language === 'pl' ? 'Zamknij' : 'Close'}
               </button>

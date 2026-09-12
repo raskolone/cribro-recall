@@ -814,7 +814,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             className={`flex-1 min-h-[2.25rem] rounded-lg text-xs font-bold transition-colors cursor-pointer ${
               resultFilter === 'all'
                 ? 'bg-primary text-accent-ink shadow-sm'
-                : 'text-content-muted hover:text-white'
+                : 'text-content-muted hover:text-text-hi'
             }`}
           >
             Wszystkie ({totalCount})
@@ -981,7 +981,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
         <div className="space-y-3">
           <button
             onClick={() => setViewingGradedTask(null)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-white/12 text-content-muted hover:text-white hover:bg-white/5 transition-colors text-xs font-semibold cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-white/12 text-content-muted hover:text-text-hi hover:bg-white/5 transition-colors text-xs font-semibold cursor-pointer"
           >
             <ArrowLeft size={16} />
             <span>Wróć do listy prac</span>
@@ -1147,7 +1147,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             className={`flex-1 min-h-[2.5rem] rounded-lg text-xs font-bold transition-colors cursor-pointer ${
               reviewFilter === 'all'
                 ? 'bg-primary text-accent-ink shadow-sm'
-                : 'text-content-muted hover:text-white'
+                : 'text-content-muted hover:text-text-hi'
             }`}
           >
             Wszystkie ({totalCount})
@@ -1883,7 +1883,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                       </button>
                       <button
                         onClick={() => exportTestToPDF(t, (k: string) => k)}
-                        className="min-h-[2.25rem] px-3 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white text-xs font-medium transition-all flex items-center gap-1.5"
+                        className="min-h-[2.25rem] px-3 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi text-xs font-medium transition-all flex items-center gap-1.5"
                       >
                         <Download size={13} />
                         <span>PDF</span>
@@ -1911,7 +1911,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                   Wynik: <strong className="text-primary font-mono font-bold">{Number.isNaN(Number(feedbackTest.score)) ? 0 : feedbackTest.score}/{Number.isNaN(Number(feedbackTest.maxScore)) ? 100 : feedbackTest.maxScore} pkt</strong>
                 </p>
               </div>
-              <button onClick={() => setFeedbackTest(null)} className="p-2 hover:bg-white/10 rounded-xl text-content-muted hover:text-white transition-colors">
+              <button onClick={() => setFeedbackTest(null)} className="p-2 hover:bg-white/10 rounded-xl text-content-muted hover:text-text-hi transition-colors">
                 <XIcon size={20} />
               </button>
             </div>

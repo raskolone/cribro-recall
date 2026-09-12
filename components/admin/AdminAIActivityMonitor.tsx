@@ -189,7 +189,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
           className={`flex items-center gap-2 px-3 min-h-11 rounded-2xl backdrop-blur-xl border transition-all duration-300 shadow-xl cursor-pointer ${
             activeCount > 0
               ? 'bg-primary/20 border-primary text-primary shadow-glow animate-pulse'
-              : 'bg-ink-2/90 hover:brightness-125 border-white/10 hover:border-primary/40 text-white/70 hover:text-white'
+              : 'bg-ink-2/90 hover:brightness-125 border-white/10 hover:border-primary/40 text-white/70 hover:text-text-hi'
           }`}
         >
           {activeCount > 0 ? (
@@ -248,13 +248,13 @@ export const AdminAIActivityMonitor: React.FC = () => {
                 <button
                   onClick={() => aiMonitor.clearHistory()}
                   title="Wyczyść historię"
-                  className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                  className="p-1.5 rounded-lg text-white/40 hover:text-text-hi hover:bg-white/10 transition-colors"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => setIsExpanded(false)}
-                  className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                  className="p-1.5 rounded-lg text-white/40 hover:text-text-hi hover:bg-white/10 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>

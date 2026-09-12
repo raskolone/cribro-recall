@@ -325,7 +325,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
               className={`flex-1 min-h-[2.75rem] rounded-xl border text-sm font-bold transition-colors ${
                 sourceMode === mode
                   ? 'bg-primary/12 border-primary/40 text-primary'
-                  : 'border-white/10 text-content-muted hover:text-white'
+                  : 'border-white/10 text-content-muted hover:text-text-hi'
               }`}
             >
               {mode === 'lessons' ? 'Z historii lekcji' : 'Własny tekst'}
@@ -502,7 +502,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
                       onClick={() => moveSection(sIdx, 'up')}
                       disabled={sIdx === 0}
                       title="Przesuń blok zadań wyżej"
-                      className="p-1.5 rounded-lg text-content-muted hover:text-white hover:bg-white/10 disabled:opacity-20 transition-colors"
+                      className="p-1.5 rounded-lg text-content-muted hover:text-text-hi hover:bg-white/10 disabled:opacity-20 transition-colors"
                     >
                       <ChevronUp size={15} />
                     </button>
@@ -511,7 +511,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
                       onClick={() => moveSection(sIdx, 'down')}
                       disabled={sIdx === sections.length - 1}
                       title="Przesuń blok zadań niżej"
-                      className="p-1.5 rounded-lg text-content-muted hover:text-white hover:bg-white/10 disabled:opacity-20 transition-colors"
+                      className="p-1.5 rounded-lg text-content-muted hover:text-text-hi hover:bg-white/10 disabled:opacity-20 transition-colors"
                     >
                       <ChevronDown size={15} />
                     </button>
@@ -541,7 +541,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
                         onClick={() => moveItem(section.type, index, 'up')}
                         disabled={index === 0}
                         title="Przesuń zadanie wyżej"
-                        className="w-8 h-8 flex items-center justify-center rounded-lg text-content-muted hover:text-white hover:bg-white/10 disabled:opacity-20 transition-colors"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-content-muted hover:text-text-hi hover:bg-white/10 disabled:opacity-20 transition-colors"
                       >
                         <ChevronUp size={14} />
                       </button>
@@ -550,7 +550,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
                         onClick={() => moveItem(section.type, index, 'down')}
                         disabled={index === section.items.length - 1}
                         title="Przesuń zadanie niżej"
-                        className="w-8 h-8 flex items-center justify-center rounded-lg text-content-muted hover:text-white hover:bg-white/10 disabled:opacity-20 transition-colors"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-content-muted hover:text-text-hi hover:bg-white/10 disabled:opacity-20 transition-colors"
                       >
                         <ChevronDown size={14} />
                       </button>

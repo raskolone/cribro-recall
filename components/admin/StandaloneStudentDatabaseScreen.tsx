@@ -286,7 +286,7 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
                 </h3>
                 <button
                   onClick={closeCreateModal}
-                  className="p-1.5 text-content-muted hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                  className="p-1.5 text-content-muted hover:text-text-hi rounded-lg hover:bg-white/10 transition-colors"
                 >
                   <X size={18} />
                 </button>

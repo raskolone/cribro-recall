@@ -655,7 +655,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                     <p className="text-sm text-content-muted/80">{i18n.t("Wybierz lekcje, które posłużą jako kontekst do testu")}</p>
                   </div>
                 </div>
-                <button onClick={() => setIsLessonModalOpen(false)} className="text-content-muted hover:text-white transition-colors">
+                <button onClick={() => setIsLessonModalOpen(false)} className="text-content-muted hover:text-text-hi transition-colors">
                   <X className="w-6 h-6" />
                 </button>
               </div>
@@ -786,7 +786,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                     <span>Wystaw jako test otwarty</span>
                   </Button>
 
-                  <button onClick={() => setIsPreviewModalOpen(false)} className="text-content-muted hover:text-white transition-colors p-2">
+                  <button onClick={() => setIsPreviewModalOpen(false)} className="text-content-muted hover:text-text-hi transition-colors p-2">
                     <X className="w-6 h-6" />
                   </button>
                 </div>
@@ -906,7 +906,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                                 ))}
 
                                 <details className="text-xs text-content-muted cursor-pointer pt-1">
-                                  <summary className="hover:text-white font-medium select-none">✏️ Edytuj surowy tekst zbiorczo (opcjonalnie)</summary>
+                                  <summary className="hover:text-text-hi font-medium select-none">✏️ Edytuj surowy tekst zbiorczo (opcjonalnie)</summary>
                                   <textarea
                                     value={q.prompt}
                                     onChange={(e) => updateQuestionPrompt(i, e.target.value)}
@@ -996,7 +996,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                         <MessageSquare className="w-4 h-4" />
                         {i18n.t("Asystent AI - Automatyczne poprawki")}
                       </span>
-                      <button onClick={() => setShowAiFloatingBox(false)} className="text-content-muted hover:text-white text-xs p-1">✕</button>
+                      <button onClick={() => setShowAiFloatingBox(false)} className="text-content-muted hover:text-text-hi text-xs p-1">✕</button>
                     </div>
                     <textarea
                       value={feedback}
@@ -1108,7 +1108,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                 <div className="text-xs text-primary mt-2 flex items-center gap-2 bg-primary/10 p-2 rounded-lg w-fit border border-primary/20">
                   
                                                                 {i18n.t("Google Drive:")} {driveFile.name}
-                  <button onClick={() => setDriveFile(null)} className="ml-2 hover:text-white transition-colors">✕</button>
+                  <button onClick={() => setDriveFile(null)} className="ml-2 hover:text-text-hi transition-colors">✕</button>
                 </div>
               )}
               {selectedLessons.length > 0 && (
@@ -1196,7 +1196,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                       className={`p-3.5 md:p-4 rounded-xl border transition-all duration-300 flex flex-col justify-between min-h-[115px] ${
                         isSelected 
                           ? 'bg-primary/10 border-primary text-primary shadow-[0_0_15px_rgba(114,240,180,0.12)] ring-1 ring-primary/50' 
-                          : 'bg-base-200/60 backdrop-blur-md border-white/10 text-content-muted hover:border-primary/30 hover:text-white'
+                          : 'bg-base-200/60 backdrop-blur-md border-white/10 text-content-muted hover:border-primary/30 hover:text-text-hi'
                       }`}
                     >
                       <label className="flex items-start gap-2.5 cursor-pointer font-bold text-sm select-none min-h-[42px]">
@@ -1349,7 +1349,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
                     
                     <button
                       onClick={() => setAssignedPreviewTest(test)}
-                      className="p-1.5 rounded-lg text-content-muted hover:text-white hover:bg-white/10 transition-colors"
+                      className="p-1.5 rounded-lg text-content-muted hover:text-text-hi hover:bg-white/10 transition-colors"
                       title={i18n.t("Podgląd testu")}
                     >
                       <Eye className="w-4 h-4" />
@@ -1357,7 +1357,7 @@ const AdminTestGenerator: React.FC<AdminTestGeneratorProps> = ({ user: initialUs
 
                     <button
                       onClick={() => setAssignedEditTest(test)}
-                      className="p-1.5 rounded-lg text-content-muted hover:text-white hover:bg-white/10 transition-colors"
+                      className="p-1.5 rounded-lg text-content-muted hover:text-text-hi hover:bg-white/10 transition-colors"
                       title={i18n.t("Edytuj test")}
                     >
                       <Edit2 className="w-4 h-4" />

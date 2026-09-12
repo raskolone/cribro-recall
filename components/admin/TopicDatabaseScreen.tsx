@@ -618,7 +618,7 @@ export default function TopicDatabaseScreen() {
             {selectedSection && (
               <button
                 onClick={() => setSelectedSection(null)}
-                className="p-2.5 rounded-2xl bg-base-200/80 hover:bg-base-200 border border-white/10 text-content hover:text-white transition-all duration-300 shadow-md hover:scale-105"
+                className="p-2.5 rounded-2xl bg-base-200/80 hover:bg-base-200 border border-white/10 text-content hover:text-text-hi transition-all duration-300 shadow-md hover:scale-105"
                 title="Powrót do menu Zasobów"
               >
                 <ArrowLeft size={20} />
@@ -769,7 +769,7 @@ export default function TopicDatabaseScreen() {
             </div>
             <button
               onClick={() => setSelectedSection(null)}
-              className="text-xs text-content-muted hover:text-white flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-all"
+              className="text-xs text-content-muted hover:text-text-hi flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-all"
             >
               <ArrowLeft size={14} /> Powrót
             </button>
@@ -909,7 +909,7 @@ export default function TopicDatabaseScreen() {
 
               <button
                 onClick={() => setSelectedSection(null)}
-                className="text-xs text-content-muted hover:text-white flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl border border-white/10 transition-all shrink-0"
+                className="text-xs text-content-muted hover:text-text-hi flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl border border-white/10 transition-all shrink-0"
               >
                 <ArrowLeft size={14} /> Powrót
               </button>
@@ -923,7 +923,7 @@ export default function TopicDatabaseScreen() {
               className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
                 vocabCategory === 'student_lessons'
                   ? 'bg-primary text-accent-ink shadow-[0_0_20px_rgba(114, 240, 180,0.3)]'
-                  : 'text-content-muted hover:text-white hover:bg-white/5'
+                  : 'text-content-muted hover:text-text-hi hover:bg-white/5'
               }`}
             >
               <BookOpen size={16} />
@@ -940,7 +940,7 @@ export default function TopicDatabaseScreen() {
               className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
                 vocabCategory === 'general'
                   ? 'bg-primary text-accent-ink shadow-[0_0_20px_rgba(114, 240, 180,0.3)]'
-                  : 'text-content-muted hover:text-white hover:bg-white/5'
+                  : 'text-content-muted hover:text-text-hi hover:bg-white/5'
               }`}
             >
               <Layers size={16} />
@@ -1027,7 +1027,7 @@ export default function TopicDatabaseScreen() {
 
                         <button
                           onClick={() => setExpandedVocabSetId(isExpanded ? null : vSet.id)}
-                          className="text-xs text-content-muted hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-all flex items-center gap-1 font-semibold"
+                          className="text-xs text-content-muted hover:text-text-hi bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-all flex items-center gap-1 font-semibold"
                         >
                           {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           {isExpanded ? 'Ukryj' : 'Pokaż słówka'}
@@ -1166,7 +1166,7 @@ export default function TopicDatabaseScreen() {
 
                                 <button
                                   onClick={() => setExpandedVocabSetId(isExpanded ? null : gSet.id)}
-                                  className="text-xs text-content-muted hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-all flex items-center gap-1 font-semibold"
+                                  className="text-xs text-content-muted hover:text-text-hi bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-all flex items-center gap-1 font-semibold"
                                 >
                                   {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                                   {isExpanded ? 'Ukryj' : 'Pokaż słówka'}
@@ -1254,7 +1254,7 @@ export default function TopicDatabaseScreen() {
 
               <button
                 onClick={() => setSelectedSection(null)}
-                className="text-xs text-content-muted hover:text-white flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl border border-white/10 transition-all shrink-0"
+                className="text-xs text-content-muted hover:text-text-hi flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl border border-white/10 transition-all shrink-0"
               >
                 <ArrowLeft size={14} /> Powrót
               </button>
@@ -1276,7 +1276,7 @@ export default function TopicDatabaseScreen() {
                       navigator.clipboard.writeText(`${idiom.english} - ${idiom.polish}\nPrzykł.: ${idiom.example}`);
                       alert(`Skopiowano idiom: ${idiom.english}`);
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-content-muted hover:text-white transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-content-muted hover:text-text-hi transition-all"
                     title="Kopiuj idiom"
                   >
                     <Copy size={14} />
@@ -1336,7 +1336,7 @@ export default function TopicDatabaseScreen() {
 
               <button
                 onClick={() => setSelectedSection(null)}
-                className="text-xs text-content-muted hover:text-white flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl border border-white/10 transition-all shrink-0"
+                className="text-xs text-content-muted hover:text-text-hi flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl border border-white/10 transition-all shrink-0"
               >
                 <ArrowLeft size={14} /> Powrót
               </button>
@@ -1358,7 +1358,7 @@ export default function TopicDatabaseScreen() {
                       navigator.clipboard.writeText(`${item.verb} - ${item.polish}\nPrzykł.: ${item.example}`);
                       alert(`Skopiowano: ${item.verb}`);
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-content-muted hover:text-white transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-content-muted hover:text-text-hi transition-all"
                     title="Kopiuj czasownik"
                   >
                     <Copy size={14} />

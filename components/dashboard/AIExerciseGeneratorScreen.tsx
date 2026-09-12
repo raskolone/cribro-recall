@@ -2129,7 +2129,7 @@ ${learningContext?.briefing || ''}
           {isTeacher && (
             <button
               onClick={() => setIsConfigOpen(!isConfigOpen)}
-              className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-white transition-colors"
+              className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-text-hi transition-colors"
               title={language === 'pl' ? 'Konfiguracja Promptu' : 'Prompt Setup'}
             >
               <Settings className="w-5 h-5" />
@@ -2177,7 +2177,7 @@ ${learningContext?.briefing || ''}
             <div className="flex gap-2">
               <button 
                 onClick={handleResetPrompts} 
-                className={`text-xs underline ${confirmResetPrompts ? 'text-warn font-bold' : 'text-content-muted hover:text-white'}`}
+                className={`text-xs underline ${confirmResetPrompts ? 'text-warn font-bold' : 'text-content-muted hover:text-text-hi'}`}
               >
                 {confirmResetPrompts
                   ? (language === 'pl' ? 'Potwierdź reset' : 'Confirm reset')
@@ -2604,7 +2604,7 @@ ${learningContext?.briefing || ''}
                                 className={`py-2 rounded-xl font-bold text-xs transition-all duration-200 ${
                                   numSentences === val
                                     ? 'bg-surface-flat border border-white/20 text-white shadow-inner'
-                                    : 'bg-[var(--surface-flat)] border border-white/5 text-text-2 hover:text-white hover:bg-surface-flat'
+                                    : 'bg-[var(--surface-flat)] border border-white/5 text-text-2 hover:text-text-hi hover:bg-surface-flat'
                                 }`}
                               >
                                 {val}
@@ -2682,7 +2682,7 @@ ${learningContext?.briefing || ''}
                             <button
                               type="button"
                               onClick={() => setIsConfigModalOpen(false)}
-                              className="p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-white transition-colors cursor-pointer"
+                              className="p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-text-hi transition-colors cursor-pointer"
                             >
                               <X className="w-5 h-5" />
                             </button>
@@ -2791,7 +2791,7 @@ ${learningContext?.briefing || ''}
                                       className={`py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                                         numSentences === val
                                           ? 'bg-surface-flat border border-white/20 text-white shadow-inner'
-                                          : 'bg-[var(--surface-flat)] border border-white/5 text-text-2 hover:text-white'
+                                          : 'bg-[var(--surface-flat)] border border-white/5 text-text-2 hover:text-text-hi'
                                       }`}
                                     >
                                       {val}
@@ -2850,7 +2850,7 @@ ${learningContext?.briefing || ''}
                             </h3>
                             <button 
                               onClick={() => setIsLessonSelectorOpen(false)}
-                              className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-white transition-colors"
+                              className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-text-hi transition-colors"
                             >
                               <X className="w-5 h-5" />
                             </button>
@@ -3251,7 +3251,7 @@ ${learningContext?.briefing || ''}
                                   </div>
                                   <button 
                                     onClick={() => setPreviewVocabSet(null)}
-                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-white transition-colors"
+                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-text-hi transition-colors"
                                   >
                                     <X className="w-5 h-5" />
                                   </button>
@@ -3387,7 +3387,7 @@ ${learningContext?.briefing || ''}
                                   </div>
                                   <button 
                                     onClick={() => setPracticeSetupOpen(false)}
-                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-white transition-colors"
+                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-text-hi transition-colors"
                                   >
                                     <X className="w-5 h-5" />
                                   </button>
@@ -3609,7 +3609,7 @@ ${learningContext?.briefing || ''}
                                   </div>
                                   <button 
                                     onClick={() => setIsBasketModalOpen(false)}
-                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-white transition-colors"
+                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-2 hover:text-text-hi transition-colors"
                                   >
                                     <X className="w-5 h-5" />
                                   </button>
@@ -4281,7 +4281,7 @@ ${learningContext?.briefing || ''}
             <button 
               type="button"
               onClick={handleMaybeLater} 
-              className="relative z-30 cursor-pointer text-sm font-medium text-content-muted hover:text-white transition-colors py-2 px-4 hover:underline"
+              className="relative z-30 cursor-pointer text-sm font-medium text-content-muted hover:text-text-hi transition-colors py-2 px-4 hover:underline"
             >
               {language === 'pl' ? 'Może później' : 'Maybe later'}
             </button>
@@ -4529,7 +4529,7 @@ ${learningContext?.briefing || ''}
               </div>
               <button 
                 onClick={() => setIsTopicModalOpen(false)}
-                className="p-2 rounded-full hover:bg-white/10 text-text-2 hover:text-white transition-colors"
+                className="p-2 rounded-full hover:bg-white/10 text-text-2 hover:text-text-hi transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>

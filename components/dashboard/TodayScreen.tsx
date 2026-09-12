@@ -384,7 +384,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                 <button
                   disabled={isSaving}
                   onClick={() => finishItem('fail')}
-                  className="min-h-[2.75rem] px-3 rounded-lg text-content-muted text-sm font-semibold hover:text-white disabled:opacity-50"
+                  className="min-h-[2.75rem] px-3 rounded-lg text-content-muted text-sm font-semibold hover:text-text-hi disabled:opacity-50"
                 >
                   {L.giveUp}
                 </button>

@@ -579,7 +579,7 @@ ${rawPrompt || 'Dostosuj powyższy scenariusz pod profil wybranego kursanta, zac
             <button
               type="button"
               onClick={() => setIsConfigModalOpen(true)}
-              className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white border border-white/10 text-xs font-bold transition-all cursor-pointer"
+              className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi border border-white/10 text-xs font-bold transition-all cursor-pointer"
               title="Dostosuj moduły CELTA i metodykę"
             >
               <Settings2 size={16} />
@@ -609,7 +609,7 @@ ${rawPrompt || 'Dostosuj powyższy scenariusz pod profil wybranego kursanta, zac
                 <button
                   type="button"
                   onClick={() => setSelectedBaseScenario(null)}
-                  className="hover:text-white ml-1 cursor-pointer"
+                  className="hover:text-text-hi ml-1 cursor-pointer"
                   title="Anuluj adaptację szablonu"
                 >
                   <X size={13} />
@@ -742,7 +742,7 @@ ${rawPrompt || 'Dostosuj powyższy scenariusz pod profil wybranego kursanta, zac
                 type="button"
                 onClick={() => handleGenerateOrSendMessage(`Przeanalizuj historię lekcji kursanta ${selectedUser.firstName || selectedUser.username} i zaproponuj 3 angażujące tematy na kolejną lekcję.`)}
                 disabled={isLoading}
-                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 hover:text-white border border-white/10 transition-colors flex items-center gap-1 font-semibold cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 hover:text-text-hi border border-white/10 transition-colors flex items-center gap-1 font-semibold cursor-pointer"
               >
                 <Lightbulb size={13} className="text-primary" />
                 <span>Podpowiedz z historii kursanta</span>
@@ -861,7 +861,7 @@ ${rawPrompt || 'Dostosuj powyższy scenariusz pod profil wybranego kursanta, zac
                     <div className="flex items-center gap-2 mt-2 ml-1 text-xs text-content-muted flex-wrap">
                       <button
                         onClick={() => handleCopyText(msg.id, msg.content)}
-                        className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-1.5 font-medium cursor-pointer"
+                        className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 hover:text-text-hi transition-colors flex items-center gap-1.5 font-medium cursor-pointer"
                       >
                         {copiedId === msg.id ? (
                           <>
@@ -879,7 +879,7 @@ ${rawPrompt || 'Dostosuj powyższy scenariusz pod profil wybranego kursanta, zac
                       {msg.extractedVocab && (
                         <button
                           onClick={() => handleCopyText(`${msg.id}-vocab`, msg.extractedVocab || '')}
-                          className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-1.5 font-medium cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 hover:text-text-hi transition-colors flex items-center gap-1.5 font-medium cursor-pointer"
                         >
                           {copiedId === `${msg.id}-vocab` ? (
                             <>

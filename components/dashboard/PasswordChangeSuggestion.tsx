@@ -122,7 +122,7 @@ export const PasswordChangeSuggestion: React.FC<PasswordChangeSuggestionProps> =
       <button
         type="button"
         onClick={handleDismiss}
-        className="absolute top-3.5 right-3.5 p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer"
+        className="absolute top-3.5 right-3.5 p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors cursor-pointer"
         title={language === 'pl' ? 'Zamknij sugestię' : 'Dismiss suggestion'}
       >
         <X className="w-4 h-4" />
@@ -191,7 +191,7 @@ export const PasswordChangeSuggestion: React.FC<PasswordChangeSuggestionProps> =
             <button
               type="button"
               onClick={handleDismiss}
-              className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white font-medium text-xs border border-white/10 transition-colors cursor-pointer"
+              className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi font-medium text-xs border border-white/10 transition-colors cursor-pointer"
             >
               {language === 'pl' ? 'Pomiń na razie' : 'Dismiss'}
             </button>
@@ -228,7 +228,7 @@ export const PasswordChangeSuggestion: React.FC<PasswordChangeSuggestionProps> =
               <button
                 type="button"
                 onClick={() => { setMode('initial'); setError(''); }}
-                className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white text-xs border border-white/10 transition-colors cursor-pointer"
+                className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi text-xs border border-white/10 transition-colors cursor-pointer"
               >
                 {language === 'pl' ? 'Anuluj' : 'Cancel'}
               </button>

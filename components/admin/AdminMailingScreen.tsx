@@ -841,7 +841,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
           {onBack && (
             <button
               onClick={onBack}
-              className="p-2.5 rounded-xl bg-ink/72 hover:bg-white/10 text-content-muted hover:text-white border border-white/10 transition-colors"
+              className="p-2.5 rounded-xl bg-ink/72 hover:bg-white/10 text-content-muted hover:text-text-hi border border-white/10 transition-colors"
               title="Wróć do panelu"
             >
               <ArrowLeft size={18} />
@@ -926,7 +926,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
           className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
             activeTab === 'templates'
               ? 'bg-primary text-accent-ink shadow-btn'
-              : 'text-content-muted hover:text-white hover:bg-white/5'
+              : 'text-content-muted hover:text-text-hi hover:bg-white/5'
           }`}
         >
           <FileText size={16} />
@@ -938,7 +938,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
           className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
             activeTab === 'settings'
               ? 'bg-primary text-accent-ink shadow-btn'
-              : 'text-content-muted hover:text-white hover:bg-white/5'
+              : 'text-content-muted hover:text-text-hi hover:bg-white/5'
           }`}
         >
           <Settings size={16} />
@@ -950,7 +950,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
           className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
             activeTab === 'inbound'
               ? 'bg-primary text-accent-ink shadow-btn'
-              : 'text-content-muted hover:text-white hover:bg-white/5'
+              : 'text-content-muted hover:text-text-hi hover:bg-white/5'
           }`}
         >
           <Inbox size={16} />
@@ -971,7 +971,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
           className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
             activeTab === 'students'
               ? 'bg-primary text-accent-ink shadow-btn'
-              : 'text-content-muted hover:text-white hover:bg-white/5'
+              : 'text-content-muted hover:text-text-hi hover:bg-white/5'
           }`}
         >
           <Users size={16} />
@@ -983,7 +983,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
           className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
             activeTab === 'automation'
               ? 'bg-primary text-accent-ink shadow-btn'
-              : 'text-content-muted hover:text-white hover:bg-white/5'
+              : 'text-content-muted hover:text-text-hi hover:bg-white/5'
           }`}
         >
           <Zap size={16} />
@@ -1082,7 +1082,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                       className={`px-2 py-1.5 rounded-lg text-[11px] font-medium border text-left truncate transition-colors ${
                         testSenderEmail === 'wyrozumski@maciej.pro'
                           ? 'bg-primary/20 border-primary text-primary font-bold'
-                          : 'bg-white/5 border-white/10 text-content-muted hover:text-white'
+                          : 'bg-white/5 border-white/10 text-content-muted hover:text-text-hi'
                       }`}
                       title="wyrozumski@maciej.pro"
                     >
@@ -1094,7 +1094,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                       className={`px-2 py-1.5 rounded-lg text-[11px] font-medium border text-left truncate transition-colors ${
                         testSenderEmail === 'maciej@learnwithmaciej.com'
                           ? 'bg-primary/20 border-primary text-primary font-bold'
-                          : 'bg-white/5 border-white/10 text-content-muted hover:text-white'
+                          : 'bg-white/5 border-white/10 text-content-muted hover:text-text-hi'
                       }`}
                       title="maciej@learnwithmaciej.com"
                     >
@@ -1151,7 +1151,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                           className={`px-2 py-0.5 rounded-lg text-[10px] font-mono border transition-colors cursor-pointer ${
                             bccRecipient === 'wyrozumski@maciej.pro'
                               ? 'bg-primary/20 border-primary text-primary font-bold'
-                              : 'bg-white/5 border-white/10 text-content-muted hover:text-white'
+                              : 'bg-white/5 border-white/10 text-content-muted hover:text-text-hi'
                           }`}
                         >
                           wyrozumski@maciej.pro
@@ -1162,7 +1162,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                           className={`px-2 py-0.5 rounded-lg text-[10px] font-mono border transition-colors cursor-pointer ${
                             bccRecipient === 'maciej@learnwithmaciej.com'
                               ? 'bg-primary/20 border-primary text-primary font-bold'
-                              : 'bg-white/5 border-white/10 text-content-muted hover:text-white'
+                              : 'bg-white/5 border-white/10 text-content-muted hover:text-text-hi'
                           }`}
                         >
                           maciej@learnwithmaciej.com
@@ -1237,7 +1237,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       previewMode === 'html'
                         ? 'bg-primary text-accent-ink'
-                        : 'text-content-muted hover:text-white'
+                        : 'text-content-muted hover:text-text-hi'
                     }`}
                   >
                     Podgląd HTML
@@ -1247,7 +1247,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       previewMode === 'text'
                         ? 'bg-primary text-accent-ink'
-                        : 'text-content-muted hover:text-white'
+                        : 'text-content-muted hover:text-text-hi'
                     }`}
                   >
                     Wersja Tekstowa
@@ -1331,7 +1331,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
               <button
                 onClick={fetchStudents}
                 disabled={isLoadingStudents}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white border border-white/10 transition-colors"
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi border border-white/10 transition-colors"
                 title="Odśwież listę"
               >
                 <RefreshCw size={15} className={isLoadingStudents ? 'animate-spin text-primary' : ''} />
@@ -1610,7 +1610,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                         settings.senderEmail === 'wyrozumski@maciej.pro'
                           ? 'bg-primary/20 border-primary text-primary font-bold'
-                          : 'bg-white/5 border-white/10 text-content-muted hover:text-white'
+                          : 'bg-white/5 border-white/10 text-content-muted hover:text-text-hi'
                       }`}
                     >
                       wyrozumski@maciej.pro
@@ -1621,7 +1621,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                         settings.senderEmail === 'maciej@learnwithmaciej.com'
                           ? 'bg-primary/20 border-primary text-primary font-bold'
-                          : 'bg-white/5 border-white/10 text-content-muted hover:text-white'
+                          : 'bg-white/5 border-white/10 text-content-muted hover:text-text-hi'
                       }`}
                     >
                       maciej@learnwithmaciej.com
@@ -1648,7 +1648,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                   </div>
                   <p className="text-[11px] text-content-muted leading-relaxed">
                     Aby e-maile z adresu <strong>{settings.senderEmail || 'wyrozumski@maciej.pro'}</strong> nie lądowały w spamie u odbiorców (np. w Gmailu), domena musi być dodana w panelu{' '}
-                    <a href="https://resend.com/domains" target="_blank" rel="noreferrer" className="text-primary underline font-semibold hover:text-white">
+                    <a href="https://resend.com/domains" target="_blank" rel="noreferrer" className="text-primary underline font-semibold hover:text-text-hi">
                       resend.com/domains
                     </a>. Resend wygeneruje rekordy DKIM (TXT), które wkleja się w strefie DNS domeny w Hostingerze.
                   </p>
@@ -1698,7 +1698,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                           className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-colors cursor-pointer ${
                             (settings.bccEmail || 'wyrozumski@maciej.pro') === 'wyrozumski@maciej.pro'
                               ? 'bg-primary/20 border-primary text-primary font-bold'
-                              : 'bg-white/5 border-white/10 text-content-muted hover:text-white'
+                              : 'bg-white/5 border-white/10 text-content-muted hover:text-text-hi'
                           }`}
                         >
                           wyrozumski@maciej.pro
@@ -1709,7 +1709,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                           className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-colors cursor-pointer ${
                             settings.bccEmail === 'maciej@learnwithmaciej.com'
                               ? 'bg-primary/20 border-primary text-primary font-bold'
-                              : 'bg-white/5 border-white/10 text-content-muted hover:text-white'
+                              : 'bg-white/5 border-white/10 text-content-muted hover:text-text-hi'
                           }`}
                         >
                           maciej@learnwithmaciej.com
@@ -1926,7 +1926,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   inboundFilter === 'all'
                     ? 'bg-primary text-accent-ink shadow-btn'
-                    : 'text-content-muted hover:text-white'
+                    : 'text-content-muted hover:text-text-hi'
                 }`}
               >
                 Wszystkie ({inboundMessages.length})
@@ -1936,7 +1936,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                   inboundFilter === 'unread'
                     ? 'bg-primary text-accent-ink shadow-btn'
-                    : 'text-content-muted hover:text-white'
+                    : 'text-content-muted hover:text-text-hi'
                 }`}
               >
                 Nieprzeczytane ({unreadInboundCount})
@@ -1946,7 +1946,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   inboundFilter === 'read'
                     ? 'bg-primary text-accent-ink shadow-btn'
-                    : 'text-content-muted hover:text-white'
+                    : 'text-content-muted hover:text-text-hi'
                 }`}
               >
                 Przeczytane ({readInboundCount})
@@ -2115,7 +2115,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
               </div>
               <button
                 onClick={() => setSelectedInboundMsg(null)}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-content-muted hover:text-white transition-colors shrink-0"
+                className="p-1.5 rounded-lg hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors shrink-0"
               >
                 <X size={18} />
               </button>
@@ -2225,7 +2225,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
               </div>
               <button
                 onClick={() => setEditingStudent(null)}
-                className="p-1 rounded-lg hover:bg-white/10 text-content-muted hover:text-white transition-colors"
+                className="p-1 rounded-lg hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors"
               >
                 <X size={16} />
               </button>

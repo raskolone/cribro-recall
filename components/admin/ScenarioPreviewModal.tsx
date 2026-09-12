@@ -183,14 +183,14 @@ export const ScenarioPreviewModal: React.FC<ScenarioPreviewModalProps> = ({
               variant="ghost"
               size="sm"
               onClick={handleCopyAll}
-              className="text-xs text-content-muted hover:text-white"
+              className="text-xs text-content-muted hover:text-text-hi"
             >
               {copied ? <Check size={14} className="text-primary" /> : <Copy size={14} />}
               <span className="hidden sm:inline">{copied ? 'Skopiowano' : 'Kopiuj'}</span>
             </Button>
             <button
               onClick={onClose}
-              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi flex items-center justify-center transition-colors cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -205,7 +205,7 @@ export const ScenarioPreviewModal: React.FC<ScenarioPreviewModalProps> = ({
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'stages'
                   ? 'bg-primary text-accent-ink shadow-[0_0_12px_rgba(114,240,180,0.3)]'
-                  : 'bg-white/5 text-content-muted hover:text-white hover:bg-white/10'
+                  : 'bg-white/5 text-content-muted hover:text-text-hi hover:bg-white/10'
               }`}
             >
               <Layers size={13} />
@@ -216,7 +216,7 @@ export const ScenarioPreviewModal: React.FC<ScenarioPreviewModalProps> = ({
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'vocabulary'
                   ? 'bg-primary text-accent-ink shadow-[0_0_12px_rgba(114,240,180,0.3)]'
-                  : 'bg-white/5 text-content-muted hover:text-white hover:bg-white/10'
+                  : 'bg-white/5 text-content-muted hover:text-text-hi hover:bg-white/10'
               }`}
             >
               <Sparkles size={13} />
@@ -227,7 +227,7 @@ export const ScenarioPreviewModal: React.FC<ScenarioPreviewModalProps> = ({
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'markdown'
                   ? 'bg-primary text-accent-ink shadow-[0_0_12px_rgba(114,240,180,0.3)]'
-                  : 'bg-white/5 text-content-muted hover:text-white hover:bg-white/10'
+                  : 'bg-white/5 text-content-muted hover:text-text-hi hover:bg-white/10'
               }`}
             >
               <FileText size={13} />
@@ -284,7 +284,7 @@ export const ScenarioPreviewModal: React.FC<ScenarioPreviewModalProps> = ({
                           </h4>
                         </div>
                       </div>
-                      <div className="text-content-muted hover:text-white transition-colors">
+                      <div className="text-content-muted hover:text-text-hi transition-colors">
                         {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                       </div>
                     </div>

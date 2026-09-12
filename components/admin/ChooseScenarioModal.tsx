@@ -86,7 +86,7 @@ export const ChooseScenarioModal: React.FC<ChooseScenarioModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer border border-white/10"
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors cursor-pointer border border-white/10"
             title="Zamknij okno (Esc)"
           >
             <X size={18} />
@@ -102,7 +102,7 @@ export const ChooseScenarioModal: React.FC<ChooseScenarioModalProps> = ({
               className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
                 activeTab === 'curated'
                   ? 'bg-primary text-accent-ink shadow-md'
-                  : 'text-content-muted hover:text-white'
+                  : 'text-content-muted hover:text-text-hi'
               }`}
             >
               Wzorcowe szablony ({curatedList.length})
@@ -112,7 +112,7 @@ export const ChooseScenarioModal: React.FC<ChooseScenarioModalProps> = ({
               className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
                 activeTab === 'generated'
                   ? 'bg-primary text-accent-ink shadow-md'
-                  : 'text-content-muted hover:text-white'
+                  : 'text-content-muted hover:text-text-hi'
               }`}
             >
               Dotychczas wygenerowane ({generatedList.length})
@@ -226,7 +226,7 @@ export const ChooseScenarioModal: React.FC<ChooseScenarioModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setPreviewingScenario(scenario)}
-                        className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
                         title="Zobacz pełną treść i moduły"
                       >
                         <Eye size={13} />
@@ -278,7 +278,7 @@ export const ChooseScenarioModal: React.FC<ChooseScenarioModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-xs text-content-muted hover:text-white font-semibold cursor-pointer"
+            className="text-xs text-content-muted hover:text-text-hi font-semibold cursor-pointer"
           >
             Zamknij
           </button>
@@ -299,7 +299,7 @@ export const ChooseScenarioModal: React.FC<ChooseScenarioModalProps> = ({
               <h3 className="text-lg font-black text-white">{previewingScenario.topic || previewingScenario.title}</h3>
               <button 
                 onClick={() => setPreviewingScenario(null)}
-                className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white cursor-pointer"
+                className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi cursor-pointer"
               >
                 <X size={16} />
               </button>

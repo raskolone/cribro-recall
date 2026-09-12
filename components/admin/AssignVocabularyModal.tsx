@@ -305,7 +305,7 @@ export default function AssignVocabularyModal({
           </div>
           <button 
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-white/10 text-text-2 hover:text-white transition-colors"
+            className="p-2 rounded-xl hover:bg-white/10 text-text-2 hover:text-text-hi transition-colors"
           >
             <X size={20} />
           </button>
@@ -334,19 +334,19 @@ export default function AssignVocabularyModal({
             <div className="flex items-center gap-1.5 bg-base-200/60 p-1 rounded-xl border border-white/10 text-xs w-full sm:w-auto justify-center">
               <button
                 onClick={() => setFilterType('all')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-all ${filterType === 'all' ? 'bg-primary text-accent-ink font-bold shadow' : 'text-content-muted hover:text-white'}`}
+                className={`px-3 py-1.5 rounded-lg font-medium transition-all ${filterType === 'all' ? 'bg-primary text-accent-ink font-bold shadow' : 'text-content-muted hover:text-text-hi'}`}
               >
                 Wszystkie ({tiles.length})
               </button>
               <button
                 onClick={() => setFilterType('lesson')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-all ${filterType === 'lesson' ? 'bg-primary text-accent-ink font-bold shadow' : 'text-content-muted hover:text-white'}`}
+                className={`px-3 py-1.5 rounded-lg font-medium transition-all ${filterType === 'lesson' ? 'bg-primary text-accent-ink font-bold shadow' : 'text-content-muted hover:text-text-hi'}`}
               >
                 Z Lekcji
               </button>
               <button
                 onClick={() => setFilterType('set')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-all ${filterType === 'set' ? 'bg-primary text-accent-ink font-bold shadow' : 'text-content-muted hover:text-white'}`}
+                className={`px-3 py-1.5 rounded-lg font-medium transition-all ${filterType === 'set' ? 'bg-primary text-accent-ink font-bold shadow' : 'text-content-muted hover:text-text-hi'}`}
               >
                 Zestawy
               </button>

@@ -553,7 +553,7 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
             className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all text-xs cursor-pointer ${
               viewMode === 'accordion'
                 ? 'bg-primary text-accent-ink shadow-[0_0_12px_rgba(114,240,180,0.35)]'
-                : 'text-content-muted hover:text-white'
+                : 'text-content-muted hover:text-text-hi'
             }`}
           >
             <Layers size={14} />
@@ -565,7 +565,7 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
             className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all text-xs cursor-pointer ${
               viewMode === 'markdown'
                 ? 'bg-primary text-accent-ink shadow-[0_0_12px_rgba(114,240,180,0.35)]'
-                : 'text-content-muted hover:text-white'
+                : 'text-content-muted hover:text-text-hi'
             }`}
           >
             <AlignLeft size={14} />
@@ -606,14 +606,14 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
               <button
                 type="button"
                 onClick={handleExpandAll}
-                className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer"
+                className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors cursor-pointer"
               >
                 Rozwiń
               </button>
               <button
                 type="button"
                 onClick={handleCollapseAll}
-                className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer"
+                className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors cursor-pointer"
               >
                 Zwiń
               </button>
@@ -659,7 +659,7 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
                       setMarkdownDraft(content);
                       setIsEditingFullMarkdown(false);
                     }}
-                    className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-content-muted hover:text-white font-semibold text-xs transition-colors cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-content-muted hover:text-text-hi font-semibold text-xs transition-colors cursor-pointer"
                   >
                     Anuluj
                   </button>
@@ -729,7 +729,7 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
                   <button
                     type="button"
                     onClick={() => setIsEditingTitle(false)}
-                    className="p-1.5 rounded-xl bg-white/10 text-content-muted hover:text-white cursor-pointer"
+                    className="p-1.5 rounded-xl bg-white/10 text-content-muted hover:text-text-hi cursor-pointer"
                     title="Anuluj"
                   >
                     <X size={14} />
@@ -764,7 +764,7 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
               <button
                 type="button"
                 onClick={() => onCopyText('scenario-all', content)}
-                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all border border-white/10 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi text-xs font-bold flex items-center gap-1.5 transition-all border border-white/10 cursor-pointer"
                 title="Kopiuj cały scenariusz do schowka"
               >
                 {copiedId === 'scenario-all' ? (
@@ -850,7 +850,7 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
                               type="button"
                               onClick={(e) => handleMoveBlockUp(idx, e)}
                               disabled={idx === 0}
-                              className="p-1.5 rounded-lg text-content-muted hover:text-white disabled:opacity-20 hover:bg-white/10 transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg text-content-muted hover:text-text-hi disabled:opacity-20 hover:bg-white/10 transition-colors cursor-pointer"
                               title="Przesuń blok wyżej"
                             >
                               <ArrowUp size={13} />
@@ -859,7 +859,7 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
                               type="button"
                               onClick={(e) => handleMoveBlockDown(idx, e)}
                               disabled={idx === parsedScenario.blocks.length - 1}
-                              className="p-1.5 rounded-lg text-content-muted hover:text-white disabled:opacity-20 hover:bg-white/10 transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg text-content-muted hover:text-text-hi disabled:opacity-20 hover:bg-white/10 transition-colors cursor-pointer"
                               title="Przesuń blok niżej"
                             >
                               <ArrowDown size={13} />
@@ -886,7 +886,7 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
                         <button
                           type="button"
                           onClick={() => onCopyText(block.id, `${block.title}\n\n${block.body}`)}
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-content-muted hover:text-white border border-white/10 transition-colors ml-0.5 cursor-pointer"
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi border border-white/10 transition-colors ml-0.5 cursor-pointer"
                           title="Kopiuj treść tego modułu"
                         >
                           {copiedId === block.id ? (
@@ -925,21 +925,21 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
                                   <button
                                     type="button"
                                     onClick={() => handleInsertSnippet('- ')}
-                                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-[10px] text-content-muted hover:text-white transition-colors"
+                                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-[10px] text-content-muted hover:text-text-hi transition-colors"
                                   >
                                     + Punkt
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleInsertSnippet('- **Zwrot** – tłumaczenie (*"Przykładowe zdanie"*)\n')}
-                                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-[10px] text-content-muted hover:text-white transition-colors"
+                                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-[10px] text-content-muted hover:text-text-hi transition-colors"
                                   >
                                     + Słówko
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleInsertSnippet('1. *Pytanie dyskusyjne w kursywie?*\n')}
-                                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-[10px] text-content-muted hover:text-white transition-colors"
+                                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-[10px] text-content-muted hover:text-text-hi transition-colors"
                                   >
                                     + Pytanie
                                   </button>
@@ -957,7 +957,7 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
                               <button
                                 type="button"
                                 onClick={handleCancelEditBlock}
-                                className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-content-muted hover:text-white text-xs font-semibold cursor-pointer transition-colors"
+                                className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-content-muted hover:text-text-hi text-xs font-semibold cursor-pointer transition-colors"
                               >
                                 Anuluj
                               </button>
@@ -995,7 +995,7 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
                         <button
                           type="button"
                           onClick={() => setShowAddBlockModal(false)}
-                          className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white cursor-pointer"
+                          className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi cursor-pointer"
                         >
                           <X size={14} />
                         </button>
@@ -1046,7 +1046,7 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
                           <button
                             type="button"
                             onClick={() => setShowAddBlockModal(false)}
-                            className="px-3.5 py-1.5 rounded-xl bg-white/10 text-content-muted hover:text-white text-xs font-semibold cursor-pointer"
+                            className="px-3.5 py-1.5 rounded-xl bg-white/10 text-content-muted hover:text-text-hi text-xs font-semibold cursor-pointer"
                           >
                             Anuluj
                           </button>

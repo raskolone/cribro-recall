@@ -655,7 +655,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
             currentViewTab === 'all'
               ? 'bg-primary text-accent-ink shadow-btn'
-              : 'text-content-muted hover:text-white hover:bg-white/5'
+              : 'text-content-muted hover:text-text-hi hover:bg-white/5'
           }`}
         >
           <Database size={14} />
@@ -667,7 +667,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
             currentViewTab === 'students'
               ? 'bg-primary text-accent-ink shadow-btn'
-              : 'text-content-muted hover:text-white hover:bg-white/5'
+              : 'text-content-muted hover:text-text-hi hover:bg-white/5'
           }`}
         >
           <Users size={14} />
@@ -679,7 +679,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
             currentViewTab === 'staff'
               ? 'bg-primary text-accent-ink shadow-btn'
-              : 'text-content-muted hover:text-white hover:bg-white/5'
+              : 'text-content-muted hover:text-text-hi hover:bg-white/5'
           }`}
         >
           <ShieldCheck size={14} />
@@ -691,7 +691,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
             currentViewTab === 'placeholder'
               ? 'bg-primary text-accent-ink shadow-btn'
-              : 'text-content-muted hover:text-white hover:bg-white/5'
+              : 'text-content-muted hover:text-text-hi hover:bg-white/5'
           }`}
         >
           <AlertTriangle size={14} />
@@ -714,7 +714,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-white cursor-pointer"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-text-hi cursor-pointer"
             >
               <X size={14} />
             </button>
@@ -768,7 +768,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                   <button
                     type="button"
                     onClick={toggleSelectAllFiltered}
-                    className="p-1 rounded text-content-muted hover:text-white transition-colors focus:outline-none cursor-pointer"
+                    className="p-1 rounded text-content-muted hover:text-text-hi transition-colors focus:outline-none cursor-pointer"
                     title={isAllFilteredSelected ? 'Odznacz wszystkich' : 'Zaznacz wszystkich'}
                   >
                     {isAllFilteredSelected ? (
@@ -783,7 +783,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                 <th
                   onClick={() => handleSortToggle('name')}
                   style={NAME_COLUMN_STYLE}
-                  className={`py-3 px-4 cursor-pointer hover:text-white transition-colors sticky z-20 ${STICKY_HEADER_BG} ${STICKY_EDGE}`}
+                  className={`py-3 px-4 cursor-pointer hover:text-text-hi transition-colors sticky z-20 ${STICKY_HEADER_BG} ${STICKY_EDGE}`}
                 >
                   <div className="flex items-center gap-1.5">
                     <span>Aa Kursant</span>
@@ -792,7 +792,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                 </th>
                 <th
                   onClick={() => handleSortToggle('email')}
-                  className="py-3 px-4 cursor-pointer hover:text-white transition-colors"
+                  className="py-3 px-4 cursor-pointer hover:text-text-hi transition-colors"
                 >
                   <div className="flex items-center gap-1.5">
                     <span>✉️ Adres E-mail</span>
@@ -806,7 +806,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                 </th>
                 <th
                   onClick={() => handleSortToggle('level')}
-                  className="py-3 px-4 cursor-pointer hover:text-white transition-colors"
+                  className="py-3 px-4 cursor-pointer hover:text-text-hi transition-colors"
                 >
                   <div className="flex items-center gap-1.5">
                     <span>🎯 Poziom</span>
@@ -815,7 +815,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                 </th>
                 <th
                   onClick={() => handleSortToggle('logins')}
-                  className="py-3 px-4 cursor-pointer hover:text-white transition-colors"
+                  className="py-3 px-4 cursor-pointer hover:text-text-hi transition-colors"
                 >
                   <div className="flex items-center gap-1.5">
                     <span>📈 Logowania</span>
@@ -864,7 +864,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                             e.stopPropagation();
                             toggleSelectUser(user.id);
                           }}
-                          className="p-1 rounded text-content-muted hover:text-white transition-colors focus:outline-none cursor-pointer"
+                          className="p-1 rounded text-content-muted hover:text-text-hi transition-colors focus:outline-none cursor-pointer"
                           title={isSelected ? 'Odznacz' : 'Zaznacz'}
                         >
                           {isSelected ? (
@@ -933,7 +933,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
 
                           <button
                             onClick={() => handleOpenEditEmail(user)}
-                            className="p-1 rounded-md hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer"
+                            className="p-1 rounded-md hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors cursor-pointer"
                             title="Edytuj adres e-mail kursanta"
                           >
                             <Edit2 size={13} />
@@ -1072,7 +1072,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                               className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
                                 isMenuOpen
                                   ? 'bg-primary/20 text-primary border-primary/40'
-                                  : 'bg-white/5 hover:bg-white/10 text-content-muted hover:text-white border-transparent'
+                                  : 'bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi border-transparent'
                               }`}
                               title="Wyświetl więcej opcji dla tego rekordu"
                             >
@@ -1241,7 +1241,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
 
             <button
               onClick={clearSelection}
-              className="p-2 rounded-xl hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer"
+              className="p-2 rounded-xl hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors cursor-pointer"
               title="Odznacz wszystkich"
             >
               <X size={16} />
@@ -1305,7 +1305,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
               </div>
               <button
                 onClick={() => setUserToDelete(null)}
-                className="p-1 rounded-lg hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer"
+                className="p-1 rounded-lg hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -1376,7 +1376,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
               </div>
               <button
                 onClick={() => setIsBulkEditOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -1491,7 +1491,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
               </div>
               <button
                 onClick={() => setIsBulkDeleteOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -1574,7 +1574,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
               </div>
               <button
                 onClick={() => setEditingUser(null)}
-                className="p-1 rounded-lg hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer"
+                className="p-1 rounded-lg hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors cursor-pointer"
               >
                 <X size={16} />
               </button>
