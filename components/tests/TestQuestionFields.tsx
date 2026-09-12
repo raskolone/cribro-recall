@@ -184,8 +184,10 @@ export const SentenceListTask: React.FC<{
   initialAnswer?: string;
   /** Wzorcowe zdania — z nich powstają klocki układanki. */
   correctAnswer?: string;
+  /** Poziom ustawiony przez lektora w definicji zadania. Kursant go nie zmienia. */
+  difficulty?: 'easy' | 'hard';
   onChange: (ans: string) => void;
-}> = ({ type, prompt, questionHint, initialAnswer, correctAnswer, onChange }) => {
+}> = ({ type, prompt, questionHint, initialAnswer, correctAnswer, difficulty: difficultyProp, onChange }) => {
   const sentences = useMemo(() => parseNumberedItems(prompt), [prompt]);
   const solutions = useMemo(
     () => parseNumberedItems(correctAnswer || ''),
@@ -193,11 +195,17 @@ export const SentenceListTask: React.FC<{
   );
 
   /**
-   * Tłumaczenie ma dwa poziomy. Domyślnie „Hard" — wpisywanie z pamięci jest
-   * właściwym ćwiczeniem, a układanka służy tym, dla których puste pole przy
-   * złożonym zdaniu jest ścianą nie do przejścia.
+   * Poziom ćwiczenia tłumaczenia pochodzi z definicji zadania, czyli od lektora.
+   *
+   * Wcześniej stał tu przełącznik, którym kursant sam sobie wybierał „Easy —
+   * układanka" w trakcie rozwiązywania TESTU. To znosiło sens pomiaru: test
+   * pokazywał wtedy, na jaki tryb kursant miał ochotę, a nie co umie.
+   * W pracy domowej taki wybór jest na miejscu i tam zostaje.
+   *
+   * Domyślnie `hard` — wpisywanie z pamięci jest właściwym ćwiczeniem;
+   * układanka jest ustępstwem, które lektor przyznaje świadomie.
    */
-  const [difficulty, setDifficulty] = useState<'easy' | 'hard'>('hard');
+  const difficulty: 'easy' | 'hard' = difficultyProp === 'easy' ? 'easy' : 'hard';
   const [subAnswers, setSubAnswers] = useState<Record<number, string>>(() =>
     parseSubAnswers(initialAnswer || '', sentences.length)
   );
@@ -223,43 +231,6 @@ export const SentenceListTask: React.FC<{
 
   return (
     <div className="space-y-5">
-      {isTranslation && (
-        <div className="flex items-center justify-between gap-3 flex-wrap p-3 rounded-2xl bg-base-200/60 border border-white/10">
-          <div className="min-w-0">
-            <p className="text-xs font-bold text-white">Poziom trudności</p>
-            <p className="text-[11px] text-content-muted mt-0.5">
-              {difficulty === 'hard'
-                ? 'Wpisujesz tłumaczenie samodzielnie — pełne ćwiczenie z pamięci.'
-                : 'Układasz zdanie z gotowych fragmentów — łatwiej przy długich zdaniach.'}
-            </p>
-          </div>
-          <div
-            className="flex items-center gap-1 p-1 rounded-xl bg-black/40 border border-white/10"
-            role="group"
-            aria-label="Poziom trudności tłumaczenia"
-          >
-            {([
-              { id: 'easy' as const, label: 'Easy — układanka' },
-              { id: 'hard' as const, label: 'Hard — wpisywanie' },
-            ]).map(option => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => setDifficulty(option.id)}
-                aria-pressed={difficulty === option.id}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
-                  difficulty === option.id
-                    ? 'bg-primary text-accent-ink'
-                    : 'text-content-muted hover:text-white'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {sentences.map((s, idx) => {
         const { cleanSentence, hint } = extractSentenceHint(s.text, questionHint);
         const solution = solutionFor(idx);
@@ -472,6 +443,7 @@ const TestQuestionFields: React.FC<TestQuestionFieldsProps> = ({ question: q, an
         questionHint={q.hint}
         initialAnswer={answer}
         correctAnswer={typeof q.correctAnswer === 'string' ? q.correctAnswer : undefined}
+        difficulty={q.difficulty}
         onChange={onChange}
       />
     );

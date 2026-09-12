@@ -470,6 +470,15 @@ export interface TestQuestion {
   correctAnswer: string; 
   hint?: string;
   puzzleChunks?: string[];
+  /**
+   * Poziom ćwiczenia tłumaczenia — ustawia go LEKTOR przy układaniu testu.
+   *
+   * `hard` (domyślny) to wpisywanie z pamięci, `easy` to układanka z gotowych
+   * fragmentów. W teście kursant nie ma prawa tego zmieniać: test ma sprawdzać
+   * opanowanie, a nie to, na jaki tryb kursant miał ochotę. W pracy domowej
+   * wybór kursanta jest w porządku — tam chodzi o naukę, nie o pomiar.
+   */
+  difficulty?: 'easy' | 'hard';
 }
 
 export interface ErrorCorrectionExercise {
