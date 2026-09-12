@@ -292,7 +292,7 @@ export const ScenarioPreviewModal: React.FC<ScenarioPreviewModalProps> = ({
                     {/* Stage Body */}
                     {isOpen && (
                       <div className="px-4 pb-4 pt-1 border-t border-white/5">
-                        <div className="prose prose-invert prose-sm max-w-none text-content-muted leading-relaxed font-sans">
+                        <div className="prose prose-sm prose-headings:text-text-hi prose-strong:text-text-hi max-w-none text-content-muted leading-relaxed font-sans">
                           <Markdown>{stage.body}</Markdown>
                         </div>
                       </div>

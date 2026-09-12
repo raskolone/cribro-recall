@@ -136,7 +136,7 @@ const PreLessonContext: React.FC<PreLessonContextProps> = ({
           <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-primary" /> Streszczenie
           </h3>
-          <div className="bg-base-200/50 border border-white/10 rounded-2xl p-5 text-content text-sm markdown-body prose prose-invert max-w-none">
+          <div className="bg-base-200/50 border border-line-strong rounded-2xl p-5 text-content text-sm markdown-body prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none">
             <Markdown>{lastLesson.lessonSummary}</Markdown>
           </div>
         </section>

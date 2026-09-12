@@ -1915,7 +1915,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                 <XIcon size={20} />
               </button>
             </div>
-            <div className="p-5 sm:p-6 overflow-y-auto flex-1 prose prose-invert max-w-none text-sm leading-relaxed">
+            <div className="p-5 sm:p-6 overflow-y-auto flex-1 prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none text-sm leading-relaxed text-content">
               {feedbackTest.aiFeedback ? (
                 <Markdown>{feedbackTest.aiFeedback}</Markdown>
               ) : (

@@ -507,7 +507,7 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
           )}
         </div>
 
-        <div className="prose prose-invert max-w-none text-sm leading-relaxed text-content-base [&>h1]:text-primary [&>h2]:text-primary [&>h3]:text-white [&>h1]:text-lg [&>h2]:text-base [&>h3]:text-sm [&>ul]:space-y-1.5 [&>ol]:space-y-1.5 [&>p]:leading-relaxed">
+        <div className="prose max-w-none text-sm leading-relaxed text-content [&>h1]:text-primary [&>h2]:text-primary [&>h3]:text-text-hi [&>h1]:text-lg [&>h2]:text-base [&>h3]:text-sm [&>ul]:space-y-1.5 [&>ol]:space-y-1.5 [&>p]:leading-relaxed">
           <Markdown>{content}</Markdown>
         </div>
 
@@ -686,7 +686,7 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
                   </button>
                 )}
               </div>
-              <div className="prose prose-invert max-w-none text-sm leading-relaxed p-5 bg-base-200/60 rounded-3xl border border-white/15 [&>h1]:text-primary [&>h2]:text-primary [&>h3]:text-white [&>h1]:text-lg [&>h2]:text-base [&>h3]:text-sm [&>ul]:space-y-1 [&>ol]:space-y-1">
+              <div className="prose max-w-none text-sm leading-relaxed p-5 bg-base-200/60 rounded-3xl border border-line-strong text-content [&>h1]:text-primary [&>h2]:text-primary [&>h3]:text-text-hi [&>h1]:text-lg [&>h2]:text-base [&>h3]:text-sm [&>ul]:space-y-1 [&>ol]:space-y-1">
                 <Markdown>{content}</Markdown>
               </div>
             </div>
@@ -972,7 +972,7 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
                             </div>
                           </div>
                         ) : (
-                          <div className="prose prose-invert max-w-none text-xs sm:text-sm leading-relaxed text-content [&>ul]:space-y-1.5 [&>ol]:space-y-1.5 pt-2 [&>p]:leading-relaxed">
+                          <div className="prose prose-strong:text-text-hi max-w-none text-xs sm:text-sm leading-relaxed text-content [&>ul]:space-y-1.5 [&>ol]:space-y-1.5 pt-2 [&>p]:leading-relaxed">
                             <Markdown>{block.body || '_Brak treści w tym module._'}</Markdown>
                           </div>
                         )}

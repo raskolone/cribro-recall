@@ -80,7 +80,7 @@ const StudentTestsScreen: React.FC<StudentTestsScreenProps> = ({ studentId, init
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto flex-1 prose prose-invert max-w-none">
+            <div className="p-6 overflow-y-auto flex-1 prose prose-headings:text-text-hi prose-strong:text-text-hi prose-a:text-primary max-w-none text-content">
               {feedbackTest.aiFeedback ? (
                 <Markdown>{feedbackTest.aiFeedback}</Markdown>
               ) : (
