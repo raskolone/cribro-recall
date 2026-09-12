@@ -43,7 +43,7 @@ export const StudentScratchpadScreen: React.FC = () => {
       } catch (err: any) {
         console.error('Błąd ładowania brudnopisu kursanta:', err);
         if (isMounted) {
-          setErrorMessage(err.message || 'Nie udało się otworzyć brudnopisu.');
+          setErrorMessage(err.message || 'Nie udało się otworzyć notatnika.');
           setIsLoading(false);
         }
       }
@@ -90,7 +90,7 @@ export const StudentScratchpadScreen: React.FC = () => {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-12 space-y-4 min-h-[60vh]">
         <Loader2 className="w-10 h-10 text-primary animate-spin" />
-        <p className="text-sm font-semibold text-content-muted">Ładowanie Twojego brudnopisu lekcyjnego...</p>
+        <p className="text-sm font-semibold text-content-muted">Ładowanie Twojego notatnika lekcyjnego...</p>
       </div>
     );
   }
@@ -100,7 +100,7 @@ export const StudentScratchpadScreen: React.FC = () => {
       <div className="flex-1 flex items-center justify-center p-8 min-h-[60vh]">
         <div className="p-6 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 max-w-md text-center space-y-3">
           <AlertCircle size={32} className="mx-auto" />
-          <h3 className="font-bold text-base">Nie udało się otworzyć brudnopisu</h3>
+          <h3 className="font-bold text-base">Nie udało się otworzyć notatnika</h3>
           <p className="text-xs opacity-80">{errorMessage}</p>
         </div>
       </div>
@@ -150,7 +150,7 @@ export const StudentScratchpadScreen: React.FC = () => {
         <Info size={18} className="text-primary shrink-0" />
         <div>
           <span>
-            Ten brudnopis aktualizuje się na żywo w trakcie lekcji. Możesz go otworzyć na dowolnym urządzeniu
+            Ten notatnik aktualizuje się na żywo w trakcie lekcji. Możesz go otworzyć na dowolnym urządzeniu
             (np. telefonie lub tablecie) wchodząc na stronę <strong>cribro.pl/scratchpad</strong> i wpisując swój kod PIN.
           </span>
         </div>

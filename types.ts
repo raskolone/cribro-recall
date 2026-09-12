@@ -900,3 +900,17 @@ export interface ScratchpadDocument {
   cloudBlockedReason?: string;
 }
 
+/**
+ * Szablon treści do wstawienia we wspólny notatnik (kolekcja
+ * `scratchpadTemplates`). Zarządza nim wyłącznie lektor/admin — patrz
+ * `firestore.rules` i `services/scratchpadTemplateService.ts`.
+ */
+export interface ScratchpadTemplate {
+  id: string;
+  title: string;
+  contentHtml: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+

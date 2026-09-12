@@ -407,6 +407,56 @@ test('usunięcie wpisu z indeksu PIN zarezerwowane dla admina', async () => {
   await assertSucceeds(deleteDoc(doc(teacherByEmail(), 'scratchpadPins/ABCDEF')));
 });
 
+// ———————————————————— Szablony notatnika (scratchpadTemplates) ————————————————————
+
+test('lektor czyta i zapisuje szablony notatnika', async () => {
+  await assertSucceeds(
+    setDoc(doc(teacherByEmail(), 'scratchpadTemplates/tpl-1'), {
+      title: 'Nowa lekcja',
+      contentHtml: '<h3>Słownictwo</h3>',
+      createdBy: 'teacher-uid',
+    })
+  );
+  await assertSucceeds(getDoc(doc(teacherByEmail(), 'scratchpadTemplates/tpl-1')));
+  await assertSucceeds(getDocs(collection(teacherByEmail(), 'scratchpadTemplates')));
+});
+
+test('admin (rola teacher w dokumencie użytkownika) też zarządza szablonami', async () => {
+  await seed((db) => setDoc(doc(db, 'users/lektor'), { username: 'Lektor', role: 'teacher' }));
+
+  await assertSucceeds(
+    setDoc(doc(student('lektor'), 'scratchpadTemplates/tpl-1'), {
+      title: 'Szablon',
+      contentHtml: '<p>...</p>',
+    })
+  );
+});
+
+test('kursant nie czyta ani nie zapisuje szablonów notatnika', async () => {
+  await seed((db) =>
+    setDoc(doc(db, 'scratchpadTemplates/tpl-1'), { title: 'Szablon', contentHtml: '<p>...</p>' })
+  );
+
+  await assertFails(getDoc(doc(student('ala'), 'scratchpadTemplates/tpl-1')));
+  await assertFails(getDocs(collection(student('ala'), 'scratchpadTemplates')));
+  await assertFails(
+    setDoc(doc(student('ala'), 'scratchpadTemplates/tpl-2'), { title: 'Sam sobie' })
+  );
+  await assertFails(deleteDoc(doc(student('ala'), 'scratchpadTemplates/tpl-1')));
+});
+
+test('gość niezalogowany nie ma dostępu do szablonów notatnika', async () => {
+  await seed((db) =>
+    setDoc(doc(db, 'scratchpadTemplates/tpl-1'), { title: 'Szablon', contentHtml: '<p>...</p>' })
+  );
+
+  const anon = env.unauthenticatedContext().firestore();
+
+  await assertFails(getDoc(doc(anon, 'scratchpadTemplates/tpl-1')));
+  await assertFails(getDocs(collection(anon, 'scratchpadTemplates')));
+  await assertFails(setDoc(doc(anon, 'scratchpadTemplates/tpl-2'), { title: 'Sam sobie' }));
+});
+
 test('plik reguł jest wczytany — inaczej wszystkie testy przechodzą na pustych regułach', () => {
   assert.ok(RULES.includes('service cloud.firestore'), 'firestore.rules nie wygląda na plik reguł');
   assert.ok(RULES.includes('function isAdmin()'), 'brak funkcji isAdmin w regułach');

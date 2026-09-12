@@ -59,7 +59,7 @@ export const ScratchpadStudentPicker: React.FC<ScratchpadStudentPickerProps> = (
               <FileEdit size={16} />
             </div>
             <div className="min-w-0">
-              <h2 className="text-sm font-bold text-text-hi">Otwórz brudnopis</h2>
+              <h2 className="text-sm font-bold text-text-hi">Otwórz notatnik</h2>
               <p className="text-[11px] text-text-faint">
                 Wybierz kursanta, którego notatki chcesz otworzyć
               </p>

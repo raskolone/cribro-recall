@@ -31,14 +31,21 @@ import {
   GraduationCap,
   X,
   AlertTriangle,
+  Settings2,
+  Download,
+  FileDown,
+  FileType2,
 } from 'lucide-react';
-import { ScratchpadDocument } from '../../types';
+import { ScratchpadDocument, ScratchpadTemplate } from '../../types';
 import { buildScratchpadUrl } from '../../services/scratchpadService';
+import { listScratchpadTemplates } from '../../services/scratchpadTemplateService';
 import { formatAccessCode } from '../../utils/accessCode';
+import { exportScratchpadToPDF, exportScratchpadToWord } from '../../utils/pdfExport';
 import Button from '../ui/Button';
 import MenuDropdown, { MenuChevron } from '../ui/MenuDropdown';
 import CoachMarks from '../ui/CoachMarks';
 import { buildScratchpadCoachSteps } from './scratchpadCoachSteps';
+import ScratchpadTemplateManagerModal from './ScratchpadTemplateManagerModal';
 
 /** Przycisk paska formatowania — jeden kształt dla wszystkich narzędzi edytora. */
 const FormatButton: React.FC<{
@@ -116,7 +123,11 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
   const [isInsertMenuOpen, setIsInsertMenuOpen] = useState(false);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [isCoachOpen, setIsCoachOpen] = useState(false);
+
+  const [templates, setTemplates] = useState<ScratchpadTemplate[]>([]);
+  const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
 
   // Funkcja wyciągająca czysty tekst z HTML
   const extractText = (html: string): string => {
@@ -220,20 +231,29 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     handleInput();
   };
 
-  // Wstawienie szybkiego szablonu sekcji lekcji
-  const handleInsertTemplate = () => {
+  // Wstawienie zapisanego szablonu lektora (kolekcja `scratchpadTemplates`)
+  const handleInsertTemplate = (html: string) => {
     if (isReadOnly) return;
-    const tpl = `
-      <h3>💡 Nowe słownictwo</h3>
-      <ul><li>...</li></ul>
-      <h3>⚡ Poprawki językowe</h3>
-      <ul><li>...</li></ul>
-      <h3>📌 Ustalenia</h3>
-      <p>...</p>
-    `;
-    window.document.execCommand('insertHTML', false, tpl);
+    window.document.execCommand('insertHTML', false, html);
     handleInput();
   };
+
+  // Lista szablonów widzi wyłącznie lektor/admin — reguła `isAdmin()` na
+  // `scratchpadTemplates` odmówi kursantowi nawet próby odczytu, więc nie ma
+  // sensu jej wołać poza rolą lektora.
+  const refreshTemplates = useCallback(async () => {
+    if (!isTeacher) return;
+    try {
+      const list = await listScratchpadTemplates();
+      setTemplates(list);
+    } catch (err: any) {
+      console.warn('[Scratchpad] Nie udało się pobrać szablonów notatnika:', err?.message || err);
+    }
+  }, [isTeacher]);
+
+  useEffect(() => {
+    refreshTemplates();
+  }, [refreshTemplates]);
 
   // Szybkie kolorowanie pod błędy / poprawki
   const handleHighlight = (bgColor: string, textColor: string) => {
@@ -314,9 +334,9 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     onPushToLessonRecord({
       topic: `Lekcja ze Scratchpada (${todayStr})`,
       words: vocabLines.join('\n') || rawText.slice(0, 300),
-      summary: generalLines.slice(0, 5).join('\n') || `Notatki ze wspólnego brudnopisu z dnia ${todayStr}`,
+      summary: generalLines.slice(0, 5).join('\n') || `Notatki ze wspólnego notatnika z dnia ${todayStr}`,
       thingsToImprove: correctionLines.join('\n'),
-      followUp: 'Utrwalenie słownictwa i poprawek z brudnopisu lekcyjnego.',
+      followUp: 'Utrwalenie słownictwa i poprawek z notatnika lekcyjnego.',
     });
   };
 
@@ -406,7 +426,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
                     {
                       id: 'copy-link',
                       label: copiedLink ? 'Skopiowano link' : 'Kopiuj link bezpośredni',
-                      description: 'Otwiera brudnopis bez logowania',
+                      description: 'Otwiera notatnik bez logowania',
                       icon: copiedLink ? <Check size={14} /> : <Link2 size={14} />,
                       onSelect: handleCopyLink,
                     },
@@ -454,6 +474,49 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
             />
           )}
 
+          {/* Eksport widoczny i dla lektora, i dla kursanta — obaj mogą chcieć
+              zachować kopię notatnika poza aplikacją. */}
+          <MenuDropdown
+            open={isExportMenuOpen}
+            onOpenChange={setIsExportMenuOpen}
+            width={280}
+            align="end"
+            aria-label="Eksport notatnika"
+            triggerTitle="Zapisz notatnik jako plik"
+            triggerClassName={`h-9 px-3 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-all cursor-pointer ${
+              isExportMenuOpen
+                ? 'bg-white/[0.08] border-line-strong text-content'
+                : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
+            }`}
+            trigger={
+              <>
+                <Download size={14} />
+                <span className="hidden sm:inline">Eksportuj</span>
+                <MenuChevron open={isExportMenuOpen} />
+              </>
+            }
+            sections={[
+              {
+                id: 'export',
+                items: [
+                  {
+                    id: 'export-pdf',
+                    label: 'Eksportuj do PDF',
+                    icon: <FileDown size={14} />,
+                    onSelect: () => exportScratchpadToPDF(docData.title, docData.contentHtml),
+                  },
+                  {
+                    id: 'export-word',
+                    label: 'Eksportuj do Worda',
+                    description: 'Otwiera się też w Google Docs',
+                    icon: <FileType2 size={14} />,
+                    onSelect: () => exportScratchpadToWord(docData.title, docData.contentHtml),
+                  },
+                ],
+              },
+            ]}
+          />
+
           {isTeacher && onPushToLessonRecord && (
             <Button
               type="button"
@@ -472,7 +535,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           <button
             type="button"
             onClick={() => setIsCoachOpen(true)}
-            title="Samouczek — dymki opisujące każdą funkcję brudnopisu"
+            title="Samouczek — dymki opisujące każdą funkcję notatnika"
             aria-label="Samouczek"
             className="h-9 w-9 rounded-xl border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
           >
@@ -487,8 +550,8 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                title="Zamknij brudnopis"
-                aria-label="Zamknij brudnopis"
+                title="Zamknij notatnik"
+                aria-label="Zamknij notatnik"
                 className="h-9 w-9 rounded-xl border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X size={16} />
@@ -687,15 +750,48 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
                     icon: <Calendar size={14} />,
                     onSelect: handleInsertDate,
                   },
-                  {
-                    id: 'template',
-                    label: 'Szablon sekcji',
-                    description: 'Słownictwo, poprawki, ustalenia',
-                    icon: <Sparkles size={14} />,
-                    onSelect: handleInsertTemplate,
-                  },
                 ],
               },
+              // Szablony widzi i wstawia wyłącznie lektor/admin — kursant nigdy
+              // nie wybiera szablonu sam (patrz `scratchpadTemplates` w
+              // firestore.rules), więc dla niego ta sekcja po prostu nie istnieje.
+              ...(isTeacher
+                ? [
+                    {
+                      id: 'templates',
+                      label: 'Szablony',
+                      items:
+                        templates.length > 0
+                          ? templates.map(tpl => ({
+                              id: `tpl-${tpl.id}`,
+                              label: tpl.title,
+                              description: 'Wstaw szablon',
+                              icon: <Sparkles size={14} />,
+                              onSelect: () => handleInsertTemplate(tpl.contentHtml),
+                            }))
+                          : [
+                              {
+                                id: 'tpl-empty',
+                                label: 'Brak zapisanych szablonów',
+                                icon: <Sparkles size={14} />,
+                                disabled: true,
+                                onSelect: () => {},
+                              },
+                            ],
+                    },
+                    {
+                      id: 'templates-manage',
+                      items: [
+                        {
+                          id: 'manage-templates',
+                          label: 'Zarządzaj szablonami…',
+                          icon: <Settings2 size={14} />,
+                          onSelect: () => setIsTemplateManagerOpen(true),
+                        },
+                      ],
+                    },
+                  ]
+                : []),
               {
                 id: 'structure',
                 label: 'Struktura',
@@ -786,8 +882,18 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           setIsInsertMenuOpen(false);
           setIsShareMenuOpen(false);
         }}
-        title="Samouczek brudnopisu"
+        title="Samouczek notatnika"
       />
+
+      {isTeacher && (
+        <ScratchpadTemplateManagerModal
+          isOpen={isTemplateManagerOpen}
+          onClose={() => setIsTemplateManagerOpen(false)}
+          currentUser={{ uid: currentUser?.uid || 'teacher', name: currentUser?.name || 'Lektor' }}
+          currentContentHtml={docData.contentHtml}
+          onTemplatesChanged={refreshTemplates}
+        />
+      )}
     </div>
   );
 };

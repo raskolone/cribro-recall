@@ -669,6 +669,17 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Szablony treści do wstawiania we wspólny notatnik (`scratchpads`).
+    //
+    // Zarządza nimi wyłącznie lektor/admin — kursant nigdy nie czyta tej
+    // kolekcji bezpośrednio ani nie wybiera szablonu sam, więc nie ma tu
+    // żadnej ścieżki bez logowania ani PIN-owej. Osobna kolekcja od
+    // `scratchpads`/`scratchpadPins` celowo — zero interakcji z tamtą,
+    // wrażliwą logiką dostępu linkiem/kodem.
+    match /scratchpadTemplates/{templateId} {
+      allow read, write: if isAdmin();
+    }
+
     // Baza tematów i inne wspólne ustawienia — czyta każdy zalogowany,
     // zapisuje wyłącznie nauczyciel. Rolę "teacher" obsługuje już isAdmin(),
     // więc osobny warunek na nią był zbędny i tylko powielał odczyt dokumentu.

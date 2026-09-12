@@ -64,7 +64,7 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
       } catch (err: any) {
         console.error('Błąd inicjalizacji Scratchpada:', err);
         if (isMounted) {
-          setError(err.message || 'Nie udało się załadować brudnopisu.');
+          setError(err.message || 'Nie udało się załadować notatnika.');
           setIsLoading(false);
         }
       }
@@ -133,13 +133,13 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-4">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
-            <p className="text-sm font-semibold text-content-muted">Ładowanie brudnopisu lekcyjnego...</p>
+            <p className="text-sm font-semibold text-content-muted">Ładowanie notatnika lekcyjnego...</p>
           </div>
         ) : error ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
             <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 max-w-md">
               <AlertCircle size={28} className="mx-auto mb-2" />
-              <p className="font-bold text-sm">Nie udało się otworzyć brudnopisu</p>
+              <p className="font-bold text-sm">Nie udało się otworzyć notatnika</p>
               <p className="text-xs mt-1 opacity-80">{error}</p>
             </div>
             <button

@@ -57,3 +57,74 @@ export const exportTestToPDF = (test: StudentTest, t: any) => {
   
   html2pdf().from(container).set(opt).save();
 };
+
+/**
+ * Eksport treści notatnika do PDF — dokładnie ten sam wzorzec co
+ * `exportTestToPDF` powyżej (html2pdf.js, zero nowych zależności).
+ */
+export const exportScratchpadToPDF = (title: string, contentHtml: string) => {
+  const container = document.createElement('div');
+  container.style.padding = '20px';
+  container.style.fontFamily = 'Arial, sans-serif';
+  container.style.color = '#000';
+  container.style.backgroundColor = '#fff';
+
+  container.innerHTML = `
+    <h1 style="font-size: 22px; margin-bottom: 16px; color: #111;">${title || 'Notatnik'}</h1>
+    <div style="font-size: 14px; line-height: 1.5;">${contentHtml}</div>
+  `;
+
+  const opt = {
+    margin: 15,
+    filename: `${(title || 'notatnik').replace(/\s+/g, '_')}.pdf`,
+    image: { type: 'jpeg' as const, quality: 0.98 },
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+  };
+
+  html2pdf().from(container).set(opt).save();
+};
+
+/**
+ * Eksport treści notatnika do pliku `.doc` — zwykły HTML z nagłówkiem MS
+ * Office, bez żadnej integracji API. Word otwiera taki plik bezpośrednio;
+ * Google Docs otwiera go po wgraniu na Dysk ("Otwórz za pomocą → Dokumenty
+ * Google") — stąd świadomie NIE nazywamy tego eksportem "do Google Docs" w UI.
+ * Zero nowych zależności: czysty string + Blob + link do pobrania.
+ */
+export const exportScratchpadToWord = (title: string, contentHtml: string) => {
+  const safeTitle = title || 'Notatnik';
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<title>${safeTitle}</title>
+<!--[if gte mso 9]>
+<xml>
+  <w:WordDocument>
+    <w:View>Print</w:View>
+    <w:Zoom>100</w:Zoom>
+    <w:DoNotOptimizeForBrowser/>
+  </w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+  body { font-family: Calibri, Arial, sans-serif; font-size: 12pt; }
+  h1, h2, h3 { color: #111; }
+</style>
+</head>
+<body>
+<h1>${safeTitle}</h1>
+${contentHtml}
+</body>
+</html>`;
+
+  const blob = new Blob(['﻿', html], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${safeTitle.replace(/\s+/g, '_')}.doc`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
