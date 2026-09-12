@@ -384,6 +384,62 @@ service cloud.firestore {
         );
 
       allow delete: if isAdmin();
+
+      // -------------------------------------------------------------
+      // Silnik v2: próby kursanta
+      // -------------------------------------------------------------
+      //
+      // Werdykt (rubricScores, masteryState, confidence, requiresTeacherReview)
+      // zapisuje WYŁĄCZNIE Cloud Function przez Admin SDK, który omija reguły.
+      // Kursant nie ma tu prawa zapisu w ogóle — jego odpowiedź idzie do
+      // funkcji `submitHomeworkV2Attempt`, a nie wprost do bazy. Dzięki temu
+      // nie da się podstawić sobie stanu `opanowane`.
+      //
+      // Historia prób jest niezmienna: brak update dla kogokolwiek. Zmiana
+      // zapisanej próby oznaczałaby, że feedback, który kursant już zobaczył,
+      // przestaje odpowiadać temu, co jest w bazie.
+      match /attempts/{attemptId} {
+        allow read: if isAdmin() ||
+                    (
+                      isAuthenticated() &&
+                      exists(/databases/$(database)/documents/specialTasks/$(taskId)) &&
+                      get(/databases/$(database)/documents/specialTasks/$(taskId)).data.studentUid == request.auth.uid
+                    );
+        allow create, update: if false;
+        allow delete: if isAdmin();
+      }
+
+      // -------------------------------------------------------------
+      // Silnik v2: szkice w toku (autosave i wznowienie)
+      // -------------------------------------------------------------
+      //
+      // Osobno od prób, bo to dwie różne rzeczy: szkic jest brudnopisem
+      // kursanta, próba jest oceniona i zamknięta. Rozdzielenie pozwala dać
+      // kursantowi prawo zapisu tam, gdzie go potrzebuje, nie otwierając
+      // niczego przy werdykcie.
+      //
+      // W v1 szkic żył wyłącznie w `localStorage` (hooks/useDraftAnswers.ts),
+      // więc nie przeżywał zmiany urządzenia. Tutaj przeżywa.
+      //
+      // Dozwolone pola są wyliczone wprost. Bez tego kursant mógłby dopisać do
+      // szkicu `masteryState` i zasugerować nim widok, który czyta obie
+      // kolekcje.
+      match /drafts/{draftId} {
+        function ownsParentTask() {
+          return isAuthenticated() &&
+                 exists(/databases/$(database)/documents/specialTasks/$(taskId)) &&
+                 get(/databases/$(database)/documents/specialTasks/$(taskId)).data.studentUid == request.auth.uid;
+        }
+
+        allow read: if isAdmin() || ownsParentTask();
+        allow create, update: if (isAdmin() || ownsParentTask()) &&
+                              request.resource.data.keys().hasOnly(
+                                ['exerciseId', 'answer', 'updatedAt']
+                              ) &&
+                              request.resource.data.answer is string &&
+                              request.resource.data.answer.size() <= 2000;
+        allow delete: if isAdmin() || ownsParentTask();
+      }
     }
 
     // Kolekcja bez odwołań w kodzie — zostaje zamknięta do właściciela,

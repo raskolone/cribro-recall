@@ -34,7 +34,7 @@ import StudentScratchpadScreen from '../scratchpad/StudentScratchpadScreen';
 import TodayScreen from './TodayScreen';
 import StudentPreviewFrame from './StudentPreviewFrame';
 import StudentVocabPreview from './StudentVocabPreview';
-import { isModuleVisible } from '../../config/featureFlags';
+import { HOMEWORK_ENGINE_V2, isModuleVisible } from '../../config/featureFlags';
 import StudentTestsScreen from '../tests/StudentTestsScreen';
 import AdminStatsScreen from '../admin/AdminStatsScreen';
 import FlashcardSetsScreen from '../flashcards/FlashcardSetsScreen';
@@ -46,6 +46,7 @@ import SettingsScreen from '../settings/SettingsScreen';
 import TopicDatabaseScreen from '../admin/TopicDatabaseScreen';
 import HomeworkScreen from './HomeworkScreen';
 import StudentHomeworkScreen from './StudentHomeworkScreen';
+import StudentHomeworkV2Screen from './StudentHomeworkV2Screen';
 import AdminDebuggingScreen from '../admin/AdminDebuggingScreen';
 import OnboardingOverlay from './OnboardingOverlay';
 import TeacherHomeworkNotification from './TeacherHomeworkNotification';
@@ -366,11 +367,18 @@ const Dashboard: React.FC = () => {
           />
         );
       }
-      return (
+      const homeworkV1 = (
         <StudentHomeworkScreen
           initialTaskId={activeTaskId}
           onBack={() => handleNavigate('dashboard')}
         />
+      );
+      // Przy włączonej fladze zestawy v2 dostają własny ekran, a kursant bez
+      // zestawów v2 widzi dokładnie to, co widział wcześniej.
+      return HOMEWORK_ENGINE_V2 && user ? (
+        <StudentHomeworkV2Screen user={user} fallback={homeworkV1} />
+      ) : (
+        homeworkV1
       );
     }
     if (view === 'settings') {

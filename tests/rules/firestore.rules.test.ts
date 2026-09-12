@@ -411,3 +411,136 @@ test('plik reguł jest wczytany — inaczej wszystkie testy przechodzą na pusty
   assert.ok(RULES.includes('service cloud.firestore'), 'firestore.rules nie wygląda na plik reguł');
   assert.ok(RULES.includes('function isAdmin()'), 'brak funkcji isAdmin w regułach');
 });
+
+// ———————————————————— Silnik v2: próby i szkice ————————————————————
+//
+// Najważniejsza własność: kursant nie może sam sobie wystawić stanu
+// `opanowane`. Werdykt pisze wyłącznie Cloud Function przez Admin SDK,
+// który omija reguły — z poziomu przeglądarki podkolekcja `attempts`
+// jest tylko do odczytu.
+
+/** Zadanie v2 z jedną zapisaną próbą — tak, jak zapisuje je funkcja. */
+const seedV2Task = (owner: string) =>
+  seed(async (db) => {
+    await setDoc(doc(db, 'specialTasks/task-v2'), {
+      studentUid: owner,
+      engineVersion: 2,
+      title: 'Praca domowa',
+      sentences: [],
+    });
+    await setDoc(doc(db, 'specialTasks/task-v2/attempts/attempt-1'), {
+      exerciseId: 'ex-1',
+      studentUid: owner,
+      attemptNumber: 1,
+      answer: 'I used to commute by bike.',
+      masteryState: 'opanowane',
+      confidence: 0.9,
+    });
+  });
+
+test('v2: kursant czyta własne próby', async () => {
+  await seedV2Task('ala');
+  await assertSucceeds(getDoc(doc(student('ala'), 'specialTasks/task-v2/attempts/attempt-1')));
+});
+
+test('v2: kursant nie czyta cudzych prób', async () => {
+  await seedV2Task('ala');
+  await assertFails(getDoc(doc(student('bob'), 'specialTasks/task-v2/attempts/attempt-1')));
+});
+
+test('v2: kursant NIE MOŻE zapisać własnej próby ani werdyktu', async () => {
+  await seedV2Task('ala');
+
+  // Sedno sprawy: podstawienie sobie stanu „opanowane".
+  await assertFails(
+    setDoc(doc(student('ala'), 'specialTasks/task-v2/attempts/attempt-2'), {
+      exerciseId: 'ex-1',
+      answer: 'cokolwiek',
+      masteryState: 'opanowane',
+      confidence: 1,
+    })
+  );
+
+  // Nawet bez pól werdyktu — próby tworzy wyłącznie funkcja.
+  await assertFails(
+    setDoc(doc(student('ala'), 'specialTasks/task-v2/attempts/attempt-3'), {
+      exerciseId: 'ex-1',
+      answer: 'sama odpowiedź',
+    })
+  );
+});
+
+test('v2: historia prób jest niezmienna — nawet dla właściciela', async () => {
+  await seedV2Task('ala');
+  await assertFails(
+    updateDoc(doc(student('ala'), 'specialTasks/task-v2/attempts/attempt-1'), {
+      masteryState: 'opanowane',
+    })
+  );
+});
+
+test('v2: lektor czyta próby kursanta', async () => {
+  await seedV2Task('ala');
+  await assertSucceeds(getDoc(doc(teacherByEmail(), 'specialTasks/task-v2/attempts/attempt-1')));
+});
+
+test('v2: kursant zapisuje i odczytuje własny szkic — autosave i wznowienie', async () => {
+  await seedV2Task('ala');
+
+  await assertSucceeds(
+    setDoc(doc(student('ala'), 'specialTasks/task-v2/drafts/ex-1'), {
+      exerciseId: 'ex-1',
+      answer: 'I used to com',
+      updatedAt: new Date().toISOString(),
+    })
+  );
+
+  await assertSucceeds(getDoc(doc(student('ala'), 'specialTasks/task-v2/drafts/ex-1')));
+});
+
+test('v2: kursant nie przemyci werdyktu przez szkic', async () => {
+  await seedV2Task('ala');
+
+  await assertFails(
+    setDoc(doc(student('ala'), 'specialTasks/task-v2/drafts/ex-1'), {
+      exerciseId: 'ex-1',
+      answer: 'x',
+      updatedAt: new Date().toISOString(),
+      masteryState: 'opanowane',
+    })
+  );
+});
+
+test('v2: kursant nie dotyka cudzego szkicu', async () => {
+  await seedV2Task('ala');
+
+  await assertFails(
+    setDoc(doc(student('bob'), 'specialTasks/task-v2/drafts/ex-1'), {
+      exerciseId: 'ex-1',
+      answer: 'podmiana',
+      updatedAt: new Date().toISOString(),
+    })
+  );
+  await assertFails(getDoc(doc(student('bob'), 'specialTasks/task-v2/drafts/ex-1')));
+});
+
+test('v2: szkic o absurdalnym rozmiarze nie przechodzi', async () => {
+  await seedV2Task('ala');
+
+  await assertFails(
+    setDoc(doc(student('ala'), 'specialTasks/task-v2/drafts/ex-1'), {
+      exerciseId: 'ex-1',
+      answer: 'x'.repeat(2001),
+      updatedAt: new Date().toISOString(),
+    })
+  );
+});
+
+test('v2: zestawy v1 nie zyskały nowych uprawnień przy okazji', async () => {
+  // Reguła bazowa specialTasks miała zostać nietknięta.
+  await seed((db) => setDoc(doc(db, 'specialTasks/task-v1'), { studentUid: 'ala', title: 'v1' }));
+  await assertFails(getDoc(doc(student('bob'), 'specialTasks/task-v1')));
+  await assertFails(
+    setDoc(doc(student('ala'), 'specialTasks/task-v1-nowe'), { studentUid: 'ala' })
+  );
+});
