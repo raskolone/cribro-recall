@@ -282,3 +282,156 @@ Ryzyka: NIE dotknięto `firestore.rules`, autoryzacji ani ścieżek
 tokenowych. Zmiany w `endpoints.ts` to wyłącznie podmiana kodu inline na
 wywołanie wydzielonej funkcji — zachowanie bez zmian, potwierdzone
 buildem i testami.
+
+---
+
+2026-09-12 — Claude Code / Opus 5 (wdrożenie v2 + naprawy generatora testów)
+
+Zadanie: uruchomienie silnika v2 na produkcji, a następnie naprawa błędów,
+na które Maciej trafił w trakcie testowania aplikacji.
+
+## Wdrożenie silnika v2 — ZAKOŃCZONE
+
+Maciej wykonał kroki po swojej stronie: ustawił sekret `OPENAI_API_KEY`
+(nowy klucz, osobny od tego w Vercelu), włączył PITR i ochronę przed
+skasowaniem bazy, założył harmonogram backupów, wdrożył funkcje i ustawił
+`HOMEWORK_ENGINE_V2=true` w `functions/.env`.
+
+Ja włączyłem drugą połowę flagi (`config/featureFlags.ts`, commit
+`bfc4354`). **Silnik v2 jest od tego momentu czynny end-to-end na
+produkcji** dla każdego zalogowanego lektora i kursanta.
+
+Stan wdrożenia zweryfikowany przez `firebase functions:list`: siedem
+funkcji w `us-central1`, Node 22, gen 2.
+
+### Poprawka ścieżki backupu (commit `25f62c0`)
+
+Pierwsza wersja checklisty opisywała eksport przez `gcloud` do kubełka GCS
+z regionem `us-central1`. Była **błędna na dwa sposoby**: gcloud nie jest
+zainstalowany na maszynie Macieja, a baza stoi w `nam5` (multi-region US),
+więc kubełek `us-central1` odrzuciłby eksport. Firebase CLI ma zarządzane
+backupy, PITR, restore i klonowanie — bez gcloud i bez kubełka.
+
+Trzy nowe skrypty npm: `firebase:db:protect`, `firebase:backup:schedule`,
+`firebase:backup:list`.
+
+**Odnotowana pułapka:** w projekcie jest SZEŚĆ baz Firestore, a jedna
+(`ai-studio-cribrorecall-520a4841-...`) zawiera ten sam sufiks UUID co
+produkcja i różni się wyłącznie wstawką `cribrorecall`. Backup zrobiony
+„prawie tej" bazy jest bezwartościowy, a zorientować się można dopiero
+przy restore. Stąd `-d` wpisane na sztywno w skrypty.
+
+Poprawiłem też błędną instrukcję: `npm run deploy:hosting` jest zbędne —
+produkcja stoi na Vercelu, a nie na Firebase Hosting, i wdraża się samym
+pushem na `main`.
+
+## Naprawy generatora testów (kod v1, poza zakresem zlecenia v2)
+
+Maciej trafił na trzy osobne błędy w trakcie testowania. Wszystkie sprzed
+tej sesji — `git diff` na `server.ts`, `AdminTestGenerator.tsx`
+i `geminiService.ts` między `48a39b2` a HEAD był pusty przed tymi naprawami.
+
+### 1. Twarde 502 przy każdym generowaniu testu (commit `8289049`)
+
+Objaw: „Model nie zwrócił poprawnej listy zadań".
+
+Przyczyna: `AI_MODEL_CASCADE` zaczyna od `openai/gpt-5.6-luna`. Ścieżka
+OpenAI wymusza `response_format: json_object`, a ten tryb **z definicji
+zwraca obiekt** — OpenAI nie odda w nim gołej tablicy. `parseQuestions`
+wymagało `Array.isArray(value)`, więc poprawna odpowiedź `{"questions":[...]}`
+była odrzucana. Działało, dopóki pierwszym modelem w kaskadzie był Gemini,
+bo `responseSchema` typu ARRAY sprawia, że Gemini oddaje tablicę. Zepsuło
+się bez żadnej zmiany w samym generatorze.
+
+Naprawa: `utils/modelJsonList.ts` przyjmuje oba kształty. Obiekt z kilkoma
+tablicami jest odrzucany świadomie — zgadywanie, która jest ta właściwa,
+dałoby test złożony z przypadkowego pola.
+
+Warto odnotować: komentarz w `server.ts` już opisywał ten objaw („zwrócił
+obiekt zamiast listy"), ale zabezpieczono przed nim wyłącznie drugi
+przebieg (weryfikację), nie pierwszy.
+
+### 2. Ćwiczenia generowały się PO POLSKU (commit `423adbf`)
+
+Objaw: tekst z lukami po polsku, bank słów po polsku, w aplikacji do nauki
+angielskiego.
+
+Przyczyna była w regułach promptu, nie w modelu. Reguła `find_mistake`
+mówiła wprost „N zdań w języku angielskim" i działała poprawnie. Reguły
+`fill_in_blank`, `fill_in_blank_bank` i `multiple_choice` **nie mówiły
+o języku nic** — a skoro cały prompt, polecenia i materiał lekcji są po
+polsku, model wziął polski jako domyślny.
+
+Naprawa w `utils/testExerciseRules.ts`, dwie warstwy:
+1. Żelazna zasada językowa na początku promptu + język nazwany wprost
+   w regule KAŻDEGO typu. Test pilnuje, że żadna reguła nie milczy.
+2. Walidacja WYNIKU per typ i per pole, bo instrukcja w prompcie to prośba,
+   nie gwarancja. Przy naruszeniu jedna próba naprawy z wypisanymi
+   zarzutami; jeśli model dalej nie poprawi, lektor dostaje jasny komunikat
+   zamiast polskiego testu.
+
+Wykrywanie polskiego: diakrytyka + słowa funkcyjne + **fleksja**. Ta
+trzecia warstwa okazała się konieczna — napisany przeze mnie test na
+zdaniu „Monika pracuje w HR i czesto korzysta z roznych aplikacji"
+(bez ogonków) początkowo NIE przechodził.
+
+Przy okazji `fill_in_blank` dostał kształt klasycznego ćwiczenia
+gramatycznego z podręcznika: angielski tekst, a przy każdej luce forma
+bazowa w nawiasie — `Last summer Anna ___ (go) to Italy`.
+
+### 3. Kursant sam obniżał sobie poziom testu (commit `8401a22`)
+
+W ekranie testu stał przełącznik „Easy — układanka / Hard — wpisywanie",
+którym kursant wybierał tryb W TRAKCIE rozwiązywania. To znosiło sens
+pomiaru. Poziom pochodzi teraz z `TestQuestion.difficulty`, czyli od
+lektora, domyślnie `hard`. `TestQuestionFields` jest używany wyłącznie
+w ekranach testu, więc praca domowa jest nietknięta — tam wybór kursanta
+zostaje, bo chodzi o naukę, nie o pomiar.
+
+## Nie dokończone / do sprawdzenia
+
+- **Silnik v2 nadal nie przeszedł ani jednego realnego przebiegu.** Flaga
+  jest włączona po obu stronach, ale nikt jeszcze nie wygenerował pracy
+  domowej v2 z prawdziwym modelem. To jest następna rzecz do zrobienia.
+- Szacunki kosztu w `docs/silnik-v2-architektura.md` §3 są wyprowadzone
+  z przewidywanej długości promptów, NIE z pomiaru. Do poprawienia po
+  pierwszym przebiegu, danymi z linii `[hw-v2] wywołanie modelu`.
+- Naprawa językowa generatora testów **nie została sprawdzona w działaniu** —
+  przeszła testy jednostkowe i build, ale Maciej nie wygenerował jeszcze
+  testu po wdrożeniu.
+- Wzorzec „poproś o tablicę, sprawdź `Array.isArray`" mógł zostać w innych
+  miejscach v1, które też przeszły na kaskadę z OpenAI na czele. Nie
+  przeszukane systematycznie.
+- Interfejs v2 (kreator lektora i ekran kursanta) nieoglądany w przeglądarce.
+
+## Zakolejkowane
+
+`docs/kolejka-przebudowa-panelu.md` — przebudowa panelu lektora zgłoszona
+przez Macieja: powiadomienia nad kafelkami zamiast w sidebarze, trzy główne
+kafelki z Profilem kursantów na pierwszym miejscu, listwa narzędzi pod
+spodem, schowanie (nie kasowanie) przeglądu panelu, historii Notion, AI
+Lesson Generatora i „Dodaj kursanta", przeniesienie zarządzania kursantami
+do Bazy kursantów w sidebarze, oraz ujednolicenie „Brudnopis" → „Notatnik"
+w warstwie interfejsu (nazwy w kodzie i bazie zostają).
+
+Zapisałem tam trzy pytania do rozstrzygnięcia przed realizacją: co ma być
+trzecim kafelkiem, czy „Profil kursantów" i „Baza kursantów" to nie dwie
+nazwy na to samo, i gdzie ląduje powiadomienie, gdy lektor jest już w karcie
+kursanta.
+
+## Decyzje architektoniczne
+
+- Reguły typów zadań testowych i walidacja językowa w `utils/`, nie
+  w `server.ts`. Powód: `server.ts` ma 114 KB, a to jest logika domenowa
+  bez UI, którą trzeba dało się przetestować — zgodnie z konwencją repo.
+- Walidacja językowa przy naruszeniu **odmawia**, zamiast oddać lektorowi
+  test po polsku. Lepiej powiedzieć wprost, co jest nie tak, niż kazać mu
+  to odkrywać na kursancie.
+
+## Ryzyka
+
+NIE dotknięto `firestore.rules` (poza blokiem `attempts`/`drafts` z Etapu 4,
+na który była jawna zgoda), middleware autoryzacji ani ścieżek tokenowych
+bez logowania. Zmiany w `server.ts` ograniczają się do generatora testów:
+podmiana inline'owego parsera na wywołanie funkcji z `utils/` oraz dodanie
+bramki językowej. Trasy, autoryzacja i pozostałe endpointy bez zmian.

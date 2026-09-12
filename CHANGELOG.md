@@ -77,6 +77,20 @@ Zmiany UI z etapów opisanych niżej (przebudowa paska Prezentacji i Brudnopisu,
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
+### 🔧 Generator testów — trzy naprawy (2026-09-12)
+
+Błędy wychwycone przez Macieja w trakcie testowania aplikacji. Wszystkie w kodzie v1, niezwiązane z silnikiem v2.
+
+**1. Twarde 502 przy każdym generowaniu testu.** Lektor dostawał „Model nie zwrócił poprawnej listy zadań" — a model odpowiadał poprawnie. `AI_MODEL_CASCADE` zaczyna od `openai/gpt-5.6-luna`, ścieżka OpenAI wymusza `response_format: json_object`, a ten tryb **z definicji zwraca obiekt**, nigdy gołej tablicy. `parseQuestions` wymagało `Array.isArray`, więc `{"questions":[...]}` leciało do kosza. Działało, dopóki pierwszym modelem w kaskadzie był Gemini (`responseSchema` typu ARRAY oddaje tablicę) — zepsuło się bez żadnej zmiany w samym generatorze. Naprawa: `utils/modelJsonList.ts` przyjmuje oba kształty.
+
+**2. Ćwiczenia generowały się po polsku** — tekst z lukami, bank słów i pytania wielokrotnego wyboru po polsku, w aplikacji do nauki angielskiego. Przyczyna w regułach promptu: `find_mistake` mówiła wprost „w języku angielskim" i działała, a `fill_in_blank`, `fill_in_blank_bank` i `multiple_choice` nie mówiły o języku nic. Skoro prompt i materiał lekcji są po polsku, model wziął polski jako domyślny. Naprawa w `utils/testExerciseRules.ts`: żelazna zasada językowa + język nazwany wprost w każdej regule, plus **walidacja wyniku** per typ i per pole z jedną próbą automatycznej naprawy. Wykrywanie polskiego łączy diakrytykę, słowa funkcyjne i fleksję — samo „Monika pracuje w HR" bez ogonków nie dawało się rozpoznać bez tej trzeciej warstwy.
+
+Przy okazji `fill_in_blank` dostał kształt klasycznego ćwiczenia z podręcznika: angielski tekst, a przy każdej luce forma bazowa w nawiasie — `Last summer Anna ___ (go) to Italy`.
+
+**3. Kursant sam obniżał sobie poziom testu.** W ekranie testu stał przełącznik „Easy — układanka / Hard — wpisywanie", którym kursant wybierał tryb w trakcie rozwiązywania. Poziom pochodzi teraz z `TestQuestion.difficulty`, czyli od lektora, domyślnie `hard`. Praca domowa nietknięta — tam wybór kursanta zostaje.
+
+---
+
 ### 🆕 Silnik prac domowych v2 — Etapy 0–4 (2026-09-12)
 
 Wdrożenie zlecenia z Notion („Cribro Recall — kanoniczna specyfikacja silnika v2", §18). Całość **za flagą `HOMEWORK_ENGINE_V2`, domyślnie wyłączoną**. Ścieżka v1 nietknięta.
@@ -95,7 +109,7 @@ Wdrożenie zlecenia z Notion („Cribro Recall — kanoniczna specyfikacja silni
 
 **Czego to NIE rusza:** `server.ts`, `geminiService.ts`, `homeworkGenerator.ts`, mailingu, fiszek, SRS, testów postępu, syncu Notion. `notifyStudentOnHomework` działa dalej — zestaw v2 zachowuje pole `sentences` (wyzwalacz liczy z niego pozycje do maila) i ustawia `skipAutoEmail`, czyli wchodzi w ten sam tryb co kreatory v1.
 
-**Stan weryfikacji:** `tsc --noEmit` czysto, 244/244 testów jednostkowych (komplet ośmiu testów obowiązkowych ze zlecenia), 33/33 testów reguł na emulatorze, oba buildy przechodzą. Funkcje **wdrożone** na `gen-lang-client-0425391821` (2026-09-12) — `notifyStudentOnHomework` zaktualizowana bez błędu, mailing nietknięty. Dokumentacja: `docs/silnik-v2-architektura.md`. **Żaden przebieg end-to-end z prawdziwym modelem nie został wykonany** — brakuje sekretu `OPENAI_API_KEY` po stronie Cloud Functions. Kroki do uruchomienia: `docs/backup-restore-homework-v2.md`.
+**Stan weryfikacji:** `tsc --noEmit` czysto, 244/244 testów jednostkowych (komplet ośmiu testów obowiązkowych ze zlecenia), 33/33 testów reguł na emulatorze, oba buildy przechodzą. **Wdrożone i uruchomione na produkcji 2026-09-12**: siedem funkcji w `us-central1` (`notifyStudentOnHomework` zaktualizowana bez błędu, mailing nietknięty), sekret `OPENAI_API_KEY` w Secret Managerze, obie połowy flagi włączone. PITR i ochrona przed skasowaniem bazy włączone, harmonogram backupów dzienny z retencją 7 dni. **Żaden przebieg z prawdziwym modelem jeszcze nie miał miejsca** — to następny krok. Dokumentacja: `docs/silnik-v2-architektura.md`. **Żaden przebieg end-to-end z prawdziwym modelem nie został wykonany** — brakuje sekretu `OPENAI_API_KEY` po stronie Cloud Functions. Kroki do uruchomienia: `docs/backup-restore-homework-v2.md`.
 
 **Blokada przed wdrożeniem:** projekt nie ma żadnego automatycznego backupu Firestore poza bazą produkcyjną. Polecenia `gcloud` w `docs/backup-restore-homework-v2.md` §2 — wymaga uprawnień billingowych.
 

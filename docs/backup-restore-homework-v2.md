@@ -231,14 +231,14 @@ uzgodnij z Maciejem przed włączeniem flagi komukolwiek poza nim.
 | # | Punkt | Stan |
 |---|---|---|
 | 1 | Audyt kolekcji | ✅ `docs/audyt-homework-v2.md` |
-| 2 | PITR + harmonogram backupów | ⏳ dwa polecenia npm, bez gcloud |
+| 2 | PITR + harmonogram backupów | ✅ wykonane 2026-09-12 |
 | 3 | Znacznik czasu przed wdrożeniem | ⏳ zbędny osobny backup, gdy PITR działa |
 | 4 | Sprawdzony restore do osobnej bazy | ⏳ przed włączeniem flagi |
-| 5 | Schemat v2 za flagą | ✅ Etap 1 |
+| 5 | Schemat v2 za flagą | ✅ Etap 1; **obie flagi włączone 2026-09-12** |
 | 6 | Zestawy v1 działają | ✅ straznik `isV1Task` + 33/33 testów reguł |
 | 7 | Pełny przepływ na emulatorze | 🟡 reguły sprawdzone; pełny przebieg z modelem wymaga sekretu |
 | 8 | Sprawdzony rollback | 🟡 flaga zaimplementowana po obu stronach, nieprzetestowana na wdrożeniu |
-| 9 | Rollout | ⏳ po akceptacji |
+| 9 | Rollout | 🟡 flaga globalna — czynna dla wszystkich zalogowanych |
 
 ### Co zostało do sprawdzenia ręcznie
 
