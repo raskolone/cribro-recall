@@ -73,6 +73,231 @@ var extractListFromModelJson = (raw) => {
   return null;
 };
 
+// utils/testExerciseRules.ts
+var FIELD_LANGUAGES = {
+  // Kursant tłumaczy z polskiego na angielski — jedyny typ, w którym
+  // polszczyzna w `prompt` jest poprawna i zamierzona.
+  translation: { prompt: "pl", correctAnswer: "en" },
+  // Tekst z lukami jest materiałem do ćwiczenia, więc po angielsku.
+  fill_in_blank: { prompt: "en", correctAnswer: "en" },
+  fill_in_blank_bank: { prompt: "en", correctAnswer: "en", wordBank: "en" },
+  // Pary słówko–tłumaczenie: jedna strona polska, druga angielska.
+  matching: { prompt: "mixed", correctAnswer: "mixed", options: "mixed" },
+  // Zdania z błędami do poprawienia — angielski.
+  find_mistake: { prompt: "en", correctAnswer: "en" },
+  multiple_choice: { prompt: "en", correctAnswer: "en", options: "en" },
+  // Polecenie po polsku, wypowiedź kursanta po angielsku.
+  writing: { prompt: "mixed", correctAnswer: "en" }
+};
+var POLISH_LETTERS = /[ąćęłńóśźż]/i;
+var POLISH_STOPWORDS = [
+  "jest",
+  "si\u0119",
+  "nie",
+  "\u017Ce",
+  "aby",
+  "oraz",
+  "kt\xF3ry",
+  "kt\xF3ra",
+  "kt\xF3re",
+  "dla",
+  "przez",
+  "jako",
+  "tego",
+  "tym",
+  "tych",
+  "jak",
+  "ale",
+  "czy",
+  "gdy",
+  "kiedy",
+  "poniewa\u017C",
+  "dlatego",
+  "bardzo",
+  "swoje",
+  "swoj\u0105",
+  "mo\u017Ce",
+  "mo\u017Cna",
+  "trzeba",
+  "zawsze",
+  "czasami",
+  "cz\u0119sto",
+  "wtedy",
+  "\u017Ceby",
+  "przy",
+  "pod",
+  "nad",
+  "ich"
+];
+var ENGLISH_STOPWORDS = [
+  "the",
+  "and",
+  "is",
+  "are",
+  "was",
+  "were",
+  "to",
+  "of",
+  "in",
+  "on",
+  "at",
+  "for",
+  "with",
+  "that",
+  "this",
+  "it",
+  "he",
+  "she",
+  "they",
+  "has",
+  "have",
+  "had",
+  "but",
+  "from",
+  "not",
+  "you",
+  "his",
+  "her",
+  "their",
+  "been",
+  "will"
+];
+var POLISH_SUFFIXES = [
+  "uje",
+  "uj\u0105",
+  "ych",
+  "ego",
+  "emu",
+  "ami",
+  "cji",
+  "\u015Bci",
+  "o\u015B\u0107",
+  "owy",
+  "owa",
+  "owe",
+  "owa\u0107",
+  "kiem",
+  "ach",
+  "ymi",
+  "iej",
+  "nej"
+];
+var MIN_SUFFIX_WORD_LENGTH = 6;
+var countPolishSuffixes = (haystack) => haystack.filter(
+  (w) => w.length >= MIN_SUFFIX_WORD_LENGTH && POLISH_SUFFIXES.some((suf) => w.endsWith(suf))
+).length;
+var words = (text) => text.toLowerCase().replace(/[^\p{L}\s]/gu, " ").split(/\s+/).filter(Boolean);
+var countMatches = (list, haystack) => haystack.filter((w) => list.includes(w)).length;
+var detectLanguage = (text) => {
+  const clean = String(text || "").trim();
+  if (clean.length < 12) return null;
+  const w = words(clean);
+  if (w.length < 3) return null;
+  const pl = countMatches(POLISH_STOPWORDS, w) + countPolishSuffixes(w) + (POLISH_LETTERS.test(clean) ? 2 : 0);
+  const en = countMatches(ENGLISH_STOPWORDS, w);
+  if (pl === 0 && en === 0) return null;
+  return pl > en ? "pl" : "en";
+};
+var asText = (value) => {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.filter((v) => typeof v === "string").join(" ");
+  return "";
+};
+var validateExerciseLanguage = (question) => {
+  if (!question || typeof question !== "object") return [];
+  const q = question;
+  const type = String(q.type || "");
+  const expectations = FIELD_LANGUAGES[type];
+  if (!expectations) return [];
+  const problems = [];
+  for (const [field, expected] of Object.entries(expectations)) {
+    if (!expected || expected === "mixed") continue;
+    const text = asText(q[field]);
+    const found = detectLanguage(text);
+    if (!found || found === expected) continue;
+    problems.push({
+      type,
+      field,
+      expected,
+      found,
+      snippet: text.slice(0, 120)
+    });
+  }
+  return problems;
+};
+var validateTestLanguage = (questions) => (Array.isArray(questions) ? questions : []).flatMap(validateExerciseLanguage);
+var describeProblems = (problems) => problems.map(
+  (p) => `- typ "${p.type}", pole "${p.field}": ma by\u0107 po ${p.expected === "en" ? "ANGIELSKU" : "POLSKU"}, a jest po ${p.found === "pl" ? "polsku" : "angielsku"}. Fragment: \u201E${p.snippet}"`
+).join("\n");
+var LANGUAGE_IRON_RULE = `# \u017BELAZNA ZASADA J\u0118ZYKOWA \u2014 WA\u017BNIEJSZA OD WSZYSTKIEGO PONI\u017BEJ
+
+To jest aplikacja do nauki J\u0118ZYKA ANGIELSKIEGO. Materia\u0142, na kt\xF3rym pracuje kursant,
+musi by\u0107 PO ANGIELSKU. Prompt jest po polsku i materia\u0142 lekcji jest po polsku \u2014 to NIE
+znaczy, \u017Ce \u0107wiczenia maj\u0105 by\u0107 po polsku.
+
+PO POLSKU jest wy\u0142\u0105cznie:
+- pole "instruction" (polecenie dla kursanta),
+- zdania DO PRZET\u0141UMACZENIA w typie "translation" (kursant t\u0142umaczy PL \u2192 EN),
+- polska strona pary w typie "matching",
+- opis sytuacji w typie "writing".
+
+PO ANGIELSKU jest WSZYSTKO POZOSTA\u0141E:
+- teksty z lukami, historyjki i zdania w "fill_in_blank",
+- tekst ORAZ bank s\u0142\xF3w w "fill_in_blank_bank",
+- tekst, pytania i opcje odpowiedzi w "multiple_choice",
+- zdania z b\u0142\u0119dami i ich poprawne wersje w "find_mistake",
+- wszystkie odpowiedzi w "correctAnswer" poza typem "matching".
+
+Tekst z lukami po polsku w te\u015Bcie z angielskiego jest b\u0142\u0119dem dyskwalifikuj\u0105cym
+ca\u0142e zadanie. Zanim zwr\xF3cisz wynik, przeczytaj ka\u017Cde zadanie i sprawd\u017A, czy
+materia\u0142 do \u0107wiczenia jest po angielsku.`;
+var TYPE_RULES = {
+  translation: `- translation [zdania PO POLSKU \u2192 t\u0142umaczenie PO ANGIELSKU]: 1 zadanie zbiorcze.
+  W 'prompt' umie\u015B\u0107 N zda\u0144 POLSKICH w punktach (1., 2., ...). Do ka\u017Cdego dodaj w nawiasie
+  kr\xF3tk\u0105 wskaz\xF3wk\u0119 gramatyczn\u0105, np. (past simple), \u017Ceby kursant wiedzia\u0142, co zastosowa\u0107.
+  W 'correctAnswer' umie\u015B\u0107 N t\u0142umacze\u0144 ANGIELSKICH w punktach (1., 2., ...).`,
+  fill_in_blank: `- fill_in_blank [tekst PO ANGIELSKU]: 1 zadanie zbiorcze w formie JEDNEGO SP\xD3JNEGO
+  TEKSTU ANGIELSKIEGO (kr\xF3tka historyjka lub opis sytuacji). To ma by\u0107 klasyczne \u0107wiczenie
+  gramatyczne z podr\u0119cznika: w tek\u015Bcie s\u0105 luki '___', a PRZY KA\u017BDEJ LUCE w nawiasie stoi
+  forma bazowa do przekszta\u0142cenia albo wskaz\xF3wka.
+  PRZYK\u0141AD POPRAWNEGO 'prompt':
+  "Last summer Anna ___ (go) to Italy with her friends. They ___ (stay) in a small hotel
+  near the beach and ___ (spend) every morning swimming."
+  W 'correctAnswer' umie\u015B\u0107 N poprawnych form w punktach (1. went, 2. stayed, 3. spent).
+  Tekst po polsku w tym typie jest b\u0142\u0119dem dyskwalifikuj\u0105cym.`,
+  fill_in_blank_bank: `- fill_in_blank_bank [tekst I bank s\u0142\xF3w PO ANGIELSKU]: 1 zadanie zbiorcze
+  w formie JEDNEGO SP\xD3JNEGO TEKSTU ANGIELSKIEGO z lukami '___'.
+  W 'wordBank' umie\u015B\u0107 ANGIELSKIE s\u0142owa do wstawienia \u2014 dok\u0142adnie te, kt\xF3re pasuj\u0105 do luk.
+  W 'correctAnswer' umie\u015B\u0107 N odpowiedzi w punktach.
+  KOLEJNO\u015A\u0106 S\u0141\xD3W W 'wordBank' MUSI BY\u0106 LOSOWA I R\xD3\u017BNA OD KOLEJNO\u015ACI LUK \u2014 s\u0142owo do pierwszej
+  luki nie mo\u017Ce by\u0107 pierwsze na li\u015Bcie, bo wtedy \u0107wiczenie sprawdza tylko przepisywanie.
+  Polskie s\u0142owa w banku s\u0105 b\u0142\u0119dem dyskwalifikuj\u0105cym.`,
+  matching: `- matching [pary polsko-angielskie]: 1 zadanie zbiorcze.
+  W 'options' zamie\u015B\u0107 list\u0119 N par w formacie ["doje\u017Cd\u017Ca\u0107 = commute", "termin = deadline"].
+  Po lewej stronie znaku '=' polskie znaczenie, po prawej angielskie s\u0142owo z lekcji.`,
+  find_mistake: `- find_mistake [zdania PO ANGIELSKU]: 1 zadanie zbiorcze polegaj\u0105ce na korekcie b\u0142\u0119d\xF3w.
+  W 'prompt' umie\u015B\u0107 N zda\u0144 ANGIELSKICH z celowymi b\u0142\u0119dami w punktach (1., 2., ...).
+  RODZAJE B\u0141\u0118D\xD3W DO WYMIESZANIA: gramatyczne, leksykalne, przyimkowe ORAZ OBOWI\u0104ZKOWO B\u0141\u0118DNY
+  SZYK ZDANIA \u2014 co najmniej jedno zdanie musi mie\u0107 przestawiony szyk (\u017Ale umiejscowiony
+  okolicznik czasu, przys\u0142\xF3wek cz\u0119stotliwo\u015Bci w z\u0142ym miejscu, szyk pytaj\u0105cy w twierdzeniu).
+  Do KA\u017BDEGO zdania dodaj na ko\u0144cu w nawiasie wskaz\xF3wk\u0119 po polsku w formacie
+  (wskaz\xF3wka: z\u0142y przyimek), (wskaz\xF3wka: 3. osoba l. pojedynczej), (wskaz\xF3wka: z\u0142y szyk zdania).
+  W 'correctAnswer' umie\u015B\u0107 N poprawnych zda\u0144 ANGIELSKICH w punktach. Nie wype\u0142niaj 'options'.`,
+  multiple_choice: `- multiple_choice [tekst I opcje PO ANGIELSKU]: 1 zadanie zbiorcze.
+  W 'prompt' umie\u015B\u0107 JEDEN SP\xD3JNY TEKST ANGIELSKI z lukami '___' albo N angielskich pyta\u0144
+  wielokrotnego wyboru. Przy te\u015Bcie z gramatyki preferowana jest kr\xF3tka historyjka.
+  W 'options' podaj ANGIELSKIE opcje A/B/C.
+  ROZ\u0141\xD3\u017B POPRAWNE ODPOWIEDZI R\xD3WNOMIERNIE MI\u0118DZY A, B i C \u2014 poprawna odpowied\u017A nie mo\u017Ce stale
+  wypada\u0107 jako pierwsza, bo kursant rozwi\u0105\u017Ce zadanie bez czytania opcji.
+  DYSTRAKTORY to typowe b\u0142\u0119dy Polaka ucz\u0105cego si\u0119 angielskiego: kalka z polskiego, mylony czas,
+  z\u0142y przyimek. Opcje absurdalne niczego nie sprawdzaj\u0105 i s\u0105 zabronione.`,
+  writing: `- writing [polecenie po polsku, wypowied\u017A kursanta PO ANGIELSKU]: 1 zadanie otwarte.
+  W 'prompt' opisz po polsku sytuacj\u0119 i wska\u017C, czego wypowied\u017A ma dotyczy\u0107, podaj oczekiwan\u0105
+  d\u0142ugo\u015B\u0107 (np. 60\u201380 s\u0142\xF3w) oraz WYMIE\u0143 KONKRETNE konstrukcje lub s\u0142ownictwo z lekcji, kt\xF3rych
+  kursant ma u\u017Cy\u0107. W 'correctAnswer' umie\u015B\u0107 przyk\u0142adow\u0105 wypowied\u017A wzorcow\u0105 PO ANGIELSKU.`
+};
+var rulesForTypes = (types) => types.map((t) => TYPE_RULES[t]).filter(Boolean).join("\n\n   ");
+
 // server.ts
 var import_firebase_applet_config = __toESM(require_firebase_applet_config(), 1);
 import express from "express";
@@ -106,9 +331,9 @@ var openAiModelsFor = (requestedModel) => {
 };
 
 // utils/lessonImport.ts
-var asText = (value) => typeof value === "string" ? value : value == null ? "" : String(value);
+var asText2 = (value) => typeof value === "string" ? value : value == null ? "" : String(value);
 function normalizeLessonDate(value, today) {
-  const text = asText(value).trim();
+  const text = asText2(value).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
   const dmy = text.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);
   if (dmy) {
@@ -124,14 +349,14 @@ function normalizeImportedLessons(payload, options) {
   const raw = Array.isArray(payload?.lessons) ? payload.lessons : Array.isArray(payload) ? payload : [];
   return raw.filter((lesson) => lesson && typeof lesson === "object").map((lesson) => ({
     date: normalizeLessonDate(lesson.date, today),
-    studentId: asText(lesson.studentId) || fallbackStudentId,
-    studentIds: Array.isArray(lesson.studentIds) ? lesson.studentIds.map(asText).filter(Boolean) : [],
-    lessonTopic: asText(lesson.lessonTopic).trim(),
-    revisionNotes: asText(lesson.revisionNotes),
-    vocabularyText: asText(lesson.vocabularyText),
-    studentSpeaking: asText(lesson.studentSpeaking),
-    thingsToImprove: asText(lesson.thingsToImprove),
-    suggestedFollowUp: asText(lesson.suggestedFollowUp)
+    studentId: asText2(lesson.studentId) || fallbackStudentId,
+    studentIds: Array.isArray(lesson.studentIds) ? lesson.studentIds.map(asText2).filter(Boolean) : [],
+    lessonTopic: asText2(lesson.lessonTopic).trim(),
+    revisionNotes: asText2(lesson.revisionNotes),
+    vocabularyText: asText2(lesson.vocabularyText),
+    studentSpeaking: asText2(lesson.studentSpeaking),
+    thingsToImprove: asText2(lesson.thingsToImprove),
+    suggestedFollowUp: asText2(lesson.suggestedFollowUp)
   })).filter(
     (lesson) => lesson.lessonTopic || lesson.revisionNotes.trim() || lesson.vocabularyText.trim()
   );
@@ -1280,20 +1505,13 @@ ${parts.join("\n")}
 Ka\u017Cdy z wybranych typ\xF3w ma stanowi\u0107 DOK\u0141ADNIE JEDNO POJEDYNCZE ZADANIE ZBIORCZE z wybran\u0105 liczb\u0105 przyk\u0142ad\xF3w! \u0141\u0105czna liczba obiekt\xF3w w tablicy pyta\u0144 ma wynosi\u0107 DOK\u0141ADNIE ${selectedTypes ? selectedTypes.length : 1} (po jednym obiekcie dla ka\u017Cdego wybranego typu).`;
         }
       }
-      const typeRulesMap = {
-        "translation": "- translation: 1 zadanie zbiorcze. W 'prompt' umie\u015B\u0107 N zda\u0144 polskich w punktach (1., 2., ...). Dodaj w nawiasie kr\xF3tk\u0105 wskaz\xF3wk\u0119, np. (past simple), aby kursant wiedzia\u0142 co zastosowa\u0107. W 'correctAnswer' umie\u015B\u0107 N angielskich t\u0142umacze\u0144 w punktach (1., 2., ...).",
-        "fill_in_blank": "- fill_in_blank: 1 zadanie zbiorcze w formie JEDNEGO SP\xD3JNEGO TEKSTU (np. kr\xF3tka historyjka, opowiadanie). W 'prompt' umie\u015B\u0107 tekst z lukami '___', oznaczonymi numerami lub po prostu w tek\u015Bcie. W 'correctAnswer' umie\u015B\u0107 N poprawnych s\u0142\xF3w w punktach (1., 2., ...).",
-        "fill_in_blank_bank": "- fill_in_blank_bank: 1 zadanie zbiorcze w formie JEDNEGO SP\xD3JNEGO TEKSTU (np. kr\xF3tka historyjka). W 'wordBank' umie\u015B\u0107 s\u0142owa w rozsypce do wstawienia. W 'prompt' umie\u015B\u0107 tekst z lukami '___'. W 'correctAnswer' umie\u015B\u0107 N odpowiedzi. KOLEJNO\u015A\u0106 S\u0141\xD3W W 'wordBank' MUSI BY\u0106 LOSOWA I R\xD3\u017BNA OD KOLEJNO\u015ACI LUK W TEK\u015ACIE \u2014 s\u0142owo do pierwszej luki nie mo\u017Ce by\u0107 pierwsze na li\u015Bcie. Rozsypka u\u0142o\u017Cona po kolei zamienia \u0107wiczenie w przepisywanie.",
-        "matching": `- matching: 1 zadanie zbiorcze. W 'options' zamie\u015B\u0107 list\u0119 wszystkich N par w formacie ["s\u0142owo1 = word1", "s\u0142owo2 = word2", ...].`,
-        "find_mistake": "- find_mistake: 1 zadanie zbiorcze polegaj\u0105ce na korekcie b\u0142\u0119d\xF3w w zdaniach. W 'prompt' umie\u015B\u0107 N zda\u0144 w j\u0119zyku angielskim zawieraj\u0105cych celowe b\u0142\u0119dy w punktach (1., 2., ...). RODZAJE B\u0141\u0118D\xD3W DO WYMIESZANIA: gramatyczne, leksykalne, przyimkowe ORAZ OBOWI\u0104ZKOWO B\u0141\u0118DNY SZYK ZDANIA (wrong syntax / word order) \u2014 co najmniej jedno zdanie na zestaw musi mie\u0107 przestawiony szyk, np. \u017Ale umiejscowiony okolicznik czasu, przys\u0142\xF3wek cz\u0119stotliwo\u015Bci w z\u0142ym miejscu albo szyk pytaj\u0105cy w zdaniu twierdz\u0105cym. Do KA\u017BDEGO zdania z b\u0142\u0119dem OBOWI\u0104ZKOWO dodaj na ko\u0144cu w nawiasie zwi\u0119z\u0142\u0105 wskaz\xF3wk\u0119 naprowadzaj\u0105c\u0105 w formacie: (wskaz\xF3wka: tre\u015B\u0107 wskaz\xF3wki), np. (wskaz\xF3wka: z\u0142y przyimek), (wskaz\xF3wka: 3. osoba l. pojedynczej), (wskaz\xF3wka: z\u0142y szyk zdania). W 'correctAnswer' umie\u015B\u0107 N w pe\u0142ni poprawnych zda\u0144 w punktach (1., 2., ...). Nie wype\u0142niaj pola options dla tego typu.",
-        "multiple_choice": "- multiple_choice: 1 zadanie zbiorcze. W 'prompt' umie\u015B\u0107 JEDEN SP\xD3JNY TEKST z lukami '___', albo N pyta\u0144 wielokrotnego wyboru, w zale\u017Cno\u015Bci od kontekstu. Je\u015Bli to test z gramatyki np. czasowniki, to kr\xF3tka historyjka jest preferowana. Podaj opcje A/B/C. ROZ\u0141\xD3\u017B POPRAWNE ODPOWIEDZI R\xD3WNOMIERNIE MI\u0118DZY POZYCJE A, B i C \u2014 poprawna odpowied\u017A nie mo\u017Ce stale wypada\u0107 jako pierwsza, bo kursant rozwi\u0105\u017Ce zadanie bez czytania opcji.",
-        "writing": "- writing: 1 zadanie z d\u0142u\u017Csz\u0105 wypowiedzi\u0105 pisemn\u0105."
-      };
       const activeTypes = selectedTypes || ["multiple_choice", "fill_in_blank", "fill_in_blank_bank", "translation"];
-      const activeRules = activeTypes.map((t) => typeRulesMap[t]).filter(Boolean).join("\n   ");
+      const activeRules = rulesForTypes(activeTypes);
       let contents = [];
       const prompt = `Jeste\u015B asystentem edukacyjnym, generatorem test\xF3w opartym o zaawansowany model.
 Twoim zadaniem jest przygotowanie wysoce spersonalizowanego testu dla kursanta, analizuj\u0105c jego histori\u0119 lekcji.
+
+${LANGUAGE_IRON_RULE}
 
 # KLUCZOWA ZASADA STRUKTURALNA (POJEDYNCZE ZADANIE ZBIORCZE DLA KA\u017BDEGO TYPU \u0106WICZENIA):
 Dla ka\u017Cdego wybranego typu zadania (np. 'translation', 'fill_in_blank', 'matching' itp.) tw\xF3rz **TYLKO JEDNO DANE ZADANIE ZBIORCZE** (jeden obiekt w tablicy JSON).
@@ -1451,6 +1669,47 @@ Zwr\xF3\u0107 skorygowany wynik WY\u0141\u0104CZNIE jako poprawn\u0105 tablic\u0
         console.warn("Generowanie testu: weryfikacja nie powiod\u0142a si\u0119 \u2014 zostaje pierwszy przebieg", {
           error: verificationError?.message || String(verificationError)
         });
+      }
+      const languageProblems = validateTestLanguage(parsed);
+      if (languageProblems.length > 0) {
+        console.warn("Generowanie testu: z\u0142a wersja j\u0119zykowa zada\u0144 \u2014 pr\xF3buj\u0119 naprawi\u0107", {
+          problems: languageProblems.map((p) => `${p.type}.${p.field}: ${p.found}`)
+        });
+        const repairPrompt = `${LANGUAGE_IRON_RULE}
+
+Poni\u017Cszy test zosta\u0142 wygenerowany z b\u0142\u0119dami j\u0119zykowymi:
+
+${JSON.stringify(parsed)}
+
+ZARZUTY:
+${describeProblems(languageProblems)}
+
+Popraw WY\u0141\u0104CZNIE j\u0119zyk wskazanych p\xF3l. Zachowaj typy zada\u0144, liczb\u0119 zada\u0144, struktur\u0119
+i tematyk\u0119. Tekst, kt\xF3ry ma by\u0107 po angielsku, przet\u0142umacz lub napisz od nowa po angielsku
+tak, \u017Ceby \u0107wiczenie dalej sprawdza\u0142o to samo. Zwr\xF3\u0107 wynik w tej samej strukturze JSON.`;
+        try {
+          const repaired = await generateContentWithRetry(ai, [{ text: repairPrompt }], {
+            responseMimeType: "application/json",
+            responseSchema: schema,
+            temperature: 0.2
+          });
+          const repairedQuestions = parseQuestions(repaired.text);
+          if (repairedQuestions && validateTestLanguage(repairedQuestions).length === 0) {
+            parsed = repairedQuestions;
+            console.log("Generowanie testu: naprawa j\u0119zykowa powiod\u0142a si\u0119");
+          } else {
+            return res.status(502).json({
+              error: "Model wygenerowa\u0142 \u0107wiczenia w z\u0142ym j\u0119zyku (tre\u015B\u0107 po polsku zamiast po angielsku) i nie poprawi\u0142 ich po podpowiedzi. Spr\xF3buj ponownie albo zmniejsz liczb\u0119 typ\xF3w zada\u0144."
+            });
+          }
+        } catch (repairError) {
+          console.error("Generowanie testu: naprawa j\u0119zykowa nie powiod\u0142a si\u0119", {
+            error: repairError?.message || String(repairError)
+          });
+          return res.status(502).json({
+            error: "Nie uda\u0142o si\u0119 wygenerowa\u0107 \u0107wicze\u0144 po angielsku. Spr\xF3buj ponownie."
+          });
+        }
       }
       if (Array.isArray(parsed)) {
         parsed = parsed.map(

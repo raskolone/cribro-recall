@@ -146,6 +146,12 @@ async function callOpenAIServerFallback(prompt, system, schema) {
 }
 
 import { extractListFromModelJson } from "./utils/modelJsonList";
+import {
+  LANGUAGE_IRON_RULE,
+  describeProblems,
+  rulesForTypes,
+  validateTestLanguage,
+} from "./utils/testExerciseRules";
 import express from "express";
 import path from "path";
 import fs from "fs";
@@ -1363,23 +1369,16 @@ app.post('/api/gemini/generate-test', requireFirebaseAdmin, async (req, res) => 
       }
 
       
-      // Dynamicznie generowane zasady dla typów zadań
-      const typeRulesMap: Record<string, string> = {
-        'translation': "- translation: 1 zadanie zbiorcze. W 'prompt' umieść N zdań polskich w punktach (1., 2., ...). Dodaj w nawiasie krótką wskazówkę, np. (past simple), aby kursant wiedział co zastosować. W 'correctAnswer' umieść N angielskich tłumaczeń w punktach (1., 2., ...).",
-        'fill_in_blank': "- fill_in_blank: 1 zadanie zbiorcze w formie JEDNEGO SPÓJNEGO TEKSTU (np. krótka historyjka, opowiadanie). W 'prompt' umieść tekst z lukami '___', oznaczonymi numerami lub po prostu w tekście. W 'correctAnswer' umieść N poprawnych słów w punktach (1., 2., ...).",
-        'fill_in_blank_bank': "- fill_in_blank_bank: 1 zadanie zbiorcze w formie JEDNEGO SPÓJNEGO TEKSTU (np. krótka historyjka). W 'wordBank' umieść słowa w rozsypce do wstawienia. W 'prompt' umieść tekst z lukami '___'. W 'correctAnswer' umieść N odpowiedzi. KOLEJNOŚĆ SŁÓW W 'wordBank' MUSI BYĆ LOSOWA I RÓŻNA OD KOLEJNOŚCI LUK W TEKŚCIE — słowo do pierwszej luki nie może być pierwsze na liście. Rozsypka ułożona po kolei zamienia ćwiczenie w przepisywanie.",
-        'matching': "- matching: 1 zadanie zbiorcze. W 'options' zamieść listę wszystkich N par w formacie [\"słowo1 = word1\", \"słowo2 = word2\", ...].",
-        'find_mistake': "- find_mistake: 1 zadanie zbiorcze polegające na korekcie błędów w zdaniach. W 'prompt' umieść N zdań w języku angielskim zawierających celowe błędy w punktach (1., 2., ...). RODZAJE BŁĘDÓW DO WYMIESZANIA: gramatyczne, leksykalne, przyimkowe ORAZ OBOWIĄZKOWO BŁĘDNY SZYK ZDANIA (wrong syntax / word order) — co najmniej jedno zdanie na zestaw musi mieć przestawiony szyk, np. źle umiejscowiony okolicznik czasu, przysłówek częstotliwości w złym miejscu albo szyk pytający w zdaniu twierdzącym. Do KAŻDEGO zdania z błędem OBOWIĄZKOWO dodaj na końcu w nawiasie zwięzłą wskazówkę naprowadzającą w formacie: (wskazówka: treść wskazówki), np. (wskazówka: zły przyimek), (wskazówka: 3. osoba l. pojedynczej), (wskazówka: zły szyk zdania). W 'correctAnswer' umieść N w pełni poprawnych zdań w punktach (1., 2., ...). Nie wypełniaj pola options dla tego typu.",
-        'multiple_choice': "- multiple_choice: 1 zadanie zbiorcze. W 'prompt' umieść JEDEN SPÓJNY TEKST z lukami '___', albo N pytań wielokrotnego wyboru, w zależności od kontekstu. Jeśli to test z gramatyki np. czasowniki, to krótka historyjka jest preferowana. Podaj opcje A/B/C. ROZŁÓŻ POPRAWNE ODPOWIEDZI RÓWNOMIERNIE MIĘDZY POZYCJE A, B i C — poprawna odpowiedź nie może stale wypadać jako pierwsza, bo kursant rozwiąże zadanie bez czytania opcji.",
-        'writing': "- writing: 1 zadanie z dłuższą wypowiedzią pisemną."
-      };
-      
+      // Reguły typów i kontrola języka mieszkają w utils/testExerciseRules.ts —
+      // razem z walidacją, która sprawdza wynik zamiast ufać instrukcji.
       const activeTypes = selectedTypes || ['multiple_choice', 'fill_in_blank', 'fill_in_blank_bank', 'translation'];
-      const activeRules = activeTypes.map((t: string) => typeRulesMap[t]).filter(Boolean).join('\n   ');
+      const activeRules = rulesForTypes(activeTypes);
 
       let contents = [];
       const prompt = `Jesteś asystentem edukacyjnym, generatorem testów opartym o zaawansowany model.
 Twoim zadaniem jest przygotowanie wysoce spersonalizowanego testu dla kursanta, analizując jego historię lekcji.
+
+${LANGUAGE_IRON_RULE}
 
 # KLUCZOWA ZASADA STRUKTURALNA (POJEDYNCZE ZADANIE ZBIORCZE DLA KAŻDEGO TYPU ĆWICZENIA):
 Dla każdego wybranego typu zadania (np. 'translation', 'fill_in_blank', 'matching' itp.) twórz **TYLKO JEDNO DANE ZADANIE ZBIORCZE** (jeden obiekt w tablicy JSON).
@@ -1562,6 +1561,63 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawną tablicę JSON, zachowując 
         console.warn('Generowanie testu: weryfikacja nie powiodła się — zostaje pierwszy przebieg', {
           error: verificationError?.message || String(verificationError)
         });
+      }
+
+      /**
+       * Kontrola języka — ostatnia bramka przed oddaniem testu lektorowi.
+       *
+       * Instrukcja w prompcie to prośba, nie gwarancja. Ta walidacja sprawdza
+       * WYNIK: czy tekst z lukami jest po angielsku, czy bank słów nie jest
+       * polski, czy tłumaczenie ma polską stronę tam, gdzie trzeba. Jeśli nie,
+       * jedna próba naprawy z wypisanymi zarzutami — bo model poinformowany,
+       * co zrobił źle, poprawia to w jednym podejściu.
+       */
+      const languageProblems = validateTestLanguage(parsed);
+      if (languageProblems.length > 0) {
+        console.warn('Generowanie testu: zła wersja językowa zadań — próbuję naprawić', {
+          problems: languageProblems.map((p) => `${p.type}.${p.field}: ${p.found}`),
+        });
+
+        const repairPrompt = `${LANGUAGE_IRON_RULE}
+
+Poniższy test został wygenerowany z błędami językowymi:
+
+${JSON.stringify(parsed)}
+
+ZARZUTY:
+${describeProblems(languageProblems)}
+
+Popraw WYŁĄCZNIE język wskazanych pól. Zachowaj typy zadań, liczbę zadań, strukturę
+i tematykę. Tekst, który ma być po angielsku, przetłumacz lub napisz od nowa po angielsku
+tak, żeby ćwiczenie dalej sprawdzało to samo. Zwróć wynik w tej samej strukturze JSON.`;
+
+        try {
+          const repaired = await generateContentWithRetry(ai, [{ text: repairPrompt }], {
+            responseMimeType: 'application/json',
+            responseSchema: schema,
+            temperature: 0.2
+          });
+          const repairedQuestions = parseQuestions(repaired.text);
+          if (repairedQuestions && validateTestLanguage(repairedQuestions).length === 0) {
+            parsed = repairedQuestions;
+            console.log('Generowanie testu: naprawa językowa powiodła się');
+          } else {
+            // Nie oddajemy lektorowi testu po polsku. Lepiej powiedzieć wprost,
+            // co jest nie tak, niż kazać mu to odkrywać na kursancie.
+            return res.status(502).json({
+              error:
+                'Model wygenerował ćwiczenia w złym języku (treść po polsku zamiast po angielsku) ' +
+                'i nie poprawił ich po podpowiedzi. Spróbuj ponownie albo zmniejsz liczbę typów zadań.'
+            });
+          }
+        } catch (repairError: any) {
+          console.error('Generowanie testu: naprawa językowa nie powiodła się', {
+            error: repairError?.message || String(repairError)
+          });
+          return res.status(502).json({
+            error: 'Nie udało się wygenerować ćwiczeń po angielsku. Spróbuj ponownie.'
+          });
+        }
       }
 
       // Model mimo instrukcji układa rozsypkę w kolejności luk, przez co słowo
