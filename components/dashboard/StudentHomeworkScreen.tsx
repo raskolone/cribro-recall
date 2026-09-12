@@ -24,7 +24,7 @@ import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { HomeworkType, SpecialTask, StudentTest } from '../../types';
-import { homeworkBlocks, homeworkItemType, studentTasksQuery } from '../../utils/homework';
+import { homeworkBlocks, homeworkItemType, isV1Task, studentTasksQuery } from '../../utils/homework';
 import { formatTaskDateTime } from './HomeworkScreen';
 import { evaluateTranslations } from '../../services/geminiService';
 import { HOMEWORK_TYPE_LABELS } from '../../services/homeworkGenerator';
@@ -252,6 +252,8 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
       (snapshot) => {
         const list = snapshot.docs
           .map((d) => ({ id: d.id, ...d.data() } as SpecialTask))
+          // Zestawy silnika v2 mają własny ekran — ten ich nie zrozumie.
+          .filter(isV1Task)
           .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         setTasks(list);
         setIsLoading(false);

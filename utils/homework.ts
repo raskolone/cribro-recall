@@ -1,6 +1,7 @@
 import { collection, query, where } from 'firebase/firestore';
 import { HomeworkType, SpecialTask, User } from '../types';
 import { auth, db } from '../firebase';
+import { isV2Task } from '../services/homeworkV2/contracts';
 
 /**
  * Pole rozstrzygające, czyja jest praca domowa.
@@ -37,6 +38,22 @@ export const taskOwnerFields = (studentUid: string) => ({
  */
 export const studentTasksQuery = (uid: string) =>
   query(collection(db, 'specialTasks'), where(TASK_OWNER_FIELD, '==', uid));
+
+/**
+ * Czy zadanie należy do silnika v1, czyli czy wolno je pokazać ekranom v1.
+ *
+ * Bez tego filtra `homeworkItemType()` poniżej uzna nieznany element v2
+ * (`micro_translation`, `fix_sentence`, `gap_from_context`) za `translation`,
+ * bo taka jest jego wartość zapasowa — i ekran kursanta spróbuje wyrenderować
+ * zadanie, którego nie rozumie. Zestawy v2 mają własny ekran, wybierany flagą
+ * `HOMEWORK_ENGINE_V2`.
+ *
+ * Filtrujemy po stronie przeglądarki, a nie w zapytaniu: dokumenty v1 w ogóle
+ * nie mają pola `engineVersion`, a Firestore nie zwraca dokumentów bez pola
+ * przy warunku nierówności — zapytanie `where('engineVersion','!=',2)`
+ * odcięłoby całą historię v1.
+ */
+export const isV1Task = (task: unknown): boolean => !isV2Task(task);
 
 /**
  * Typ pojedynczego ćwiczenia w pracy domowej.

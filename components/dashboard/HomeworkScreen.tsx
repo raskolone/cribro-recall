@@ -13,6 +13,8 @@ import Button from '../ui/Button';
 import ConfirmModal from '../ui/ConfirmModal';
 import { LessonSelectionModal } from './LessonSelectionModal';
 import HomeworkComposer from '../admin/HomeworkComposer';
+import HomeworkComposerV2 from '../admin/HomeworkComposerV2';
+import { HOMEWORK_ENGINE_V2 } from '../../config/featureFlags';
 import HomeworkEmailConfirmationModal from '../admin/HomeworkEmailConfirmationModal';
 import { TestPreviewModal } from '../admin/TestPreviewModal';
 import { exportTestToPDF } from '../../utils/pdfExport';
@@ -1717,10 +1719,20 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
           Stary formularz zostaje wyłącznie do edycji już przypisanej pracy —
           tam liczy się dostęp do konkretnych zdań, a nie szybkość składania. */}
       {isTeacher && activeTab === 'create' && !activeTask && !editingTask && (
-        <HomeworkComposer
-          initialStudentId={initialStudentId || undefined}
-          onAssigned={() => setActiveTab('list')}
-        />
+        // Przełącznik silnika. Przy wyłączonej fladze wchodzi kreator v1 —
+        // bit w bit ten sam, co przed wprowadzeniem v2. Rollback to jedna
+        // wartość w config/featureFlags.ts, bez migracji danych.
+        HOMEWORK_ENGINE_V2 ? (
+          <HomeworkComposerV2
+            initialStudentId={initialStudentId || undefined}
+            onAssigned={() => setActiveTab('list')}
+          />
+        ) : (
+          <HomeworkComposer
+            initialStudentId={initialStudentId || undefined}
+            onAssigned={() => setActiveTab('list')}
+          />
+        )
       )}
 
       {isTeacher && activeTab === 'create' && !activeTask && editingTask && (

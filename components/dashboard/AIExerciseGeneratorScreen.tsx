@@ -12,7 +12,7 @@ import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, 
 import { generateSpeech, createSpeechAudio, formatTextForTTS, playSpeech } from '../../services/ttsService';
 import TTSButtons from '../flashcards/TTSButtons';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog, canUserViewAiMonitor } from '../../types';
-import { studentTasksQuery } from '../../utils/homework';
+import { isV1Task, studentTasksQuery } from '../../utils/homework';
 import { getApprovedVocabularyText } from '../../utils/vocabulary';
 import { recordExerciseResults, getStudentAiContext } from '../../services/learningProfile';
 import { normalizeLevel } from '../../utils/learningCurve';
@@ -1061,7 +1061,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
     // Real-time special tasks listener
     const unsub = onSnapshot(studentTasksQuery(user.id), (snap) => {
-      const tasks: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      // Zadania silnika v2 pomijamy — ten widok renderuje wyłącznie typy v1.
+      const tasks: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() } as any)).filter(isV1Task);
       const getMillis = (val: any) => {
         if (!val) return 0;
         if (typeof val.toMillis === 'function') return val.toMillis();
