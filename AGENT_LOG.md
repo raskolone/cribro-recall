@@ -223,3 +223,62 @@ okazji"). NIE dotknięto middleware autoryzacji w `server.ts` ani ścieżek
 tokenowych bez logowania. Odnotowany wcześniej dług v1 — kursant może
 zapisać `evaluationResults` i `status` na własnym zadaniu — celowo
 zostaje nietknięty, bo jego zamknięcie zmieniłoby zachowanie v1.
+
+---
+
+2026-09-12 — Claude Code / Opus 5 (domknięcie DoD po wdrożeniu funkcji)
+
+Zadanie: „dokończ co pozostało i co jesteś w stanie bez mojej obecności
+zrobić" — po tym, jak Maciej ustawił sekret `OPENAI_API_KEY` i wykonał
+`npm run deploy:functions`.
+
+Stan wdrożenia (zweryfikowany przez `firebase functions:list`):
+siedem funkcji w `us-central1`, wszystkie Node 22 / gen 2. Cztery nowe
+(`generateHomeworkV2`, `assignHomeworkV2`, `submitHomeworkV2Attempt`,
+`proposeHomeworkV2Review`) i trzy zaktualizowane, w tym
+`notifyStudentOnHomework` — mailing bez regresji.
+
+Zrobione:
+- `functions/src/homeworkV2/assignment.ts` (nowy) — wydzielone
+  `selectSendableExercises`, `buildV2TaskPayload`, `newHomeworkSetId`.
+  Powód: kontrakt zgodności z v1 przy zapisie to miejsce, w którym łamie
+  się albo dotrzymuje zgodność, a taki kod musi dać się przetestować bez
+  Firestore.
+- `functions/src/homeworkV2/flag.ts` — usunięty import
+  `firebase-functions`; `requireHomeworkEngineV2` przeniesione do
+  `endpoints.ts`, gdzie `HttpsError` i tak jest. Dzięki temu flaga daje
+  się przetestować z katalogu głównego.
+- `tests/homeworkV2Flow.test.ts` (nowy, 20 testów) — domknięcie listy
+  testów obowiązkowych ze zlecenia §18: drabinka podpowiedzi dla KAŻDEGO
+  z trzech typów, grupa (wspólna treść, osobne dokumenty), flaga on/off,
+  awaria AI i sieci, zadanie po dwóch nieudanych walidacjach nie idzie
+  auto-wysyłką.
+- `docs/silnik-v2-architektura.md` (nowy) — ostatni punkt DoD:
+  architektura, env i sekrety, koszt, monitoring.
+- `CHANGELOG.md` — zaktualizowany stan weryfikacji.
+
+Weryfikacja: `npx tsc --noEmit` czysto, `npm test` 244/244,
+`npm --prefix functions run build` przechodzi.
+
+Nie dokończone / do sprawdzenia:
+- FLAGI NIE WŁĄCZYŁEM, celowo. Backup Firestore nadal nie istnieje,
+  a `docs/backup-restore-homework-v2.md` §2 wymienia to jako blokadę
+  przed wypuszczeniem na kogokolwiek. To decyzja Macieja.
+- Żaden przebieg z prawdziwym modelem nadal nie miał miejsca. Nie dało
+  się go wykonać bez włączenia flagi albo wyciągnięcia klucza z Secret
+  Managera — a wyciąganie cudzego sekretu do transkryptu odpada.
+- Interfejs v2 (kreator i ekran kursanta) nieoglądany w przeglądarce.
+- Szacunki kosztu w `docs/silnik-v2-architektura.md` §3 są wyprowadzone
+  z przewidywanej długości promptów, NIE z pomiaru. Po pierwszym realnym
+  przebiegu trzeba je poprawić danymi z logu.
+- Ostrzeżenie z wdrożenia: `firebase-functions` w `functions/package.json`
+  jest przestarzałe, a aktualizacja niesie breaking changes. Świadomie
+  nie ruszone w trakcie wdrażania nowych funkcji.
+
+Decyzje architektoniczne: brak nowych. Refaktory były wyłącznie po to,
+żeby domknąć wymaganą listę testów.
+
+Ryzyka: NIE dotknięto `firestore.rules`, autoryzacji ani ścieżek
+tokenowych. Zmiany w `endpoints.ts` to wyłącznie podmiana kodu inline na
+wywołanie wydzielonej funkcji — zachowanie bez zmian, potwierdzone
+buildem i testami.

@@ -30,14 +30,27 @@ import { gradeAttempt } from './gradingEngine';
 import { getRecentMistakes, proposeReview, recordAttemptInProfile } from './learningProfile';
 import { createOpenAiCall } from './openai';
 import { buildExerciseSet, planExercises } from './pipeline';
-import { requireHomeworkEngineV2 } from './flag';
+import { ENGINE_DISABLED_MESSAGE, isHomeworkEngineV2Enabled } from './flag';
 import { getDb } from './db';
+import { buildV2TaskPayload, newHomeworkSetId, selectSendableExercises } from './assignment';
 
 const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY');
 
 // ---------------------------------------------------------------------------
 // Bramki
 // ---------------------------------------------------------------------------
+
+/**
+ * Bramka flagi dla każdego `onCall` silnika v2.
+ *
+ * Odmowa jest jawna i nazwana. Cicha odpowiedź „brak zadań" przy wyłączonej
+ * fladze byłaby gorsza od błędu: wyglądałaby jak awaria generatora.
+ */
+const requireHomeworkEngineV2 = (): void => {
+  if (!isHomeworkEngineV2Enabled()) {
+    throw new HttpsError('failed-precondition', ENGINE_DISABLED_MESSAGE);
+  }
+};
 
 /** Rola czytana z bazy, nigdy z żądania. Ten sam wzorzec co `requireTeacher` w index.ts. */
 const requireTeacherUid = async (uid?: string): Promise<string> => {
@@ -170,12 +183,7 @@ export const assignHomeworkV2 = onCall(
 
     if (studentUids.length === 0) throw new HttpsError('invalid-argument', 'Nie wskazano kursantów.');
 
-    // Zadania z padniętym walidatorem nie idą automatycznie (§10).
-    // Lektor musiał je świadomie odblokować w podglądzie; jeśli tego nie
-    // zrobił, wypadają tutaj, a nie po cichu na ekranie kursanta.
-    const exercises = rawExercises.filter(
-      (item: unknown) => isExerciseContractV2(item) && !(item as ExerciseContractV2).requiresTeacherReview
-    ) as ExerciseContractV2[];
+    const exercises = selectSendableExercises(rawExercises);
 
     if (exercises.length === 0) {
       throw new HttpsError(
@@ -185,39 +193,21 @@ export const assignHomeworkV2 = onCall(
     }
 
     const nowIso = new Date().toISOString();
-    const homeworkSetId = `hwset_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    const homeworkSetId = newHomeworkSetId();
 
     const created: string[] = [];
 
     for (const studentUid of studentUids) {
-      const payload = {
-        // --- pola wymagane przez v1 i przez reguły ---
+      const payload = buildV2TaskPayload({
         studentUid,
-        studentId: studentUid,
-        userId: studentUid,
-        studentIds: [studentUid],
-        title,
-        instructions: 'Masz trzy próby na każde zadanie. Podpowiedź pojawi się, gdy będzie potrzebna.',
-        createdAt: nowIso,
-        ...(dueDate ? { dueDate } : {}),
-        status: 'pending' as const,
-        // Nazwa pola jest nienegocjowalna — liczy ją wyzwalacz mailowy.
-        sentences: exercises.map((exercise) => ({ ...exercise, studentId: studentUid })),
-
-        // --- tryb mailingu identyczny jak w kreatorach v1 ---
-        manualEmailConfirmationRequired: true,
-        skipAutoEmail: true,
-        emailNotificationSent: false,
-
-        // --- pola v2 ---
-        engineVersion: ENGINE_VERSION,
-        schemaVersion: SCHEMA_VERSION,
+        exercises,
         teacherId,
+        title,
+        dueDate,
+        groupId,
         homeworkSetId,
-        ...(groupId ? { groupId } : {}),
-        mode: 'training' as const,
-        assignedBy: 'Lektor',
-      };
+        createdAt: nowIso,
+      });
 
       const ref = await getDb().collection('specialTasks').add(payload);
       created.push(ref.id);

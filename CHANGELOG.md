@@ -95,7 +95,7 @@ Wdrożenie zlecenia z Notion („Cribro Recall — kanoniczna specyfikacja silni
 
 **Czego to NIE rusza:** `server.ts`, `geminiService.ts`, `homeworkGenerator.ts`, mailingu, fiszek, SRS, testów postępu, syncu Notion. `notifyStudentOnHomework` działa dalej — zestaw v2 zachowuje pole `sentences` (wyzwalacz liczy z niego pozycje do maila) i ustawia `skipAutoEmail`, czyli wchodzi w ten sam tryb co kreatory v1.
 
-**Stan weryfikacji:** `tsc --noEmit` czysto, 224/224 testów jednostkowych, 33/33 testów reguł na emulatorze, oba buildy przechodzą. **Żaden przebieg end-to-end z prawdziwym modelem nie został wykonany** — brakuje sekretu `OPENAI_API_KEY` po stronie Cloud Functions. Kroki do uruchomienia: `docs/backup-restore-homework-v2.md`.
+**Stan weryfikacji:** `tsc --noEmit` czysto, 244/244 testów jednostkowych (komplet ośmiu testów obowiązkowych ze zlecenia), 33/33 testów reguł na emulatorze, oba buildy przechodzą. Funkcje **wdrożone** na `gen-lang-client-0425391821` (2026-09-12) — `notifyStudentOnHomework` zaktualizowana bez błędu, mailing nietknięty. Dokumentacja: `docs/silnik-v2-architektura.md`. **Żaden przebieg end-to-end z prawdziwym modelem nie został wykonany** — brakuje sekretu `OPENAI_API_KEY` po stronie Cloud Functions. Kroki do uruchomienia: `docs/backup-restore-homework-v2.md`.
 
 **Blokada przed wdrożeniem:** projekt nie ma żadnego automatycznego backupu Firestore poza bazą produkcyjną. Polecenia `gcloud` w `docs/backup-restore-homework-v2.md` §2 — wymaga uprawnień billingowych.
 
