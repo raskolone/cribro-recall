@@ -36,7 +36,7 @@ export interface ModuleVisibility {
  * zadziałało. Ustawienie fail-safe jest zamierzone: sama przeglądarka nie
  * włącza silnika, a sama funkcja nie pokaże UI, którego nie ma.
  */
-export const HOMEWORK_ENGINE_V2 = false;
+export const HOMEWORK_ENGINE_V2 = true;
 
 export const MODULE_VISIBILITY: ModuleVisibility = {
   streak: false,
