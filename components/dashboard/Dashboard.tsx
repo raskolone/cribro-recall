@@ -54,6 +54,66 @@ import StudentHomeworkGradedModal from './StudentHomeworkGradedModal';
 import PasswordChangeSuggestion from './PasswordChangeSuggestion';
 import { createPresentationFromScenario, savePresentationToStorage } from '../../services/presentationService';
 
+/**
+ * Podstrona przeżywa F5. `sessionStorage` (nie `localStorage`) celowo — stan
+ * ma żyć w obrębie jednej karty, nie wyciekać do nowej karty ani przetrwać
+ * ponad zamknięcie przeglądarki (żeby świeże otwarcie zawsze zaczynało od
+ * dashboardu, a nie sprzed tygodnia).
+ */
+const PANEL_STATE_KEY = 'cribro_panel_view_state';
+
+interface PersistedPanelState {
+  view: View;
+  activeSetId: string | null;
+  adminSelectedUserId: string | null;
+  adminActiveTab: string | null;
+  activeTaskId: string | null;
+  activeTestId: string | null;
+  homeworkFilterStatus: string | null;
+  previewStudentId: string;
+}
+
+const readPersistedPanelState = (): Partial<PersistedPanelState> => {
+  try {
+    const raw = sessionStorage.getItem(PANEL_STATE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const persistPanelState = (state: PersistedPanelState): void => {
+  try {
+    sessionStorage.setItem(PANEL_STATE_KEY, JSON.stringify(state));
+  } catch {
+    // Prywatna karta / zablokowany storage — podstrona po prostu nie przeżyje F5.
+  }
+};
+
+/**
+ * Widoki bez odpowiednika dla kursanta — jeśli sessionStorage niesie jeden
+ * z nich (np. współdzielony komputer, poprzednia sesja była lektorem), a
+ * aktualne konto nie jest lektorem, wracamy do dashboardu zamiast pokazać
+ * pusty/niewłaściwy ekran. Widoki dzielone (np. 'homework', 'tests') NIE są
+ * tutaj — te już poprawnie rozgałęziają się po roli wewnątrz `renderContent`.
+ */
+const TEACHER_ONLY_VIEWS = new Set<View>([
+  'admin',
+  'admin-stats',
+  'admin-history',
+  'admin-profile',
+  'admin-tests',
+  'admin-debugging',
+  'ai-generator',
+  'mailing',
+  'admin-mailing',
+  'students-database',
+  'admin-students-database',
+  'students',
+  'lesson-scenarios',
+  'admin-scenarios',
+]);
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const { sets } = useFlashcards();
@@ -64,7 +124,14 @@ const Dashboard: React.FC = () => {
   // Nauczyciel ląduje we własnym panelu niezależnie od szerokości ekranu.
   // Wcześniej telefon rzucał go do generatora ćwiczeń, czyli do widoku
   // kursanta — obejście z czasów, gdy panel nie był responsywny. Jest.
-  const [view, setView] = useState<View>('dashboard');
+  //
+  // Podstrona przeżywa odświeżenie (F5): stan panelu jest lustrzany w
+  // `sessionStorage` (per karta, czyszczone przy zamknięciu) i odczytywany
+  // przy starcie, zamiast zawsze zaczynać od 'dashboard'. `pushState`/
+  // `popstate` (obsługa przycisku "Wstecz") zostają nietknięte — to osobny
+  // mechanizm, obsługujący nawigację w obrębie tej samej sesji SPA, nie F5.
+  const restoredPanelState = readPersistedPanelState();
+  const [view, setView] = useState<View>(restoredPanelState.view || 'dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(() => {
     try {
@@ -74,31 +141,56 @@ const Dashboard: React.FC = () => {
     }
   });
   const [slogan, setSlogan] = useState('');
-  const [activeSetId, setActiveSetId] = useState<string | null>(null);
+  const [activeSetId, setActiveSetId] = useState<string | null>(restoredPanelState.activeSetId ?? null);
   // Wybór kursanta we wszystkich kafelkach „Widoku kursanta" naraz — bez
   // tego przełączenie się między kafelkami zerowałoby wybór za każdym razem.
-  const [previewStudentId, setPreviewStudentId] = useState<string>('');
-  const [adminSelectedUserId, setAdminSelectedUserId] = useState<string | null>(null);
-  const [adminActiveTab, setAdminActiveTab] = useState<string | null>(null);
+  const [previewStudentId, setPreviewStudentId] = useState<string>(restoredPanelState.previewStudentId || '');
+  const [adminSelectedUserId, setAdminSelectedUserId] = useState<string | null>(restoredPanelState.adminSelectedUserId ?? null);
+  const [adminActiveTab, setAdminActiveTab] = useState<string | null>(restoredPanelState.adminActiveTab ?? null);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(restoredPanelState.activeTaskId ?? null);
+  const [activeTestId, setActiveTestId] = useState<string | null>(restoredPanelState.activeTestId ?? null);
+  const [homeworkFilterStatus, setHomeworkFilterStatus] = useState<string | null>(restoredPanelState.homeworkFilterStatus ?? null);
+
+  // Kursant nie ma zobaczyć widoku lektora, gdyby ta sama karta przeglądarki
+  // (np. współdzielony komputer) nosiła w sessionStorage widok po lektorze —
+  // `isTeacher` nie jest jeszcze pewne przy samym `useState`, więc korekta
+  // czeka na ustalenie roli użytkownika.
+  useEffect(() => {
+    if (!user) return;
+    if (!isTeacher && TEACHER_ONLY_VIEWS.has(view)) {
+      setView('dashboard');
+    }
+  }, [user?.id, isTeacher]);
+
+  // Zapis podstrony przy każdej zmianie — jedno miejsce, żeby nie dublować
+  // logiki w handleNavigate i wszystkich pojedynczych setterach.
+  useEffect(() => {
+    persistPanelState({
+      view,
+      activeSetId,
+      adminSelectedUserId,
+      adminActiveTab,
+      activeTaskId,
+      activeTestId,
+      homeworkFilterStatus,
+      previewStudentId,
+    });
+  }, [view, activeSetId, adminSelectedUserId, adminActiveTab, activeTaskId, activeTestId, homeworkFilterStatus, previewStudentId]);
 
   // Handle browser back button
   useEffect(() => {
     window.history.replaceState({ view, activeSetId }, '');
-    
+
     const handlePopState = (e: PopStateEvent) => {
       if (e.state) {
         if (e.state.view) setView(e.state.view);
         if (e.state.activeSetId !== undefined) setActiveSetId(e.state.activeSetId);
       }
     };
-    
+
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
-
-  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-  const [activeTestId, setActiveTestId] = useState<string | null>(null);
-  const [homeworkFilterStatus, setHomeworkFilterStatus] = useState<string | null>(null);
 
   const handleNavigate = (newView: View, extra?: any) => {
     let newSetId = activeSetId;
