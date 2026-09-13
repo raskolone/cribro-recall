@@ -40,6 +40,11 @@ import {
   AlignRight,
   Palette,
   CheckSquare,
+  ListTree,
+  ChevronRight,
+  ChevronsDownUp,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { ScratchpadDocument, ScratchpadTemplate } from '../../types';
 import { buildScratchpadUrl } from '../../services/scratchpadService';
@@ -51,6 +56,23 @@ import MenuDropdown, { MenuChevron } from '../ui/MenuDropdown';
 import CoachMarks from '../ui/CoachMarks';
 import { buildScratchpadCoachSteps } from './scratchpadCoachSteps';
 import ScratchpadTemplateManagerModal from './ScratchpadTemplateManagerModal';
+
+/**
+ * Wysokość strony A4 przy 96 dpi (297 mm) minus margines dolny, w pikselach.
+ * Kartka jest jednym ciągłym polem edycji — kreski podziału rysuje warstwa nad
+ * nią, co `PAGE_HEIGHT_PX` pikseli. Wartość jest przybliżeniem: dokument i tak
+ * nie jest drukowany z tego widoku, a chodzi o poczucie długości („to już
+ * trzecia strona"), nie o zgodność co do milimetra.
+ */
+const PAGE_HEIGHT_PX = 1123;
+
+/** Pozycja w spisie treści — jeden nagłówek kartki. */
+interface TocEntry {
+  id: string;
+  level: 1 | 2 | 3;
+  text: string;
+  collapsed: boolean;
+}
 
 /** Przycisk paska formatowania — jeden kształt dla wszystkich narzędzi edytora. */
 const FormatButton: React.FC<{
@@ -131,6 +153,21 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [isCoachOpen, setIsCoachOpen] = useState(false);
 
+  /* Spis treści, podział na strony i motyw kartki — patrz komentarze przy
+     `rebuildToc`, `pageRules` i przełączniku motywu w nagłówku. */
+  const [toc, setToc] = useState<TocEntry[]>([]);
+  const [isTocOpen, setIsTocOpen] = useState(true);
+  const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
+  const [pageCount, setPageCount] = useState(1);
+  const [paperTheme, setPaperTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      return window.localStorage.getItem('scratchpad_paper_theme') === 'dark' ? 'dark' : 'light';
+    } catch {
+      return 'light';
+    }
+  });
+  const paperWrapRef = useRef<HTMLDivElement>(null);
+
   const [templates, setTemplates] = useState<ScratchpadTemplate[]>([]);
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
 
@@ -140,21 +177,6 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     tmp.innerHTML = html;
     return tmp.innerText || tmp.textContent || '';
   };
-
-  // Inicjalizacja lub aktualizacja zawartości z zewnątrz
-  useEffect(() => {
-    if (!editorRef.current) return;
-
-    // Aktualizuj tylko, gdy użytkownik aktualnie sam nie pisze
-    if (!isUserTypingRef.current) {
-      if (editorRef.current.innerHTML !== docData.contentHtml) {
-        editorRef.current.innerHTML = docData.contentHtml || '';
-        const txt = extractText(docData.contentHtml || '');
-        setWordCount(txt.trim() ? txt.trim().split(/\s+/).length : 0);
-        setSaveStatus('synced');
-      }
-    }
-  }, [docData.contentHtml, docData.version]);
 
   useEffect(() => {
     if (autoFocus && editorRef.current && !isReadOnly) {
@@ -188,6 +210,190 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     [isReadOnly, onSaveContent]
   );
 
+
+  /* ═══════════════════════════════════════════════════════════════════
+     SPIS TREŚCI, NAGŁÓWKI ZWIJANE I PODZIAŁ NA STRONY
+
+     Wszystkie trzy czytają z JEDNEGO źródła — z HTML-a leżącego w polu
+     edycji. Notatnik nie ma modelu dokumentu (treść to `innerHTML`
+     zapisywany w Firestore), więc dokładanie równoległej struktury
+     w Reakcie znaczyłoby utrzymywanie dwóch prawd o tym samym tekście.
+     Zamiast tego po każdej zmianie przechodzimy po nagłówkach i budujemy
+     spis od zera; to setki elementów, nie tysiące, więc koszt jest niższy
+     niż koszt rozjechania się dwóch struktur.
+     ═══════════════════════════════════════════════════════════════════ */
+
+  /** Nadaje nagłówkowi trwały identyfikator, jeśli jeszcze go nie ma. */
+  const ensureHeadingId = (heading: HTMLElement, index: number): string => {
+    const existing = heading.getAttribute('id');
+    if (existing && existing.startsWith('pad-h-')) return existing;
+    const id = `pad-h-${index}-${Math.random().toString(36).slice(2, 7)}`;
+    heading.setAttribute('id', id);
+    return id;
+  };
+
+  const rebuildToc = useCallback(() => {
+    const root = editorRef.current;
+    if (!root) return;
+    const headings = Array.from(root.querySelectorAll('h1, h2, h3')) as HTMLElement[];
+    const entries: TocEntry[] = headings.map((heading, index) => {
+      const id = ensureHeadingId(heading, index);
+      const level = Number(heading.tagName.charAt(1)) as 1 | 2 | 3;
+      // Strzałka zwijania jest dzieckiem nagłówka, więc `textContent` wciągnąłby
+      // jej znak do tytułu rozdziału.
+      const clone = heading.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll('.pad-toggle').forEach(el => el.remove());
+      return {
+        id,
+        level,
+        text: (clone.textContent || '').trim() || 'Bez tytułu',
+        collapsed: heading.getAttribute('data-collapsed') === '1',
+      };
+    });
+    setToc(entries);
+  }, []);
+
+  /** Liczba stron = wysokość kartki podzielona przez wysokość A4. */
+  const measurePages = useCallback(() => {
+    const paper = editorRef.current;
+    if (!paper) return;
+    setPageCount(Math.max(1, Math.ceil(paper.offsetHeight / PAGE_HEIGHT_PX)));
+  }, []);
+
+  // Kartka rośnie przy pisaniu, a nie tylko przy zapisie — `ResizeObserver`
+  // łapie też wklejenie, zwinięcie rozdziału i zmianę szerokości okna.
+  useEffect(() => {
+    const paper = editorRef.current;
+    if (!paper || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => measurePages());
+    observer.observe(paper);
+    return () => observer.disconnect();
+  }, [measurePages]);
+
+  /**
+   * Zwinięcie rozdziału: chowamy wszystko od nagłówka do następnego nagłówka
+   * tego samego lub wyższego stopnia. Stan zapisuje się w atrybutach i w stylu
+   * elementów, czyli w samym HTML-u dokumentu — dzięki temu przeżywa zapis
+   * i widzi go druga osoba po drugiej stronie linku.
+   */
+  const setSectionCollapsed = useCallback(
+    (heading: HTMLElement, collapsed: boolean) => {
+      const level = Number(heading.tagName.charAt(1));
+      let node = heading.nextElementSibling as HTMLElement | null;
+      while (node) {
+        const match = /^H([1-6])$/.exec(node.tagName);
+        if (match && Number(match[1]) <= level) break;
+        node.style.display = collapsed ? 'none' : '';
+        node = node.nextElementSibling as HTMLElement | null;
+      }
+      heading.setAttribute('data-collapsed', collapsed ? '1' : '0');
+    },
+    []
+  );
+
+  /** Kliknięcie strzałki w nagłówku — delegacja z całej kartki. */
+  const handlePaperClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    const chevron = target.closest?.('.pad-toggle') as HTMLElement | null;
+    if (!chevron) return;
+    const heading = chevron.closest('h1, h2, h3') as HTMLElement | null;
+    if (!heading) return;
+    event.preventDefault();
+    setSectionCollapsed(heading, heading.getAttribute('data-collapsed') !== '1');
+    rebuildToc();
+    measurePages();
+    if (editorRef.current) triggerDebouncedSave(editorRef.current.innerHTML);
+  };
+
+  /**
+   * Zamiana bloku z kursorem w nagłówek zwijany (i z powrotem).
+   *
+   * Nie ma tu `execCommand`: przełącznik działa na nagłówku, w którym stoi
+   * kursor, i jedyne, co zmienia, to obecność strzałki. Jeżeli kursor stoi
+   * w zwykłym akapicie, blok najpierw staje się nagłówkiem drugiego stopnia —
+   * „zwijany akapit" nie znaczyłby nic.
+   */
+  const handleToggleHeading = () => {
+    if (isReadOnly || !editorRef.current) return;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    let node = selection.getRangeAt(0).startContainer as HTMLElement | null;
+    if (node && node.nodeType === 3) node = node.parentElement;
+    let heading = node?.closest?.('h1, h2, h3') as HTMLElement | null;
+
+    if (!heading) {
+      window.document.execCommand('formatBlock', false, '<h2>');
+      let refreshed = window.getSelection()?.getRangeAt(0).startContainer as HTMLElement | null;
+      if (refreshed && refreshed.nodeType === 3) refreshed = refreshed.parentElement;
+      heading = refreshed?.closest?.('h1, h2, h3') as HTMLElement | null;
+    }
+    if (!heading) return;
+
+    const existing = heading.querySelector('.pad-toggle');
+    if (existing) {
+      existing.remove();
+      heading.removeAttribute('data-toggle');
+      if (heading.getAttribute('data-collapsed') === '1') setSectionCollapsed(heading, false);
+      heading.removeAttribute('data-collapsed');
+    } else {
+      const chevron = window.document.createElement('span');
+      chevron.className = 'pad-toggle';
+      chevron.setAttribute('contenteditable', 'false');
+      chevron.setAttribute('title', 'Zwiń / rozwiń rozdział');
+      chevron.textContent = '▾';
+      heading.insertBefore(chevron, heading.firstChild);
+      heading.setAttribute('data-toggle', '1');
+      heading.setAttribute('data-collapsed', '0');
+    }
+    handleInput();
+  };
+
+  /** Zwinięcie albo rozwinięcie wszystkich rozdziałów zwijanych naraz. */
+  const handleCollapseAll = (collapsed: boolean) => {
+    const root = editorRef.current;
+    if (!root) return;
+    (Array.from(root.querySelectorAll('[data-toggle="1"]')) as HTMLElement[]).forEach(heading =>
+      setSectionCollapsed(heading, collapsed)
+    );
+    rebuildToc();
+    measurePages();
+    if (!isReadOnly) triggerDebouncedSave(root.innerHTML);
+  };
+
+  /** Przejście do rozdziału ze spisu treści. */
+  const handleJumpToHeading = (id: string) => {
+    const heading = editorRef.current?.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
+    if (!heading) return;
+    heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setActiveHeadingId(id);
+  };
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('scratchpad_paper_theme', paperTheme);
+    } catch {
+      /* tryb prywatny przeglądarki — motyw zostaje na czas tej sesji */
+    }
+  }, [paperTheme]);
+
+  // Inicjalizacja lub aktualizacja zawartości z zewnątrz
+  useEffect(() => {
+    if (!editorRef.current) return;
+
+    // Aktualizuj tylko, gdy użytkownik aktualnie sam nie pisze
+    if (!isUserTypingRef.current) {
+      if (editorRef.current.innerHTML !== docData.contentHtml) {
+        editorRef.current.innerHTML = docData.contentHtml || '';
+        const txt = extractText(docData.contentHtml || '');
+        setWordCount(txt.trim() ? txt.trim().split(/\s+/).length : 0);
+        setSaveStatus('synced');
+        rebuildToc();
+        measurePages();
+      }
+    }
+  }, [docData.contentHtml, docData.version, rebuildToc, measurePages]);
+
   const handleInput = () => {
     if (!editorRef.current || isReadOnly) return;
 
@@ -200,6 +406,8 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     const html = editorRef.current.innerHTML;
     const txt = extractText(html);
     setWordCount(txt.trim() ? txt.trim().split(/\s+/).length : 0);
+    rebuildToc();
+    measurePages();
 
     triggerDebouncedSave(html);
   };
@@ -575,6 +783,20 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
             </Button>
           )}
 
+          {/* Motyw KARTKI, nie aplikacji. Dwa osobne ustawienia, bo to dwie
+              różne rzeczy: okno jest narzędziem, kartka jest dokumentem —
+              i ludzie chcą ciemnego narzędzia z jasnym dokumentem równie
+              często, jak ciemnego jednego i drugiego. Domyślnie jasna. */}
+          <button
+            type="button"
+            onClick={() => setPaperTheme(prev => (prev === 'light' ? 'dark' : 'light'))}
+            title={paperTheme === 'light' ? 'Ciemna kartka' : 'Jasna kartka'}
+            aria-label={paperTheme === 'light' ? 'Przełącz kartkę na ciemną' : 'Przełącz kartkę na jasną'}
+            className="h-9 w-9 rounded-xl border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
+          >
+            {paperTheme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
+          </button>
+
           <button
             type="button"
             onClick={() => setIsCoachOpen(true)}
@@ -682,6 +904,13 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
                     icon: <Heading3 size={14} />,
                     onSelect: () => handleFormatBlock('h3'),
                   },
+                  {
+                    id: 'toggle-heading',
+                    label: 'Nagłówek zwijany',
+                    description: 'Chowa cały rozdział pod strzałką',
+                    icon: <ChevronRight size={14} />,
+                    onSelect: handleToggleHeading,
+                  },
                 ],
               },
               {
@@ -760,7 +989,19 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
                 key={swatch.value}
                 type="button"
                 onMouseDown={event => event.preventDefault()}
-                onClick={() => execCmd('foreColor', swatch.value === 'inherit' ? '#1e2630' : swatch.value)}
+                /* „Domyślny" musi trafiać w kolor tekstu AKTUALNEJ kartki —
+                   `execCommand` wpisuje wartość wprost w styl, więc grafit
+                   wstawiony na jasnej kartce znikałby po przełączeniu na ciemną. */
+                onClick={() =>
+                  execCmd(
+                    'foreColor',
+                    swatch.value === 'inherit'
+                      ? paperTheme === 'dark'
+                        ? '#e7eaf0'
+                        : '#1f2329'
+                      : swatch.value
+                  )
+                }
                 title={swatch.name}
                 aria-label={`Kolor tekstu: ${swatch.name}`}
                 className="h-5 w-5 rounded-full border border-line-strong cursor-pointer transition-transform hover:scale-110"
@@ -914,6 +1155,17 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
             ]}
           />
 
+          <FormatButton
+            icon={<ListTree size={15} />}
+            title={isTocOpen ? 'Ukryj spis treści' : 'Pokaż spis treści'}
+            onClick={() => setIsTocOpen(v => !v)}
+          />
+          <FormatButton
+            icon={<ChevronsDownUp size={15} />}
+            title="Zwiń wszystkie rozdziały zwijane"
+            onClick={() => handleCollapseAll(true)}
+          />
+
           <div className="ml-auto flex items-center gap-0.5" data-coach="pad-history">
             <FormatButton
               icon={<RotateCcw size={14} />}
@@ -929,46 +1181,118 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         </div>
       )}
 
-      {/* 3. KARTKA DOKUMENTU
+      {/* 3. SPIS TREŚCI + KARTKA DOKUMENTU
 
-          ══ DLACZEGO KOŚĆ SŁONIOWA W OBU MOTYWACH ══
+          ══ SPIS TREŚCI ══
 
-          Kartka do pisania jest jedynym miejscem w aplikacji, które NIE
-          przełącza się razem z motywem — i to jest celowe. Ciemna kartka
-          czyta się jak panel aplikacji, a nie jak dokument: przy pisaniu
-          przez godzinę razem z kursantem liczy się to samo, co w Wordzie
-          i Google Docs, czyli ciemny tekst na jasnym papierze. Kolorowe
-          nagłówki szablonu (różowy, turkusowy, niebieski) też są
-          policzone pod jasne tło — na ciemnym traciły czytelność.
+          Powstaje z nagłówków kartki, tak jak w Google Docs: każdy H1 to
+          rozdział, H2 i H3 to podrozdziały pod nim. Nie ma osobnego miejsca,
+          w którym się go redaguje — struktura dokumentu JEST spisem treści,
+          więc dwie listy do utrzymania byłyby dwiema prawdami o tym samym.
 
-          Ramka dokumentu, pasek narzędzi i stopka zostają w motywie
-          aplikacji. Zmienia się sama kartka, tak jak w edytorze tekstu
-          zmienia się sama strona, a nie całe okno. */}
-      <div className="p-4 md:p-8 flex-1 overflow-y-auto bg-base-100/60 min-h-[500px]">
+          Na telefonie spis kładzie się nad kartką jako niski, przewijalny
+          pasek; na komputerze stoi kolumną z lewej. Ta sama treść i ten sam
+          kod — różni się tylko kierunek układu.
+
+          ══ KARTKA ══
+
+          Kartka ma własny motyw (jasny domyślnie), niezależny od motywu
+          aplikacji — uzasadnienie przy `.pad-paper` w index.css. Kolory
+          i typografia są w arkuszu stylów, a nie w klasach narzędziowych,
+          bo treść to HTML pisany przez lektora: nagłówków i list powstałych
+          z `execCommand` nie da się oklasować. */}
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
+        {isTocOpen && (
+          <aside className="shrink-0 w-full md:w-60 max-h-40 md:max-h-none overflow-y-auto border-b md:border-b-0 md:border-r border-line-strong bg-base-300/40">
+            <div className="px-3 py-2.5 flex items-center justify-between gap-2 sticky top-0 bg-base-300/95 backdrop-blur-sm border-b border-line-soft">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-faint">
+                Spis treści
+              </span>
+              <button
+                type="button"
+                onClick={() => handleCollapseAll(false)}
+                title="Rozwiń wszystkie rozdziały"
+                className="text-[10px] font-semibold text-text-2 hover:text-content transition-colors cursor-pointer"
+              >
+                Rozwiń
+              </button>
+            </div>
+            {toc.length === 0 ? (
+              <p className="px-3 py-4 text-[11px] leading-relaxed text-text-faint">
+                Spis treści zbuduje się sam z nagłówków. Zaznacz tekst i wybierz
+                „Styl → Nagłówek 1/2/3".
+              </p>
+            ) : (
+              <nav className="py-1.5">
+                {toc.map(entry => (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    onClick={() => handleJumpToHeading(entry.id)}
+                    title={entry.text}
+                    className={`w-full text-left px-3 py-1.5 flex items-center gap-1.5 text-[11.5px] leading-snug transition-colors cursor-pointer hover:bg-white/[0.06] ${
+                      activeHeadingId === entry.id
+                        ? 'text-accent font-semibold'
+                        : entry.level === 1
+                        ? 'text-content font-semibold'
+                        : entry.level === 2
+                        ? 'text-text-2'
+                        : 'text-text-faint'
+                    }`}
+                    style={{ paddingLeft: `${12 + (entry.level - 1) * 14}px` }}
+                  >
+                    {entry.collapsed && <ChevronRight size={11} className="shrink-0 opacity-60" />}
+                    <span className="truncate">{entry.text}</span>
+                  </button>
+                ))}
+              </nav>
+            )}
+          </aside>
+        )}
+
         <div
-          ref={editorRef}
-          data-coach="pad-editor"
-          contentEditable={!isReadOnly}
-          onInput={handleInput}
-          suppressContentEditableWarning
-          className={`max-w-4xl mx-auto min-h-[480px] p-6 md:p-10 rounded-lg border border-black/10 shadow-[0_1px_3px_rgba(0,0,0,0.12),0_8px_24px_rgba(0,0,0,0.18)] focus:outline-none focus:border-primary/50 transition-colors leading-relaxed font-sans prose prose-headings:text-[#1a1f2b] prose-strong:text-[#1a1f2b] prose-a:text-[#0f766e] prose-p:text-[#2b3444] prose-li:text-[#2b3444] prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-p:my-2 prose-ul:my-2 prose-li:my-0.5 selection:bg-primary/30 ${
-            isReadOnly ? 'cursor-default' : 'cursor-text'
-          }`}
-          style={{
-            wordBreak: 'break-word',
-            // Papier, nie powierzchnia aplikacji — dlatego wartość wprost,
-            // a nie token motywu. Kość słoniowa zamiast czystej bieli, bo
-            // biel przy godzinie pisania na ciemnym tle okna razi.
-            backgroundColor: '#fbfaf6',
-            color: '#1a1f2b',
-          }}
-        />
+          ref={paperWrapRef}
+          className="flex-1 min-w-0 p-4 md:p-8 overflow-y-auto bg-base-100/60 min-h-[500px]"
+        >
+          <div className="relative max-w-4xl mx-auto">
+            <div
+              ref={editorRef}
+              data-coach="pad-editor"
+              data-pad-theme={paperTheme}
+              contentEditable={!isReadOnly}
+              onInput={handleInput}
+              onClick={handlePaperClick}
+              suppressContentEditableWarning
+              className={`pad-paper min-h-[480px] p-6 md:p-10 md:pl-14 rounded-lg border border-black/10 focus:outline-none focus:border-primary/50 transition-colors font-sans selection:bg-primary/30 ${
+                isReadOnly ? 'cursor-default' : 'cursor-text'
+              }`}
+              style={{ wordBreak: 'break-word', boxShadow: 'var(--pad-shadow)' }}
+            />
+
+            {/* Warstwa podziału na strony — leży NAD kartką i nic nie łapie.
+                Kreska co wysokość A4; pierwsza pada dopiero na granicy strony
+                pierwszej i drugiej, bo „Strona 1" na górze pustego dokumentu
+                jest informacją, której nikt nie potrzebuje. */}
+            {Array.from({ length: Math.max(0, pageCount - 1) }).map((_, index) => (
+              <div
+                key={index}
+                aria-hidden
+                className="pad-page-rule"
+                style={{ top: `${(index + 1) * PAGE_HEIGHT_PX}px` }}
+              >
+                <span>Strona {index + 2}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* 4. DYSKRETNA STOPKA DOKUMENTU */}
       <footer className="px-4 py-2 bg-base-300/80 border-t border-line-strong flex items-center justify-between text-[11px] text-content-muted">
         <div className="flex items-center gap-3">
           <span>Słowa: <strong className="text-text-hi">{wordCount}</strong></span>
+          <span>•</span>
+          <span>Strony: <strong className="text-text-hi">{pageCount}</strong></span>
           <span>•</span>
           <span>Wersja: #{docData.version}</span>
           {docData.lastEditedBy && (

@@ -535,3 +535,172 @@ tr.liquid-glass-hover:hover {
     animation: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KARTKA NOTATNIKA (components/scratchpad/ScratchpadEditor.tsx)
+
+   ══ DLACZEGO TU, A NIE W KLASACH TAILWINDA ══
+
+   Treść kartki to HTML pisany przez lektora w `contentEditable` — nagłówki,
+   listy i linki powstają z `execCommand`, więc nie da się im dopiąć klas
+   narzędziowych. Kartka potrzebuje zwykłego arkusza stylów dla własnych
+   elementów, tak samo jak potrzebuje go dokument w Wordzie.
+
+   ══ DWA MOTYWY KARTKI ══
+
+   Kartka ma teraz WŁASNY przełącznik jasny/ciemny, niezależny od motywu
+   aplikacji, i startuje jasna. Wcześniej była na sztywno w kości słoniowej
+   (#fbfaf6) w obu motywach — czytelnie, ale przy ciemnym oknie o północy
+   biała plama na środku ekranu jest tym, na co ludzie narzekają najgłośniej.
+   Jasna kartka to czysta biel i grafit jak w Google Docs, nie kość słoniowa:
+   kość słoniowa obniżała kontrast tekstu o kilkanaście procent, nic nie
+   dając w zamian.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.pad-paper {
+  background: var(--pad-bg);
+  color: var(--pad-fg);
+  /* Miara wiersza jak w dokumencie, nie jak w panelu aplikacji. */
+  font-size: 15.5px;
+  line-height: 1.75;
+  letter-spacing: 0.005em;
+}
+
+.pad-paper[data-pad-theme="light"] {
+  --pad-bg:     #ffffff;
+  --pad-fg:     #1f2329;   /* grafit Google Docs, nie czerń — 14,8:1 na bieli */
+  --pad-h:      #101418;
+  --pad-muted:  #5b6472;
+  --pad-line:   rgba(16, 20, 24, 0.12);
+  --pad-link:   #0b6b5e;
+  --pad-mark:   rgba(16, 20, 24, 0.05);
+  --pad-page:   rgba(16, 20, 24, 0.16);
+  --pad-shadow: 0 1px 3px rgba(16, 24, 40, 0.10), 0 8px 24px rgba(16, 24, 40, 0.10);
+}
+
+.pad-paper[data-pad-theme="dark"] {
+  /* Nie czarna: czysta czerń przy białym tekście daje halo wokół liter.
+     #1b1f27 to ta sama różnica jasności co biała kartka, tylko odwrócona. */
+  --pad-bg:     #1b1f27;
+  --pad-fg:     #e7eaf0;
+  --pad-h:      #ffffff;
+  --pad-muted:  #a2abbb;
+  --pad-line:   rgba(255, 255, 255, 0.14);
+  --pad-link:   #5fe3c0;
+  --pad-mark:   rgba(255, 255, 255, 0.07);
+  --pad-page:   rgba(255, 255, 255, 0.18);
+  --pad-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* ── Nagłówki stopniowane ──
+   Trzy stopnie muszą różnić się na pierwszy rzut oka, bo to one budują spis
+   treści: jeżeli H2 i H3 wyglądają podobnie, spis kłamie o strukturze.
+   Różnicę niesie rozmiar ORAZ waga i odstęp nad — nie sam rozmiar. */
+.pad-paper h1,
+.pad-paper h2,
+.pad-paper h3 {
+  color: var(--pad-h);
+  font-family: inherit;
+  scroll-margin-top: 24px;
+  position: relative;
+}
+.pad-paper h1 {
+  font-size: 1.85em;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 1.1em 0 0.45em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--pad-line);
+}
+.pad-paper h2 {
+  font-size: 1.38em;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1em 0 0.35em;
+}
+.pad-paper h3 {
+  font-size: 1.12em;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 0.85em 0 0.3em;
+  color: var(--pad-muted);
+}
+.pad-paper > *:first-child { margin-top: 0; }
+
+.pad-paper p { margin: 0.55em 0; }
+.pad-paper ul { list-style: disc; padding-left: 1.4em; margin: 0.5em 0; }
+.pad-paper ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
+.pad-paper li { margin: 0.2em 0; }
+.pad-paper strong { color: var(--pad-h); font-weight: 700; }
+.pad-paper a { color: var(--pad-link); text-decoration: underline; text-underline-offset: 2px; }
+.pad-paper hr { border: 0; border-top: 1px solid var(--pad-line); margin: 1.2em 0; }
+.pad-paper blockquote {
+  margin: 0.8em 0;
+  padding: 0.1em 0 0.1em 1em;
+  border-left: 3px solid var(--pad-line);
+  color: var(--pad-muted);
+}
+.pad-paper code {
+  background: var(--pad-mark);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+.pad-paper table { border-collapse: collapse; }
+.pad-paper td, .pad-paper th { border: 1px solid var(--pad-line); padding: 0.35em 0.6em; }
+.pad-paper input[type="checkbox"] { accent-color: var(--pad-link); }
+
+/* ── Nagłówki zwijane (toggle) ──
+   Strzałka jest osobnym, NIEEDYTOWALNYM elementem wewnątrz nagłówka, a nie
+   pseudoelementem: pseudoelementu nie da się kliknąć wewnątrz obszaru
+   `contentEditable` bez łapania kliknięć całego nagłówka, a wtedy każda
+   próba postawienia kursora w tytule zwijałaby rozdział. */
+.pad-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1em;
+  height: 1.1em;
+  margin-right: 0.3em;
+  margin-left: -1.4em;
+  border-radius: 4px;
+  color: var(--pad-muted);
+  font-size: 0.7em;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.15s ease, background 0.15s ease;
+  vertical-align: middle;
+}
+.pad-toggle:hover { background: var(--pad-mark); color: var(--pad-h); }
+.pad-paper [data-collapsed="1"] > .pad-toggle { transform: rotate(-90deg); }
+/* Zwinięty rozdział dostaje wielokropek, żeby nie wyglądał na pusty. */
+.pad-paper [data-collapsed="1"]::after {
+  content: "…";
+  margin-left: 0.5em;
+  color: var(--pad-muted);
+  font-weight: 400;
+}
+
+/* ── Podział na strony ──
+   Kreski rysuje warstwa NAD kartką (`pointer-events: none`), a nie tło:
+   tło z gradientem przesuwałoby się razem z treścią przy każdej literze,
+   a kreska ma stać w miejscu wyznaczonym wysokością strony A4. */
+.pad-page-rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--pad-page);
+  pointer-events: none;
+}
+.pad-page-rule > span {
+  position: absolute;
+  right: 12px;
+  top: 4px;
+  font: 400 10px / 1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pad-muted);
+  opacity: 0.75;
+}
