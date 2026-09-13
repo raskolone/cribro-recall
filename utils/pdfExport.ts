@@ -128,3 +128,62 @@ ${contentHtml}
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 };
+
+/**
+ * Przeniesienie notatnika do Google Docs.
+ *
+ * ══ DLACZEGO KOPIUJ-I-WKLEJ, A NIE „WYŚLIJ" ══
+ *
+ * Prawdziwy eksport — utworzenie dokumentu na koncie lektora — wymaga
+ * logowania do Google (OAuth, zakres `drive.file`) i zgody użytkownika na
+ * dostęp aplikacji do jego Dysku. Cribro nie ma ani tej integracji, ani
+ * powodu, żeby prosić o dostęp do całego Dysku dla jednej funkcji.
+ *
+ * To, co działa BEZ żadnego dostępu i daje ten sam wynik w dwóch ruchach:
+ * notatnik ląduje w schowku jako tekst sformatowany (`text/html`), a w nowej
+ * karcie otwiera się pusty dokument Google. Wklejenie zachowuje nagłówki,
+ * listy, pogrubienia, kolory i zakreślacze — Google Docs czyta HTML ze
+ * schowka tak samo jak Word.
+ *
+ * Zwraca `true`, gdy treść trafiła do schowka. Jeżeli przeglądarka odmówiła
+ * (`ClipboardItem` bez HTTPS albo bez gestu użytkownika), zwraca `false` —
+ * wtedy zostaje eksport do Worda, który w Google Docs też się otwiera, tylko
+ * przez wgranie pliku.
+ */
+export const exportScratchpadToGoogleDocs = async (
+  title: string,
+  contentHtml: string
+): Promise<boolean> => {
+  const safeTitle = title || 'Notatnik';
+  const html = `<meta charset="utf-8"><h1>${safeTitle}</h1>${contentHtml}`;
+
+  // Zwykły tekst jako zapas: gdyby docelowa aplikacja nie umiała HTML-a,
+  // wklei się przynajmniej treść bez formatowania.
+  const plain = (() => {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = contentHtml;
+    return `${safeTitle}\n\n${tmp.innerText || tmp.textContent || ''}`;
+  })();
+
+  let copied = false;
+  try {
+    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([plain], { type: 'text/plain' }),
+        }),
+      ]);
+      copied = true;
+    } else if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(plain);
+      copied = true;
+    }
+  } catch (error) {
+    console.warn('[Notatnik] Schowek odmówił przyjęcia treści:', error);
+  }
+
+  // Okno otwieramy zawsze — nawet bez schowka lektor ma gdzie wkleić ręcznie.
+  window.open('https://docs.google.com/document/create', '_blank', 'noopener');
+  return copied;
+};

@@ -41,7 +41,7 @@ import Badge from '../ui/Badge';
 import { useLanguage } from '../../context/LanguageContext';
 import StudentNotionSyncModal from './StudentNotionSyncModal';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
-import ScratchpadModal from '../scratchpad/ScratchpadModal';
+import TeacherScratchpadScreen from '../scratchpad/TeacherScratchpadScreen';
 
 import {
   buildBulkUpdatePayload,
@@ -1629,10 +1629,12 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
         </div>
       )}
 
-      {/* Modal Notatnika Lekcyjnego */}
+      {/* Notatnik lekcyjny — warstwa na całe okno, nieprzezroczysta.
+          Z bazy kursantów nie da się wyjść nawigacją bez utraty miejsca na
+          liście, więc notatnik przykrywa ekran zamiast go zastępować. */}
       {scratchpadStudent && (
-        <ScratchpadModal
-          isOpen={!!scratchpadStudent}
+        <TeacherScratchpadScreen
+          variant="overlay"
           onClose={() => setScratchpadStudent(null)}
           student={{
             id: scratchpadStudent.id,

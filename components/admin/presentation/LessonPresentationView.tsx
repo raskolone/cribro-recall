@@ -35,7 +35,7 @@ import Button from '../../ui/Button';
 import MenuDropdown, { MenuChevron } from '../../ui/MenuDropdown';
 import CoachMarks from '../../ui/CoachMarks';
 import { buildPresentationCoachSteps } from './presentationCoachSteps';
-import ScratchpadModal from '../../scratchpad/ScratchpadModal';
+import TeacherScratchpadScreen from '../../scratchpad/TeacherScratchpadScreen';
 
 /**
  * Przycisk paska narzędzi — jeden kształt dla wszystkich narzędzi na żywo.
@@ -928,8 +928,9 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
       )}
 
       {/* Współdzielony brudnopis lekcyjny (Google Docs) */}
-      <ScratchpadModal
-        isOpen={isScratchpadModalOpen}
+      {isScratchpadModalOpen && (
+      <TeacherScratchpadScreen
+        variant="overlay"
         onClose={() => setIsScratchpadModalOpen(false)}
         student={{
           id: selectedUser?.id || null,
@@ -937,6 +938,7 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
         }}
         onPushToLessonRecord={onOpenLessonFormWithData}
       />
+      )}
     </div>
   );
 };

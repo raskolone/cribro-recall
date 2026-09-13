@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { collection, getDocs, query } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { AlertCircle, Loader2, UserPlus, Check } from 'lucide-react';
 import { ScratchpadDocument } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -11,9 +13,33 @@ import {
 } from '../../services/scratchpadService';
 import ScratchpadEditor from './ScratchpadEditor';
 
-interface ScratchpadModalProps {
-  isOpen: boolean;
+/**
+ * Notatnik lektora jako WŁASNY EKRAN, nie okno nad panelem.
+ *
+ * ══ DLACZEGO NIE MODAL ══
+ *
+ * Notatnik jest miejscem, w którym spędza się całą lekcję — nie czynnością,
+ * którą się potwierdza i zamyka. Modal mówi coś przeciwnego: przyciemnia
+ * resztę aplikacji, żeby powiedzieć „załatw to i wracaj", a przez półprzezroczyste
+ * tło cały czas prześwitywał panel, konstelacja i kafelki, kłócąc się z kartką
+ * dokumentu o uwagę. Okno miało też stałą wysokość 90vh — czyli kartka nigdy
+ * nie dostawała całego ekranu, nawet gdy nic innego nie było potrzebne.
+ *
+ * Jako ekran notatnik dostaje całą przestrzeń i własne wyjście („Wróć do
+ * panelu"), a reszta aplikacji po prostu go nie zasłania.
+ */
+interface TeacherScratchpadScreenProps {
+  /** Powrót do panelu lektora. */
   onClose: () => void;
+  /**
+   * `page` — ekran w przepływie aplikacji (wejście z panelu lektora).
+   * `overlay` — NIEPRZEZROCZYSTA warstwa na całe okno, dla wejść, z których
+   *   nie da się wyjść bez utraty stanu: notatnik otwierany w trakcie
+   *   prezentacji na żywo. To nadal nie jest okienko nad przyciemnionym tłem —
+   *   tło jest zasłonięte w całości, więc kartka nie walczy o uwagę
+   *   z konstelacją i kafelkami panelu prześwitującymi zza półprzezroczystości.
+   */
+  variant?: 'page' | 'overlay';
   student: {
     id?: string | null;
     name: string;
@@ -35,11 +61,11 @@ interface ScratchpadModalProps {
   }) => void;
 }
 
-export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
-  isOpen,
+export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = ({
   onClose,
+  variant = 'page',
   student,
-  students = [],
+  students,
   onPushToLessonRecord,
 }) => {
   const { user } = useAuth();
@@ -49,11 +75,39 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
   /** Otwarta lista kursantów do przypisania notatnika w trakcie pisania. */
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  /* Lista kursantów do przypisania. Ekran stoi teraz sam, poza panelem, więc
+     nikt mu jej nie poda — wczytuje ją sam, raz przy wejściu. Jedno zapytanie
+     o nazwy, bez żadnych danych lekcyjnych. */
+  const [loadedStudents, setLoadedStudents] = useState<{ id: string; name: string }[]>([]);
 
-  // Pobierz lub utwórz stały brudnopis kursanta po otwarciu modalu
   useEffect(() => {
-    if (!isOpen) return;
+    if (students) return;
+    let isMounted = true;
+    getDocs(query(collection(db, 'users')))
+      .then(snapshot => {
+        if (!isMounted) return;
+        const list = snapshot.docs
+          .map(d => {
+            const data = d.data() as any;
+            if (data.isArchived || data.role === 'admin' || data.role === 'teacher') return null;
+            const name =
+              `${data.firstName || ''} ${data.lastName || ''}`.trim() || data.username || '';
+            return name ? { id: d.id, name } : null;
+          })
+          .filter(Boolean) as { id: string; name: string }[];
+        list.sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+        setLoadedStudents(list);
+      })
+      .catch(err => console.warn('[Notatnik] Nie udało się wczytać listy kursantów:', err?.message || err));
+    return () => {
+      isMounted = false;
+    };
+  }, [students]);
 
+  const assignableStudents = students ?? loadedStudents;
+
+  // Pobierz lub utwórz stały brudnopis kursanta po wejściu na ekran
+  useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
     setError(null);
@@ -75,7 +129,7 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
           setIsLoading(false);
         }
       } catch (err: any) {
-        console.error('Błąd inicjalizacji Scratchpada:', err);
+        console.error('Błąd inicjalizacji notatnika:', err);
         if (isMounted) {
           setError(err.message || 'Nie udało się załadować notatnika.');
           setIsLoading(false);
@@ -88,11 +142,11 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [isOpen, student.id, student.name, user]);
+  }, [student.id, student.name, user]);
 
   // Subskrypcja na żywo
   useEffect(() => {
-    if (!isOpen || !scratchpadDoc?.id) return;
+    if (!scratchpadDoc?.id) return;
 
     const unsubscribe = subscribeScratchpad(scratchpadDoc.id, (updated) => {
       if (updated) {
@@ -101,9 +155,7 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
     });
 
     return () => unsubscribe();
-  }, [isOpen, scratchpadDoc?.id]);
-
-  if (!isOpen) return null;
+  }, [scratchpadDoc?.id]);
 
   const handleSaveContent = async (html: string, text: string) => {
     if (!scratchpadDoc?.id) return;
@@ -168,10 +220,16 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-5xl h-[90vh] max-h-[920px] bg-base-100 rounded-3xl border border-line-strong shadow-[var(--shadow-lg)] flex flex-col overflow-hidden">
-        {/* Zawartość okna. Zamknięcie renderuje sam edytor w swoim pasku
-            nagłówka — pływający krzyżyk nachodził na przyciski udostępniania. */}
+    /* Bez zaokrągleń, cienia i marginesu: to jest strona, a nie karta leżąca
+       na stronie. Zamknięcie renderuje sam edytor w swoim pasku nagłówka. */
+    <div
+      className={
+        variant === 'overlay'
+          ? 'fixed inset-0 z-[100] flex flex-col bg-base-100'
+          : 'flex-1 min-h-0 flex flex-col bg-base-100'
+      }
+    >
+      <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-4">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
@@ -202,7 +260,7 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
                 kursant jest wybrany; po przypisaniu nie ma już czego
                 wybierać, a stały pasek byłby stałym przypomnieniem o
                 decyzji, która zapadła. */}
-            {!scratchpadDoc.studentId && students.length > 0 && (
+            {!scratchpadDoc.studentId && assignableStudents.length > 0 && (
               <div className="px-4 py-2.5 border-b border-line-strong bg-primary/[0.06] flex flex-wrap items-center gap-2">
                 <span className="text-xs text-content-muted">
                   Notatnik roboczy — nikt go jeszcze nie widzi.
@@ -210,7 +268,7 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
 
                 {isPickerOpen ? (
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {students.map((candidate) => (
+                    {assignableStudents.map((candidate) => (
                       <button
                         key={candidate.id}
                         type="button"
@@ -268,7 +326,7 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
                 name: user?.firstName || user?.username || 'Lektor',
                 role: 'teacher',
               }}
-              className="h-full rounded-none border-0 shadow-none"
+              className="flex-1 min-h-0 rounded-none border-0 shadow-none"
               autoFocus
               onClose={onClose}
             />
@@ -280,4 +338,4 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
   );
 };
 
-export default ScratchpadModal;
+export default TeacherScratchpadScreen;

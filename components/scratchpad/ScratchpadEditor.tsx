@@ -35,6 +35,7 @@ import {
   Download,
   FileDown,
   FileType2,
+  ExternalLink,
   AlignLeft,
   AlignCenter,
   AlignRight,
@@ -50,7 +51,11 @@ import { ScratchpadDocument, ScratchpadTemplate } from '../../types';
 import { buildScratchpadUrl } from '../../services/scratchpadService';
 import { listScratchpadTemplates } from '../../services/scratchpadTemplateService';
 import { formatAccessCode } from '../../utils/accessCode';
-import { exportScratchpadToPDF, exportScratchpadToWord } from '../../utils/pdfExport';
+import {
+  exportScratchpadToPDF,
+  exportScratchpadToWord,
+  exportScratchpadToGoogleDocs,
+} from '../../utils/pdfExport';
 import Button from '../ui/Button';
 import MenuDropdown, { MenuChevron } from '../ui/MenuDropdown';
 import CoachMarks from '../ui/CoachMarks';
@@ -152,6 +157,8 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [isCoachOpen, setIsCoachOpen] = useState(false);
+  /** Komunikat po wysłaniu do Google Docs — znika sam po kilku sekundach. */
+  const [googleDocsHint, setGoogleDocsHint] = useState<'copied' | 'manual' | null>(null);
 
   /* Spis treści, podział na strony i motyw kartki — patrz komentarze przy
      `rebuildToc`, `pageRules` i przełączniku motywu w nagłówku. */
@@ -167,6 +174,10 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     }
   });
   const paperWrapRef = useRef<HTMLDivElement>(null);
+  const structureTimeoutRef = useRef<any>(null);
+  const measurePagesRef = useRef<(() => void) | null>(null);
+  /** Podpis ostatnio zbudowanego spisu — patrz `rebuildToc`. */
+  const tocSignatureRef = useRef<string>('');
 
   const [templates, setTemplates] = useState<ScratchpadTemplate[]>([]);
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
@@ -250,8 +261,35 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         collapsed: heading.getAttribute('data-collapsed') === '1',
       };
     });
+
+    /* Bez tego porównania spis przebudowywał się przy KAŻDYM naciśnięciu
+       klawisza: `setToc` z nową tablicą to nowa referencja, czyli przerysowanie
+       całego edytora — przy dłuższym dokumencie widać to jako zacinanie się
+       przewijania w trakcie pisania. Struktura dokumentu zmienia się raz na
+       kilkadziesiąt znaków, więc porównanie podpisu odcina 99% tych przebudów. */
+    const signature = entries.map(e => `${e.level}|${e.id}|${e.text}|${e.collapsed}`).join('\n');
+    if (signature === tocSignatureRef.current) return;
+    tocSignatureRef.current = signature;
     setToc(entries);
   }, []);
+
+  /**
+   * Odświeżenie spisu i liczby stron — ZAWSZE przez ten uchwyt, nigdy wprost
+   * z `handleInput`.
+   *
+   * Obie operacje chodzą po DOM-ie kartki. Wołane przy każdym znaku robiły
+   * z pisania serię pełnych przerysowań edytora, a to widać wprost: kursor
+   * zostaje w tyle za klawiaturą, a przewijanie szarpie. 250 ms to próg,
+   * poniżej którego człowiek i tak nie zauważy, że spis doszedł chwilę po
+   * literze — a powyżej którego zaczyna się zastanawiać, czy doszedł w ogóle.
+   */
+  const scheduleStructureRefresh = useCallback(() => {
+    if (structureTimeoutRef.current) clearTimeout(structureTimeoutRef.current);
+    structureTimeoutRef.current = setTimeout(() => {
+      rebuildToc();
+      measurePagesRef.current?.();
+    }, 250);
+  }, [rebuildToc]);
 
   /** Liczba stron = wysokość kartki podzielona przez wysokość A4. */
   const measurePages = useCallback(() => {
@@ -260,14 +298,33 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     setPageCount(Math.max(1, Math.ceil(paper.offsetHeight / PAGE_HEIGHT_PX)));
   }, []);
 
+  measurePagesRef.current = measurePages;
+
+  useEffect(() => () => {
+    if (structureTimeoutRef.current) clearTimeout(structureTimeoutRef.current);
+  }, []);
+
   // Kartka rośnie przy pisaniu, a nie tylko przy zapisie — `ResizeObserver`
   // łapie też wklejenie, zwinięcie rozdziału i zmianę szerokości okna.
   useEffect(() => {
     const paper = editorRef.current;
     if (!paper || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => measurePages());
+    // Obserwator odpala się przy każdym wierszu, który zmienia wysokość
+    // kartki — czyli w trakcie pisania stale. `requestAnimationFrame` scala
+    // te wywołania do jednego na klatkę.
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        measurePages();
+      });
+    });
     observer.observe(paper);
-    return () => observer.disconnect();
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, [measurePages]);
 
   /**
@@ -406,8 +463,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     const html = editorRef.current.innerHTML;
     const txt = extractText(html);
     setWordCount(txt.trim() ? txt.trim().split(/\s+/).length : 0);
-    rebuildToc();
-    measurePages();
+    scheduleStructureRefresh();
 
     triggerDebouncedSave(html);
   };
@@ -751,6 +807,20 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
                 id: 'export',
                 items: [
                   {
+                    id: 'export-gdocs',
+                    label: 'Otwórz w Google Docs',
+                    description: 'Kopiuje notatnik i otwiera nowy dokument — wklej Ctrl+V',
+                    icon: <ExternalLink size={14} />,
+                    onSelect: async () => {
+                      const copied = await exportScratchpadToGoogleDocs(
+                        docData.title || 'Notatnik',
+                        editorRef.current?.innerHTML || docData.contentHtml
+                      );
+                      setGoogleDocsHint(copied ? 'copied' : 'manual');
+                      setTimeout(() => setGoogleDocsHint(null), 8000);
+                    },
+                  },
+                  {
                     id: 'export-pdf',
                     label: 'Eksportuj do PDF',
                     icon: <FileDown size={14} />,
@@ -825,6 +895,17 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           )}
         </div>
       </header>
+
+      {googleDocsHint && (
+        <div className="px-4 py-2.5 bg-primary/[0.08] border-b border-primary/25 flex items-center gap-2.5 text-xs">
+          <ExternalLink size={14} className="text-primary shrink-0" />
+          <span className="text-content">
+            {googleDocsHint === 'copied'
+              ? 'Notatnik jest w schowku, a nowy dokument Google otworzył się w drugiej karcie — wklej go tam (Ctrl+V / ⌘V). Formatowanie przechodzi razem z treścią.'
+              : 'Przeglądarka nie wpuściła treści do schowka. Nowy dokument Google jest otwarty — użyj „Eksportuj do Worda" i wgraj plik na Dysk.'}
+          </span>
+        </div>
+      )}
 
       {/* Notatnik, który nie dotarł do chmury, wygląda u lektora normalnie —
           treść siedzi w pamięci przeglądarki. Kursant po drugiej stronie linku

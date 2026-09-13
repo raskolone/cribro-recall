@@ -567,24 +567,32 @@ tr.liquid-glass-hover:hover {
 }
 
 .pad-paper[data-pad-theme="light"] {
-  --pad-bg:     #ffffff;
-  --pad-fg:     #1f2329;   /* grafit Google Docs, nie czerń — 14,8:1 na bieli */
-  --pad-h:      #101418;
-  --pad-muted:  #5b6472;
-  --pad-line:   rgba(16, 20, 24, 0.12);
-  --pad-link:   #0b6b5e;
-  --pad-mark:   rgba(16, 20, 24, 0.05);
-  --pad-page:   rgba(16, 20, 24, 0.16);
-  --pad-shadow: 0 1px 3px rgba(16, 24, 40, 0.10), 0 8px 24px rgba(16, 24, 40, 0.10);
+  /* Papier czytnika, nie kartka z drukarki.
+     Czysta biel świeci: przy godzinie pisania na ciemnym tle okna biały
+     prostokąt na środku ekranu jest najjaśniejszym punktem w pomieszczeniu.
+     Ten odcień (#f6f1e6, ciepła kość) odbija tyle, co papier w e-czytniku,
+     a przy tekście #2c2822 trzyma kontrast 12,3:1 — czyli WYŻEJ niż próg
+     AAA (7:1), mimo że tło nie jest białe. Ciepły tekst zamiast grafitu,
+     bo chłodna czerń na ciepłym papierze wygląda jak wydruk na złym
+     papierze; ta sama temperatura tła i liter czyta się jak druk. */
+  --pad-bg:     #f6f1e6;
+  --pad-fg:     #2c2822;
+  --pad-h:      #1a1611;
+  --pad-muted:  #6b6355;
+  --pad-line:   rgba(44, 40, 34, 0.16);
+  --pad-link:   #0a6154;
+  --pad-mark:   rgba(44, 40, 34, 0.06);
+  --pad-page:   rgba(44, 40, 34, 0.20);
+  --pad-shadow: 0 1px 3px rgba(30, 24, 14, 0.14), 0 8px 24px rgba(30, 24, 14, 0.12);
 }
 
 .pad-paper[data-pad-theme="dark"] {
   /* Nie czarna: czysta czerń przy białym tekście daje halo wokół liter.
      #1b1f27 to ta sama różnica jasności co biała kartka, tylko odwrócona. */
-  --pad-bg:     #1b1f27;
-  --pad-fg:     #e7eaf0;
-  --pad-h:      #ffffff;
-  --pad-muted:  #a2abbb;
+  --pad-bg:     #211f1c;
+  --pad-fg:     #e8e3d9;
+  --pad-h:      #fbf8f2;
+  --pad-muted:  #a8a093;
   --pad-line:   rgba(255, 255, 255, 0.14);
   --pad-link:   #5fe3c0;
   --pad-mark:   rgba(255, 255, 255, 0.07);

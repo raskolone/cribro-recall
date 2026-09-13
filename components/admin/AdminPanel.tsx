@@ -48,8 +48,8 @@ import LessonSourceBar from './LessonSourceBar';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
 import CleanLessonsModal from './CleanLessonsModal';
 import AdminMailingScreen from './AdminMailingScreen';
-import ScratchpadModal from '../scratchpad/ScratchpadModal';
 import ScratchpadStudentPicker from '../scratchpad/ScratchpadStudentPicker';
+import TeacherScratchpadScreen from '../scratchpad/TeacherScratchpadScreen';
 import TeacherAttentionBanner from './TeacherAttentionBanner';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
@@ -275,16 +275,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     }
     if (tabId === 'notatnik') {
       /*
-       * Notatnik otwiera się OD RAZU, bez pytania „z kim dzisiaj".
-       *
-       * Wcześniej kafelek stawiał najpierw listę kursantów, a notatnik
-       * dopiero po wyborze. Lektor zaczyna jednak pisać, zanim to pytanie
-       * jest istotne — zdarza się, że notuje przed lekcją albo w trakcie
-       * rozmowy, w której nie chodzi jeszcze o konkretną osobę. Kursanta
-       * przypisuje się w nagłówku notatnika, w dowolnej chwili; wtedy
-       * treść przenosi się do jego stałego notatnika.
+       * Notatnik to OSOBNY EKRAN, nie okno nad panelem — pełne uzasadnienie
+       * w nagłówku TeacherScratchpadScreen. Otwiera się od razu i pusty,
+       * bez pytania „z kim dzisiaj": lektor zaczyna pisać, zanim to pytanie
+       * jest istotne, a kursanta przypisuje w trakcie, paskiem nad kartką.
        */
-      setScratchpadStudent({ id: null, name: '' });
+      onViewChange?.('scratchpad');
       return;
     }
     // Moduły ogólne (niezwiązane z profilem) — przełączane bezpośrednio
@@ -1294,8 +1290,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
 
   /** Notatnik otwierany z kafelka/listwy — najpierw wybór kursanta, potem dokument. */
-  const [showScratchpadPicker, setShowScratchpadPicker] = useState(false);
-  const [scratchpadStudent, setScratchpadStudent] = useState<{ id: string; name: string } | null>(null);
   /* Kontekst przed lekcją — kafelek pulpitu, własny wybór kursanta.
      Świadomie NIE korzysta z `selectedUser`: kontekst czyta się o kimś
      konkretnym tuż przed zajęciami i to nie musi być osoba, której profil
@@ -1609,6 +1603,34 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const listContainerRef = useRef<HTMLDivElement>(null);
   const mainMenuRef = useRef<HTMLDivElement>(null);
 
+  /*
+   * Odbiór „Do dziennika" z notatnika stojącego jako osobny ekran.
+   *
+   * Notatnik był oknem wewnątrz panelu i wołał formularz lekcji wprost.
+   * Jako ekran stoi obok panelu, więc dane jadą tą samą drogą, którą w tej
+   * aplikacji jeżdżą już `_autoGenerate` i `_initialStudyMode`: globalną
+   * zmienną odczytywaną RAZ, przy wejściu w panel, i od razu kasowaną —
+   * inaczej powrót do panelu po czymkolwiek innym otwierałby formularz
+   * drugi raz, z tą samą treścią.
+   */
+  useEffect(() => {
+    const pending = (window as any)._pendingLessonFromScratchpad;
+    if (!pending) return;
+    delete (window as any)._pendingLessonFromScratchpad;
+
+    setEditingRecordId(null);
+    setViewingRecord(null);
+    setLessonFormDate(new Date().toISOString().split('T')[0]);
+    setLessonFormTopic(pending.topic || '');
+    setLessonFormWords(pending.words || '');
+    setLessonFormSummary(pending.summary || '');
+    setLessonFormThingsToImprove(pending.thingsToImprove || '');
+    setLessonFormSuggestedFollowUp(pending.followUp || '');
+    setLessonRecordModalMode('edit');
+    setShowLessonRecordModal(true);
+    showToast('Przeniesiono notatki z notatnika do formularza lekcji.');
+  }, []);
+
   useEffect(() => {
     if (tabContentRef.current && selectedUser) {
       gsap.fromTo(tabContentRef.current, 
@@ -1750,7 +1772,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         {SHOW_LEGACY_PANEL_TOOLS && (
           <div className="flex flex-wrap items-center gap-2.5">
             <button
-              onClick={() => setShowScratchpadPicker(true)}
+              onClick={() => onViewChange?.('scratchpad')}
               className="px-3.5 min-h-11 bg-base-200/80 text-content border border-line-strong rounded-xl text-xs sm:text-sm font-bold hover:bg-white/[0.08] transition-colors flex items-center justify-center gap-2"
               title="Otwórz wspólny notatnik wybranego kursanta"
             >
@@ -1782,16 +1804,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       />
 
       <ScratchpadStudentPicker
-        isOpen={showScratchpadPicker}
-        onClose={() => setShowScratchpadPicker(false)}
-        students={activeUsers}
-        onPick={student => {
-          setScratchpadStudent(student);
-          setShowScratchpadPicker(false);
-        }}
-      />
-
-      <ScratchpadStudentPicker
         isOpen={showContextPicker}
         onClose={() => setShowContextPicker(false)}
         students={activeUsers}
@@ -1808,19 +1820,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         isOpen={!!contextStudent}
         onClose={() => setContextStudent(null)}
         student={contextStudent}
-      />
-
-      <ScratchpadModal
-        isOpen={!!scratchpadStudent}
-        onClose={() => setScratchpadStudent(null)}
-        student={{
-          id: scratchpadStudent?.id || null,
-          name: scratchpadStudent?.name || 'Notatnik roboczy',
-        }}
-        students={activeUsers.map((u) => ({
-          id: u.id,
-          name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
-        }))}
       />
 
       {SHOW_LEGACY_PANEL_TOOLS && <TeacherOverview students={activeUsers} language={language} />}
@@ -1892,8 +1891,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             }
           ].map((tile) => {
             const IconComp = tile.icon;
-            const isActive =
-              tile.id === 'notatnik' ? !!scratchpadStudent : activeTab === tile.id;
+            // Notatnik jest osobnym ekranem, więc nigdy nie jest „aktywnym
+            // modułem" w obrębie panelu — z panelu się do niego WYCHODZI.
+            const isActive = activeTab === tile.id;
             const hasNotification = Boolean((tile as any).hasNotification);
             const notificationCount = Number((tile as any).notificationCount || 0);
 
@@ -1986,9 +1986,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         ].map((item) => {
           const IconComp = item.icon;
           const isActive =
-            item.id === 'notatnik'
-              ? !!scratchpadStudent
-              : activeTab === item.id || (item.id === 'mailing' && isMailingModalOpen);
+            activeTab === item.id || (item.id === 'mailing' && isMailingModalOpen);
           return (
             <button
               key={item.id}
@@ -5365,10 +5363,12 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         />
       )}
 
-      {/* Student Scratchpad Modal */}
+      {/* Notatnik z profilu kursanta — warstwa na całe okno, nieprzezroczysta.
+          Nawigacja zabrałaby otwarty profil, więc tu notatnik przykrywa ekran
+          zamiast go zastępować. */}
       {showScratchpadModal && selectedUser && (
-        <ScratchpadModal
-          isOpen={showScratchpadModal}
+        <TeacherScratchpadScreen
+          variant="overlay"
           onClose={() => setShowScratchpadModal(false)}
           student={{
             id: selectedUser.id,

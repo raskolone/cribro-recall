@@ -30,6 +30,7 @@ import AdminMailingScreen from '../admin/AdminMailingScreen';
 import StudentStatsScreen from './StudentStatsScreen';
 import LessonHistoryScreen from './LessonHistoryScreen';
 import StudentScratchpadScreen from '../scratchpad/StudentScratchpadScreen';
+import TeacherScratchpadScreen from '../scratchpad/TeacherScratchpadScreen';
 
 import TodayScreen from './TodayScreen';
 import StudentVocabPreview from './StudentVocabPreview';
@@ -370,6 +371,28 @@ const Dashboard: React.FC = () => {
       );
     }
     if (view === 'scratchpad') {
+      /* Notatnik lektora jest OSOBNYM EKRANEM, nie oknem nad panelem —
+         uzasadnienie w nagłówku TeacherScratchpadScreen. Kursant dostaje tu
+         swój własny, gotowy notatnik; lektor pustą kartkę, do której kursanta
+         przypisuje w trakcie pisania. */
+      if (isTeacher) {
+        return (
+          <TeacherScratchpadScreen
+            student={{ id: null, name: 'Notatnik roboczy' }}
+            
+            onClose={() => handleNavigate('dashboard')}
+            onPushToLessonRecord={(data) => {
+              /* Przekazanie do formularza lekcji w panelu. Okno notatnika
+                 mogło wołać panel wprost, bo w nim siedziało; ekran stoi obok,
+                 więc dane jadą tą samą drogą, którą w tej aplikacji jeżdżą już
+                 `_autoGenerate` i `_initialStudyMode` — przez globalną zmienną
+                 odczytywaną raz przy wejściu w panel. */
+              (window as any)._pendingLessonFromScratchpad = data;
+              handleNavigate('admin');
+            }}
+          />
+        );
+      }
       return <StudentScratchpadScreen />;
     }
     if (view === 'tests') {
