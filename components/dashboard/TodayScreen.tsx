@@ -5,9 +5,11 @@ import {
   Check,
   Dumbbell,
   Eye,
+  FlaskConical,
   FileEdit,
   GraduationCap,
   History,
+  Library,
   Puzzle,
   RotateCcw,
   Sparkles,
@@ -68,6 +70,8 @@ interface TodayScreenProps {
   onOpenTests?: (testId?: string) => void;
   /** Wejście we wspólny brudnopis z lektorem. */
   onOpenScratchpad?: () => void;
+  /** Wejście we własne zestawy słownictwa i fiszki. */
+  onOpenVocabulary?: () => void;
   /** Podgląd panelu konkretnego kursanta (lektor). Bez zapisu powtórek. */
   studentId?: string;
   onStudySet?: (setId: string) => void;
@@ -112,6 +116,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
   onOpenHomework,
   onOpenTests,
   onOpenScratchpad,
+  onOpenVocabulary,
   studentId,
   onStudySet,
   onPracticeAI,
@@ -197,6 +202,8 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
             tests: 'Moje testy',
             lessons: 'Wcześniejsze lekcje',
             practice: 'Historia ćwiczeń',
+            vocabulary: 'Moje słownictwo',
+            extraPractice: 'Praktyka dodatkowa',
             scratchpad: 'Mój notatnik',
           },
         }
@@ -227,6 +234,8 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
             tests: 'My tests',
             lessons: 'Earlier lessons',
             practice: 'Practice history',
+            vocabulary: 'My word lists',
+            extraPractice: 'Extra practice',
             scratchpad: 'My notebook',
           },
         };
@@ -521,6 +530,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
   const tools: StudentTool[] = [
     {
       id: 'homework',
+      domId: 'tour-homework',
       label: L.tools.homework,
       icon: <BookOpen size={20} />,
       /* Kropka z flag, które już są w profilu kursanta — te same, którymi
@@ -536,6 +546,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
     },
     {
       id: 'lessons',
+      domId: 'tour-history',
       label: L.tools.lessons,
       icon: <History size={20} />,
       highlight: !studentId && Boolean(user?.hasNewLesson),
@@ -545,10 +556,38 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
       label: L.tools.practice,
       icon: <Dumbbell size={20} />,
     },
+    /*
+     * Słownictwo i praktyka dodatkowa dochodzą tu po zdjęciu menu bocznego.
+     * Oba były dotąd wyłącznie tam, więc bez kafelków nie byłoby do nich
+     * żadnej drogi — a to ekrany, po które kursant wraca sam z siebie,
+     * nie dlatego, że lektor coś zadał.
+     */
+    ...(onOpenVocabulary
+      ? [
+          {
+            id: 'vocabulary',
+            domId: 'tour-flashcards',
+            label: L.tools.vocabulary,
+            icon: <Library size={20} />,
+            onNavigate: onOpenVocabulary,
+          } satisfies StudentTool,
+        ]
+      : []),
+    ...(onOpenExtraPractice
+      ? [
+          {
+            id: 'practice-extra',
+            label: L.tools.extraPractice,
+            icon: <FlaskConical size={20} />,
+            onNavigate: onOpenExtraPractice,
+          } satisfies StudentTool,
+        ]
+      : []),
     ...(onOpenScratchpad
       ? [
           {
             id: 'scratchpad',
+            domId: 'tour-scratchpad',
             label: L.tools.scratchpad,
             icon: <FileEdit size={20} />,
             desktopOnly: true,

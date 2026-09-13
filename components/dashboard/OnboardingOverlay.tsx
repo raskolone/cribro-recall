@@ -252,7 +252,9 @@ const steps: StepData[] = [
 
   // Krok 7: Przycisk Pomoc
   {
-    targetId: 'tour-help-button',
+    // Pomoc leży w panelu pod kołem zębatym — wskazujemy koło, bo sama
+    // pozycja jest w zwiniętym panelu i nie ma czego podświetlić.
+    targetId: 'tour-nav-settings',
     placement: 'right',
     badge: { pl: 'KROK 7 Z 7 • POMOC ZAWSZE POD RĘKĄ', en: 'STEP 7 OF 7 • HELP ANYTIME' },
     title: { 

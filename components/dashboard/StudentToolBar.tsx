@@ -28,6 +28,12 @@ import React, { ReactNode } from 'react';
 
 export interface StudentTool {
   id: string;
+  /**
+   * Identyfikator elementu w drzewie — używany przez samouczek, który
+   * podświetla konkretne kafelki (`OnboardingOverlay`, `document.getElementById`).
+   * Bez niego samouczek nie ma czego wskazać i rysuje krok bez reflektora.
+   */
+  domId?: string;
   label: string;
   /** Jedno słowo albo liczba — co czeka w środku. Bez zdania. */
   meta?: string;
@@ -64,6 +70,7 @@ const StudentToolBar: React.FC<StudentToolBarProps> = ({ tools, openId, onToggle
       return (
         <button
           key={tool.id}
+          id={tool.domId}
           type="button"
           onClick={() => (tool.onNavigate ? tool.onNavigate() : onToggle(tool.id))}
           aria-expanded={tool.onNavigate ? undefined : isOpen}

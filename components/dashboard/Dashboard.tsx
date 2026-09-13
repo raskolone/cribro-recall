@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import gsap from 'gsap';
 import { auth, db } from '../../firebase';
-import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
-import Sidebar from './Sidebar';
+import { doc, updateDoc, collection, addDoc, onSnapshot, query, where } from 'firebase/firestore';
+import TopBar, { TopBarNotice } from '../ui/TopBar';
 import ConfirmModal from '../ui/ConfirmModal';
 import BugReporter from '../ui/BugReporter';
 import AdminMessageModal from '../ui/AdminMessageModal';
@@ -120,6 +120,31 @@ const Dashboard: React.FC = () => {
   const { words, difficultWords, dueWords, frequency, lastPractice, lastRevisionDate } = useVocabulary();
   const { language } = useLanguage();
   const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
+  const isAdmin = user?.role === 'admin';
+
+  /**
+   * Nowe zgłoszenia błędów — sygnał dla paska górnego i dla panelu
+   * zarządzania.
+   *
+   * Nasłuch przeniesiony tu z menu bocznego razem z samym wejściem do
+   * diagnostyki. Liczba musi być znana ZANIM ktokolwiek otworzy panel:
+   * zgłoszony błąd ma świecić na kole zębatym, a nie czekać na to, aż ktoś
+   * z ciekawości zajrzy do środka.
+   */
+  const [newBugsCount, setNewBugsCount] = useState(0);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setNewBugsCount(0);
+      return;
+    }
+    const unsub = onSnapshot(
+      query(collection(db, 'bug_reports'), where('status', '==', 'new')),
+      (snapshot) => setNewBugsCount(snapshot.size),
+      (err) => console.error('Nasłuch zgłoszeń błędów:', err)
+    );
+    return () => unsub();
+  }, [isAdmin]);
   
   // Nauczyciel ląduje we własnym panelu niezależnie od szerokości ekranu.
   // Wcześniej telefon rzucał go do generatora ćwiczeń, czyli do widoku
@@ -629,6 +654,12 @@ const Dashboard: React.FC = () => {
         },
         onPracticeAI: (setId: string) => handleNavigate('ai-generator', { setId }),
         onOpenScratchpad: () => handleNavigate('scratchpad'),
+        /*
+         * Wejście do własnego słownictwa. Dotąd istniało WYŁĄCZNIE w menu
+         * bocznym, więc po jego zdjęciu nie byłoby do niego żadnej drogi —
+         * a to jeden z trzech ekranów, po które kursant wraca sam z siebie.
+         */
+        onOpenVocabulary: () => handleNavigate('flashcard-sets'),
       };
 
       // Fallback obsługuje wyłącznie panel własny kursanta
@@ -652,26 +683,58 @@ const Dashboard: React.FC = () => {
     />;
   };
 
+  /*
+   * Co czeka na użytkownika — jedno zdanie do paska górnego.
+   *
+   * Sygnały bierzemy z flag, które już siedzą w profilu i z licznika zgłoszeń
+   * — bez ani jednego nowego zapytania do bazy. Kolejność jest oceną
+   * ważności: najpierw rzecz, którą trzeba zrobić, potem rzecz, którą warto
+   * przeczytać.
+   */
+  const notices: TopBarNotice[] = (() => {
+    const list: TopBarNotice[] = [];
+    if (isTeacher) {
+      if (newBugsCount > 0) {
+        list.push({
+          text: language === 'pl'
+            ? `Zgłoszone błędy: ${newBugsCount}`
+            : `Reported bugs: ${newBugsCount}`,
+          tone: 'danger',
+          onClick: () => handleNavigate('admin-debugging'),
+        });
+      }
+      return list;
+    }
+    if (user?.hasNewHomework) {
+      list.push({
+        text: language === 'pl' ? 'Nowa praca domowa od lektora' : 'New homework from your teacher',
+        onClick: () => handleNavigate('homework'),
+      });
+    }
+    if (user?.hasGradedHomework) {
+      list.push({
+        text: language === 'pl' ? 'Twoja praca została oceniona' : 'Your homework has been graded',
+        onClick: () => handleNavigate('homework'),
+      });
+    }
+    if (user?.hasNewLesson) {
+      list.push({
+        text: language === 'pl' ? 'Nowa lekcja w historii' : 'A new lesson in your history',
+        onClick: () => handleNavigate('student-today'),
+      });
+    }
+    return list;
+  })();
+
   return (
-    <div className="flex h-[100dvh] w-full overflow-hidden">
-      <Sidebar 
-        currentView={view} 
-        onNavigate={(newView, extra) => handleNavigate(newView, extra)}
-        onStartPractice={(exercise) => console.log('start practice', exercise)} 
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        onOpen={() => setIsSidebarOpen(true)}
-        isDesktopCollapsed={isDesktopCollapsed}
-        onShowOnboarding={() => setShowOnboarding(true)}
-        onToggleCollapse={() => {
-          setIsDesktopCollapsed(prev => {
-            const next = !prev;
-            try {
-              localStorage.setItem('sidebar_collapsed', String(next));
-            } catch (e) {}
-            return next;
-          });
-        }}
+    <div className="flex flex-col h-[100dvh] w-full overflow-hidden">
+      <TopBar
+        onHome={() => handleNavigate(isTeacher ? 'dashboard' : 'student-today')}
+        onOpenSettings={() => handleNavigate('settings')}
+        onShowHelp={() => setShowOnboarding(true)}
+        onOpenDiagnostics={isAdmin ? () => handleNavigate('admin-debugging') : undefined}
+        newBugsCount={newBugsCount}
+        notices={notices}
       />
       <main className="flex-1 overflow-y-auto overflow-x-hidden relative min-w-0">
         <StudentNotifications onNavigate={(newView) => handleNavigate(newView)} currentView={view} />

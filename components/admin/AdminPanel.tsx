@@ -1994,6 +1994,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                *                     w profilu kursanta (tam ma źródło danych),
                *   Scenariusze     — należą do Planera lekcji, nie obok niego.
                */
+              /*
+               * „Podgląd kursanta" dochodzi tu po zdjęciu menu bocznego —
+               * dotąd istniał wyłącznie tam, jako rozwijana sekcja. To jest
+               * aplikacja widziana oczami kursanta, czyli jedyny sposób
+               * sprawdzenia, co on naprawdę widzi po zatwierdzeniu lekcji.
+               */
+              { view: 'student-today', title: 'Podgląd kursanta', icon: Eye },
               { view: 'tests', title: 'Testy', icon: ClipboardList },
               { view: 'flashcard-sets', title: 'Słownictwo', icon: BookMarked },
               { view: 'admin-stats', title: 'Statystyki', icon: BarChart2 },
