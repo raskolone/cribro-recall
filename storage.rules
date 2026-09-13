@@ -1,0 +1,34 @@
+rules_version = '2';
+
+// ════════════════════════════════════════════════════════════════════════
+//  Firebase Storage — reguły dostępu
+//
+//  ══ CO TU LEŻY ══
+//
+//  Wyłącznie cache audio TTS (`server.ts`, endpoint mowy): pliki .mp3
+//  wygenerowane raz i odtwarzane wielokrotnie, żeby nie płacić dostawcy
+//  za to samo zdanie dwa razy. Nie ma tu żadnych danych kursantów.
+//
+//  ══ DLACZEGO WSZYSTKO JEST ZAMKNIĘTE ══
+//
+//  Do kubełka sięga tylko backend przez Admin SDK, a Admin SDK reguł nie
+//  sprawdza — działa ponad nimi. Aplikacja w przeglądarce nie importuje
+//  `firebase/storage` w ogóle: audio dostaje z endpointu `/api/tts`, nie
+//  prosto z kubełka.
+//
+//  Skoro więc żaden klient nie ma powodu tu zaglądać, żaden nie ma prawa.
+//  Otwarty odczyt oznaczałby, że każdy z adresem pliku pobiera nagrania
+//  bez logowania i na Twój rachunek za transfer.
+//
+//  Jeśli kiedyś frontend ma czytać audio wprost z kubełka, dopisz tu wąską
+//  regułę na konkretny prefiks (np. `match /tts/{plik}` z `allow read: if
+//  request.auth != null`) — nie otwieraj całości.
+// ════════════════════════════════════════════════════════════════════════
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
