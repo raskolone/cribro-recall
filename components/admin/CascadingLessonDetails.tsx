@@ -11,10 +11,13 @@ import { extractLessonBlocks, isRecordNeedsCleanup, migrateRecordToBlocks, parse
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 import TTSButtons from '../flashcards/TTSButtons';
+import TranscriptLessonPanel from './TranscriptLessonPanel';
 
 interface CascadingLessonDetailsProps {
   record: LessonRecord;
   studentName?: string;
+  /** Poziom kursanta z profilu — zmienia to, co model uzna za błąd. */
+  studentLevel?: string;
   onLinkScenario?: (scenario: GeneratedLessonScenario) => Promise<void>;
   onGenerateHomework?: () => void;
   onEdit?: () => void;
@@ -28,6 +31,7 @@ interface CascadingLessonDetailsProps {
 export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
   record,
   studentName,
+  studentLevel,
   onGenerateHomework,
   onEdit,
   onDelete,
@@ -44,6 +48,14 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
   const blocks = extractLessonBlocks(record);
   const needsCleanup = isRecordNeedsCleanup(record);
   const isPending = isLessonPendingConfirmation(record);
+  /*
+   * Lekcja z transkrypcji ma własny pasek stanu i własne zatwierdzenie
+   * (TranscriptLessonPanel). Ogólny alert „wymaga potwierdzenia" jest przy
+   * niej mylący, a jego przycisk zdejmuje flagi, nie ruszając
+   * `sessionStatus` — czyli zatwierdzałby lekcję, która i tak zostałaby
+   * ukryta przed kursantem.
+   */
+  const isFromTranscript = record.source === 'live_transcript';
 
   // Section collapse states (Domyślnie wszystkie bloki Notion są rozwinięte, aby lektor widział pełny obraz)
   const [expandedSections, setExpandedSections] = useState<{
@@ -113,8 +125,17 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
 
   return (
     <div className="space-y-4">
+      {isFromTranscript && (
+        <TranscriptLessonPanel
+          record={record}
+          studentName={studentName}
+          studentLevel={studentLevel}
+          onUpdateRecord={onUpdateRecord}
+        />
+      )}
+
       {/* Alert dla lekcji wymagających potwierdzenia */}
-      {isPending && (
+      {isPending && !isFromTranscript && (
         <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-[0_0_20px_rgba(245,158,11,0.15)]">
           <div className="flex items-start sm:items-center gap-3 text-amber-300">
             <AlertTriangle size={22} className="shrink-0 text-amber-400 mt-0.5 sm:mt-0" />

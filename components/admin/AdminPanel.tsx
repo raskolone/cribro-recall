@@ -56,7 +56,7 @@ import {
   User as UserIcon, Users, Search, X, ChevronRight, ChevronDown, ChevronUp, Sparkles, BarChart2, Clock, 
   BookOpen, BookMarked, UserCheck, Filter, Award, Activity, Calendar, 
   RefreshCw, Plus, Eye, Shield, Target, CalendarClock, Layers, Link as LinkIcon, Airplay, Mail, Database, Wand2,
-  AlertTriangle, Edit3, Save, Bell, BellOff, Lock, Copy, Key, Send, Archive, CheckSquare, Square, Edit2, FileEdit
+  AlertTriangle, Edit3, Save, Bell, BellOff, Lock, Copy, Key, Send, Archive, CheckSquare, Square, Edit2, FileEdit, Mic
 } from 'lucide-react';
 
 import i18n from "i18next";
@@ -2504,6 +2504,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                             </span>
                                           )}
 
+                                          {/* Skąd ta lekcja przyszła. Dwa źródła znaczą dwie różne
+                                              czynności: lekcja z Notion jest gotowa i czeka na
+                                              zatwierdzenie, lekcja z transkrypcji jest surowym zapisem
+                                              rozmowy i czeka na wygenerowanie bloków. */}
+                                          {record.source === 'live_transcript' && (
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-primary/20 text-primary border border-primary/30 flex items-center gap-1">
+                                              <Mic size={10} /> Transkrypcja z Sift
+                                            </span>
+                                          )}
+
                                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/25">
                                             {record.pendingReason || (record.isDateMissing ? 'Brak daty spotkania w Notion' : 'Format do weryfikacji')}
                                           </span>
@@ -4535,6 +4545,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <CascadingLessonDetails
                       record={viewingRecord}
                       studentName={selectedUser ? `${selectedUser.firstName || ''} ${selectedUser.lastName || selectedUser.username}`.trim() : undefined}
+                      studentLevel={selectedUser?.level}
                       onLinkScenario={handleLinkScenarioToRecord}
                       onGenerateHomework={() => handleGenerateHomeworkFromLesson(viewingRecord)}
                       onEdit={() => openLessonRecordModal('edit', viewingRecord)}
