@@ -355,16 +355,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
             </NavLink>
           )}
 
-          {isTeacher && (
-            <NavLink
-              icon={<Layers size={20} />}
-              isCollapsed={isDesktopCollapsed}
-              onClick={() => handleNavigate('lesson-scenarios')}
-              isActive={currentView === 'lesson-scenarios' || currentView === 'admin-scenarios'}
-            >
-              <span>{language === 'pl' ? 'Baza scenariuszy' : 'Lesson Scenarios'}</span>
-            </NavLink>
-          )}
+          {/* SCENARIUSZE: „Baza scenariuszy" zdjęta z menu 2026-09-13.
+
+              Scenariusz nie jest osobnym narzędziem — jest materiałem, z
+              którego powstaje lekcja, więc należy do Planera lekcji, a nie
+              do pozycji obok niego. Ekran `lesson-scenarios` istnieje dalej
+              i działa; zmienia się tylko to, skąd się do niego wchodzi. */}
 
 
           {isTeacher && (

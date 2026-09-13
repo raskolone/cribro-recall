@@ -1797,10 +1797,19 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               id: 'profile',
               title: 'Profil kursantów',
               badge: 'Kursanci',
-              // Rozstrzygnięcie z kolejki §5: to NIE to samo, co "Baza kursantów"
-              // w sidebarze (tam jest zarządzanie kontami — dodawanie/edycja/usuwanie).
-              desc: 'Wybierz kursanta, żeby zobaczyć jego historię lekcji, prace domowe i statystyki',
-              icon: Users
+              /*
+               * Prowadzi PROSTO do bazy kursantów.
+               *
+               * Wcześniej ten kafelek otwierał własną, skróconą listę kursantów
+               * pod spodem, a pełna baza była osobną pozycją obok. Dwa spisy
+               * tych samych ludzi, dwa miejsca do szukania i dwa miejsca do
+               * poprawiania. Baza kursantów sama prowadzi do profilu (wybór
+               * kursanta wraca tu z otwartą zakładką profilu), więc skrót
+               * niczego nie skracał.
+               */
+              desc: 'Baza kursantów — wybierz kursanta, żeby wejść w jego historię lekcji, prace domowe i statystyki',
+              icon: Users,
+              route: 'students-database',
             },
             {
               id: 'presentation',
@@ -1826,7 +1835,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             return (
               <div
                 key={tile.id}
-                onClick={() => handleTileClick(tile.id)}
+                onClick={() =>
+                  (tile as any).route
+                    ? onViewChange?.((tile as any).route)
+                    : handleTileClick(tile.id)
+                }
                 className={`p-4.5 sm:p-5 cursor-pointer flex flex-col justify-between liquid-glass-tile select-none transition-all rounded-2xl relative overflow-hidden ${
                   hasNotification
                     ? 'border-amber-400/80 bg-gradient-to-br from-amber-500/[0.08] via-base-200/80 to-base-200 shadow-[0_0_30px_rgba(245,158,11,0.22)] ring-1 ring-amber-400/50 hover:border-amber-300'
@@ -1886,18 +1899,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         </div>
       </div>
 
-      {/* LISTWA NARZĘDZI — wszystkie narzędzia lektora w jednym miejscu,
-          w siatce rozprowadzonej tak samo jak trzy kafelki wyżej, tylko
-          niższej (docs/kolejka-przebudowa-panelu.md §2). Prezentacja i
-          Notatnik duplikują wejście z kafelków wyżej — zamierzone: tu jest
-          pełna lista, wyżej tylko trzy najważniejsze. "Prace domowe"
-          dołączone na życzenie 2026-09-12, żeby mieć jedno miejsce wejścia
-          zamiast tylko powiadomień. */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      {/* LISTWA NARZĘDZI — to, czego nie ma w kafelkach wyżej.
+
+          Prezentacja i Notatnik stały tu wcześniej po raz DRUGI, obok
+          własnych kafelków. Zamierzone to nie było korzyścią: ten sam
+          moduł w dwóch miejscach na jednym ekranie znaczy tylko tyle, że
+          nie wiadomo, które z nich jest właściwe. Zostaje to, czego wyżej
+          nie ma. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
           { id: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
-          { id: 'presentation', title: 'Prezentacja', icon: Airplay },
-          { id: 'notatnik', title: 'Notatnik', icon: FileEdit },
           { id: 'homework', title: 'Prace domowe', icon: FileText, isRoute: true },
           {
             id: 'mailing',
@@ -1959,9 +1970,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         {showMoreTools && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {[
-              { view: 'students-database', title: 'Baza kursantów', icon: Users },
-              { view: 'lesson-scenarios', title: 'Scenariusze lekcji', icon: Layers },
-              { view: 'lesson-history', title: 'Historia lekcji', icon: Clock },
+              /*
+               * Czego tu nie ma i dlaczego:
+               *   Baza kursantów  — jest głównym kafelkiem wyżej,
+               *   Historia lekcji — nie jest narzędziem, jest zakładką
+               *                     w profilu kursanta (tam ma źródło danych),
+               *   Scenariusze     — należą do Planera lekcji, nie obok niego.
+               */
               { view: 'tests', title: 'Testy', icon: ClipboardList },
               { view: 'flashcard-sets', title: 'Słownictwo', icon: BookMarked },
               { view: 'admin-stats', title: 'Statystyki', icon: BarChart2 },
@@ -2037,6 +2052,28 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               />
             )}
             {activeTab === 'lesson-planner' && (
+              <>
+                {/* Baza scenariuszy jako część Planera, nie pozycja obok.
+
+                    Scenariusz jest materiałem, z którego powstaje lekcja —
+                    zaczyna się tu albo z gotowego, albo od zera, i to jest
+                    jedna decyzja w jednym miejscu. Dotąd wybór „nowy czy
+                    z bazy" wymagał wyjścia do innego ekranu w menu. */}
+                <div className="flex items-center justify-between gap-3 mb-4 pb-4 border-b border-line-strong">
+                  <p className="text-xs text-content-muted">
+                    Scenariusze zapisane wcześniej leżą w bazie — możesz zacząć od gotowego
+                    zamiast pisać od zera.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onViewChange?.('lesson-scenarios')}
+                    className="shrink-0 flex items-center gap-1.5"
+                  >
+                    <Layers size={14} />
+                    Baza scenariuszy
+                  </Button>
+                </div>
               <LessonPlanner
                 selectedUser={selectedUser}
                 users={users}
@@ -2080,6 +2117,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   }
                 }}
               />
+              </>
             )}
           </div>
         </div>
