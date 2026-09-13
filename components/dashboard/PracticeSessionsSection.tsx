@@ -16,6 +16,8 @@ import PanelSection from './PanelSection';
  */
 
 interface PracticeSessionsSectionProps {
+  /** Bez własnego nagłówka — używane, gdy nagłówkiem jest kafelek listwy. */
+  headless?: boolean;
   studentId: string;
   /** Zwinięta sekcja z własnym nagłówkiem. Wyłącz, gdy sekcją jest już zakładka. */
   asSection?: boolean;
@@ -96,6 +98,7 @@ const scoreTone = (score: number): string =>
   score >= 80 ? 'text-primary' : score >= 50 ? 'text-warn' : 'text-danger';
 
 const PracticeSessionsSection: React.FC<PracticeSessionsSectionProps> = ({
+  headless,
   studentId,
   asSection = true,
   defaultOpen = false,
@@ -262,7 +265,7 @@ const PracticeSessionsSection: React.FC<PracticeSessionsSectionProps> = ({
                         <div className="text-[10px] font-mono uppercase tracking-wider text-content-muted">
                           {L.items}
                         </div>
-                        <div className="font-bold text-lg text-white">{log.totalWords}</div>
+                        <div className="font-bold text-lg text-text-hi">{log.totalWords}</div>
                       </div>
                     )}
                     {hasScore && (
@@ -283,7 +286,7 @@ const PracticeSessionsSection: React.FC<PracticeSessionsSectionProps> = ({
                       className="rounded-xl bg-base-100/50 border border-white/[0.07] p-3 space-y-1.5"
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="prose-justified text-[14px] text-white font-semibold leading-snug">
+                        <p className="prose-justified text-[14px] text-text-hi font-semibold leading-snug">
                           {item.polish}
                         </p>
                         {item.score !== undefined &&
@@ -328,6 +331,7 @@ const PracticeSessionsSection: React.FC<PracticeSessionsSectionProps> = ({
 
   return (
     <PanelSection
+      headless={headless}
       title={L.heading}
       meta={isLoading ? undefined : L.count(logs.length)}
       icon={<Dumbbell size={16} />}

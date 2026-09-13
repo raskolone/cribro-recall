@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ArrowRight,
+  BookOpen,
   Check,
-  ChevronRight,
+  Dumbbell,
   Eye,
   FileEdit,
+  GraduationCap,
+  History,
   Puzzle,
   RotateCcw,
   Sparkles,
@@ -22,6 +25,7 @@ import StudentHomeworkPanelSection from './StudentHomeworkPanelSection';
 import StudentTestsPanelSection from './StudentTestsPanelSection';
 import PracticeSessionsSection from './PracticeSessionsSection';
 import StudentHeroHeader from './StudentHeroHeader';
+import StudentToolBar, { StudentTool } from './StudentToolBar';
 
 /**
  * Panel kursanta — domyślne wejście po zalogowaniu.
@@ -33,6 +37,18 @@ import StudentHeroHeader from './StudentHeroHeader';
  *
  * Poza paskiem powtórek wszystko jest zwinięte. Panel pokazuje spis tego, co
  * można otworzyć — treść wchodzi dopiero po dotknięciu.
+ *
+ * ══ LISTWA KAFELKÓW ZAMIAST STOSU SEKCJI ══
+ *
+ * Zadania, testy, wcześniejsze lekcje i historia ćwiczeń siedzą za kafelkami
+ * (`StudentToolBar`), a ich treść otwiera się jednym panelem pod listwą.
+ * Wcześniej były stosem zwijanych pasków: na telefonie dojście do testów
+ * znaczyło przewinięcie wszystkiego powyżej, a spis możliwości nigdy nie
+ * mieścił się na jednym ekranie. Teraz mieści się cały, nad zgięciem.
+ *
+ * Nad listwą zostają dwie rzeczy, po które kursant wchodzi codziennie:
+ * nagłówek ze stanem zadań i karta powtórek na dziś. Pod listwą — ostatnia
+ * lekcja, bo do niej też wraca się bez szukania.
  *
  * Ekran jest projektowany pod telefon: jedna kolumna, cele dotyku od 44 px,
  * treść zaczyna się nad zgięciem. Wersja na dużym ekranie to ta sama kolumna,
@@ -145,6 +161,14 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
 
   const current = items[index];
 
+  /**
+   * Który kafelek listwy jest otwarty.
+   *
+   * Jeden naraz i domyślnie żaden: panel ma się otwierać na spisie
+   * możliwości, nie na treści, której kursant w tej chwili nie szukał.
+   */
+  const [openTool, setOpenTool] = useState<string | null>(null);
+
   const L =
     language === 'pl'
       ? {
@@ -168,6 +192,13 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
           showBlocks: 'Pokaż klocki',
           giveUp: 'Nie pamiętam — dalej',
           check: 'Sprawdź',
+          tools: {
+            homework: 'Moje zadania',
+            tests: 'Moje testy',
+            lessons: 'Wcześniejsze lekcje',
+            practice: 'Historia ćwiczeń',
+            scratchpad: 'Mój notatnik',
+          },
         }
       : {
           reviewTitle: 'Reviews due today',
@@ -191,6 +222,13 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
           showBlocks: 'Show the blocks',
           giveUp: "I don't remember — move on",
           check: 'Check',
+          tools: {
+            homework: 'My tasks',
+            tests: 'My tests',
+            lessons: 'Earlier lessons',
+            practice: 'Practice history',
+            scratchpad: 'My notebook',
+          },
         };
 
   const resetItemState = () => {
@@ -261,7 +299,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
     return (
       <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10">
         <div className="flex items-center gap-3 mb-6">
-          <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+          <div className="flex-1 h-1.5 rounded-full bg-line-soft overflow-hidden">
             <div
               className="h-full bg-primary transition-all duration-300"
               style={{ width: `${(index / items.length) * 100}%` }}
@@ -272,7 +310,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
           </span>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-base-200/50 p-5 sm:p-8">
+        <div className="rounded-2xl border border-line-strong bg-base-200/50 p-5 sm:p-8">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-primary/15 text-primary border border-primary/30 font-mono">
               {current.learningType}
@@ -280,7 +318,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
           </div>
 
           {/* Kontekst: najpierw przypomnij sobie, potem sprawdź. */}
-          <p className="text-xl sm:text-2xl font-bold text-white leading-snug">
+          <p className="text-xl sm:text-2xl font-bold text-text-hi leading-snug">
             {current.meaningOrFunction || L.recallPrompt}
           </p>
           {current.teacherNote && (
@@ -312,7 +350,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
               }}
               autoFocus
               placeholder={L.inputPlaceholder}
-              className="w-full mt-6 bg-base-200 border border-white/15 rounded-xl px-4 py-3.5 text-white text-base focus:border-primary/60 focus:outline-none"
+              className="w-full mt-6 bg-base-200 border border-line-strong rounded-xl px-4 py-3.5 text-text-hi text-base focus:border-primary/60 focus:outline-none"
             />
           )}
 
@@ -326,7 +364,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                 <button
                   disabled={isSaving}
                   onClick={() => finishItem('effort')}
-                  className="min-h-[2.75rem] px-4 rounded-lg border border-white/15 text-content text-sm font-semibold hover:border-warn/50 disabled:opacity-50"
+                  className="min-h-[2.75rem] px-4 rounded-lg border border-line-strong text-content text-sm font-semibold hover:border-warn/50 disabled:opacity-50"
                 >
                   {L.withEffort}
                 </button>
@@ -347,7 +385,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                 <XIcon size={16} /> {L.wrong}
               </div>
               {revealed && (
-                <p className="mt-2 font-mono text-sm text-white">{current.targetForm}</p>
+                <p className="mt-2 font-mono text-sm text-text-hi">{current.targetForm}</p>
               )}
               <div className="flex flex-wrap gap-2 mt-3">
                 <button
@@ -355,14 +393,14 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                     setFeedback(null);
                     setAnswer('');
                   }}
-                  className="min-h-[2.75rem] px-4 rounded-lg border border-white/15 text-content text-sm font-semibold hover:border-primary/40"
+                  className="min-h-[2.75rem] px-4 rounded-lg border border-line-strong text-content text-sm font-semibold hover:border-primary/40"
                 >
                   {L.tryAgain}
                 </button>
                 {!revealed && (
                   <button
                     onClick={() => setRevealed(true)}
-                    className="flex items-center gap-1.5 min-h-[2.75rem] px-4 rounded-lg border border-white/15 text-content-muted text-sm font-semibold hover:border-white/30"
+                    className="flex items-center gap-1.5 min-h-[2.75rem] px-4 rounded-lg border border-line-strong text-content-muted text-sm font-semibold hover:border-primary/40"
                   >
                     <Eye size={13} /> {L.showForm}
                   </button>
@@ -406,7 +444,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
     );
   }
 
-  // ————— Panel: powtórki → zadania → ostatnia lekcja → miesiące —————
+  // ————— Panel: nagłówek → powtórki → listwa → treść → ostatnia lekcja —————
   const reviewCard = (() => {
     if (phase === 'ready' && items.length > 0) {
       const minutes = Math.max(3, Math.round(items.length * 0.6));
@@ -417,7 +455,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
               <Sparkles className="w-4.5 h-4.5 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-[15px] font-bold text-white leading-snug">{L.reviewTitle}</h2>
+              <h2 className="text-[15px] font-bold text-text-hi leading-snug">{L.reviewTitle}</h2>
               <p className="text-[13px] text-content-muted mt-0.5">
                 {L.reviewBody(items.length, minutes)}
               </p>
@@ -443,7 +481,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
               <Check className="w-4.5 h-4.5 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-[15px] font-bold text-white leading-snug">{L.doneTitle}</h2>
+              <h2 className="text-[15px] font-bold text-text-hi leading-snug">{L.doneTitle}</h2>
               <p className="text-[13px] text-content-muted mt-0.5">
                 {L.doneBody(results.length, confident)}
               </p>
@@ -456,7 +494,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
               resetItemState();
               load();
             }}
-            className="mt-3 w-full min-h-[3rem] flex items-center justify-center gap-2 rounded-xl border border-white/15 text-content font-bold text-sm active:scale-[0.99] transition-transform"
+            className="mt-3 w-full min-h-[3rem] flex items-center justify-center gap-2 rounded-xl border border-line-strong text-content font-bold text-sm active:scale-[0.99] transition-transform"
           >
             <RotateCcw size={14} /> {L.recheck}
           </button>
@@ -469,8 +507,64 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
     return null;
   })();
 
+  /*
+   * Kafelki listwy.
+   *
+   * Notatnik prowadzi gdzie indziej (pełny ekran do pisania), więc ma
+   * `onNavigate` zamiast panelu — i tylko na dużym ekranie, bo wspólne
+   * pisanie na telefonie nie działa. Reszta otwiera się pod listwą.
+   *
+   * Kafelki nie noszą liczników: policzenie zadań i testów tutaj znaczyłoby
+   * drugi odczyt tych samych kolekcji, które sekcje i tak czytają po
+   * otwarciu, a stan „coś czeka" mówi już nagłówek wyżej.
+   */
+  const tools: StudentTool[] = [
+    {
+      id: 'homework',
+      label: L.tools.homework,
+      icon: <BookOpen size={20} />,
+      /* Kropka z flag, które już są w profilu kursanta — te same, którymi
+         świeci menu boczne. Policzenie zadań tutaj znaczyłoby drugi nasłuch
+         na tej samej kolekcji. Podgląd lektora nie świeci: to nie jego
+         nieprzeczytane rzeczy. */
+      highlight: !studentId && (Boolean(user?.hasNewHomework) || Boolean(user?.hasGradedHomework)),
+    },
+    {
+      id: 'tests',
+      label: L.tools.tests,
+      icon: <GraduationCap size={20} />,
+    },
+    {
+      id: 'lessons',
+      label: L.tools.lessons,
+      icon: <History size={20} />,
+      highlight: !studentId && Boolean(user?.hasNewLesson),
+    },
+    {
+      id: 'practice',
+      label: L.tools.practice,
+      icon: <Dumbbell size={20} />,
+    },
+    ...(onOpenScratchpad
+      ? [
+          {
+            id: 'scratchpad',
+            label: L.tools.scratchpad,
+            icon: <FileEdit size={20} />,
+            desktopOnly: true,
+            onNavigate: onOpenScratchpad,
+          } satisfies StudentTool,
+        ]
+      : []),
+  ];
+
+  /*
+   * Zapas u dołu na telefonie (`pb-24`): przycisk zgłaszania błędu wisi
+   * na stałe w prawym dolnym rogu i bez tego zasłaniał ostatni kafelek
+   * listwy. Na dużym ekranie wraca zwykły odstęp.
+   */
   return (
-    <div className="w-full max-w-3xl mx-auto px-3 sm:px-4 py-5 sm:py-8 space-y-6">
+    <div className="w-full max-w-3xl mx-auto px-3 sm:px-4 pt-5 pb-24 sm:py-8 space-y-6">
       {/* Szerszy nagłówek główny ze statystykami, gratulacjami i statusem zadań od lektora */}
       <StudentHeroHeader
         studentId={targetId}
@@ -484,60 +578,50 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
       <div className="max-w-2xl mx-auto space-y-5">
         {reviewCard}
 
+        <StudentToolBar
+          tools={tools}
+          openId={openTool}
+          onToggle={(id) => setOpenTool((prev) => (prev === id ? null : id))}
+        />
+
+        {/* Treść otwartego kafelka — zawsze w tym samym miejscu, pod listwą. */}
+        {openTool && (
+          <div className="rounded-2xl border border-line-strong bg-base-200/40 overflow-hidden">
+            {openTool === 'homework' && (
+              <StudentHomeworkPanelSection
+                headless
+                studentId={targetId}
+                onOpenHomework={onOpenHomework || (() => {})}
+              />
+            )}
+            {openTool === 'tests' && (
+              <StudentTestsPanelSection
+                headless
+                studentId={targetId}
+                onOpenTests={onOpenTests || (() => {})}
+              />
+            )}
+            {openTool === 'lessons' && (
+              <StudentLessonPanel
+                headless
+                only="earlier"
+                studentId={targetId}
+                onStudySet={onStudySet}
+                onPracticeAI={onPracticeAI}
+              />
+            )}
+            {openTool === 'practice' && <PracticeSessionsSection headless studentId={targetId} />}
+          </div>
+        )}
+
+        {/* Ostatnia lekcja zostaje poza listwą: to jedyna rzecz z historii, do
+            której kursant wraca codziennie, i ma być widoczna bez dotknięcia. */}
         <StudentLessonPanel
+          only="latest"
           studentId={targetId}
           onStudySet={onStudySet}
           onPracticeAI={onPracticeAI}
         />
-
-        {/* Wspólny brudnopis z lektorem — wejście z panelu, nie tylko z menu
-            bocznego, bo kursant wraca do tych notatek między lekcjami. */}
-        {onOpenScratchpad && (
-          <button
-            type="button"
-            onClick={onOpenScratchpad}
-            className="w-full text-left p-4 rounded-2xl bg-base-200/60 border border-white/10 hover:border-accent/40 hover:bg-base-200/80 transition-all flex items-center gap-3.5 cursor-pointer group"
-          >
-            <span className="p-2.5 rounded-xl bg-accent/12 text-accent border border-accent/25 shrink-0">
-              <FileEdit size={18} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold text-text-hi">Mój notatnik</span>
-              <span className="block text-xs text-content-muted mt-0.5">
-                Wspólne notatki z lekcji — słownictwo, poprawki i ustalenia w jednym miejscu
-              </span>
-            </span>
-            <ChevronRight
-              size={18}
-              className="shrink-0 text-content-muted group-hover:text-accent transition-colors"
-            />
-          </button>
-        )}
-
-        {/* Sekcja prac domowych — spójna z resztą zwijanych paneli */}
-        <div className="pt-1">
-          <div className="h-px bg-white/[0.08] mb-4" />
-          <StudentHomeworkPanelSection
-            studentId={targetId}
-            onOpenHomework={onOpenHomework || (() => {})}
-          />
-        </div>
-
-        {/* Sekcja testów kursanta — spójna z resztą zwijanych paneli */}
-        <div className="pt-1">
-          <div className="h-px bg-white/[0.08] mb-4" />
-          <StudentTestsPanelSection
-            studentId={targetId}
-            onOpenTests={onOpenTests || (() => {})}
-          />
-        </div>
-
-        {/* Kreska oddziela to, co przyszło z lekcji, od tego, co kursant zrobił
-            sam. Bez niej sesje ćwiczeń czytały się jak kolejny rodzaj lekcji. */}
-        <div className="pt-1">
-          <div className="h-px bg-white/[0.08] mb-4" />
-          <PracticeSessionsSection studentId={targetId} />
-        </div>
       </div>
     </div>
   );

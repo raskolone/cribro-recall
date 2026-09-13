@@ -8,6 +8,8 @@ import { studentTasksQuery } from '../../utils/homework';
 import PanelSection from './PanelSection';
 
 interface StudentHomeworkPanelSectionProps {
+  /** Bez własnego nagłówka — używane, gdy nagłówkiem jest kafelek listwy. */
+  headless?: boolean;
   studentId?: string;
   onOpenHomework: (taskId?: string) => void;
 }
@@ -21,6 +23,7 @@ const getMillis = (val: any): number => {
 };
 
 export const StudentHomeworkPanelSection: React.FC<StudentHomeworkPanelSectionProps> = ({
+  headless,
   studentId,
   onOpenHomework,
 }) => {
@@ -84,6 +87,7 @@ export const StudentHomeworkPanelSection: React.FC<StudentHomeworkPanelSectionPr
 
   return (
     <PanelSection
+      headless={headless}
       title={language === 'pl' ? 'Prace domowe' : 'Homework'}
       meta={metaText}
       icon={<BookOpen size={16} />}
@@ -120,7 +124,7 @@ export const StudentHomeworkPanelSection: React.FC<StudentHomeworkPanelSectionPr
                         className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-base-100/60 hover:bg-base-100 border border-primary/25 text-left transition-all active:scale-[0.99] cursor-pointer"
                       >
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-sm font-bold text-white truncate">{task.title}</h4>
+                          <h4 className="text-sm font-bold text-text-hi truncate">{task.title}</h4>
                           <div className="flex items-center gap-2 text-xs text-content-muted mt-0.5">
                             <span className="font-semibold text-primary">{typeLabel(task.type)}</span>
                             {task.dueDate && (
@@ -157,7 +161,7 @@ export const StudentHomeworkPanelSection: React.FC<StudentHomeworkPanelSectionPr
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-bold text-white truncate">{task.title}</h4>
+                            <h4 className="text-sm font-bold text-text-hi truncate">{task.title}</h4>
                             {task.grade !== undefined && (
                               <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-black bg-primary/20 text-primary border border-primary/30">
                                 {task.grade}%
@@ -185,7 +189,7 @@ export const StudentHomeworkPanelSection: React.FC<StudentHomeworkPanelSectionPr
             <div className="pt-2">
               <button
                 onClick={() => onOpenHomework()}
-                className="w-full py-2.5 px-4 rounded-xl bg-base-100 hover:bg-white/10 text-xs font-bold text-primary border border-primary/30 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl bg-base-100 hover:bg-line-soft text-xs font-bold text-primary border border-primary/30 flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <span>{language === 'pl' ? 'Przejdź do wszystkich prac domowych' : 'Open full homework view'}</span>
                 <ArrowRight size={14} />

@@ -56,7 +56,8 @@ import {
   User as UserIcon, Users, Search, X, ChevronRight, ChevronDown, ChevronUp, Sparkles, BarChart2, Clock, 
   BookOpen, BookMarked, UserCheck, Filter, Award, Activity, Calendar, 
   RefreshCw, Plus, Eye, Shield, Target, CalendarClock, Layers, Link as LinkIcon, Airplay, Mail, Database, Wand2,
-  AlertTriangle, Edit3, Save, Bell, BellOff, Lock, Copy, Key, Send, Archive, CheckSquare, Square, Edit2, FileEdit, Mic
+  AlertTriangle, Edit3, Save, Bell, BellOff, Lock, Copy, Key, Send, Archive, CheckSquare, Square, Edit2, FileEdit, Mic,
+  ClipboardList
 } from 'lucide-react';
 
 import i18n from "i18next";
@@ -95,6 +96,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   const { createUser, deleteUser, changeUserRole: updateRoleApi, changeUserPassword, changeUserEmail } = useFirebaseAdminApi();
   const { user: currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
+  /** Druga listwa narzędzi — zwinięta, bo to wejścia „raz na tydzień". */
+  const [showMoreTools, setShowMoreTools] = useState(false);
   const [profileSaveModal, setProfileSaveModal] = useState<{ isOpen: boolean; success: boolean; title: string; message: string } | null>(null);
   
 
@@ -1703,7 +1706,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1 sm:pt-0 pl-7 sm:pl-0">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-text-hi flex items-center gap-3">
             <span>{i18n.t("Teacher Panel")}</span>
             <span className="text-xs font-mono uppercase bg-primary/20 text-primary border border-primary/30 px-2.5 py-1 rounded-full font-bold">
               Panel Nauczyciela
@@ -1718,7 +1721,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={() => setShowScratchpadPicker(true)}
-              className="px-3.5 min-h-11 bg-base-200/80 text-content border border-white/15 rounded-xl text-xs sm:text-sm font-bold hover:bg-white/[0.08] transition-colors flex items-center justify-center gap-2"
+              className="px-3.5 min-h-11 bg-base-200/80 text-content border border-line-strong rounded-xl text-xs sm:text-sm font-bold hover:bg-white/[0.08] transition-colors flex items-center justify-center gap-2"
               title="Otwórz wspólny notatnik wybranego kursanta"
             >
               <FileEdit size={16} />
@@ -1774,7 +1777,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-extrabold uppercase tracking-wider text-content-muted flex items-center gap-2">
             <span>Główne Narzędzia Lektora</span>
-            <span className="text-[10px] font-mono bg-white/5 text-content-muted px-2 py-0.5 rounded-full border border-white/10">
+            <span className="text-[10px] font-mono bg-line-soft text-content-muted px-2 py-0.5 rounded-full border border-line-strong">
               Tryb ogólny
             </span>
           </h2>
@@ -1839,7 +1842,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.3)]'
                         : isActive
                           ? 'bg-primary text-accent-ink shadow-[0_0_14px_rgba(114,240,180,0.4)]'
-                          : 'bg-ink/72 text-primary border border-white/10 group-hover:border-primary/40'
+                          : 'bg-ink/72 text-primary border border-line-strong group-hover:border-primary/40'
                     }`}>
                       <IconComp size={20} />
                       {hasNotification && (
@@ -1854,13 +1857,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         ? 'bg-amber-500/25 text-amber-300 border-amber-500/50 animate-pulse font-extrabold shadow-sm'
                         : isActive
                           ? 'bg-primary/20 text-primary border-primary/40'
-                          : 'bg-base-100/70 text-content-muted border-white/5'
+                          : 'bg-base-100/70 text-content-muted border-line'
                     }`}>
                       {hasNotification ? `${notificationCount} NOWYCH` : (isActive ? 'Aktywny moduł' : tile.badge)}
                     </span>
                   </div>
                   <h3 className={`font-extrabold text-base sm:text-lg transition-colors truncate ${
-                    hasNotification ? 'text-amber-200 group-hover:text-amber-100' : 'text-white group-hover:text-primary'
+                    hasNotification ? 'text-amber-200 group-hover:text-amber-100' : 'text-text-hi group-hover:text-primary'
                   }`}>
                     {tile.title}
                   </h3>
@@ -1869,7 +1872,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </p>
                 </div>
 
-                <div className="mt-4 pt-2.5 border-t border-white/5 flex items-center justify-between text-xs font-semibold">
+                <div className="mt-4 pt-2.5 border-t border-line flex items-center justify-between text-xs font-semibold">
                   <span className={hasNotification ? 'text-amber-400 font-bold' : (isActive ? 'text-primary font-bold' : 'text-content-muted')}>
                     {hasNotification ? `Otwórz skrzynkę (${notificationCount})` : (isActive ? 'Przeglądasz ten moduł' : 'Otwórz moduł')}
                   </span>
@@ -1932,6 +1935,60 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         })}
       </div>
 
+      {/* WIĘCEJ NARZĘDZI — druga listwa, zwinięta.
+
+          Te osiem wejść dotąd istniało wyłącznie w menu bocznym. Na telefonie
+          menu boczne jest szufladą, którą trzeba najpierw wysunąć, więc
+          połowa panelu była tam schowana przed kciukiem. Kafelki dają do nich
+          dotknięcie z tego samego miejsca, co reszta narzędzi.
+
+          Zwinięte domyślnie, bo to są rzeczy, po które sięga się raz na
+          tydzień, a nie w trakcie lekcji — rozwinięte na stałe byłyby ścianą
+          trzynastu kafelków nad treścią panelu. Menu boczne zostaje: kafelki
+          są drogą krótszą, nie jedyną. */}
+      <div className="space-y-3">
+        <button
+          type="button"
+          onClick={() => setShowMoreTools((prev) => !prev)}
+          className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-content-muted hover:text-text-hi transition-colors"
+        >
+          {showMoreTools ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          Więcej narzędzi
+        </button>
+
+        {showMoreTools && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {[
+              { view: 'students-database', title: 'Baza kursantów', icon: Users },
+              { view: 'lesson-scenarios', title: 'Scenariusze lekcji', icon: Layers },
+              { view: 'lesson-history', title: 'Historia lekcji', icon: Clock },
+              { view: 'tests', title: 'Testy', icon: ClipboardList },
+              { view: 'flashcard-sets', title: 'Słownictwo', icon: BookMarked },
+              { view: 'admin-stats', title: 'Statystyki', icon: BarChart2 },
+              { view: 'topic-database', title: 'Baza tematów', icon: Database },
+              ...(isAdmin
+                ? [
+                    { view: 'settings', title: 'Ustawienia', icon: Shield },
+                    { view: 'admin-debugging', title: 'Diagnostyka', icon: AlertCircle },
+                  ]
+                : []),
+            ].map((item) => {
+              const IconComp = item.icon;
+              return (
+                <button
+                  key={item.view}
+                  onClick={() => onViewChange?.(item.view)}
+                  className="flex flex-col items-center justify-center gap-1.5 min-h-[4.5rem] py-3.5 px-2 rounded-2xl border border-line-strong bg-line-soft/40 text-content-muted hover:text-text-hi hover:border-primary/40 text-xs sm:text-sm font-semibold transition-colors text-center"
+                >
+                  <IconComp size={18} />
+                  <span className="leading-tight">{item.title}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       <div className="flex justify-end">
         <NotionSyncButton onImported={fetchUsers} />
       </div>
@@ -1939,17 +1996,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       {/* JEŚLI AKTYWNY JEST MODUŁ OGÓLNY (Planer, Prezentacja) */}
       {activeTab && ['lesson-planner', 'presentation'].includes(activeTab) && (
         <div className="p-4 sm:p-5 rounded-2xl bg-base-200/60 border border-primary/40 shadow-[0_0_30px_rgba(114,240,180,0.1)] space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-white/10">
+          <div className="flex items-center justify-between pb-3 border-b border-line-strong">
             <div className="flex items-center gap-2.5">
               <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
-              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-bold text-text-hi flex items-center gap-2">
                 {activeTab === 'lesson-planner' && 'Planer lekcji AI (Tworzenie scenariuszy)'}
                 {activeTab === 'presentation' && 'Prezentacja & Notatnik Live'}
               </h2>
             </div>
             <button
               onClick={() => setActiveTab(selectedUser ? 'profile' : null)}
-              className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-white/10"
+              className="px-3 py-1.5 rounded-xl bg-line-soft hover:bg-line-soft text-content-muted hover:text-text-hi text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-line-strong"
             >
               <X size={14} />
               {selectedUser ? 'Wróć do profilu kursanta' : 'Zamknij moduł'}
@@ -2036,7 +2093,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               <Users size={24} />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="text-base font-bold text-text-hi flex items-center gap-2">
                 Profil i moduły kursanta
               </h3>
               <p className="text-xs text-content-muted mt-0.5">
@@ -2067,7 +2124,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-lg sm:text-xl font-extrabold text-white truncate">
+                  <h2 className="text-lg sm:text-xl font-extrabold text-text-hi truncate">
                     {selectedUser.firstName || selectedUser.lastName ? `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() : selectedUser.username}
                   </h2>
                   <span className="text-xs text-content-muted font-mono truncate">(@{selectedUser.username})</span>
@@ -2080,7 +2137,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     </span>
                   )}
                   <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
-                    selectedUser.role === 'admin' ? 'bg-danger/12 text-danger border-danger/30' : selectedUser.role === 'teacher' ? 'bg-primary/12 text-primary border-primary/30' : 'bg-white/5 text-text-2 border-line-strong'
+                    selectedUser.role === 'admin' ? 'bg-danger/12 text-danger border-danger/30' : selectedUser.role === 'teacher' ? 'bg-primary/12 text-primary border-primary/30' : 'bg-line-soft text-text-2 border-line-strong'
                   }`}>
                     {selectedUser.role === 'teacher' ? 'Nauczyciel' : selectedUser.role === 'admin' ? 'Admin' : 'Kursant'}
                   </span>
@@ -2090,7 +2147,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     </span>
                   )}
                   {selectedUser.isArchived && (
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-base-100 text-content-muted border border-white/10">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-base-100 text-content-muted border border-line-strong">
                       Archiwum
                     </span>
                   )}
@@ -2113,8 +2170,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       <span className="text-primary text-[10px] font-semibold">✓ Resend</span>
                     )}
                   </button>
-                  <span>🔑 Logowań: <strong className="text-white">{selectedUser.loginCount || 0}</strong></span>
-                  <span>🕒 Ostatnia wizyta: <strong className="text-white">{selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleDateString('pl-PL') : 'Brak'}</strong></span>
+                  <span>🔑 Logowań: <strong className="text-text-hi">{selectedUser.loginCount || 0}</strong></span>
+                  <span>🕒 Ostatnia wizyta: <strong className="text-text-hi">{selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleDateString('pl-PL') : 'Brak'}</strong></span>
                 </div>
               </div>
             </div>
@@ -2144,7 +2201,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   setPracticeLogs([]);
                   setLessonRecords([]);
                 }}
-                className="px-3 py-2 bg-ink/72 hover:bg-white/10 text-content-muted hover:text-text-hi border border-white/10 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3 py-2 bg-ink/72 hover:bg-line-soft text-content-muted hover:text-text-hi border border-line-strong rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <X size={16} />
                 Wyczyść
@@ -2153,7 +2210,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </div>
 
           {/* PASEK ZAKŁADEK NA SAMEJ GÓRZE PROFILU KURSANTA */}
-          <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-base-200/90 border border-white/10 backdrop-blur-md overflow-x-auto no-scrollbar shadow-inner select-none">
+          <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-base-200/90 border border-line-strong backdrop-blur-md overflow-x-auto no-scrollbar shadow-inner select-none">
             {[
               { id: 'profile', label: 'Profil & Dane', icon: UserIcon },
               { id: 'context', label: 'Kontekst', icon: CalendarClock },
@@ -2178,7 +2235,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer shrink-0 ${
                     isActive
                       ? 'bg-primary text-black font-extrabold shadow-md shadow-primary/20 border border-primary/50'
-                      : 'text-content-muted hover:text-text-hi hover:bg-white/10 border border-transparent'
+                      : 'text-content-muted hover:text-text-hi hover:bg-line-soft border border-transparent'
                   }`}
                 >
                   <Icon size={16} className={isActive ? 'text-black' : 'text-primary'} />
@@ -2186,7 +2243,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   {typeof tab.count === 'number' && tab.count > 0 && (
                     <span
                       className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full font-bold ${
-                        isActive ? 'bg-black/20 text-black' : 'bg-white/10 text-primary'
+                        isActive ? 'bg-base-100/50 text-black' : 'bg-line-soft text-primary'
                       }`}
                     >
                       {tab.count}
@@ -2212,21 +2269,21 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           {activeTab === 'stats' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-                <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
+                <div className="bg-base-200/50 p-6 rounded-2xl border border-line text-center flex flex-col items-center justify-center">
                   <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Ilość Logowań")}</div>
-                  <div className="text-4xl font-display font-bold text-white">{selectedUser.loginCount || (selectedUser.lastLoginDate ? 1 : 0)}</div>
+                  <div className="text-4xl font-display font-bold text-text-hi">{selectedUser.loginCount || (selectedUser.lastLoginDate ? 1 : 0)}</div>
                 </div>
-                <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
+                <div className="bg-base-200/50 p-6 rounded-2xl border border-line text-center flex flex-col items-center justify-center">
                   <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Ostatnie Logowanie")}</div>
                   <div className="text-lg font-display font-bold text-primary">
                     {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Nigdy'}
                   </div>
                 </div>
-                <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
+                <div className="bg-base-200/50 p-6 rounded-2xl border border-line text-center flex flex-col items-center justify-center">
                   <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Wykonane Zadania")}</div>
                   <div className="text-4xl font-display font-bold text-primary">{userStats?.totalTasks || 0}</div>
                 </div>
-                <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
+                <div className="bg-base-200/50 p-6 rounded-2xl border border-line text-center flex flex-col items-center justify-center">
                   <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Przetłumaczone Zdania")}</div>
                   <div className="text-4xl font-display font-bold text-primary">{userStats?.totalSentences || 0}</div>
                 </div>
@@ -2234,15 +2291,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
               {userStats && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                  <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
+                  <div className="bg-base-200/50 p-6 rounded-2xl border border-line text-center flex flex-col items-center justify-center">
                     <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Średni Wynik")}</div>
                     <div className="text-4xl font-display font-bold text-primary">{Number.isNaN(Number(userStats.averageScore)) ? 0 : userStats.averageScore}%</div>
                   </div>
-                  <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
+                  <div className="bg-base-200/50 p-6 rounded-2xl border border-line text-center flex flex-col items-center justify-center">
                     <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Słownictwo Ogółem")}</div>
-                    <div className="text-4xl font-display font-bold text-white">{userStats.totalWords}</div>
+                    <div className="text-4xl font-display font-bold text-text-hi">{userStats.totalWords}</div>
                   </div>
-                  <div className="bg-base-200/50 p-6 rounded-2xl border border-white/5 text-center flex flex-col items-center justify-center">
+                  <div className="bg-base-200/50 p-6 rounded-2xl border border-line text-center flex flex-col items-center justify-center">
                     <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Trudne Słowa")}</div>
                     <div className="text-4xl font-display font-bold text-warn">{userStats.difficultWords}</div>
                   </div>
@@ -2283,7 +2340,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       size="sm" 
                       variant="secondary" 
                       onClick={() => setShowStudentNotionSyncModal(true)}
-                      className="flex items-center gap-1.5 text-white font-medium border-white/10 hover:border-primary/50"
+                      className="flex items-center gap-1.5 text-text-hi font-medium border-line-strong hover:border-primary/50"
                       title="Sprawdź bazę Notion i zsynchronizuj lekcje kursanta"
                     >
                       <RefreshCw className="w-3.5 h-3.5 text-primary" />
@@ -2293,7 +2350,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       size="sm" 
                       variant="secondary" 
                       onClick={() => setShowCleanLessonsModal(true)}
-                      className="flex items-center gap-1.5 text-white font-medium border-white/10 hover:border-amber-400/50"
+                      className="flex items-center gap-1.5 text-text-hi font-medium border-line-strong hover:border-amber-400/50"
                       title="Uporządkuj dotychczas zaimportowane lekcje do czystego formatu bloków Notion"
                     >
                       <Wand2 className="w-3.5 h-3.5 text-amber-400" />
@@ -2370,10 +2427,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       {/* Wyraźne podsumowanie na samej górze na podstawie dat lekcji */}
                       {(brandNewPending.length > 0 || existingUpdates.length > 0) && (
                         <div className="p-4 rounded-2xl bg-gradient-to-r from-primary/15 via-base-200/90 to-amber-500/10 border border-primary/30 shadow-lg space-y-3">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-line-strong pb-2.5">
                             <div className="flex items-center gap-2">
                               <Sparkles size={18} className="text-primary animate-pulse shrink-0" />
-                              <h4 className="text-sm font-bold text-white flex items-center gap-2 flex-wrap">
+                              <h4 className="text-sm font-bold text-text-hi flex items-center gap-2 flex-wrap">
                                 <span>Nowości z Notion wg dat lekcji</span>
                                 {strictlyNewerLessons.length > 0 && (
                                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 font-bold uppercase">
@@ -2391,7 +2448,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
                           <div className="flex flex-wrap items-center gap-2">
                             {newestPendingDate && (
-                              <span className="text-xs px-3 py-1.5 rounded-xl bg-base-100/90 text-white font-mono border border-white/10 flex items-center gap-1.5 shadow-sm">
+                              <span className="text-xs px-3 py-1.5 rounded-xl bg-base-100/90 text-text-hi font-mono border border-line-strong flex items-center gap-1.5 shadow-sm">
                                 📅 <strong className="text-primary">{newestPendingDate}</strong>
                                 <span className="text-content-muted truncate max-w-[180px] sm:max-w-[320px]">
                                   — {newestPendingItem?.topic || 'Lekcja'}
@@ -2519,7 +2576,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                           </span>
                                         </div>
 
-                                        <h5 className="font-bold text-sm text-white truncate">{record.topic}</h5>
+                                        <h5 className="font-bold text-sm text-text-hi truncate">{record.topic}</h5>
 
                                         {record.lessonSummary ? (
                                           <p className="text-xs text-content-muted line-clamp-1 italic">{record.lessonSummary}</p>
@@ -2535,7 +2592,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                             variant="primary"
                                             onClick={() => handleUpdateExistingLessonRecord(record, existingMatch)}
                                             isLoading={isUpdatingThis}
-                                            className="text-xs font-bold bg-gradient-to-r from-blue-600 to-primary text-white hover:brightness-110 flex items-center gap-1.5 shadow-sm"
+                                            className="text-xs font-bold bg-gradient-to-r from-blue-600 to-primary text-text-hi hover:brightness-110 flex items-center gap-1.5 shadow-sm"
                                             title="Zaktualizuj istniejący rekord w bazie kursanta do widoku 4 bloków"
                                           >
                                             <RefreshCw size={13} />
@@ -2597,7 +2654,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                   {confirmedLessons.map((record, index) => (
                                     <Card 
                                       key={record.id}
-                                      className="relative group cursor-pointer p-3 rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5"
+                                      className="relative group cursor-pointer p-3 rounded-xl liquid-glass-hover bg-base-200/40 border border-line"
                                       onClick={() => openLessonRecordModal('view', record)}
                                     >
                                       <div className="absolute top-1/2 -translate-y-1/2 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -2684,7 +2741,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                             className={`flex items-center justify-between p-3.5 rounded-xl cursor-pointer transition-all border liquid-glass-tile ${
                                                 isExpanded 
                                                     ? 'bg-primary/10 border-primary/30 shadow-[0_0_15px_rgba(114,240,180,0.15)]' 
-                                                    : 'bg-base-200/40 border-white/10 hover:bg-base-200 hover:border-white/20'
+                                                    : 'bg-base-200/40 border-line-strong hover:bg-base-200 hover:border-line-strong'
                                             }`}
                                             onClick={() => setExpandedMonths(prev => ({ ...prev, [group.key]: !prev[group.key] }))}
                                         >
@@ -2715,7 +2772,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                                     return (
                                                         <Card 
                                                           key={record.id}
-                                                          className="relative group cursor-pointer p-3 rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5"
+                                                          className="relative group cursor-pointer p-3 rounded-xl liquid-glass-hover bg-base-200/40 border border-line"
                                                           onClick={() => openLessonRecordModal('view', record)}
                                                         >
                                                           <div className="absolute top-1/2 -translate-y-1/2 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -2781,14 +2838,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
                       {/* Sekcja podręczna: Odrzucone z Notion */}
                       {rejectedLessons.length > 0 && (
-                        <div className="mt-6 border border-white/10 rounded-2xl bg-base-200/30 overflow-hidden text-xs">
+                        <div className="mt-6 border border-line-strong rounded-2xl bg-base-200/30 overflow-hidden text-xs">
                           <div
                             onClick={() => setShowRejectedLessonsSection(prev => !prev)}
                             className="p-3.5 bg-base-300/40 flex items-center justify-between cursor-pointer hover:bg-base-300/70 transition-colors select-none"
                           >
                             <div className="flex items-center gap-2 text-content-muted font-medium">
                               <span className="text-sm">🛡️</span>
-                              <span className="font-bold text-white">Odrzucone tematy z Notion ({rejectedLessons.length})</span>
+                              <span className="font-bold text-text-hi">Odrzucone tematy z Notion ({rejectedLessons.length})</span>
                               <span className="text-[11px] text-content-muted hidden sm:inline">
                                 — aplikacja nie importuje ich przy kolejnych synchronizacjach
                               </span>
@@ -2802,7 +2859,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                           </div>
 
                           {showRejectedLessonsSection && (
-                            <div className="p-4 space-y-2 border-t border-white/5 bg-base-200/20">
+                            <div className="p-4 space-y-2 border-t border-line bg-base-200/20">
                               <p className="text-[11px] text-content-muted mb-3 leading-relaxed">
                                 Poniższe pozycje zostały odrzucone z Notion. Dzięki temu przy kolejnych synchronizacjach nie pojawią się ponownie w historii ani w podsumowaniach. Jeśli chcesz przywrócić dany temat, aby móc go ponownie zaimportować, kliknij „Przywróć”.
                               </p>
@@ -2810,7 +2867,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                 {rejectedLessons.map((rej) => (
                                   <div key={rej.id} className="py-2.5 flex items-center justify-between gap-3">
                                     <div className="min-w-0">
-                                      <div className="font-bold text-white truncate text-xs">{rej.topic}</div>
+                                      <div className="font-bold text-text-hi truncate text-xs">{rej.topic}</div>
                                       <div className="text-[10px] text-content-muted flex items-center gap-3 mt-0.5">
                                         {rej.date && <span>Data: {rej.date}</span>}
                                         <span>Odrzucono: {new Date(rej.rejectedAt).toLocaleDateString('pl-PL')}</span>
@@ -2842,7 +2899,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 {practiceLogs.length > 0 ? (
                   <div className="bg-base-200/50 rounded-xl border border-line overflow-x-auto">
                     <table className="w-full text-left text-sm">
-                      <thead className="bg-black/20 text-content-muted font-mono uppercase text-xs">
+                      <thead className="bg-base-100/50 text-content-muted font-mono uppercase text-xs">
                         <tr>
                           <th className="p-3">{i18n.t("Data")}</th>
                           <th className="p-3">{i18n.t("Typ")}</th>
@@ -2991,7 +3048,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               {userSets.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {userSets.map(set => (
-                    <Card key={set.id} className="p-4 cursor-pointer rounded-xl liquid-glass-hover bg-base-200/40 border border-white/5">
+                    <Card key={set.id} className="p-4 cursor-pointer rounded-xl liquid-glass-hover bg-base-200/40 border border-line">
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="font-bold text-lg">{set.title || (set as any).name}</h4>
                         {set.assignedByTeacher && (
@@ -3007,7 +3064,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   ))}
                 </div>
               ) : (
-                <div className="text-center p-8 bg-base-200/50 rounded-2xl border border-white/5 text-content-muted">
+                <div className="text-center p-8 bg-base-200/50 rounded-2xl border border-line text-content-muted">
                   {i18n.t("Brak przypisanych zestawów słówek.")}
                 </div>
               )}
@@ -3017,9 +3074,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           {activeTab === 'profile' && (
             <div className="max-w-4xl space-y-6 animate-fade-in">
               {/* Header */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-white/10">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-line-strong">
                 <div>
-                  <h3 className="text-xl font-bold text-white flex items-center gap-2.5">
+                  <h3 className="text-xl font-bold text-text-hi flex items-center gap-2.5">
                     <UserIcon size={20} className="text-primary" />
                     {i18n.t("Profil i parametry kursanta")}
                   </h3>
@@ -3038,16 +3095,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
 
               {/* CARD 1: DANE PODSTAWOWE I IDENTYFIKACJA */}
-              <div className="bg-base-200/50 border border-white/10 rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
-                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="bg-base-200/50 border border-line-strong rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
+                <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
                       <UserIcon size={16} />
                     </span>
-                    <h4 className="font-bold text-white text-base">{i18n.t("Dane podstawowe i identyfikacja")}</h4>
+                    <h4 className="font-bold text-text-hi text-base">{i18n.t("Dane podstawowe i identyfikacja")}</h4>
                   </div>
                   <span className="text-xs text-content-muted font-mono">
-                    ID: <span className="text-white/80 select-all" title="Kliknij, aby zaznaczyć">{selectedUser.id}</span>
+                    ID: <span className="text-text-hi/80 select-all" title="Kliknij, aby zaznaczyć">{selectedUser.id}</span>
                   </span>
                 </div>
 
@@ -3061,7 +3118,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       value={profileForm.firstName}
                       onChange={(e) => setProfileForm(prev => ({ ...prev, firstName: e.target.value }))}
                       placeholder={i18n.t("Wprowadź imię...")}
-                      className="w-full bg-base-100/60 border border-white/10 rounded-xl px-3.5 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all text-sm text-white"
+                      className="w-full bg-base-100/60 border border-line-strong rounded-xl px-3.5 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all text-sm text-text-hi"
                     />
                   </div>
                   <div>
@@ -3073,12 +3130,12 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       value={profileForm.lastName}
                       onChange={(e) => setProfileForm(prev => ({ ...prev, lastName: e.target.value }))}
                       placeholder={i18n.t("Wprowadź nazwisko...")}
-                      className="w-full bg-base-100/60 border border-white/10 rounded-xl px-3.5 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all text-sm text-white"
+                      className="w-full bg-base-100/60 border border-line-strong rounded-xl px-3.5 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all text-sm text-text-hi"
                     />
                   </div>
                 </div>
 
-                <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-base-100/40 p-3.5 rounded-xl border border-white/5">
+                <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-base-100/40 p-3.5 rounded-xl border border-line">
                   <div className="space-y-0.5">
                     <span className="text-xs font-bold text-content-muted uppercase tracking-wider block">
                       {i18n.t("Nazwa konta / Login (username)")}
@@ -3090,7 +3147,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="flex items-center gap-1.5 text-xs bg-white/5 hover:bg-white/10 border-white/10 text-white cursor-pointer"
+                    className="flex items-center gap-1.5 text-xs bg-line-soft hover:bg-line-soft border-line-strong text-text-hi cursor-pointer"
                     onClick={() => {
                       const newName = prompt('Podaj nową nazwę konta (username):', selectedUser.username);
                       if (newName && newName.trim() && newName.trim() !== selectedUser.username) {
@@ -3112,13 +3169,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
 
               {/* CARD 2: KOMUNIKACJA I MAILING */}
-              <div className="bg-base-200/50 border border-white/10 rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
-                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="bg-base-200/50 border border-line-strong rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
+                <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
                       <Mail size={16} />
                     </span>
-                    <h4 className="font-bold text-white text-base">{i18n.t("Komunikacja i powiadomienia e-mail (Mailing)")}</h4>
+                    <h4 className="font-bold text-text-hi text-base">{i18n.t("Komunikacja i powiadomienia e-mail (Mailing)")}</h4>
                   </div>
                   {profileForm.email && !profileForm.email.includes('@student.vocabboost.com') && profileForm.email.includes('@') && profileForm.email.includes('.') ? (
                     <span className="text-xs text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full flex items-center gap-1 font-semibold">
@@ -3140,7 +3197,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     value={profileForm.email}
                     onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
                     placeholder={i18n.t("np. kursant@gmail.com")}
-                    className="w-full bg-base-100/60 border border-white/10 rounded-xl px-3.5 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all font-mono text-sm text-white"
+                    className="w-full bg-base-100/60 border border-line-strong rounded-xl px-3.5 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all font-mono text-sm text-text-hi"
                   />
                   <p className="text-xs text-content-muted mt-1.5">
                     {i18n.t("Adres wykorzystywany do wysyłki prac domowych i ogłoszeń przez Resend API oraz do logowania konta.")}
@@ -3148,9 +3205,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 </div>
 
                 {/* Mailing subscription toggle */}
-                <div className="p-4 rounded-xl bg-base-100/40 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="p-4 rounded-xl bg-base-100/40 border border-line-strong flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="space-y-1">
-                    <span className="text-sm font-semibold text-white flex items-center gap-2">
+                    <span className="text-sm font-semibold text-text-hi flex items-center gap-2">
                       {profileForm.emailNotificationsDisabled ? (
                         <span className="text-warn flex items-center gap-1.5">
                           <BellOff size={16} />
@@ -3201,7 +3258,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 {/* Zaproszenie do aplikacji (Login, hasło, link) */}
                 <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="space-y-0.5">
-                    <span className="text-sm font-bold text-white flex items-center gap-2">
+                    <span className="text-sm font-bold text-text-hi flex items-center gap-2">
                       <Send size={15} className="text-primary" />
                       {i18n.t("Zaproszenie do aplikacji (Login, hasło, link)")}
                       {selectedUser.lastInviteSentAt && (
@@ -3228,7 +3285,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 {/* Współdzielony Notatnik lekcyjny */}
                 <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="space-y-0.5">
-                    <span className="text-sm font-bold text-white flex items-center gap-2">
+                    <span className="text-sm font-bold text-text-hi flex items-center gap-2">
                       <FileEdit size={15} className="text-emerald-400" />
                       {i18n.t("Współdzielony Notatnik")}
                     </span>
@@ -3250,13 +3307,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
 
               {/* CARD 3: POZIOM CEFR & KONFIGURACJA AI */}
-              <div className="bg-base-200/50 border border-white/10 rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
-                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="bg-base-200/50 border border-line-strong rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
+                <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
                       <Sparkles size={16} />
                     </span>
-                    <h4 className="font-bold text-white text-base">{i18n.t("Poziom zaawansowania i konfiguracja AI")}</h4>
+                    <h4 className="font-bold text-text-hi text-base">{i18n.t("Poziom zaawansowania i konfiguracja AI")}</h4>
                   </div>
                   {profileForm.level && (
                     <span className="px-2.5 py-1 bg-primary/10 text-primary border border-primary/30 rounded-lg text-xs font-mono font-bold">
@@ -3272,7 +3329,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   <select
                     value={profileForm.level}
                     onChange={(e) => setProfileForm(prev => ({ ...prev, level: e.target.value }))}
-                    className="w-full bg-base-100/60 border border-white/10 rounded-xl px-3.5 py-2.5 outline-none focus:border-primary text-white cursor-pointer transition-colors text-sm"
+                    className="w-full bg-base-100/60 border border-line-strong rounded-xl px-3.5 py-2.5 outline-none focus:border-primary text-text-hi cursor-pointer transition-colors text-sm"
                   >
                     <option value="">{i18n.t("Brak wybranego poziomu")}</option>
                     <option value="A1">A1 — Początkujący</option>
@@ -3296,7 +3353,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     onChange={(e) => setProfileForm(prev => ({ ...prev, description: e.target.value }))}
                     placeholder={i18n.t("Zainteresowania, branża, cele językowe, trudności gramatyczne...")}
                     rows={4}
-                    className="w-full bg-base-100/60 border border-white/10 rounded-xl p-3 outline-none focus:border-primary resize-y transition-colors text-sm text-white"
+                    className="w-full bg-base-100/60 border border-line-strong rounded-xl p-3 outline-none focus:border-primary resize-y transition-colors text-sm text-text-hi"
                   />
                   <p className="text-xs text-content-muted mt-1.5">
                     {i18n.t("AI uwzględnia ten opis podczas generowania zadań domowych, fiszek i scenariuszy lekcji.")}
@@ -3312,7 +3369,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     onChange={(e) => setProfileForm(prev => ({ ...prev, aiPrompt: e.target.value }))}
                     placeholder={i18n.t("Wpisz specyficzne zasady, wzornictwo lub słownictwo, którego AI ma ściśle przestrzegać...")}
                     rows={3}
-                    className="w-full bg-base-100/60 border border-white/10 rounded-xl p-3 outline-none focus:border-primary resize-y font-mono text-sm text-white transition-colors"
+                    className="w-full bg-base-100/60 border border-line-strong rounded-xl p-3 outline-none focus:border-primary resize-y font-mono text-sm text-text-hi transition-colors"
                   />
                   <p className="text-xs text-content-muted mt-1.5">
                     {i18n.t("Reguły te nadpisują domyślne zachowanie asystenta AI przy generowaniu ćwiczeń dla tego ucznia.")}
@@ -3321,22 +3378,22 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
 
               {/* CARD 4: INTEGRACJA NOTION & METRYKI AKTYWNOŚCI */}
-              <div className="bg-base-200/50 border border-white/10 rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
-                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="bg-base-200/50 border border-line-strong rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
+                <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
                       <RefreshCw size={16} />
                     </span>
-                    <h4 className="font-bold text-white text-base">{i18n.t("Integracja Notion & Aktywność")}</h4>
+                    <h4 className="font-bold text-text-hi text-base">{i18n.t("Integracja Notion & Aktywność")}</h4>
                   </div>
                   <span className="text-xs text-content-muted">
                     Baza Notion
                   </span>
                 </div>
 
-                <div className="p-4 rounded-xl bg-base-100/40 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="p-4 rounded-xl bg-base-100/40 border border-line-strong flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="space-y-1">
-                    <span className="text-sm font-semibold text-white flex items-center gap-2">
+                    <span className="text-sm font-semibold text-text-hi flex items-center gap-2">
                       <RefreshCw size={15} className="text-primary" />
                       {i18n.t("Synchronizacja lekcji i 4 bloków")}
                     </span>
@@ -3356,15 +3413,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                  <div className="p-3.5 rounded-xl bg-base-100/40 border border-white/5 text-center">
+                  <div className="p-3.5 rounded-xl bg-base-100/40 border border-line text-center">
                     <div className="text-xs text-content-muted uppercase tracking-wider mb-1 font-mono">
                       {i18n.t("Liczba wizyt")}
                     </div>
-                    <div className="text-2xl font-bold text-white">
+                    <div className="text-2xl font-bold text-text-hi">
                       {selectedUser.loginCount || 0}
                     </div>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-base-100/40 border border-white/5 text-center">
+                  <div className="p-3.5 rounded-xl bg-base-100/40 border border-line text-center">
                     <div className="text-xs text-content-muted uppercase tracking-wider mb-1 font-mono">
                       {i18n.t("Lekcje w bazie")}
                     </div>
@@ -3372,11 +3429,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       {lessonRecords.length}
                     </div>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-base-100/40 border border-white/5 text-center">
+                  <div className="p-3.5 rounded-xl bg-base-100/40 border border-line text-center">
                     <div className="text-xs text-content-muted uppercase tracking-wider mb-1 font-mono">
                       {i18n.t("Ostatnia aktywność")}
                     </div>
-                    <div className="text-xs font-mono text-white mt-1.5 truncate">
+                    <div className="text-xs font-mono text-text-hi mt-1.5 truncate">
                       {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleDateString('pl-PL') : i18n.t('Brak danych')}
                     </div>
                   </div>
@@ -3384,13 +3441,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
 
               {/* CARD 5: UPRAWNIENIA I ZARZĄDZANIE KONTEM */}
-              <div className="bg-base-200/50 border border-white/10 rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
-                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="bg-base-200/50 border border-line-strong rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
+                <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
                       <Shield size={16} />
                     </span>
-                    <h4 className="font-bold text-white text-base">{i18n.t("Uprawnienia i zarządzanie kontem")}</h4>
+                    <h4 className="font-bold text-text-hi text-base">{i18n.t("Uprawnienia i zarządzanie kontem")}</h4>
                   </div>
                 </div>
 
@@ -3409,7 +3466,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-2 ${
                         (profileForm.role || selectedUser.role) === 'user' 
                           ? 'bg-primary text-accent-ink shadow-md scale-[1.02]' 
-                          : 'bg-base-100/60 text-content-muted hover:text-text-hi border border-white/10'
+                          : 'bg-base-100/60 text-content-muted hover:text-text-hi border border-line-strong'
                       }`}
                     >
                       <UserIcon size={14} />
@@ -3424,7 +3481,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-2 ${
                         (profileForm.role || selectedUser.role) === 'teacher' 
                           ? 'bg-blue-500 text-white shadow-md scale-[1.02]' 
-                          : 'bg-base-100/60 text-content-muted hover:text-text-hi border border-white/10'
+                          : 'bg-base-100/60 text-content-muted hover:text-text-hi border border-line-strong'
                       }`}
                     >
                       <Sparkles size={14} />
@@ -3439,7 +3496,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-2 ${
                         (profileForm.role || selectedUser.role) === 'admin' 
                           ? 'bg-danger text-white shadow-md scale-[1.02]' 
-                          : 'bg-base-100/60 text-content-muted hover:text-text-hi border border-white/10'
+                          : 'bg-base-100/60 text-content-muted hover:text-text-hi border border-line-strong'
                       }`}
                     >
                       <Shield size={14} />
@@ -3449,9 +3506,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 </div>
 
                 {/* AI Live Monitor Setting */}
-                <div className="p-3.5 rounded-xl bg-base-100/40 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="p-3.5 rounded-xl bg-base-100/40 border border-line-strong flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="space-y-0.5">
-                    <span className="text-sm font-semibold text-white block">
+                    <span className="text-sm font-semibold text-text-hi block">
                       {selectedUser.showAiMonitor || selectedUser.canViewAiMonitor 
                         ? i18n.t("Widoczność modeli AI & Live Monitor: Włączone") 
                         : i18n.t("Widoczność modeli AI: Ukryte przed kursantem (domyślne)")}
@@ -3592,7 +3649,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <Button
                       variant="secondary"
                       size="sm"
-                      className={`cursor-pointer text-xs ${selectedUser.isArchived ? "bg-primary/20 text-primary hover:bg-primary/30 border-transparent" : "bg-base-100/60 text-content hover:bg-base-100 border-white/10"}`}
+                      className={`cursor-pointer text-xs ${selectedUser.isArchived ? "bg-primary/20 text-primary hover:bg-primary/30 border-transparent" : "bg-base-100/60 text-content hover:bg-base-100 border-line-strong"}`}
                       onClick={() => {
                         const archived = !selectedUser.isArchived;
                         const userRef = doc(db, 'users', selectedUser.id);
@@ -3707,7 +3764,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       {showDriveModal && (
         <div ref={driveModalAnim.overlayRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 md:p-6 overflow-y-auto">
           <div ref={driveModalAnim.contentRef} className="w-full max-w-2xl my-auto">
-            <div className="bg-base-100 p-6 rounded-xl border border-white/10 shadow-2xl relative">
+            <div className="bg-base-100 p-6 rounded-xl border border-line-strong shadow-2xl relative">
             <h3 className="text-xl font-bold mb-4">{i18n.t("Wybierz plik z Google Drive")}</h3>
             
             {driveError && (
@@ -3721,8 +3778,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             ) : (
               <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                 {driveFiles.map(file => (
-                  <div key={file.id} onClick={() => processDriveFile(file)} className="p-3 bg-base-200/50 hover:bg-base-200 rounded-lg cursor-pointer flex justify-between items-center border border-white/5 transition-colors">
-                    <span className="font-medium text-sm text-white truncate max-w-[80%]">{file.name}</span>
+                  <div key={file.id} onClick={() => processDriveFile(file)} className="p-3 bg-base-200/50 hover:bg-base-200 rounded-lg cursor-pointer flex justify-between items-center border border-line transition-colors">
+                    <span className="font-medium text-sm text-text-hi truncate max-w-[80%]">{file.name}</span>
                     <span className="text-xs text-content-muted">{file.mimeType.includes('pdf') ? 'PDF' : 'DOC'}</span>
                   </div>
                 ))}
@@ -3741,7 +3798,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       {showAIModal && (
         <div ref={aiModalAnim.overlayRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
           <div ref={aiModalAnim.contentRef} className="w-full max-w-4xl my-auto">
-            <div className="bg-base-100 p-6 rounded-xl border border-white/10 shadow-2xl relative">
+            <div className="bg-base-100 p-6 rounded-xl border border-line-strong shadow-2xl relative">
             <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
                <span className="text-primary">✨</span>  {i18n.t("AI Lesson Summary")}
                                           </h3>
@@ -3769,7 +3826,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <textarea
               value={rawMeetingNotes}
               onChange={e => setRawMeetingNotes(e.target.value)}
-              className="w-full bg-base-200 border border-white/10 rounded-lg p-4 text-white h-[50vh] mb-4 font-mono text-sm leading-relaxed"
+              className="w-full bg-base-200 border border-line-strong rounded-lg p-4 text-text-hi h-[50vh] mb-4 font-mono text-sm leading-relaxed"
               placeholder={i18n.t("Wklej tutaj surową transkrypcję z Google Meet lub własne notatki...")}
             />
             <div className="flex justify-end gap-3">
@@ -3787,7 +3844,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       {showBulkModal && (
         <div ref={bulkModalAnim.overlayRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
           <div ref={bulkModalAnim.contentRef} className="w-full max-w-4xl my-auto">
-            <div className="bg-base-100 p-6 rounded-xl border border-white/10 shadow-2xl relative">
+            <div className="bg-base-100 p-6 rounded-xl border border-line-strong shadow-2xl relative">
             <h3 className="text-2xl font-bold mb-2 flex items-center gap-2">
                <span className="text-primary">📦</span> {i18n.t("Bulk Import (Wiele lekcji)")}
             </h3>
@@ -3824,7 +3881,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             <textarea
               value={bulkNotes}
               onChange={e => setBulkNotes(e.target.value)}
-              className="w-full bg-base-200 border border-white/10 rounded-lg p-4 text-white h-[45vh] mb-4 font-mono text-sm leading-relaxed"
+              className="w-full bg-base-200 border border-line-strong rounded-lg p-4 text-text-hi h-[45vh] mb-4 font-mono text-sm leading-relaxed"
               placeholder={i18n.t("Wklej tutaj historię lekcji z Google Docs / plain text...")}
             />
             <div className="flex justify-end gap-3">
@@ -3846,7 +3903,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       {showBulkPreviewModal && (
         <div ref={bulkPreviewModalAnim.overlayRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
           <div ref={bulkPreviewModalAnim.contentRef} className="w-full max-w-4xl my-auto">
-            <div className="bg-base-100 p-6 rounded-xl border border-white/10 shadow-2xl relative">
+            <div className="bg-base-100 p-6 rounded-xl border border-line-strong shadow-2xl relative">
             <h3 className="text-2xl font-bold mb-2 flex items-center gap-2">
                <span className="text-primary">✨</span> {i18n.t("Podgląd zaimportowanych lekcji")}
             </h3>
@@ -3868,7 +3925,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               {bulkPreviewLessons.map((lesson, idx) => {
                 const isExpanded = expandedBulkIndex === idx;
                 return (
-                  <Card key={idx} className="bg-base-200/60 border border-white/10 p-0 overflow-hidden">
+                  <Card key={idx} className="bg-base-200/60 border border-line-strong p-0 overflow-hidden">
                     <div className="p-4 flex flex-col gap-3">
                       <div className="flex flex-col md:flex-row items-start md:items-center gap-3 w-full">
                         <div className="flex items-center gap-2 shrink-0">
@@ -3895,7 +3952,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                               setBulkPreviewLessons(newLessons);
                             }}
                             placeholder={i18n.t("Temat lekcji z dokumentu...")}
-                            className="font-bold text-sm bg-base-300 text-white border border-white/10 rounded px-2.5 py-1 flex-1 focus:outline-none focus:border-primary"
+                            className="font-bold text-sm bg-base-300 text-text-hi border border-line-strong rounded px-2.5 py-1 flex-1 focus:outline-none focus:border-primary"
                           />
                         </div>
                         <button
@@ -3910,7 +3967,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         </button>
                       </div>
 
-                      <div className="text-xs text-content-muted flex items-center gap-2 flex-wrap pt-1 border-t border-white/5">
+                      <div className="text-xs text-content-muted flex items-center gap-2 flex-wrap pt-1 border-t border-line">
                         <svg className="w-4 h-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                         <span className="font-semibold text-content-muted">{i18n.t("Przypisani kursanci")}:</span>
                         {users.map(u => {
@@ -3938,7 +3995,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                               className={`text-xs px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 ${
                                 isAssigned 
                                   ? 'bg-primary/20 border-primary/50 text-primary font-semibold' 
-                                  : 'bg-base-300/40 border-white/10 text-content-muted/60 hover:text-text-hi hover:bg-white/10'
+                                  : 'bg-base-300/40 border-line-strong text-content-muted/60 hover:text-text-hi hover:bg-line-soft'
                               }`}
                             >
                               <span>{isAssigned ? '✓' : '+'}</span>
@@ -3950,7 +4007,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     </div>
 
                     {isExpanded && (
-                      <div className="p-4 pt-2 border-t border-white/10 bg-base-200/80 text-sm space-y-3">
+                      <div className="p-4 pt-2 border-t border-line-strong bg-base-200/80 text-sm space-y-3">
                         <div>
                           <div className="font-bold text-content-muted mb-1 text-xs uppercase">{i18n.t("Notatki z lekcji")}</div>
                           <textarea
@@ -3960,7 +4017,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                               newLessons[idx] = { ...newLessons[idx], revisionNotes: e.target.value };
                               setBulkPreviewLessons(newLessons);
                             }}
-                            className="w-full bg-base-300 border border-white/10 rounded p-2 text-white text-xs min-h-[70px] leading-relaxed"
+                            className="w-full bg-base-300 border border-line-strong rounded p-2 text-text-hi text-xs min-h-[70px] leading-relaxed"
                           />
                         </div>
                         <div>
@@ -3972,7 +4029,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                               newLessons[idx] = { ...newLessons[idx], vocabularyText: e.target.value };
                               setBulkPreviewLessons(newLessons);
                             }}
-                            className="w-full bg-base-300 border border-white/10 rounded p-2 text-white font-mono text-xs min-h-[70px] leading-relaxed"
+                            className="w-full bg-base-300 border border-line-strong rounded p-2 text-text-hi font-mono text-xs min-h-[70px] leading-relaxed"
                           />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -3985,7 +4042,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                 newLessons[idx] = { ...newLessons[idx], studentSpeaking: e.target.value };
                                 setBulkPreviewLessons(newLessons);
                               }}
-                              className="w-full bg-base-300 border border-white/10 rounded p-2 text-white text-xs min-h-[50px]"
+                              className="w-full bg-base-300 border border-line-strong rounded p-2 text-text-hi text-xs min-h-[50px]"
                             />
                           </div>
                           <div>
@@ -3997,7 +4054,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                 newLessons[idx] = { ...newLessons[idx], thingsToImprove: e.target.value };
                                 setBulkPreviewLessons(newLessons);
                               }}
-                              className="w-full bg-base-300 border border-white/10 rounded p-2 text-white text-xs min-h-[50px]"
+                              className="w-full bg-base-300 border border-line-strong rounded p-2 text-text-hi text-xs min-h-[50px]"
                             />
                           </div>
                         </div>
@@ -4010,7 +4067,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                               newLessons[idx] = { ...newLessons[idx], suggestedFollowUp: e.target.value };
                               setBulkPreviewLessons(newLessons);
                             }}
-                            className="w-full bg-base-300 border border-white/10 rounded p-2 text-white text-xs min-h-[50px]"
+                            className="w-full bg-base-300 border border-line-strong rounded p-2 text-text-hi text-xs min-h-[50px]"
                           />
                         </div>
                       </div>
@@ -4087,7 +4144,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                             >
                               {i18n.t("Zaznacz wszystkich")}
                             </button>
-                            <span className="text-white/20">|</span>
+                            <span className="text-text-hi/20">|</span>
                             <button 
                               type="button" 
                               onClick={() => {
@@ -4114,7 +4171,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                   className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${
                                     isSelected 
                                       ? 'bg-primary/20 border border-primary/40 text-primary font-medium' 
-                                      : 'hover:bg-white/5 border border-transparent text-content-muted'
+                                      : 'hover:bg-line-soft border border-transparent text-content-muted'
                                   }`}
                                 >
                                   <div className="flex items-center gap-2 text-sm">
@@ -4173,7 +4230,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                             type="date" 
                             value={lessonFormDate} 
                             onChange={e => setLessonFormDate(e.target.value)}
-                            className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white font-mono"
+                            className="w-full bg-base-200 border border-line-strong rounded-lg p-2 text-text-hi font-mono"
                           />
                         </div>
                         <div>
@@ -4182,7 +4239,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                             type="text" 
                             value={lessonFormTopic} 
                             onChange={e => setLessonFormTopic(e.target.value)}
-                            className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white"
+                            className="w-full bg-base-200 border border-line-strong rounded-lg p-2 text-text-hi"
                             placeholder={i18n.t("Np. Present Perfect vs Past Simple")}
                           />
                         </div>
@@ -4194,7 +4251,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         <textarea 
                           value={lessonFormSummary} 
                           onChange={e => setLessonFormSummary(e.target.value)}
-                          className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
+                          className="w-full bg-base-200 border border-line-strong rounded-lg p-2 text-text-hi min-h-[120px] resize-y"
                           placeholder={i18n.t("Zapis z lekcji...")}
                           rows={5}
                         />
@@ -4204,7 +4261,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         <textarea 
                           value={lessonFormStudentSpeaking} 
                           onChange={e => setLessonFormStudentSpeaking(e.target.value)}
-                          className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
+                          className="w-full bg-base-200 border border-line-strong rounded-lg p-2 text-text-hi min-h-[120px] resize-y"
                           rows={5}
                         />
                       </div>
@@ -4213,7 +4270,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         <textarea 
                           value={lessonFormWords} 
                           onChange={e => setLessonFormWords(e.target.value)}
-                          className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white font-mono text-sm min-h-[120px] resize-y"
+                          className="w-full bg-base-200 border border-line-strong rounded-lg p-2 text-text-hi font-mono text-sm min-h-[120px] resize-y"
                           placeholder={i18n.t("apple - jabłko&#10;banana - banan")}
                           rows={5}
                         />
@@ -4238,7 +4295,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         <textarea 
                           value={lessonFormThingsToImprove} 
                           onChange={e => setLessonFormThingsToImprove(e.target.value)}
-                          className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
+                          className="w-full bg-base-200 border border-line-strong rounded-lg p-2 text-text-hi min-h-[120px] resize-y"
                           rows={5}
                         />
                       </div>
@@ -4247,7 +4304,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         <textarea 
                           value={lessonFormSuggestedFollowUp} 
                           onChange={e => setLessonFormSuggestedFollowUp(e.target.value)}
-                          className="w-full bg-base-200 border border-white/10 rounded-lg p-2 text-white min-h-[120px] resize-y"
+                          className="w-full bg-base-200 border border-line-strong rounded-lg p-2 text-text-hi min-h-[120px] resize-y"
                           rows={5}
                         />
                       </div>
@@ -4264,7 +4321,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         type="text"
                         value={lessonsDbSearch}
                         onChange={e => setLessonsDbSearch(e.target.value)}
-                        className="w-full bg-base-200 border border-white/10 rounded-lg p-2.5 pl-10 text-white text-sm"
+                        className="w-full bg-base-200 border border-line-strong rounded-lg p-2.5 pl-10 text-text-hi text-sm"
                         placeholder="Szukaj lekcji po temacie, słownictwie lub kursancie..."
                       />
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-3 top-3 text-content-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -4401,7 +4458,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                 className={`p-4 rounded-xl border transition-all flex items-start gap-4 ${
                                   isChecked 
                                     ? 'border-primary bg-primary/10 shadow-lg' 
-                                    : 'border-white/5 bg-base-200/50 hover:bg-base-200 hover:border-primary/30'
+                                    : 'border-line bg-base-200/50 hover:bg-base-200 hover:border-primary/30'
                                 }`}
                               >
                                 <div className="pt-1.5 flex items-center h-full">
@@ -4433,7 +4490,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                     <span className="text-xs px-2 py-0.5 rounded-full bg-base-300 text-content-muted font-mono">{item.record.date}</span>
                                     <span className="text-xs text-primary font-bold">Kursant: {item.studentName}</span>
                                   </div>
-                                  <h4 className="font-bold text-base text-white truncate">{item.record.topic}</h4>
+                                  <h4 className="font-bold text-base text-text-hi truncate">{item.record.topic}</h4>
                                   {item.record.lessonSummary && (
                                     <p className="text-xs text-content-muted line-clamp-2 italic">
                                       {item.record.lessonSummary}
@@ -4471,15 +4528,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       )}
                     </div>
                     
-                    <div className="flex justify-end pt-2 border-t border-white/5">
+                    <div className="flex justify-end pt-2 border-t border-line">
                       <Button variant="ghost" onClick={() => setShowLessonRecordModal(false)}>{i18n.t("Anuluj")}</Button>
                     </div>
                   </div>
                 )}
               </Card>
             ) : (
-              <Card className="w-full shadow-2xl border-white/10 bg-base-100 p-0 overflow-hidden">
-                <div className="p-6 border-b border-white/5 flex justify-between items-center bg-base-200/50">
+              <Card className="w-full shadow-2xl border-line-strong bg-base-100 p-0 overflow-hidden">
+                <div className="p-6 border-b border-line flex justify-between items-center bg-base-200/50">
                   <div>
                     <h3 className="text-2xl font-bold font-display">{viewingRecord?.topic}</h3>
                     <div className="font-mono text-sm text-primary mt-1">{viewingRecord?.date}</div>
@@ -4503,7 +4560,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     >
                       {i18n.t("Usuń")}
                     </Button>
-                    <button onClick={() => setShowLessonRecordModal(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors cursor-pointer">
+                    <button onClick={() => setShowLessonRecordModal(false)} className="p-2 hover:bg-line-soft rounded-lg transition-colors cursor-pointer">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-content-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
@@ -4518,7 +4575,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         ✨
                       </div>
                       <div>
-                        <h4 className="font-extrabold text-white text-sm sm:text-base flex items-center gap-2">
+                        <h4 className="font-extrabold text-text-hi text-sm sm:text-base flex items-center gap-2">
                           {i18n.t("Wygeneruj pracę domową z tej lekcji")}
                           <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
                             AI Generator
@@ -4577,7 +4634,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     type="text"
                     value={messageTitle}
                     onChange={(e) => setMessageTitle(e.target.value)}
-                    className="w-full bg-base-300 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary"
+                    className="w-full bg-base-300 border border-line-strong rounded-xl px-4 py-3 focus:outline-none focus:border-primary"
                   />
                 </div>
                 <div>
@@ -4586,7 +4643,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     rows={4}
-                    className="w-full bg-base-300 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary resize-none"
+                    className="w-full bg-base-300 border border-line-strong rounded-xl px-4 py-3 focus:outline-none focus:border-primary resize-none"
                     placeholder="Wpisz treść wiadomości..."
                   />
                 </div>
@@ -4630,7 +4687,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     type="text"
                     value={newPasswordForUser}
                     onChange={(e) => setNewPasswordForUser(e.target.value)}
-                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-2.5 outline-none focus:border-primary/50 transition-colors pr-10 font-mono text-center tracking-wider text-lg"
+                    className="w-full bg-base-200/40 backdrop-blur-md border border-line-strong rounded-lg p-2.5 outline-none focus:border-primary/50 transition-colors pr-10 font-mono text-center tracking-wider text-lg"
                     placeholder={i18n.t("Wpisz lub wygeneruj hasło")}
                   />
                   {newPasswordForUser && (
@@ -4694,7 +4751,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     type="text"
                     value={newStudentUsername}
                     onChange={(e) => setNewStudentUsername(e.target.value)}
-                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-3 focus:border-primary focus:outline-none"
+                    className="w-full bg-base-200/40 backdrop-blur-md border border-line-strong rounded-lg p-3 focus:border-primary focus:outline-none"
                     placeholder={i18n.t("e.g. John Doe")}
                   />
                 </div>
@@ -4705,7 +4762,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     type="email"
                     value={newStudentEmail}
                     onChange={(e) => setNewStudentEmail(e.target.value)}
-                    className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-3 focus:border-primary focus:outline-none text-sm font-mono"
+                    className="w-full bg-base-200/40 backdrop-blur-md border border-line-strong rounded-lg p-3 focus:border-primary focus:outline-none text-sm font-mono"
                     placeholder={i18n.t("np. uczen@gmail.com")}
                   />
                   <p className="text-xs text-content-muted mt-1">
@@ -4746,7 +4803,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       type="text"
                       value={passwordInput}
                       onChange={(e) => setPasswordInput(e.target.value)}
-                      className="w-full bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-3 focus:border-primary focus:outline-none"
+                      className="w-full bg-base-200/40 backdrop-blur-md border border-line-strong rounded-lg p-3 focus:border-primary focus:outline-none"
                       placeholder={i18n.t("Minimum 6 characters")}
                       minLength={6}
                     />
@@ -4801,10 +4858,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             initial={{ opacity: 0, y: 50, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 50, x: '-50%' }}
-            className="fixed bottom-6 left-1/2 z-[100] px-6 py-3 rounded-xl bg-base-300 border border-white/10 shadow-2xl flex items-center gap-3"
+            className="fixed bottom-6 left-1/2 z-[100] px-6 py-3 rounded-xl bg-base-300 border border-line-strong shadow-2xl flex items-center gap-3"
           >
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-white font-bold">{toastMessage.text}</span>
+            <span className="text-text-hi font-bold">{toastMessage.text}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -4817,7 +4874,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-base-100 border border-white/10 rounded-2xl p-6 shadow-2xl text-center space-y-4 overflow-hidden"
+              className="relative w-full max-w-md bg-base-100 border border-line-strong rounded-2xl p-6 shadow-2xl text-center space-y-4 overflow-hidden"
             >
               {/* Background ambient glow */}
               <div
@@ -4839,7 +4896,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-xl font-extrabold text-white">
+                <h3 className="text-xl font-extrabold text-text-hi">
                   {profileSaveModal.title}
                 </h3>
                 <p className="text-sm text-content-muted leading-relaxed">
@@ -5003,15 +5060,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       {/* Pop-up Modal dla Wyboru Kursanta */}
       {isStudentPickerOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="bg-base-200 border border-white/15 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden">
+          <div className="bg-base-200 border border-line-strong rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden">
             {/* Modal Header */}
-            <div className="p-5 border-b border-white/10 flex items-center justify-between bg-base-100/50">
+            <div className="p-5 border-b border-line-strong flex items-center justify-between bg-base-100/50">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-2xl bg-primary/20 text-primary border border-primary/30">
                   <Users size={24} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-extrabold text-white">Wybierz kursanta</h2>
+                  <h2 className="text-xl font-extrabold text-text-hi">Wybierz kursanta</h2>
                   <p className="text-xs text-content-muted mt-0.5">
                     Znajdź ucznia, aby wyświetlić jego kafelki (Profil, Statystyki, Historia, Testy, Słownictwo)
                   </p>
@@ -5019,14 +5076,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
               <button
                 onClick={() => setIsStudentPickerOpen(false)}
-                className="p-2 text-content-muted hover:text-text-hi rounded-xl hover:bg-white/10 transition-colors"
+                className="p-2 text-content-muted hover:text-text-hi rounded-xl hover:bg-line-soft transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
 
             {/* Filter Controls */}
-            <div className="p-4 bg-base-100/30 border-b border-white/5 space-y-3">
+            <div className="p-4 bg-base-100/30 border-b border-line space-y-3">
               <div className="relative">
                 <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted" />
                 <input
@@ -5034,7 +5091,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   placeholder="Szukaj po imieniu, nazwisku, emailu lub loginie..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2.5 bg-base-100 border border-white/10 rounded-xl text-sm text-white placeholder-content-muted focus:border-primary focus:outline-none"
+                  className="w-full pl-10 pr-10 py-2.5 bg-base-100 border border-line-strong rounded-xl text-sm text-text-hi placeholder-content-muted focus:border-primary focus:outline-none"
                   autoFocus
                 />
                 {searchQuery && (
@@ -5051,7 +5108,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <select
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
-                  className="bg-base-100 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-primary outline-none cursor-pointer"
+                  className="bg-base-100 border border-line-strong rounded-xl px-3 py-2 text-xs text-text-hi focus:border-primary outline-none cursor-pointer"
                 >
                   <option value="all">🌐 Wszystkie role</option>
                   <option value="user">👤 Kursanci (Uczniowie)</option>
@@ -5062,7 +5119,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <select
                   value={levelFilter}
                   onChange={(e) => setLevelFilter(e.target.value)}
-                  className="bg-base-100 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-primary outline-none cursor-pointer"
+                  className="bg-base-100 border border-line-strong rounded-xl px-3 py-2 text-xs text-text-hi focus:border-primary outline-none cursor-pointer"
                 >
                   <option value="all">🎯 Wszystkie poziomy</option>
                   <option value="A1">Poziom A1</option>
@@ -5091,7 +5148,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       handleSelectUser(u, targetTabAfterSelect || undefined);
                       setTargetTabAfterSelect(null);
                     }}
-                    className="group bg-base-100/70 hover:bg-base-100 border border-white/10 hover:border-primary/50 p-3.5 px-4 rounded-2xl cursor-pointer flex items-center justify-between gap-3 transition-all duration-200 hover:shadow-[0_0_20px_rgba(114,240,180,0.15)]"
+                    className="group bg-base-100/70 hover:bg-base-100 border border-line-strong hover:border-primary/50 p-3.5 px-4 rounded-2xl cursor-pointer flex items-center justify-between gap-3 transition-all duration-200 hover:shadow-[0_0_20px_rgba(114,240,180,0.15)]"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
                       <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-bold text-primary text-base flex-shrink-0 border border-primary/30 overflow-hidden group-hover:scale-105 transition-transform">
@@ -5103,7 +5160,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-white group-hover:text-primary transition-colors truncate">
+                          <span className="font-bold text-sm text-text-hi group-hover:text-primary transition-colors truncate">
                             {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
                           </span>
                           <span className="text-xs text-content-muted truncate">({u.username})</span>
@@ -5124,7 +5181,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         </span>
                       )}
                       <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider border ${
-                        u.role === 'admin' ? 'bg-danger/12 text-danger border-danger/30' : u.role === 'teacher' ? 'bg-primary/12 text-primary border-primary/30' : 'bg-white/5 text-text-2 border-line-strong'
+                        u.role === 'admin' ? 'bg-danger/12 text-danger border-danger/30' : u.role === 'teacher' ? 'bg-primary/12 text-primary border-primary/30' : 'bg-line-soft text-text-2 border-line-strong'
                       }`}>
                         {u.role === 'teacher' ? 'Nauczyciel' : u.role === 'admin' ? 'Admin' : 'Kursant'}
                       </span>
@@ -5136,8 +5193,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-white/10 bg-base-100/40 text-xs text-content-muted flex justify-between items-center">
-              <span>Znaleziono: <strong className="text-white">{filteredUsers.length}</strong> z {users.length} osób</span>
+            <div className="p-4 border-t border-line-strong bg-base-100/40 text-xs text-content-muted flex justify-between items-center">
+              <span>Znaleziono: <strong className="text-text-hi">{filteredUsers.length}</strong> z {users.length} osób</span>
               {archivedCount > 0 && (
                 <button
                   onClick={() => setShowArchived(v => !v)}
@@ -5237,13 +5294,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         >
           <div className="w-full max-w-6xl max-h-[94vh] bg-base-100 border border-primary/30 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-scale-up">
             {/* Header modalu */}
-            <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-white/10 flex items-center justify-between bg-base-200/70 shrink-0">
+            <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-line-strong flex items-center justify-between bg-base-200/70 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
                   <Mail className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white text-sm sm:text-base flex items-center gap-2">
+                  <h3 className="font-bold text-text-hi text-sm sm:text-base flex items-center gap-2">
                     Mailing & Powiadomienia e-mail
                     {unreadMailingCount > 0 && (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
@@ -5258,7 +5315,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
               <button
                 onClick={() => setIsMailingModalOpen(false)}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors border border-white/10 flex items-center gap-1 text-xs font-bold cursor-pointer"
+                className="p-2 rounded-xl bg-line-soft hover:bg-line-soft text-content-muted hover:text-text-hi transition-colors border border-line-strong flex items-center gap-1 text-xs font-bold cursor-pointer"
                 title="Zamknij okno mailingu (Esc)"
               >
                 <X size={16} />

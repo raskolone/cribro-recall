@@ -237,7 +237,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
         />
       )}
       
-      {/* Floating mobile edge handle button to open sidebar when closed */}
+      {/* Uchwyt menu przy krawędzi, na telefonie.
+
+          Stoi w PIONOWYM ŚRODKU ekranu, nie pod nagłówkiem: przy `top-20`
+          nachodził na kartę powitalną panelu kursanta i przecinał zdanie
+          w połowie. Środek krawędzi jest i wolny od treści, i najbliżej
+          kciuka trzymającego telefon. */}
       {!isOpen && (
         <button
           type="button"
@@ -246,7 +251,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onStartPract
               onOpen();
             }
           }}
-          className="fixed left-0 top-20 z-40 md:hidden flex items-center justify-center p-2.5 bg-base-200/90 backdrop-blur-md border border-l-0 border-white/20 text-primary rounded-r-xl shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:bg-primary/10 hover:border-primary/40 transition-all duration-300 group"
+          className="fixed left-0 top-1/2 -translate-y-1/2 z-40 md:hidden flex items-center justify-center p-2.5 bg-base-200/90 backdrop-blur-md border border-l-0 border-line-strong text-primary rounded-r-xl shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:bg-primary/10 hover:border-primary/40 transition-all duration-300 group"
           title={language === 'pl' ? 'Otwórz menu' : 'Open menu'}
           aria-label={language === 'pl' ? 'Otwórz menu' : 'Open menu'}
         >

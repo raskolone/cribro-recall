@@ -22,6 +22,17 @@ import PanelSection from './PanelSection';
  */
 
 interface StudentLessonPanelProps {
+  /**
+   * Który kawałek historii pokazać.
+   *
+   * Od przebudowy panelu na kafelki „ostatnia lekcja" stoi samodzielnie
+   * (bo do niej wraca się codziennie), a „wcześniejsze lekcje" otwierają
+   * się z kafelka listwy. Jeden komponent wciąż liczy jedno zapytanie do
+   * bazy — rozbicie na dwa dawałoby dwa odczyty tej samej kolekcji.
+   */
+  only?: 'latest' | 'earlier';
+  /** Bez własnego nagłówka — nagłówkiem jest kafelek listwy. */
+  headless?: boolean;
   /** Czyje lekcje pokazujemy — konto kursanta, także w podglądzie lektora. */
   studentId: string;
   /**
@@ -34,6 +45,8 @@ interface StudentLessonPanelProps {
 }
 
 const StudentLessonPanel: React.FC<StudentLessonPanelProps> = ({
+  only,
+  headless,
   studentId,
   variant = 'panel',
   onStudySet,
@@ -105,7 +118,7 @@ const StudentLessonPanel: React.FC<StudentLessonPanelProps> = ({
 
   if (lessons.length === 0) {
     return (
-      <section className="rounded-2xl border border-white/10 bg-base-200/40 p-6 text-center">
+      <section className="rounded-2xl border border-line-strong bg-base-200/40 p-6 text-center">
         <h2 className="text-base font-bold text-content">{L.emptyTitle}</h2>
         <p className="text-sm text-content-muted mt-2 leading-relaxed">{L.emptyBody}</p>
       </section>
@@ -134,9 +147,13 @@ const StudentLessonPanel: React.FC<StudentLessonPanelProps> = ({
     });
   })();
 
+  const showLatest = only !== 'earlier';
+  const showEarlier = only !== 'latest';
+
   return (
     <div className="space-y-3">
       {/* Ostatnia lekcja: ten sam pasek co reszta, tylko rozświetlony. */}
+      {showLatest && (
       <section className="neon-still rounded-2xl border border-primary/35 bg-gradient-to-b from-primary/[0.10] to-base-200/50 overflow-hidden">
         <button
           onClick={() => setIsLatestOpen((v) => !v)}
@@ -153,7 +170,7 @@ const StudentLessonPanel: React.FC<StudentLessonPanelProps> = ({
             </span>
           </div>
           <div className="flex items-center gap-3 mt-1.5">
-            <h2 className="flex-1 min-w-0 text-[17px] sm:text-lg font-bold text-white leading-snug">
+            <h2 className="flex-1 min-w-0 text-[17px] sm:text-lg font-bold text-text-hi leading-snug">
               {latestTopic}
             </h2>
             <ChevronDown
@@ -175,12 +192,14 @@ const StudentLessonPanel: React.FC<StudentLessonPanelProps> = ({
           </div>
         )}
       </section>
+      )}
 
-      {earlier.length > 0 && (
+      {showEarlier && earlier.length > 0 && (
         <PanelSection
           title={L.earlier}
           meta={L.count(earlier.length)}
           icon={<History size={16} />}
+          headless={headless}
         >
           <LessonHistoryMonths
             lessons={earlier}

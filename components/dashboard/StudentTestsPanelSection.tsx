@@ -8,11 +8,14 @@ import { StudentTest } from '../../types';
 import PanelSection from './PanelSection';
 
 interface StudentTestsPanelSectionProps {
+  /** Bez własnego nagłówka — używane, gdy nagłówkiem jest kafelek listwy. */
+  headless?: boolean;
   studentId?: string;
   onOpenTests: (testId?: string) => void;
 }
 
 export const StudentTestsPanelSection: React.FC<StudentTestsPanelSectionProps> = ({
+  headless,
   studentId,
   onOpenTests,
 }) => {
@@ -73,6 +76,7 @@ export const StudentTestsPanelSection: React.FC<StudentTestsPanelSectionProps> =
 
   return (
     <PanelSection
+      headless={headless}
       title={language === 'pl' ? 'Moje testy' : 'My Tests'}
       meta={metaText}
       icon={<GraduationCap size={16} />}
@@ -109,7 +113,7 @@ export const StudentTestsPanelSection: React.FC<StudentTestsPanelSectionProps> =
                         className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-base-100/60 hover:bg-base-100 border border-primary/25 text-left transition-all active:scale-[0.99] cursor-pointer"
                       >
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-sm font-bold text-white truncate">{test.title}</h4>
+                          <h4 className="text-sm font-bold text-text-hi truncate">{test.title}</h4>
                           <div className="flex items-center gap-2 text-xs text-content-muted mt-0.5">
                             <span>{test.questions?.length || 0} {language === 'pl' ? 'pytań' : 'questions'}</span>
                             {test.dueDate && (
@@ -141,10 +145,10 @@ export const StudentTestsPanelSection: React.FC<StudentTestsPanelSectionProps> =
                     <li key={test.id}>
                       <button
                         onClick={() => onOpenTests(test.id)}
-                        className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-base-200/50 hover:bg-base-200 border border-white/10 text-left transition-all cursor-pointer"
+                        className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-base-200/50 hover:bg-base-200 border border-line-strong text-left transition-all cursor-pointer"
                       >
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-sm font-bold text-white truncate">{test.title}</h4>
+                          <h4 className="text-sm font-bold text-text-hi truncate">{test.title}</h4>
                           <p className="text-xs text-content-muted mt-0.5 truncate">
                             {test.scope || (language === 'pl' ? 'Test sprawdzający' : 'Assessment test')}
                           </p>
@@ -167,7 +171,7 @@ export const StudentTestsPanelSection: React.FC<StudentTestsPanelSectionProps> =
             <div className="pt-2">
               <button
                 onClick={() => onOpenTests()}
-                className="w-full py-2.5 px-4 rounded-xl bg-base-100 hover:bg-white/10 text-xs font-bold text-primary border border-primary/30 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl bg-base-100 hover:bg-line-soft text-xs font-bold text-primary border border-primary/30 flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <span>{language === 'pl' ? 'Przejdź do moich testów' : 'Open tests view'}</span>
                 <ArrowRight size={14} />

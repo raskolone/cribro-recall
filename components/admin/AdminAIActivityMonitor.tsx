@@ -98,7 +98,12 @@ export const AdminAIActivityMonitor: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-[9999] pointer-events-auto select-none font-sans">
+    /* Nad przyciskiem zgłaszania błędu, nie na nim.
+
+       Oba wisiały w prawym dolnym narożniku (`bottom-4` tu, `bottom-6`
+       w BugReporter.tsx) i przy z-index 9999 monitor po prostu przykrywał
+       zgłaszanie błędów — na telefonie nie dało się go dotknąć. */
+    <div className="fixed bottom-20 right-4 z-[9999] pointer-events-auto select-none font-sans">
       <AnimatePresence>
         {currentDisplayEvent && !isMinimized && !isExpanded && (
           <motion.div
@@ -189,7 +194,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
           className={`flex items-center gap-2 px-3 min-h-11 rounded-2xl backdrop-blur-xl border transition-all duration-300 shadow-xl cursor-pointer ${
             activeCount > 0
               ? 'bg-primary/20 border-primary text-primary shadow-glow animate-pulse'
-              : 'bg-ink-2/90 hover:brightness-125 border-white/10 hover:border-primary/40 text-white/70 hover:text-text-hi'
+              : 'bg-ink-2/90 hover:brightness-125 border-line-strong hover:border-primary/40 text-content-muted hover:text-text-hi'
           }`}
         >
           {activeCount > 0 ? (
@@ -200,9 +205,9 @@ export const AdminAIActivityMonitor: React.FC = () => {
           ) : (
             <Cpu className="w-4 h-4 text-primary" />
           )}
-          <span className="text-xs font-semibold">AI Live Monitor</span>
+          <span className="hidden sm:inline text-xs font-semibold">AI Live Monitor</span>
           {events.length > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full bg-white/10 text-[10px] font-mono text-primary">
+            <span className="px-1.5 py-0.5 rounded-full bg-line-soft text-[10px] font-mono text-primary">
               {events.length}
             </span>
           )}

@@ -212,7 +212,7 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
                     const hwId = currentHomework?.id || ('generic_homework_' + (user?.id || ''));
                     handleHomeworkAction(hwId, false);
                   }}
-                  className="p-1.5 text-content-muted hover:text-text-hi rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                  className="p-1.5 text-content-muted hover:text-text-hi rounded-full hover:bg-line-soft transition-colors cursor-pointer"
                   title={language === 'pl' ? 'Zamknij' : 'Close'}
                 >
                   <X size={20} />
@@ -225,7 +225,7 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
                   <BookOpen size={28} />
                 </div>
                 <div>
-                  <h2 className="text-xl md:text-2xl font-black text-white leading-tight">
+                  <h2 className="text-xl md:text-2xl font-black text-text-hi leading-tight">
                     {language === 'pl' ? 'Masz nową pracę domową!' : 'You have new homework!'}
                   </h2>
                   <p className="text-sm md:text-base font-bold text-primary mt-1">
@@ -235,7 +235,7 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
               </div>
 
               {currentHomework?.instructions && (
-                <div className="p-3.5 bg-base-100/60 rounded-2xl border border-white/10 text-xs md:text-sm text-content-muted mb-6 leading-relaxed">
+                <div className="p-3.5 bg-base-100/60 rounded-2xl border border-line-strong text-xs md:text-sm text-content-muted mb-6 leading-relaxed">
                   {currentHomework.instructions}
                 </div>
               )}
@@ -258,7 +258,7 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
                     const hwId = currentHomework?.id || ('generic_homework_' + user.id);
                     handleHomeworkAction(hwId, false);
                   }}
-                  className="w-full py-2.5 px-4 bg-ink/72 hover:bg-white/10 text-content-muted hover:text-text-hi rounded-2xl text-xs md:text-sm font-semibold transition-all border border-white/10 flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full py-2.5 px-4 bg-ink/72 hover:bg-line-soft text-content-muted hover:text-text-hi rounded-2xl text-xs md:text-sm font-semibold transition-all border border-line-strong flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <X size={16} />
                   <span>{language === 'pl' ? 'Odhacz i zamknij powiadomienie' : 'Dismiss notification'}</span>
@@ -291,7 +291,7 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
                   <div className="absolute top-0 right-0 w-3 h-3 bg-secondary rounded-full border-2 border-base-100" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white text-sm md:text-base">
+                  <h3 className="font-bold text-text-hi text-sm md:text-base">
                     {language === 'pl' 
                       ? (type === 'set' ? `Nowy materiał: ${item.title}` : `Nowy test: ${item.title}`) 
                       : (type === 'set' ? `New material: ${item.title}` : `New test: ${item.title}`)}
@@ -312,7 +312,7 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
                 </button>
                 <button 
                   onClick={(e) => handleDismiss(e, item.id)}
-                  className="p-2 text-content-muted hover:text-text-hi rounded-lg hover:bg-white/10 transition-colors"
+                  className="p-2 text-content-muted hover:text-text-hi rounded-lg hover:bg-line-soft transition-colors"
                   title={language === 'pl' ? 'Zamknij' : 'Close'}
                 >
                   <X size={20} />

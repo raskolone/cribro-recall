@@ -218,10 +218,10 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Top row: Greeting & Real-time Stats */}
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5 pb-5 border-b border-white/10">
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5 pb-5 border-b border-line-strong">
         <div className="space-y-1.5 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-xl sm:text-2xl font-black tracking-tight text-white">
+            <span className="text-xl sm:text-2xl font-black tracking-tight text-text-hi">
               {greeting}
             </span>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/20 border border-primary/30 text-primary font-mono text-[11px] font-bold">
@@ -234,7 +234,7 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
             {totalTasksDone > 0 || totalSentences > 0 ? (
               <>
                 Świetna regularność! Masz już na swoim koncie{' '}
-                <strong className="text-white font-bold">{plZadania(totalTasksDone)}</strong> oraz{' '}
+                <strong className="text-text-hi font-bold">{plZadania(totalTasksDone)}</strong> oraz{' '}
                 <strong className="text-primary font-bold">{plZdania(totalSentences)}</strong>.
               </>
             ) : (
@@ -243,14 +243,19 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
           </p>
         </div>
 
-        {/* Quick Stats Rail */}
-        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0">
-          <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-black/40 border border-white/10 shadow-inner">
-            <div className="w-7 h-7 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
+        {/* Liczniki.
+
+            Na telefonie w JEDNYM rzędzie, ciaśniejsze: przy trzech
+            pigułkach w rozmiarze desktopowym rząd się zawijał i nagłówek
+            rósł o kolejne 74 px, przez co listwa kafelków spadała pod
+            zgięcie. To one mają być widoczne od razu, nie liczniki. */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl bg-base-100/70 border border-line-strong shadow-inner">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
               <CheckCircle2 size={16} />
             </div>
             <div>
-              <div className="font-mono text-base font-black text-white leading-none">
+              <div className="font-mono text-base font-black text-text-hi leading-none">
                 {totalTasksDone}
               </div>
               <div className="text-[10px] uppercase font-bold text-content-muted tracking-wider mt-0.5">
@@ -259,12 +264,12 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-black/40 border border-white/10 shadow-inner">
-            <div className="w-7 h-7 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
+          <div className="flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl bg-base-100/70 border border-line-strong shadow-inner">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
               <Languages size={16} />
             </div>
             <div>
-              <div className="font-mono text-base font-black text-white leading-none">
+              <div className="font-mono text-base font-black text-text-hi leading-none">
                 {totalSentences}
               </div>
               <div className="text-[10px] uppercase font-bold text-content-muted tracking-wider mt-0.5">
@@ -274,12 +279,12 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
           </div>
 
           {!streakHidden && currentStreak > 0 && (
-            <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-black/40 border border-amber-500/20 text-amber-400 shadow-inner">
-              <div className="w-7 h-7 rounded-xl bg-amber-500/15 flex items-center justify-center">
+            <div className="flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl bg-base-100/70 border border-amber-500/20 text-amber-400 shadow-inner">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
                 <Flame size={16} />
               </div>
               <div>
-                <div className="font-mono text-base font-black text-white leading-none">
+                <div className="font-mono text-base font-black text-text-hi leading-none">
                   {currentStreak}
                 </div>
                 <div className="text-[10px] uppercase font-bold text-amber-300/80 tracking-wider mt-0.5">
@@ -295,14 +300,14 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
       <div className="relative z-10 pt-5">
         {pendingTasks.length === 0 ? (
           /* STAN: BRAK PRZYPISANYCH ZADAŃ -> ZACHĘTA DO DODATKOWYCH ĆWICZEŃ */
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-black/35 border border-primary/20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-base-100/60 border border-primary/20">
             <div className="flex items-start sm:items-center gap-3.5 min-w-0">
               <div className="w-10 h-10 rounded-2xl bg-primary/15 text-primary border border-primary/30 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
                 <CheckCircle2 size={22} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-white">Brak przypisanych zadań</span>
+                  <span className="text-sm font-bold text-text-hi">Brak przypisanych zadań</span>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-primary/20 text-primary uppercase tracking-wide">
                     Na bieżąco
                   </span>
@@ -330,7 +335,7 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-warn opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-warn"></span>
                 </span>
-                <span className="text-xs font-bold uppercase tracking-wider text-white">
+                <span className="text-xs font-bold uppercase tracking-wider text-text-hi">
                   Zadania od lektora ({pendingTasks.length})
                 </span>
               </div>
@@ -344,12 +349,20 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
               </button>
             </div>
 
+            {/* Na telefonie JEDNO zadanie, na dużym ekranie dwa.
+
+                Nagłówek ma się zmieścić nad zgięciem razem z listwą
+                kafelków. Drugie zadanie nie znika — stoi w kafelku „Moje
+                zadania" i pod „Wszystkie prace domowe" obok. Tu ma być to,
+                co najbliżej terminu, a nie cała kolejka. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {pendingTasks.slice(0, 2).map((task) => (
+              {pendingTasks.slice(0, 2).map((task, position) => (
                 <div
                   key={task.id}
                   onClick={() => onOpenHomework(task.id)}
-                  className="p-3.5 rounded-2xl bg-black/40 hover:bg-white/[0.06] border border-white/10 hover:border-primary/40 transition-all cursor-pointer flex flex-col justify-between gap-3 group"
+                  className={`p-3.5 rounded-2xl bg-base-100/70 hover:bg-line-soft border border-line-strong hover:border-primary/40 transition-all cursor-pointer flex-col justify-between gap-3 group ${
+                    position === 0 ? 'flex' : 'hidden sm:flex'
+                  }`}
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-1">
@@ -363,12 +376,12 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
                         </span>
                       )}
                     </div>
-                    <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors line-clamp-1">
+                    <h4 className="text-sm font-bold text-text-hi group-hover:text-primary transition-colors line-clamp-1">
                       {task.title || 'Praca domowa'}
                     </h4>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[11px] text-content-muted">
+                  <div className="flex items-center justify-between pt-2 border-t border-line text-[11px] text-content-muted">
                     <span>
                       {Array.isArray(task.sentences) && task.sentences.length > 0
                         ? `${task.sentences.length} zdań`
@@ -382,8 +395,12 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
               ))}
             </div>
 
-            {/* Sub-bar encouraging extra practice even when homework is waiting */}
-            <div className="flex items-center justify-between pt-1 px-1 text-xs text-content-muted">
+            {/* Zachęta do praktyki dodatkowej — tylko na dużym ekranie.
+
+                Na telefonie to trzecie wejście do tego samego miejsca
+                (menu boczne i kafelek już je mają) i kosztowało 60 px
+                nad zgięciem. */}
+            <div className="hidden sm:flex items-center justify-between pt-1 px-1 text-xs text-content-muted">
               <span>Chcesz poćwiczyć więcej zdań poza pracą domową?</span>
               <button
                 onClick={onOpenExtraPractice}

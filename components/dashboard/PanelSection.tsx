@@ -8,6 +8,16 @@ import { ChevronDown } from 'lucide-react';
  * czeka na dziś, jest domyślnie zamknięte: kursant widzi spis rzeczy, które
  * może otworzyć, a nie ich zawartość naraz. Jeden wzór nagłówka dla wszystkich
  * sekcji, żeby dotknięcie w każdym miejscu znaczyło to samo.
+ *
+ * ══ TRYB `headless` ══
+ *
+ * Od przebudowy panelu na kafelki treść sekcji otwiera się pod listwą
+ * narzędzi, a rolę nagłówka gra sam kafelek. Sekcja rysuje wtedy wyłącznie
+ * treść: dwa nagłówki jeden nad drugim (kafelek i pasek sekcji) mówiłyby to
+ * samo dwa razy i dawały dwa miejsca do zwijania tego samego.
+ *
+ * Komponenty sekcji przekazują tę flagę dalej, więc ta sama sekcja działa
+ * w obu układach bez rozgałęziania kodu po stronie treści.
  */
 
 interface PanelSectionProps {
@@ -16,6 +26,8 @@ interface PanelSectionProps {
   meta?: string;
   icon?: ReactNode;
   defaultOpen?: boolean;
+  /** Bez własnego nagłówka i bez zwijania — nagłówkiem jest kafelek wyżej. */
+  headless?: boolean;
   children: ReactNode;
 }
 
@@ -24,12 +36,15 @@ const PanelSection: React.FC<PanelSectionProps> = ({
   meta,
   icon,
   defaultOpen = false,
+  headless = false,
   children,
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
+  if (headless) return <>{children}</>;
+
   return (
-    <section className="rounded-2xl border border-white/10 bg-base-200/40 overflow-hidden">
+    <section className="rounded-2xl border border-line-strong bg-base-200/40 overflow-hidden">
       <button
         onClick={() => setIsOpen((v) => !v)}
         aria-expanded={isOpen}
