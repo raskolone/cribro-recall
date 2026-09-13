@@ -38,3 +38,8 @@ src-tauri/gen/schemas/
 
 # Worktree'y agentów Claude Code — robocze kopie repo, nigdy nie trafiają do repo
 .claude/worktrees/
+
+# Eksport kont z Firebase Auth — hashe haseł i adresy kursantów.
+# Domyślnie ląduje poza repo (iCloud Drive), ale gdyby ktoś zmienił
+# CRIBRO_BACKUP_DIR na katalog projektu, to i tak nie wyjdzie na GitHub.
+auth-users-*.json
