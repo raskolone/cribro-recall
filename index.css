@@ -803,3 +803,156 @@ tr.liquid-glass-hover:hover {
   .glass-tile:hover { transform: none; }
   .glass-tile:hover::before { opacity: 0; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TRYB JASNY — BIAŁY TEKST, KTÓRY NIE JEST JUŻ BIAŁY
+
+   ══ NA CZYM POLEGAŁ PROBLEM ══
+
+   W komponentach siedzi ponad tysiąc wystąpień surowego `text-white`,
+   pisanych w czasach, gdy aplikacja miała tylko tryb nocny. Po włączeniu
+   trybu jasnego karty zrobiły się białe, a `text-white` zostało białe —
+   czyli biały tekst na białym tle. To jest dokładnie to „nie da się
+   odczytać, co tam jest": nie kwestia kontrastu o kilka procent za mało,
+   tylko całe zdania niewidoczne.
+
+   ══ DLACZEGO NIE ZAMIANA W 1169 MIEJSCACH ══
+
+   Bo część z nich jest POPRAWNA: biały tekst na wypełnieniu akcentem
+   (zielony przycisk, odznaka) ma być biały również w dzień. Zamiana
+   wszystkiego na token zrobiłaby z zielonych przycisków nieczytelne
+   ciemne napisy na ciemnej zieleni — czyli ten sam błąd, tylko odwrócony.
+   Ręczne przejście przez tysiąc miejsc to z kolei tysiąc okazji do pomyłki
+   i przegląd, którego nikt nie dokończy.
+
+   ══ CO ROBI TEN BLOK ══
+
+   Odwraca zależność: `text-white` przestaje znaczyć „biały", a zaczyna
+   znaczyć „kolor tekstu na tym, na czym stoję". Domyślnie to ciemny token
+   trybu jasnego; elementy z WYPEŁNIENIEM (przycisk akcentu, pasek stanu,
+   ciemna studzienka) ustawiają u siebie `--on-fill: #fff`, a że zmienne
+   CSS się dziedziczą, wszystko w środku wraca do bieli — bez ruszania
+   choćby jednego komponentu.
+
+   Lista selektorów celowo używa `[class~="…"]`, czyli DOKŁADNEGO dopasowania
+   pojedynczej klasy, a nie `*=`. `bg-primary` to wypełnienie i tekst ma na
+   nim być biały; `bg-primary/10` to ledwie widoczny odcień na białej karcie
+   i biały tekst byłby na nim niewidoczny. Różnica między nimi to jeden znak,
+   więc dopasowanie musi być dokładne.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root.light,
+:root[data-theme="light"] {
+  /* Formanty systemowe (pola, listy rozwijane, paski przewijania) rysują się
+     wg tej własności, nie wg naszych tokenów. Bez tego w trybie jasnym pola
+     tekstowe zostawały ciemne. */
+  color-scheme: light;
+}
+
+/* Powierzchnie, na których biel zostaje bielą. */
+:root.light [class~="bg-primary"],
+:root.light [class~="bg-primary/95"],
+:root.light [class~="bg-primary/90"],
+:root.light [class~="bg-primary/80"],
+:root.light [class~="bg-accent"],
+:root.light [class~="bg-danger"],
+:root.light [class~="bg-warn"],
+:root.light [class~="bg-info"],
+:root.light [class~="bg-ink"],
+:root.light [class~="bg-ink-2"],
+:root.light [class~="bg-black"],
+:root.light [class~="bg-black/80"],
+:root.light [class~="bg-black/70"],
+:root.light [class~="bg-amber-500"],
+:root.light [class~="bg-emerald-500"],
+:root.light [class~="bg-rose-500"],
+:root.light [class~="bg-red-500"],
+:root.light [class~="bg-blue-600"],
+:root[data-theme="light"] [class~="bg-primary"],
+:root[data-theme="light"] [class~="bg-primary/95"],
+:root[data-theme="light"] [class~="bg-primary/90"],
+:root[data-theme="light"] [class~="bg-primary/80"],
+:root[data-theme="light"] [class~="bg-accent"],
+:root[data-theme="light"] [class~="bg-danger"],
+:root[data-theme="light"] [class~="bg-warn"],
+:root[data-theme="light"] [class~="bg-info"],
+:root[data-theme="light"] [class~="bg-ink"],
+:root[data-theme="light"] [class~="bg-ink-2"],
+:root[data-theme="light"] [class~="bg-black"],
+:root[data-theme="light"] [class~="bg-black/80"],
+:root[data-theme="light"] [class~="bg-black/70"],
+:root[data-theme="light"] [class~="bg-amber-500"],
+:root[data-theme="light"] [class~="bg-emerald-500"],
+:root[data-theme="light"] [class~="bg-rose-500"],
+:root[data-theme="light"] [class~="bg-red-500"],
+:root[data-theme="light"] [class~="bg-blue-600"] {
+  --on-fill: #ffffff;
+}
+
+/* Kartka notatnika ma własną skalę kolorów i nie podlega tej regule —
+   `.pad-paper` ustawia `--on-fill` na swój kolor tekstu, żeby zakreślacze
+   i wklejki z `text-white` czytały się na papierze. */
+:root.light .pad-paper,
+:root[data-theme="light"] .pad-paper {
+  --on-fill: var(--pad-fg);
+}
+
+:root.light [class~="text-white"],
+:root[data-theme="light"] [class~="text-white"] {
+  color: var(--on-fill, var(--color-text-hi));
+}
+
+/* Przygaszone odmiany bieli. Poza wypełnieniem schodzą na skalę szarości
+   trybu jasnego — zachowują HIERARCHIĘ (nagłówek jaśniejszy od podpisu),
+   a nie dosłowną wartość, bo dosłowna wartość jest tu niewidoczna. */
+:root.light [class~="text-white/95"],
+:root.light [class~="text-white/90"],
+:root[data-theme="light"] [class~="text-white/95"],
+:root[data-theme="light"] [class~="text-white/90"] {
+  color: var(--on-fill, var(--color-text-hi));
+}
+
+:root.light [class~="text-white/80"],
+:root.light [class~="text-white/70"],
+:root[data-theme="light"] [class~="text-white/80"],
+:root[data-theme="light"] [class~="text-white/70"] {
+  color: var(--on-fill, var(--color-text-2));
+}
+
+:root.light [class~="text-white/60"],
+:root.light [class~="text-white/50"],
+:root.light [class~="text-white/40"],
+:root.light [class~="text-white/30"],
+:root[data-theme="light"] [class~="text-white/60"],
+:root[data-theme="light"] [class~="text-white/50"],
+:root[data-theme="light"] [class~="text-white/40"],
+:root[data-theme="light"] [class~="text-white/30"] {
+  color: var(--on-fill, var(--color-text-mute));
+}
+
+/* Obrysy i tła „na białym" — te same wystąpienia, ta sama historia.
+   Biały obrys na białej karcie jest niewidzialny, więc karta traci krawędź. */
+:root.light [class~="border-white/10"],
+:root.light [class~="border-white/20"],
+:root[data-theme="light"] [class~="border-white/10"],
+:root[data-theme="light"] [class~="border-white/20"] {
+  border-color: var(--color-line-strong);
+}
+
+:root.light [class~="bg-white/[0.04]"],
+:root.light [class~="bg-white/[0.03]"],
+:root.light [class~="bg-white/5"],
+:root[data-theme="light"] [class~="bg-white/[0.04]"],
+:root[data-theme="light"] [class~="bg-white/[0.03]"],
+:root[data-theme="light"] [class~="bg-white/5"] {
+  background-color: var(--color-line-soft);
+}
+
+:root.light [class~="bg-white/[0.08]"],
+:root.light [class~="bg-white/[0.07]"],
+:root.light [class~="bg-white/10"],
+:root[data-theme="light"] [class~="bg-white/[0.08]"],
+:root[data-theme="light"] [class~="bg-white/[0.07]"],
+:root[data-theme="light"] [class~="bg-white/10"] {
+  background-color: var(--color-line);
+}
