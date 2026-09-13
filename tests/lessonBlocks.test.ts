@@ -237,4 +237,39 @@ Dalsza dyskusja o regulacjach prawnych UE (AI Act).`,
   });
 });
 
+// ———————————— Lekcje z transkrypcji (Cribro Sift) ————————————
 
+describe('lekcje z transkrypcji (Cribro Sift)', () => {
+  const base = {
+    date: '2026-09-13',
+    topic: 'Small talk',
+    vocabularyText: 'commute',
+    source: 'live_transcript' as const,
+    liveTranscript: 'Teacher: ... Student: ...',
+  };
+
+  it('nie trafia do kursanta, dopóki lektor jej nie domknie', () => {
+    // Świeżo przysłana — surowy zapis rozmowy, kursant nie widzi.
+    assert.equal(isStudentVisibleLesson({ ...base, sessionStatus: 'draft' }), false);
+    // W trakcie lekcji — tym bardziej nie.
+    assert.equal(isStudentVisibleLesson({ ...base, sessionStatus: 'live' }), false);
+    // Bez etapu w ogóle — traktujemy jak niedomkniętą.
+    assert.equal(isStudentVisibleLesson(base), false);
+  });
+
+  it('domknięta przez lektora jest widoczna', () => {
+    assert.equal(isStudentVisibleLesson({ ...base, sessionStatus: 'completed' }), true);
+  });
+
+  it('lekcje z Notion nie zmieniły widoczności przy okazji', () => {
+    assert.equal(
+      isStudentVisibleLesson({
+        date: '2026-09-13',
+        topic: 'Past simple',
+        vocabularyText: 'used to',
+        source: 'notion',
+      }),
+      true
+    );
+  });
+});

@@ -16,6 +16,12 @@ import { importSelection, previewSync } from './notion/sync';
 export { checkNotionDaily } from './notion/dailyCheck';
 
 /**
+ * Odbiór transkrypcji z Cribro Sift — druga droga do historii lekcji,
+ * obok importu z Notion. Szczegóły i uzasadnienie: `transcript/ingest.ts`.
+ */
+export { ingestTranscript } from './transcript/ingest';
+
+/**
  * Silnik prac domowych v2 — wyłącznie re-eksport.
  *
  * Endpointy żyją w `homeworkV2/endpoints.ts`, żeby ten plik pozostał tym,

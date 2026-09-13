@@ -377,6 +377,25 @@ export function isLessonPendingConfirmation(record?: Partial<LessonRecord> | nul
     return true;
   }
 
+  /*
+   * Lekcja z transkrypcji (Cribro Sift) czeka na lektora, dopóki nie jest
+   * domknięta.
+   *
+   * Transkrypcja przychodzi sama, bez udziału człowieka, i zawiera surowy
+   * zapis rozmowy — łącznie z tym, co lektor mówił do siebie, pomyłkami
+   * modelu i fragmentami, których kursant widzieć nie powinien. Dopiero
+   * wygenerowanie bloków i zatwierdzenie przez lektora (`sessionStatus:
+   * 'completed'`) czyni z niej lekcję.
+   *
+   * Warunek jest osobny od flag `status`/`isPendingConfirmation`, choć punkt
+   * odbioru ustawia i je: gdyby kiedyś ktoś zatwierdził lekcję ręcznie,
+   * zapomniawszy o `sessionStatus`, ten warunek nadal zatrzyma surowy zapis
+   * przed kursantem.
+   */
+  if (record.source === 'live_transcript' && record.sessionStatus !== 'completed') {
+    return true;
+  }
+
   return false;
 }
 
