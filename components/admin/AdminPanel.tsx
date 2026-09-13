@@ -42,8 +42,8 @@ import TeacherOverview from './TeacherOverview';
 import LessonPlanner from './LessonPlanner';
 import { LessonPresentationView } from './presentation/LessonPresentationView';
 import { createPresentationFromScenario, savePresentationToStorage } from '../../services/presentationService';
-import NotionSyncButton from './NotionSyncButton';
 import StudentNotionSyncModal from './StudentNotionSyncModal';
+import LessonSourceBar from './LessonSourceBar';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
 import CleanLessonsModal from './CleanLessonsModal';
 import AdminMailingScreen from './AdminMailingScreen';
@@ -2004,9 +2004,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         )}
       </div>
 
-      <div className="flex justify-end">
-        <NotionSyncButton onImported={fetchUsers} />
-      </div>
+      {/* Globalna weryfikacja Notion przeniesiona do Bazy kursantów
+          (StandaloneStudentDatabaseScreen). Pytanie „czy w Notion jest coś
+          nowego o kimkolwiek" dotyczy całej bazy, więc stoi przy bazie —
+          a nie na pulpicie obok narzędzi do prowadzenia lekcji. */}
 
       {/* JEŚLI AKTYWNY JEST MODUŁ OGÓLNY (Planer, Prezentacja) */}
       {activeTab && ['lesson-planner', 'presentation'].includes(activeTab) && (
@@ -2348,6 +2349,19 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
           {activeTab === 'history' && (
             <div className="space-y-8">
+              {/* Skąd bierze się ta historia — i czy coś czeka na lektora.
+
+                  Synchronizacja z Notion stała wcześniej jako jeden z sześciu
+                  przycisków w pasku narzędzi obok eksportu PDF i porządkowania
+                  lekcji, czyli wyglądała na czynność równorzędną z nimi.
+                  Źródło danych nie jest czynnością — jest odpowiedzią na
+                  pytanie „skąd to się wzięło i czego tu brakuje". */}
+              <LessonSourceBar
+                lessons={lessonRecords}
+                studentName={selectedUser?.firstName || selectedUser?.username}
+                onSyncNotion={() => setShowStudentNotionSyncModal(true)}
+              />
+
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div className="flex items-center gap-4">
@@ -2373,16 +2387,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     >
                       <Download className="w-4 h-4" />
                       {isExportingPDF ? 'Generowanie PDF...' : 'Eksportuj do PDF'}
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="secondary" 
-                      onClick={() => setShowStudentNotionSyncModal(true)}
-                      className="flex items-center gap-1.5 text-text-hi font-medium border-line-strong hover:border-primary/50"
-                      title="Sprawdź bazę Notion i zsynchronizuj lekcje kursanta"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5 text-primary" />
-                      <span>{i18n.t("Synchronizuj z Notion")}</span>
                     </Button>
                     <Button 
                       size="sm" 

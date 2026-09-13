@@ -8,6 +8,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { ArrowLeft, Database, Plus, X, Copy, Check } from 'lucide-react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import NotionSyncButton from './NotionSyncButton';
 
 interface StandaloneStudentDatabaseScreenProps {
   onSelectUser: (userId: string, targetTab?: string) => void;
@@ -236,6 +237,15 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* GLOBALNA WERYFIKACJA — wszyscy kursanci naraz.
+
+              Synchronizacja pojedynczego kursanta siedzi w jego profilu, przy
+              jego historii lekcji, bo tam dotyczy jednej osoby. Tutaj jest
+              pytanie drugiego rodzaju: „czy w Notion pojawiło się cokolwiek,
+              o czym aplikacja nie wie" — dla całej bazy, bez wchodzenia
+              w dwadzieścia profili po kolei. Baza kursantów jest jedynym
+              ekranem, na którym to pytanie ma sens. */}
+          <NotionSyncButton onImported={fetchUsers} />
           <Button
             size="sm"
             onClick={() => setShowCreateModal(true)}
