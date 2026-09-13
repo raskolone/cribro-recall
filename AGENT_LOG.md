@@ -850,3 +850,57 @@ Ryzyka:
 - `firebase.ts` to plik inicjujący połączenie z bazą: dodany blok jest
   podwójnie bramkowany, a `import.meta.env` czytane ostrożnie, bo testy
   importują ten plik w gołym Node.
+
+---
+
+2026-09-13 (runda 3) — Claude Code / Opus 5
+
+Zadanie: sześć zmian zgłoszonych przez Macieja po obejrzeniu panelu —
+  duplikaty kafelków, historia lekcji w profilu kursanta, notatnik jak
+  dokument, kompaktowa lista prac domowych, nowy tryb jasny, likwidacja
+  menu bocznego.
+
+Zrobione (commit na etap):
+- `AdminPanel.tsx` — usunięte duplikaty Notatnika i Prezentacji z listwy,
+  „Profil kursantów" → trasa `students-database`, „Podgląd kursanta"
+  dodany do „Więcej narzędzi", wejście do scenariuszy w Planerze.
+- `components/admin/LessonSourceBar.tsx` (nowy) — źródła historii lekcji.
+- `StandaloneStudentDatabaseScreen.tsx` — globalna weryfikacja Notion.
+- `services/scratchpadService.ts` — `adoptScratchpadForStudent`, neutralny
+  szablon notatnika roboczego.
+- `ScratchpadModal.tsx` — pasek przypisania kursanta w trakcie pisania.
+- `ScratchpadEditor.tsx` — kartka w kości słoniowej w obu motywach.
+- `components/dashboard/HomeworkTaskList.tsx` (nowy) + przełącznik widoku
+  w `HomeworkScreen.tsx`; `hooks/useMediaQuery.ts` (nowy).
+- `design/theme/tokens.css` + `index.css` — tryb jasny przepisany, tokeny
+  konstelacji; `ConstellationBackground.tsx` czyta kolor z motywu.
+- `components/ui/TopBar.tsx` (nowy) — pasek górny + panel zarządzania.
+- `Dashboard.tsx` — `TopBar` zamiast `Sidebar`, nasłuch `bug_reports`.
+- `TodayScreen.tsx` / `StudentToolBar.tsx` — kafelki słownictwa i praktyki
+  dodatkowej, `domId` dla samouczka.
+- `components/dashboard/Sidebar.tsx` — USUNIĘTY.
+
+Nie dokończone / do sprawdzenia:
+- Modal „Nowa praca domowa" dubluje teraz pasek górny — do decyzji Macieja.
+- Ekrany poza panelami (fiszki, prezentacja, mailing, ustawienia) nie były
+  oglądane w nowym trybie jasnym.
+- Pozostałe ~780 wystąpień `text-white` poza panelami.
+- Scenariusze są w Planerze jako przycisk do osobnego ekranu, nie jako
+  zakładka wewnątrz — pełna przebudowa modułu to osobne zadanie.
+
+Decyzje architektoniczne:
+- Przypisanie notatnika przenosi treść do `sp_<uid>` zamiast dopinać pole,
+  bo ekran kursanta szuka notatnika po tym identyfikatorze.
+- Lista prac domowych to siatka, nie `<table>`: tabela z pięcioma
+  kolumnami wymusza poziome przewijanie, którego nie ma nigdzie indziej.
+- Kafelki listwy bez liczników — sygnał „coś czeka" z flag w profilu,
+  zero nowych zapytań.
+- Kartka notatnika NIE przełącza się z motywem (jedyne takie miejsce).
+- Tryb jasny: rozdzielenie niesie różnica jasności i obrys, nie cień.
+
+Ryzyka:
+- `firestore.rules` NIETKNIĘTY (44/44 testów reguł przechodzi).
+- Usunięcie `Sidebar.tsx` to zmiana nawigacji w całej aplikacji —
+  inwentaryzacja wejść zrobiona przed usunięciem i opisana w CHANGELOG.
+- Nowy nasłuch `bug_reports` w `Dashboard.tsx` odpala się wyłącznie dla
+  roli `admin`.

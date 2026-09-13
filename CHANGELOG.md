@@ -90,6 +90,72 @@ wyłącznie `tsc --noEmit`, `npm test`, `npm run build`, `npm run test:rules`.
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
+### 🧭 Sześć etapów przebudowy nawigacji i tryb jasny od nowa (2026-09-13, runda 3)
+
+Zgłoszenie Macieja po obejrzeniu panelu. Każdy etap osobnym commitem.
+
+**1. Koniec z tym samym narzędziem w dwóch miejscach.** Notatnik i Prezentacja
+stały na jednym ekranie dwa razy — jako główne kafelki i jeszcze raz
+w listwie. „Profil kursantów" prowadzi teraz PROSTO do bazy kursantów
+zamiast otwierać własną, skróconą listę (były to dwa spisy tych samych
+ludzi). „Historia lekcji" zdjęta z narzędzi — jest zakładką w profilu
+kursanta. „Baza scenariuszy" zdjęta z menu i wstawiona do Planera lekcji:
+scenariusz jest materiałem, z którego powstaje lekcja.
+
+**2. Źródło historii lekcji widoczne w profilu.** Nowy `LessonSourceBar`
+liczy, ile lekcji przyszło z Notion, ile z transkrypcji Sifta i ile
+transkrypcji czeka na bloki. Dwa źródła dostają dwa różne interfejsy, bo
+to dwie różne czynności: Notion jest ciągniony (ma przycisk), transkrypcje
+są pchane (nie ma czego kliknąć). Globalna weryfikacja całej bazy
+przeniesiona z pulpitu do Bazy kursantów.
+
+**3. Notatnik otwiera się pusty, kursant dochodzi w trakcie.** Kafelek
+stawiał wcześniej najpierw listę kursantów. Teraz notatnik otwiera się od
+razu jako roboczy, a przypisanie PRZENOSI treść do stałego notatnika
+kursanta (`sp_<uid>`) — dopięcie samego pola dałoby notatnik, który wygląda
+na przypisany, a którego kursant nigdy nie zobaczy. Notatnik z historią
+dostaje treść na końcu, po kresce; świeży jest podmieniany. Kartka do
+pisania zawsze w kolorze kości słoniowej, niezależnie od motywu: ciemna
+kartka czyta się jak panel aplikacji, a nie jak dokument.
+
+**4. Prace domowe jako kompaktowa lista.** Domyślnie lista, kafelki do
+wyboru, na telefonie kafelki obowiązkowo (wiersz listy ma cele dotyku
+wielkości znaczka). Nowy `hooks/useMediaQuery.ts` z jednym progiem `md`
+dla całej aplikacji.
+
+**5. Tryb jasny przepisany.** Poprzedni był „papierowy": kość słoniowa
+(#f7f5f0), wgłębienia w ciemniejszej kości, cienie o kryciu 0,22–0,30
+rozmyte na 24–56 px i dwa kolory akcentu. Teraz układ z narzędzi do pracy
+na danych: chłodne szare tło (#f2f4f7), białe karty, włosowe obrysy, cienie
+ledwie widoczne (0,06–0,10), poświata zamieniona na obrys, jeden akcent
+ściemniony do #0d8a5f (kontrast 4,6:1 na bieli — wolno nim pisać).
+**Konstelacja w tle** miała kolor wpisany na sztywno jako zieleń trybu
+nocnego, więc w trybie jasnym jej praktycznie nie było; teraz barwa i krycie
+są tokenem, a tryb jasny dostaje ciemne linie w wyższym kryciu.
+
+**6. Menu boczne usunięte w obu rolach.** Niosło nawigację (przejęły kafelki)
+i ustawienia konta (nigdy nie potrzebowały stałej kolumny). Nowy `TopBar`:
+znak marki, jedno zdanie o tym, co czeka, koło zębate. Pod kołem cały panel
+zarządzania — ustawienia, pomoc, diagnostyka, motyw, język, wylogowanie.
+Zgłoszony błąd świeci czerwoną kropką na kole, zanim ktokolwiek otworzy
+panel. Przed usunięciem inwentaryzacja: „Moje słownictwo" i „Praktyka
+dodatkowa" (kursant) oraz „Podgląd kursanta" (lektor) istniały WYŁĄCZNIE
+w menu i dostały kafelki. Samouczek przepięty na nowe elementy.
+`Sidebar.tsx` usunięty z repo.
+
+**Stan weryfikacji:** 293/293 testów jednostkowych, 44/44 testów reguł na
+emulatorze, `tsc --noEmit` czysto, oba buildy przechodzą. Zrzuty
+z działającej aplikacji (emulatory + Playwright): panel lektora 1280 px
+i panel kursanta 390 px w trybie jasnym, panel kursanta 390 px w trybie
+ciemnym, panel zarządzania pod kołem zębatym — bez poziomego suwaka, bez
+błędów w konsoli.
+
+**Do rozważenia (nie zrobione):** modal „Nowa praca domowa"
+(`StudentNotifications`) mówi teraz to samo, co pasek górny, tylko blokuje
+ekran. Dwa kanały na jeden fakt — ale usunięcie ścieżki powiadomień bez
+zgody byłoby zmianą zachowania, nie porządkiem.
+
+
 ### 📱 Widok mobilny: kafelki w panelu kursanta i naprawa trybu jasnego (2026-09-13)
 
 Podstawa: `~/Downloads/design_handoff_cribro_mockup` (trzy makiety HTML +
