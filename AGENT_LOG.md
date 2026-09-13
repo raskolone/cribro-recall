@@ -709,3 +709,12 @@ Ryzyka: `firestore.rules` **nietknięty** w całej tej rundzie — odczyt
 korzysta z reguł, które już tam były. Wdrożone na produkcję Cloud
 Functions — `notifyStudentOnHomeworkGraded` i `checkNotionDaily` teraz
 faktycznie działają na żywo, nie tylko w repo.
+
+**Dopisek operacyjny (nie dotyczy kodu):** port 3000 lokalnego serwera
+deweloperskiego bywa w tym środowisku zajęty przez pozostałość po
+wcześniejszym procesie w tle (infrastruktura agenta, nie coś w repo) —
+`lsof -i :3000` pokazuje wtedy nasłuch na `localhost:3000` osobno od
+właściwego procesu `tsx server.ts` na `*:3000`, a curl trafia w ten
+pierwszy i dostaje gołe 404 na każdej trasie, łącznie z `/api/*`. Naprawa:
+`npm run dev` na innym porcie (`PORT=3001 npm run dev`) zamiast walczyć o
+3000. Nie jest to bug w `server.ts`.
