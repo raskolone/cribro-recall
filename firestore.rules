@@ -187,7 +187,25 @@ service cloud.firestore {
              isValidSimpleDateString(data.date) &&
              validStringLength('topic', 1, 200) &&
              isValidDateString(data.createdAt) &&
-             isValidDateString(data.updatedAt);
+             isValidDateString(data.updatedAt) &&
+             // ── Druga droga do lekcji: transkrypcja z Cribro Sift ──
+             //
+             // Pola są opcjonalne, bo rekordy z Notion ich nie mają i nie
+             // mogą przestać się zapisywać. Sprawdzamy więc wyłącznie to,
+             // czy obecne pole ma sensowny typ i rozmiar.
+             //
+             // Limit transkrypcji: dokument Firestore ma twardy sufit 1 MB
+             // i przy jego przekroczeniu NIE zapisuje się nic — razem z całą
+             // lekcją. Odrzucenie samej transkrypcji tutaj jest błędem, który
+             // widać od razu i który nie kasuje reszty pracy. 500 000 znaków
+             // to około ośmiu godzin mowy, czyli sufit, którego pojedyncza
+             // lekcja nie dotknie, a zapętlony model owszem.
+             (!('source' in data) || data.source in ['notion', 'manual', 'ai', 'live_transcript']) &&
+             (!('liveTranscript' in data) || (data.liveTranscript is string && data.liveTranscript.size() <= 500000)) &&
+             (!('sessionStatus' in data) || data.sessionStatus in ['draft', 'live', 'completed']) &&
+             isValidOptionalString('drillDraft', 0, 20000) &&
+             isValidOptionalString('siftSessionId', 1, 200) &&
+             (!('transcriptReceivedAt' in data) || isValidDateString(data.transcriptReceivedAt));
     }
 
     function isValidVocabularySet(data) {

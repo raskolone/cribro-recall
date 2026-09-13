@@ -594,3 +594,88 @@ test('v2: zestawy v1 nie zyskały nowych uprawnień przy okazji', async () => {
     setDoc(doc(student('ala'), 'specialTasks/task-v1-nowe'), { studentUid: 'ala' })
   );
 });
+
+// ———————————— Lekcje z transkrypcji (Cribro Sift) ————————————
+
+/** Minimalny poprawny rekord lekcji — tyle wymaga isValidLessonRecord. */
+const lessonBase = () => ({
+  studentId: 'ala',
+  date: '2026-09-13',
+  topic: 'Small talk',
+  vocabularyText: 'commute, rush hour',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
+
+test('transkrypcja: lektor zapisuje lekcję z nowymi polami', async () => {
+  await assertSucceeds(
+    setDoc(doc(teacherByEmail(), 'users/ala/lessonRecords/lek-1'), {
+      ...lessonBase(),
+      source: 'live_transcript',
+      liveTranscript: 'Teacher: how was your week? Student: I was commuting a lot.',
+      sessionStatus: 'draft',
+      siftSessionId: 'sift-2026-09-13-001',
+      transcriptReceivedAt: new Date().toISOString(),
+    })
+  );
+});
+
+test('transkrypcja: lekcje z Notion zapisują się dalej bez nowych pól', async () => {
+  // Cała stawka tej zmiany: stara droga nie może przestać działać.
+  await assertSucceeds(
+    setDoc(doc(teacherByEmail(), 'users/ala/lessonRecords/lek-notion'), {
+      ...lessonBase(),
+      source: 'notion',
+      notionPageId: 'abc-123',
+    })
+  );
+});
+
+test('transkrypcja: nieznane źródło nie przechodzi', async () => {
+  await assertFails(
+    setDoc(doc(teacherByEmail(), 'users/ala/lessonRecords/lek-2'), {
+      ...lessonBase(),
+      source: 'skądkolwiek',
+    })
+  );
+});
+
+test('transkrypcja: nieznany etap sesji nie przechodzi', async () => {
+  await assertFails(
+    setDoc(doc(teacherByEmail(), 'users/ala/lessonRecords/lek-3'), {
+      ...lessonBase(),
+      sessionStatus: 'trwa',
+    })
+  );
+});
+
+test('transkrypcja: zapętlony model nie wepchnie pół miliona znaków', async () => {
+  await assertFails(
+    setDoc(doc(teacherByEmail(), 'users/ala/lessonRecords/lek-4'), {
+      ...lessonBase(),
+      liveTranscript: 'x'.repeat(500001),
+    })
+  );
+});
+
+test('transkrypcja: kursant nie dopisze sobie lekcji ani transkrypcji', async () => {
+  await assertFails(
+    setDoc(doc(student('ala'), 'users/ala/lessonRecords/lek-5'), {
+      ...lessonBase(),
+      source: 'live_transcript',
+      liveTranscript: 'cokolwiek',
+    })
+  );
+});
+
+test('transkrypcja: kursant czyta swoją lekcję, ale nie cudzą', async () => {
+  await seed((db) =>
+    setDoc(doc(db, 'users/ala/lessonRecords/lek-6'), {
+      ...lessonBase(),
+      liveTranscript: 'zapis rozmowy',
+    })
+  );
+
+  await assertSucceeds(getDoc(doc(student('ala'), 'users/ala/lessonRecords/lek-6')));
+  await assertFails(getDoc(doc(student('bob'), 'users/ala/lessonRecords/lek-6')));
+});

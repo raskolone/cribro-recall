@@ -359,10 +359,46 @@ export interface LessonRecord {
   pendingReason?: string;
   /** Czy data została wykryta, czy jest brakująca w Notion */
   isDateMissing?: boolean;
-  /** Źródło pochodzenia rekordu */
-  source?: 'notion' | 'manual' | 'ai';
+  /**
+   * Źródło pochodzenia rekordu.
+   * `live_transcript` — lekcja zbudowana z transkrypcji przysłanej przez Cribro Sift.
+   * Wartość domyślna przy odczycie to `notion`: rekordy sprzed dwóch źródeł
+   * pola nie mają, a wszystkie pochodzą z Notion.
+   */
+  source?: 'notion' | 'manual' | 'ai' | 'live_transcript';
   /** Identyfikator strony Notion */
   notionPageId?: string;
+
+  // ── Ścieżka transkrypcji (Cribro Sift) ────────────────────────────────
+  //
+  // Pola opcjonalne i nieobecne w rekordach z Notion. Notion pozostaje
+  // pełnoprawnym, nietkniętym źródłem — to jest druga droga obok niego,
+  // nie jego następca.
+
+  /**
+   * Surowy zapis rozmowy z lekcji, tak jak przyszedł z Sifta.
+   *
+   * Trzymany w całości, bo to jedyna rzecz, której nie da się odtworzyć:
+   * podsumowanie i bloki lekcji zawsze można wygenerować jeszcze raz,
+   * transkrypcji już nie. Limit długości pilnuje `firestore.rules` —
+   * dokument Firestore ma twardy sufit 1 MB i po jego przekroczeniu zapis
+   * nie przechodzi w ogóle, razem z resztą lekcji.
+   */
+  liveTranscript?: string;
+  /**
+   * Etap życia lekcji z transkrypcji:
+   * `draft` — transkrypcja przyszła, lektor jeszcze nic z nią nie zrobił,
+   * `live` — lekcja trwa (zarezerwowane pod przyszły podgląd na żywo),
+   * `completed` — bloki wygenerowane i zatwierdzone.
+   */
+  sessionStatus?: 'draft' | 'live' | 'completed';
+  /** Wygenerowane pod koniec lekcji ćwiczenie feedbackowe, przed zatwierdzeniem. */
+  drillDraft?: string;
+  /** Identyfikator spotkania po stronie Cribro Sift — chroni przed dublem przy ponownej wysyłce. */
+  siftSessionId?: string;
+  /** ISO, kiedy transkrypcja dotarła do bazy. */
+  transcriptReceivedAt?: string;
+
   createdAt: string;
   updatedAt: string;
 }
