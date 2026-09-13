@@ -90,6 +90,101 @@ wyłącznie `tsc --noEmit`, `npm test`, `npm run build`, `npm run test:rules`.
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
+### 🔐 Trwałość danych i druga droga do lekcji: transkrypcje z Cribro Sift (2026-09-13)
+
+**Część A — trwałość danych (wszystko sprawdzone na produkcji, nie założone):**
+
+- **Restore przetestowany po raz pierwszy.** Backup z 2026-09-13 09:22
+  przywrócony do osobnej bazy `cribro-restore-test`; operacja zgłosiła
+  `operationState: SUCCESSFUL`, 100/100 pracy, 15 minut, a nowa baza
+  wskazuje we `sourceInfo` właściwy backup i właściwy snapshot. Baza
+  testowa skasowana po weryfikacji (wymagało najpierw zdjęcia delete
+  protection, którą odziedziczyła). **Uwaga metodyczna:** zgodność liczby
+  dokumentów per kolekcja nie została policzona — lokalnie nie ma klucza
+  serwisowego (`FIREBASE_SERVICE_ACCOUNT` w `.env` jest puste) ani gcloud.
+  Raport operacji dotyczy całego backupu, więc jest mocniejszym sygnałem
+  niż próbka, ale to nie to samo co przeliczenie.
+- **Retencja backupów 7 → 30 dni.** Błąd w danych agregowanych (learning
+  curve) psuje się cicho i bywa widoczny po dwóch tygodniach.
+- **Eksport kont z Firebase Auth** — `npm run firebase:auth:export`
+  (`scripts/auth-backup.sh`). Zarządzany backup Firestore obejmuje bazę, nie
+  listę użytkowników: skasowane konto zostawiało profil `users/{uid}` bez
+  loginu i bez drogi powrotnej. Zrzut ląduje w iCloud Drive (poza repo i poza
+  ten dysk), 12 ostatnich kopii, pusty eksport jest odrzucany, żeby awaria
+  nie podmieniła dobrej kopii na zero kont. Pierwszy przebieg: 40 kont,
+  18 z hasłem, 5 tylko przez Google.
+  **Luka do domknięcia ręką:** eksport zawiera `passwordHash` i `salt`, ale
+  NIE parametry scrypta projektu. Bez nich `auth:import` wjedzie, a żadne
+  stare hasło nie zadziała. Firebase CLI ich nie oddaje — trzeba raz
+  przepisać z konsoli do `hash-config.json`; skrypt o tym ostrzega przy
+  każdym uruchomieniu.
+- **`storage.rules` w repo**, dostęp klienta zamknięty (`allow read, write:
+  if false`). Do kubełka sięga tylko `server.ts` przez Admin SDK, który
+  reguły omija, a frontend nie importuje `firebase/storage` w ogóle.
+  **Niewdrożone:** Firebase Storage nie jest w tym projekcie założony —
+  `firebase deploy --only storage` odpowiada „has not been set up". Wynika
+  z tego, że **kubełkowa połowa cache'u TTS nigdy nie działała**: brak
+  kubełka wpada w `catch` w `server.ts` i po cichu przechodzi do
+  generowania. Działa wyłącznie cache na dysku.
+
+**Część B — transkrypcje z Cribro Sift jako drugie źródło lekcji:**
+
+Notion pozostaje nietknięty i pełnoprawny. Transkrypcja to droga obok, nie
+zamiast.
+
+- **Schemat:** `LessonRecord` dostaje pięć pól opcjonalnych
+  (`liveTranscript`, `sessionStatus`, `drillDraft`, `siftSessionId`,
+  `transcriptReceivedAt`) i wartość `live_transcript` w `source`. Reguły
+  walidują typ i rozmiar każdego; limit transkrypcji 500 000 znaków stoi
+  tam, bo dokument Firestore ma sufit 1 MB i po jego przekroczeniu nie
+  zapisuje się NIC, razem z całą lekcją.
+- **Punkt odbioru:** funkcja HTTP `ingestTranscript` (`us-central1`).
+  Zwykły POST z tokenem zamiast `onCall`, bo Sift jest Electronem bez
+  Firebase SDK. Token w Secret Managerze (`SIFT_INGEST_TOKEN`), nie w bazie.
+  Identyfikator dokumentu wywodzi się z `siftSessionId`, więc powtórna
+  wysyłka podmienia transkrypcję w tej samej lekcji, zostawiając temat
+  i pracę lektora.
+- **Token jedzie w `X-Sift-Token`, nie w `Authorization`** — i to jest
+  znalezisko, które kosztowałoby dzień szukania. Brama Cloud Run (funkcje
+  v2) sama przechwytuje `Authorization: Bearer …`, próbuje zweryfikować go
+  jako token Google i odpowiada stroną HTML „401 Unauthorized" **zanim
+  funkcja się obudzi** — logi funkcji zostają puste. Funkcja przy tym JEST
+  publiczna i wygląda na sprawną: żądania bez tego nagłówka dochodzą
+  normalnie. Wykryte przy weryfikacji na produkcji, nie w testach (testy
+  podstawiają `fetch` i bramy nie widzą).
+- **Niewidoczność dla kursanta:** lekcja z transkrypcji wjeżdża z trzema
+  flagami (`status`, `isPendingConfirmation`, `pendingReason`), a
+  `isLessonPendingConfirmation` dostaje osobny warunek na `live_transcript`
+  bez `sessionStatus: 'completed'`. Surowy zapis rozmowy nie trafia do
+  kursanta ani przez chwilę.
+- **Panel lektora:** `useLiveLessonTranscript` (onSnapshot) + panel przy
+  lekcji z paskiem stanu, zwiniętym podglądem zapisu i **dwoma osobnymi
+  krokami** — generowanie bloków i zatwierdzenie dla kursanta. Sklejone
+  w jedno kliknięcie oznaczałyby, że treść wymyślona z przekręconego
+  nagrania trafia do kursanta przed przeczytaniem przez człowieka.
+- **Generowanie:** model buduje ten sam kontrakt 4 bloków, co import
+  z Notion — dzięki temu fiszki, prace domowe, learning curve i eksport PDF
+  działają bez zmian. Prompt zakazuje odpowiadania na pytania z
+  transkrypcji i dopisywania materiału, którego w rozmowie nie było.
+- **Strona Sifta** (repo `cribro/sift`): `main/recall.js`, przycisk
+  w zakładce „Transkrypcja", karta w Ustawieniach. Wysyłka jest
+  kliknięciem, nie automatem. Ustawienia `recall` nie wychodzą do okna
+  zwykłemu użytkownikowi i nie dają się zapisać (`main/owner.js`, oba
+  kierunki). Potwierdzone przy okazji: **Sift już robi transkrypcję na
+  żywo** — zakładka pokazuje tekst narastająco w trakcie nagrywania, bo
+  odcinki są przepisywane na bieżąco. Nic tu nie trzeba dorabiać.
+
+**Stan weryfikacji:** `tsc --noEmit` czysto w obu pakietach, 293/293 testów
+jednostkowych Recall, 44/44 testów reguł na emulatorze, 12/12 sprawdzeń
+mostu w Sifcie, `npm run build` przechodzi. Wdrożone na produkcję: reguły
+Firestore, indeksy, dziesięć funkcji (w tym nowa `ingestTranscript`), sekret
+`SIFT_INGEST_TOKEN`. **Przebieg end-to-end wykonany na produkcji**: próbna
+transkrypcja przyjęta (201 `created`), ponowna wysyłka tej samej sesji
+zwróciła 200 `updated` — jedna lekcja, nie dwie; zły token odbity naszym
+JSON-em 401; GET odbity 405. Próbna lekcja leży na koncie lektora jako
+`sift-probna-wysylka-2026-09-13` i można ją skasować z panelu.
+
+
 ### 🆕 Notatnik jak Google Docs, widget powiadomień, automat Notion (2026-09-12, runda 2)
 
 Ciąg dalszy tego samego dnia. **Krytyczny bug wykryty i naprawiony w 10

@@ -718,3 +718,76 @@ właściwego procesu `tsx server.ts` na `*:3000`, a curl trafia w ten
 pierwszy i dostaje gołe 404 na każdej trasie, łącznie z `/api/*`. Naprawa:
 `npm run dev` na innym porcie (`PORT=3001 npm run dev`) zamiast walczyć o
 3000. Nie jest to bug w `server.ts`.
+
+---
+
+2026-09-13 — Claude Code / Opus 5
+
+Zadanie: (A) domknąć trwałość danych z raportu bezpieczeństwa — sprawdzony
+  restore, dłuższa retencja, backup kont z Auth, reguły Storage w repo;
+  (B) przygotować aplikację na transkrypcje z Cribro Sift jako drugie
+  źródło historii lekcji, obok Notion.
+
+Zrobione:
+- `scripts/auth-backup.sh` + `npm run firebase:auth:export` — zrzut kont
+  z Firebase Auth do iCloud Drive, 12 kopii, pusty eksport odrzucany.
+- Retencja backupów Firestore 7 → 30 dni (harmonogram zaktualizowany,
+  `package.json` zgodny z rzeczywistością).
+- Restore z backupu przywrócony do `cribro-restore-test`, operacja
+  `SUCCESSFUL` 100/100, baza testowa skasowana po weryfikacji.
+- `storage.rules` (deny-all dla klientów) + wpis w `firebase.json`
+  + `npm run deploy:storage`.
+- `types.ts`: pięć pól opcjonalnych w `LessonRecord` + `live_transcript`
+  w `source`. `firestore.rules`: walidacja tych pól.
+- `functions/src/transcript/{ingest,store}.ts` — funkcja HTTP
+  `ingestTranscript` + czysta logika zapisu (testowalna bez HTTP).
+- `utils/lessonBlocks.ts`: warunek niewidoczności lekcji z transkrypcji.
+- `hooks/useLiveLessonTranscript.ts`, `utils/transcriptLesson.ts`,
+  `services/transcriptLesson.ts`, `components/admin/TranscriptLessonPanel.tsx`,
+  wpięcie w `CascadingLessonDetails` + znacznik źródła w `AdminPanel`.
+- Repo `cribro/sift`: `src/main/recall.js`, IPC `recall:send`, preload,
+  przycisk w zakładce „Transkrypcja", karta w Ustawieniach, `recall`
+  zamknięte przed nieużytkownikiem-właścicielem w `main/owner.js`,
+  `scripts/recall-test.js`.
+- Wdrożone: reguły + indeksy Firestore, 10 funkcji, sekret
+  `SIFT_INGEST_TOKEN`. Przebieg end-to-end sprawdzony na produkcji.
+
+Nie dokończone / do sprawdzenia:
+- `hash-config.json` (parametry scrypta) trzeba raz przepisać z konsoli
+  Firebase — bez nich odtworzone konta nie przyjmą starych haseł.
+- Firebase Storage nie jest założony w projekcie, więc `storage.rules`
+  leżą niewdrożone, a kubełkowa połowa cache'u TTS nigdy nie działała.
+- Panel transkrypcji nie był oglądany w przeglądarce (tsc + testy +
+  build przechodzą). Tryb dzienny tego panelu również nie.
+- Próbna lekcja `sift-probna-wysylka-2026-09-13` leży na koncie lektora —
+  do skasowania z panelu po obejrzeniu.
+
+Decyzje architektoniczne:
+- Sift wysyła WPROST do Recall, nie przez Supabase. Supabase trzyma tam
+  konta i notatki; zapisy spotkań nie jadą tam wcale i nie mają
+  (komentarz w `supabase/schema.sql`), więc droga przez Supabase
+  wymagałaby najpierw zbudowania dla transkrypcji miejsca tam, a potem
+  drugiego mostu dalej.
+- Token w Secret Managerze, nie w bazie i nie w panelu admina: jedno
+  konto lektora, więc ekran do generowania tokena byłby dodatkową
+  powierzchnią bez zysku.
+- Token jedzie w `X-Sift-Token`. `Authorization: Bearer` na funkcjach v2
+  przechwytuje brama Cloud Run i odbija stroną HTML 401 zanim funkcja się
+  obudzi — przy pustych logach funkcji. To nie było do wykrycia testami.
+- Generowanie bloków i zatwierdzenie lekcji to dwa osobne kliknięcia.
+- Lekcja z transkrypcji nie pokazuje ogólnego alertu „wymaga
+  potwierdzenia": jego przycisk zdejmuje flagi, nie ruszając
+  `sessionStatus`, czyli zatwierdzałby lekcję nadal ukrytą przed kursantem.
+
+Ryzyka:
+- **`firestore.rules` DOTKNIĘTE** — wyłącznie dodanie walidacji nowych pól
+  opcjonalnych w `isValidLessonRecord`. Żadna reguła dostępu nie ruszona,
+  44/44 testów reguł przechodzi, wdrożone na produkcję.
+- **Nowa ścieżka bez logowania Firebase**: `ingestTranscript` jest
+  publicznym endpointem HTTP chronionym wyłącznie sekretem
+  `SIFT_INGEST_TOKEN` (porównanie w stałym czasie). Zapisuje przez Admin
+  SDK, czyli ponad regułami. Kto ma token, może dopisać transkrypcję
+  dowolnemu kursantowi — nie może natomiast niczego przeczytać ani
+  opublikować kursantowi.
+- `main/owner.js` w Sifcie zmienione (zawężenie, nie rozszerzenie):
+  `recall` wycięte z ustawień publicznych i z zapisu.
