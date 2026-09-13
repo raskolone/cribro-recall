@@ -260,7 +260,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       return;
     }
     if (tabId === 'notatnik') {
-      setShowScratchpadPicker(true);
+      /*
+       * Notatnik otwiera się OD RAZU, bez pytania „z kim dzisiaj".
+       *
+       * Wcześniej kafelek stawiał najpierw listę kursantów, a notatnik
+       * dopiero po wyborze. Lektor zaczyna jednak pisać, zanim to pytanie
+       * jest istotne — zdarza się, że notuje przed lekcją albo w trakcie
+       * rozmowy, w której nie chodzi jeszcze o konkretną osobę. Kursanta
+       * przypisuje się w nagłówku notatnika, w dowolnej chwili; wtedy
+       * treść przenosi się do jego stałego notatnika.
+       */
+      setScratchpadStudent({ id: null, name: '' });
       return;
     }
     // Moduły ogólne (niezwiązane z profilem) — przełączane bezpośrednio
@@ -1764,7 +1774,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       <ScratchpadModal
         isOpen={!!scratchpadStudent}
         onClose={() => setScratchpadStudent(null)}
-        student={{ id: scratchpadStudent?.id || null, name: scratchpadStudent?.name || 'Kursant' }}
+        student={{
+          id: scratchpadStudent?.id || null,
+          name: scratchpadStudent?.name || 'Notatnik roboczy',
+        }}
+        students={activeUsers.map((u) => ({
+          id: u.id,
+          name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+        }))}
       />
 
       {SHOW_LEGACY_PANEL_TOOLS && <TeacherOverview students={activeUsers} language={language} />}

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, UserPlus, Check } from 'lucide-react';
 import { ScratchpadDocument } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import {
+  adoptScratchpadForStudent,
   getOrCreateStudentScratchpad,
   subscribeScratchpad,
   saveScratchpadContent,
@@ -17,6 +18,14 @@ interface ScratchpadModalProps {
     id?: string | null;
     name: string;
   };
+  /**
+   * Kursanci, których można przypisać BEZ wychodzenia z notatnika.
+   *
+   * Notatnik otwiera się teraz pusty i bez przypisania, bo lektor zaczyna
+   * pisać, zanim pytanie „z kim dzisiaj" jest istotne. Wybór kursanta jest
+   * czynnością w trakcie, nie bramką na wejściu.
+   */
+  students?: { id: string; name: string }[];
   onPushToLessonRecord?: (data: {
     topic: string;
     words: string;
@@ -30,12 +39,16 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
   isOpen,
   onClose,
   student,
+  students = [],
   onPushToLessonRecord,
 }) => {
   const { user } = useAuth();
   const [scratchpadDoc, setScratchpadDoc] = useState<ScratchpadDocument | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Otwarta lista kursantów do przypisania notatnika w trakcie pisania. */
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
 
   // Pobierz lub utwórz stały brudnopis kursanta po otwarciu modalu
   useEffect(() => {
@@ -118,6 +131,35 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
     setScratchpadDoc(prev => prev ? { ...prev, requirePin: require } : null);
   };
 
+  /**
+   * Przypisanie notatnika roboczego do kursanta w trakcie pisania.
+   *
+   * Treść wędruje do stałego notatnika kursanta (`sp_<uid>`), bo tylko tam
+   * kursant ją znajdzie — szczegóły i powód w `adoptScratchpadForStudent`.
+   */
+  const handleAssignStudent = async (picked: { id: string; name: string }) => {
+    if (!scratchpadDoc) return;
+    setIsAssigning(true);
+    setError(null);
+    try {
+      const teacherUid = user?.id || 'teacher_default';
+      const teacherName = user?.firstName
+        ? `${user.firstName} ${user.lastName || ''}`.trim()
+        : user?.username || 'Lektor CRIBRO';
+      const adopted = await adoptScratchpadForStudent(scratchpadDoc, picked, {
+        uid: teacherUid,
+        name: teacherName,
+      });
+      setScratchpadDoc(adopted);
+      setIsPickerOpen(false);
+    } catch (err: any) {
+      console.error('Nie udało się przypisać notatnika:', err);
+      setError(err.message || 'Nie udało się przypisać notatnika do kursanta.');
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
   const handlePush = (data: any) => {
     if (onPushToLessonRecord) {
       onPushToLessonRecord(data);
@@ -152,6 +194,69 @@ export const ScratchpadModal: React.FC<ScratchpadModalProps> = ({
           </div>
         ) : scratchpadDoc ? (
           <div className="flex-1 flex flex-col overflow-hidden">
+            {/* PASEK PRZYPISANIA — tylko dopóki notatnik jest roboczy.
+
+                Notatnik bez kursanta jest sprawny: da się w nim pisać,
+                zapisuje się, ma PIN. Brakuje mu jednego — kogoś, kto go
+                zobaczy. Ten pasek mówi dokładnie to i znika w chwili, gdy
+                kursant jest wybrany; po przypisaniu nie ma już czego
+                wybierać, a stały pasek byłby stałym przypomnieniem o
+                decyzji, która zapadła. */}
+            {!scratchpadDoc.studentId && students.length > 0 && (
+              <div className="px-4 py-2.5 border-b border-line-strong bg-primary/[0.06] flex flex-wrap items-center gap-2">
+                <span className="text-xs text-content-muted">
+                  Notatnik roboczy — nikt go jeszcze nie widzi.
+                </span>
+
+                {isPickerOpen ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {students.map((candidate) => (
+                      <button
+                        key={candidate.id}
+                        type="button"
+                        disabled={isAssigning}
+                        onClick={() => handleAssignStudent(candidate)}
+                        className="px-2.5 py-1 rounded-lg bg-base-200/80 border border-line-strong text-[12px] font-semibold text-text-hi hover:border-primary/50 hover:text-primary transition-colors disabled:opacity-50"
+                      >
+                        {candidate.name}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setIsPickerOpen(false)}
+                      className="px-2 py-1 text-[12px] text-content-muted hover:text-text-hi"
+                    >
+                      Anuluj
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsPickerOpen(true)}
+                    className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-accent-ink text-xs font-bold hover:brightness-110 transition-all"
+                  >
+                    <UserPlus size={14} />
+                    Przypisz kursanta
+                  </button>
+                )}
+
+                {isAssigning && (
+                  <span className="flex items-center gap-1.5 text-xs text-primary">
+                    <Loader2 size={13} className="animate-spin" /> Przenoszę treść…
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Po przypisaniu: jedno zdanie potwierdzenia, bez przycisków. */}
+            {scratchpadDoc.studentId && (
+              <div className="px-4 py-2 border-b border-line-strong bg-base-200/40 flex items-center gap-2 text-xs text-content-muted">
+                <Check size={13} className="text-primary shrink-0" />
+                Notatnik kursanta <strong className="text-text-hi">{scratchpadDoc.studentName}</strong>
+                {' '}— widzi go po linku albo PIN-em.
+              </div>
+            )}
+
             <ScratchpadEditor
               document={scratchpadDoc}
               onSaveContent={handleSaveContent}

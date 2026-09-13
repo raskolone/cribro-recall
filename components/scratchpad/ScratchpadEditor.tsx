@@ -929,7 +929,21 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         </div>
       )}
 
-      {/* 3. GŁÓWNA POWIERZCHNIA EDYCYJNA (DOKUMENT GOOGLE DOCS STYLE) */}
+      {/* 3. KARTKA DOKUMENTU
+
+          ══ DLACZEGO KOŚĆ SŁONIOWA W OBU MOTYWACH ══
+
+          Kartka do pisania jest jedynym miejscem w aplikacji, które NIE
+          przełącza się razem z motywem — i to jest celowe. Ciemna kartka
+          czyta się jak panel aplikacji, a nie jak dokument: przy pisaniu
+          przez godzinę razem z kursantem liczy się to samo, co w Wordzie
+          i Google Docs, czyli ciemny tekst na jasnym papierze. Kolorowe
+          nagłówki szablonu (różowy, turkusowy, niebieski) też są
+          policzone pod jasne tło — na ciemnym traciły czytelność.
+
+          Ramka dokumentu, pasek narzędzi i stopka zostają w motywie
+          aplikacji. Zmienia się sama kartka, tak jak w edytorze tekstu
+          zmienia się sama strona, a nie całe okno. */}
       <div className="p-4 md:p-8 flex-1 overflow-y-auto bg-base-100/60 min-h-[500px]">
         <div
           ref={editorRef}
@@ -937,10 +951,17 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           contentEditable={!isReadOnly}
           onInput={handleInput}
           suppressContentEditableWarning
-          className={`max-w-4xl mx-auto min-h-[480px] p-6 md:p-10 rounded-2xl bg-base-200/90 border border-line-strong text-text-hi shadow-[var(--shadow-lg)] focus:outline-none focus:border-primary/40 transition-colors leading-relaxed font-sans prose prose-headings:text-text-hi prose-strong:text-text-hi prose-a:text-primary prose-p:text-text prose-li:text-text prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-p:my-2 prose-ul:my-2 prose-li:my-0.5 selection:bg-primary/30 ${
+          className={`max-w-4xl mx-auto min-h-[480px] p-6 md:p-10 rounded-lg border border-black/10 shadow-[0_1px_3px_rgba(0,0,0,0.12),0_8px_24px_rgba(0,0,0,0.18)] focus:outline-none focus:border-primary/50 transition-colors leading-relaxed font-sans prose prose-headings:text-[#1a1f2b] prose-strong:text-[#1a1f2b] prose-a:text-[#0f766e] prose-p:text-[#2b3444] prose-li:text-[#2b3444] prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-p:my-2 prose-ul:my-2 prose-li:my-0.5 selection:bg-primary/30 ${
             isReadOnly ? 'cursor-default' : 'cursor-text'
           }`}
-          style={{ wordBreak: 'break-word' }}
+          style={{
+            wordBreak: 'break-word',
+            // Papier, nie powierzchnia aplikacji — dlatego wartość wprost,
+            // a nie token motywu. Kość słoniowa zamiast czystej bieli, bo
+            // biel przy godzinie pisania na ciemnym tle okna razi.
+            backgroundColor: '#fbfaf6',
+            color: '#1a1f2b',
+          }}
         />
       </div>
 

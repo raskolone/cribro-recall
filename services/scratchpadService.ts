@@ -130,7 +130,19 @@ export function getInitialScratchpadContent(studentName: string): {
     year: 'numeric',
   });
 
-  const html = `<h2>Lesson Template — ${today}</h2><p>Wspólny notatnik z zajęć z <strong>${studentName}</strong>.</p>` +
+  /*
+   * Notatnik roboczy nie ma jeszcze kursanta, więc nie ma kogo wymienić.
+   * „Wspólny notatnik z zajęć z Notatnik roboczy" brzmiałoby jak awaria,
+   * a nie jak stan przejściowy — po przypisaniu zdanie i tak jest już
+   * niepotrzebne, bo nazwę kursanta niesie nagłówek okna.
+   */
+  const named = studentName?.trim();
+  const intro =
+    named && named !== 'Notatnik roboczy' && named !== 'Kursant'
+      ? `<p>Wspólny notatnik z zajęć z <strong>${named}</strong>.</p>`
+      : `<p>Notatnik roboczy — kursanta można przypisać w dowolnej chwili.</p>`;
+
+  const html = `<h2>Lesson Template — ${today}</h2>${intro}` +
     `<h3 style="color:#db2777">Revision</h3><p>Tutaj wklejam powtórkę z poprzedniej lekcji lub robimy zadanie domowe, jeżeli nie zostało wykonane.</p>` +
     `<h3 style="color:#0d9488">Main topic / Practice</h3><p>Tutaj wklejam pytania, które zadaję kursantowi, sugerowane odpowiedzi oraz ewentualne ćwiczenia z tematu lekcji.</p>` +
     `<h3 style="color:#2563eb">Lesson Summary</h3><p>Po spotkaniu wklejam podsumowanie w kilku zwięzłych zdaniach.</p>` +
@@ -544,4 +556,77 @@ export function buildScratchpadUrl(
     url.searchParams.set('pin', formatAccessCode(options.pin));
   }
   return url.toString();
+}
+
+/**
+ * Przypisanie roboczego notatnika do kursanta.
+ *
+ * ══ SKĄD SIĘ BIERZE TEN PRZYPADEK ══
+ *
+ * Notatnik otwiera się teraz pusty, bez pytania „z kim dzisiaj" — bo lektor
+ * zaczyna pisać, zanim to pytanie jest istotne, a wybieranie kursanta przed
+ * pierwszym zdaniem było bramką przed niczym. Kursant dochodzi w trakcie.
+ *
+ * ══ DLACZEGO PRZENOSIMY TREŚĆ, A NIE DOPINAMY POLA ══
+ *
+ * Kursant ma dokładnie JEDEN stały notatnik o identyfikatorze `sp_<uid>` —
+ * tak go znajduje ekran kursanta i tak go znajduje lektor następnym razem.
+ * Dopisanie `studentId` do dokumentu roboczego (`sp_<czas>`) zrobiłoby
+ * notatnik, który wygląda na przypisany, a którego kursant nigdy nie zobaczy:
+ * jego ekran sięgnąłby po `sp_<uid>` i dostał pustą kartkę.
+ *
+ * Dlatego treść robocza wędruje do właściwego notatnika kursanta.
+ *
+ * ══ I DLACZEGO DOPISUJEMY, A NIE NADPISUJEMY ══
+ *
+ * Notatnik kursanta może już mieć treść z poprzednich lekcji. Nadpisanie
+ * skasowałoby ją bezpowrotnie i bez pytania. Świeży notatnik (nietknięty
+ * szablon startowy) podmieniamy, bo tam nie ma czego stracić; notatnik
+ * z historią dostaje dzisiejszą treść na końcu, po kresce.
+ */
+export async function adoptScratchpadForStudent(
+  draft: ScratchpadDocument,
+  student: { id: string; name: string },
+  teacher: { uid: string; name: string }
+): Promise<ScratchpadDocument> {
+  const target = await getOrCreateStudentScratchpad(student, teacher);
+
+  // Ten sam dokument — nie ma czego przenosić.
+  if (target.id === draft.id) return target;
+
+  const draftHtml = (draft.contentHtml || '').trim();
+  if (!draftHtml) return target;
+
+  /*
+   * „Świeży" znaczy: treść jest nadal szablonem startowym. Porównujemy po
+   * samym tekście, bez znaczników — szablon bywa zapisany z innym HTML-em
+   * (przeglądarka normalizuje `contentEditable`), a chodzi o to, czy
+   * człowiek cokolwiek dopisał.
+   */
+  const untouched = (() => {
+    const targetText = stripHtmlToText(target.contentHtml || '').replace(/\s+/g, ' ').trim();
+    if (!targetText) return true;
+    const template = stripHtmlToText(
+      getInitialScratchpadContent(target.studentName || student.name).html
+    )
+      .replace(/\s+/g, ' ')
+      .trim();
+    return targetText === template;
+  })();
+
+  const mergedHtml = untouched
+    ? draftHtml
+    : `${target.contentHtml}<hr /><p><em>Dopisane z notatnika roboczego — ${new Date().toLocaleString('pl-PL')}</em></p>${draftHtml}`;
+
+  await saveScratchpadContent(target.id, mergedHtml, stripHtmlToText(mergedHtml), {
+    uid: teacher.uid,
+    name: teacher.name,
+    role: 'teacher',
+  });
+
+  return {
+    ...target,
+    contentHtml: mergedHtml,
+    contentText: stripHtmlToText(mergedHtml),
+  };
 }
