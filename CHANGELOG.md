@@ -90,6 +90,80 @@ wyłącznie `tsc --noEmit`, `npm test`, `npm run build`, `npm run test:rules`.
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
+### 📱 Widok mobilny: kafelki w panelu kursanta i naprawa trybu jasnego (2026-09-13)
+
+Podstawa: `~/Downloads/design_handoff_cribro_mockup` (trzy makiety HTML +
+README). Wprowadzone to, co pasuje do dzisiejszych funkcji; rozbieżności
+i świadome pominięcia — niżej.
+
+**Po raz pierwszy w tym projekcie UI zostało sprawdzone w przeglądarce, nie
+tylko przez `tsc` i testy.** Umożliwił to nowy przełącznik na emulatory
+(`npm run dev:emulated` + `npm run emulators`): wcześniej nie było jak
+obejrzeć żadnego ekranu po zalogowaniu, bo każdy potrzebuje konta i danych,
+a jedyne konta były produkcyjne. Zrzuty robione Playwrightem przy 390 px
+(iPhone 14), w obu motywach, na zasianym koncie kursanta i lektora.
+
+**Co znalazło się od razu po włączeniu trybu jasnego** (i nie zostało
+znalezione przez żaden test):
+- Panel kursanta: powitanie („Cześć, Moniko!"), liczniki, nagłówek „ZADANIA
+  OD LEKTORA" i karty zadań — **biały tekst na jasnym tle**. Karty stały na
+  `bg-black/40`, czyli szarej płycie zamiast jasnej karty.
+- Panel lektora: **niewidoczne TYTUŁY trzech głównych kafelków** („Profil
+  kursantów", „Prezentacja", „Notatnik") i nagłówek ekranu. Kafelek
+  pokazywał ikonę, plakietkę i opis, a nazwę — nie.
+- Widget „AI Live Monitor" wisiał w tym samym narożniku co przycisk
+  zgłaszania błędu i przy `z-index: 9999` po prostu go przykrywał.
+- Uchwyt menu bocznego (`top-20`) przecinał kartę powitalną w połowie zdania.
+
+Wszystko naprawione tokenami motywu — 67 linii w `AdminPanel.tsx` i dziewięć
+plików panelu kursanta. `text-white` zostaje tam, gdzie stoi na wypełnieniu
+akcentem (zamiana tam byłaby błędem w drugą stronę); zakres zamiany
+ograniczony do linii, bo klasy w tych plikach bywają szablonami z warunkami.
+
+**Panel kursanta na kafelkach.** Zadania, testy, wcześniejsze lekcje,
+historia ćwiczeń i notatnik (tylko duży ekran) jako listwa dużych kafelków;
+treść otwiera się jednym panelem POD listwą, zawsze w tym samym miejscu.
+Wcześniej: stos sześciu zwijanych pasków, w którym dojście do testów na
+telefonie znaczyło przewinięcie wszystkiego powyżej. `PanelSection` dostał
+tryb `headless`, żeby ta sama sekcja działała w obu układach bez
+rozgałęziania kodu treści.
+
+**Nagłówek kursanta ścieśniony na telefonie z 642 px do 419 px**, więc oba
+rzędy kafelków i „ostatnia lekcja" wchodzą nad zgięcie (zmierzone, nie
+oszacowane): trzy liczniki w jednym rzędzie zamiast zawijanych dwóch, jedno
+zadanie zamiast dwóch, zachęta do praktyki dodatkowej tylko na dużym
+ekranie. Na komputerze bez zmian — zgodnie z zasadą „szczegóły na dużym
+ekranie".
+
+**Panel lektora: druga listwa „Więcej narzędzi"** (9 kafelków, zwinięta).
+Te wejścia istniały dotąd wyłącznie w menu bocznym, które na telefonie jest
+szufladą — połowa panelu była schowana przed kciukiem.
+
+**Rozbieżności wobec makiety — świadome:**
+- **Menu boczne NIE zostało obcięte.** Makieta redukuje je u lektora do
+  trzech pozycji, a u kursanta zdejmuje „Pracę domową" i „Historię lekcji".
+  Kafelki dodane jako droga krótsza, nie jedyna: menu niesie żywe plakietki
+  z licznikami, a usuniętej nawigacji nie widać jako braku, tylko jako
+  regresji. Do domknięcia po Twoich testach na telefonie.
+- **Landing bez przebudowy.** Makieta ma cennik w trzech progach, sekcję
+  ofertową dla lektorów i FAQ — to treść biznesowa, nie układ, i nie ma jej
+  skąd wziąć. Sam język wizualny (Cormorant Garamond, DM Mono, akcent
+  `#72f0b4`, tło konstelacji) aplikacja ma już zgodny z makietą.
+- **Tokeny zostawione bez zmian.** Paleta makiety to ta sama rodzina
+  (akcent `#72f0b4` co do cyfry), różnice sięgają 2–3 cyfr hex w tłach.
+  Przestawianie ich przemalowałoby całą aplikację bez zysku.
+- **„Baza scenariuszy" nadal osobno**, nie jako zakładka w Prezentacji —
+  to przebudowa modułu prezentacji, nie zmiana układu; osobne zadanie.
+- **Kafelek „Historia" prowadzi do istniejącej historii sesji ćwiczeń**,
+  a nie do nowego raportu ze słupkami 14 dni z makiety.
+
+**Stan weryfikacji:** 293/293 testów jednostkowych, `tsc --noEmit` czysto,
+oba buildy przechodzą, zrzuty przy 390 px w obu motywach dla kursanta
+i lektora — bez poziomego suwaka, bez błędów w konsoli. Nie sprawdzone:
+ekrany poza panelami (fiszki, prezentacja, mailing) i pozostałe ~780
+wystąpień `text-white` w innych plikach.
+
+
 ### 🔐 Trwałość danych i druga droga do lekcji: transkrypcje z Cribro Sift (2026-09-13)
 
 **Część A — trwałość danych (wszystko sprawdzone na produkcji, nie założone):**

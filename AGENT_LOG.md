@@ -791,3 +791,62 @@ Ryzyka:
   opublikować kursantowi.
 - `main/owner.js` w Sifcie zmienione (zawężenie, nie rozszerzenie):
   `recall` wycięte z ustawień publicznych i z zapisu.
+
+---
+
+2026-09-13 (runda 2) — Claude Code / Opus 5
+
+Zadanie: wykorzystać `~/Downloads/design_handoff_cribro_mockup` do
+  przebudowy UI i zadbać o widok mobilny panelu kursanta i lektora
+  (duże kafelki, prosty widok dla kursanta).
+
+Zrobione:
+- `firebase.ts` + `npm run dev:emulated` — przełącznik na emulatory
+  Auth/Firestore w trybie dev, z podwójną bramką (`import.meta.env.DEV`
+  najpierw, więc blok wypada z buildu produkcyjnego).
+- `components/dashboard/StudentToolBar.tsx` (nowy) — listwa dużych kafelków.
+- `TodayScreen.tsx` — przebudowa na nagłówek → powtórki → listwa → treść →
+  ostatnia lekcja. `openTool` jako jedyny nowy stan.
+- `PanelSection.tsx` + cztery sekcje — tryb `headless`.
+- `StudentLessonPanel.tsx` — prop `only: 'latest' | 'earlier'`, jedno
+  zapytanie do bazy obsługuje oba miejsca.
+- `StudentHeroHeader.tsx` — ścieśnienie na telefonie (642 → 419 px).
+- Naprawa trybu jasnego: `AdminPanel.tsx` (67 linii) + 9 plików panelu
+  kursanta + `AdminAIActivityMonitor.tsx`.
+- `Sidebar.tsx` — uchwyt menu na pionowy środek ekranu.
+- `AdminPanel.tsx` — druga listwa „Więcej narzędzi" (9 kafelków, zwinięta).
+
+Nie dokończone / do sprawdzenia:
+- Menu boczne NIE obcięte wbrew makiecie (uzasadnienie w CHANGELOG).
+- Landing bez przebudowy — makieta zawiera cennik i treść ofertową,
+  czyli decyzje biznesowe, nie układ.
+- „Baza scenariuszy" jako zakładka Prezentacji — nie zrobione.
+- Kafelek „Historia" prowadzi do istniejącej historii sesji, nie do
+  nowego raportu ze słupkami 14 dni.
+- Pozostałe ~780 wystąpień `text-white` poza panelami — nie ruszone,
+  bo każde wymaga obejrzenia ekranu, na którym stoi.
+- Ekrany poza panelami (fiszki, prezentacja, mailing, ustawienia) nie były
+  oglądane w trybie jasnym na telefonie.
+
+Decyzje architektoniczne:
+- Zamiana `text-white` ograniczona do LINII i pomijająca linie z
+  wypełnieniem akcentem: biel na kolorowym przycisku jest poprawna, a
+  szukanie kontekstu po cudzysłowach trafiało w sąsiedni atrybut
+  (klasy są szablonami z warunkami).
+- Kafelki bez liczników: policzenie zadań i testów w listwie znaczyłoby
+  drugi nasłuch na tych samych kolekcjach. Kropka „coś czeka" bierze się
+  z flag, które już są w profilu (`hasNewHomework`, `hasNewLesson`).
+- Notatnik tylko na dużym ekranie (`desktopOnly`) — wspólne pisanie na
+  telefonie nie działa, a wejście do czegoś nieużywalnego jest gorsze
+  niż brak wejścia.
+- Mniej szczegółów na telefonie niż na komputerze jest tu zamierzone
+  (wprost z polecenia), nie kompromisem.
+
+Ryzyka:
+- `firestore.rules` NIETKNIĘTY w tej rundzie.
+- Zasiane konta w EMULATORZE, nie na produkcji (`monika@example.com`,
+  `maciej.wyrozumski@gmail.com`, hasło `test123456`) — żyją tylko w pamięci
+  emulatora i giną razem z nim.
+- `firebase.ts` to plik inicjujący połączenie z bazą: dodany blok jest
+  podwójnie bramkowany, a `import.meta.env` czytane ostrożnie, bo testy
+  importują ten plik w gołym Node.
