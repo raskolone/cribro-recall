@@ -97,11 +97,16 @@ const TopBar: React.FC<TopBarProps> = ({
   return (
     <header className="sticky top-0 z-40 w-full border-b border-line-strong bg-base-200/90 backdrop-blur-md">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-5 h-14 flex items-center gap-3">
+        {/* Logo jest drogą powrotną do panelu — i musi to po sobie pokazać.
+            Bez `cursor-pointer` wyglądało dokładnie jak nagłówek do czytania,
+            więc nikt go nie naciskał; lekkie rozjaśnienie przy najechaniu
+            potwierdza, że to cel, a nie ozdoba. */}
         <button
           type="button"
           onClick={onHome}
-          className="shrink-0 flex items-center"
+          className="shrink-0 flex items-center cursor-pointer rounded-xl px-1 -mx-1 transition-opacity hover:opacity-80 active:opacity-70"
           title={t('Wróć do panelu', 'Back to the panel')}
+          aria-label={t('Wróć do panelu', 'Back to the panel')}
         >
           <BrandLogo className="text-base" showTagline={false} />
         </button>

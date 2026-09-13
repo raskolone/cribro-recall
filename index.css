@@ -712,3 +712,94 @@ tr.liquid-glass-hover:hover {
   color: var(--pad-muted);
   opacity: 0.75;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KAFELEK SZKLANY — `.glass-tile`
+
+   Jedna receptura dla wszystkich kafelków panelu kursanta: półprzezroczysta
+   tafla z rozmyciem tła, obrys włosowy i POJEDYNCZY przejazd połysku przy
+   najechaniu.
+
+   ══ DLACZEGO POŁYSK PRZEJEŻDŻA, A NIE ŚWIECI STALE ══
+
+   Stała poświata na siedmiu kafelkach naraz to siedem rzeczy wołających
+   o uwagę, czyli żadna. Przejazd trwa 0,7 s i kończy się poza kafelkiem —
+   mówi „dotknąłeś tego" i znika. Poza najechaniem kafelek jest spokojny.
+
+   ══ DLACZEGO PSEUDOELEMENT, A NIE DRUGI DIV ══
+
+   Kafelek jest przyciskiem; dodatkowy element w środku łapałby zdarzenia
+   i psuł czytanie przez czytniki ekranu. `::before` jest niewidoczny dla
+   drzewa dostępności i nie da się w niego kliknąć.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.glass-tile {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--bg-lift) 55%, transparent),
+    color-mix(in srgb, var(--surface-flat) 35%, transparent)
+  );
+  border: 1px solid var(--line-strong);
+  backdrop-filter: blur(14px) saturate(1.25);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--t), box-shadow var(--t), transform var(--t);
+}
+
+.glass-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  /* Wąskie, ukośne pasmo światła. Zaczyna i kończy poza kafelkiem, więc
+     w spoczynku nie widać go wcale. */
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    color-mix(in srgb, var(--accent) 22%, transparent) 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .glass-tile:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-30);
+    box-shadow: var(--shadow-md), var(--glow);
+  }
+  .glass-tile:hover::before {
+    opacity: 1;
+    transform: translateX(120%);
+    transition: transform 0.7s var(--ease), opacity 0.2s var(--ease);
+  }
+}
+
+/* Dotyk nie ma najechania — zostaje wciśnięcie. */
+@media (hover: none) {
+  .glass-tile:active {
+    transform: scale(0.985);
+    border-color: var(--accent-30);
+  }
+}
+
+/* Kafelek wybrany: obrys akcentu i lekkie wypełnienie. Bez ruchu — otwarty
+   panel pod listwą mówi już, który to jest. */
+.glass-tile.is-open {
+  border-color: var(--accent-55);
+  background-image: linear-gradient(var(--accent-08), var(--accent-08));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-tile,
+  .glass-tile::before {
+    transition: none;
+  }
+  .glass-tile:hover { transform: none; }
+  .glass-tile:hover::before { opacity: 0; }
+}

@@ -3,6 +3,14 @@ import React, { ReactNode } from 'react';
 /**
  * Listwa narzędzi kursanta — kafelki zamiast stosu zwijanych sekcji.
  *
+ * ══ SIATKA SYMETRYCZNA ══
+ *
+ * Dwie kolumny na telefonie, trzy od `sm` w górę — i dokładnie sześć
+ * narzędzi, więc siatka WYPEŁNIA SIĘ CAŁA w obu układach: 3 rzędy po 2 albo
+ * 2 rzędy po 3. Wcześniejsze `3/4/5 kolumn` przy siedmiu kafelkach zostawiało
+ * na końcu rząd z jednym albo dwoma, czyli dziurę po prawej — a nic tak nie
+ * psuje spokoju siatki jak niedokończony ostatni wiersz.
+ *
  * ══ PO CO KAFELKI ══
  *
  * Panel kursanta jest oglądany przede wszystkim na telefonie, w przeglądarce,
@@ -20,10 +28,10 @@ import React, { ReactNode } from 'react';
  *
  * ══ DUŻE CELE DOTYKU ══
  *
- * Kafelek ma co najmniej 96 px wysokości i na telefonie zajmuje pół
+ * Kafelek ma co najmniej 104 px wysokości i na telefonie zajmuje pół
  * szerokości ekranu — to cel, w który trafia się kciukiem w tramwaju, bez
- * patrzenia. Pod 360 px wracamy do jednej kolumny, bo dwa kafelki obok
- * siebie zmieściłyby się już tylko z uciętym napisem.
+ * patrzenia. Dwie kolumny utrzymujemy do samego dołu skali: przy sześciu
+ * krótkich podpisach mieszczą się bez ucinania nawet na 320 px.
  */
 
 export interface StudentTool {
@@ -41,10 +49,10 @@ export interface StudentTool {
   /**
    * Narzędzie tylko na duży ekran.
    *
-   * Notatnik jest jedynym takim miejscem: to płótno do pisania razem z
-   * lektorem, a nie treść do przejrzenia. Na telefonie kafelek go nie
-   * pokazuje — lepszy brak wejścia niż wejście do czegoś, czego nie da się
-   * tam używać.
+   * Obecnie nieużywane: notatnik, jedyne takie miejsce, ma od tej rundy
+   * układ działający na telefonie (spis treści kładzie się nad kartką),
+   * a kursanci dostają go do rąk właśnie na telefonach. Pole zostaje, bo
+   * następne narzędzie tej klasy może się zdarzyć.
    */
   desktopOnly?: boolean;
   /** Zamiast panelu pod listwą — przejście gdzie indziej. */
@@ -63,7 +71,7 @@ interface StudentToolBarProps {
 const StudentToolBar: React.FC<StudentToolBarProps> = ({ tools, openId, onToggle }) => (
   <nav
     aria-label="Narzędzia kursanta"
-    className="grid grid-cols-2 min-[420px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2.5"
+    className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3"
   >
     {tools.map((tool) => {
       const isOpen = openId === tool.id;
@@ -77,12 +85,9 @@ const StudentToolBar: React.FC<StudentToolBarProps> = ({ tools, openId, onToggle
           className={[
             // Wysokość, nie padding: kafelki mają być równe niezależnie od
             // tego, czy narzędzie ma podpis pod nazwą, czy nie.
-            'relative min-h-[6rem] p-3 rounded-2xl border text-left flex flex-col justify-between gap-2',
-            'transition-colors active:scale-[0.98]',
+            'glass-tile min-h-[6.5rem] p-3.5 rounded-2xl text-left flex-col justify-between gap-2 cursor-pointer',
             tool.desktopOnly ? 'hidden md:flex' : 'flex',
-            isOpen
-              ? 'border-primary/50 bg-primary/[0.10]'
-              : 'border-line-strong bg-base-200/50 hover:border-line-strong hover:bg-base-200/80',
+            isOpen ? 'is-open' : '',
           ].join(' ')}
         >
           <span

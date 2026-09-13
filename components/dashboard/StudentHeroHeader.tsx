@@ -249,8 +249,12 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
             pigułkach w rozmiarze desktopowym rząd się zawijał i nagłówek
             rósł o kolejne 74 px, przez co listwa kafelków spadała pod
             zgięcie. To one mają być widoczne od razu, nie liczniki. */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl bg-base-100/70 border border-line-strong shadow-inner">
+        {/* `flex-1` na każdym liczniku: dwa czy trzy, zawsze dzielą rząd po
+            równo, więc rząd jest symetryczny niezależnie od tego, czy passa
+            jest widoczna. Bez tego trzeci licznik rozpychał dwa pierwsze
+            i środek rzędu wypadał raz tu, raz tam. */}
+        <div className="flex items-stretch gap-2 sm:gap-3 w-full sm:w-auto shrink-0">
+          <div className="glass-tile flex-1 sm:flex-none flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl">
             <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
               <CheckCircle2 size={16} />
             </div>
@@ -264,7 +268,7 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl bg-base-100/70 border border-line-strong shadow-inner">
+          <div className="glass-tile flex-1 sm:flex-none flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl">
             <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
               <Languages size={16} />
             </div>
@@ -279,7 +283,7 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
           </div>
 
           {!streakHidden && currentStreak > 0 && (
-            <div className="flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl bg-base-100/70 border border-amber-500/20 text-amber-400 shadow-inner">
+            <div className="glass-tile flex-1 sm:flex-none flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl text-amber-400">
               <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
                 <Flame size={16} />
               </div>
@@ -360,7 +364,7 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
                 <div
                   key={task.id}
                   onClick={() => onOpenHomework(task.id)}
-                  className={`p-3.5 rounded-2xl bg-base-100/70 hover:bg-line-soft border border-line-strong hover:border-primary/40 transition-all cursor-pointer flex-col justify-between gap-3 group ${
+                  className={`glass-tile p-3.5 rounded-2xl cursor-pointer flex-col justify-between gap-3 group ${
                     position === 0 ? 'flex' : 'hidden sm:flex'
                   }`}
                 >

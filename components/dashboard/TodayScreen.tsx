@@ -5,7 +5,6 @@ import {
   Check,
   Dumbbell,
   Eye,
-  FlaskConical,
   FileEdit,
   GraduationCap,
   History,
@@ -573,16 +572,15 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
           } satisfies StudentTool,
         ]
       : []),
-    ...(onOpenExtraPractice
-      ? [
-          {
-            id: 'practice-extra',
-            label: L.tools.extraPractice,
-            icon: <FlaskConical size={20} />,
-            onNavigate: onOpenExtraPractice,
-          } satisfies StudentTool,
-        ]
-      : []),
+    /*
+     * „Praktyka dodatkowa" NIE MA tu kafelka.
+     *
+     * Dokładnie to samo wejście stoi w nagłówku jako jedyny duży, zielony
+     * przycisk — i stoi tam po coś: to jest rzecz, którą kursant ma zrobić,
+     * gdy lektor nic nie zadał. Kafelek obok powtarzał je drobniejszą
+     * czcionką, przez co siatka miała siedem pozycji zamiast sześciu i nie
+     * dawała się ułożyć równo w żadnej szerokości.
+     */
     ...(onOpenScratchpad
       ? [
           {
@@ -590,7 +588,6 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
             domId: 'tour-scratchpad',
             label: L.tools.scratchpad,
             icon: <FileEdit size={20} />,
-            desktopOnly: true,
             onNavigate: onOpenScratchpad,
           } satisfies StudentTool,
         ]
