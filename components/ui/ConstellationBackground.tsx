@@ -8,17 +8,43 @@ import React, { useEffect, useRef } from 'react';
  * (#root ma position: relative; z-index: 1 w index.css).
  *
  * Bez interakcji z kursorem — to celowe założenie paczki.
+ *
+ * ══ KOLOR IDZIE Z MOTYWU, NIE Z TEGO PLIKU ══
+ *
+ * Wcześniej barwa była wpisana tu na sztywno jako zieleń trybu nocnego
+ * (114, 240, 180). W trybie jasnym znaczyło to jasną zieleń na jasnym tle,
+ * czyli konstelację, której praktycznie nie było widać. Teraz kanwa czyta
+ * `--constellation-*` z tokenów, więc tryb jasny rysuje ciemne linie na
+ * jasnym tle — te same gwiazdy w odwróconych barwach.
+ *
+ * Zmiana motywu nie przeładowuje strony, więc kolor trzeba odczytać
+ * ponownie: `MutationObserver` pilnuje atrybutów elementu `<html>`, na
+ * których siedzi wybór motywu (`data-theme` i klasa `light`).
  */
 
 const CFG = {
-  color: '114, 240, 180', // --accent jako triplet rgb
   link: 148,              // px, przy którym pojawia się linia
-  lineAlpha: 0.17,        // alfa przy zerowej odległości
-  dotAlpha: 0.42,
   density: 15500,         // jeden punkt na N px² — więcej = rzadziej
   min: 38,
   max: 120,
   speed: 0.16,            // px na klatkę
+};
+
+/** Wartości zapasowe = tryb nocny. Używane, gdy arkusz się jeszcze nie wczytał. */
+const FALLBACK_PAINT = { rgb: '114, 240, 180', lineAlpha: 0.17, dotAlpha: 0.42 };
+
+/** Barwa i krycie konstelacji z aktualnego motywu. */
+const readPaint = () => {
+  if (typeof window === 'undefined' || !document.documentElement) return FALLBACK_PAINT;
+  const style = getComputedStyle(document.documentElement);
+  const rgb = style.getPropertyValue('--constellation-rgb').trim();
+  const line = parseFloat(style.getPropertyValue('--constellation-line-alpha'));
+  const dot = parseFloat(style.getPropertyValue('--constellation-dot-alpha'));
+  return {
+    rgb: rgb || FALLBACK_PAINT.rgb,
+    lineAlpha: Number.isFinite(line) ? line : FALLBACK_PAINT.lineAlpha,
+    dotAlpha: Number.isFinite(dot) ? dot : FALLBACK_PAINT.dotAlpha,
+  };
 };
 
 interface Point {
@@ -43,6 +69,7 @@ const ConstellationBackground: React.FC = () => {
     let height = 0;
     let points: Point[] = [];
     let raf: number | null = null;
+    let paint = readPaint();
 
     const seed = () => {
       width = canvas.clientWidth;
@@ -87,8 +114,8 @@ const ConstellationBackground: React.FC = () => {
           const dy = points[a].y - points[b].y;
           const d = Math.sqrt(dx * dx + dy * dy);
           if (d > CFG.link) continue;
-          const alpha = (CFG.lineAlpha * (1 - d / CFG.link)).toFixed(3);
-          ctx.strokeStyle = `rgba(${CFG.color}, ${alpha})`;
+          const alpha = (paint.lineAlpha * (1 - d / CFG.link)).toFixed(3);
+          ctx.strokeStyle = `rgba(${paint.rgb}, ${alpha})`;
           ctx.beginPath();
           ctx.moveTo(points[a].x, points[a].y);
           ctx.lineTo(points[b].x, points[b].y);
@@ -96,7 +123,7 @@ const ConstellationBackground: React.FC = () => {
         }
       }
 
-      ctx.fillStyle = `rgba(${CFG.color}, ${CFG.dotAlpha})`;
+      ctx.fillStyle = `rgba(${paint.rgb}, ${paint.dotAlpha})`;
       for (const p of points) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
@@ -125,13 +152,24 @@ const ConstellationBackground: React.FC = () => {
       // Jedna statyczna klatka zamiast pętli — ale po zmianie rozmiaru trzeba
       // ją przerysować, inaczej kanwa zostaje wyczyszczona i tło znika.
       const redrawStatic = () => {
+        paint = readPaint();
         seed();
         draw();
         stop();
       };
       redrawStatic();
       window.addEventListener('resize', redrawStatic);
-      return () => window.removeEventListener('resize', redrawStatic);
+      // Przy wyłączonym ruchu jedna klatka musi się przerysować także po
+      // zmianie motywu — inaczej zostaje w barwach poprzedniego.
+      const staticWatcher = new MutationObserver(redrawStatic);
+      staticWatcher.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme', 'class'],
+      });
+      return () => {
+        staticWatcher.disconnect();
+        window.removeEventListener('resize', redrawStatic);
+      };
     }
 
     seed();
@@ -139,8 +177,19 @@ const ConstellationBackground: React.FC = () => {
     window.addEventListener('resize', handleResize);
     document.addEventListener('visibilitychange', handleVisibility);
 
+    /* Motyw zmienia się bez przeładowania strony — bez tego konstelacja
+       zostawała w barwach poprzedniego trybu do najbliższego odświeżenia. */
+    const themeWatcher = new MutationObserver(() => {
+      paint = readPaint();
+    });
+    themeWatcher.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'class'],
+    });
+
     return () => {
       stop();
+      themeWatcher.disconnect();
       window.removeEventListener('resize', handleResize);
       document.removeEventListener('visibilitychange', handleVisibility);
     };

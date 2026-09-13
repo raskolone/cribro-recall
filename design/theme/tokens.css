@@ -50,6 +50,14 @@
   --line-strong:     rgba(255, 255, 255, 0.12);
   --line-soft:       rgba(255, 255, 255, 0.04);
 
+  /* ── Tło konstelacji (components/ui/ConstellationBackground.tsx) ──
+     Kanwa czytała kolor wpisany na sztywno w komponencie, więc w trybie
+     jasnym rysowała jasną zieleń na jasnym tle i była praktycznie
+     niewidoczna. Teraz kolor i krycie są tokenem, jak wszystko inne. */
+  --constellation-rgb:        114, 240, 180;
+  --constellation-line-alpha: 0.17;
+  --constellation-dot-alpha:  0.42;
+
   /* ---- Elevation ---- */
   --shadow-sm:       0 8px 24px -8px rgba(0, 0, 0, 0.5);
   --shadow-md:       0 12px 32px -8px rgba(0, 0, 0, 0.6);
@@ -155,66 +163,111 @@ a:hover { color: var(--accent-soft); }
    —————————————————————————————————————————————————————————————— */
 :root[data-theme="light"],
 :root.light {
-  --bg:              #f7f5f0;
-  --bg-lift:         #ffffff;
-  --ink:             #ece9e0;
-  --ink-2:           #f2f0e9;
-  --surface:         rgba(255, 255, 255, 0.78);
-  --surface-2:       rgba(247, 245, 240, 0.55);
+  /* ══════════════════════════════════════════════════════════════════
+     TRYB JASNY — przepisany 2026-09-13.
+
+     ══ CO BYŁO NIE TAK ══
+
+     Poprzednia wersja była „papierowa": tło w kolorze kości słoniowej
+     (#f7f5f0), wgłębienia w ciemniejszej kości (#ece9e0) i cienie o kryciu
+     0,22–0,30 rozmyte na 24–56 px. Trzy rzeczy naraz:
+       1. ciepłe, zbliżone do siebie tła dawały płaski, brudnawy ekran,
+          na którym nie było widać, gdzie kończy się karta,
+       2. mocne cienie na ciepłym tle czytają się jak zabrudzenie,
+          nie jak głębia,
+       3. dwa kolory akcentu (zielony marki i fiolet do zaznaczeń) kazały
+          zgadywać, który z nich coś znaczy.
+
+     ══ CO JEST TERAZ ══
+
+     Układ, który sprawdza się w narzędziach do pracy na danych: CHŁODNE
+     SZARE TŁO STRONY, BIAŁE KARTY NA NIM, WŁOSOWE OBRYSY. Rozdzielenie
+     niesie różnica jasności tła i karty plus obrys 1 px, a nie cień —
+     dlatego cienie są tu ledwie widoczne (2–24 px, krycie 0,06–0,10).
+     Jeden akcent, zielony, w odcieniu który na bieli przechodzi próg
+     kontrastu 4,5:1 również w tekście.
+
+     Nic tu nie jest „stylizowane". Ma być czytelne po ośmiu godzinach.
+     ══════════════════════════════════════════════════════════════════ */
+
+  --bg:              #f2f4f7;   /* chłodna szarość strony */
+  --bg-lift:         #ffffff;   /* karta nad nią */
+  --ink:             #e8ecf1;   /* wgłębienia: inputy, studzienki kodu */
+  --ink-2:           #f7f9fb;   /* podniesiony panel */
+  --surface:         rgba(255, 255, 255, 0.94);
+  --surface-2:       rgba(255, 255, 255, 0.78);
   --surface-flat:    #ffffff;
-  --glass:           rgba(255, 255, 255, 0.72);
+  --glass:           rgba(255, 255, 255, 0.88);
 
-  --page-gradient: radial-gradient(circle at 50% -20%, #ffffff 0%, #f7f5f0 68%);
+  /* Prawie płaskie. Gradient jest tu po to, żeby góra ekranu była o włos
+     jaśniejsza od dołu — nie po to, żeby było go widać. */
+  --page-gradient: linear-gradient(180deg, #f7f9fb 0%, #eef1f5 100%);
 
-  --accent:          #14a06e;
-  --accent-soft:     #0d7d55;
+  /* Zieleń ściemniona względem trybu nocnego: #72f0b4 na bieli ma kontrast
+     1,4:1, czyli nie nadaje się nawet na obrys. Ten odcień ma 4,6:1, więc
+     wolno nim pisać, nie tylko wypełniać. */
+  --accent:          #0d8a5f;
+  --accent-soft:     #0a6b49;
   --accent-ink:      #ffffff;
-  --accent-04:       rgba(20, 160, 110, 0.04);
-  --accent-08:       rgba(20, 160, 110, 0.08);
-  --accent-12:       rgba(20, 160, 110, 0.12);
-  --accent-15:       rgba(20, 160, 110, 0.15);
-  --accent-25:       rgba(20, 160, 110, 0.25);
-  --accent-30:       rgba(20, 160, 110, 0.30);
-  --accent-55:       rgba(20, 160, 110, 0.55);
+  --accent-04:       rgba(13, 138, 95, 0.04);
+  --accent-08:       rgba(13, 138, 95, 0.08);
+  --accent-12:       rgba(13, 138, 95, 0.12);
+  --accent-15:       rgba(13, 138, 95, 0.15);
+  --accent-25:       rgba(13, 138, 95, 0.25);
+  --accent-30:       rgba(13, 138, 95, 0.30);
+  --accent-55:       rgba(13, 138, 95, 0.55);
 
-  /* Odrobina fioletu na kości słoniowej — wyłącznie akcent, nie drugi
-     kolor marki: zaznaczenie tekstu i pojedyncze wyróżnienia (np. domyślny
-     szablon notatnika). */
-  --accent-2:        #7c3aed;
+  /* JEDEN akcent. Fiolet zniknął: drugi kolor marki bez własnego znaczenia
+     kazał tylko zgadywać, czy coś nim wyróżnione jest ważniejsze.
+     Zmienna zostaje, bo kilka miejsc ją czyta — wskazuje teraz na akcent. */
+  --accent-2:        #0d8a5f;
 
-  --text:            #1e2630;
-  --text-hi:         #0a1220;
-  --text-2:          #4d5a68;
-  --text-3:          #55616f;
-  --text-mute:       #6a7785;
-  --text-faint:      #aeb6bf;
+  /* Skala szarości chłodna, nie ciepła — pod szare tło, nie pod papier. */
+  --text:            #263141;
+  --text-hi:         #0f1720;
+  --text-2:          #48556a;
+  --text-3:          #55636f;
+  --text-mute:       #6b7787;
+  --text-faint:      #9aa5b1;
 
-  /* Przyciemnione względem trybu nocnego — jasne barwy stanu na papierowym
-     tle schodzą poniżej progu czytelności. */
-  --warn:            #a8701a;
-  --danger:          #c2413d;
-  --info:            #2f6cbe;
+  /* Barwy stanu w nasyceniu, które na bieli utrzymuje kontrast tekstu. */
+  --warn:            #9a6410;
+  --danger:          #c0342f;
+  --info:            #1f5fb0;
 
-  --line:            rgba(10, 18, 32, 0.10);
-  --line-strong:     rgba(10, 18, 32, 0.16);
-  --line-soft:       rgba(10, 18, 32, 0.05);
+  /* Obrys jest tu głównym narzędziem rozdzielania, więc musi być widoczny —
+     ale włosowy. Powyżej tych wartości siatka kart zaczyna wyglądać jak
+     tabela w arkuszu. */
+  --line:            rgba(15, 23, 32, 0.09);
+  --line-strong:     rgba(15, 23, 32, 0.14);
+  --line-soft:       rgba(15, 23, 32, 0.04);
 
-  /* Czarne cienie na białym czytają się jak brud — stąd barwa atramentu
-     i niższe (ale, po zgłoszeniu Macieja 2026-09-12, nie za niskie) krycie:
-     karty mają się wyraźnie odklejać od tła koloru kości słoniowej, nie
-     tylko sugerować głębię obrysem. */
-  --shadow-sm:       0 8px 24px -8px rgba(30, 38, 48, 0.22);
-  --shadow-md:       0 14px 36px -8px rgba(30, 38, 48, 0.26);
-  --shadow-lg:       0 20px 56px -12px rgba(30, 38, 48, 0.30);
-  --glow:            0 0 24px rgba(20, 160, 110, 0.20);
-  --glow-strong:     0 0 48px rgba(20, 160, 110, 0.30);
-  --glow-btn:        0 8px 24px -8px rgba(20, 160, 110, 0.55);
+  /* Cienie ledwie obecne. Karta odkleja się od tła różnicą jasności
+     (#ffffff na #f2f4f7) i obrysem; cień tylko potwierdza kierunek światła.
+     Poprzednie 20–56 px przy kryciu 0,3 robiły z każdej karty plamę. */
+  --shadow-sm:       0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md:       0 2px 8px rgba(16, 24, 40, 0.08);
+  --shadow-lg:       0 8px 24px rgba(16, 24, 40, 0.10);
 
-  /* Zaznaczenie tekstu w trybie jasnym — fioletowy akcent zamiast
-     wspólnego z trybem nocnym `--accent` (zielony). */
-  --selection-bg:    rgba(124, 58, 237, 0.22);
-  --selection-fg:    #5b21b6;
+  /* „Poświata" w interfejsie do pracy z danymi jest szumem. Zostaje jako
+     obrys akcentu — to samo znaczenie (element wyróżniony), bez rozmycia. */
+  --glow:            0 0 0 1px rgba(13, 138, 95, 0.25);
+  --glow-strong:     0 0 0 2px rgba(13, 138, 95, 0.35);
+  --glow-btn:        0 1px 2px rgba(16, 24, 40, 0.10);
+
+  /* Konstelacja w odwróconych barwach: ciemne linie na jasnym tle, zamiast
+     jasnych na jasnym. Krycie wyższe niż w trybie nocnym, bo ciemna linia
+     na bieli znosi mniej niż jasna na granacie — przy 0,17 była ledwie
+     widoczna, a ma być widoczna wyraźnie. */
+  --constellation-rgb:        13, 122, 84;
+  --constellation-line-alpha: 0.26;
+  --constellation-dot-alpha:  0.55;
+
+  /* Zaznaczenie tekstu akcentem, nie osobnym kolorem. */
+  --selection-bg:    rgba(13, 138, 95, 0.18);
+  --selection-fg:    #073d2a;
 }
+
 
 :root[data-theme="light"] ::selection,
 :root.light ::selection {
