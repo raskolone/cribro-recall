@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, BookMarked, CalendarClock, Loader2, Sparkles, Target } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { LessonRecord } from '../../types';
-import { parseVocabularyTextToCards } from '../../services/lessonRecord';
+import { parseVocabularyTextToCards, getLessonRecordsForStudent } from '../../services/lessonRecord';
 import {
   getApprovedItemsForLesson,
   getStudentWeaknessItems,
@@ -25,7 +25,12 @@ import {
 interface PreLessonContextProps {
   studentId: string;
   studentName: string;
-  lessonRecords: LessonRecord[];
+  /**
+   * Lekcje kursanta. Opcjonalne: gdy ekran otwiera się z kafelka panelu, a nie
+   * z profilu kursanta, nikt ich wcześniej nie wczytał — wtedy komponent
+   * dociąga je sam po `studentId`.
+   */
+  lessonRecords?: LessonRecord[];
   /** Przejście do pełnego wpisu lekcji w zakładce historii. */
   onOpenHistory?: () => void;
 }
@@ -53,6 +58,8 @@ const PreLessonContext: React.FC<PreLessonContextProps> = ({
   lessonRecords,
   onOpenHistory,
 }) => {
+  const [fetchedRecords, setFetchedRecords] = useState<LessonRecord[] | null>(null);
+  const [loadingRecords, setLoadingRecords] = useState(false);
   const [weaknesses, setWeaknesses] = useState<WeaknessItem[]>([]);
   const [loadingWeaknesses, setLoadingWeaknesses] = useState(true);
   const [showAllItems, setShowAllItems] = useState(false);
@@ -61,12 +68,39 @@ const PreLessonContext: React.FC<PreLessonContextProps> = ({
 
   // `getLessonRecordsForStudent` sortuje malejąco po dacie, ale ekran nie może
   // na tym polegać — panel przekazuje tablicę, którą mógł po drodze przefiltrować.
+  // Dociągnięcie lekcji tylko wtedy, gdy panel ich nie podał — inaczej
+  // dublowalibyśmy zapytanie, które i tak już poszło.
+  useEffect(() => {
+    if (lessonRecords) {
+      setFetchedRecords(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingRecords(true);
+    getLessonRecordsForStudent(studentId)
+      .then(res => {
+        if (!cancelled) setFetchedRecords(res);
+      })
+      .catch(err => {
+        console.warn('[Kontekst] Nie udało się pobrać lekcji kursanta:', err?.message || err);
+        if (!cancelled) setFetchedRecords([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingRecords(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [studentId, lessonRecords]);
+
+  const records = lessonRecords ?? fetchedRecords ?? [];
+
   const lastLesson = useMemo(() => {
-    if (!lessonRecords || lessonRecords.length === 0) return null;
-    return [...lessonRecords].sort(
+    if (!records || records.length === 0) return null;
+    return [...records].sort(
       (a, b) => new Date(b.date || b.createdAt).getTime() - new Date(a.date || a.createdAt).getTime()
     )[0];
-  }, [lessonRecords]);
+  }, [records]);
 
   const items = useMemo(() => {
     if (approvedItems && approvedItems.length > 0) {
@@ -101,9 +135,17 @@ const PreLessonContext: React.FC<PreLessonContextProps> = ({
     };
   }, [studentId]);
 
+  if (!lastLesson && loadingRecords) {
+    return (
+      <div className="p-10 flex items-center justify-center gap-2 text-sm text-content-muted">
+        <Loader2 className="w-4 h-4 animate-spin" /> Wczytywanie kontekstu…
+      </div>
+    );
+  }
+
   if (!lastLesson) {
     return (
-      <div className="p-6 rounded-2xl bg-base-200/50 border border-white/10 text-center">
+      <div className="p-6 rounded-2xl bg-base-200/50 border border-line text-center">
         <CalendarClock className="w-8 h-8 text-content-muted mx-auto mb-3" />
         <p className="text-content font-semibold">Brak zapisanych lekcji</p>
         <p className="text-sm text-content-muted mt-1">
@@ -123,7 +165,7 @@ const PreLessonContext: React.FC<PreLessonContextProps> = ({
           <div className="text-xs uppercase font-bold tracking-wider text-content-muted font-mono">
             Ostatnia lekcja
           </div>
-          <div className="text-lg font-extrabold text-white mt-0.5">{lastLesson.topic}</div>
+          <div className="text-lg font-extrabold text-text-hi mt-0.5">{lastLesson.topic}</div>
         </div>
         <div className="text-right">
           <div className="font-mono text-sm text-primary font-bold">{lastLesson.date}</div>
@@ -154,13 +196,13 @@ const PreLessonContext: React.FC<PreLessonContextProps> = ({
               {visibleItems.map((item, idx) => (
                 <li
                   key={`${item.term}-${idx}`}
-                  className="flex items-start gap-3 p-3 rounded-xl bg-base-200/50 border border-white/10"
+                  className="flex items-start gap-3 p-3 rounded-xl bg-base-200/50 border border-line"
                 >
                   <span className="font-mono text-xs text-primary font-bold pt-0.5 shrink-0">
                     {String(idx + 1).padStart(2, '0')}
                   </span>
                   <span className="text-sm text-content">
-                    <span className="font-bold text-white">{item.term}</span>
+                    <span className="font-bold text-text-hi">{item.term}</span>
                     {item.definition && <span className="text-content-muted"> — {item.definition}</span>}
                   </span>
                 </li>
@@ -206,7 +248,7 @@ const PreLessonContext: React.FC<PreLessonContextProps> = ({
                 className="flex items-start justify-between gap-3 p-3 rounded-xl bg-danger/5 border border-danger/20"
               >
                 <div className="min-w-0">
-                  <div className="text-sm font-bold text-white">{w.name}</div>
+                  <div className="text-sm font-bold text-text-hi">{w.name}</div>
                   {w.description && (
                     <div className="text-xs text-content-muted mt-0.5">{w.description}</div>
                   )}
@@ -227,7 +269,7 @@ const PreLessonContext: React.FC<PreLessonContextProps> = ({
           {lastLesson.thingsToImprove && (
             <div className="space-y-2">
               <h3 className="text-sm font-bold text-content-muted uppercase tracking-wider">Do poprawy</h3>
-              <div className="bg-base-200/50 border border-white/10 rounded-2xl p-4 text-sm text-content whitespace-pre-wrap">
+              <div className="bg-base-200/50 border border-line rounded-2xl p-4 text-sm text-content whitespace-pre-wrap">
                 {lastLesson.thingsToImprove}
               </div>
             </div>

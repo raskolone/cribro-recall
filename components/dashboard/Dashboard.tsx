@@ -21,7 +21,7 @@ import { ChevronDown, Sparkles, Menu } from 'lucide-react';
 import AssignedTasks from './AssignedTasks';
 import i18n from "i18next";
 
-type View = 'dashboard' | 'extra-practice' | 'student-today' | 'preview-vocab' | 'preview-homework' | 'preview-history' | 'preview-tests' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats' | 'homework' | 'mailing' | 'admin-mailing' | 'students-database' | 'admin-students-database' | 'students' | 'lesson-scenarios' | 'admin-scenarios' | 'scratchpad';
+type View = 'dashboard' | 'extra-practice' | 'student-today' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats' | 'homework' | 'mailing' | 'admin-mailing' | 'students-database' | 'admin-students-database' | 'students' | 'lesson-scenarios' | 'admin-scenarios' | 'scratchpad';
 
 import AdminPanel from '../admin/AdminPanel';
 import StandaloneStudentDatabaseScreen from '../admin/StandaloneStudentDatabaseScreen';
@@ -32,7 +32,6 @@ import LessonHistoryScreen from './LessonHistoryScreen';
 import StudentScratchpadScreen from '../scratchpad/StudentScratchpadScreen';
 
 import TodayScreen from './TodayScreen';
-import StudentPreviewFrame from './StudentPreviewFrame';
 import StudentVocabPreview from './StudentVocabPreview';
 import { HOMEWORK_ENGINE_V2, isModuleVisible } from '../../config/featureFlags';
 import StudentTestsScreen from '../tests/StudentTestsScreen';
@@ -70,7 +69,6 @@ interface PersistedPanelState {
   activeTaskId: string | null;
   activeTestId: string | null;
   homeworkFilterStatus: string | null;
-  previewStudentId: string;
 }
 
 const readPersistedPanelState = (): Partial<PersistedPanelState> => {
@@ -169,7 +167,6 @@ const Dashboard: React.FC = () => {
   const [activeSetId, setActiveSetId] = useState<string | null>(restoredPanelState.activeSetId ?? null);
   // Wybór kursanta we wszystkich kafelkach „Widoku kursanta" naraz — bez
   // tego przełączenie się między kafelkami zerowałoby wybór za każdym razem.
-  const [previewStudentId, setPreviewStudentId] = useState<string>(restoredPanelState.previewStudentId || '');
   const [adminSelectedUserId, setAdminSelectedUserId] = useState<string | null>(restoredPanelState.adminSelectedUserId ?? null);
   const [adminActiveTab, setAdminActiveTab] = useState<string | null>(restoredPanelState.adminActiveTab ?? null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(restoredPanelState.activeTaskId ?? null);
@@ -198,9 +195,8 @@ const Dashboard: React.FC = () => {
       activeTaskId,
       activeTestId,
       homeworkFilterStatus,
-      previewStudentId,
     });
-  }, [view, activeSetId, adminSelectedUserId, adminActiveTab, activeTaskId, activeTestId, homeworkFilterStatus, previewStudentId]);
+  }, [view, activeSetId, adminSelectedUserId, adminActiveTab, activeTaskId, activeTestId, homeworkFilterStatus]);
 
   // Handle browser back button
   useEffect(() => {
@@ -227,7 +223,6 @@ const Dashboard: React.FC = () => {
 
     if (extra && extra.studentId) {
       setAdminSelectedUserId(extra.studentId);
-      setPreviewStudentId(extra.studentId);
     }
     if (extra && extra.tab) {
       setAdminActiveTab(extra.tab);
@@ -338,10 +333,9 @@ const Dashboard: React.FC = () => {
         return (
           <AdminPanel
             initialTab="stats"
-            initialSelectedUserId={adminSelectedUserId || previewStudentId}
+            initialSelectedUserId={adminSelectedUserId}
             onUserSelect={(id) => {
               setAdminSelectedUserId(id);
-              if (id) setPreviewStudentId(id);
             }}
             onViewChange={handleNavigate}
           />
@@ -357,10 +351,9 @@ const Dashboard: React.FC = () => {
         return (
           <AdminPanel
             initialTab="history"
-            initialSelectedUserId={adminSelectedUserId || previewStudentId}
+            initialSelectedUserId={adminSelectedUserId}
             onUserSelect={(id) => {
               setAdminSelectedUserId(id);
-              if (id) setPreviewStudentId(id);
             }}
             onViewChange={handleNavigate}
           />
@@ -385,10 +378,9 @@ const Dashboard: React.FC = () => {
         return (
           <AdminPanel
             initialTab="tests"
-            initialSelectedUserId={adminSelectedUserId || previewStudentId}
+            initialSelectedUserId={adminSelectedUserId}
             onUserSelect={(id) => {
               setAdminSelectedUserId(id);
-              if (id) setPreviewStudentId(id);
             }}
             onViewChange={handleNavigate}
           />
@@ -515,7 +507,6 @@ const Dashboard: React.FC = () => {
         <StandaloneStudentDatabaseScreen
           onSelectUser={(userId, targetTab) => {
             setAdminSelectedUserId(userId);
-            setPreviewStudentId(userId);
             setAdminActiveTab(targetTab || 'profile');
             handleNavigate('dashboard');
           }}
@@ -534,7 +525,7 @@ const Dashboard: React.FC = () => {
           }}
           onOpenInPresentation={async (scenario) => {
             try {
-              const pres = createPresentationFromScenario(scenario, adminSelectedUserId || previewStudentId, null);
+              const pres = createPresentationFromScenario(scenario, adminSelectedUserId, null);
               await savePresentationToStorage(pres);
               setAdminActiveTab('presentation');
               handleNavigate('dashboard');
@@ -556,72 +547,26 @@ const Dashboard: React.FC = () => {
       return (
         <AdminPanel
           initialTab={tabFromView}
-          initialSelectedUserId={adminSelectedUserId || previewStudentId}
+          initialSelectedUserId={adminSelectedUserId}
           onUserSelect={(id) => {
             setAdminSelectedUserId(id);
-            if (id) setPreviewStudentId(id);
           }}
           onViewChange={handleNavigate}
         />
       );
     }
 
-    // „Widok kursanta" — pięć kafelków lektora, każdy dokładnie ten sam
-    // ekran, który dostaje kursant. Wybór kursanta jest jeden na całą sekcję
-    // (previewStudentId), więc przełączanie kafelków go nie zeruje.
-    if (view === 'student-today') {
-      return (
-        <StudentPreviewFrame studentId={previewStudentId} onStudentIdChange={setPreviewStudentId}>
-          {(id) => (
-            <TodayScreen
-              studentId={id}
-              onOpenExtraPractice={() => handleNavigate('extra-practice')}
-              onOpenHomework={(taskId) => handleNavigate('homework', taskId ? { taskId } : undefined)}
-              onOpenTests={(testId) => handleNavigate('tests', testId ? { testId } : undefined)}
-              onStudySet={(setId) => {
-                (window as any)._initialStudyMode = 'flashcards';
-                handleNavigate('flashcard-study', { setId });
-              }}
-              onPracticeAI={(setId) => handleNavigate('ai-generator', { setId })}
-            />
-          )}
-        </StudentPreviewFrame>
-      );
-    }
-    if (view === 'preview-vocab') {
-      return (
-        <StudentPreviewFrame studentId={previewStudentId} onStudentIdChange={setPreviewStudentId}>
-          {(id) => <StudentVocabPreview studentId={id} />}
-        </StudentPreviewFrame>
-      );
-    }
-    if (view === 'preview-history') {
-      return (
-        <StudentPreviewFrame studentId={previewStudentId} onStudentIdChange={setPreviewStudentId}>
-          {(id) => (
-            <LessonHistoryScreen
-              studentId={id}
-              onNavigate={(v: any, extra?: any) => handleNavigate(v as View, extra)}
-            />
-          )}
-        </StudentPreviewFrame>
-      );
-    }
-    if (view === 'preview-tests') {
-      return (
-        <StudentPreviewFrame studentId={previewStudentId} onStudentIdChange={setPreviewStudentId}>
-          {(id) => <StudentTestsScreen studentId={id} onBack={() => handleNavigate('dashboard')} />}
-        </StudentPreviewFrame>
-      );
-    }
-    if (view === 'preview-homework') {
-      return (
-        <StudentPreviewFrame studentId={previewStudentId} onStudentIdChange={setPreviewStudentId}>
-          {(id) => <StudentHomeworkScreen studentId={id} onBack={() => handleNavigate('dashboard')} />}
-        </StudentPreviewFrame>
-      );
-    }
-
+    /*
+     * Podgląd kursanta USUNIĘTY (2026-09-13).
+     *
+     * Pięć ekranów `preview-*` renderowało panel kursanta w ramce z wyborem
+     * osoby — druga, równoległa droga do danych, które lektor ma w profilu
+     * kursanta, tylko ułożonych inaczej. Utrzymywanie dwóch wersji tego samego
+     * ekranu znaczyło, że każda zmiana w panelu kursanta musiała być
+     * sprawdzana dwa razy, a żadne wejście do podglądu nie było używane.
+     *
+     * `student-today` zostaje — to jest WŁASNY panel kursanta, nie podgląd.
+     */
     // Domyślne wejście kursanta to jego panel, nie generator. Generator nadal
     // istnieje i działa pod dwoma wejściami: „Praktyka dodatkowa" w menu oraz
     // `ai-generator`, którego używają przyciski „Przećwicz w zdaniach AI"
@@ -632,10 +577,9 @@ const Dashboard: React.FC = () => {
         return (
           <AdminPanel
             initialTab={adminActiveTab || null}
-            initialSelectedUserId={adminSelectedUserId || previewStudentId}
+            initialSelectedUserId={adminSelectedUserId}
             onUserSelect={(id) => {
               setAdminSelectedUserId(id);
-              if (id) setPreviewStudentId(id);
             }}
             onViewChange={handleNavigate}
           />

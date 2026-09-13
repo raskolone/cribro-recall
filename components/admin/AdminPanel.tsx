@@ -8,7 +8,8 @@ import {
   getRejectedNotionLessons,
   confirmPendingLesson
 } from '../../services/lessonRecord';
-import PreLessonContext from './PreLessonContext';
+
+import PreLessonContextModal from './PreLessonContextModal';
 import VocabularyApproval from './VocabularyApproval';
 import RecallItemsReview, { ReviewedCandidate } from './RecallItemsReview';
 import { saveRecallReview } from '../../services/recallItems';
@@ -243,7 +244,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
 
   const handleSelectUser = (user: UserWithId, targetTab?: string) => {
     setSelectedUser(user);
-    const validStudentTabs = ['profile', 'context', 'history', 'homework', 'vocabulary', 'tests', 'stats'];
+    // 'context' zniknął z tej listy razem z zakładką — kontekst przed lekcją
+    // jest kafelkiem pulpitu z własnym wyborem kursanta (PreLessonContextModal).
+    const validStudentTabs = ['profile', 'history', 'homework', 'vocabulary', 'tests', 'stats'];
     const nextTab = targetTab || (activeTab && validStudentTabs.includes(activeTab) ? activeTab : 'profile');
     setActiveTab(nextTab);
     if (onUserSelect) onUserSelect(user.id);
@@ -257,6 +260,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   const handleTileClick = (tabId: string) => {
     if (tabId === 'mailing') {
       setIsMailingModalOpen(true);
+      return;
+    }
+    if (tabId === 'context') {
+      /*
+       * Kontekst ZAWSZE pyta „o kogo chodzi", nawet gdy w panelu stoi
+       * otwarty profil. Lektor otwiera go przed lekcją z konkretną osobą,
+       * a ta osoba rzadko jest tą, której profil został na ekranie po
+       * poprzedniej czynności — ciche użycie `selectedUser` pokazywałoby
+       * kontekst kogoś innego bez ostrzeżenia.
+       */
+      setShowContextPicker(true);
       return;
     }
     if (tabId === 'notatnik') {
@@ -1282,6 +1296,12 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   /** Notatnik otwierany z kafelka/listwy — najpierw wybór kursanta, potem dokument. */
   const [showScratchpadPicker, setShowScratchpadPicker] = useState(false);
   const [scratchpadStudent, setScratchpadStudent] = useState<{ id: string; name: string } | null>(null);
+  /* Kontekst przed lekcją — kafelek pulpitu, własny wybór kursanta.
+     Świadomie NIE korzysta z `selectedUser`: kontekst czyta się o kimś
+     konkretnym tuż przed zajęciami i to nie musi być osoba, której profil
+     akurat stoi otwarty w panelu. */
+  const [showContextPicker, setShowContextPicker] = useState(false);
+  const [contextStudent, setContextStudent] = useState<{ id: string; name: string } | null>(null);
   const [newStudentUsername, setNewStudentUsername] = useState('');
   const [newStudentEmail, setNewStudentEmail] = useState('');
   const [createdStudentEmail, setCreatedStudentEmail] = useState('');
@@ -1771,6 +1791,25 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         }}
       />
 
+      <ScratchpadStudentPicker
+        isOpen={showContextPicker}
+        onClose={() => setShowContextPicker(false)}
+        students={activeUsers}
+        title="Kontekst przed lekcją"
+        subtitle="Wybierz kursanta, którego kontekst chcesz zobaczyć"
+        icon={<CalendarClock size={16} />}
+        onPick={student => {
+          setContextStudent(student);
+          setShowContextPicker(false);
+        }}
+      />
+
+      <PreLessonContextModal
+        isOpen={!!contextStudent}
+        onClose={() => setContextStudent(null)}
+        student={contextStudent}
+      />
+
       <ScratchpadModal
         isOpen={!!scratchpadStudent}
         onClose={() => setScratchpadStudent(null)}
@@ -1829,11 +1868,20 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               route: 'students-database',
             },
             {
-              id: 'presentation',
-              title: 'Prezentacja',
-              badge: 'Live Lekcja',
-              desc: 'Interaktywne slajdy z wymową audio na żywo z kursantem',
-              icon: Airplay
+              /*
+               * Kontekst przed lekcją zajmuje miejsce Prezentacji.
+               *
+               * Prezentację włącza się na część lekcji i nie na każdej;
+               * kontekst otwiera się przed KAŻDĄ, na minutę, żeby wiedzieć,
+               * na czym się skończyło. Prezentacja schodzi do listwy niżej —
+               * nie znika, przestaje tylko zajmować jedno z trzech miejsc
+               * zarezerwowanych dla rzeczy używanych za każdym razem.
+               */
+              id: 'context',
+              title: 'Kontekst przed lekcją',
+              badge: 'Przed każdą lekcją',
+              desc: 'Ostatnia lekcja, zatwierdzone słownictwo i elementy niestabilne — wybierz kursanta',
+              icon: CalendarClock
             },
             {
               id: 'notatnik',
@@ -1926,6 +1974,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
           { id: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
+          /* Zeszła z głównych kafelków — patrz komentarz przy kafelku Kontekstu. */
+          { id: 'presentation', title: 'Prezentacja', icon: Airplay },
           { id: 'homework', title: 'Prace domowe', icon: FileText, isRoute: true },
           {
             id: 'mailing',
@@ -1995,16 +2045,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                *   Scenariusze     — należą do Planera lekcji, nie obok niego.
                */
               /*
-               * „Podgląd kursanta" dochodzi tu po zdjęciu menu bocznego —
-               * dotąd istniał wyłącznie tam, jako rozwijana sekcja. To jest
-               * aplikacja widziana oczami kursanta, czyli jedyny sposób
-               * sprawdzenia, co on naprawdę widzi po zatwierdzeniu lekcji.
+               * Czego tu NIE MA po tej rundzie:
+               *   Podgląd kursanta — usunięty w całości (wraz z ekranami
+               *     `preview-*` i `StudentPreviewFrame`). Pięć kafelków
+               *     odtwarzających panel kursanta utrzymywało drugą, równoległą
+               *     drogę do tych samych danych i nikt z niej nie korzystał.
+               *   Baza tematów     — jest materiałem źródłowym scenariusza,
+               *     więc stoi w Planerze lekcji, obok Bazy scenariuszy.
                */
-              { view: 'student-today', title: 'Podgląd kursanta', icon: Eye },
               { view: 'tests', title: 'Testy', icon: ClipboardList },
               { view: 'flashcard-sets', title: 'Słownictwo', icon: BookMarked },
               { view: 'admin-stats', title: 'Statystyki', icon: BarChart2 },
-              { view: 'topic-database', title: 'Baza tematów', icon: Database },
               ...(isAdmin
                 ? [
                     { view: 'settings', title: 'Ustawienia', icon: Shield },
@@ -2087,17 +2138,32 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <div className="flex items-center justify-between gap-3 mb-4 pb-4 border-b border-line-strong">
                   <p className="text-xs text-content-muted">
                     Scenariusze zapisane wcześniej leżą w bazie — możesz zacząć od gotowego
-                    zamiast pisać od zera.
+                    zamiast pisać od zera. Tematy źródłowe są obok.
                   </p>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => onViewChange?.('lesson-scenarios')}
-                    className="shrink-0 flex items-center gap-1.5"
-                  >
-                    <Layers size={14} />
-                    Baza scenariuszy
-                  </Button>
+                  <div className="shrink-0 flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => onViewChange?.('lesson-scenarios')}
+                      className="flex items-center gap-1.5"
+                    >
+                      <Layers size={14} />
+                      Baza scenariuszy
+                    </Button>
+                    {/* Baza tematów zeszła tu z „Więcej narzędzi": temat jest
+                        materiałem, z którego powstaje scenariusz, a scenariusz
+                        powstaje w Planerze. Osobna pozycja w menu kazała szukać
+                        źródła gdzie indziej niż miejsca, w którym się go używa. */}
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => onViewChange?.('topic-database')}
+                      className="flex items-center gap-1.5"
+                    >
+                      <Database size={14} />
+                      Baza tematów
+                    </Button>
+                  </div>
                 </div>
               <LessonPlanner
                 selectedUser={selectedUser}
@@ -2276,7 +2342,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-base-200/90 border border-line-strong backdrop-blur-md overflow-x-auto no-scrollbar shadow-inner select-none">
             {[
               { id: 'profile', label: 'Profil & Dane', icon: UserIcon },
-              { id: 'context', label: 'Kontekst', icon: CalendarClock },
               { id: 'history', label: 'Historia lekcji', icon: Clock, count: lessonRecords.length },
               { id: 'homework', label: 'Praca domowa', icon: BookOpen, count: specialTasks.length },
               { id: 'vocabulary', label: 'Słownictwo & AI', icon: BookMarked, count: userSets.length },
@@ -2319,15 +2384,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
           {/* ZAWARTOŚĆ ZAKŁADKI KURSANTA */}
           <div ref={tabContentRef} className="pt-2">
-
-          {activeTab === 'context' && selectedUser && (
-            <PreLessonContext
-              studentId={selectedUser.id}
-              studentName={selectedUser.firstName || selectedUser.username}
-              lessonRecords={lessonRecords}
-              onOpenHistory={() => handleTileClick('history')}
-            />
-          )}
 
           {activeTab === 'stats' && (
             <div className="space-y-6">

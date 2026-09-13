@@ -7,6 +7,10 @@ interface ScratchpadStudentPickerProps {
   onClose: () => void;
   students: User[];
   onPick: (student: { id: string; name: string }) => void;
+  /** Nagłówek okna — domyślnie notatnik, bo to było pierwsze wejście. */
+  title?: string;
+  subtitle?: string;
+  icon?: React.ReactNode;
 }
 
 const displayName = (student: User): string =>
@@ -26,6 +30,9 @@ export const ScratchpadStudentPicker: React.FC<ScratchpadStudentPickerProps> = (
   onClose,
   students,
   onPick,
+  title = 'Otwórz notatnik',
+  subtitle = 'Wybierz kursanta, którego notatki chcesz otworzyć',
+  icon,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -56,13 +63,11 @@ export const ScratchpadStudentPicker: React.FC<ScratchpadStudentPickerProps> = (
         <header className="px-4 py-3 border-b border-line flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="p-2 rounded-xl bg-accent/12 text-accent border border-accent/25 shrink-0">
-              <FileEdit size={16} />
+              {icon || <FileEdit size={16} />}
             </div>
             <div className="min-w-0">
-              <h2 className="text-sm font-bold text-text-hi">Otwórz notatnik</h2>
-              <p className="text-[11px] text-text-faint">
-                Wybierz kursanta, którego notatki chcesz otworzyć
-              </p>
+              <h2 className="text-sm font-bold text-text-hi">{title}</h2>
+              <p className="text-[11px] text-text-faint">{subtitle}</p>
             </div>
           </div>
           <button
