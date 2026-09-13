@@ -48,7 +48,7 @@ CRIBRO ENGLISH (Recall) to zaawansowana platforma edukacyjna do intensywnej nauk
 ## 3. Znane Ograniczenia i Dług Techniczny — PRZECZYTAJ PRZED ZMIANAMI
 
 > Rzeczy, których **nie widać w kodzie na pierwszy rzut oka**, a które zmieniają sposób,
-> w jaki należy do niego podchodzić. Stan na 2026-09-11.
+> w jaki należy do niego podchodzić. Stan na 2026-09-14.
 
 ### ✅ (Naprawione 2026-09-12) Reguły Firestore dla brudnopisu były całkowicie otwarte
 Historyczny wpis — zostawiony jako ślad, bo dokładnie ten problem naprawia commit opisany w sekcji 4 poniżej („Zamknięcie dziury w regułach brudnopisu i indeks PIN-ów").
@@ -79,6 +79,15 @@ komponentach — część jest poprawna (biały napis na wypełnieniu akcentem),
 problem. Świadomie nieruszone w tej sesji — pełne przejście wymaga weryfikacji wzrokowej per przypadek,
 nie ślepej zamiany (patrz `docs/plan-weekend-2026-09-12.md`, Etap E).
 
+**2026-09-14: problem obszedł się bez tej zamiany.** W `index.css` stoi blok, który w trybie jasnym
+przedefiniowuje `text-white` (i warianty `/95`…`/30`, `border-white/10`, `bg-white/[0.0x]`) na
+`var(--on-fill, …)`, a elementy z wypełnieniem akcentem ustawiają u siebie `--on-fill: #fff`. Biel
+zostaje bielą tam, gdzie ma być, i ciemnieje tam, gdzie stoi na białej karcie — bez ruszania
+komponentów. **Konsekwencja dla następnych zmian:** jeżeli w trybie dziennym jakiś biały napis na
+ciemnym tle niespodziewanie ściemnieje, przyczyna jest w tym bloku, a nie w komponencie. Lista
+powierzchni „na których biel zostaje bielą" jest wypisana wprost i trzeba ją uzupełnić, gdy powstanie
+nowy rodzaj wypełnienia.
+
 ### 🟡 Interfejs nie był weryfikowany w przeglądarce
 Zmiany UI z etapów opisanych niżej (przebudowa paska Prezentacji i Brudnopisu, samouczek z dymkami, zamrożona kolumna w Bazie Kursantów, układanka z klocków, przełącznik Easy/Hard) przeszły `npx tsc --noEmit`, komplet testów jednostkowych i `npm run build`, ale **nie zostały obejrzane w działającej przeglądarce**. Przy kolejnych poprawkach w tych miejscach warto najpierw sprawdzić je wzrokowo.
 
@@ -86,9 +95,124 @@ To samo dotyczy przebudowy panelu lektora, ekranu przeglądu prac v2 i nowego no
 (sekcja 4 niżej) — brak dostępu do zalogowanej sesji przeglądarki w tej sesji agenta. Zweryfikowano
 wyłącznie `tsc --noEmit`, `npm test`, `npm run build`, `npm run test:rules`.
 
+**2026-09-14 — to samo dotyczy całej rundy 4** (kontekst przed lekcją jako kafelek, odprawa AI,
+notatnik jako osobny ekran ze spisem treści i podziałem na strony, szkło w panelu kursanta, naprawa
+trybu jasnego). Notatnik idzie do pierwszych kursantów, więc **wymaga obejrzenia na telefonie
+i na komputerze przed wysłaniem linków**.
+
+### 🟡 Podział na strony w notatniku to kreska, nie paginacja
+Warstwa nad kartką rysuje kreskę co 1123 px (A4 przy 96 dpi). Nie zna wysokości elementu, przez
+który przechodzi, więc kreska potrafi przeciąć akapit w połowie wiersza, a eksport do PDF/Worda nie
+łamie stron w tych samych miejscach. To jest sygnał długości dokumentu („to już trzecia strona"),
+a nie wierne odwzorowanie wydruku.
+
+### 🟡 Stan zwinięcia nagłówków jest częścią treści dokumentu
+Nagłówki zwijane zapisują `style.display` chowanych elementów, czyli stan zwinięcia siedzi w HTML-u
+zapisywanym w Firestore. Wynika z tego, że zwinięcie rozdziału u lektora **zwija go też u kursanta**
+po drugiej stronie linku. Zamierzone (dokument ma wyglądać tak samo u obu stron), ale niesprawdzone
+we dwoje na żywo.
+
+### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
+`services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem
+`studentId + id ostatniej lekcji`. Drugi komputer albo tryb prywatny liczy odprawę od nowa — czyli
+płaci za nią jeszcze raz. Jeżeli koszt zacznie mieć znaczenie, bufor powinien przenieść się do
+Firestore obok lekcji.
+
 ---
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
+
+### 🗂️ Kontekst przed lekcją, notatnik jak dokument i czytelny dzień (2026-09-14, runda 4)
+
+Siedem zgłoszeń Macieja z jednej sesji. Każde osobnym commitem.
+
+**1. „Kontekst przed lekcją" jako jeden z trzech głównych kafelków.**
+Wchodzi na miejsce Prezentacji: kontekst otwiera się przed KAŻDĄ lekcją,
+Prezentację włącza się na część niektórych — więc to kontekst zasługuje na
+jedno z trzech miejsc zarezerwowanych dla rzeczy używanych za każdym razem.
+Prezentacja schodzi do listwy poniżej. Kafelek ZAWSZE pyta, o którego
+kursanta chodzi, nawet gdy panel ma otwarty czyjś profil: ciche użycie
+zaznaczonego kursanta pokazywałoby kontekst kogoś innego bez ostrzeżenia.
+Zakładka „Kontekst" znika z profilu kursanta.
+
+**2. Podgląd kursanta usunięty w całości.** Pięć ekranów `preview-*`,
+`StudentPreviewFrame` i stan `previewStudentId`. Była to druga, równoległa
+droga do danych, które lektor ma w profilu kursanta — każda zmiana w panelu
+kursanta wymagała sprawdzenia dwóch wersji tego samego ekranu.
+`student-today` zostaje: to WŁASNY panel kursanta, nie podgląd.
+
+**3. Baza tematów wchodzi do Planera lekcji.** Temat jest materiałem,
+z którego powstaje scenariusz, a scenariusz powstaje w Planerze. Stoi teraz
+obok „Bazy scenariuszy", nie w osobnej pozycji menu.
+
+**4. AI Live Monitor zadokowany do dolnej krawędzi okna.** Wisiał 80 px nad
+dołem, czyli w powietrzu nad treścią — przy przewijaniu wyglądał, jakby
+dryfował. `createPortal` do `<body>` wyprowadza go poza `#root`: panele bywają
+kontenerami z `transform`, a ten unieruchamia `position: fixed` względem
+kontenera zamiast okna. Rozwinięty rejestr podnosi się nad pasek.
+
+**5. Notatnik przebudowany — idzie jutro do pierwszych kursantów.**
+- **Spis treści** jak w Google Docs: powstaje z nagłówków kartki (H1 rozdział,
+  H2 i H3 podrozdziały), na telefonie kładzie się nad kartką, na komputerze
+  stoi kolumną z lewej. Struktura dokumentu JEST spisem — nie ma drugiego
+  miejsca do jego redagowania.
+- **Nagłówki zwijane (toggle).** Strzałka to nieedytowalny element wewnątrz
+  nagłówka, nie pseudoelement: pseudoelementu nie da się kliknąć wewnątrz
+  `contentEditable` bez łapania kliknięć całego nagłówka. Stan zwinięcia
+  siedzi w HTML-u, więc przeżywa zapis i widzi go druga osoba.
+- **Podział na strony**: kreska co wysokość A4 (1123 px), rysowana warstwą nad
+  kartką; licznik stron w stopce, przeliczany przez `ResizeObserver`.
+- **Własny motyw kartki**, jasny domyślnie, niezależny od motywu aplikacji.
+  Papier to ciepła kość #f6f1e6 jak w czytniku, nie biel — biel na ciemnym
+  oknie świeci; z tekstem #2c2822 daje 12,3:1, czyli powyżej progu AAA.
+- **Notatnik jest EKRANEM, nie oknem.** Modal przyciemniał aplikację
+  („załatw to i wracaj"), przez półprzezroczyste tło prześwitywały kafelki
+  i konstelacja, a kartka nigdy nie dostawała więcej niż 90vh. Wejścia,
+  z których nie da się wyjść bez utraty stanu (prezentacja na żywo, baza
+  kursantów, profil), dostają wariant `overlay` — warstwę NIEPRZEZROCZYSTĄ.
+- **„Otwórz w Google Docs"**: kopiuje notatnik do schowka jako `text/html`
+  i otwiera pusty dokument; wklejenie zachowuje nagłówki, listy i zakreślacze.
+  Prawdziwy eksport wymagałby OAuth i zakresu `drive.file`.
+- **Płynność**: spis i licznik stron przebudowywały się przy każdym znaku, co
+  przy dłuższym dokumencie widać było jako szarpanie przewijania. Teraz jedno
+  odświeżenie 250 ms po ostatniej zmianie, z odcięciem po podpisie struktury.
+
+**6. Kontekst przed lekcją to odprawa AI, nie zrzut notatek.** W polu „do
+poprawy" potrafiło siedzieć całe zadanie domowe razem z kluczem odpowiedzi —
+ekran mający oszczędzać minutę przed lekcją tę minutę zabierał. Model dostaje
+TRZY ostatnie lekcje (jedna nie mówi, co wraca) i zwraca: co się działo,
+o czym mówił kursant, jakie słowa padły, co zadałem, co się chwieje, co
+zrobić dzisiaj. Klucz odpowiedzi nie idzie do modelu. Odprawa startuje sama
+i jest buforowana po identyfikatorze ostatniej lekcji. Surowe notatki leżą
+pod spodem, zwinięte blok po bloku.
+
+**7. Panel kursanta: symetria, szkło, klikalne logo.** Siedem narzędzi nie
+układa się równo w żadnej szerokości — „Praktyka dodatkowa" wypada z siatki
+(to samo wejście jest w nagłówku jako jedyny duży przycisk). Zostaje sześć:
+2 kolumny × 3 rzędy na telefonie, 3 × 2 na komputerze, siatka wypełnia się
+cała. Notatnik traci `desktopOnly`. Wspólna receptura `.glass-tile`:
+półprzezroczysta tafla z rozmyciem, obrys włosowy i POJEDYNCZY przejazd
+połysku przy najechaniu — stała poświata na sześciu kafelkach to sześć rzeczy
+wołających o uwagę, czyli żadna. Logo dostaje kursor łapki i `aria-label`.
+
+**8. Tryb jasny: biały tekst przestaje być biały tam, gdzie jest niewidoczny.**
+Ponad tysiąc surowych `text-white` z czasów, gdy aplikacja miała tylko tryb
+nocny, dawało w dzień biały tekst na białych kartach — całe zdania niewidoczne.
+Hurtowa podmiana nie wchodziła w grę, bo część z nich jest POPRAWNA (biel na
+wypełnieniu akcentem). Zamiast tego `text-white` znaczy teraz „kolor tekstu na
+tym, na czym stoję": domyślnie ciemny token dnia, a elementy z wypełnieniem
+ustawiają u siebie `--on-fill: #fff` i dziedziczenie zmiennych robi resztę.
+Selektory dopasowują klasę DOKŁADNIE (`[class~="bg-primary"]`), bo
+`bg-primary` to wypełnienie, a `bg-primary/10` to odcień na białej karcie.
+Do tego `color-scheme: light` — bez niego pola tekstowe rysowały się ciemne.
+
+**Czego NIE zrobiono.** „Context-aware chatbot" z pierwszej wiadomości:
+polecenie przyszło urwane w połowie zdania i mówi o rezerwacjach
+wieloetapowych, których w tej aplikacji nie ma. Zakres do ustalenia.
+
+**Weryfikacja.** `tsc --noEmit`, `npm test` (293/293) i `npm run build`
+przechodzą. ŻADNA z tych zmian nie była oglądana w przeglądarce.
+
 
 ### 🧭 Sześć etapów przebudowy nawigacji i tryb jasny od nowa (2026-09-13, runda 3)
 

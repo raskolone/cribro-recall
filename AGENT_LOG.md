@@ -904,3 +904,102 @@ Ryzyka:
   inwentaryzacja wejść zrobiona przed usunięciem i opisana w CHANGELOG.
 - Nowy nasłuch `bug_reports` w `Dashboard.tsx` odpala się wyłącznie dla
   roli `admin`.
+
+---
+
+2026-09-14 (runda 4) — Claude Code / Opus 5
+
+Zadanie: siedem zmian zgłaszanych przez Macieja w trakcie sesji —
+  kontekst przed lekcją jako główny kafelek z wyborem kursanta,
+  likwidacja podglądu kursanta, przeniesienie Bazy tematów do Planera,
+  zadokowanie AI Live Monitora, przebudowa notatnika (spis treści,
+  nagłówki zwijane, podział na strony, motyw kartki, eksport do Google
+  Docs, notatnik jako osobny ekran), przebudowa kontekstu na odprawę AI,
+  symetria i szkło w panelu kursanta, czytelność trybu jasnego.
+
+Zrobione (commit na etap):
+- `components/admin/AdminPanel.tsx` — „Kontekst przed lekcją" wchodzi na
+  miejsce Prezentacji w trójce głównych kafelków (Prezentacja schodzi do
+  listwy); kafelek ZAWSZE pyta o kursanta; zakładka „Kontekst" znika
+  z profilu; „Podgląd kursanta" i „Baza tematów" znikają z „Więcej
+  narzędzi"; Baza tematów ląduje w Planerze obok Bazy scenariuszy;
+  kafelek Notatnika prowadzi na trasę `scratchpad`; odbiór
+  `_pendingLessonFromScratchpad`.
+- `components/admin/PreLessonContextModal.tsx` (nowy).
+- `components/admin/PreLessonContext.tsx` — przepisany: odprawa AI na
+  wierzchu, surowe notatki zwinięte pod spodem.
+- `services/preLessonBriefing.ts` (nowy) — odprawa z 3 ostatnich lekcji,
+  JSON ze schematem, bufor w `localStorage` po id ostatniej lekcji.
+- `components/dashboard/Dashboard.tsx` — usunięte ekrany `preview-*`
+  i stan `previewStudentId`; trasa `scratchpad` rozdziela lektora
+  i kursanta.
+- `components/dashboard/StudentPreviewFrame.tsx` — USUNIĘTY.
+- `components/admin/AdminAIActivityMonitor.tsx` — `createPortal` do
+  <body>, zadokowany do dolnej krawędzi, panel rośnie w górę.
+- `components/scratchpad/ScratchpadEditor.tsx` — spis treści z nagłówków,
+  nagłówki zwijane, warstwa podziału na strony, motyw kartki
+  jasny/ciemny, „Otwórz w Google Docs", opóźnione odświeżanie struktury.
+- `components/scratchpad/ScratchpadModal.tsx` → `TeacherScratchpadScreen.tsx`
+  — ekran zamiast modala, wariant `overlay` dla wejść bez wyjścia.
+- `utils/pdfExport.ts` — `exportScratchpadToGoogleDocs`.
+- `components/dashboard/StudentToolBar.tsx` / `TodayScreen.tsx` /
+  `StudentHeroHeader.tsx` — sześć kafelków, siatka 2×3 i 3×2, `.glass-tile`.
+- `components/ui/TopBar.tsx` — logo jako wyraźny cel kliknięcia.
+- `index.css` — arkusz kartki `.pad-paper`, receptura `.glass-tile`,
+  blok naprawy `text-white` w trybie jasnym, `color-scheme: light`.
+
+Nie dokończone / do sprawdzenia:
+- ŻADNA z tych zmian nie była oglądana w działającej przeglądarce —
+  przeszły `tsc --noEmit`, `npm test` (293/293) i `npm run build`.
+  Notatnik idzie jutro do kursantów, więc wymaga obejrzenia na telefonie
+  i na komputerze PRZED wysłaniem linków.
+- Nagłówki zwijane zapisują stan w `style.display` elementów, czyli
+  w treści dokumentu. Przy współdzielonej edycji zwinięcie u lektora
+  zwija też u kursanta — zamierzone, ale nieprzetestowane we dwoje.
+- Podział na strony to kreska co 1123 px, nie prawdziwa paginacja: nie
+  zna wysokości elementu, przez który przechodzi, więc kreska potrafi
+  przeciąć akapit w połowie wiersza.
+- Bufor odprawy AI siedzi w `localStorage` jednej przeglądarki; drugi
+  komputer liczy ją od nowa.
+- „Chatbot kontekstowy" z pierwszej wiadomości NIE został zrobiony —
+  patrz Decyzje.
+
+Decyzje architektoniczne:
+- Kontekst pyta o kursanta ZA KAŻDYM RAZEM, nawet gdy panel ma otwarty
+  profil: ciche użycie `selectedUser` pokazywałoby kontekst kogoś innego
+  bez ostrzeżenia.
+- Odprawa z TRZECH lekcji, nie z jednej: jedna nie mówi, co wraca.
+  Klucz odpowiedzi nie idzie do modelu — najdroższa część promptu, zero
+  informacji o tym, jak kursantowi poszło.
+- Notatnik jest ekranem, nie modalem; wejścia, z których nie da się wyjść
+  bez utraty stanu (prezentacja, baza kursantów, profil), dostają wariant
+  `overlay` — warstwę NIEPRZEZROCZYSTĄ, a nie okienko nad przyciemnieniem.
+- Eksport do Google Docs przez schowek (`text/html`) + otwarcie pustego
+  dokumentu. Prawdziwy eksport wymaga OAuth i zakresu `drive.file`; nie
+  ma powodu prosić o dostęp do Dysku dla jednej funkcji.
+- Papier kartki to ciepła kość #f6f1e6 jak w czytniku, nie biel: biel na
+  ciemnym oknie świeci. Kontrast z tekstem #2c2822 wynosi 12,3:1.
+- `text-white` w trybie jasnym znaczy „kolor tekstu na tym, na czym
+  stoję" (`--on-fill`), zamiast hurtowej podmiany w 1169 miejscach —
+  część z nich jest poprawna i podmiana zepsułaby przyciski akcentu.
+- „Praktyka dodatkowa" wypada z kafelków kursanta: to samo wejście stoi
+  w nagłówku jako jedyny duży przycisk, a siedem kafelków nie układa się
+  równo w żadnej szerokości.
+- Chatbot kontekstowy: polecenie („Add a context-aware chatbot… perfect
+  for multi-step bookings or") przyszło urwane w połowie zdania i mówi
+  o rezerwacjach, których w tej aplikacji nie ma. Zamiast zgadywać zakres
+  całego nowego modułu — zostawione do ustalenia.
+
+Ryzyka:
+- `firestore.rules` NIETKNIĘTY. Middleware autoryzacji w `server.ts`
+  NIETKNIĘTY. Ścieżki tokenowe bez logowania NIETKNIĘTE.
+- Usunięcie ekranów `preview-*` to zmiana nawigacji: sprawdzone, że
+  `student-today` zostaje jako WŁASNY panel kursanta (używa go `onHome`
+  w pasku górnym i powiadomienie o nowej lekcji).
+- `TeacherScratchpadScreen` wczytuje listę kursantów własnym zapytaniem
+  o kolekcję `users` — czyta ją tylko rola lektora/admina, bo tylko ona
+  wchodzi na ten ekran.
+- Blok naprawy trybu jasnego w `index.css` stoi poza warstwami Tailwinda,
+  więc wygrywa z każdą klasą `text-white`. Dopasowanie jest dokładne
+  (`[class~=…]`), ale to reguła globalna — jeśli gdzieś biały tekst na
+  ciemnym tle w trybie dziennym ściemnieje, przyczyna jest tutaj.
