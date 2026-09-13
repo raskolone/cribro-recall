@@ -24,6 +24,20 @@ import { BadRequest, storeTranscript, type Db } from './store';
  * systemy kont w jednej aplikacji, żeby przesłać jeden tekst. Zwykły POST
  * z tokenem to jeden nagłówek i zero nowej infrastruktury.
  *
+ * ══ DLACZEGO TOKEN W `X-Sift-Token`, A NIE W `Authorization` ══
+ *
+ * Bo `Authorization: Bearer …` na funkcji drugiej generacji NIE DOCHODZI do
+ * kodu. Cloud Run (na którym stoją funkcje v2) sam przechwytuje ten nagłówek
+ * i próbuje zweryfikować go jako token Google — nasz token nim nie jest, więc
+ * brama odpowiada stroną HTML „401 Unauthorized" zanim funkcja się obudzi.
+ * Sprawdzone na wdrożonej funkcji 2026-09-13: to samo żądanie bez tego
+ * nagłówka dochodzi i dostaje odpowiedź od naszego kodu, z nim — nie.
+ *
+ * Pułapka jest w tym, że funkcja JEST publiczna i wygląda na sprawną: żądania
+ * bez nagłówka i z każdym innym nagłówkiem działają normalnie. Gdyby token
+ * został w `Authorization`, wysyłka z Sifta odbijałaby się o bramę, a logi
+ * funkcji byłyby puste, bo do niej nic nie dotarło.
+ *
  * ══ DLACZEGO TOKEN Z SECRET MANAGERA, A NIE Z BAZY ══
  *
  * Token w bazie byłby czytelny dla każdego, kto ma rolę admina, i musiałby
@@ -67,7 +81,7 @@ const tokenMatches = (given: string, expected: string): boolean => {
 /**
  * POST /ingestTranscript
  *
- * Nagłówek:  Authorization: Bearer <SIFT_INGEST_TOKEN>
+ * Nagłówek:  X-Sift-Token: <SIFT_INGEST_TOKEN>
  * Ciało:     { siftSessionId, transcript, studentUid | studentEmail, date?, topic? }
  * Odpowiedź: { ok: true, action: 'created' | 'updated', lessonId, studentUid }
  */
@@ -94,8 +108,7 @@ export const ingestTranscript = onRequest(
       return;
     }
 
-    const header = req.get('authorization') ?? '';
-    const given = header.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : '';
+    const given = (req.get('x-sift-token') ?? '').trim();
     if (!given || !tokenMatches(given, expected)) {
       // Bez szczegółów w odpowiedzi: „zły token" i „brak tokena" mają
       // wyglądać z zewnątrz identycznie.

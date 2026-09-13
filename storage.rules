@@ -3,7 +3,23 @@ rules_version = '2';
 // ════════════════════════════════════════════════════════════════════════
 //  Firebase Storage — reguły dostępu
 //
-//  ══ CO TU LEŻY ══
+//  ══ STAN NA 2026-09-13: STORAGE NIE JEST ZAŁOŻONY ══
+//
+//  W projekcie `gen-lang-client-0425391821` Firebase Storage nie został
+//  nigdy uruchomiony — `firebase deploy --only storage` odpowiada „Firebase
+//  Storage has not been set up". Kubełka więc nie ma i te reguły nie są
+//  jeszcze wdrożone; leżą tu gotowe.
+//
+//  Znaczy to też, że druga połowa cache'u TTS w `server.ts` (kubełek obok
+//  dysku lokalnego) nigdy nie działała: wywołanie jest w `try`, a brak
+//  kubełka wpada w `catch` i po cichu przechodzi do generowania. Działa
+//  wyłącznie cache na dysku. Nie jest to awaria — tylko oszczędność, której
+//  nie ma.
+//
+//  Żeby wdrożyć: konsola Firebase → Storage → „Get Started", potem
+//  `npm run deploy:storage`. Do tego czasu nie ma kubełka i nie ma ryzyka.
+//
+//  ══ CO TU BĘDZIE LEŻEĆ ══
 //
 //  Wyłącznie cache audio TTS (`server.ts`, endpoint mowy): pliki .mp3
 //  wygenerowane raz i odtwarzane wielokrotnie, żeby nie płacić dostawcy
