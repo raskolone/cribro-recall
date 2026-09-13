@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { initializeFirestore } from 'firebase/firestore';
+import { connectAuthEmulator, getAuth } from 'firebase/auth';
+import { connectFirestoreEmulator, initializeFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 import defaultFirebaseConfig from './firebase-applet-config.json';
 
@@ -55,6 +55,45 @@ export const db = initializeFirestore(app, {
  * brak funkcji, a jest zwykłą pomyłką adresową.
  */
 export const functions = getFunctions(app, 'us-central1');
+
+/**
+ * Praca na emulatorach zamiast na produkcji.
+ *
+ * ══ PO CO ══
+ *
+ * Bez tego nie da się obejrzeć w przeglądarce ANI JEDNEGO ekranu po
+ * zalogowaniu: każdy z nich potrzebuje konta i danych, a jedyne konta
+ * i dane są produkcyjne. To dlatego lista długu technicznego w CLAUDE.md
+ * od dawna nosi punkt „UI nie zweryfikowane w przeglądarce" — nie z
+ * niechlujstwa, tylko z braku drogi. Emulatory dają konta, które wolno
+ * zakładać i kasować, i dane, które wolno psuć.
+ *
+ * Uruchomienie:  npm run emulators   (osobne okno, Firestore + Auth)
+ *                VITE_USE_EMULATORS=1 npx vite
+ *
+ * ══ PODWÓJNA BRAMKA ══
+ *
+ * Warunek sprawdza NAJPIERW `import.meta.env.DEV`, a dopiero potem flagę.
+ * `DEV` jest w budowaniu produkcyjnym stałą `false`, więc cały ten blok
+ * wypada z paczki przy wycinaniu martwego kodu — zmienna środowiskowa
+ * ustawiona przez pomyłkę na Vercelu nie ma jak przestawić produkcji na
+ * localhost. Jedna bramka na fladze by tego nie dała.
+ */
+/*
+ * `import.meta.env` istnieje tylko pod Vite. Testy jednostkowe (`tsx --test`)
+ * importują ten plik w gołym Node, gdzie sięgnięcie po `.DEV` wywraca cały
+ * plik na starcie — ten sam ostrożny odczyt, co przy konfiguracji wyżej.
+ */
+const viteEnv: any =
+  typeof import.meta !== 'undefined' && import.meta && (import.meta as any).env
+    ? (import.meta as any).env
+    : {};
+
+if (viteEnv.DEV && viteEnv.VITE_USE_EMULATORS === '1') {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  connectFirestoreEmulator(db, '127.0.0.1', 8080);
+  console.info('[firebase] Emulatory: Auth :9099, Firestore :8080 — produkcja nietknięta.');
+}
 
 export enum OperationType {
   CREATE = 'create',
