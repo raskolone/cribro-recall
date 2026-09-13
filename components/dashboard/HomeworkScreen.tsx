@@ -21,9 +21,13 @@ import { TestPreviewModal } from '../admin/TestPreviewModal';
 import { exportTestToPDF } from '../../utils/pdfExport';
 import { FillInTheBlankTask } from '../practice/FillInTheBlankTask';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
+import { useIsDesktop } from '../../hooks/useMediaQuery';
+import HomeworkTaskList from './HomeworkTaskList';
 import Badge from '../ui/Badge';
 import { 
   BookOpen, 
+  LayoutGrid,
+  ListChecks,
   Sparkles, 
   Plus, 
   Check, 
@@ -272,6 +276,34 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
 
   // Filter state for teacher
   const [filterStudentId, setFilterStudentId] = useState<string>('all');
+  /**
+   * Lista czy kafelki.
+   *
+   * Domyślnie LISTA, bo prac z czasem będzie dużo i wtedy liczy się
+   * porównywanie między nimi, nie oglądanie każdej osobno. Kafelki zostają
+   * do wyboru — przy trzech pracach czytają się lepiej.
+   *
+   * Wybór pamięta przeglądarka, nie baza: to preferencja tego ekranu na tym
+   * urządzeniu, a nie cecha konta. Lektor na tablecie może chcieć kafelków,
+   * a przy biurku listy.
+   */
+  const [tileView, setTileView] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('cribro:homework-view') === 'tiles';
+    } catch {
+      return false;
+    }
+  });
+  const isDesktop = useIsDesktop();
+  /*
+   * Na telefonie kafelki są OBOWIĄZKOWE, niezależnie od zapamiętanego wyboru:
+   * wiersz listy ma pięć kolumn i cele dotyku wielkości znaczka, czego się
+   * kciukiem nie trafia. Warunek jest tutaj, a nie w klasach CSS, bo to dwa
+   * różne drzewa elementów — „ukryj jedno, pokaż drugie" znaczyłoby zbudować
+   * oba i jedno wyrzucić.
+   */
+  const showTiles = tileView || !isDesktop;
+
   const [filterStatus, setFilterStatus] = useState<string>(
     initialFilterStatus === 'v2review' ? 'all' : initialFilterStatus || 'all'
   );
@@ -2413,6 +2445,49 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                   <option value="graded">Ocenione przez nauczyciela</option>
                 </select>
               </div>
+
+              {/* PRZEŁĄCZNIK WIDOKU — tylko na dużym ekranie.
+
+                  Na telefonie wyboru nie ma, bo lista tam nie działa: pięć
+                  kolumn i cele dotyku wielkości znaczka. Pokazywanie
+                  przełącznika, który nic nie zmienia, byłoby gorsze niż jego
+                  brak. */}
+              {isDesktop && (
+                <div className="ml-auto flex items-center gap-1 p-1 rounded-xl bg-base-100/60 border border-line-strong">
+                  {[
+                    { tiles: false, label: 'Lista', icon: ListChecks },
+                    { tiles: true, label: 'Kafelki', icon: LayoutGrid },
+                  ].map((option) => {
+                    const OptionIcon = option.icon;
+                    const isActive = tileView === option.tiles;
+                    return (
+                      <button
+                        key={option.label}
+                        type="button"
+                        onClick={() => {
+                          setTileView(option.tiles);
+                          try {
+                            localStorage.setItem(
+                              'cribro:homework-view',
+                              option.tiles ? 'tiles' : 'list'
+                            );
+                          } catch {
+                            /* Tryb prywatny — wybór zadziała, tylko go nie zapamiętamy. */
+                          }
+                        }}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${
+                          isActive
+                            ? 'bg-primary/15 text-primary'
+                            : 'text-content-muted hover:text-text-hi'
+                        }`}
+                      >
+                        <OptionIcon size={13} />
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -2440,6 +2515,34 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                 </p>
               </Card>
             )
+          ) : !showTiles ? (
+            <HomeworkTaskList
+              tasks={isTeacher ? filteredTasks : tasks}
+              showStudent={isTeacher}
+              isNew={isTeacher ? isTaskNewForTeacher : undefined}
+              formatDate={formatTaskDateTime}
+              onPreview={(task) => {
+                markTaskAsViewedByTeacher(task);
+                setPreviewTask(task);
+              }}
+              onEdit={
+                isTeacher
+                  ? (task) => {
+                      markTaskAsViewedByTeacher(task);
+                      handleStartEditTask(task);
+                    }
+                  : undefined
+              }
+              onReview={
+                isTeacher
+                  ? (task) => {
+                      markTaskAsViewedByTeacher(task);
+                      setReviewTask(task);
+                      setTeacherFeedbackText(task.teacherFeedback || '');
+                    }
+                  : undefined
+              }
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {(isTeacher ? filteredTasks : tasks).map((task) => {
