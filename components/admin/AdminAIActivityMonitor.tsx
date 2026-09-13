@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { aiMonitor, AIActivityEvent } from '../../services/aiMonitorService';
@@ -97,13 +98,26 @@ export const AdminAIActivityMonitor: React.FC = () => {
     }
   };
 
-  return (
-    /* Nad przyciskiem zgłaszania błędu, nie na nim.
+  const panel = (
+    /* ══ ZADOKOWANY DO DOLNEJ KRAWĘDZI, PRZEZ PORTAL ══
 
-       Oba wisiały w prawym dolnym narożniku (`bottom-4` tu, `bottom-6`
-       w BugReporter.tsx) i przy z-index 9999 monitor po prostu przykrywał
-       zgłaszanie błędów — na telefonie nie dało się go dotknąć. */
-    <div className="fixed bottom-20 right-4 z-[9999] pointer-events-auto select-none font-sans">
+       Monitor wisiał 80 px nad dołem ekranu (`bottom-20`), czyli w powietrzu
+       nad treścią — przy przewijaniu wyglądał, jakby dryfował po stronie.
+       Teraz siedzi NA dolnej krawędzi okna i tam zostaje niezależnie od tego,
+       co się przewija: `createPortal` do <body> wyprowadza go poza powłokę
+       aplikacji (`#root` ma własny kontekst nakładania, a panele bywają
+       kontenerami z `transform`, który unieruchamia `position: fixed`).
+
+       `bottom-0` z odstępem na pasek gestów telefonu (`safe-area-inset`),
+       kolumna rosnąca w górę (`flex-col justify-end`), żeby rozwinięty panel
+       podnosił się nad pasek zamiast go zasłaniać. Odsunięcie od prawej
+       zostaje: przycisk zgłaszania błędu z BugReporter.tsx stoi niżej w tym
+       samym narożniku. */
+    <div
+      className="fixed bottom-0 right-4 z-[9999] pointer-events-none select-none font-sans flex flex-col items-end justify-end max-h-[100dvh]"
+      style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+    >
+      <div className="pointer-events-auto flex flex-col-reverse items-end">
       <AnimatePresence>
         {currentDisplayEvent && !isMinimized && !isExpanded && (
           <motion.div
@@ -111,7 +125,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 15, scale: 0.95 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="flex flex-col items-end gap-2 mb-2"
+            className="flex flex-col items-end gap-2"
           >
             <div 
               onClick={() => setIsExpanded(true)}
@@ -222,7 +236,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="w-[92vw] sm:w-[480px] max-h-[600px] flex flex-col rounded-3xl bg-ink/95 border border-primary/30 text-white shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(114, 240, 180,0.2)] backdrop-blur-2xl overflow-hidden mt-2"
+            className="w-[92vw] sm:w-[480px] max-h-[600px] flex flex-col rounded-3xl bg-ink/95 border border-primary/30 text-white shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(114, 240, 180,0.2)] backdrop-blur-2xl overflow-hidden mb-2"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-primary/30">
@@ -403,6 +417,12 @@ export const AdminAIActivityMonitor: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
+
+  // Portal do <body>: poza `#root`, więc żaden kontener z `transform` ani
+  // własnym kontekstem nakładania nie odczepi go od dolnej krawędzi okna.
+  if (typeof window === 'undefined' || !window.document?.body) return panel;
+  return createPortal(panel, window.document.body);
 };
