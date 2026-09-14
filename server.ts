@@ -2013,7 +2013,10 @@ Gdy w materiale nie ma żadnej lekcji, zwróć {"lessons":[]} — nigdy nie wymy
 
   app.post('/api/gemini/lesson-summary', requireFirebaseAdmin, async (req, res) => {
     try {
-      const { notes, pdfBase64, driveFile, students } = req.body;
+      const { notes, pdfBase64, driveFile, students, mode } = req.body;
+      /* Dwa rodzaje materiału, dwa różne zadania — patrz komentarz przy
+         poleceniach systemowych niżej. Domyślnie „notes", bo tak było dotąd. */
+      const isTranscript = mode === 'transcript';
       if (!notes && !pdfBase64 && !driveFile) {
         return res.status(400).json({ error: 'Missing notes, pdfBase64 or driveFile' });
       }
@@ -2053,7 +2056,7 @@ Gdy w materiale nie ma żadnej lekcji, zwróć {"lessons":[]} — nigdy nie wymy
                     mimeType: 'application/pdf'
                   }
                 },
-                { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z notatkami z lekcji. Przeanalizuj go.` }
+                { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF ${isTranscript ? 'z TRANSKRYPCJĄ lekcji (zapisem rozmowy)' : 'z notatkami z lekcji'}. Przeanalizuj go.` }
               ]
             }];
         } else {
@@ -2073,15 +2076,76 @@ Gdy w materiale nie ma żadnej lekcji, zwróć {"lessons":[]} — nigdy nie wymy
                 mimeType: 'application/pdf'
               }
             },
-            { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF z notatkami z lekcji. Przeanalizuj go.` }
+            { text: `Baza kursantów:\n${studentsListStr}\n\nPowyżej znajduje się plik PDF ${isTranscript ? 'z TRANSKRYPCJĄ lekcji (zapisem rozmowy)' : 'z notatkami z lekcji'}. Przeanalizuj go.` }
           ]
         }];
       } else {
         promptContext = [{
           role: 'user',
-          parts: [{ text: `Baza kursantów:\n${studentsListStr}\n\nTranskrypcja/Notatki ze spotkania:\n${notes}` }]
+          parts: [{ text: `Baza kursantów:\n${studentsListStr}\n\n${isTranscript ? 'SUROWA TRANSKRYPCJA LEKCJI (zapis rozmowy)' : 'Notatki ze spotkania'}:\n${notes}` }]
         }];
       }
+
+      /*
+       * ══ DWA ŹRÓDŁA, DWA ZADANIA ══
+       *
+       * „notes" to GOTOWE podsumowanie spotkania — ktoś (człowiek albo
+       * narzędzie do notatek) już wybrał, co jest ważne. Robota modelu polega
+       * wtedy na przepisaniu tego do pól aplikacji.
+       *
+       * „transcript" to SUROWY ZAPIS ROZMOWY: godzina mówienia, w której
+       * słownictwo, błędy i ustalenia leżą wymieszane z „yhy", powtórzeniami
+       * i rozmową o pogodzie. Tu nie ma czego przepisywać — trzeba to wydobyć
+       * i ułożyć. Dawanie obu materiałom tego samego polecenia dawało
+       * z transkrypcji trzy zdania streszczenia i pustą resztę pól, bo model
+       * szukał gotowych sekcji, których w rozmowie nie ma.
+       *
+       * Układ docelowy nie jest dowolny: to te same CZTERY BLOKI, które
+       * kursant i lektor widzą w historii lekcji (utils/lessonBlocks.ts) —
+       * Lekcja w skrócie, Key Language (słownictwo + korekty), Homework,
+       * Next Lesson, plus Learning Curve o wypowiedzi kursanta. Dlatego
+       * wersja transkrypcyjna MA generować pracę domową: blok 3 jest częścią
+       * układu, a pusty blok w historii to dziura, nie oszczędność.
+       */
+      const transcriptInstruction = `# Cel
+Dostajesz SUROWĄ TRANSKRYPCJĘ lekcji języka angielskiego (zapis rozmowy lektora z kursantem) albo plik z takim zapisem.
+Twoim zadaniem jest wydobyć z niej WSZYSTKIE informacje o wartości dydaktycznej i ułożyć je w STANDARDOWY UKŁAD BLOKÓW, który kursant i lektor widzą w historii lekcji.
+To nie jest streszczanie. To porządkowanie: nic, co padło w rozmowie i ma wartość do nauki, nie może zniknąć.
+
+# Czego szukasz w zapisie rozmowy
+Przejdź transkrypcję od początku do końca i wynotuj:
+- KAŻDE słowo, zwrot, kolokację i idiom, które lektor podał, wyjaśnił, przetłumaczył albo poprawił — również te wplecione w zdanie i nigdzie nie wypisane,
+- KAŻDĄ poprawkę błędu kursanta: co powiedział źle i jak brzmi poprawnie,
+- uwagi o wymowie (akcent wyrazowy, konkretne głoski, intonacja),
+- zagadnienia gramatyczne, które były omawiane lub ćwiczone,
+- ustalenia na przyszłość i wszystko, co lektor zapowiedział albo zadał,
+- czym kursant się zajmuje i o czym mówił — to materiał na kolejne lekcje.
+Pomijaj wyłącznie to, co nie niesie treści: powitania, „yhy", problemy techniczne, ustalanie terminu, przerwy.
+
+# Zasady
+- Wszystkie pola opisowe pisz PO POLSKU. Słownictwo naturalnie dwujęzycznie: "angielskie słowo - polskie tłumaczenie".
+- NIE WYMYŚLAJ niczego, czego nie ma w zapisie. Jeśli w rozmowie brakuje materiału do danego pola, wpisz: Brak danych w transkrypcji.
+- Pracę domową ułóż na podstawie materiału z TEJ lekcji (słownictwo i błędy, które faktycznie padły), a nie z niczego. Jeśli lektor zadał coś wprost — to jest praca domowa i przepisz ją dokładnie.
+- Daty nie zgaduj: jeśli w zapisie nie padła, zostaw pole date puste.
+
+# Zanim wygenerujesz
+Na podstawie podanej bazy kursantów dopasuj studentId oraz studentIds (gdy lekcja była grupowa). Dostosuj poziom języka do profilu kursanta.
+
+# Zwróć JSON o polach
+- studentId (string, ID głównego kursanta z bazy; puste, gdy nie da się dopasować)
+- studentIds (array of strings, wszyscy kursanci tej lekcji)
+- date (string, YYYY-MM-DD — wyłącznie jeśli data padła w zapisie; inaczej puste)
+- lessonTopic (string, zwięzłe hasło tematu, maksymalnie 50 znaków, bez daty)
+- revisionNotes (string, BLOK 1 „Lekcja w skrócie": przebieg lekcji po polsku, 4-8 zdań — co ćwiczyliście i w jakiej kolejności)
+- vocabularyText (string, BLOK 2 „Key Language": każde słówko i zwrot w osobnej linii, ściśle "angielskie - polskie". Bez punktorów, bez markdown, bez numeracji.)
+- corrections (string, BLOK 2b „Korekty i wymowa": poprawki w formacie "❌ to, co powiedział kursant → ✅ poprawna wersja", po jednej na linię, z krótkim wyjaśnieniem po polsku, gdy jest potrzebne. Tu trafiają też uwagi o wymowie.)
+- homeworkText (string, BLOK 3 „Homework": konkretne zadanie oparte na materiale z tej lekcji — np. 8-10 ponumerowanych zdań do przetłumaczenia z polskiego na angielski, wykorzystujących nowe słownictwo i poprawione błędy. Bez odpowiedzi.)
+- homeworkAnswerKey (string, BLOK 3b „Klucz odpowiedzi": odpowiedzi do zadania wyżej, ta sama numeracja, nic poza nimi)
+- nextLessonPlan (string, BLOK 4 „Next Lesson": ustalenia i najlepsze tematy na kolejne zajęcia, po polsku)
+- studentSpeaking (string, „Learning Curve": 5-6 zdań po polsku, neutralnie — o czym kursant mówił, jak mu szło, co go interesuje)
+- thingsToImprove (string, ta sama treść co corrections — dla zgodności ze starszymi widokami)
+- suggestedFollowUp (string, ta sama treść co nextLessonPlan — dla zgodności ze starszymi widokami)
+`;
 
       const sysInstruction = `# Cel
 Na podstawie AI meeting notes przygotuj podsumowanie lekcji języka angielskiego dla kursanta.
@@ -2118,12 +2182,19 @@ Zwróć wynik jako JSON z poniższymi polami:
           studentSpeaking: { type: Type.STRING },
           thingsToImprove: { type: Type.STRING },
           suggestedFollowUp: { type: Type.STRING },
+          /* Bloki 2b-4 wprost. Wersja notatkowa ich nie wypełnia i nie musi —
+             pola są opcjonalne, więc schemat jest jeden dla obu trybów. */
+          date: { type: Type.STRING },
+          corrections: { type: Type.STRING },
+          homeworkText: { type: Type.STRING },
+          homeworkAnswerKey: { type: Type.STRING },
+          nextLessonPlan: { type: Type.STRING },
         },
         required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
       };
 
       let response = await generateContentWithRetry(ai, promptContext, {
-        systemInstruction: sysInstruction,
+        systemInstruction: isTranscript ? transcriptInstruction : sysInstruction,
         responseMimeType: "application/json",
         responseSchema: schema
       });

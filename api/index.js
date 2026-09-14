@@ -2014,7 +2014,8 @@ Gdy w materiale nie ma \u017Cadnej lekcji, zwr\xF3\u0107 {"lessons":[]} \u2014 n
   });
   app2.post("/api/gemini/lesson-summary", requireFirebaseAdmin, async (req, res) => {
     try {
-      const { notes, pdfBase64, driveFile, students } = req.body;
+      const { notes, pdfBase64, driveFile, students, mode } = req.body;
+      const isTranscript = mode === "transcript";
       if (!notes && !pdfBase64 && !driveFile) {
         return res.status(400).json({ error: "Missing notes, pdfBase64 or driveFile" });
       }
@@ -2044,7 +2045,7 @@ Gdy w materiale nie ma \u017Cadnej lekcji, zwr\xF3\u0107 {"lessons":[]} \u2014 n
               { text: `Baza kursant\xF3w:
 ${studentsListStr}
 
-Powy\u017Cej znajduje si\u0119 plik PDF z notatkami z lekcji. Przeanalizuj go.` }
+Powy\u017Cej znajduje si\u0119 plik PDF ${isTranscript ? "z TRANSKRYPCJ\u0104 lekcji (zapisem rozmowy)" : "z notatkami z lekcji"}. Przeanalizuj go.` }
             ]
           }];
         } else {
@@ -2071,7 +2072,7 @@ ${text2}` }]
             { text: `Baza kursant\xF3w:
 ${studentsListStr}
 
-Powy\u017Cej znajduje si\u0119 plik PDF z notatkami z lekcji. Przeanalizuj go.` }
+Powy\u017Cej znajduje si\u0119 plik PDF ${isTranscript ? "z TRANSKRYPCJ\u0104 lekcji (zapisem rozmowy)" : "z notatkami z lekcji"}. Przeanalizuj go.` }
           ]
         }];
       } else {
@@ -2080,10 +2081,49 @@ Powy\u017Cej znajduje si\u0119 plik PDF z notatkami z lekcji. Przeanalizuj go.` 
           parts: [{ text: `Baza kursant\xF3w:
 ${studentsListStr}
 
-Transkrypcja/Notatki ze spotkania:
+${isTranscript ? "SUROWA TRANSKRYPCJA LEKCJI (zapis rozmowy)" : "Notatki ze spotkania"}:
 ${notes}` }]
         }];
       }
+      const transcriptInstruction = `# Cel
+Dostajesz SUROW\u0104 TRANSKRYPCJ\u0118 lekcji j\u0119zyka angielskiego (zapis rozmowy lektora z kursantem) albo plik z takim zapisem.
+Twoim zadaniem jest wydoby\u0107 z niej WSZYSTKIE informacje o warto\u015Bci dydaktycznej i u\u0142o\u017Cy\u0107 je w STANDARDOWY UK\u0141AD BLOK\xD3W, kt\xF3ry kursant i lektor widz\u0105 w historii lekcji.
+To nie jest streszczanie. To porz\u0105dkowanie: nic, co pad\u0142o w rozmowie i ma warto\u015B\u0107 do nauki, nie mo\u017Ce znikn\u0105\u0107.
+
+# Czego szukasz w zapisie rozmowy
+Przejd\u017A transkrypcj\u0119 od pocz\u0105tku do ko\u0144ca i wynotuj:
+- KA\u017BDE s\u0142owo, zwrot, kolokacj\u0119 i idiom, kt\xF3re lektor poda\u0142, wyja\u015Bni\u0142, przet\u0142umaczy\u0142 albo poprawi\u0142 \u2014 r\xF3wnie\u017C te wplecione w zdanie i nigdzie nie wypisane,
+- KA\u017BD\u0104 poprawk\u0119 b\u0142\u0119du kursanta: co powiedzia\u0142 \u017Ale i jak brzmi poprawnie,
+- uwagi o wymowie (akcent wyrazowy, konkretne g\u0142oski, intonacja),
+- zagadnienia gramatyczne, kt\xF3re by\u0142y omawiane lub \u0107wiczone,
+- ustalenia na przysz\u0142o\u015B\u0107 i wszystko, co lektor zapowiedzia\u0142 albo zada\u0142,
+- czym kursant si\u0119 zajmuje i o czym m\xF3wi\u0142 \u2014 to materia\u0142 na kolejne lekcje.
+Pomijaj wy\u0142\u0105cznie to, co nie niesie tre\u015Bci: powitania, \u201Eyhy", problemy techniczne, ustalanie terminu, przerwy.
+
+# Zasady
+- Wszystkie pola opisowe pisz PO POLSKU. S\u0142ownictwo naturalnie dwuj\u0119zycznie: "angielskie s\u0142owo - polskie t\u0142umaczenie".
+- NIE WYMY\u015ALAJ niczego, czego nie ma w zapisie. Je\u015Bli w rozmowie brakuje materia\u0142u do danego pola, wpisz: Brak danych w transkrypcji.
+- Prac\u0119 domow\u0105 u\u0142\xF3\u017C na podstawie materia\u0142u z TEJ lekcji (s\u0142ownictwo i b\u0142\u0119dy, kt\xF3re faktycznie pad\u0142y), a nie z niczego. Je\u015Bli lektor zada\u0142 co\u015B wprost \u2014 to jest praca domowa i przepisz j\u0105 dok\u0142adnie.
+- Daty nie zgaduj: je\u015Bli w zapisie nie pad\u0142a, zostaw pole date puste.
+
+# Zanim wygenerujesz
+Na podstawie podanej bazy kursant\xF3w dopasuj studentId oraz studentIds (gdy lekcja by\u0142a grupowa). Dostosuj poziom j\u0119zyka do profilu kursanta.
+
+# Zwr\xF3\u0107 JSON o polach
+- studentId (string, ID g\u0142\xF3wnego kursanta z bazy; puste, gdy nie da si\u0119 dopasowa\u0107)
+- studentIds (array of strings, wszyscy kursanci tej lekcji)
+- date (string, YYYY-MM-DD \u2014 wy\u0142\u0105cznie je\u015Bli data pad\u0142a w zapisie; inaczej puste)
+- lessonTopic (string, zwi\u0119z\u0142e has\u0142o tematu, maksymalnie 50 znak\xF3w, bez daty)
+- revisionNotes (string, BLOK 1 \u201ELekcja w skr\xF3cie": przebieg lekcji po polsku, 4-8 zda\u0144 \u2014 co \u0107wiczyli\u015Bcie i w jakiej kolejno\u015Bci)
+- vocabularyText (string, BLOK 2 \u201EKey Language": ka\u017Cde s\u0142\xF3wko i zwrot w osobnej linii, \u015Bci\u015Ble "angielskie - polskie". Bez punktor\xF3w, bez markdown, bez numeracji.)
+- corrections (string, BLOK 2b \u201EKorekty i wymowa": poprawki w formacie "\u274C to, co powiedzia\u0142 kursant \u2192 \u2705 poprawna wersja", po jednej na lini\u0119, z kr\xF3tkim wyja\u015Bnieniem po polsku, gdy jest potrzebne. Tu trafiaj\u0105 te\u017C uwagi o wymowie.)
+- homeworkText (string, BLOK 3 \u201EHomework": konkretne zadanie oparte na materiale z tej lekcji \u2014 np. 8-10 ponumerowanych zda\u0144 do przet\u0142umaczenia z polskiego na angielski, wykorzystuj\u0105cych nowe s\u0142ownictwo i poprawione b\u0142\u0119dy. Bez odpowiedzi.)
+- homeworkAnswerKey (string, BLOK 3b \u201EKlucz odpowiedzi": odpowiedzi do zadania wy\u017Cej, ta sama numeracja, nic poza nimi)
+- nextLessonPlan (string, BLOK 4 \u201ENext Lesson": ustalenia i najlepsze tematy na kolejne zaj\u0119cia, po polsku)
+- studentSpeaking (string, \u201ELearning Curve": 5-6 zda\u0144 po polsku, neutralnie \u2014 o czym kursant m\xF3wi\u0142, jak mu sz\u0142o, co go interesuje)
+- thingsToImprove (string, ta sama tre\u015B\u0107 co corrections \u2014 dla zgodno\u015Bci ze starszymi widokami)
+- suggestedFollowUp (string, ta sama tre\u015B\u0107 co nextLessonPlan \u2014 dla zgodno\u015Bci ze starszymi widokami)
+`;
       const sysInstruction = `# Cel
 Na podstawie AI meeting notes przygotuj podsumowanie lekcji j\u0119zyka angielskiego dla kursanta.
 \u0179r\xF3d\u0142em danych jest gotowe podsumowanie spotkania. Je\u015Bli gotowe podsumowanie jest niewystarczaj\u0105ce, u\u017Cyj pe\u0142nej transkrypcji.
@@ -2117,12 +2157,19 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
           vocabularyText: { type: Type.STRING },
           studentSpeaking: { type: Type.STRING },
           thingsToImprove: { type: Type.STRING },
-          suggestedFollowUp: { type: Type.STRING }
+          suggestedFollowUp: { type: Type.STRING },
+          /* Bloki 2b-4 wprost. Wersja notatkowa ich nie wypełnia i nie musi —
+             pola są opcjonalne, więc schemat jest jeden dla obu trybów. */
+          date: { type: Type.STRING },
+          corrections: { type: Type.STRING },
+          homeworkText: { type: Type.STRING },
+          homeworkAnswerKey: { type: Type.STRING },
+          nextLessonPlan: { type: Type.STRING }
         },
         required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
       };
       let response = await generateContentWithRetry(ai, promptContext, {
-        systemInstruction: sysInstruction,
+        systemInstruction: isTranscript ? transcriptInstruction : sysInstruction,
         responseMimeType: "application/json",
         responseSchema: schema
       });

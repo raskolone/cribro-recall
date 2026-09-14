@@ -1871,10 +1871,20 @@ PRZYKŁAD ZŁEGO (dokładnie tego NIE rób):
     throw new Error("Nie udało się ocenić pracy.");
   }
 };
+/**
+ * Podsumowanie JEDNEJ lekcji.
+ *
+ * `mode` rozróżnia materiał, a nie sposób wywołania: „notes" to gotowe
+ * podsumowanie spotkania (zostaje przepisane do pól), „transcript" to surowy
+ * zapis rozmowy, z którego trzeba dopiero wyłuskać słownictwo, korekty
+ * i ustalenia i ułożyć je w cztery bloki widoczne w historii lekcji.
+ * Pełne uzasadnienie przy poleceniach systemowych w `server.ts`.
+ */
 export const generateLessonSummary = async (
   notes: string,
   pdfBase64: string,
-  studentsStr: string
+  studentsStr: string,
+  mode: 'notes' | 'transcript' = 'notes'
 ) => {
   try {
     const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
@@ -1887,7 +1897,8 @@ export const generateLessonSummary = async (
       body: JSON.stringify({
         notes,
         pdfBase64,
-        students: studentsStr
+        students: studentsStr,
+        mode
       })
     });
     if (res.ok) {
@@ -1897,7 +1908,38 @@ export const generateLessonSummary = async (
     console.warn("Backend lesson summary failed, attempting fallback...", backendErr);
   }
 
-  const promptText = `Jako asystent nauczyciela języka angielskiego, przeanalizuj notatki z lekcji (lub załączony dokument) i przygotuj strukturalne podsumowanie lekcji w formacie JSON.
+  /* Ścieżka zapasowa (bez serwera) musi znać tę samą różnicę co serwer —
+     inaczej po awarii backendu transkrypcja dostaje polecenie napisane pod
+     gotowe notatki i wraca z trzema zdaniami zamiast czterech bloków. */
+  const promptText = mode === 'transcript'
+    ? `Jako asystent nauczyciela języka angielskiego przeanalizuj SUROWĄ TRANSKRYPCJĘ lekcji (zapis rozmowy lektora z kursantem) lub załączony plik z takim zapisem.
+Nie streszczaj — WYDOBĄDŹ z rozmowy wszystkie informacje o wartości dydaktycznej i ułóż je w standardowy układ bloków historii lekcji.
+
+Wynotuj: każde słowo i zwrot podane albo poprawione przez lektora (również wplecione w zdanie), każdą poprawkę błędu kursanta, uwagi o wymowie, omawianą gramatykę, ustalenia na przyszłość i to, o czym kursant mówił.
+Pomijaj powitania, „yhy", sprawy techniczne i ustalanie terminu.
+Nie wymyślaj niczego, czego nie ma w zapisie — brakujące pole wypełnij tekstem: Brak danych w transkrypcji.
+
+Lista dostępnych uczniów (wybierz studentId najbardziej pasującego ucznia z listy):
+${studentsStr}
+
+${notes ? `Transkrypcja lekcji:\n${notes}` : ''}
+
+Zwróć WYŁĄCZNIE poprawny obiekt JSON o następującej strukturze:
+{
+  "studentId": "ID ucznia z listy lub pusty string",
+  "date": "YYYY-MM-DD, wyłącznie jeśli data padła w zapisie; inaczej pusty string",
+  "lessonTopic": "Zwięzłe hasło tematu, maksymalnie 50 znaków, bez daty",
+  "revisionNotes": "BLOK 1 — przebieg lekcji po polsku, 4-8 zdań",
+  "vocabularyText": "BLOK 2 — każde słówko w osobnej linii: angielskie - polskie, bez punktorów",
+  "corrections": "BLOK 2b — poprawki w formacie: ❌ błąd → ✅ poprawnie, po jednej na linię; tu też wymowa",
+  "homeworkText": "BLOK 3 — 8-10 ponumerowanych zdań do tłumaczenia na materiale z tej lekcji, bez odpowiedzi",
+  "homeworkAnswerKey": "BLOK 3b — odpowiedzi do zadania wyżej, ta sama numeracja",
+  "nextLessonPlan": "BLOK 4 — ustalenia i tematy na kolejne zajęcia, po polsku",
+  "studentSpeaking": "Learning Curve — 5-6 zdań po polsku o tym, jak kursant mówił",
+  "thingsToImprove": "ta sama treść co corrections",
+  "suggestedFollowUp": "ta sama treść co nextLessonPlan"
+}`
+    : `Jako asystent nauczyciela języka angielskiego, przeanalizuj notatki z lekcji (lub załączony dokument) i przygotuj strukturalne podsumowanie lekcji w formacie JSON.
 
 Lista dostępnych uczniów (wybierz studentId najbardziej pasującego ucznia z listy):
 ${studentsStr}

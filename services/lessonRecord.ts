@@ -130,6 +130,25 @@ export async function createLessonRecordWithVocabularySet(input: {
   studentSpeaking?: string;
   thingsToImprove?: string;
   suggestedFollowUp?: string;
+  /*
+   * ── BLOKI 2b–4 WPROST, A NIE DO WYŁUSKANIA ──
+   *
+   * Do tej pory wpis mógł przyjechać tylko w siedmiu polach, więc korekty
+   * i praca domowa musiały jechać DOKLEJONE do `thingsToImprove` pod
+   * znacznikiem „Zadanie domowe:", a `extractLessonBlocks` rozcinał je
+   * z powrotem po wyrażeniu regularnym. Działa to dla starych wpisów
+   * z Notion, bo tam nie ma wyboru — ale świadome ZAPISYWANIE danych
+   * w formacie, który zaraz trzeba parsować, robi nowy dług przy każdej
+   * lekcji wygenerowanej z transkrypcji.
+   *
+   * Kto zna bloki (AI z transkrypcji, formularz lektora), podaje je wprost.
+   * Kto ich nie zna (stary import), nadal podaje `thingsToImprove` i nic
+   * się dla niego nie zmienia.
+   */
+  corrections?: string;
+  homeworkText?: string;
+  homeworkAnswerKey?: string;
+  nextLessonPlan?: string;
   scenarioId?: string;
   scenarioTopic?: string;
   scenarioContent?: string;
@@ -187,6 +206,10 @@ export async function createLessonRecordWithVocabularySet(input: {
     studentSpeaking: input.studentSpeaking,
     thingsToImprove: input.thingsToImprove,
     suggestedFollowUp: input.suggestedFollowUp,
+    corrections: input.corrections,
+    homeworkText: input.homeworkText,
+    homeworkAnswerKey: input.homeworkAnswerKey,
+    nextLessonPlan: input.nextLessonPlan,
     vocabularySetId: vocabularySetId,
     scenarioId: input.scenarioId,
     scenarioTopic: input.scenarioTopic,

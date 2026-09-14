@@ -532,15 +532,73 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     if (data.revisionNotes) setLessonFormSummary(data.revisionNotes);
     if (data.vocabularyText) setLessonFormWords(data.vocabularyText);
     if (data.studentSpeaking) setLessonFormStudentSpeaking(data.studentSpeaking);
-    if (data.thingsToImprove) setLessonFormThingsToImprove(data.thingsToImprove);
-    if (data.suggestedFollowUp) setLessonFormSuggestedFollowUp(data.suggestedFollowUp);
-    
-    setLessonFormDate(new Date().toISOString().split('T')[0]);
+    /* Korekty i plan na kolejną lekcję mają teraz własne pola w odpowiedzi.
+       Starsze wywołania (notatki, import zbiorczy) ich nie zwracają, więc
+       wpadamy z powrotem na `thingsToImprove` / `suggestedFollowUp`. */
+    const correctionsText = data.corrections || data.thingsToImprove;
+    if (correctionsText) setLessonFormThingsToImprove(correctionsText);
+    const nextLessonText = data.nextLessonPlan || data.suggestedFollowUp;
+    if (nextLessonText) setLessonFormSuggestedFollowUp(nextLessonText);
+    if (data.homeworkText) setLessonFormHomework(data.homeworkText);
+    if (data.homeworkAnswerKey) setLessonFormAnswerKey(data.homeworkAnswerKey);
+
+    /* Data z materiału ma pierwszeństwo nad dzisiejszą. Wstawianie dzisiejszej
+       zawsze było zgadywaniem: lekcję z transkrypcji opracowuje się często
+       dzień czy dwa po zajęciach, a zła data rozjeżdża numerację w historii. */
+    const parsedDate = typeof data.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.date.trim())
+      ? data.date.trim()
+      : '';
+    setLessonFormDate(parsedDate || new Date().toISOString().split('T')[0]);
     setShowAIModal(false);
     setRawMeetingNotes('');
     setLessonRecordModalMode('edit');
     setShowLessonRecordModal(true);
     setEditingRecordId(null);
+  };
+
+  /**
+   * Wczytanie pliku TEKSTOWEGO do pola materiału.
+   *
+   * Transkrypcje z narzędzi nagrywających przychodzą jako .txt, .md, .vtt
+   * albo .srt — nie jako PDF. Dotąd jedynym przyciskiem był „Załaduj plik
+   * PDF", więc transkrypcję trzeba było otworzyć w innym programie,
+   * zaznaczyć całość i wkleić ręcznie.
+   *
+   * Znaczniki czasu z napisów (.vtt/.srt) lecą do kosza przy wczytaniu:
+   * dla modelu to szum, a przy godzinnej lekcji potrafią być połową znaków
+   * przesyłanych do API.
+   */
+  const handleTranscriptFileUpload = async (e: any, mode?: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const raw = await file.text();
+      const cleaned = raw
+        // Nagłówek WebVTT i numery kolejnych napisów.
+        .replace(/^WEBVTT.*$/gim, '')
+        .replace(/^\d+\s*$/gm, '')
+        // Linie znaczników czasu: 00:00:12.500 --> 00:00:15.000
+        .replace(/^\s*\d{1,2}:\d{2}(:\d{2})?[.,]\d{1,3}\s*-->.*$/gm, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+      if (!cleaned) {
+        const msg = 'Plik jest pusty albo nie zawiera tekstu do przetworzenia.';
+        if (mode === 'bulk') setBulkSummaryError(msg);
+        else setSummaryError(msg);
+        return;
+      }
+
+      if (mode === 'bulk') setBulkNotes(cleaned);
+      else setRawMeetingNotes(cleaned);
+      showToast(`Wczytano ${file.name} (${cleaned.length.toLocaleString('pl-PL')} znaków).`);
+    } catch (err: any) {
+      const msg = err?.message || 'Nie udało się odczytać pliku.';
+      if (mode === 'bulk') setBulkSummaryError(msg);
+      else setSummaryError(msg);
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const handlePdfUpload = async (e: any, mode?: string) => {
@@ -559,6 +617,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         const studentsStr = mapStudents().map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n');
         const fallbackStudentId = selectedUser?.id || '';
         const targetStudentName = selectedUser ? (`${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.username) : '';
+
+        // Plik z transkrypcją idzie tą samą drogą co wklejona transkrypcja:
+        // jedna lekcja, polecenie systemowe dla zapisu rozmowy.
+        if (mode !== 'bulk' && aiSourceKind === 'transcript') {
+          const transcriptData = await generateLessonSummary('', base64, studentsStr, 'transcript');
+          if (selectedUser?.id && !transcriptData.studentId) transcriptData.studentId = selectedUser.id;
+          applySingleSummary(transcriptData);
+          return;
+        }
 
         const data = await generateBulkLessonSummary('', base64, studentsStr, fallbackStudentId, targetStudentName);
 
@@ -610,6 +677,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       const studentsStr = mapStudents().map((s: any) => `ID: ${s.id} | Imię/Nazwisko: ${s.name} | Poziom: ${s.level} | Opis: ${s.description}`).join('\n');
       const fallbackStudentId = selectedUser?.id || '';
       const targetStudentName = selectedUser ? (`${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.username) : '';
+
+      /* Transkrypcja = JEDNA lekcja. Droga zbiorcza szuka w materiale
+         nagłówków kolejnych lekcji i przy zapisie rozmowy rozcinała jedne
+         zajęcia na kilka wpisów w miejscach, gdzie zmieniał się temat. */
+      if (aiSourceKind === 'transcript') {
+        const transcriptData = await generateLessonSummary(rawMeetingNotes, '', studentsStr, 'transcript');
+        if (selectedUser?.id && !transcriptData.studentId) transcriptData.studentId = selectedUser.id;
+        applySingleSummary(transcriptData);
+        return;
+      }
 
       const data = await generateBulkLessonSummary(rawMeetingNotes, '', studentsStr, fallbackStudentId, targetStudentName);
 
@@ -708,7 +785,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
             lessonSummary: lesson.revisionNotes || '',
             studentSpeaking: lesson.studentSpeaking || '',
             thingsToImprove: lesson.thingsToImprove || '',
-            suggestedFollowUp: lesson.suggestedFollowUp || ''
+            suggestedFollowUp: lesson.suggestedFollowUp || '',
+            /* Bloki, jeśli model je podał. Import zbiorczy ich nie wymaga —
+               dokument z historią lekcji rzadko zawiera pracę domową — ale
+               gdy przyjdą, mają trafić we własne pola, a nie zginąć. */
+            corrections: lesson.corrections || lesson.thingsToImprove || '',
+            homeworkText: lesson.homeworkText || '',
+            homeworkAnswerKey: lesson.homeworkAnswerKey || '',
+            nextLessonPlan: lesson.nextLessonPlan || lesson.suggestedFollowUp || ''
           });
           
           await updateDoc(doc(db, 'users', sId), {
@@ -807,6 +891,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
           studentSpeaking: lessonFormStudentSpeaking,
           thingsToImprove: lessonFormThingsToImprove,
           suggestedFollowUp: lessonFormSuggestedFollowUp,
+          corrections: lessonFormThingsToImprove,
+          homeworkText: lessonFormHomework,
+          homeworkAnswerKey: lessonFormAnswerKey,
+          nextLessonPlan: lessonFormSuggestedFollowUp,
           scenarioId: lessonFormScenarioId || '',
           scenarioTopic: lessonFormScenarioTopic || '',
           scenarioContent: lessonFormScenarioContent || '',
@@ -867,6 +955,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
             studentSpeaking: lessonFormStudentSpeaking,
             thingsToImprove: lessonFormThingsToImprove,
             suggestedFollowUp: lessonFormSuggestedFollowUp,
+            corrections: lessonFormThingsToImprove,
+            homeworkText: lessonFormHomework,
+            homeworkAnswerKey: lessonFormAnswerKey,
+            nextLessonPlan: lessonFormSuggestedFollowUp,
             scenarioId: lessonFormScenarioId || '',
             scenarioTopic: lessonFormScenarioTopic || '',
             scenarioContent: lessonFormScenarioContent || '',
@@ -892,6 +984,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
             studentSpeaking: lessonFormStudentSpeaking,
             thingsToImprove: lessonFormThingsToImprove,
             suggestedFollowUp: lessonFormSuggestedFollowUp,
+            corrections: lessonFormThingsToImprove,
+            homeworkText: lessonFormHomework,
+            homeworkAnswerKey: lessonFormAnswerKey,
+            nextLessonPlan: lessonFormSuggestedFollowUp,
             scenarioId: lessonFormScenarioId || '',
             scenarioTopic: lessonFormScenarioTopic || '',
             scenarioContent: lessonFormScenarioContent || '',
@@ -1369,6 +1465,21 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [lessonFormStudentSpeaking, setLessonFormStudentSpeaking] = useState('');
   const [lessonFormThingsToImprove, setLessonFormThingsToImprove] = useState('');
   const [lessonFormSuggestedFollowUp, setLessonFormSuggestedFollowUp] = useState('');
+  /* Blok 3 wprost, a nie doklejony do „Things to Improve" pod znacznikiem
+     „Zadanie domowe:". Kursant widzi pracę domową jako osobny blok, więc
+     lektor ma ją wpisywać w osobne pole — nie w dopisek do innego. */
+  /*
+   * Rodzaj materiału wklejonego w „AI Lesson Summary".
+   *
+   * Nie jest to ustawienie kosmetyczne: transkrypcja i gotowe notatki dostają
+   * DWA RÓŻNE polecenia systemowe (patrz server.ts) i dwie różne ścieżki.
+   * Transkrypcja idzie zawsze jako JEDNA lekcja — godzina rozmowy to jedne
+   * zajęcia, a wysłanie jej przez import zbiorczy kończyło się rozcięciem
+   * jednej lekcji na kilka wpisów po zmianach tematu w rozmowie.
+   */
+  const [aiSourceKind, setAiSourceKind] = useState<'notes' | 'transcript'>('notes');
+  const [lessonFormHomework, setLessonFormHomework] = useState('');
+  const [lessonFormAnswerKey, setLessonFormAnswerKey] = useState('');
   const [lessonFormScenarioId, setLessonFormScenarioId] = useState('');
   const [lessonFormScenarioTopic, setLessonFormScenarioTopic] = useState('');
   const [lessonFormScenarioContent, setLessonFormScenarioContent] = useState('');
@@ -1498,8 +1609,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       setLessonFormRecallCandidates([]);
       setLessonFormSummary(record.lessonSummary || (record as any).summary || '');
       setLessonFormStudentSpeaking(record.studentSpeaking || '');
-      setLessonFormThingsToImprove(record.thingsToImprove || '');
-      setLessonFormSuggestedFollowUp(record.suggestedFollowUp || '');
+      /* Stare wpisy trzymają pracę domową doklejoną do `thingsToImprove`.
+         `extractLessonBlocks` wie, jak ją stamtąd wyjąć — dzięki temu
+         formularz pokazuje bloki tak, jak widzi je kursant, a nie tak, jak
+         akurat leżą w bazie. */
+      const formBlocks = extractLessonBlocks(record);
+      setLessonFormThingsToImprove(formBlocks.corrections || record.thingsToImprove || '');
+      setLessonFormSuggestedFollowUp(formBlocks.nextLesson || record.suggestedFollowUp || '');
+      setLessonFormHomework(formBlocks.homework || '');
+      setLessonFormAnswerKey(formBlocks.answerKey || '');
       setLessonFormScenarioId(record.scenarioId || '');
       setLessonFormScenarioTopic(record.scenarioTopic || '');
       setLessonFormScenarioContent(record.scenarioContent || '');
@@ -1520,6 +1638,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         setLessonFormStudentSpeaking('');
         setLessonFormThingsToImprove('');
         setLessonFormSuggestedFollowUp('');
+        setLessonFormHomework('');
+        setLessonFormAnswerKey('');
         setLessonFormScenarioId('');
         setLessonFormScenarioTopic('');
         setLessonFormScenarioContent('');
@@ -4098,16 +4218,76 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         <div ref={aiModalAnim.overlayRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 md:p-6 overflow-y-auto">
           <div ref={aiModalAnim.contentRef} className="w-full max-w-4xl my-auto">
             <div className="bg-base-100 p-6 rounded-xl border border-line-strong shadow-2xl relative">
-            <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
+            <h3 className="text-2xl font-bold mb-1 flex items-center gap-2">
                <span className="text-primary">✨</span>  {i18n.t("AI Lesson Summary")}
-                                          </h3>
-            <p className="text-base text-content-muted mb-4">
-               
-                                             {i18n.t("Wklej treść notatek ze spotkania (plain text lub markdown), a AI wygeneruje na ich podstawie pełny wpis z lekcji, wypełniając automatycznie datę, temat i wszystkie inne pola formularza.")}
-                                          </p>
-            
-            <div className="flex gap-3 mb-4">
-              <Button onClick={() => fetchDriveFiles('single')} variant="secondary" className="flex-1 flex justify-center items-center gap-2">
+            </h3>
+            <p className="text-sm text-content-muted mb-4">
+              {aiSourceKind === 'transcript'
+                ? i18n.t("Wklej zapis rozmowy albo wczytaj plik z transkrypcją. AI wyłuska z niej słownictwo, poprawki, wymowę i ustalenia, ułoży pracę domową i wypełni wszystkie bloki lekcji — te same, które kursant widzi w swojej historii.")
+                : i18n.t("Wklej treść notatek ze spotkania (plain text lub markdown), a AI wygeneruje na ich podstawie pełny wpis z lekcji, wypełniając automatycznie datę, temat i wszystkie inne pola formularza.")}
+            </p>
+
+            {/* RODZAJ MATERIAŁU — decyduje o poleceniu dla modelu.
+
+                Gotowe notatki ze spotkania trzeba PRZEPISAĆ do pól; surową
+                transkrypcję trzeba dopiero PRZECZESAĆ i ułożyć. To dwa różne
+                zadania i dostają dwa różne polecenia systemowe. Dopóki
+                przełącznika nie było, transkrypcja dostawała polecenie
+                napisane pod gotowe notatki — model szukał w niej sekcji,
+                których w rozmowie nie ma, i oddawał trzy zdania streszczenia
+                przy pustej reszcie pól. */}
+            <div className="mb-4">
+              <span className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-1.5">
+                Co wklejasz
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {([
+                  {
+                    id: 'notes' as const,
+                    title: 'Notatki ze spotkania',
+                    desc: 'Gotowe podsumowanie — AI przepisze je do pól lekcji',
+                  },
+                  {
+                    id: 'transcript' as const,
+                    title: 'Transkrypcja lekcji',
+                    desc: 'Surowy zapis rozmowy — AI wyłuska i ułoży bloki',
+                  },
+                ]).map(option => {
+                  const isActive = aiSourceKind === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setAiSourceKind(option.id)}
+                      className={`text-left px-3.5 py-2.5 rounded-xl border transition-colors cursor-pointer ${
+                        isActive
+                          ? 'border-primary/60 bg-primary/12'
+                          : 'border-line-strong bg-base-200/50 hover:border-primary/35'
+                      }`}
+                    >
+                      <span className={`block text-sm font-bold ${isActive ? 'text-primary' : 'text-text-hi'}`}>
+                        {option.title}
+                      </span>
+                      <span className="block text-[11px] text-content-muted mt-0.5">{option.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3 mb-4">
+              <div className="flex-1 min-w-[9rem] relative">
+                <input
+                  type="file"
+                  accept=".txt,.md,.vtt,.srt,text/plain,text/markdown"
+                  onChange={(e) => handleTranscriptFileUpload(e, 'single')}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <Button variant="secondary" className="w-full pointer-events-none">
+                  {i18n.t("Wczytaj transkrypcję (.txt, .vtt, .srt)")}
+                </Button>
+              </div>
+              <Button onClick={() => fetchDriveFiles('single')} variant="secondary" className="flex-1 min-w-[9rem] flex justify-center items-center gap-2">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 15.02 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
                 
                                                   {i18n.t("Google Drive")}
@@ -4126,12 +4306,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               value={rawMeetingNotes}
               onChange={e => setRawMeetingNotes(e.target.value)}
               className="w-full bg-base-200 border border-line-strong rounded-lg p-4 text-text-hi h-[50vh] mb-4 font-mono text-sm leading-relaxed"
-              placeholder={i18n.t("Wklej tutaj surową transkrypcję z Google Meet lub własne notatki...")}
+              placeholder={aiSourceKind === 'transcript'
+                ? i18n.t("Wklej tutaj surowy zapis rozmowy z lekcji...")
+                : i18n.t("Wklej tutaj gotowe notatki ze spotkania...")}
             />
             <div className="flex justify-end gap-3">
               <Button variant="ghost" onClick={() => setShowAIModal(false)}>{i18n.t("Anuluj")}</Button>
               <Button onClick={handleGenerateFromNotes} isLoading={isGenerating} disabled={!rawMeetingNotes.trim()}>
-                {i18n.t("Generuj wpis z lekcji")}
+                {aiSourceKind === 'transcript'
+                  ? i18n.t("Ułóż lekcję z transkrypcji")
+                  : i18n.t("Generuj wpis z lekcji")}
               </Button>
             </div>
           </div>
@@ -4162,8 +4346,19 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
             )}
             
-            <div className="flex gap-3 mb-4">
-              <Button onClick={() => fetchDriveFiles('bulk')} variant="secondary" className="flex-1 flex justify-center items-center gap-2">
+            <div className="flex flex-wrap gap-3 mb-4">
+              <div className="flex-1 min-w-[9rem] relative">
+                <input
+                  type="file"
+                  accept=".txt,.md,.vtt,.srt,text/plain,text/markdown"
+                  onChange={(e) => handleTranscriptFileUpload(e, 'bulk')}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <Button variant="secondary" className="w-full pointer-events-none">
+                  {i18n.t("Wczytaj plik tekstowy")}
+                </Button>
+              </div>
+              <Button onClick={() => fetchDriveFiles('bulk')} variant="secondary" className="flex-1 min-w-[9rem] flex justify-center items-center gap-2">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 15.02 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
                 {i18n.t("Google Drive")}
               </Button>
@@ -4599,7 +4794,27 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Suggested follow-up")}</label>
+                        <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Praca domowa (Blok 3 — Homework)")}</label>
+                        <textarea
+                          value={lessonFormHomework}
+                          onChange={e => setLessonFormHomework(e.target.value)}
+                          className="w-full bg-base-200 border border-line-strong rounded-lg p-2 text-text-hi min-h-[120px] resize-y"
+                          placeholder={i18n.t("Zdania do przetłumaczenia, ćwiczenia, zadanie na kolejny tydzień...")}
+                          rows={5}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Klucz odpowiedzi (Answer Key)")}</label>
+                        <textarea
+                          value={lessonFormAnswerKey}
+                          onChange={e => setLessonFormAnswerKey(e.target.value)}
+                          className="w-full bg-base-200 border border-line-strong rounded-lg p-2 text-text-hi min-h-[90px] resize-y"
+                          placeholder={i18n.t("Odpowiedzi do zadania wyżej — kursant widzi je dopiero po oddaniu pracy.")}
+                          rows={3}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Na kolejnej lekcji (Blok 4 — Next Lesson)")}</label>
                         <textarea 
                           value={lessonFormSuggestedFollowUp} 
                           onChange={e => setLessonFormSuggestedFollowUp(e.target.value)}
