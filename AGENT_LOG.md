@@ -1003,3 +1003,80 @@ Ryzyka:
   więc wygrywa z każdą klasą `text-white`. Dopasowanie jest dokładne
   (`[class~=…]`), ale to reguła globalna — jeśli gdzieś biały tekst na
   ciemnym tle w trybie dziennym ściemnieje, przyczyna jest tutaj.
+
+---
+
+2026-09-14 (runda 5) — Claude Code / Opus 5
+
+Zadanie: długa lista poprawek zgłaszanych w trakcie sesji — kontekst przed
+  lekcją (zakres 1/2/3 lekcje, krótka odprawa po imieniu, zwijane okienka),
+  trzy poziomy narzędzi w panelu lektora, prosta lista w bazie kursantów,
+  notatnik (wysokość, obrazy, laser, szablon, historia wersji, obudowa),
+  scalenie prac domowych i testów, kompaktowe słownictwo, onboarding
+  z podświetlaniem elementów, prototyp asystenta.
+
+Zrobione (commit na etap):
+- `services/preLessonBriefing.ts` — `BriefingScope`, odprawa po imieniu
+  do lektora, rozbicie po lekcjach, bufor z zakresem w kluczu.
+- `components/admin/PreLessonContext.tsx` — zwijane okienka, jedna
+  rozwinięta (najnowsza lekcja).
+- `components/admin/AdminPanel.tsx` — trzy poziomy narzędzi, usunięta
+  belka „Profil i moduły kursanta", kotwice `data-coach` dla przewodnika.
+- `components/admin/StudentSimpleList.tsx` (nowy) + przełącznik
+  „Lista / Pełny widok" w `StandaloneStudentDatabaseScreen`.
+- `components/dashboard/TeacherWorkScreen.tsx` (nowy) — „Zadania i testy"
+  z sekcjami zwijanymi; trasy `homework` i `tests` prowadzą tu.
+- `components/dashboard/HomeworkScreen.tsx` — tryb `headless`,
+  „Przegląd v2" tylko gdy istnieje zestaw v2.
+- `services/scratchpadService.ts` + `types.ts` — `ScratchpadRevision`,
+  limit `SCRATCHPAD_MAX_CONTENT_BYTES`, migawki co 5 min.
+- `utils/scratchpadImages.ts` (nowy) — zmniejszanie i przekodowanie WebP.
+- `components/scratchpad/ScratchpadEditor.tsx` — wklejanie obrazów,
+  zmiana rozmiaru, laser, szablon z paska, obudowa ze szkła.
+- `components/dashboard/tourSteps.ts` (nowy) + `CoachMarks` jako
+  przewodnik; `OnboardingOverlay.tsx` i `OnboardingTour.tsx` USUNIĘTE.
+- `components/ui/TopBar.tsx` — stały przycisk pomocy.
+- `services/teacherAssistant.ts` + `components/admin/TeacherAssistant.tsx`
+  (nowe) — prototyp pytań o kursantów.
+- `index.css` — jedna receptura szkła (`liquid-glass-tile` = `.glass-tile`),
+  obudowa notatnika, style obrazów i lasera.
+
+Nie dokończone / do sprawdzenia:
+- NIC z rundy 4 i 5 nie było oglądane w przeglądarce. Przechodzi
+  `tsc --noEmit`, `npm test` (293/293), `npm run build`.
+- Notatnik idzie do kursantów — wymaga obejrzenia na telefonie
+  i na komputerze przed wysłaniem linków.
+- Kroki przewodnika lektora celują w `data-coach` na pulpicie panelu;
+  gdy lektor wejdzie w profil kursanta, część kotwic nie istnieje
+  i CoachMarks pominie krok. Nieprzetestowane.
+- Asystent nie zna prac domowych, testów ani statystyk (zakres prototypu).
+- Firebase Storage nadal nie jest założony, więc obrazy w notatniku żyją
+  jako data URI w treści dokumentu. To jest powód limitu 700 kB.
+
+Decyzje architektoniczne:
+- Zakres odprawy domyślnie JEDNA lekcja: przed cotygodniowymi zajęciami to
+  właściwa odpowiedź, trzy byłyby trzy razy większą ścianą tekstu.
+- Data i temat lekcji w odprawie wracają z naszych danych, nie z modelu.
+- Prace domowe i testy to jeden ekran, bo to jedna czynność; sekcje
+  zwijane, nie zakładki, bo pytanie „co jest do sprawdzenia" dotyczy obu
+  rodzajów naraz.
+- Migawki notatnika w TYM SAMYM dokumencie, nie w osobnej kolekcji —
+  osobna wymagałaby własnej reguły w `firestore.rules`.
+- Rozmiar obrazu przez cztery ustalone szerokości, nie uchwyt:
+  przeglądarka przechwytuje przeciąganie obrazu w `contentEditable`.
+- Przewodnik podświetla PRAWDZIWE elementy (CoachMarks), bo poprzedni
+  rysował atrapy i uczył atrap.
+- Asystent dopasowuje imiona lokalnie i wysyła tylko lekcje osób,
+  o które zapytano.
+- Jedna receptura szkła dla obu paneli; `liquid-glass-tile` zachowuje
+  nazwę, zmienia treść.
+
+Ryzyka:
+- `firestore.rules` NIETKNIĘTY. Middleware autoryzacji NIETKNIĘTE.
+  Ścieżki tokenowe bez logowania NIETKNIĘTE.
+- Nowe pole `revisions` w dokumencie `scratchpads/{id}` — zapisywane tą
+  samą regułą, co treść; sprawdzić, czy reguła nie ma białej listy pól.
+- `TeacherAssistant` i `StudentSimpleList` czytają kolekcję `users`
+  własnymi zapytaniami; oba renderują się wyłącznie dla roli lektora.
+- Usunięcie `OnboardingOverlay` zmienia pierwsze wejście do aplikacji dla
+  obu ról.
