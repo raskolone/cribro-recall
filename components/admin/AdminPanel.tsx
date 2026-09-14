@@ -10,6 +10,7 @@ import {
 } from '../../services/lessonRecord';
 
 import PreLessonContextModal from './PreLessonContextModal';
+import { BriefingScope } from '../../services/preLessonBriefing';
 import VocabularyApproval from './VocabularyApproval';
 import RecallItemsReview, { ReviewedCandidate } from './RecallItemsReview';
 import { saveRecallReview } from '../../services/recallItems';
@@ -1296,6 +1297,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
      akurat stoi otwarty w panelu. */
   const [showContextPicker, setShowContextPicker] = useState(false);
   const [contextStudent, setContextStudent] = useState<{ id: string; name: string } | null>(null);
+  /* Zakres odprawy. Domyślnie jedna lekcja: przed cotygodniowymi zajęciami to
+     jest właściwa odpowiedź, a trzy lekcje domyślnie znaczyłyby w najczęstszym
+     przypadku trzy razy więcej tekstu, niż trzeba. */
+  const [contextScope, setContextScope] = useState<BriefingScope>(1);
   const [newStudentUsername, setNewStudentUsername] = useState('');
   const [newStudentEmail, setNewStudentEmail] = useState('');
   const [createdStudentEmail, setCreatedStudentEmail] = useState('');
@@ -1808,8 +1813,31 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         onClose={() => setShowContextPicker(false)}
         students={activeUsers}
         title="Kontekst przed lekcją"
-        subtitle="Wybierz kursanta, którego kontekst chcesz zobaczyć"
+        subtitle="Wybierz kursanta i zakres, z którego ma powstać odprawa"
         icon={<CalendarClock size={16} />}
+        headerExtra={
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-content-muted">
+              Kontekst z
+            </span>
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-base-300/50 border border-line">
+              {([1, 2, 3] as BriefingScope[]).map(value => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setContextScope(value)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
+                    contextScope === value
+                      ? 'bg-primary text-accent-ink'
+                      : 'text-content-muted hover:text-text-hi'
+                  }`}
+                >
+                  {value === 1 ? 'Ostatniej lekcji' : value === 2 ? '2 ostatnich' : '3 ostatnich'}
+                </button>
+              ))}
+            </div>
+          </div>
+        }
         onPick={student => {
           setContextStudent(student);
           setShowContextPicker(false);
@@ -1820,6 +1848,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         isOpen={!!contextStudent}
         onClose={() => setContextStudent(null)}
         student={contextStudent}
+        teacherName={currentUser?.firstName || currentUser?.username || 'Lektorze'}
+        scope={contextScope}
+        onScopeChange={setContextScope}
       />
 
       {SHOW_LEGACY_PANEL_TOOLS && <TeacherOverview students={activeUsers} language={language} />}

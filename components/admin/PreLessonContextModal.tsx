@@ -1,6 +1,7 @@
 import React from 'react';
 import { CalendarClock, X } from 'lucide-react';
 import PreLessonContext from './PreLessonContext';
+import { BriefingScope } from '../../services/preLessonBriefing';
 
 /**
  * Kontekst przed lekcją jako okno nad panelem, a nie zakładka w profilu.
@@ -20,12 +21,20 @@ interface PreLessonContextModalProps {
   isOpen: boolean;
   onClose: () => void;
   student: { id: string; name: string } | null;
+  /** Imię lektora — odprawa zwraca się do niego wprost. */
+  teacherName: string;
+  /** Zakres wybrany przy kliknięciu kafelka; da się go zmienić w oknie. */
+  scope: BriefingScope;
+  onScopeChange: (scope: BriefingScope) => void;
 }
 
 const PreLessonContextModal: React.FC<PreLessonContextModalProps> = ({
   isOpen,
   onClose,
   student,
+  teacherName,
+  scope,
+  onScopeChange,
 }) => {
   if (!isOpen || !student) return null;
 
@@ -59,7 +68,13 @@ const PreLessonContextModal: React.FC<PreLessonContextModalProps> = ({
         </header>
 
         <div className="p-4 sm:p-5">
-          <PreLessonContext studentId={student.id} studentName={student.name} />
+          <PreLessonContext
+            studentId={student.id}
+            studentName={student.name}
+            teacherName={teacherName}
+            scope={scope}
+            onScopeChange={onScopeChange}
+          />
         </div>
       </div>
     </div>

@@ -11,6 +11,13 @@ interface ScratchpadStudentPickerProps {
   title?: string;
   subtitle?: string;
   icon?: React.ReactNode;
+  /**
+   * Dodatkowa decyzja podejmowana razem z wyborem kursanta — stoi nad polem
+   * wyszukiwania, bo dotyczy tego, co się stanie PO wybraniu, a nie tego,
+   * kogo się szuka. Kontekst przed lekcją wstawia tu wybór zakresu
+   * („ostatnia / 2 ostatnie / 3 ostatnie lekcje").
+   */
+  headerExtra?: React.ReactNode;
 }
 
 const displayName = (student: User): string =>
@@ -33,6 +40,7 @@ export const ScratchpadStudentPicker: React.FC<ScratchpadStudentPickerProps> = (
   title = 'Otwórz notatnik',
   subtitle = 'Wybierz kursanta, którego notatki chcesz otworzyć',
   icon,
+  headerExtra,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -79,6 +87,10 @@ export const ScratchpadStudentPicker: React.FC<ScratchpadStudentPickerProps> = (
             <X size={15} />
           </button>
         </header>
+
+        {headerExtra && (
+          <div className="px-4 py-3 border-b border-line-soft">{headerExtra}</div>
+        )}
 
         <div className="px-4 py-3 border-b border-line-soft">
           <div className="relative">
