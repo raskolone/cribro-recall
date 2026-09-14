@@ -1198,7 +1198,13 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
         (reviewTask.type === 'find_errors' ? 'find_errors' : reviewTask.type === 'fill_in_the_blank' ? 'fill_in_the_blank' : 'translation'),
         reviewTask.sentences,
         reviewTask.studentAnswers || {},
-        teacherFeedbackText
+        teacherFeedbackText,
+        /* Imiona obu stron. Bez nich model pisze „Drogi Kursancie" i wychodzi
+           z tego okólnik, a nie wiadomość od lektora do konkretnej osoby. */
+        {
+          student: (reviewTask as any).studentName || null,
+          teacher: user?.firstName || user?.username || null,
+        }
       );
       
       let totalScore = 0;

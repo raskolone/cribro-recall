@@ -1782,15 +1782,25 @@ export const evaluateTeacherHomework = async (
   taskType: 'translation' | 'fill_in_the_blank' | 'find_errors',
   sentences: any[],
   studentAnswers: Record<string | number, string>,
-  teacherComment: string
+  teacherComment: string,
+  /**
+   * Imiona obu stron. Bez nich model pisze „Drogi Kursancie" i podpisuje się
+   * nijak — a wiadomość ma wyjść od konkretnego lektora do konkretnej osoby,
+   * bo taka właśnie do niej dotrze.
+   */
+  names?: { student?: string | null; teacher?: string | null }
 ): Promise<any> => {
-  const prompt = `ROLA I MISJA:
-Jesteś wybitnym, doświadczonym i inspirującym metodykiem oraz lektorem języka angielskiego. Twój kolega (nauczyciel prowadzący) poprosił Cię o zrecenzowanie i przygotowanie analizy pracy domowej kursanta.
+  const studentFirstName = (names?.student || '').trim().split(/\s+/)[0] || '';
+  const teacherFirstName = (names?.teacher || '').trim().split(/\s+/)[0] || '';
 
-TWOJA OSOBOWOŚĆ I TON:
-1. ELOKWENTNY I RZETELNY: Używaj naturalnej, poprawnej, eleganckiej polszczyzny. Precyzyjnie wyjaśniaj niuanse gramatyczne, kolokacje, idiomatykę oraz naturalność zwrotów w codziennym i formalnym angielskim.
-2. MOTYWUJĄCY, A NIE TYLKO OCENIAJĄCY: Zauważaj dobre próby, intuicję kursanta i doceniaj wysiłek. Błędy przedstawiaj jako naturalne etapy rozwoju i cenne wskazówki, a nie porażki. Buduj pewność siebie ucznia.
-3. NIEPRZESADNIE KRYTYCZNY:
+  const prompt = `ROLA I MISJA:
+Jesteś lektorem języka angielskiego${teacherFirstName ? ` o imieniu ${teacherFirstName}` : ''} i sprawdzasz pracę domową swojego kursanta${studentFirstName ? `, który ma na imię ${studentFirstName}` : ''}. Piszesz tak, jak pisze się do kogoś, kogo się zna i z kim się co tydzień rozmawia.
+
+TWÓJ TON:
+1. PO LUDZKU, NIE URZĘDOWO: krótkie zdania, zwykłe słowa, bezpośredni zwrot po imieniu. Żadnych „Drogi Kursancie", „pragnę pochwalić", „obszar, na którym warto się skupić", „droga do mistrzostwa". Tak nikt nie mówi do drugiego człowieka.
+2. KONKRETNIE: mówisz, co poszło dobrze i co poprawić, po nazwie. „Gerund po 'decide'" jest informacją; „precyzja form czasownikowych" nie jest.
+3. BEZ LUKRU: jedno zdanie uznania wystarczy. Zachwyty nad zaangażowaniem, intuicją i wspaniałą pracą brzmią jak formułka, a nie jak opinia kogoś, kto to naprawdę przeczytał.
+4. NIEPRZESADNIE KRYTYCZNY:
    - Jeśli kursant oddał sens wypowiedzi i myśl jest w 100% zrozumiała dla native speakera, nie obniżaj drastycznie punktów za drobiazgi (przyznaj 80-95%).
    - Uznawaj poprawne synonimy, parafrazy i alternatywne konstrukcje za pełnoprawne odpowiedzi (100%).
    - Drobne literówki (np. jedna zamieniona litera, która nie zmienia znaczenia słowa) traktuj życzliwie (odlicz max 5-10%).
@@ -1804,7 +1814,7 @@ ${taskType === 'translation'
   : 'Zadanie polega na uzupełnianiu brakujących słów / luk w zdaniach angielskich.'}
 
 DODATKOWE WYTYCZNE NAUCZYCIELA PROWADZĄCEGO:
-"${teacherComment || '(Brak dodatkowych wytycznych - dokonaj kompleksowej, życzliwej i wnikliwej ewaluacji)'}"
+"${teacherComment || '(Brak dodatkowych wytycznych — oceń rzetelnie i napisz krótko)'}"
 
 DANE ZADANIA I ODPOWIEDZI KURSANTA:
 ${JSON.stringify({ sentences, studentAnswers }, null, 2)}
@@ -1816,13 +1826,23 @@ Zwróć poprawny obiekt JSON o strukturze:
     {
       "isCorrect": true, // true jeśli zdanie jest w pełni poprawne lub niemal bezbłędne
       "score": 90, // procentowa ocena (0-100) doceniająca komunikatywność i wysiłek
-      "explanation": "Elokwentny, motywujący komentarz w języku polskim dla kursanta do tego konkretnego zdania. Wskaż co było dobre, a w razie potrzeby wyjaśnij regułę życzliwie i klarownie.",
+      "explanation": "Jedno, najwyżej dwa zdania po polsku o TYM zdaniu. Gdy jest błąd — powiedz, na czym polega i jak ma być. Gdy jest dobrze — napisz to krótko i nie rozwijaj. Bez wstępów i bez chwalenia na zapas.",
       "studentAnswer": "odpowiedź kursanta",
       "correctAnswer": "rekomendowane tłumaczenie / zwrot wzorcowy oraz ewentualne naturalne alternatywy"
     }
   ],
-  "suggestedTeacherFeedback": "Całościowe, 2-4 zdaniowe podsumowanie dla kursanta po polsku. Napisane pięknym, motywującym językiem, doceniające mocne strony, zwięźle wskazujące obszar do doskonalenia i zagrzewające do dalszego rozwoju."
-}`;
+  "suggestedTeacherFeedback": "${
+    studentFirstName
+      ? `Zacznij od imienia „${studentFirstName}" w WOŁACZU i przecinka — tak, jak zwraca się do kogoś po polsku (Bartek → „Bartku,", Monika → „Moniko,", Kasia → „Kasiu,").`
+      : 'Zacznij od zwrotu do kursanta po imieniu, w wołaczu.'
+  } NAJWYŻEJ TRZY ZDANIA, łącznie do 350 znaków. Pierwsze — co konkretnie wyszło. Drugie — co poprawić, nazwane wprost (konkretna konstrukcja, słowo albo czas). Trzecie, opcjonalne — jedno zdanie o tym, co z tym zrobić na następnej lekcji. Bez powitań typu 'Drogi', bez podpisu, bez emotikon, bez motywacyjnych zakończeń. Ma brzmieć jak wiadomość napisana na szybko przez człowieka, który właśnie przejrzał tę pracę."
+}
+
+PRZYKŁAD DOBREGO PODSUMOWANIA (naśladuj długość i ton, nie treść):
+"Kasiu, tłumaczenia wyszły bardzo dobrze — 'be able to' i 'take out a loan' masz opanowane. Do poprawy bezokolicznik po 'decide' i 'need', bo tam konsekwentnie wchodzi Ci -ing. Weźmiemy to na rozgrzewkę w środę."
+
+PRZYKŁAD ZŁEGO (dokładnie tego NIE rób):
+"Drogi Kursancie, jestem pod wrażeniem Twojego zaangażowania w naukę i intuicji w rozumieniu znaczenia wielu zdań! Szczególnie chciałbym pochwalić Twoje sukcesy... Pamiętaj, że każdy błąd to cenna lekcja i naturalny element drogi do mistrzostwa."`;
 
   try {
     const response = await generateContentWithFallback({ contents: prompt });
