@@ -1080,3 +1080,48 @@ Ryzyka:
   własnymi zapytaniami; oba renderują się wyłącznie dla roli lektora.
 - Usunięcie `OnboardingOverlay` zmienia pierwsze wejście do aplikacji dla
   obu ról.
+
+---
+
+2026-09-14 (runda 6) — Claude Code / Opus 5
+
+Zadanie: efekt szkła tylko na hover, uproszczenie profilu kursanta,
+  walidacja widoku z konta kursanta, naprawa przewodnika (dymki mają
+  pokazywać opisywany element).
+
+Zrobione (commit na etap):
+- `index.css` — zdjęty przejazd połysku z `.glass-tile`
+  i `.liquid-glass-tile`; zostaje wyłącznie reakcja na kursor.
+- `components/ui/CoachMarks.tsx` — reflektor rysuje się także poniżej
+  860 px (dotąd na telefonie był sam dymek na czarnym tle); na wąskim
+  ekranie dymek przykleja się do krawędzi po PRZECIWNEJ stronie niż cel;
+  kroki bez istniejącego celu są pomijane przy otwarciu.
+- `components/admin/AdminPanel.tsx` — profil kursanta: spis pięciu sekcji
+  i jedna otwarta (`profileSection`), usunięty drugi przycisk zapisu.
+  Żadne pole ani handler nie ruszone — karty tylko owinięte warunkiem.
+- `components/dashboard/TodayScreen.tsx` — otwarta sekcja dostaje pasek
+  z nazwą narzędzia i „Zwiń"; jedna szerokość z nagłówkiem panelu.
+
+Nie dokończone / do sprawdzenia:
+- Nadal NIC nie było oglądane w przeglądarce (tsc + 293 testy + build
+  + 44 testy reguł przechodzą).
+- Profil kursanta: sekcja „Poziom i AI" zawiera najdłuższe pola (prompty);
+  warto sprawdzić, czy kolumna nawigacji nie jest przy niej za krótka.
+- Kroki przewodnika lektora celują w kotwice na pulpicie; po wejściu
+  w profil kursanta zostaną pominięte — zamierzone, ale wtedy przewodnik
+  ma mniej kroków, niż mówi jego nazwa.
+
+Decyzje architektoniczne:
+- Połysk przejeżdżający był animacją samego kafelka, niezależną od
+  kursora — przy sześciu kafelkach sześć ruchów naraz. Zostaje wyłącznie
+  ruch mający przyczynę w kursorze.
+- Profil: jedna sekcja naraz zamiast akordeonu — akordeon zostawiłby
+  możliwość rozwinięcia wszystkiego i wrócilibyśmy do ściany.
+- Kroki przewodnika bez celu są POMIJANE, a nie pokazywane bez
+  reflektora: dymek nad pustym przyciemnieniem to był dokładnie ten
+  zarzut, który miał zniknąć.
+
+Ryzyka:
+- `firestore.rules` NIETKNIĘTY (44/44).
+- Zmiana w `CoachMarks` dotyczy też samouczka notatnika i prezentacji —
+  oba używają tego samego komponentu.
