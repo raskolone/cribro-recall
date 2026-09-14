@@ -41,7 +41,7 @@ export const ActionToast: React.FC<ActionToastProps> = ({
   if (typeof window === 'undefined') return null;
 
   return createPortal(
-    <div className="fixed bottom-5 right-5 z-[350] flex flex-col gap-2.5 max-w-sm w-[calc(100vw-2.5rem)] pointer-events-none">
+    <div className="rail-notice fixed right-4 z-[350] flex flex-col gap-2.5 max-w-sm w-[calc(100vw-2.5rem)] pointer-events-none">
       <AnimatePresence>
         {toast && (
           <motion.div

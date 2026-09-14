@@ -80,7 +80,7 @@ const TeacherAssistant: React.FC = () => {
 
   const panel = (
     <div className="fixed bottom-0 left-4 z-[9998] pointer-events-none flex flex-col items-start justify-end max-h-[100dvh]"
-      style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+      style={{ paddingBottom: 'var(--rail-base)' }}
     >
       <div className="pointer-events-auto flex flex-col-reverse items-start">
         <button

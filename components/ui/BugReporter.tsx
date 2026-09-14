@@ -72,7 +72,7 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
     return (
       <button 
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 bg-danger hover:brightness-110 text-white p-3 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110"
+        className="rail-bug fixed right-4 z-[340] bg-danger hover:brightness-110 text-white p-3 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110"
         title={i18n.t("Zgłoś problem")}
       >
         <Bug size={24} />
@@ -81,7 +81,7 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-80 sm:w-96 glass-panel rounded-2xl shadow-2xl overflow-hidden border border-danger/30 animate-in slide-in-from-bottom-5">
+    <div className="rail-bug fixed right-4 z-[340] w-80 sm:w-96 glass-panel rounded-2xl shadow-2xl overflow-hidden border border-danger/30 animate-in slide-in-from-bottom-5">
       <div className="bg-danger/10 p-4 border-b border-white/10 flex justify-between items-center">
         <h3 className="font-bold flex items-center gap-2 text-danger">
           <AlertCircle size={18} />

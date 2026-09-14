@@ -66,6 +66,17 @@ export const AdminAIActivityMonitor: React.FC = () => {
     return null;
   }, [events, activeEvent]);
 
+  /* Monitor melduje własną wysokość reszcie prawego dolnego rogu — patrz blok
+     „PRAWY DOLNY RÓG" w index.css. Bez tego przycisk zgłaszania błędu
+     i powiadomienia wisiałyby nad pustym miejscem u osób, którym monitor się
+     nie renderuje. */
+  useEffect(() => {
+    if (!isAllowed || typeof window === 'undefined') return;
+    const root = window.document.documentElement;
+    root.style.setProperty('--rail-monitor', '56px');
+    return () => root.style.setProperty('--rail-monitor', '0px');
+  }, [isAllowed]);
+
   if (!isAllowed) return null;
 
   const currentDisplayEvent = activeEvent || recentFinishedEvent;
@@ -115,7 +126,7 @@ export const AdminAIActivityMonitor: React.FC = () => {
        samym narożniku. */
     <div
       className="fixed bottom-0 right-4 z-[9999] pointer-events-none select-none font-sans flex flex-col items-end justify-end max-h-[100dvh]"
-      style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+      style={{ paddingBottom: 'var(--rail-base)' }}
     >
       <div className="pointer-events-auto flex flex-col-reverse items-end">
       <AnimatePresence>

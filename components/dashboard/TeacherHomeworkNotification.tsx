@@ -215,7 +215,7 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
   // tego przodka — widget ląduje wtedy w losowym miejscu albo znika pod
   // krawędzią panelu. W portalu wychodzi w prawym dolnym rogu zawsze.
   return createPortal(
-    <div className="fixed bottom-5 right-5 z-[350] flex flex-col items-end gap-2.5">
+    <div className="rail-notice fixed right-4 z-[350] flex flex-col items-end gap-2.5">
       <AnimatePresence>
         {isExpanded && (
           <motion.div

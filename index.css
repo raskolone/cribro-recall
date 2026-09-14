@@ -1156,3 +1156,46 @@ tr.liquid-glass-hover:hover {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PRAWY DOLNY RÓG — JEDNA KOLEJKA, NIE CZTERY NIEZALEŻNE ELEMENTY
+
+   ══ CO SIĘ TAM ZBIERAŁO ══
+
+   Cztery rzeczy trafiały w to samo miejsce, każda z własnym `bottom` i własnym
+   `z-index`: monitor zapytań AI (z-9999), zgłaszanie błędu (z-50), powiadomienia
+   o pracach domowych i toasty (oba z-350). Przy jednoczesnym pojawieniu się
+   dwóch z nich ta wyżej po prostu zakrywała tę niżej — a że monitor ma
+   najwyższy z-index w całej aplikacji, zakrywał wszystko.
+
+   ══ JAK TO DZIAŁA TERAZ ══
+
+   Róg jest kolejką liczoną od dołu, a każdy element zna wysokość tego, co pod
+   nim. Monitor stoi najniżej, bo jest stały i płaski; zgłaszanie błędu nad nim;
+   powiadomienia i toasty najwyżej, bo są najkrótsze i najważniejsze.
+
+   Wysokości są zmiennymi, a nie liczbami wpisanymi w czterech plikach:
+   monitor renderuje się tylko administratorowi i osobom z włączonym podglądem,
+   więc dla wszystkich pozostałych jego wysokość MUSI wynosić zero — inaczej
+   reszta wisiałaby nad pustym miejscem. Monitor ustawia `--rail-monitor`
+   u siebie przy montowaniu i zeruje przy odmontowaniu.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Odstęp od dolnej krawędzi okna, z zapasem na pasek gestów telefonu. */
+  --rail-base: max(0.75rem, env(safe-area-inset-bottom));
+  /* Wysokość pigułki monitora AI; 0, gdy monitor się nie renderuje. */
+  --rail-monitor: 0px;
+  /* Wysokość przycisku zgłaszania błędu — stała, zawsze widoczny. */
+  --rail-bug: 60px;
+}
+
+/* Druga pozycja w kolejce: zgłaszanie błędu nad monitorem. */
+.rail-bug {
+  bottom: calc(var(--rail-base) + var(--rail-monitor));
+}
+
+/* Trzecia pozycja: powiadomienia i toasty nad jednym i drugim. */
+.rail-notice {
+  bottom: calc(var(--rail-base) + var(--rail-monitor) + var(--rail-bug));
+}
