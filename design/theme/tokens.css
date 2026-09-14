@@ -190,10 +190,13 @@ a:hover { color: var(--accent-soft); }
      Nic tu nie jest „stylizowane". Ma być czytelne po ośmiu godzinach.
      ══════════════════════════════════════════════════════════════════ */
 
-  --bg:              #f2f4f7;   /* chłodna szarość strony */
+  /* Ściemnione z #f2f4f7 (2026-09-14): biała karta przy kryciu 50-60%, a tak
+     stoi w setkach miejsc, dawała na poprzednim tle różnicę trzech jednostek
+     jasności — kartę bez widocznej krawędzi. */
+  --bg:              #e9edf2;   /* chłodna szarość strony */
   --bg-lift:         #ffffff;   /* karta nad nią */
-  --ink:             #e8ecf1;   /* wgłębienia: inputy, studzienki kodu */
-  --ink-2:           #f7f9fb;   /* podniesiony panel */
+  --ink:             #dfe5ec;   /* wgłębienia: inputy, studzienki kodu */
+  --ink-2:           #ffffff;   /* podniesiony panel */
   --surface:         rgba(255, 255, 255, 0.94);
   --surface-2:       rgba(255, 255, 255, 0.78);
   --surface-flat:    #ffffff;
@@ -201,7 +204,7 @@ a:hover { color: var(--accent-soft); }
 
   /* Prawie płaskie. Gradient jest tu po to, żeby góra ekranu była o włos
      jaśniejsza od dołu — nie po to, żeby było go widać. */
-  --page-gradient: linear-gradient(180deg, #f7f9fb 0%, #eef1f5 100%);
+  --page-gradient: linear-gradient(180deg, #eef1f5 0%, #e4e9f0 100%);
 
   /* Zieleń ściemniona względem trybu nocnego: #72f0b4 na bieli ma kontrast
      1,4:1, czyli nie nadaje się nawet na obrys. Ten odcień ma 4,6:1, więc
@@ -227,8 +230,11 @@ a:hover { color: var(--accent-soft); }
   --text-hi:         #0f1720;
   --text-2:          #48556a;
   --text-3:          #55636f;
-  --text-mute:       #6b7787;
-  --text-faint:      #9aa5b1;
+  /* Kolor WSZYSTKICH etykiet i podpisów, pisanych wielkością 10-11 px.
+     Poprzedni (#6b7787) dawał 4,1:1 — poniżej progu czytelności. Ten: 5,4:1. */
+  --text-mute:       #5a6676;
+  /* Opisy pozycji w menu rozwijanych. Poprzedni (#9aa5b1) miał 2,3:1. */
+  --text-faint:      #67727f;
 
   /* Barwy stanu w nasyceniu, które na bieli utrzymuje kontrast tekstu. */
   --warn:            #9a6410;
@@ -238,16 +244,16 @@ a:hover { color: var(--accent-soft); }
   /* Obrys jest tu głównym narzędziem rozdzielania, więc musi być widoczny —
      ale włosowy. Powyżej tych wartości siatka kart zaczyna wyglądać jak
      tabela w arkuszu. */
-  --line:            rgba(15, 23, 32, 0.09);
-  --line-strong:     rgba(15, 23, 32, 0.14);
-  --line-soft:       rgba(15, 23, 32, 0.04);
+  --line:            rgba(15, 23, 32, 0.14);
+  --line-strong:     rgba(15, 23, 32, 0.20);
+  --line-soft:       rgba(15, 23, 32, 0.07);
 
   /* Cienie ledwie obecne. Karta odkleja się od tła różnicą jasności
      (#ffffff na #f2f4f7) i obrysem; cień tylko potwierdza kierunek światła.
      Poprzednie 20–56 px przy kryciu 0,3 robiły z każdej karty plamę. */
-  --shadow-sm:       0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-md:       0 2px 8px rgba(16, 24, 40, 0.08);
-  --shadow-lg:       0 8px 24px rgba(16, 24, 40, 0.10);
+  --shadow-sm:       0 1px 2px rgba(16, 24, 40, 0.08), 0 1px 3px rgba(16, 24, 40, 0.05);
+  --shadow-md:       0 2px 8px rgba(16, 24, 40, 0.11), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --shadow-lg:       0 12px 32px rgba(16, 24, 40, 0.18), 0 2px 8px rgba(16, 24, 40, 0.10);
 
   /* „Poświata" w interfejsie do pracy z danymi jest szumem. Zostaje jako
      obrys akcentu — to samo znaczenie (element wyróżniony), bez rozmycia. */
@@ -259,9 +265,15 @@ a:hover { color: var(--accent-soft); }
      jasnych na jasnym. Krycie wyższe niż w trybie nocnym, bo ciemna linia
      na bieli znosi mniej niż jasna na granacie — przy 0,17 była ledwie
      widoczna, a ma być widoczna wyraźnie. */
-  --constellation-rgb:        13, 122, 84;
-  --constellation-line-alpha: 0.26;
-  --constellation-dot-alpha:  0.55;
+  /* Poprawione 2026-09-14. Zieleń 13,122,84 przy kryciu 0,26 dawała na
+     jasnym tle linię o kontraście około 1,1:1 — czyli konstelację, o której
+     wiadomo, że jest, tylko dlatego, że się ją narysowało. Ten odcień jest
+     ciemniejszy i mniej nasycony (bliżej grafitu niż zieleni), bo TŁO ma być
+     siatką, nie drugim akcentem; wyższe krycie daje linię wyraźnie widoczną
+     i nadal nie walczącą o uwagę z treścią. */
+  --constellation-rgb:        21, 74, 56;
+  --constellation-line-alpha: 0.34;
+  --constellation-dot-alpha:  0.70;
 
   /* Zaznaczenie tekstu akcentem, nie osobnym kolorem. */
   --selection-bg:    rgba(13, 138, 95, 0.18);

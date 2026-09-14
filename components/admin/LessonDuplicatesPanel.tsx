@@ -95,7 +95,7 @@ const LessonDuplicatesPanel: React.FC<LessonDuplicatesPanelProps> = ({
               )
             }
             disabled={busy !== null}
-            className="bg-danger text-white hover:brightness-110 flex items-center gap-1.5 text-xs"
+            className="bg-danger text-[#ffffff] hover:brightness-110 flex items-center gap-1.5 text-xs"
           >
             {busy === 'certain' ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
             Usuń {certainCount} {certainCount === 1 ? 'kopię' : 'kopii'}

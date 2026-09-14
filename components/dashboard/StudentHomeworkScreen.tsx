@@ -823,7 +823,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             onClick={() => setResultFilter('errors')}
             className={`flex-1 min-h-[2.25rem] rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
               resultFilter === 'errors'
-                ? 'bg-amber-500 text-black shadow-sm'
+                ? 'bg-amber-500 text-[#0f1720] shadow-sm'
                 : 'text-amber-400/80 hover:text-amber-300'
             }`}
           >
@@ -834,7 +834,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             onClick={() => setResultFilter('correct')}
             className={`flex-1 min-h-[2.25rem] rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
               resultFilter === 'correct'
-                ? 'bg-emerald-500 text-black shadow-sm'
+                ? 'bg-emerald-500 text-[#0f1720] shadow-sm'
                 : 'text-emerald-400/80 hover:text-emerald-300'
             }`}
           >
@@ -1156,7 +1156,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             onClick={() => setReviewFilter('errors')}
             className={`flex-1 min-h-[2.5rem] rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
               reviewFilter === 'errors'
-                ? 'bg-amber-500 text-black shadow-sm'
+                ? 'bg-amber-500 text-[#0f1720] shadow-sm'
                 : 'text-amber-400/80 hover:text-amber-300'
             }`}
           >
@@ -1167,7 +1167,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             onClick={() => setReviewFilter('correct')}
             className={`flex-1 min-h-[2.5rem] rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
               reviewFilter === 'correct'
-                ? 'bg-emerald-500 text-black shadow-sm'
+                ? 'bg-emerald-500 text-[#0f1720] shadow-sm'
                 : 'text-emerald-400/80 hover:text-emerald-300'
             }`}
           >

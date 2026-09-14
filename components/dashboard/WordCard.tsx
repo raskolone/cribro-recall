@@ -52,7 +52,7 @@ const WordCard: React.FC<WordCardProps> = ({ word }) => {
     >
       <button
         onClick={() => deleteWord(word.id)}
-        className="absolute -top-2 -right-2 bg-danger text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-danger"
+        className="absolute -top-2 -right-2 bg-danger text-[#ffffff] rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-danger"
         title={i18n.t("Delete word")}
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">

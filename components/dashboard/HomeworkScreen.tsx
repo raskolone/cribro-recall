@@ -2593,7 +2593,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                           {task.type === 'find_errors' ? 'Poprawianie błędów' : task.type === 'fill_in_the_blank' ? 'Uzupełnij luki' : 'Tłumaczenie zdań'}
                         </span>
                         {isTaskNewForTeacher(task) && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-400 text-black shadow-md flex items-center gap-1 animate-pulse">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-400 text-[#0f1720] shadow-md flex items-center gap-1 animate-pulse">
                             <Sparkles size={11} /> Nowa
                           </span>
                         )}

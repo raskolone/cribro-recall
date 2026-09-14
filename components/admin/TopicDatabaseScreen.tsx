@@ -929,7 +929,7 @@ export default function TopicDatabaseScreen() {
               <BookOpen size={16} />
               Zestawy z Lekcji Kursantów
               <span className={`text-xs px-2 py-0.5 rounded-full font-mono ${
-                vocabCategory === 'student_lessons' ? 'bg-black/20 text-black' : 'bg-white/10 text-white'
+                vocabCategory === 'student_lessons' ? 'bg-black/20 text-[#0f1720]' : 'bg-white/10 text-white'
               }`}>
                 {filteredVocabSets.length}
               </span>
@@ -946,7 +946,7 @@ export default function TopicDatabaseScreen() {
               <Layers size={16} />
               Słownictwo Ogólne (3 Poziomy)
               <span className={`text-xs px-2 py-0.5 rounded-full font-mono ${
-                vocabCategory === 'general' ? 'bg-black/20 text-black' : 'bg-white/10 text-white'
+                vocabCategory === 'general' ? 'bg-black/20 text-[#0f1720]' : 'bg-white/10 text-white'
               }`}>
                 {GENERAL_VOCABULARY_SETS.length}
               </span>

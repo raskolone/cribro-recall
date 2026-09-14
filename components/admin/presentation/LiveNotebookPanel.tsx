@@ -156,7 +156,7 @@ export const LiveNotebookPanel: React.FC<LiveNotebookPanelProps> = ({
             onClick={() => setActiveTab('corrections')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'corrections'
-                ? 'bg-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.3)]'
+                ? 'bg-rose-500 text-[#ffffff] shadow-[0_0_12px_rgba(244,63,94,0.3)]'
                 : 'text-content-muted hover:text-text-hi hover:bg-white/5'
             }`}
           >
@@ -178,7 +178,7 @@ export const LiveNotebookPanel: React.FC<LiveNotebookPanelProps> = ({
             onClick={() => setActiveTab('timer')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'timer'
-                ? 'bg-amber-400 text-black shadow-[0_0_12px_rgba(251,191,36,0.3)]'
+                ? 'bg-amber-400 text-[#0f1720] shadow-[0_0_12px_rgba(251,191,36,0.3)]'
                 : 'text-content-muted hover:text-text-hi hover:bg-white/5'
             }`}
           >
@@ -416,7 +416,7 @@ export const LiveNotebookPanel: React.FC<LiveNotebookPanelProps> = ({
                   }}
                   className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
                     timerSeconds === sec
-                      ? 'bg-amber-400 text-black'
+                      ? 'bg-amber-400 text-[#0f1720]'
                       : 'bg-base-300 text-content-muted hover:text-text-hi'
                   }`}
                 >

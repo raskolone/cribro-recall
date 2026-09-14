@@ -634,7 +634,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
               {language === 'pl' ? 'Sugestie' : 'Suggestions'}
             </span>
             <div className={`w-10 h-6 rounded-full p-1 transition-colors ${aiSuggestionsEnabled ? 'bg-primary' : 'bg-base-300'}`}>
-              <div className={`w-4 h-4 bg-white rounded-full transition-transform ${aiSuggestionsEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+              <div className={`w-4 h-4 bg-[#ffffff] rounded-full transition-transform ${aiSuggestionsEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
             </div>
             <input 
               type="checkbox" 
@@ -747,7 +747,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                   {card.imageUrl ? (
                     <div className="relative group/img">
                       <img src={card.imageUrl} alt={i18n.t("Card visual")} className="w-16 h-12 object-cover rounded-lg border border-white/10" referrerPolicy="no-referrer" />
-                      <button onClick={() => handleUpdateCard(index, 'imageUrl', '')} className="absolute -top-2 -right-2 bg-danger text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover/img:opacity-100 transition-opacity">×</button>
+                      <button onClick={() => handleUpdateCard(index, 'imageUrl', '')} className="absolute -top-2 -right-2 bg-danger text-[#ffffff] rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover/img:opacity-100 transition-opacity">×</button>
                     </div>
                   ) : (
                     <div className="relative">

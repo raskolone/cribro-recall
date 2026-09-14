@@ -135,7 +135,7 @@ const ForcePasswordChangeScreen: React.FC = () => {
             <Button
               onClick={handleGoogleLink}
               variant="secondary"
-              className="w-full flex items-center justify-center gap-3 bg-white hover:bg-content text-text-faint border-transparent transition-all"
+              className="w-full flex items-center justify-center gap-3 bg-[#ffffff] hover:bg-content text-text-faint border-transparent transition-all"
               isLoading={isLoading}
             >
               <span className="font-bold">{i18n.t("Połącz z kontem Google")}</span>

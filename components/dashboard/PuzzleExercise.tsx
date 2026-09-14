@@ -457,7 +457,7 @@ const PuzzleExercise: React.FC<PuzzleExerciseProps> = ({ sentence, displaySenten
                   disabled={isCompleted}
                   className={`pr-8 pl-4 py-3 rounded-xl font-bold text-base shadow-lg z-10 transition-all duration-300 relative overflow-hidden
                     ${isError 
-                      ? 'bg-danger text-white border-danger shadow-[0_0_25px_rgba(240, 114, 111,0.9)] scale-105 animate-shake' 
+                      ? 'bg-danger text-[#ffffff] border-danger shadow-[0_0_25px_rgba(240, 114, 111,0.9)] scale-105 animate-shake' 
                       : `${tile.colorClass} hover:scale-105 cursor-pointer active:scale-95`
                     }`}
                 >

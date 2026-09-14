@@ -499,7 +499,7 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
           {/* Tab 1: HTML Preview */}
           {activeTab === 'preview' && (
             <div className="bg-slate-900 border border-white/10 rounded-xl p-4 overflow-x-auto shadow-inner">
-              <div className="max-w-[540px] mx-auto bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden text-slate-800">
+              <div className="max-w-[540px] mx-auto bg-[#ffffff] rounded-xl shadow-lg border border-slate-200 overflow-hidden text-slate-800">
                 <div className="h-1.5 bg-gradient-to-r from-teal-500 to-blue-500" />
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -558,7 +558,7 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
                   </table>
 
                   <div className="text-center my-6">
-                    <span className="inline-block bg-teal-700 text-white font-bold text-xs py-2.5 px-6 rounded-lg shadow">
+                    <span className="inline-block bg-teal-700 text-[#ffffff] font-bold text-xs py-2.5 px-6 rounded-lg shadow">
                       Wykonaj zadanie teraz (bez logowania) →
                     </span>
                     <p className="text-[10px] text-slate-500 mt-2">
@@ -567,7 +567,7 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
                   </div>
 
                   {/* Wizytówka stopki lektora */}
-                  <div className="mt-6 border-[1.5px] border-blue-600 rounded p-4 bg-white text-slate-900 text-left">
+                  <div className="mt-6 border-[1.5px] border-blue-600 rounded p-4 bg-[#ffffff] text-slate-900 text-left">
                     <div className="text-base font-extrabold text-slate-900 leading-tight">
                       Maciej Wyrozumski
                     </div>

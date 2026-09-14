@@ -72,7 +72,7 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
     return (
       <button 
         onClick={() => setIsOpen(true)}
-        className="rail-bug fixed right-4 z-[340] bg-danger hover:brightness-110 text-white p-3 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110"
+        className="rail-bug fixed right-4 z-[340] bg-danger hover:brightness-110 text-[#ffffff] p-3 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110"
         title={i18n.t("Zgłoś problem")}
       >
         <Bug size={24} />
@@ -120,7 +120,7 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
           <button
             type="submit"
             disabled={isSubmitting || !description.trim()}
-            className="w-full bg-danger hover:brightness-110 disabled:opacity-50 disabled:hover:brightness-110 text-white py-2.5 rounded-xl font-medium transition-colors"
+            className="w-full bg-danger hover:brightness-110 disabled:opacity-50 disabled:hover:brightness-110 text-[#ffffff] py-2.5 rounded-xl font-medium transition-colors"
           >
             {isSubmitting ? 'Wysyłanie...' : 'Wyślij zgłoszenie'}
           </button>

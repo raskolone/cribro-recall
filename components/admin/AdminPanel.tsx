@@ -2491,16 +2491,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   }}
                   className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer shrink-0 ${
                     isActive
-                      ? 'bg-primary text-black font-extrabold shadow-md shadow-primary/20 border border-primary/50'
+                      ? 'bg-primary text-accent-ink font-extrabold shadow-md shadow-primary/20 border border-primary/50'
                       : 'text-content-muted hover:text-text-hi hover:bg-line-soft border border-transparent'
                   }`}
                 >
-                  <Icon size={16} className={isActive ? 'text-black' : 'text-primary'} />
+                  <Icon size={16} className={isActive ? 'text-accent-ink' : 'text-primary'} />
                   <span>{tab.label}</span>
                   {typeof tab.count === 'number' && tab.count > 0 && (
                     <span
                       className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full font-bold ${
-                        isActive ? 'bg-base-100/50 text-black' : 'bg-line-soft text-primary'
+                        isActive ? 'bg-accent-ink/15 text-accent-ink' : 'bg-line-soft text-primary'
                       }`}
                     >
                       {tab.count}
@@ -3900,7 +3900,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       }}
                       className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-2 ${
                         (profileForm.role || selectedUser.role) === 'teacher' 
-                          ? 'bg-blue-500 text-white shadow-md scale-[1.02]' 
+                          ? 'bg-blue-500 text-[#ffffff] shadow-md scale-[1.02]' 
                           : 'bg-base-100/60 text-content-muted hover:text-text-hi border border-line-strong'
                       }`}
                     >
@@ -3915,7 +3915,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       }}
                       className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-2 ${
                         (profileForm.role || selectedUser.role) === 'admin' 
-                          ? 'bg-danger text-white shadow-md scale-[1.02]' 
+                          ? 'bg-danger text-[#ffffff] shadow-md scale-[1.02]' 
                           : 'bg-base-100/60 text-content-muted hover:text-text-hi border border-line-strong'
                       }`}
                     >

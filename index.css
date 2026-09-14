@@ -23,35 +23,95 @@
      `text-content-muted` itd. bez ruszania komponentów. */
   --color-primary: #0d8a5f;
   --color-secondary: #6b7787;
-  --color-base-100: #f2f4f7;
+  /* Tło strony ściemnione z #f2f4f7. Biała karta przy kryciu 50-60% (a tak
+     stoi w setkach miejsc: `bg-base-200/50`) dawała na poprzednim tle
+     różnicę trzech jednostek jasności — czyli kartę, której krawędzi nie
+     było widać. Na #e9edf2 ta sama karta odcina się wyraźnie. */
+  --color-base-100: #e9edf2;
   --color-base-200: #ffffff;
-  --color-base-300: rgba(15, 23, 32, 0.06);
+  --color-base-300: rgba(15, 23, 32, 0.09);
   --color-content: #263141;
-  --color-content-muted: #6b7787;
+  /* Kontrast 4,1:1 na starym tle — poniżej progu, a to jest kolor WSZYSTKICH
+     etykiet i podpisów w aplikacji, pisanych do tego wielkością 10-11 px.
+     Ten odcień daje 5,4:1. */
+  --color-content-muted: #5a6676;
 
   --color-accent: #0d8a5f;
   --color-accent-soft: #0a6b49;
   --color-accent-ink: #ffffff;
 
-  --color-bg: #f2f4f7;
+  --color-bg: #e9edf2;
   --color-bg-lift: #ffffff;
-  --color-ink: #e8ecf1;
-  --color-ink-2: #f7f9fb;
+  --color-ink: #dfe5ec;
+  --color-ink-2: #ffffff;
   --color-surface-flat: #ffffff;
 
   --color-text-hi: #0f1720;
   --color-text-2: #48556a;
   --color-text-3: #55636f;
-  --color-text-mute: #6b7787;
-  --color-text-faint: #9aa5b1;
+  --color-text-mute: #5a6676;
+  /* Opisy pozycji w menu rozwijanych są pisane tym kolorem — przy 2,3:1
+     nie dało się ich przeczytać. 4,5:1, a nadal wyraźnie lżejsze od reszty. */
+  --color-text-faint: #67727f;
 
   --color-warn: #9a6410;
   --color-danger: #c0342f;
   --color-info: #1f5fb0;
 
-  --color-line: rgba(15, 23, 32, 0.09);
-  --color-line-strong: rgba(15, 23, 32, 0.14);
-  --color-line-soft: rgba(15, 23, 32, 0.04);
+  --color-line: rgba(15, 23, 32, 0.14);
+  --color-line-strong: rgba(15, 23, 32, 0.20);
+  --color-line-soft: rgba(15, 23, 32, 0.07);
+
+  /* ══════════════════════════════════════════════════════════════════════
+     BIEL, KTÓRA W TRYBIE DZIENNYM ZNACZY „ATRAMENT"
+
+     ══ CO BYŁO NIE TAK ══
+
+     Komponenty tej aplikacji powstawały w trybie nocnym, więc kreski,
+     wypełnienia i teksty drugiego planu są w nich zapisane jako biel
+     z niskim kryciem: 1100 wystąpień `border-white/10`, 500 `bg-white/5`,
+     770 `text-white`. Na granacie to jest włosowy obrys i ledwie widoczne
+     podniesienie powierzchni — dokładnie to, o co chodzi.
+
+     W trybie dziennym ta sama biel leży na białej karcie, czyli NIE ISTNIEJE.
+     Stąd wrażenie, że okna dialogowe są wyprane: obrysy kart znikały,
+     wypełnienia znikały, a biały tekst na jasnozielonym tle nagłówka
+     zostawał na granicy czytelności.
+
+     ══ DLACZEGO JEDNA ZMIENNA, A NIE 94 PLIKI ══
+
+     Tailwind 4 liczy każdą z tych klas przez `color-mix(... var(--color-white)
+     X%, transparent)`. Podmiana samej zmiennej odwraca więc CAŁĄ rodzinę
+     naraz — `border-white/10` staje się atramentem 10%, `bg-white/5`
+     atramentem 5%, `text-white` pełnym atramentem — z zachowaniem
+     proporcji, których ktoś kiedyś dobrał ponad tysiąc.
+
+     ══ WYJĄTKI ══
+
+     Cztery miejsca potrzebują PRAWDZIWEJ bieli w obu motywach: gałka
+     przełącznika, przycisk logowania Google, podgląd wiadomości e-mail
+     (to kartka, którą zobaczy adresat) i biały tekst na czerwonym tle
+     błędnej odpowiedzi. Wszystkie cztery mają teraz wpisany `#ffffff`
+     wprost, bo arbitralna wartość w Tailwindzie nie przechodzi przez
+     zmienną.
+
+     Zapas dla przeglądarek bez `color-mix` zostaje biały. Nie da się tego
+     obejść i nie warto: `color-mix` ma wsparcie od 2023 roku.
+     ══════════════════════════════════════════════════════════════════════ */
+  --color-white: #0f1720;
+
+  /* ── I ODWROTNIE: CZERŃ, KTÓRA ZNACZY „POWIERZCHNIA" ──
+
+     Czerń jest w tych komponentach drugą połową tej samej konwencji:
+     `bg-black/40` to studzienka pola tekstowego, `bg-black/20` przygaszone
+     tło kafelka, `text-black` napis NA wypełnieniu akcentem. W trybie
+     dziennym każde z tych znaczeń jest odwrotne — studzienka ma być jasna,
+     a napis na ciemnej zieleni akcentu ma być biały (czarny dawał na niej
+     2,5:1 i był najgorzej czytelnym miejscem w całym trybie dziennym).
+
+     Odwrócenie SAMEJ bieli bez czerni byłoby najgorszym z wyjść: pola
+     z `bg-black/40 text-white` dostałyby ciemny atrament na ciemnym tle. */
+  --color-black: #ffffff;
 
   /* Jeden akcent — fiolet zniknął z trybu jasnego, patrz tokens.css. */
   --color-accent-2: #0d8a5f;
@@ -60,12 +120,31 @@
      i obrysem, a nie plamą rozmycia. Poprzednie wartości (24–56 px przy
      kryciu 0,22–0,30) były głównym powodem, dla którego tryb jasny
      wyglądał na brudny. */
-  --shadow-ambient-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-ambient-md: 0 2px 8px rgba(16, 24, 40, 0.08);
-  --shadow-ambient-lg: 0 8px 24px rgba(16, 24, 40, 0.10);
+  --shadow-ambient-sm: 0 1px 2px rgba(16, 24, 40, 0.08), 0 1px 3px rgba(16, 24, 40, 0.05);
+  --shadow-ambient-md: 0 2px 8px rgba(16, 24, 40, 0.11), 0 1px 3px rgba(16, 24, 40, 0.06);
+  /* Okna dialogowe. Muszą wyraźnie odstawać od przyciemnionego tła —
+     przy poprzednim kryciu 0,10 modal wyglądał jak wklejony prostokąt. */
+  --shadow-ambient-lg: 0 12px 32px rgba(16, 24, 40, 0.18), 0 2px 8px rgba(16, 24, 40, 0.10);
   --shadow-glow: 0 0 0 1px rgba(13, 138, 95, 0.25);
   --shadow-glow-strong: 0 0 0 2px rgba(13, 138, 95, 0.35);
   --shadow-btn: 0 1px 2px rgba(16, 24, 40, 0.10);
+}
+
+/* ── WYJĄTEK OD ODWRÓCENIA CZERNI: PRZYCIEMNIENIE ZA OKNEM DIALOGOWYM ──
+
+   Modale robią tło klasą `fixed inset-0 bg-black/80` — czyli tą samą czernią,
+   którą wyżej odwróciliśmy na powierzchnię. Tam odwrócenie jest słuszne
+   (studzienka pola ma być jasna), tutaj nie: przyciemnienie ma ODDZIELIĆ
+   okno od strony, a biała mgła na jasnej stronie niczego nie oddziela.
+
+   Reguła łapie wyłącznie przyciemnienia na cały ekran (`fixed` + `inset-0`),
+   więc studzienki i kafelki z tą samą klasą zostają odwrócone. Krycie niższe
+   niż w trybie nocnym (0,45 zamiast 0,80): przy jasnej stronie pod spodem
+   0,80 robiło z tła czarną płytę, na której okno wyglądało jak wycięty
+   prostokąt. */
+:root[data-theme="light"] .fixed.inset-0[class*="bg-black/"],
+:root.light .fixed.inset-0[class*="bg-black/"] {
+  background-color: rgba(15, 23, 32, 0.45);
 }
 
 /* Rozbłysk przełącznika motywu.

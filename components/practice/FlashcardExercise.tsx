@@ -136,7 +136,7 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
               if (isSelected) {
                 btnClass = isCorrectAnswer 
                   ? 'bg-primary text-accent-ink border-primary ring-2 ring-primary' 
-                  : 'bg-danger text-white border-danger';
+                  : 'bg-danger text-[#ffffff] border-danger';
               } else if (isCorrectAnswer) {
                 // Highlight the correct answer if the user chose incorrectly
                 btnClass = 'bg-primary text-accent-ink border-primary ring-2 ring-primary animate-pulse';
