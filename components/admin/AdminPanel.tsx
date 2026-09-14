@@ -46,6 +46,7 @@ import { LessonPresentationView } from './presentation/LessonPresentationView';
 import { createPresentationFromScenario, savePresentationToStorage } from '../../services/presentationService';
 import StudentNotionSyncModal from './StudentNotionSyncModal';
 import LessonSourceBar from './LessonSourceBar';
+import MenuDropdown from '../ui/MenuDropdown';
 import StudentPanelSection from './StudentPanelSection';
 import StudentProfileHeader from './StudentProfileHeader';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
@@ -2394,70 +2395,167 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           <div ref={tabContentRef} className="pt-2">
 
           {activeTab === 'stats' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-                <div className="bg-base-200/50 p-6 rounded-2xl border border-line text-center flex flex-col items-center justify-center">
-                  <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Ilość Logowań")}</div>
-                  <div className="text-4xl font-display font-bold text-text-hi">{selectedUser.loginCount || (selectedUser.lastLoginDate ? 1 : 0)}</div>
+            <div className="space-y-5">
+              <StudentPanelSection
+                title={i18n.t("Aktywność konta")}
+                subtitle="Jak często kursant tu zagląda i ile przerobił"
+                icon={<BarChart2 size={16} />}
+              >
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="bg-base-100/45 p-5 rounded-xl border border-line-strong text-center flex flex-col items-center justify-center">
+                  <div className="text-[11px] text-content-muted mb-2 font-mono uppercase tracking-wider">{i18n.t("Ilość Logowań")}</div>
+                  <div className="text-3xl font-display font-bold text-text-hi">{selectedUser.loginCount || (selectedUser.lastLoginDate ? 1 : 0)}</div>
                 </div>
-                <div className="bg-base-200/50 p-6 rounded-2xl border border-line text-center flex flex-col items-center justify-center">
-                  <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Ostatnie Logowanie")}</div>
+                <div className="bg-base-100/45 p-5 rounded-xl border border-line-strong text-center flex flex-col items-center justify-center">
+                  <div className="text-[11px] text-content-muted mb-2 font-mono uppercase tracking-wider">{i18n.t("Ostatnie Logowanie")}</div>
                   <div className="text-lg font-display font-bold text-primary">
                     {selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Nigdy'}
                   </div>
                 </div>
-                <div className="bg-base-200/50 p-6 rounded-2xl border border-line text-center flex flex-col items-center justify-center">
-                  <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Wykonane Zadania")}</div>
-                  <div className="text-4xl font-display font-bold text-primary">{userStats?.totalTasks || 0}</div>
+                <div className="bg-base-100/45 p-5 rounded-xl border border-line-strong text-center flex flex-col items-center justify-center">
+                  <div className="text-[11px] text-content-muted mb-2 font-mono uppercase tracking-wider">{i18n.t("Wykonane Zadania")}</div>
+                  <div className="text-3xl font-display font-bold text-primary">{userStats?.totalTasks || 0}</div>
                 </div>
-                <div className="bg-base-200/50 p-6 rounded-2xl border border-line text-center flex flex-col items-center justify-center">
-                  <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Przetłumaczone Zdania")}</div>
-                  <div className="text-4xl font-display font-bold text-primary">{userStats?.totalSentences || 0}</div>
+                <div className="bg-base-100/45 p-5 rounded-xl border border-line-strong text-center flex flex-col items-center justify-center">
+                  <div className="text-[11px] text-content-muted mb-2 font-mono uppercase tracking-wider">{i18n.t("Przetłumaczone Zdania")}</div>
+                  <div className="text-3xl font-display font-bold text-primary">{userStats?.totalSentences || 0}</div>
                 </div>
               </div>
 
+              </StudentPanelSection>
+
               {userStats && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                  <div className="bg-base-200/50 p-6 rounded-2xl border border-line text-center flex flex-col items-center justify-center">
-                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Średni Wynik")}</div>
-                    <div className="text-4xl font-display font-bold text-primary">{Number.isNaN(Number(userStats.averageScore)) ? 0 : userStats.averageScore}%</div>
+                <StudentPanelSection
+                  title={i18n.t("Wyniki nauki")}
+                  subtitle="Skuteczność i zasób słownictwa"
+                  icon={<Award size={16} />}
+                >
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="bg-base-100/45 p-5 rounded-xl border border-line-strong text-center flex flex-col items-center justify-center">
+                    <div className="text-[11px] text-content-muted mb-2 font-mono uppercase tracking-wider">{i18n.t("Średni Wynik")}</div>
+                    <div className="text-3xl font-display font-bold text-primary">{Number.isNaN(Number(userStats.averageScore)) ? 0 : userStats.averageScore}%</div>
                   </div>
-                  <div className="bg-base-200/50 p-6 rounded-2xl border border-line text-center flex flex-col items-center justify-center">
-                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Słownictwo Ogółem")}</div>
-                    <div className="text-4xl font-display font-bold text-text-hi">{userStats.totalWords}</div>
+                  <div className="bg-base-100/45 p-5 rounded-xl border border-line-strong text-center flex flex-col items-center justify-center">
+                    <div className="text-[11px] text-content-muted mb-2 font-mono uppercase tracking-wider">{i18n.t("Słownictwo Ogółem")}</div>
+                    <div className="text-3xl font-display font-bold text-text-hi">{userStats.totalWords}</div>
                   </div>
-                  <div className="bg-base-200/50 p-6 rounded-2xl border border-line text-center flex flex-col items-center justify-center">
-                    <div className="text-sm text-content-muted mb-2 font-mono uppercase">{i18n.t("Trudne Słowa")}</div>
-                    <div className="text-4xl font-display font-bold text-warn">{userStats.difficultWords}</div>
+                  <div className="bg-base-100/45 p-5 rounded-xl border border-line-strong text-center flex flex-col items-center justify-center">
+                    <div className="text-[11px] text-content-muted mb-2 font-mono uppercase tracking-wider">{i18n.t("Trudne Słowa")}</div>
+                    <div className="text-3xl font-display font-bold text-warn">{userStats.difficultWords}</div>
                   </div>
                 </div>
+                </StudentPanelSection>
               )}
             </div>
           )}
 
           {activeTab === 'history' && (
-            <div className="space-y-8">
-              {/* Skąd bierze się ta historia — i czy coś czeka na lektora.
+            <div className="space-y-5">
+              {/* JEDEN ZESTAW NARZĘDZI NA CAŁĄ HISTORIĘ.
 
-                  Synchronizacja z Notion stała wcześniej jako jeden z sześciu
-                  przycisków w pasku narzędzi obok eksportu PDF i porządkowania
-                  lekcji, czyli wyglądała na czynność równorzędną z nimi.
-                  Źródło danych nie jest czynnością — jest odpowiedzią na
-                  pytanie „skąd to się wzięło i czego tu brakuje". */}
-              <LessonSourceBar
-                lessons={lessonRecords}
-                studentName={selectedUser?.firstName || selectedUser?.username}
-                onSyncNotion={() => setShowStudentNotionSyncModal(true)}
-              />
+                  Wcześniej czynności na historii lekcji stały w TRZECH
+                  miejscach naraz: „Pobierz z Notion" w nagłówku kursanta,
+                  „Sprawdź Notion" w pasku źródeł i pięć przycisków nad listą
+                  (PDF, porządkowanie, AI Summary, Bulk Import, Dodaj wpis).
+                  Trzy z nich robiły to samo — dokładały lekcję — a wyglądały
+                  jak trzy różne funkcje, bo stały w trzech różnych rzędach.
 
-              <div>
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                  <div className="flex items-center gap-4">
-                    <h3 className="text-lg font-bold">{i18n.t("Historia lekcji")}</h3>
+                  Teraz jest jedno pytanie i jedno menu: „Lekcje" zbiera
+                  WSZYSTKIE sposoby dołożenia lekcji (ręcznie, z Notion,
+                  z transkrypcji, hurtem), a pod kreską porządki na tym, co
+                  już jest (uporządkowanie bloków, eksport). Funkcje Notion
+                  istnieją wyłącznie tutaj, bo wyłącznie tej zakładki
+                  dotyczą. */}
+              <StudentPanelSection
+                title={i18n.t("Historia lekcji")}
+                subtitle="Notatki z Notion, transkrypcje z Sifta i wpisy ręczne — jedna oś czasu"
+                icon={<Clock size={16} />}
+                count={lessonRecords.length}
+                actions={
+                  <>
+                    <MenuDropdown
+                      align="end"
+                      width={292}
+                      aria-label="Czynności na historii lekcji"
+                      triggerTitle="Dodaj lekcję albo uporządkuj historię"
+                      triggerClassName="px-3.5 py-2 rounded-xl bg-primary text-accent-ink text-xs sm:text-sm font-bold hover:brightness-110 transition-all flex items-center gap-1.5 cursor-pointer shadow-btn"
+                      trigger={
+                        <>
+                          <Plus size={15} />
+                          <span>Lekcje</span>
+                          <ChevronDown size={13} />
+                        </>
+                      }
+                      sections={[
+                        {
+                          id: 'add',
+                          label: 'Dołóż lekcję',
+                          items: [
+                            {
+                              id: 'manual',
+                              label: 'Wpis ręczny',
+                              description: 'Pusty formularz lekcji',
+                              icon: <Plus size={14} />,
+                              onSelect: () => openLessonRecordModal('edit'),
+                            },
+                            {
+                              id: 'notion',
+                              label: 'Pobierz z Notion',
+                              description: 'Sprawdź kartę kursanta w Teacher HQ',
+                              icon: <RefreshCw size={14} />,
+                              onSelect: () => setShowStudentNotionSyncModal(true),
+                            },
+                            {
+                              id: 'ai',
+                              label: 'Z transkrypcji lub notatek (AI)',
+                              description: 'Wklej tekst albo wczytaj plik',
+                              icon: <Sparkles size={14} />,
+                              onSelect: () => setShowAIModal(true),
+                            },
+                            {
+                              id: 'bulk',
+                              label: 'Import zbiorczy (AI)',
+                              description: 'Wiele lekcji z jednego dokumentu',
+                              icon: <BookOpen size={14} />,
+                              onSelect: () => setShowBulkModal(true),
+                            },
+                          ],
+                        },
+                        {
+                          id: 'maintain',
+                          label: 'Porządki na historii',
+                          items: [
+                            {
+                              id: 'clean',
+                              label: 'Uporządkuj lekcje (Notion)',
+                              description: 'Przepisz stare wpisy na 4 bloki',
+                              icon: <Wand2 size={14} />,
+                              onSelect: () => setShowCleanLessonsModal(true),
+                            },
+                            {
+                              id: 'pdf',
+                              label: isExportingPDF ? 'Generowanie PDF…' : 'Eksportuj do PDF',
+                              description: 'Cała historia w jednym pliku',
+                              icon: <Download size={14} />,
+                              disabled: isExportingPDF,
+                              onSelect: () => handleExportLessonsToPDF(),
+                            },
+                          ],
+                        },
+                      ]}
+                    />
+                  </>
+                }
+                toolbar={
+                  <>
+                    <LessonSourceBar
+                      lessons={lessonRecords}
+                      studentName={selectedUser?.firstName || selectedUser?.username}
+                    />
                     {lessonRecords.length > 0 && (
-                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-content-muted hover:text-text-hi transition-colors">
-                        <input 
-                          type="checkbox" 
+                      <label className="flex items-center gap-2 cursor-pointer text-[11px] font-semibold text-content-muted hover:text-text-hi transition-colors">
+                        <input
+                          type="checkbox"
                           className="toggle toggle-primary toggle-sm"
                           checked={groupByMonth}
                           onChange={(e) => setGroupByMonth(e.target.checked)}
@@ -2465,36 +2563,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         <span>Grupuj wg miesięcy</span>
                       </label>
                     )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button 
-                      size="sm" 
-                      onClick={handleExportLessonsToPDF} 
-                      disabled={isExportingPDF}
-                      className="bg-primary hover:brightness-110 text-accent-ink flex items-center gap-1.5 shadow-sm font-bold"
-                    >
-                      <Download className="w-4 h-4" />
-                      {isExportingPDF ? 'Generowanie PDF...' : 'Eksportuj do PDF'}
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="secondary" 
-                      onClick={() => setShowCleanLessonsModal(true)}
-                      className="flex items-center gap-1.5 text-text-hi font-medium border-line-strong hover:border-amber-400/50"
-                      title="Uporządkuj dotychczas zaimportowane lekcje do czystego formatu bloków Notion"
-                    >
-                      <Wand2 className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{i18n.t("Uporządkuj lekcje (Notion)")}</span>
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => setShowAIModal(true)}>
-                      {i18n.t("✨ AI Lesson Summary")}
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => setShowBulkModal(true)}>
-                      {i18n.t("📦 Bulk Import (AI)")}
-                    </Button>
-                    <Button size="sm" onClick={() => openLessonRecordModal('edit')}>{i18n.t("Dodaj wpis")}</Button>
-                  </div>
-                </div>
+                  </>
+                }
+              >
+              <div className="space-y-5">
                 {selectedUser && (
                   <LessonDuplicatesPanel
                     studentId={selectedUser.id}
@@ -3045,11 +3117,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   );
                 })()}
               </div>
+              </StudentPanelSection>
 
-              <div>
-                <h3 className="text-lg font-bold mb-4">{i18n.t("Historia ćwiczeń (App)")}</h3>
+              <StudentPanelSection
+                title={i18n.t("Historia ćwiczeń (App)")}
+                subtitle="Co kursant przećwiczył samodzielnie w aplikacji"
+                icon={<BarChart2 size={16} />}
+                count={practiceLogs.length}
+              >
                 {practiceLogs.length > 0 ? (
-                  <div className="bg-base-200/50 rounded-xl border border-line overflow-x-auto">
+                  <div className="rounded-xl border border-line-strong overflow-x-auto">
                     <table className="w-full text-left text-sm">
                       <thead className="bg-base-100/50 text-content-muted font-mono uppercase text-xs">
                         <tr>
@@ -3101,17 +3178,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     </table>
                   </div>
                 ) : (
-                  <p className="text-content-muted italic">{i18n.t("Brak ćwiczeń.")}</p>
+                  <p className="text-content-muted italic text-sm">{i18n.t("Brak ćwiczeń.")}</p>
                 )}
-              </div>
+              </StudentPanelSection>
             </div>
           )}
 
-          
-
-                    {activeTab === 'homework' && (
-            <div className="space-y-6">
-              <HomeworkScreen 
+          {activeTab === 'homework' && (
+            <div className="space-y-5">
+              <HomeworkScreen
                 initialStudentId={selectedUser?.id || null}
               />
             </div>
@@ -3121,42 +3196,51 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               nie renderowało — generator i przegląd testów były zaimportowane i
               nieużywane, więc kliknięcie „Testy" prowadziło na pustą stronę. */}
           {activeTab === 'tests' && (
-            <div className="space-y-8">
-              <AdminTestGenerator user={selectedUser} users={users} />
+            <div className="space-y-5">
+              <StudentPanelSection
+                title="Generator testów AI"
+                subtitle="Ułóż test dla tego kursanta albo wystaw test otwarty"
+                icon={<Award size={16} />}
+              >
+                <AdminTestGenerator user={selectedUser} users={users} />
+              </StudentPanelSection>
 
               {/* Testy otwarte: dla kandydatów, których nie ma jeszcze w bazie.
                   Wystawia się je w generatorze wyżej, a tutaj żyją ich kody,
                   linki i podejścia. */}
-              <div className="space-y-3">
-                <h3 className="text-xl font-bold">Testy otwarte (bez przypisanego kursanta)</h3>
+              <StudentPanelSection
+                title="Testy otwarte"
+                subtitle="Bez przypisanego kursanta — kody, linki i podejścia"
+                icon={<Shield size={16} />}
+              >
                 {currentUser?.id && <PublicTestPanel teacherId={currentUser.id} />}
-              </div>
+              </StudentPanelSection>
 
-              <AllTestsTeacherView />
+              <StudentPanelSection
+                title="Wszystkie testy"
+                subtitle="Podejścia i wyniki w całej bazie"
+                icon={<ClipboardList size={16} />}
+              >
+                <AllTestsTeacherView />
+              </StudentPanelSection>
             </div>
           )}
 
           {activeTab === 'vocabulary' && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xl font-bold">{i18n.t("Zestawy słówek i zadania specjalne")}</h3>
-                <div className="flex gap-2">
-                  <Button variant="secondary" onClick={() => setShowSpecialTaskModal(true)}>
-                    
-                                                                                  {i18n.t("✨ Zadanie specjalne (AI)")}
-                                                                                </Button>
-                  <Button onClick={() => setShowAssignModal(true)}>
-                    
-                                                                                  {i18n.t("Przypisz Zestaw")}
-                                                                                </Button>
-                </div>
-              </div>
-
-              
+            <div className="space-y-5">
               {specialTasks.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="font-bold text-lg mb-3">{i18n.t("Zadania specjalne")}</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <StudentPanelSection
+                  title={i18n.t("Zadania specjalne")}
+                  subtitle="Zdania ułożone pod tego kursanta"
+                  icon={<Sparkles size={16} />}
+                  count={specialTasks.length}
+                  actions={
+                    <Button size="sm" variant="secondary" onClick={() => setShowSpecialTaskModal(true)}>
+                      {i18n.t("Nowe zadanie (AI)")}
+                    </Button>
+                  }
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {specialTasks.map(task => (
                       <Card key={task.id} className="p-4 rounded-xl bg-primary/5 border border-primary/20 relative group">
                         <div className="flex justify-between items-start mb-2">
@@ -3194,11 +3278,29 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       </Card>
                     ))}
                   </div>
-                </div>
+                </StudentPanelSection>
               )}
 
+              <StudentPanelSection
+                title={i18n.t("Zestawy słówek")}
+                subtitle="Przypisane fiszki — z lekcji i od lektora"
+                icon={<BookMarked size={16} />}
+                count={userSets.length}
+                actions={
+                  <>
+                    {specialTasks.length === 0 && (
+                      <Button size="sm" variant="secondary" onClick={() => setShowSpecialTaskModal(true)}>
+                        {i18n.t("Zadanie specjalne (AI)")}
+                      </Button>
+                    )}
+                    <Button size="sm" onClick={() => setShowAssignModal(true)}>
+                      {i18n.t("Przypisz zestaw")}
+                    </Button>
+                  </>
+                }
+              >
               {userSets.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {userSets.map(set => (
                     <Card key={set.id} className="p-4 cursor-pointer rounded-xl liquid-glass-hover bg-base-200/40 border border-line">
                       <div className="flex justify-between items-start mb-2">
@@ -3216,35 +3318,32 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   ))}
                 </div>
               ) : (
-                <div className="text-center p-8 bg-base-200/50 rounded-2xl border border-line text-content-muted">
+                <div className="text-center py-8 text-sm text-content-muted">
                   {i18n.t("Brak przypisanych zestawów słówek.")}
                 </div>
               )}
+              </StudentPanelSection>
             </div>
           )}
 
           {activeTab === 'profile' && (
-            <div className="max-w-5xl space-y-5 animate-fade-in">
-              {/* Header */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-line-strong">
-                <div>
-                  <h3 className="text-xl font-bold text-text-hi flex items-center gap-2.5">
-                    <UserIcon size={20} className="text-primary" />
-                    {i18n.t("Profil i parametry kursanta")}
-                  </h3>
-                  <p className="text-xs text-content-muted mt-0.5">
-                    {i18n.t("Wybierz sekcję po lewej. Zmiany zapisuje przycisk obok.")}
-                  </p>
-                </div>
-                <Button 
-                  onClick={() => handleSaveProfile()} 
-                  isLoading={isSavingProfile}
-                  className="bg-primary text-accent-ink hover:brightness-110 font-bold px-5 py-2 rounded-xl shadow-btn flex items-center gap-2 text-sm shrink-0 cursor-pointer"
-                >
-                  <Save size={16} />
-                  {i18n.t("Zapisz profil")}
-                </Button>
-              </div>
+            <div className="space-y-5 animate-fade-in">
+              <StudentPanelSection
+                title={i18n.t("Profil i parametry kursanta")}
+                subtitle={i18n.t("Wybierz sekcję po lewej. Zmiany zapisuje przycisk obok.")}
+                icon={<UserIcon size={16} />}
+                actions={
+                  <Button
+                    size="sm"
+                    onClick={() => handleSaveProfile()}
+                    isLoading={isSavingProfile}
+                    className="flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Save size={15} />
+                    {i18n.t("Zapisz profil")}
+                  </Button>
+                }
+              >
 
               {/* SPIS SEKCJI — pięć równych pozycji, jedna otwarta.
 
@@ -3288,7 +3387,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
               {/* CARD 1: DANE PODSTAWOWE I IDENTYFIKACJA */}
               {profileSection === 'basic' && (
-              <div className="rounded-2xl border border-line-strong bg-base-200/50 p-5 md:p-6 space-y-4">
+              <div className="rounded-xl border border-line-strong bg-base-100/40 p-4 md:p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -3364,7 +3463,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
               {/* CARD 2: KOMUNIKACJA I MAILING */}
               {profileSection === 'mail' && (
-              <div className="rounded-2xl border border-line-strong bg-base-200/50 p-5 md:p-6 space-y-4">
+              <div className="rounded-xl border border-line-strong bg-base-100/40 p-4 md:p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -3504,7 +3603,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
               {/* CARD 3: POZIOM CEFR & KONFIGURACJA AI */}
               {profileSection === 'level' && (
-              <div className="rounded-2xl border border-line-strong bg-base-200/50 p-5 md:p-6 space-y-4">
+              <div className="rounded-xl border border-line-strong bg-base-100/40 p-4 md:p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -3577,7 +3676,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
               {/* CARD 4: INTEGRACJA NOTION & METRYKI AKTYWNOŚCI */}
               {profileSection === 'notion' && (
-              <div className="rounded-2xl border border-line-strong bg-base-200/50 p-5 md:p-6 space-y-4">
+              <div className="rounded-xl border border-line-strong bg-base-100/40 p-4 md:p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -3642,7 +3741,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
               {/* CARD 5: UPRAWNIENIA I ZARZĄDZANIE KONTEM */}
               {profileSection === 'access' && (
-              <div className="rounded-2xl border border-line-strong bg-base-200/50 p-5 md:p-6 space-y-4">
+              <div className="rounded-xl border border-line-strong bg-base-100/40 p-4 md:p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -3895,6 +3994,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   pokazywane po jednej, do przycisku w nagłówku jest zawsze
                   blisko. Dwa przyciski robiące to samo na jednym ekranie każą
                   zastanawiać się, czym się różnią. */}
+              </StudentPanelSection>
             </div>
           )}
         </div>

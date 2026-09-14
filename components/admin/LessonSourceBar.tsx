@@ -1,7 +1,6 @@
-import React from 'react';
-import { Database, Mic, RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronDown, Database, Mic } from 'lucide-react';
 import { LessonRecord } from '../../types';
-import Button from '../ui/Button';
 
 /**
  * Skąd bierze się historia lekcji tego kursanta.
@@ -14,30 +13,28 @@ import Button from '../ui/Button';
  * lekcji, której lektor nie pamięta — a odpowiedź dotąd nie istniała
  * w interfejsie, tylko w cudzej głowie.
  *
- * ══ DWA ŹRÓDŁA, DWIE RÓŻNE CZYNNOŚCI ══
+ * ══ DLACZEGO TO JEST ZWINIĘTE I BEZ PRZYCISKU ══
  *
- * Notion jest źródłem CIĄGNIONYM: aplikacja pyta, kiedy lektor każe, więc
- * ma przycisk. Transkrypcje są źródłem PCHANYM: przychodzą same z aplikacji
- * nagrywającej i nie ma czego kliknąć — jest tylko stan „tyle już przyszło".
- * Dawanie im obu takiego samego przycisku sugerowałoby, że transkrypcję da
- * się „zsynchronizować", a nie da: ona albo została wysłana z Sifta, albo nie.
+ * Pasek zajmował dwie duże karty nad listą lekcji i powtarzał przycisk
+ * „Sprawdź Notion", który stoi już w zestawie narzędzi tej zakładki. Ten
+ * sam przycisk w dwóch miejscach na jednym ekranie znaczy tylko tyle, że
+ * nie wiadomo, który jest właściwy.
  *
- * Trzeciego źródła jeszcze nie ma. Ten pasek jest miejscem, w którym się
- * pojawi — nie listą rozwijaną z jedną pozycją, która udaje wybór.
+ * Pochodzenie lekcji to STAN, nie czynność: odpowiedź jest potrzebna raz na
+ * jakiś czas, a nie przy każdym wejściu w zakładkę. Domyślnie widać więc
+ * jedną linijkę z liczbami; karty z opisem rozwija się kliknięciem. Jedyne,
+ * co przebija się przez zwinięcie, to transkrypcja czekająca na lektora —
+ * bo to jedyna rzecz w tym pasku, która wymaga czynności.
  */
 
 interface LessonSourceBarProps {
   lessons: LessonRecord[];
   studentName?: string;
-  /** Odpalenie synchronizacji z Notion dla tego kursanta. */
-  onSyncNotion: () => void;
 }
 
-const LessonSourceBar: React.FC<LessonSourceBarProps> = ({
-  lessons,
-  studentName,
-  onSyncNotion,
-}) => {
+const LessonSourceBar: React.FC<LessonSourceBarProps> = ({ lessons, studentName }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
   /*
    * Rekordy sprzed dwóch źródeł nie mają pola `source` — wszystkie pochodzą
    * z Notion, więc brak wartości liczy się jako Notion, a nie jako „inne".
@@ -57,21 +54,48 @@ const LessonSourceBar: React.FC<LessonSourceBarProps> = ({
     .sort((a, b) => b.localeCompare(a))[0];
 
   return (
-    <section className="rounded-2xl border border-line-strong bg-base-200/40 p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <h4 className="text-xs font-extrabold uppercase tracking-wider text-content-muted">
-          Źródło historii lekcji
-        </h4>
-        <span className="text-[11px] font-mono text-content-muted">
-          {lessons.length} {lessons.length === 1 ? 'lekcja' : 'lekcji'}
-          {studentName ? ` · ${studentName}` : ''}
+    <div className="w-full">
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="w-full flex items-center justify-between gap-3 text-left cursor-pointer group"
+        title="Pokaż, z jakich źródeł pochodzi ta historia"
+      >
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0 text-[11px] text-content-muted">
+          <span className="font-extrabold uppercase tracking-wider">Źródło historii</span>
+          <span className="font-mono">
+            Notion <strong className="text-text-hi">{fromNotion}</strong>
+            {lastNotion ? ` · ost. ${lastNotion}` : ''}
+          </span>
+          <span className="font-mono">
+            Sift <strong className="text-text-hi">{fromTranscript}</strong>
+          </span>
+          {manual > 0 && (
+            <span className="font-mono">
+              Ręcznie <strong className="text-text-hi">{manual}</strong>
+            </span>
+          )}
+          {/* Kolor jako sygnał stanu — jedyna rzecz tutaj, która czeka na lektora. */}
+          {awaitingTeacher > 0 && (
+            <span className="font-bold text-primary">
+              {awaitingTeacher}{' '}
+              {awaitingTeacher === 1 ? 'transkrypcja czeka' : 'transkrypcje czekają'} na bloki
+            </span>
+          )}
         </span>
-      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* ── Notion: źródło ciągnione, więc z przyciskiem ── */}
-        <div className="rounded-xl border border-line-strong bg-base-100/50 p-3.5 flex flex-col gap-3">
-          <div className="flex items-start gap-2.5">
+        <ChevronDown
+          size={15}
+          className={`shrink-0 text-content-muted group-hover:text-text-hi transition-transform ${
+            isOpen ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* ── Notion: źródło ciągnione ── */}
+          <div className="rounded-xl border border-line-strong bg-base-100/50 p-3.5 flex items-start gap-2.5">
             <span className="p-2 rounded-lg bg-primary/12 text-primary border border-primary/25 shrink-0">
               <Database size={16} />
             </span>
@@ -79,26 +103,20 @@ const LessonSourceBar: React.FC<LessonSourceBarProps> = ({
               <div className="text-sm font-bold text-text-hi">Notatki z Notion</div>
               <div className="text-[11px] text-content-muted mt-0.5">
                 {fromNotion > 0
-                  ? `${fromNotion} ${fromNotion === 1 ? 'lekcja' : 'lekcji'}${lastNotion ? ` · ostatnia ${lastNotion}` : ''}`
+                  ? `${fromNotion} ${fromNotion === 1 ? 'lekcja' : 'lekcji'}${
+                      lastNotion ? ` · ostatnia ${lastNotion}` : ''
+                    }${studentName ? ` · ${studentName}` : ''}`
                   : 'Nic jeszcze nie zaimportowane'}
               </div>
+              <p className="text-[11px] text-content-muted mt-1.5 leading-relaxed">
+                Pobieranie i porządkowanie siedzi w przycisku „Lekcje" nad listą — tam, gdzie
+                cała reszta czynności na historii.
+              </p>
             </div>
           </div>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={onSyncNotion}
-            className="w-full flex items-center justify-center gap-1.5 font-bold border-line-strong hover:border-primary/50"
-            title="Sprawdź bazę Notion i zsynchronizuj lekcje tego kursanta"
-          >
-            <RefreshCw size={13} className="text-primary" />
-            Sprawdź Notion
-          </Button>
-        </div>
 
-        {/* ── Transkrypcje: źródło pchane, więc bez przycisku ── */}
-        <div className="rounded-xl border border-line-strong bg-base-100/50 p-3.5 flex flex-col gap-3">
-          <div className="flex items-start gap-2.5">
+          {/* ── Transkrypcje: źródło pchane, więc nie ma czego klikać ── */}
+          <div className="rounded-xl border border-line-strong bg-base-100/50 p-3.5 flex items-start gap-2.5">
             <span className="p-2 rounded-lg bg-primary/12 text-primary border border-primary/25 shrink-0">
               <Mic size={16} />
             </span>
@@ -109,31 +127,22 @@ const LessonSourceBar: React.FC<LessonSourceBarProps> = ({
                   ? `${fromTranscript} ${fromTranscript === 1 ? 'lekcja' : 'lekcji'}`
                   : 'Nic jeszcze nie przysłane'}
               </div>
+              <p className="text-[11px] text-content-muted mt-1.5 leading-relaxed">
+                {awaitingTeacher > 0 ? (
+                  <span className="text-primary font-bold">
+                    {awaitingTeacher}{' '}
+                    {awaitingTeacher === 1 ? 'transkrypcja czeka' : 'transkrypcje czekają'} na
+                    wygenerowanie bloków — otwórz lekcję niżej.
+                  </span>
+                ) : (
+                  'Przychodzą same po wysłaniu z Sifta. Nie ma tu czego klikać.'
+                )}
+              </p>
             </div>
           </div>
-          <p className="text-[11px] text-content-muted leading-relaxed">
-            {awaitingTeacher > 0 ? (
-              // Kolor jako sygnał stanu: to jedyna rzecz w tym pasku, która
-              // czeka na czynność lektora.
-              <span className="text-primary font-bold">
-                {awaitingTeacher}{' '}
-                {awaitingTeacher === 1 ? 'transkrypcja czeka' : 'transkrypcje czekają'} na
-                wygenerowanie bloków — otwórz lekcję niżej.
-              </span>
-            ) : (
-              'Przychodzą same po wysłaniu z Sifta. Nie ma tu czego klikać.'
-            )}
-          </p>
         </div>
-      </div>
-
-      {manual > 0 && (
-        <p className="text-[11px] text-content-muted">
-          Poza tym {manual} {manual === 1 ? 'lekcja wpisana' : 'lekcji wpisanych'} ręcznie
-          albo wygenerowanych w panelu.
-        </p>
       )}
-    </section>
+    </div>
   );
 };
 
