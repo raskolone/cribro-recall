@@ -46,6 +46,8 @@ import { LessonPresentationView } from './presentation/LessonPresentationView';
 import { createPresentationFromScenario, savePresentationToStorage } from '../../services/presentationService';
 import StudentNotionSyncModal from './StudentNotionSyncModal';
 import LessonSourceBar from './LessonSourceBar';
+import StudentPanelSection from './StudentPanelSection';
+import StudentProfileHeader from './StudentProfileHeader';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
 import CleanLessonsModal from './CleanLessonsModal';
 import LessonDuplicatesPanel from './LessonDuplicatesPanel';
@@ -1779,6 +1781,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full pb-28 min-w-0">
+      {/* PANEL LEKTORA — widoczny WYŁĄCZNIE, gdy nikt nie jest wybrany.
+
+          Wejście w profil kursanta jest wejściem do środka, a nie dołożeniem
+          sekcji na dole pulpitu. Wcześniej panel lektora zostawał nad
+          profilem w całości: nagłówek, baner, trzy kafelki, listwa i „więcej
+          narzędzi" — czyli sześć ekranów treści nad tym, po co się tu
+          przyszło, i konieczność przewinięcia ich przy każdym kliknięciu
+          zakładki. Teraz widok kursanta zajmuje ekran sam, a jedynym
+          wyjściem jest „Panel lektora" w jego nagłówku. */}
+      {!selectedUser && (
+        <>
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1 sm:pt-0 pl-7 sm:pl-0">
         <div>
@@ -1827,6 +1840,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         onOpenHomework={(filterStatus) => onViewChange?.('homework', { filterStatus })}
       />
 
+        </>
+      )}
+
       <ScratchpadStudentPicker
         isOpen={showContextPicker}
         onClose={() => setShowContextPicker(false)}
@@ -1872,6 +1888,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         onScopeChange={setContextScope}
       />
 
+      {!selectedUser && (
+        <>
       {SHOW_LEGACY_PANEL_TOOLS && <TeacherOverview students={activeUsers} language={language} />}
 
       {/* GŁÓWNE KAFELKI LEKTORA — trzy najczęściej używane narzędzia.
@@ -2156,6 +2174,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           nowego o kimkolwiek" dotyczy całej bazy, więc stoi przy bazie —
           a nie na pulpicie obok narzędzi do prowadzenia lekcji. */}
 
+        </>
+      )}
+
       {/* JEŚLI AKTYWNY JEST MODUŁ OGÓLNY (Planer, Prezentacja) */}
       {activeTab && ['lesson-planner', 'presentation'].includes(activeTab) && (
         <div className="p-4 sm:p-5 rounded-2xl bg-base-200/60 border border-primary/40 shadow-[0_0_30px_rgba(114,240,180,0.1)] space-y-4">
@@ -2297,102 +2318,33 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           zdanie, które kafelek mówi lepiej i wyżej. */}
       {!selectedUser ? null : (
         <div ref={profileContainerRef}        className="space-y-4 pt-1">
-          {/* STUDENT HERO CARD */}
-          <div className="p-4 sm:p-5 rounded-2xl border-2 bg-gradient-to-r from-primary/15 via-base-200/80 to-base-200/90 border-primary/60 shadow-[0_0_30px_rgba(114,240,180,0.15)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4 min-w-0">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 border-2 border-primary/50 flex items-center justify-center font-bold text-primary text-xl flex-shrink-0 shadow-inner overflow-hidden">
-                {selectedUser.photoURL ? (
-                  <img src={selectedUser.photoURL} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  selectedUser.firstName ? selectedUser.firstName[0].toUpperCase() : selectedUser.username[0].toUpperCase()
-                )}
-              </div>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-lg sm:text-xl font-extrabold text-text-hi truncate">
-                    {selectedUser.firstName || selectedUser.lastName ? `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() : selectedUser.username}
-                  </h2>
-                  <span className="text-xs text-content-muted font-mono truncate">(@{selectedUser.username})</span>
-                  {selectedUser.level && (
-                    <span
-                      title={selectedUser.level}
-                      className="px-2.5 py-0.5 bg-primary/20 text-primary border border-primary/40 rounded-lg text-xs font-mono font-bold max-w-[12rem] truncate"
-                    >
-                      Poziom: {selectedUser.level}
-                    </span>
-                  )}
-                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
-                    selectedUser.role === 'admin' ? 'bg-danger/12 text-danger border-danger/30' : selectedUser.role === 'teacher' ? 'bg-primary/12 text-primary border-primary/30' : 'bg-line-soft text-text-2 border-line-strong'
-                  }`}>
-                    {selectedUser.role === 'teacher' ? 'Nauczyciel' : selectedUser.role === 'admin' ? 'Admin' : 'Kursant'}
-                  </span>
-                  {selectedUser.isSuspended && (
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-warn/20 text-warn border border-warn/40">
-                      Zawieszony
-                    </span>
-                  )}
-                  {selectedUser.isArchived && (
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-base-100 text-content-muted border border-line-strong">
-                      Archiwum
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-content-muted mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <button
-                    onClick={() => {
-                      setActiveTab('profile');
-                      setTimeout(() => {
-                        tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }, 150);
-                    }}
-                    className="hover:text-primary transition-colors inline-flex items-center gap-1 group text-left cursor-pointer"
-                    title="Kliknij, aby edytować profil lub adres e-mail kursanta"
-                  >
-                    <span>📧 {selectedUser.email || 'Brak emaila'}</span>
-                    {!selectedUser.email || selectedUser.email.includes('@student.vocabboost.com') ? (
-                      <span className="text-warn text-[10px] font-semibold">(Adres zastępczy)</span>
-                    ) : (
-                      <span className="text-primary text-[10px] font-semibold">✓ Resend</span>
-                    )}
-                  </button>
-                  <span>🔑 Logowań: <strong className="text-text-hi">{selectedUser.loginCount || 0}</strong></span>
-                  <span>🕒 Ostatnia wizyta: <strong className="text-text-hi">{selectedUser.lastLoginDate ? new Date(selectedUser.lastLoginDate).toLocaleDateString('pl-PL') : 'Brak'}</strong></span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end flex-wrap">
-              <button
-                onClick={() => setShowStudentNotionSyncModal(true)}
-                className="px-3.5 py-2 bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm"
-                title="Pobierz lub zaktualizuj lekcje kursanta z Notion"
-              >
-                <RefreshCw size={15} />
-                <span>Pobierz z Notion</span>
-              </button>
-              <button
-                onClick={() => setIsStudentPickerOpen(true)}
-                className="px-3.5 py-2 bg-primary text-accent-ink rounded-xl text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all flex items-center gap-2 shadow-md cursor-pointer"
-              >
-                <UserCheck size={16} />
-                Zmień kursanta
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedUser(null);
-                  setActiveTab(null);
-                  if (onUserSelect) onUserSelect(null);
-                  if (onViewChange) onViewChange('admin');
-                  setPracticeLogs([]);
-                  setLessonRecords([]);
-                }}
-                className="px-3 py-2 bg-ink/72 hover:bg-line-soft text-content-muted hover:text-text-hi border border-line-strong rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <X size={16} />
-                Wyczyść
-              </button>
-            </div>
-          </div>
+          {/* NAGŁÓWEK KURSANTA — patrz components/admin/StudentProfileHeader.tsx */}
+          <StudentProfileHeader
+            student={selectedUser}
+            onBack={() => {
+              setSelectedUser(null);
+              setActiveTab(null);
+              if (onUserSelect) onUserSelect(null);
+              if (onViewChange) onViewChange('admin');
+              setPracticeLogs([]);
+              setLessonRecords([]);
+            }}
+            onChangeStudent={() => setIsStudentPickerOpen(true)}
+            onEditContact={() => {
+              setActiveTab('profile');
+              setProfileSection('mail');
+              setTimeout(() => {
+                tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 150);
+            }}
+            onEditLevel={() => {
+              setActiveTab('profile');
+              setProfileSection('level');
+              setTimeout(() => {
+                tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 150);
+            }}
+          />
 
           {/* PASEK ZAKŁADEK NA SAMEJ GÓRZE PROFILU KURSANTA */}
           <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-base-200/90 border border-line-strong backdrop-blur-md overflow-x-auto no-scrollbar shadow-inner select-none">
