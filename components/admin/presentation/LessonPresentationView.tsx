@@ -35,7 +35,7 @@ import Button from '../../ui/Button';
 import MenuDropdown, { MenuChevron } from '../../ui/MenuDropdown';
 import CoachMarks from '../../ui/CoachMarks';
 import { buildPresentationCoachSteps } from './presentationCoachSteps';
-import TeacherScratchpadScreen from '../../scratchpad/TeacherScratchpadScreen';
+import { openScratchpadTab } from '../../../services/scratchpadService';
 
 /**
  * Przycisk paska narzędzi — jeden kształt dla wszystkich narzędzi na żywo.
@@ -128,7 +128,6 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
   const [isSavedDecksOpen, setIsSavedDecksOpen] = useState(false);
   const [isGuidelinesModalOpen, setIsGuidelinesModalOpen] = useState(false);
   const [isSlideAssistantModalOpen, setIsSlideAssistantModalOpen] = useState(false);
-  const [isScratchpadModalOpen, setIsScratchpadModalOpen] = useState(false);
   const [isDeckMenuOpen, setIsDeckMenuOpen] = useState(false);
   const [isCoachOpen, setIsCoachOpen] = useState(false);
 
@@ -478,7 +477,7 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
             icon={<FileEdit size={15} />}
             label="Notatnik"
             title="Współdzielony notatnik kursanta — wspólna edycja na żywo, dostęp linkiem lub PIN-em"
-            onClick={() => setIsScratchpadModalOpen(true)}
+            onClick={() => openScratchpadTab(selectedUser?.id ? `sp_${selectedUser.id}` : null)}
             coachId="pres-scratchpad"
           />
           <ToolbarButton
@@ -927,18 +926,11 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
         />
       )}
 
-      {/* Współdzielony brudnopis lekcyjny (Google Docs) */}
-      {isScratchpadModalOpen && (
-      <TeacherScratchpadScreen
-        variant="overlay"
-        onClose={() => setIsScratchpadModalOpen(false)}
-        student={{
-          id: selectedUser?.id || null,
-          name: studentName || 'Kursant',
-        }}
-        onPushToLessonRecord={onOpenLessonFormWithData}
-      />
-      )}
+      {/* Notatnik otwiera się w OSOBNEJ KARCIE (przycisk „Notatnik" w pasku
+          narzędzi) — tak jak okno prezentacji. W trakcie lekcji na żywo to
+          jedyny układ, który ma sens: prezentacja zostaje na ekranie, notatnik
+          stoi obok, a nie nad nią. */}
+
     </div>
   );
 };

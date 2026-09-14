@@ -29,10 +29,9 @@ import StandaloneLessonScenariosScreen from '../admin/StandaloneLessonScenariosS
 import AdminMailingScreen from '../admin/AdminMailingScreen';
 import StudentStatsScreen from './StudentStatsScreen';
 import LessonHistoryScreen from './LessonHistoryScreen';
-import StudentScratchpadScreen from '../scratchpad/StudentScratchpadScreen';
-import TeacherScratchpadScreen from '../scratchpad/TeacherScratchpadScreen';
 import TeacherWorkScreen from './TeacherWorkScreen';
 import CoachMarks from '../ui/CoachMarks';
+import { openScratchpadTab } from '../../services/scratchpadService';
 import TeacherAssistant from '../admin/TeacherAssistant';
 import { buildStudentTourSteps, buildTeacherTourSteps } from './tourSteps';
 
@@ -373,31 +372,10 @@ const Dashboard: React.FC = () => {
         />
       );
     }
-    if (view === 'scratchpad') {
-      /* Notatnik lektora jest OSOBNYM EKRANEM, nie oknem nad panelem —
-         uzasadnienie w nagłówku TeacherScratchpadScreen. Kursant dostaje tu
-         swój własny, gotowy notatnik; lektor pustą kartkę, do której kursanta
-         przypisuje w trakcie pisania. */
-      if (isTeacher) {
-        return (
-          <TeacherScratchpadScreen
-            student={{ id: null, name: 'Notatnik roboczy' }}
-            
-            onClose={() => handleNavigate('dashboard')}
-            onPushToLessonRecord={(data) => {
-              /* Przekazanie do formularza lekcji w panelu. Okno notatnika
-                 mogło wołać panel wprost, bo w nim siedziało; ekran stoi obok,
-                 więc dane jadą tą samą drogą, którą w tej aplikacji jeżdżą już
-                 `_autoGenerate` i `_initialStudyMode` — przez globalną zmienną
-                 odczytywaną raz przy wejściu w panel. */
-              (window as any)._pendingLessonFromScratchpad = data;
-              handleNavigate('admin');
-            }}
-          />
-        );
-      }
-      return <StudentScratchpadScreen />;
-    }
+    /* Trasa `scratchpad` W APLIKACJI już nie istnieje — notatnik ma własną
+       stronę pod `/scratchpad`, otwieraną w nowej karcie (patrz nagłówek
+       `ScratchpadPage`). Kafelki obu ról wołają `openScratchpadTab`. */
+
     if (view === 'tests') {
 
       if (isTeacher) {
@@ -627,7 +605,9 @@ const Dashboard: React.FC = () => {
           handleNavigate('flashcard-study', { setId });
         },
         onPracticeAI: (setId: string) => handleNavigate('ai-generator', { setId }),
-        onOpenScratchpad: () => handleNavigate('scratchpad'),
+        /* Kursant dostaje DOKŁADNIE ten sam adres, co lektor — jeden link do
+           jednego dokumentu. */
+        onOpenScratchpad: () => openScratchpadTab(user?.id ? `sp_${user.id}` : null),
         /*
          * Wejście do własnego słownictwa. Dotąd istniało WYŁĄCZNIE w menu
          * bocznym, więc po jego zdjęciu nie byłoby do niego żadnej drogi —

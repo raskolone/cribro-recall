@@ -41,7 +41,7 @@ import Badge from '../ui/Badge';
 import { useLanguage } from '../../context/LanguageContext';
 import StudentNotionSyncModal from './StudentNotionSyncModal';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
-import TeacherScratchpadScreen from '../scratchpad/TeacherScratchpadScreen';
+import { openScratchpadTab } from '../../services/scratchpadService';
 
 import {
   buildBulkUpdatePayload,
@@ -144,7 +144,6 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
   // App Invite Modal State
   const [inviteStudent, setInviteStudent] = useState<User | null>(null);
   const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
-  const [scratchpadStudent, setScratchpadStudent] = useState<User | null>(null);
 
   // Single user deletion state
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
@@ -1052,7 +1051,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setScratchpadStudent(user);
+                              openScratchpadTab(`sp_${user.id}`);
                             }}
                             className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-semibold transition-colors flex items-center gap-1 border border-emerald-500/20 hover:border-emerald-500/40 cursor-pointer"
                             title="Otwórz współdzielony notatnik kursanta (kod PIN)"
@@ -1101,7 +1100,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                                 <button
                                   onClick={() => {
                                     setOpenMenuUserId(null);
-                                    setScratchpadStudent(user);
+                                    openScratchpadTab(`sp_${user.id}`);
                                   }}
                                   className="w-full px-2.5 py-1.5 rounded-lg hover:bg-emerald-500/15 text-emerald-300 flex items-center gap-2 transition-colors cursor-pointer text-left font-semibold"
                                 >
@@ -1629,21 +1628,11 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
         </div>
       )}
 
-      {/* Notatnik lekcyjny — warstwa na całe okno, nieprzezroczysta.
-          Z bazy kursantów nie da się wyjść nawigacją bez utraty miejsca na
-          liście, więc notatnik przykrywa ekran zamiast go zastępować. */}
-      {scratchpadStudent && (
-        <TeacherScratchpadScreen
-          variant="overlay"
-          onClose={() => setScratchpadStudent(null)}
-          student={{
-            id: scratchpadStudent.id,
-            name: scratchpadStudent.firstName
-              ? `${scratchpadStudent.firstName} ${scratchpadStudent.lastName || ''}`.trim()
-              : scratchpadStudent.username,
-          }}
-        />
-      )}
+      {/* Notatnik otwiera się w OSOBNEJ KARCIE przeglądarki — patrz nagłówek
+          `ScratchpadPage`. Warstwa nad listą zniknęła: adres notatnika jest
+          jednocześnie linkiem, który idzie do kursanta, więc musi dać się
+          skopiować z paska adresu. */}
+
     </div>
   );
 };

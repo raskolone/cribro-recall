@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   adoptScratchpadForStudent,
   getOrCreateStudentScratchpad,
+  getScratchpadById,
   subscribeScratchpad,
   saveScratchpadContent,
   updateScratchpadSettings,
@@ -39,7 +40,13 @@ interface TeacherScratchpadScreenProps {
    *   tło jest zasłonięte w całości, więc kartka nie walczy o uwagę
    *   z konstelacją i kafelkami panelu prześwitującymi zza półprzezroczystości.
    */
-  variant?: 'page' | 'overlay';
+  variant?: 'page' | 'overlay' | 'standalone';
+  /**
+   * Otwórz KONKRETNY dokument po identyfikatorze, zamiast tworzyć/odnajdywać
+   * notatnik kursanta. Używa tego osobna karta przeglądarki (`/scratchpad?id=`),
+   * gdzie adres jest jedynym źródłem prawdy o tym, co ma być otwarte.
+   */
+  documentId?: string | null;
   student: {
     id?: string | null;
     name: string;
@@ -64,6 +71,7 @@ interface TeacherScratchpadScreenProps {
 export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = ({
   onClose,
   variant = 'page',
+  documentId = null,
   student,
   students,
   onPushToLessonRecord,
@@ -119,10 +127,27 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
           ? `${user.firstName} ${user.lastName || ''}`.trim()
           : user?.username || 'Lektor CRIBRO';
 
-        const doc = await getOrCreateStudentScratchpad(
-          { id: student.id || null, name: student.name || 'Kursant' },
-          { uid: teacherUid, name: teacherName }
-        );
+        const doc = documentId
+          ? await getScratchpadById(documentId)
+          : await getOrCreateStudentScratchpad(
+              { id: student.id || null, name: student.name || 'Kursant' },
+              { uid: teacherUid, name: teacherName }
+            );
+
+        if (!doc) throw new Error('Nie znaleziono notatnika o podanym adresie.');
+
+        /* Adres karty jest jedynym miejscem, po którym da się tu wrócić —
+           notatnik roboczy dostaje identyfikator dopiero przy utworzeniu, więc
+           dopisujemy go do adresu od razu. Bez tego odświeżenie karty zakładało
+           drugi, pusty notatnik, a link skopiowany z paska adresu prowadził
+           donikąd. */
+        if (variant === 'standalone' && typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          if (params.get('id') !== doc.id) {
+            params.set('id', doc.id);
+            window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+          }
+        }
 
         if (isMounted) {
           setScratchpadDoc(doc);
@@ -142,7 +167,7 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
     return () => {
       isMounted = false;
     };
-  }, [student.id, student.name, user]);
+  }, [documentId, student.id, student.name, user, variant]);
 
   // Subskrypcja na żywo
   useEffect(() => {
@@ -224,7 +249,9 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
        na stronie. Zamknięcie renderuje sam edytor w swoim pasku nagłówka. */
     <div
       className={
-        variant === 'overlay'
+        variant === 'standalone'
+          ? 'h-[100dvh] flex flex-col bg-base-100'
+          : variant === 'overlay'
           ? 'fixed inset-0 z-[100] flex flex-col bg-base-100'
           /* `h-full`, nie `flex-1`: kontener, w którym stoi ten ekran
              (`<main>` w Dashboard), jest zwykłym blokiem z przewijaniem, a nie

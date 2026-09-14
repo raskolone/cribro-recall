@@ -50,7 +50,7 @@ import StudentInviteEmailModal from './StudentInviteEmailModal';
 import CleanLessonsModal from './CleanLessonsModal';
 import AdminMailingScreen from './AdminMailingScreen';
 import ScratchpadStudentPicker from '../scratchpad/ScratchpadStudentPicker';
-import TeacherScratchpadScreen from '../scratchpad/TeacherScratchpadScreen';
+import { openScratchpadTab } from '../../services/scratchpadService';
 import TeacherAttentionBanner from './TeacherAttentionBanner';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
@@ -294,12 +294,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     }
     if (tabId === 'notatnik') {
       /*
-       * Notatnik to OSOBNY EKRAN, nie okno nad panelem — pełne uzasadnienie
-       * w nagłówku TeacherScratchpadScreen. Otwiera się od razu i pusty,
-       * bez pytania „z kim dzisiaj": lektor zaczyna pisać, zanim to pytanie
-       * jest istotne, a kursanta przypisuje w trakcie, paskiem nad kartką.
+       * Notatnik otwiera się w OSOBNEJ KARCIE przeglądarki — uzasadnienie
+       * w nagłówku `ScratchpadPage`. Pusty i bez pytania „z kim dzisiaj":
+       * lektor zaczyna pisać, zanim to pytanie jest istotne, a kursanta
+       * przypisuje w trakcie, paskiem nad kartką.
        */
-      onViewChange?.('scratchpad');
+      openScratchpadTab();
       return;
     }
     // Moduły ogólne (niezwiązane z profilem) — przełączane bezpośrednio
@@ -1329,7 +1329,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [createStudentError, setCreateStudentError] = useState('');
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [showScratchpadModal, setShowScratchpadModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
 
   const [messageTitle, setMessageTitle] = useState('Wiadomość od nauczyciela');
@@ -1795,7 +1794,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         {SHOW_LEGACY_PANEL_TOOLS && (
           <div className="flex flex-wrap items-center gap-2.5">
             <button
-              onClick={() => onViewChange?.('scratchpad')}
+              onClick={() => openScratchpadTab()}
               className="px-3.5 min-h-11 bg-base-200/80 text-content border border-line-strong rounded-xl text-xs sm:text-sm font-bold hover:bg-white/[0.08] transition-colors flex items-center justify-center gap-2"
               title="Otwórz wspólny notatnik wybranego kursanta"
             >
@@ -3517,7 +3516,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     variant="secondary"
                     size="sm"
                     className="bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 font-bold flex items-center gap-2 shrink-0 cursor-pointer text-xs"
-                    onClick={() => setShowScratchpadModal(true)}
+                    onClick={() => openScratchpadTab(selectedUser ? `sp_${selectedUser.id}` : null)}
                   >
                     <FileEdit size={14} />
                     {i18n.t("Otwórz Notatnik")}
@@ -5467,35 +5466,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         />
       )}
 
-      {/* Notatnik z profilu kursanta — warstwa na całe okno, nieprzezroczysta.
-          Nawigacja zabrałaby otwarty profil, więc tu notatnik przykrywa ekran
-          zamiast go zastępować. */}
-      {showScratchpadModal && selectedUser && (
-        <TeacherScratchpadScreen
-          variant="overlay"
-          onClose={() => setShowScratchpadModal(false)}
-          student={{
-            id: selectedUser.id,
-            name: selectedUser.firstName
-              ? `${selectedUser.firstName} ${selectedUser.lastName || ''}`.trim()
-              : selectedUser.username,
-          }}
-          onPushToLessonRecord={(data) => {
-            setLessonFormStudentId(selectedUser.id);
-            setLessonFormTopic(data.topic);
-            setLessonFormWords(data.words);
-            setLessonFormSummary(data.summary);
-            setLessonFormThingsToImprove(data.thingsToImprove);
-            setLessonFormSuggestedFollowUp(data.followUp);
-            setLessonRecordModalMode('edit');
-            setShowLessonRecordModal(true);
-            setShowScratchpadModal(false);
-            setActiveTab('history');
-            showToast('Przeniesiono dane z brudnopisu do formularza lekcji!');
-          }}
-        />
-      )}
-
+      {/* Notatnik z profilu kursanta otwiera się w OSOBNEJ KARCIE (przycisk
+          „Otwórz Notatnik" w sekcji e-maila i dostępu). Warstwa nad panelem
+          zniknęła razem z resztą wejść: jeden adres, jedna karta, jeden link
+          do wysłania kursantowi. */}
 
       {showCleanLessonsModal && (
 

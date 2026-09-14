@@ -230,7 +230,20 @@ export async function getOrCreateStudentScratchpad(
     title: `Notatnik — ${student.name}`,
     contentHtml: initial.html,
     contentText: initial.text,
-    allowStudentEdit: false, // Domyślnie bezpieczny tryb podglądu na żywo dla kursanta
+    /*
+     * Kursant może pisać OD RAZU.
+     *
+     * Domyślne „tylko podgląd" wychodziło z założenia, że wspólny dokument
+     * trzeba przed kursantem zabezpieczyć. W praktyce notatnik jest narzędziem
+     * do pracy WE DWOJE na lekcji — kursant ma w nim uzupełniać zdania,
+     * poprawiać własne błędy i dopisywać słówka. Zamknięty na wejściu znaczył
+     * tyle, że na każdej pierwszej lekcji trzeba było o tym pamiętać, wejść
+     * w menu udostępniania i odblokować; a że nikt o tym nie pamięta, kursant
+     * pisał „nie mogę nic wpisać" i lekcja stawała.
+     *
+     * Wyłączyć nadal można — jednym przełącznikiem w menu „Udostępnij".
+     */
+    allowStudentEdit: true,
     requirePin: false, // Domyślnie link bezpośredni nie wymaga PINu (PIN opcjonalny na życzenie nauczyciela)
     createdAt: now,
     updatedAt: now,
@@ -665,6 +678,24 @@ export function buildScratchpadUrl(
     url.searchParams.set('pin', formatAccessCode(options.pin));
   }
   return url.toString();
+}
+
+/**
+ * Otwarcie notatnika w NOWEJ KARCIE przeglądarki.
+ *
+ * Jedno miejsce na tę czynność, bo wejść do notatnika jest kilka (kafelek
+ * pulpitu, profil kursanta, baza kursantów, pasek prezentacji) i wszystkie mają
+ * trafiać pod ten sam adres. Bez identyfikatora karta zakłada notatnik roboczy
+ * i sama dopisuje go do adresu.
+ *
+ * `noopener` jest konieczne: bez niego nowa karta dostaje uchwyt do okna, które
+ * ją otworzyło (`window.opener`), a to jest dziura, przez którą treść z jednej
+ * karty może sterować drugą.
+ */
+export function openScratchpadTab(scratchpadId?: string | null): void {
+  if (typeof window === 'undefined') return;
+  const url = scratchpadId ? `/scratchpad?id=${encodeURIComponent(scratchpadId)}` : '/scratchpad';
+  window.open(url, '_blank', 'noopener');
 }
 
 /**

@@ -20,7 +20,7 @@ import AppAlertModal from './components/ui/AppAlertModal';
 import UnsubscribeScreen from './components/auth/UnsubscribeScreen';
 import DirectHomeworkScreen from './components/dashboard/DirectHomeworkScreen';
 import LiveJoinScreen from './components/presentation/LiveJoinScreen';
-import PublicScratchpadScreen from './components/scratchpad/PublicScratchpadScreen';
+import ScratchpadPage from './components/scratchpad/ScratchpadPage';
 
 
 const App: React.FC = () => {
@@ -116,12 +116,14 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Współdzielony dokument brudnopisu (Scratchpad / Google Docs z kodem PIN lub linkiem /scratchpad?pin=...)
-  // Kursant może zawsze podejrzeć ten brudnopis lub edytować notatki bez konieczności logowania.
+  // Notatnik jako OSOBNA STRONA — jeden adres dla lektora i kursanta.
+  // Stoi przed sprawdzeniem logowania, bo kursant z definicji może nie mieć
+  // konta; `ScratchpadPage` sam czeka na `isAuthReady` i dopiero wtedy decyduje,
+  // czy pokazać pełny edytor lektora, czy widok po linku/PIN-ie.
   if (typeof window !== 'undefined' && (window.location.pathname.startsWith('/scratchpad') || window.location.pathname.startsWith('/doc'))) {
     return (
       <SettingsProvider>
-        <PublicScratchpadScreen />
+        <ScratchpadPage />
       </SettingsProvider>
     );
   }
