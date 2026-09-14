@@ -791,12 +791,16 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   );
 
   return (
-    <div className={`flex flex-col bg-base-200 rounded-2xl border border-line-strong shadow-[var(--shadow-lg)] overflow-hidden ${className}`}>
+    /* Obudowa notatnika to ta sama szyba, co kafelki panelu: półprzezroczysta
+       tafla z rozmyciem i linią światła na górnej krawędzi. Wcześniej była
+       zwykłym, nieprzezroczystym prostokątem — jedynym takim elementem
+       w aplikacji, przez co wyglądała na doklejoną z innego programu. */
+    <div className={`pad-shell flex flex-col overflow-hidden ${className}`}>
       {/* 1. NAGŁÓWEK DOKUMENTU
           Tożsamość po lewej, jedna akcja końcowa i jedno menu dostępu po prawej.
           Kod PIN i przełączniki uprawnień zeszły do menu — na ekranie zostaje
           to, czego lektor używa w trakcie pisania. */}
-      <header className="px-4 py-3 bg-base-300/80 border-b border-line-strong flex items-center justify-between gap-3 flex-wrap">
+      <header className="px-4 py-3 pad-bar border-b border-line-strong flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3 min-w-0" data-coach="pad-identity">
           <div className="p-2 rounded-xl bg-accent/12 text-accent border border-accent/25 shrink-0">
             <FileText size={18} />
@@ -1094,7 +1098,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           trzy zakreślacze lektorskie i lista. Nagłówki, pozostałe style oraz
           wstawki lekcyjne schowane są w dwóch menu. */}
       {!isReadOnly && (
-        <div className="px-3 py-2 bg-base-300/40 border-b border-line-strong flex items-center gap-1.5 flex-wrap select-none">
+        <div className="px-3 py-2 pad-bar border-b border-line-strong flex items-center gap-1.5 flex-wrap select-none sticky top-0 z-30">
           <MenuDropdown
             open={isStyleMenuOpen}
             onOpenChange={setIsStyleMenuOpen}
@@ -1498,8 +1502,8 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           z `execCommand` nie da się oklasować. */}
       <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
         {isTocOpen && (
-          <aside className="shrink-0 w-full md:w-60 max-h-40 md:max-h-none overflow-y-auto border-b md:border-b-0 md:border-r border-line-strong bg-base-300/40">
-            <div className="px-3 py-2.5 flex items-center justify-between gap-2 sticky top-0 bg-base-300/95 backdrop-blur-sm border-b border-line-soft">
+          <aside className="shrink-0 w-full md:w-60 max-h-40 md:max-h-none overflow-y-auto border-b md:border-b-0 md:border-r border-line-strong pad-bar">
+            <div className="px-3 py-2.5 flex items-center justify-between gap-2 sticky top-0 pad-bar backdrop-blur-md border-b border-line-soft">
               <span className="text-[10px] font-bold uppercase tracking-wider text-text-faint">
                 Spis treści
               </span>
@@ -1547,7 +1551,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
         <div
           ref={paperWrapRef}
-          className="flex-1 min-w-0 p-4 md:p-8 overflow-y-auto bg-base-100/60 min-h-[500px]"
+          className="pad-canvas flex-1 min-w-0 p-4 md:p-8 md:pt-10 overflow-y-auto min-h-[500px]"
         >
           <div className="relative max-w-4xl mx-auto">
             <div
@@ -1559,7 +1563,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
               onClick={handlePaperClick}
               onPaste={handlePaste}
               suppressContentEditableWarning
-              className={`pad-paper min-h-[480px] p-6 md:p-10 md:pl-14 rounded-lg border border-black/10 focus:outline-none focus:border-primary/50 transition-colors font-sans selection:bg-primary/30 ${
+              className={`pad-paper min-h-[480px] p-6 md:p-12 md:pl-16 rounded-xl focus:outline-none transition-shadow font-sans selection:bg-primary/30 ${
                 isReadOnly ? 'cursor-default' : 'cursor-text'
               }`}
               style={{ wordBreak: 'break-word', boxShadow: 'var(--pad-shadow)' }}
@@ -1622,7 +1626,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       </div>
 
       {/* 4. DYSKRETNA STOPKA DOKUMENTU */}
-      <footer className="px-4 py-2 bg-base-300/80 border-t border-line-strong flex items-center justify-between text-[11px] text-content-muted">
+      <footer className="px-4 py-2 pad-bar border-t border-line-strong flex items-center justify-between text-[11px] text-content-muted gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <span>Słowa: <strong className="text-text-hi">{wordCount}</strong></span>
           <span>•</span>

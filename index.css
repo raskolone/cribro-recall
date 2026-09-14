@@ -281,36 +281,105 @@ html, body, #root { min-height: 100vh; }
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* Kafel — wariant nieprzezroczysty, tam gdzie blur jest zbyt kosztowny
-   (siatki kafli na dashboardzie). Poświata dopiero na hover: glow oznacza
-   rzecz aktywną, a nie każdy element siatki. */
+/* Kafel panelu lektora.
+
+   ══ JEDNA RECEPTURA SZKŁA NA CAŁĄ APLIKACJĘ ══
+
+   Ta klasa (zastana, używana w kilkunastu miejscach) dostaje dokładnie to samo
+   wykończenie, co `.glass-tile` z panelu kursanta: półprzezroczysta tafla
+   z rozmyciem, linia światła na górnej krawędzi, uniesienie o 3 px i ledwie
+   wyczuwalne powiększenie przy najechaniu. Dwie różne receptury na dwa panele
+   tej samej aplikacji znaczyły tylko tyle, że jeden z nich wyglądał starzej —
+   a zmiana w jednym nie dotyczyła drugiego.
+
+   Nazwa zostaje, bo zmiana nazwy klasy w kilkunastu plikach to ryzyko bez
+   zysku; zmieniła się treść. */
 .liquid-glass-tile {
   position: relative;
   overflow: hidden;
-  background: var(--surface-flat);
-  border: 1px solid var(--line);
+  isolation: isolate;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--bg-lift) 55%, transparent),
+    color-mix(in srgb, var(--surface-flat) 40%, transparent)
+  );
+  border: 1px solid var(--line-strong);
   border-radius: var(--r-xl);
-  box-shadow: var(--shadow-md);
-  transition: transform var(--t), border-color var(--t), box-shadow var(--t), background var(--t);
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
+  backdrop-filter: blur(14px) saturate(1.25);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.22s cubic-bezier(0.2, 0.7, 0.3, 1),
+    border-color var(--t),
+    box-shadow var(--t);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
 
+.liquid-glass-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+:root.light .liquid-glass-tile::after,
+:root[data-theme="light"] .liquid-glass-tile::after {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+/* Przejazd połysku — ten sam, co w `.glass-tile`. */
+.liquid-glass-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    color-mix(in srgb, var(--accent) 20%, transparent) 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  opacity: 0;
+  pointer-events: none;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .liquid-glass-tile:hover {
-    transform: translateY(-2px);
-    border-color: var(--accent-25);
-    box-shadow: var(--shadow-lg), var(--glow);
+    transform: translateY(-3px) scale(1.006);
+    border-color: var(--accent-30);
+    box-shadow:
+      0 1px 1px rgba(0, 0, 0, 0.14),
+      0 10px 28px -10px rgba(0, 0, 0, 0.5),
+      var(--glow);
+  }
+  .liquid-glass-tile:hover::before {
+    opacity: 1;
+    transform: translateX(120%);
+    transition: transform 0.7s var(--ease), opacity 0.2s var(--ease);
+  }
+  .liquid-glass-tile:hover::after {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 0 0 1px var(--accent-12);
   }
 }
 
 @media (hover: none) {
   .liquid-glass-tile:active {
+    transform: scale(0.985);
     border-color: var(--accent-30);
-    background: var(--ink-2);
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-glass-tile,
+  .liquid-glass-tile::before { transition: none; }
+  .liquid-glass-tile:hover { transform: none; }
+  .liquid-glass-tile:hover::before { opacity: 0; }
 }
 
 /* Stan wybrany dla kafli i kart wybieralnych — wg components.md:
@@ -746,7 +815,12 @@ tr.liquid-glass-hover:hover {
   backdrop-filter: blur(14px) saturate(1.25);
   -webkit-backdrop-filter: blur(14px) saturate(1.25);
   box-shadow: var(--shadow-sm);
-  transition: border-color var(--t), box-shadow var(--t), transform var(--t);
+  /* Krzywa z lekkim wyprzedzeniem na końcu — ruch ma się „dostawić", a nie
+     dojechać liniowo. To jedyne miejsce, gdzie ta krzywa jest użyta. */
+  transition:
+    transform 0.22s cubic-bezier(0.2, 0.7, 0.3, 1),
+    border-color var(--t),
+    box-shadow var(--t);
 }
 
 .glass-tile::before {
@@ -767,11 +841,40 @@ tr.liquid-glass-hover:hover {
   pointer-events: none;
 }
 
+/* Cienka linia światła na górnej krawędzi — to ona robi wrażenie tafli
+   uniesionej nad tłem, a nie cień. Cień sam z siebie daje „naklejkę";
+   krawędź + cień dają szybę. */
+.glass-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+:root.light .glass-tile::after,
+:root[data-theme="light"] .glass-tile::after {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
 @media (hover: hover) and (pointer: fine) {
   .glass-tile:hover {
-    transform: translateY(-2px);
+    /* Uniesienie i MINIMALNE powiększenie. 0,6% jest na granicy dostrzegalności
+       i o to chodzi: kafelek ma wyglądać, jakby podjechał do oka, a nie jakby
+       urósł. Powyżej 1,5% sąsiednie kafelki zaczynają wyglądać na przesunięte,
+       bo oko porównuje je z tym uniesionym. */
+    transform: translateY(-3px) scale(1.006);
     border-color: var(--accent-30);
-    box-shadow: var(--shadow-md), var(--glow);
+    box-shadow:
+      0 1px 1px rgba(0, 0, 0, 0.14),
+      0 10px 28px -10px rgba(0, 0, 0, 0.5),
+      var(--glow);
+  }
+  .glass-tile:hover::after {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 0 0 1px var(--accent-12);
   }
   .glass-tile:hover::before {
     opacity: 1;
@@ -1010,4 +1113,60 @@ tr.liquid-glass-hover:hover {
 
 @media (prefers-reduced-motion: reduce) {
   .pad-laser { box-shadow: 0 0 10px 3px rgba(240, 114, 111, 0.4); }
+}
+
+/* ── Obudowa notatnika ──
+   Rama, paski narzędzi i kanwa wokół kartki. Wszystko poza samą kartką należy
+   do aplikacji i wygląda jak aplikacja: szyba z rozmyciem, włosowe obrysy,
+   linia światła na górnej krawędzi. Sama kartka ma własny motyw i własne
+   kolory (`.pad-paper` wyżej) — to jedyny element, który celowo NIE należy do
+   interfejsu, bo jest dokumentem leżącym w nim. */
+.pad-shell {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-xl);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--bg-lift) 45%, transparent),
+    color-mix(in srgb, var(--surface-flat) 55%, transparent)
+  );
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: var(--shadow-lg);
+}
+
+.pad-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+:root.light .pad-shell::after,
+:root[data-theme="light"] .pad-shell::after {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* Paski: nagłówek, narzędzia, spis treści, stopka. Przezroczyste z rozmyciem,
+   żeby kanwa pod nimi była wyczuwalna — pasek narzędzi jest przyklejony do
+   góry przy przewijaniu i nieprzezroczysty wyglądałby jak odcięta krawędź. */
+.pad-bar {
+  background: color-mix(in srgb, var(--ink-2) 62%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+
+/* Kanwa wokół kartki — ciemniejsza od ramy, żeby kartka wyglądała na
+   położoną NA czymś, a nie wklejoną w panel. Gradient jest ledwie widoczny
+   i biegnie z góry: tam, gdzie w dokumencie pada światło. */
+.pad-canvas {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--ink) 45%, transparent) 0%,
+      color-mix(in srgb, var(--ink) 72%, transparent) 100%
+    );
 }
