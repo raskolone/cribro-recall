@@ -33,6 +33,7 @@ import StudentScratchpadScreen from '../scratchpad/StudentScratchpadScreen';
 import TeacherScratchpadScreen from '../scratchpad/TeacherScratchpadScreen';
 import TeacherWorkScreen from './TeacherWorkScreen';
 import CoachMarks from '../ui/CoachMarks';
+import TeacherAssistant from '../admin/TeacherAssistant';
 import { buildStudentTourSteps, buildTeacherTourSteps } from './tourSteps';
 
 import TodayScreen from './TodayScreen';
@@ -749,6 +750,10 @@ const Dashboard: React.FC = () => {
         />
         <div className="flex-1 min-h-0 flex flex-col">{renderContent()}</div>
       </main>
+      {/* Asystent — pływający, wyłącznie dla lektora. Pytanie „co ostatnio
+          robiłem z Bartkiem" pada w trakcie robienia czegoś innego, więc nie
+          może wymagać porzucenia tego, co się robi. */}
+      {isTeacher && <TeacherAssistant />}
       <AdminMessageModal />
     </div>
   );
