@@ -1286,3 +1286,115 @@ Ryzyka:
 - Odwrócenie `--color-white`/`--color-black` działa na CAŁĄ aplikację w trybie
   dziennym. Sprawdzone na ekranie startowym; ekrany za logowaniem wymagają
   obejrzenia. Tryb nocny nie jest ruszony — reguły są pod `[data-theme="light"]`.
+
+---
+
+2026-09-14 — Claude Code / Opus 5 → Sonnet 5 (runda 9)
+
+Zadanie: przebudować zakładkę Planera lekcji AI pod kątem lekkości i prostoty
+  obudowy przy zachowaniu pełnej mocy narzędzia, zgodnie z wytycznymi skilla
+  „🎯 Skill - Lesson Planner" pobranego z Notion (The Cribro Method) —
+  trójkrokowy przepływ (ustalenia → propozycje tematu z pytaniem o liczbę
+  wariantów → scenariusz z zaznaczaniem elementów do poprawki w czacie);
+  czat ma działać agentowo jako narada do czterech modeli (GPT pisze, Gemini
+  recenzuje domyślnie); panel administratora do wyboru składu narady i kluczy.
+
+Zrobione (trzy commity):
+- `services/lessonPlannerMethod.ts` (nowy) — odwzorowanie skilla z Notion:
+  bramka Kroku 0 (`briefGate`), prompt systemowy metody (`CRIBRO_METHOD_SYSTEM`,
+  Test naturalności pytań), trzy budowniczowie promptów: propozycje tematu
+  (`buildTopicProposalPrompt`), pełny scenariusz (`buildScenarioPrompt`,
+  twarde liczby: 5/10/5/4), poprawka zaznaczonych elementów
+  (`buildRevisionPrompt`).
+- `services/aiCouncil.ts` (nowy) — silnik narady: `runCouncil` w trzech
+  turach (autor pisze → do trzech recenzentów zwraca max. 6 zastrzeżeń każdy
+  → autor poprawia i ma prawo odrzucić błędne zastrzeżenie). Awaria
+  recenzenta nie zabiera gotowej propozycji autora. `DEFAULT_COUNCIL`,
+  `normalizeCouncil`, `MAX_COUNCIL_SEATS = 4`.
+- `components/admin/LessonPlannerStudio.tsx` (nowy, 1087 linii) — zastępuje
+  `LessonPlanner.tsx` w `AdminPanel.tsx`. Trzy kroki na osobnych ekranach
+  (Ustalenia / Temat / Scenariusz), scenariusz jako sekcje i elementy
+  z identyfikatorami nadawanymi przez model, zaznaczanie + czat poprawek,
+  zwinięty pasek transkryptu narady na dole każdego kroku. Wczytywanie
+  plików (`LessonFileUploader`, odzyskany ze starego planera) trafia
+  materiał do promptu przed opisem słownym, zgodnie z kolejnością źródeł
+  w skillu.
+- `components/settings/AiCouncilSettings.tsx` (nowy) + `server.ts`
+  (`/api/ai/config` POST/GET rozszerzone o `council`) +
+  `services/aiConfigService.ts` (`saveAiCouncil`, `peekCouncil`) — skład
+  narady w Ustawieniach Administratora, cztery miejsca, pierwsze zawsze
+  autor, model z listy zatwierdzonych, licznik wywołań modelu.
+- `AdminPanel.tsx` — dwie bazy (scenariuszy, tematów) schowane w jednym
+  `MenuDropdown` zamiast dwóch przycisków nad narzędziem.
+- Naprawa znaleziona PRZY PRZEGLĄDZIE WŁASNEGO KODU przed commitem:
+  `generateLessonPlannerAI` (`services/geminiService.ts`) prosiła model
+  o JSON wyłącznie zdaniem w promptcie — bez `response_format` dla OpenAI
+  (`callOpenAI` wołane z `isJson: false`) i bez `responseMimeType` dla
+  Gemini. Ta sama luka dotyczyła TRZECH istniejących wywołań w
+  `services/presentationService.ts` (generator slajdów), nie tylko nowego
+  kodu narady. Naprawa: opcjonalny parametr `jsonMode` (domyślnie `false`,
+  zero zmiany zachowania dla wywołań tekstowych), włączony w naradzie
+  (tylko tury autora — recenzja zostaje wolnym tekstem) i we wszystkich
+  trzech wywołaniach w `presentationService.ts`.
+
+Nie dokończone / do sprawdzenia:
+- CAŁOŚĆ nieoglądana w przeglądarce i niewywołana na żywych kluczach API —
+  brak dostępu do zalogowanej sesji i do skonfigurowanych kluczy w tej
+  sesji agenta. Zweryfikowano wyłącznie `tsc --noEmit`, 316 testów,
+  `npm run build`.
+- `jsonMode: true` podnosi prawdopodobieństwo poprawnego JSON-a, nie
+  gwarantuje go — `extractJSON` + `JSON.parse` wciąż jest jedyną linią
+  obrony. Do sprawdzenia na żywym kluczu: czy narada (trzy-cztery wywołania
+  pod rząd, każde parsujące JSON) rzeczywiście przechodzi bez błędów
+  parsowania w praktyce, szczególnie na etapie poprawek (`buildRevisionPrompt`),
+  gdzie model dostaje CAŁY scenariusz jako kontekst.
+- Nie sprawdzone: czy `extractLessonBlocks` (użyte w `historyDigest` do
+  zasilenia Revision Translation materiałem z ostatniej lekcji) radzi sobie
+  poprawnie ze wszystkimi kształtami rekordów w bazie Macieja.
+- `LessonPlanner.tsx` i pomocnicze komponenty (`LessonModulesConfig`,
+  `ChooseScenarioModal`, `GeneratedScenariosSection`, `lessonPlannerPresets`
+  — ten ostatni nadal używany przez `LessonScenarioAccordion.tsx`) zostają
+  w repo nieużywane przez nowy planer. Nieusunięte świadomie — usunięcie
+  plików to osobna decyzja.
+- Pętla uczenia się na bazie Notion „Pytania wykorzystane na lekcjach" ze
+  skilla NIE jest zaimplementowana — Recall nie odpytuje tej bazy. Model
+  dostaje wprost informację, że tych danych nie ma.
+- Zapis karty w Notion „Historia Lekcji" (Krok 3 skilla) świadomie pominięty
+  w prompt — w Recall zapisuje `scenarioService`, model ma układać lekcję,
+  nie decydować o zapisie do Notion.
+
+Decyzje architektoniczne:
+- Narada zamiast pojedynczego wywołania: pojedynczy model łamie twarde
+  liczby i zakazy metody po cichu (pytanie brzmi mądrze, więc przechodzi
+  mimo złamania Testu naturalności) i nie widzi własnych błędów, bo to
+  jego tekst. Recenzent dostaje te same wytyczne i CUDZY tekst.
+- Recenzent NIE pisze własnej wersji, tylko listę zastrzeżeń (max. 6) —
+  recenzent piszący własną wersję zamieniałby naradę w dwóch niezależnych
+  autorów zamiast w sprawdzenie jednej propozycji.
+- Ostatnie słowo ma zawsze autor; zastrzeżenie recenzenta nie jest
+  poleceniem i wolno je odrzucić.
+- Poprawka zaznaczonych elementów wstawia WYŁĄCZNIE identyfikatory podane
+  przez lektora — model bywa nadgorliwy i dorzuca poprawki do rzeczy, o
+  które nikt nie prosił; filtrowane po stronie klienta w
+  `LessonPlannerStudio`, nie ufając samoograniczeniu modelu.
+- Cztery miejsca w naradzie to sufit, nie limit techniczny: przy trzech
+  recenzentach uwagi zaczynają się powtarzać niemal w całości, a koszt
+  (N+1 wywołań) rośnie liniowo bez dodatkowej jakości.
+- `jsonMode` domyślnie wyłączony w `generateLessonPlannerAI`, żeby nie
+  zmieniać zachowania istniejących wywołań na tekst swobodny (stary
+  Planer, nieużywany, ale nieusunięty) — włączają go świadomie tylko
+  wywołania, które faktycznie parsują JSON.
+
+Ryzyka:
+- `firestore.rules` NIETKNIĘTY. Middleware autoryzacji i ścieżki tokenowe
+  bez logowania NIETKNIĘTE.
+- `server.ts` zmieniony w `/api/ai/config` (GET i POST) — dodane pole
+  `council`, ta sama walidacja `allowedModels`/`allowedTasks` co wcześniej,
+  zapis nadal wyłącznie przez `requireFirebaseAdmin`. Żadna zmiana nie
+  dotyka autoryzacji ani ścieżek tokenowych.
+- Narada wykonuje do czterech wywołań modelu NA JEDNO działanie lektora
+  (propozycja tematu, budowa scenariusza, każda poprawka) — koszt i czas
+  rosną wprost proporcjonalnie do liczby aktywnych recenzentów. Domyślny
+  skład (1 autor + 1 recenzent) trzyma to w ryzach; zmiana w ustawieniach
+  na więcej recenzentów jest świadomą decyzją administratora, nie
+  przypadkiem.

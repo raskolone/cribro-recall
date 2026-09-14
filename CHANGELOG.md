@@ -109,6 +109,31 @@ ale nikt ich nie widział w działającej aplikacji. Do sprawdzenia w pierwszej 
 czy przyciemnienie okien dialogowych w trybie dziennym nie zjada kontrastu i czy zakreślacze
 w notatniku czytają się na obu papierach.
 
+**2026-09-14, runda 9 — planer lekcji NIE był wołany na żywo.** Nowy Planer
+(`LessonPlannerStudio`), narada modeli (`aiCouncil`) i ustawienia jej składu
+(`AiCouncilSettings`) przeszły `tsc --noEmit`, 316 testów i `npm run build`, ale
+nikt nie kliknął przez trzy kroki w przeglądarce ani nie wywołał prawdziwej
+narady na kluczach API — brak dostępu do zalogowanej sesji i do skonfigurowanych
+kluczy w tej sesji agenta.
+
+Przy przeglądzie własnego kodu przed commitem znaleziona i naprawiona usterka
+w `generateLessonPlannerAI` (`services/geminiService.ts`), na którym stoi cała
+narada: funkcja prosiła model o JSON WYŁĄCZNIE zdaniem w promptcie, bez
+żadnego strukturalnego wymuszenia u żadnego z dwóch dostawców — gałąź OpenAI
+wołała `callOpenAI(..., isJson: false)` (więc serwer nigdy nie ustawiał
+`response_format: { type: "json_object" }`), gałąź Gemini nie ustawiała
+`responseMimeType`. Ta sama luka dotyczyła też TRZECH już istniejących,
+produkcyjnych wywołań w `services/presentationService.ts` (generator slajdów
+prezentacji) — nie tylko nowego kodu. Naprawa: opcjonalny parametr
+`jsonMode` w `generateLessonPlannerAI`, domyślnie `false` (zero zmiany
+zachowania dla wywołań na tekst swobodny), włączany świadomie przez naradę
+(tylko w turach autora — recenzja zostaje wolnym tekstem) i przez wszystkie
+trzy wywołania w `presentationService.ts`. Mimo naprawy: **nadal nie
+zweryfikowane na żywym kluczu** — `jsonMode: true` tylko podnosi
+prawdopodobieństwo poprawnego JSON-a, nie gwarantuje go, a `extractJSON` wciąż
+jest jedyną linią obrony, jeśli model i tak zwróci coś, czego nie da się
+sparsować.
+
 ### 🟡 Notatnik: co zostało niedokończone (stan 2026-09-14)
 
 - **Panel duplikatów kasuje wpisy lekcji, ale NIE powiązane `vocabularySets`.**
@@ -177,6 +202,111 @@ Firestore obok lekcji.
 ---
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
+
+### 🎯 Planer lekcji przepisany na metodę Cribro i naradę modeli (2026-09-14, runda 9)
+
+**Skąd to pochodzi.** Odwzorowanie skilla „🎯 Skill - Lesson Planner" z Notion
+(Prompts & Instructions) wraz z nadpisaniami z „🎯 Lesson Planner — Master Prompt
+& System" — pobrane bezpośrednio z Notion przy tym zadaniu. Notion pozostaje
+źródłem prawdy: jeśli tamta strona się zmieni, `services/lessonPlannerMethod.ts`
+trzeba zaktualizować ręcznie, bo aplikacja nie czyta skilla na żywo (scenariusz
+musi dać się ułożyć także wtedy, gdy Notion jest niedostępny).
+
+**1. Planer to teraz trzy kroki, jeden na ekran — nie ściana ustawień.**
+(`components/admin/LessonPlannerStudio.tsx`, zastępuje `LessonPlanner.tsx`)
+Poprzedni ekran pokazywał cały mechanizm na wejściu: konfigurację modułów,
+presety, ustawienia metodyki, odmianę angielskiego, liczbę słówek, styl
+wyjaśnień, załączniki, wybór scenariusza bazowego i czat — wszystko naraz,
+zanim padło pierwsze pytanie o temat. Teraz:
+   - **Ustalenia** — tryb, kursant/grupa, data, poziom (bramka Kroku 0 metody:
+     bez tych trzech planer nie rusza). Gramatyka i materiał źródłowy zwinięte,
+     bo w większości lekcji zostają puste.
+   - **Temat** — AI pyta wprost, czy jest sugestia tematu i ile wariantów
+     przygotować (2–4), tak jak zrobiłby to człowiek, któremu zlecono lekcję.
+     Warianty wracają jako karty z kątem, materiałem i przykładowym pytaniem —
+     nie ściana tekstu do przeczytania.
+   - **Scenariusz** — lekcja w sekcjach i elementach, każdy z własnym,
+     stabilnym identyfikatorem nadanym przez model. Element da się zaznaczyć
+     i poprosić czat o poprawkę WYŁĄCZNIE zaznaczonych elementów — reszta
+     scenariusza, wraz z tym, co lektor już zaakceptował, zostaje nietknięta.
+   - Mózg narzędzia (transkrypt narady, który model co powiedział) siedzi pod
+     jednym zwiniętym paskiem na dole każdego kroku — widoczny na życzenie,
+     niezajmujący miejsca, gdy wszystko idzie dobrze. Potężne narzędzie
+     w prostej obudowie, zgodnie z poleceniem.
+
+**2. Metoda Cribro jako prompt, nie jako luźna instrukcja.**
+(`services/lessonPlannerMethod.ts`, nowy) Struktura pięciu sekcji, twarde
+liczby (dokładnie 5 pytań warm-up, 10 pytań dyskusyjnych, 5 pozycji
+słownictwa, 4 zadania Extra Tasks, każde inne), Practice Enclosure celowo
+puste, i Test naturalności pytań powtórzony przy KAŻDYM wywołaniu — nie tylko
+przy generowaniu całości, bo to jest reguła, którą modele łamią najciszej:
+pytanie brzmi mądrze i przechodzi, mimo że nie da się na nie odpowiedzieć
+jednym zdaniem.
+
+Świadomie pominięte: zapis karty w bazie Notion „Historia Lekcji" (w Recall
+robi to `scenarioService`, model ma UŁOŻYĆ lekcję, nie decydować o zapisie)
+oraz pętla uczenia się na bazie „Pytania wykorzystane na lekcjach" (Recall
+jeszcze nie odpytuje tej bazy Notion — modelowi mówimy WPROST, że tych danych
+nie ma, inaczej zaczyna wymyślać „sprawdzone wzorce", których nikt nie sprawdził).
+
+**3. Narada modeli — do czterech głosów, autor plus recenzenci.**
+(`services/aiCouncil.ts`, nowy) Pojedynczy model pisze scenariusz pewnie siebie
+i nie widzi własnych błędów wobec wytycznych — łamie twarde liczby, wypełnia
+sekcję, która ma zostać pusta, przepuszcza pytanie, które nie przechodzi Testu
+naturalności. Recenzent widzi, bo dostaje te same wytyczne i CUDZY tekst.
+
+Trzy tury: autor pisze → do trzech recenzentów czyta propozycję pod kątem
+wytycznych i zwraca maksymalnie po sześć zastrzeżeń (nie własną wersję —
+recenzent piszący własną wersję przestaje recenzować i robi drugiego autora)
+→ autor poprawia, mając zastrzeżenia przed sobą, i ma prawo je odrzucić, jeśli
+są błędne. Awaria recenzenta nie zabiera lektorowi gotowej propozycji autora —
+narada schodzi wtedy do wyniku z pierwszej tury.
+
+**4. Skład narady w Ustawieniach Administratora.**
+(`components/settings/AiCouncilSettings.tsx`, nowy; `server.ts`,
+`services/aiConfigService.ts` rozszerzone o pole `council` w `system/ai`)
+Cztery miejsca, pierwsze zawsze autor (bez niego nie ma czego recenzować),
+model do wyboru z listy już zatwierdzonych modeli, narada do wyłączenia jednym
+przełącznikiem. Panel liczy i pokazuje wprost, ile wywołań modelu kosztuje
+wybrany skład — sufit czterech miejsc jest celowy, bo przy trzech recenzentach
+uwagi zaczynają się powtarzać niemal w całości i narada przestaje dokładać
+cokolwiek do jakości, tylko kosztuje więcej i trwa dłużej. Klucze API zostają
+w sekcji „Modele AI" obok — narada korzysta z tych samych.
+
+**5. Wczytywanie plików trafia do planera.** (`LessonFileUploader`, istniejący
+komponent, dotąd używany tylko w starym planerze) Metoda sprawdza materiał
+źródłowy w kolejności: załączony plik → opis słowny → propozycje AI. Treść
+odczytanych plików trafia do promptu przed opisem słownym; pliki bez odczytanej
+treści (obraz, PDF bez warstwy tekstowej) są wymieniane z nazwy, żeby lektor
+widział, że model ich nie przeczytał, zamiast żeby zniknęły po cichu.
+
+**6. Naprawa przy okazji: JSON z modeli bez strukturalnego wymuszenia.**
+(`services/geminiService.ts`, `services/presentationService.ts`) Odkryte przy
+przeglądzie własnego kodu narady: `generateLessonPlannerAI` prosiła model
+o JSON wyłącznie zdaniem w promptcie — żaden z dwóch dostawców nie dostawał
+strukturalnego wymuszenia (`response_format` / `responseMimeType`). Ta sama
+luka dotyczyła trzech już istniejących wywołań w generatorze slajdów
+prezentacji, nie tylko nowego kodu narady. Naprawa: opcjonalny parametr
+`jsonMode`, domyślnie wyłączony (zero zmiany zachowania dla wywołań na tekst
+swobodny), włączony w naradzie (tylko tury autora) i we wszystkich trzech
+wywołaniach w `presentationService.ts`. Nadal niezweryfikowane na żywym
+kluczu — patrz sekcja 3 niżej.
+
+**Co zostaje nieużywane, ale nieusunięte:** `LessonPlanner.tsx` i jego pomocnicze
+komponenty (`LessonModulesConfig`, `ChooseScenarioModal`,
+`GeneratedScenariosSection`). Nic ich już nie importuje, więc nie trafiają do
+bundla produkcyjnego — usunięcie plików to osobna decyzja, nie zrobiona przy
+tym zadaniu.
+
+**Nieobejrzane w przeglądarce.** Cała funkcja przeszła `tsc --noEmit`, 316
+testów i `npm run build`, ale nikt nie kliknął przez trzy kroki w działającej
+aplikacji ani nie wywołał prawdziwej narady na żywych kluczach API. Do
+sprawdzenia w pierwszej kolejności: czy JSON zwracany przez modele parsuje się
+niezawodnie w praktyce (prompt wymusza go opisowo, nie schematem — Gemini
+i OpenAI mają różne mechanizmy wymuszania JSON-a, a `generateLessonPlannerAI`
+używa jednego wywołania bez `responseSchema`), i czy poprawka zaznaczonych
+elementów rzeczywiście zostawia resztę scenariusza nietkniętą przy prawdziwej
+odpowiedzi modelu.
 
 ### 🧭 Profil kursanta jako osobny widok, tryb dzienny i paleta notatnika (2026-09-14, runda 8)
 
