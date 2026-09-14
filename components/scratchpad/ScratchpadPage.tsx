@@ -43,6 +43,50 @@ export const ScratchpadPage: React.FC = () => {
     setHasPinParam(Boolean(params.get('pin') || params.get('code') || params.get('p')));
   }, []);
 
+  /*
+   * ══ CAŁA STRONA CHODZI ZA MOTYWEM KARTKI ══
+   *
+   * Notatnik jest edytorem tekstu, a edytory tekstu wyglądają jak dokument,
+   * nie jak panel: jasna obudowa, szara kanwa, kartka na środku. Dotąd kartka
+   * była jasna, a wszystko wokół niej ciemne — dwa różne programy na jednym
+   * ekranie i jedyne takie miejsce w aplikacji.
+   *
+   * Ta strona ustawia więc motyw okna pod motyw kartki. Przełącznik w pasku
+   * nagłówka przestawia jedno i drugie naraz, a że strona stoi w osobnej
+   * karcie, nie dotyka motywu reszty aplikacji.
+   *
+   * Poprzednia wartość wraca przy zamknięciu karty — na wypadek, gdyby ktoś
+   * trafił tu przez nawigację wewnątrz aplikacji.
+   */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const root = window.document.documentElement;
+    const previous = root.getAttribute('data-theme');
+
+    const apply = (theme: string) => {
+      if (theme === 'dark') root.removeAttribute('data-theme');
+      else root.setAttribute('data-theme', 'light');
+      root.classList.toggle('light', theme !== 'dark');
+    };
+
+    let stored = 'light';
+    try {
+      stored = window.localStorage.getItem('scratchpad_paper_theme') === 'dark' ? 'dark' : 'light';
+    } catch {
+      /* tryb prywatny — zostaje jasny */
+    }
+    apply(stored);
+
+    const onThemeChange = (event: Event) => apply((event as CustomEvent).detail || 'light');
+    window.addEventListener('scratchpad-paper-theme', onThemeChange);
+    return () => {
+      window.removeEventListener('scratchpad-paper-theme', onThemeChange);
+      if (previous) root.setAttribute('data-theme', previous);
+      else root.removeAttribute('data-theme');
+      root.classList.toggle('light', previous === 'light');
+    };
+  }, []);
+
   if (!isAuthReady) {
     return (
       <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-3 bg-base-100">

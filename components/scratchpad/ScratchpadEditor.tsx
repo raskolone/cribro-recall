@@ -134,6 +134,8 @@ interface ScratchpadEditorProps {
   autoFocus?: boolean;
   /** Zamknięcie brudnopisu. Bez tego przycisk zamykania się nie pojawia. */
   onClose?: () => void;
+  /** Edytor wypełnia własną kartę przeglądarki — bez ramy, cienia i zaokrągleń. */
+  standalone?: boolean;
 }
 
 export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
@@ -147,6 +149,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   className = '',
   autoFocus = false,
   onClose,
+  standalone = false,
 }) => {
   const isTeacher = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
   
@@ -466,6 +469,11 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     } catch {
       /* tryb prywatny przeglądarki — motyw zostaje na czas tej sesji */
     }
+    /* Osobna strona notatnika przebiera CAŁE okno pod motyw kartki — jasna
+       kartka w ciemnym oknie to dwa różne programy na jednym ekranie. Zdarzenie
+       zamiast propsa, bo edytor jest używany w kilku miejscach i tylko jedno
+       z nich (`ScratchpadPage`) ma prawo ruszać motyw całej strony. */
+    window.dispatchEvent(new CustomEvent('scratchpad-paper-theme', { detail: paperTheme }));
   }, [paperTheme]);
 
   // Inicjalizacja lub aktualizacja zawartości z zewnątrz
@@ -795,7 +803,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
        tafla z rozmyciem i linią światła na górnej krawędzi. Wcześniej była
        zwykłym, nieprzezroczystym prostokątem — jedynym takim elementem
        w aplikacji, przez co wyglądała na doklejoną z innego programu. */
-    <div className={`pad-shell flex flex-col overflow-hidden ${className}`}>
+    <div className={`pad-shell flex flex-col overflow-hidden ${standalone ? 'is-standalone' : ''} ${className}`}>
       {/* 1. NAGŁÓWEK DOKUMENTU
           Tożsamość po lewej, jedna akcja końcowa i jedno menu dostępu po prawej.
           Kod PIN i przełączniki uprawnień zeszły do menu — na ekranie zostaje

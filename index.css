@@ -1125,3 +1125,34 @@ tr.liquid-glass-hover:hover {
       color-mix(in srgb, var(--ink) 72%, transparent) 100%
     );
 }
+
+/* ── Notatnik jako OSOBNA STRONA ──
+
+   Na własnej karcie notatnik jest edytorem tekstu, a nie kartą leżącą w panelu:
+   rama traci zaokrąglenia, obrys i cień, bo nie ma na czym leżeć — wypełnia
+   okno. To jest ta różnica między „dokumentem otwartym w programie"
+   a „dokumentem wklejonym w stronę".
+
+   Kanwa robi się jednolita i wyraźnie szara (jak w Google Docs): przy pełnym
+   oknie gradient było widać jako smugę, a jednolita szarość lepiej pokazuje,
+   gdzie kończy się kartka. */
+.pad-shell.is-standalone {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--bg);
+}
+
+.pad-shell.is-standalone::after { content: none; }
+
+.pad-shell.is-standalone .pad-canvas {
+  background: color-mix(in srgb, var(--ink) 60%, var(--bg));
+}
+
+.pad-shell.is-standalone .pad-bar {
+  background: var(--bg-lift);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
