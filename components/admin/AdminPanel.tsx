@@ -2002,12 +2002,20 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           moduł w dwóch miejscach na jednym ekranie znaczy tylko tyle, że
           nie wiadomo, które z nich jest właściwe. Zostaje to, czego wyżej
           nie ma. */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+        {/*
+          * TRZY PODRZĘDNE — i dokładnie trzy.
+          *
+          * Praca domowa, Testy i Mailing to rzeczy, które lektor robi MIĘDZY
+          * lekcjami, a nie w ich trakcie: zadaje, sprawdza, wysyła. Trzy główne
+          * kafelki wyżej obsługują lekcję; ta listwa obsługuje to, co po niej.
+          * Planer i Prezentacja zeszły do „Więcej narzędzi" — Planera używa się
+          * przy układaniu kursu, nie co zajęcia, a Prezentację włącza się na
+          * część niektórych lekcji.
+          */}
         {[
-          { id: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
-          /* Zeszła z głównych kafelków — patrz komentarz przy kafelku Kontekstu. */
-          { id: 'presentation', title: 'Prezentacja', icon: Airplay },
-          { id: 'homework', title: 'Prace domowe', icon: FileText, isRoute: true },
+          { id: 'homework', title: 'Praca domowa', icon: FileText, isRoute: true },
+          { id: 'tests', title: 'Testy', icon: ClipboardList, isRoute: true },
           {
             id: 'mailing',
             title: 'Mailing',
@@ -2021,7 +2029,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           return (
             <button
               key={item.id}
-              onClick={() => (item.isRoute ? onViewChange?.('homework') : handleTileClick(item.id))}
+              onClick={() => ((item as any).isRoute ? onViewChange?.(item.id) : handleTileClick(item.id))}
               className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-colors ${
                 item.badge
                   ? 'border-amber-400/60 bg-amber-500/10 text-amber-200'
@@ -2042,17 +2050,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         })}
       </div>
 
-      {/* WIĘCEJ NARZĘDZI — druga listwa, zwinięta.
+      {/* WIĘCEJ NARZĘDZI — zwinięte.
 
-          Te osiem wejść dotąd istniało wyłącznie w menu bocznym. Na telefonie
-          menu boczne jest szufladą, którą trzeba najpierw wysunąć, więc
-          połowa panelu była tam schowana przed kciukiem. Kafelki dają do nich
-          dotknięcie z tego samego miejsca, co reszta narzędzi.
+          Panel lektora ma teraz TRZY POZIOMY i to jest cała jego struktura:
+          trzy duże kafelki na to, czym prowadzi się lekcję (profil kursanta,
+          kontekst, notatnik), trzy w listwie na to, co robi się między
+          lekcjami (praca domowa, testy, mailing), i ta lista na całą resztę.
 
-          Zwinięte domyślnie, bo to są rzeczy, po które sięga się raz na
-          tydzień, a nie w trakcie lekcji — rozwinięte na stałe byłyby ścianą
-          trzynastu kafelków nad treścią panelu. Menu boczne zostaje: kafelki
-          są drogą krótszą, nie jedyną. */}
+          Reszta jest zwinięta, bo to są rzeczy, po które sięga się raz na
+          tydzień. Rozwinięta na stałe byłaby ścianą kafelków nad treścią
+          panelu i zacierałaby różnicę między tym, co ważne, a tym, co po
+          prostu istnieje. */}
       <div className="space-y-3">
         <button
           type="button"
@@ -2067,14 +2075,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {[
               /*
-               * Czego tu nie ma i dlaczego:
+               * Czego tu NIE MA i dlaczego:
                *   Baza kursantów  — jest głównym kafelkiem wyżej,
                *   Historia lekcji — nie jest narzędziem, jest zakładką
                *                     w profilu kursanta (tam ma źródło danych),
-               *   Scenariusze     — należą do Planera lekcji, nie obok niego.
-               */
-              /*
-               * Czego tu NIE MA po tej rundzie:
+               *   Scenariusze     — należą do Planera lekcji, nie obok niego,
                *   Podgląd kursanta — usunięty w całości (wraz z ekranami
                *     `preview-*` i `StudentPreviewFrame`). Pięć kafelków
                *     odtwarzających panel kursanta utrzymywało drugą, równoległą
@@ -2082,21 +2087,27 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                *   Baza tematów     — jest materiałem źródłowym scenariusza,
                *     więc stoi w Planerze lekcji, obok Bazy scenariuszy.
                */
-              { view: 'tests', title: 'Testy', icon: ClipboardList },
+              { tab: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
+              { tab: 'presentation', title: 'Prezentacja', icon: Airplay },
               { view: 'flashcard-sets', title: 'Słownictwo', icon: BookMarked },
               { view: 'admin-stats', title: 'Statystyki', icon: BarChart2 },
-              ...(isAdmin
-                ? [
-                    { view: 'settings', title: 'Ustawienia', icon: Shield },
-                    { view: 'admin-debugging', title: 'Diagnostyka', icon: AlertCircle },
-                  ]
-                : []),
+              /*
+               * Ustawienia i Diagnostyka NIE MAJĄ tu kafelków: oba siedzą pod
+               * kołem zębatym w pasku górnym, czyli tam, gdzie w każdym innym
+               * programie. Kafelek obok narzędzi do prowadzenia lekcji był
+               * drugim wejściem do tego samego miejsca — a dwa wejścia znaczą
+               * tylko tyle, że nie wiadomo, które jest właściwe.
+               */
             ].map((item) => {
               const IconComp = item.icon;
               return (
                 <button
-                  key={item.view}
-                  onClick={() => onViewChange?.(item.view)}
+                  key={(item as any).view || (item as any).tab}
+                  onClick={() =>
+                    (item as any).tab
+                      ? handleTileClick((item as any).tab)
+                      : onViewChange?.((item as any).view)
+                  }
                   className="flex flex-col items-center justify-center gap-1.5 min-h-[4.5rem] py-3.5 px-2 rounded-2xl border border-line-strong bg-line-soft/40 text-content-muted hover:text-text-hi hover:border-primary/40 text-xs sm:text-sm font-semibold transition-colors text-center"
                 >
                   <IconComp size={18} />
@@ -2243,33 +2254,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         </div>
       )}
 
-      {/* SEKCJA KURSANTA (ZAKŁADKI NA GÓRZE I DANE PROFILOWE) */}
-      {!selectedUser ? (
-        <div className="p-5 sm:p-6 rounded-2xl bg-base-200/50 border-2 border-line-strong flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 rounded-2xl bg-primary/12 text-primary border border-primary/30 shrink-0">
-              <Users size={24} />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-text-hi flex items-center gap-2">
-                Profil i moduły kursanta
-              </h3>
-              <p className="text-xs text-content-muted mt-0.5">
-                Wybierz ucznia z bazy, aby otworzyć jego profil, historię lekcji, zadania domowe, słownictwo, testy i statystyki.
-              </p>
-            </div>
-          </div>
+      {/* SEKCJA KURSANTA (ZAKŁADKI NA GÓRZE I DANE PROFILOWE)
 
-          <button
-            onClick={() => setIsStudentPickerOpen(true)}
-            className="px-5 min-h-11 bg-primary text-accent-ink font-bold rounded-xl text-xs sm:text-sm shadow-btn hover:brightness-110 hover:-translate-y-px active:translate-y-0 transition-all flex items-center justify-center gap-2 shrink-0 w-full sm:w-auto cursor-pointer"
-          >
-            <Search size={18} />
-            Wybierz kursanta z listy
-          </button>
-        </div>
-      ) : (
-        <div ref={profileContainerRef} className="space-y-4 pt-1">
+          Gdy nikt nie jest wybrany, nie ma tu NICZEGO.
+
+          Stała była tu belka „Profil i moduły kursanta" z przyciskiem „Wybierz
+          kursanta z listy" — czyli trzecie wejście do tego samego miejsca, do
+          którego prowadzi kafelek „Profil kursantów" na samej górze i baza
+          kursantów pod nim. Zajmowała 96 px pod kafelkami po to, żeby powtórzyć
+          zdanie, które kafelek mówi lepiej i wyżej. */}
+      {!selectedUser ? null : (
+        <div ref={profileContainerRef}        className="space-y-4 pt-1">
           {/* STUDENT HERO CARD */}
           <div className="p-4 sm:p-5 rounded-2xl border-2 bg-gradient-to-r from-primary/15 via-base-200/80 to-base-200/90 border-primary/60 shadow-[0_0_30px_rgba(114,240,180,0.15)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-4 min-w-0">
