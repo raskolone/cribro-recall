@@ -12,6 +12,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { FREQUENCIES } from '../../constants';
 import { RevisionFrequency, TTSAccent, VoiceGender, VoiceSpeed, SoundEngine, canUserViewAiMonitor } from '../../types';
 import AiModelsSettings from './AiModelsSettings';
+import AiCouncilSettings from './AiCouncilSettings';
 import { LogOut, Volume2, Play, CheckCircle2, RefreshCw, VolumeX, Sparkles, Sliders, Check, Flame, Mail, Key, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { playSpeech } from '../../services/ttsService';
 import i18n from "i18next";
@@ -603,8 +604,14 @@ const SettingsScreen: React.FC = () => {
                     to dostęp do rachunku. Lektor prowadzi lekcje i tego nie
                     potrzebuje. */}
                 {user?.role === 'admin' && (
-                    <div className="md:col-span-2">
+                    <div className="md:col-span-2 space-y-6">
                         <AiModelsSettings />
+                        {/* Narada modeli stoi OSOBNO, a nie w sekcji modeli AI:
+                            tamta odpowiada na pytanie „czym liczyć", ta na
+                            „ilu głosami". Zlanie ich w jedno dawało ekran,
+                            na którym wybór modelu do oceny prac domowych
+                            sąsiadował z obsadą recenzentów planera. */}
+                        <AiCouncilSettings />
                     </div>
                 )}
 

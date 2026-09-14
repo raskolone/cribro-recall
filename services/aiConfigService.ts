@@ -1,5 +1,6 @@
 import { auth } from '../firebase';
 import { AiTaskOverrides } from './aiModels';
+import { CouncilConfig, DEFAULT_COUNCIL, normalizeCouncil } from './aiCouncil';
 
 /**
  * Konfiguracja AI ustawiana przez administratora w aplikacji.
@@ -30,6 +31,8 @@ export interface AiKeyStatus {
 
 export interface AiConfig {
   models: AiTaskOverrides;
+  /** Skład narady modeli dla Planera lekcji — patrz `services/aiCouncil.ts`. */
+  council: CouncilConfig;
   keys?: {
     openai?: AiKeyStatus;
     gemini?: AiKeyStatus;
@@ -54,12 +57,16 @@ export const getAiConfig = async (): Promise<AiConfig> => {
     try {
       const res = await fetch('/api/ai/config', { headers: await authHeader() });
       if (!res.ok) throw new Error(String(res.status));
-      const data = (await res.json()) as AiConfig;
-      cached = { models: data.models || {}, keys: data.keys };
+      const data = (await res.json()) as Partial<AiConfig>;
+      cached = {
+        models: data.models || {},
+        council: normalizeCouncil(data.council),
+        keys: data.keys,
+      };
       return cached;
     } catch {
       // Brak konfiguracji to nie awaria — działamy na kaskadach domyślnych.
-      cached = { models: {} };
+      cached = { models: {}, council: DEFAULT_COUNCIL };
       return cached;
     } finally {
       inFlight = null;
@@ -85,6 +92,20 @@ export const saveAiModels = async (models: AiTaskOverrides): Promise<void> => {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || 'Nie udało się zapisać wyboru modeli.');
+  invalidateAiConfig();
+};
+
+/** Skład narady z ostatniego odczytu — bez czekania, do użycia w locie. */
+export const peekCouncil = (): CouncilConfig => cached?.council || DEFAULT_COUNCIL;
+
+export const saveAiCouncil = async (council: CouncilConfig): Promise<void> => {
+  const res = await fetch('/api/ai/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+    body: JSON.stringify({ council }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Nie udało się zapisać składu narady.');
   invalidateAiConfig();
 };
 

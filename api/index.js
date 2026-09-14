@@ -1261,15 +1261,15 @@ function createApp() {
         const effective = fromApp || fromEnv;
         keys[provider] = effective ? { configured: true, maskedKey: maskKey(effective), source: fromApp ? "app" : "env" } : { configured: false };
       }
-      return res.json({ models: settings?.models || {}, keys });
+      return res.json({ models: settings?.models || {}, council: settings?.council || null, keys });
     } catch (err) {
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
   app2.post("/api/ai/config", requireFirebaseAdmin, async (req, res) => {
     try {
-      const { models } = req.body || {};
-      if (!models || typeof models !== "object") {
+      const { models, council } = req.body || {};
+      if ((!models || typeof models !== "object") && !council) {
         return res.status(400).json({ error: "Brak wyboru modeli do zapisania." });
       }
       const allowedTasks = ["exercises", "grading", "chat", "summaries"];
@@ -1281,20 +1281,37 @@ function createApp() {
         "gemini-2.5-flash"
       ];
       const clean = {};
-      for (const [task, model] of Object.entries(models)) {
+      for (const [task, model] of Object.entries(models || {})) {
         if (!allowedTasks.includes(task)) continue;
         if (typeof model !== "string" || !allowedModels.includes(model)) continue;
         clean[task] = model;
+      }
+      let cleanCouncil = void 0;
+      if (council && typeof council === "object") {
+        const seatsIn = Array.isArray(council.seats) ? council.seats.slice(0, 4) : [];
+        cleanCouncil = {
+          enabled: Boolean(council.enabled),
+          seats: seatsIn.map((seat, index) => ({
+            id: `seat-${index + 1}`,
+            model: allowedModels.includes(String(seat?.model)) ? String(seat.model) : allowedModels[0],
+            role: index === 0 ? "author" : "reviewer",
+            enabled: index === 0 ? true : Boolean(seat?.enabled)
+          }))
+        };
       }
       if (!adminApp) {
         return res.status(503).json({ error: "Brak po\u0142\u0105czenia z baz\u0105 \u2014 nie zapisano." });
       }
       const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
       await adminDb.collection("system").doc("ai").set(
-        { models: clean, updatedAt: (/* @__PURE__ */ new Date()).toISOString() },
+        {
+          ...models ? { models: clean } : {},
+          ...cleanCouncil ? { council: cleanCouncil } : {},
+          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        },
         { merge: true }
       );
-      return res.json({ ok: true, models: clean });
+      return res.json({ ok: true, models: clean, council: cleanCouncil });
     } catch (err) {
       return res.status(500).json({ error: formatErrorString(err) });
     }

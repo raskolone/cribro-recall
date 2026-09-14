@@ -1133,7 +1133,7 @@ export function createApp() {
           : { configured: false };
       }
 
-      return res.json({ models: settings?.models || {}, keys });
+      return res.json({ models: settings?.models || {}, council: settings?.council || null, keys });
     } catch (err: any) {
       return res.status(500).json({ error: formatErrorString(err) });
     }
@@ -1141,8 +1141,8 @@ export function createApp() {
 
   app.post('/api/ai/config', requireFirebaseAdmin, async (req, res) => {
     try {
-      const { models } = req.body || {};
-      if (!models || typeof models !== 'object') {
+      const { models, council } = req.body || {};
+      if ((!models || typeof models !== 'object') && !council) {
         return res.status(400).json({ error: 'Brak wyboru modeli do zapisania.' });
       }
 
@@ -1158,10 +1158,37 @@ export function createApp() {
       ];
 
       const clean: Record<string, string> = {};
-      for (const [task, model] of Object.entries(models)) {
+      for (const [task, model] of Object.entries(models || {})) {
         if (!allowedTasks.includes(task)) continue;
         if (typeof model !== 'string' || !allowedModels.includes(model)) continue;
         clean[task] = model;
+      }
+
+      /*
+       * ══ SKŁAD NARADY ══
+       *
+       * Cztery miejsca, każde z modelem i rolą. Walidacja jest tu z tego
+       * samego powodu, co przy `models`: nazwa modelu z tego zapisu trafia
+       * potem wprost do wywołania API, więc dowolny ciąg z przeglądarki
+       * byłby wywołaniem dowolnego adresu. Przycinamy do czterech miejsc,
+       * bo więcej głosów to wyłącznie więcej kosztu i czasu — narada
+       * przestaje wtedy dokładać cokolwiek do jakości.
+       *
+       * Pierwsze miejsce jest autorem bez względu na to, co przyszło:
+       * bez autora nie ma czego recenzować.
+       */
+      let cleanCouncil: any = undefined;
+      if (council && typeof council === 'object') {
+        const seatsIn = Array.isArray(council.seats) ? council.seats.slice(0, 4) : [];
+        cleanCouncil = {
+          enabled: Boolean(council.enabled),
+          seats: seatsIn.map((seat: any, index: number) => ({
+            id: `seat-${index + 1}`,
+            model: allowedModels.includes(String(seat?.model)) ? String(seat.model) : allowedModels[0],
+            role: index === 0 ? 'author' : 'reviewer',
+            enabled: index === 0 ? true : Boolean(seat?.enabled),
+          })),
+        };
       }
 
       if (!adminApp) {
@@ -1170,11 +1197,15 @@ export function createApp() {
 
       const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
       await adminDb.collection('system').doc('ai').set(
-        { models: clean, updatedAt: new Date().toISOString() },
+        {
+          ...(models ? { models: clean } : {}),
+          ...(cleanCouncil ? { council: cleanCouncil } : {}),
+          updatedAt: new Date().toISOString(),
+        },
         { merge: true }
       );
 
-      return res.json({ ok: true, models: clean });
+      return res.json({ ok: true, models: clean, council: cleanCouncil });
     } catch (err: any) {
       return res.status(500).json({ error: formatErrorString(err) });
     }
