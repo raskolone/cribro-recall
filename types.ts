@@ -907,6 +907,20 @@ export interface PublicTestSubmission {
  * Zapewnia trwały, żywy dokument powiązany z kursem lub profilem kursanta,
  * do którego lektor i uczeń mają dostęp w czasie rzeczywistym przez link lub kod PIN.
  */
+/**
+ * Migawka treści notatnika sprzed edycji — zabezpieczenie przed skasowaniem
+ * godziny pracy jednym zaznaczeniem. Powstaje najwyżej raz na pięć minut,
+ * pełne uzasadnienie w `services/scratchpadService.ts`.
+ */
+export interface ScratchpadRevision {
+  /** Kiedy powstała migawka (ISO). */
+  at: string;
+  /** Treść SPRZED zmiany, która ją wywołała. */
+  html: string;
+  /** Kto pisał, gdy migawka powstawała. */
+  by: string;
+}
+
 export interface ScratchpadDocument {
   id: string;
   pin: string;
@@ -934,6 +948,8 @@ export interface ScratchpadDocument {
    * pusty.
    */
   cloudBlockedReason?: string;
+  /** Do pięciu ostatnich migawek treści. Najnowsza pierwsza. */
+  revisions?: ScratchpadRevision[];
 }
 
 /**

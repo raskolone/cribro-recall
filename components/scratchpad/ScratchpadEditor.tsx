@@ -46,9 +46,20 @@ import {
   ChevronsDownUp,
   Sun,
   Moon,
+  Image as ImageIcon,
+  Flashlight,
+  LayoutTemplate,
 } from 'lucide-react';
 import { ScratchpadDocument, ScratchpadTemplate } from '../../types';
-import { buildScratchpadUrl } from '../../services/scratchpadService';
+import {
+  buildScratchpadUrl,
+  scratchpadContentBytes,
+  SCRATCHPAD_MAX_CONTENT_BYTES,
+} from '../../services/scratchpadService';
+import {
+  imageFromClipboard,
+  prepareImageForScratchpad,
+} from '../../utils/scratchpadImages';
 import { listScratchpadTemplates } from '../../services/scratchpadTemplateService';
 import { formatAccessCode } from '../../utils/accessCode';
 import {
@@ -159,6 +170,14 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const [isCoachOpen, setIsCoachOpen] = useState(false);
   /** Komunikat po wysłaniu do Google Docs — znika sam po kilku sekundach. */
   const [googleDocsHint, setGoogleDocsHint] = useState<'copied' | 'manual' | null>(null);
+  /** Wskaźnik laserowy — światełko przy kursorze do prowadzenia wzroku kursanta. */
+  const [isLaserOn, setIsLaserOn] = useState(false);
+  /** Obraz zaznaczony kliknięciem — do zmiany rozmiaru. */
+  const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
+  /** Komunikat o wklejonym obrazie (za duży, nie wszedł). */
+  const [imageNotice, setImageNotice] = useState<string | null>(null);
+  /** Ile zajmuje dokument — licznik w stopce, ostrzeżenie przed limitem. */
+  const [contentBytes, setContentBytes] = useState(0);
 
   /* Spis treści, podział na strony i motyw kartki — patrz komentarze przy
      `rebuildToc`, `pageRules` i przełączniku motywu w nagłówku. */
@@ -181,6 +200,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
   const [templates, setTemplates] = useState<ScratchpadTemplate[]>([]);
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
+  const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
 
   // Funkcja wyciągająca czysty tekst z HTML
   const extractText = (html: string): string => {
@@ -351,6 +371,20 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   /** Kliknięcie strzałki w nagłówku — delegacja z całej kartki. */
   const handlePaperClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
+
+    if (target.tagName === 'IMG' && !isReadOnly) {
+      editorRef.current
+        ?.querySelectorAll('img.is-selected')
+        .forEach(img => img.classList.remove('is-selected'));
+      target.classList.add('is-selected');
+      setSelectedImage(target as HTMLImageElement);
+      return;
+    }
+    if (selectedImage) {
+      selectedImage.classList.remove('is-selected');
+      setSelectedImage(null);
+    }
+
     const chevron = target.closest?.('.pad-toggle') as HTMLElement | null;
     if (!chevron) return;
     const heading = chevron.closest('h1, h2, h3') as HTMLElement | null;
@@ -444,12 +478,104 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         editorRef.current.innerHTML = docData.contentHtml || '';
         const txt = extractText(docData.contentHtml || '');
         setWordCount(txt.trim() ? txt.trim().split(/\s+/).length : 0);
+        setContentBytes(scratchpadContentBytes(docData.contentHtml || ''));
         setSaveStatus('synced');
         rebuildToc();
         measurePages();
       }
     }
   }, [docData.contentHtml, docData.version, rebuildToc, measurePages]);
+
+
+  /* ═══════════════════════════════════════════════════════════════════
+     OBRAZY, WSKAŹNIK LASEROWY I ROZMIAR DOKUMENTU
+     ═══════════════════════════════════════════════════════════════════ */
+
+  /**
+   * Wklejenie obrazu ze schowka — zrzut ekranu, wycinek, zdjęcie tablicy.
+   *
+   * Obraz jest zmniejszany i przekodowywany PRZED wstawieniem (patrz
+   * `utils/scratchpadImages.ts`), a potem sprawdzany wobec limitu dokumentu.
+   * Odmowa pada TU, zanim obraz wejdzie do treści: wklejony i dopiero potem
+   * odrzucony przy zapisie znaczyłby notatnik, który wygląda dobrze i cicho
+   * przestał się zapisywać.
+   */
+  const handlePaste = async (event: React.ClipboardEvent<HTMLDivElement>) => {
+    if (isReadOnly) return;
+    const file = imageFromClipboard(event.clipboardData);
+    if (!file) return;
+
+    event.preventDefault();
+    setImageNotice('Przygotowuję obraz…');
+
+    try {
+      const paperWidth = editorRef.current
+        ? Math.max(320, editorRef.current.clientWidth - 96)
+        : 720;
+      const prepared = await prepareImageForScratchpad(file, paperWidth);
+
+      const currentBytes = scratchpadContentBytes(editorRef.current?.innerHTML || '');
+      if (currentBytes + prepared.bytes > SCRATCHPAD_MAX_CONTENT_BYTES) {
+        setImageNotice(
+          'Ten obraz nie zmieści się w notatniku — dokument ma twardy limit rozmiaru. ' +
+            'Usuń wcześniejsze obrazy albo załóż notatnik na nową lekcję.'
+        );
+        return;
+      }
+
+      window.document.execCommand(
+        'insertHTML',
+        false,
+        `<img class="pad-img" src="${prepared.dataUrl}" style="width:${prepared.width}px" alt="" />`
+      );
+      setImageNotice(null);
+      handleInput();
+    } catch (error: any) {
+      console.error('[Notatnik] Wklejenie obrazu nie powiodło się:', error);
+      setImageNotice(error?.message || 'Nie udało się wkleić obrazu.');
+    }
+  };
+
+  /**
+   * Zmiana rozmiaru wklejonego obrazu.
+   *
+   * Uchwyt do ciągnięcia w `contentEditable` jest zawodny: przeglądarka
+   * przechwytuje przeciąganie obrazu jako przenoszenie go w tekście, więc
+   * połowa pociągnięć kończy się przeniesieniem obrazu zamiast zmianą
+   * rozmiaru. Dlatego zamiast uchwytu są cztery ustalone szerokości — to jest
+   * decyzja, którą podejmuje się raz na obraz i nie wymaga precyzji.
+   */
+  const resizeSelectedImage = (fraction: number) => {
+    if (!selectedImage || !editorRef.current) return;
+    const paperWidth = Math.max(320, editorRef.current.clientWidth - 96);
+    selectedImage.style.width = `${Math.round(paperWidth * fraction)}px`;
+    selectedImage.style.height = 'auto';
+    handleInput();
+  };
+
+  const removeSelectedImage = () => {
+    if (!selectedImage) return;
+    selectedImage.remove();
+    setSelectedImage(null);
+    handleInput();
+  };
+
+  /** Światełko przy kursorze — tylko nad kartką i tylko przy włączonym laserze. */
+  useEffect(() => {
+    if (!isLaserOn) return;
+    const dot = window.document.createElement('div');
+    dot.className = 'pad-laser';
+    window.document.body.appendChild(dot);
+
+    const move = (event: MouseEvent) => {
+      dot.style.transform = `translate(${event.clientX}px, ${event.clientY}px)`;
+    };
+    window.addEventListener('mousemove', move);
+    return () => {
+      window.removeEventListener('mousemove', move);
+      dot.remove();
+    };
+  }, [isLaserOn]);
 
   const handleInput = () => {
     if (!editorRef.current || isReadOnly) return;
@@ -460,9 +586,13 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       isUserTypingRef.current = false;
     }, 1500);
 
-    const html = editorRef.current.innerHTML;
+    // Zaznaczenie obrazu jest stanem interfejsu, nie treścią dokumentu —
+    // gdyby weszło do zapisu, kursant zobaczyłby obrys wokół obrazu, którego
+    // nie zaznaczał.
+    const html = editorRef.current.innerHTML.replace(/ class="pad-img is-selected"/g, ' class="pad-img"');
     const txt = extractText(html);
     setWordCount(txt.trim() ? txt.trim().split(/\s+/).length : 0);
+    setContentBytes(scratchpadContentBytes(html));
     scheduleStructureRefresh();
 
     triggerDebouncedSave(html);
@@ -857,6 +987,24 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
               różne rzeczy: okno jest narzędziem, kartka jest dokumentem —
               i ludzie chcą ciemnego narzędzia z jasnym dokumentem równie
               często, jak ciemnego jednego i drugiego. Domyślnie jasna. */}
+          {/* Wskaźnik laserowy — do prowadzenia wzroku kursanta po dokumencie
+              w trakcie rozmowy. To jest jedyne narzędzie prezentacyjne, jakiego
+              notatnik potrzebuje: kursor i tak tam jest, chodzi tylko o to,
+              żeby było go widać na drugim końcu połączenia. */}
+          <button
+            type="button"
+            onClick={() => setIsLaserOn(v => !v)}
+            title={isLaserOn ? 'Wyłącz wskaźnik laserowy' : 'Wskaźnik laserowy przy kursorze'}
+            aria-pressed={isLaserOn}
+            className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${
+              isLaserOn
+                ? 'border-danger/50 bg-danger/15 text-danger'
+                : 'border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08]'
+            }`}
+          >
+            <Flashlight size={15} />
+          </button>
+
           <button
             type="button"
             onClick={() => setPaperTheme(prev => (prev === 'light' ? 'dark' : 'light'))}
@@ -904,6 +1052,21 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
               ? 'Notatnik jest w schowku, a nowy dokument Google otworzył się w drugiej karcie — wklej go tam (Ctrl+V / ⌘V). Formatowanie przechodzi razem z treścią.'
               : 'Przeglądarka nie wpuściła treści do schowka. Nowy dokument Google jest otwarty — użyj „Eksportuj do Worda" i wgraj plik na Dysk.'}
           </span>
+        </div>
+      )}
+
+      {imageNotice && (
+        <div className="px-4 py-2.5 bg-warn/[0.1] border-b border-warn/30 flex items-start gap-2.5 text-xs">
+          <ImageIcon size={14} className="text-warn shrink-0 mt-0.5" />
+          <span className="text-content flex-1">{imageNotice}</span>
+          <button
+            type="button"
+            onClick={() => setImageNotice(null)}
+            className="shrink-0 text-content-muted hover:text-text-hi cursor-pointer"
+            aria-label="Zamknij komunikat"
+          >
+            <X size={13} />
+          </button>
         </div>
       )}
 
@@ -1236,6 +1399,57 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
             ]}
           />
 
+          {/* SZABLON JEDNYM DOTKNIĘCIEM.
+
+              Szablon jest pierwszą rzeczą, którą lektor robi na każdej lekcji —
+              wstawia rusztowanie i zaczyna pisać. Siedział w menu „Wstaw",
+              trzy kliknięcia głębiej, obok listy numerowanej i linii poziomej,
+              czyli rzeczy używanych raz na kilka dni. Przy jednym szablonie
+              przycisk wstawia go od razu; przy kilku pyta który. */}
+          {isTeacher && templates.length > 0 && (
+            templates.length === 1 ? (
+              <FormatButton
+                icon={<LayoutTemplate size={15} />}
+                title={`Wstaw szablon: ${templates[0].title}`}
+                onClick={() => handleInsertTemplate(templates[0].contentHtml)}
+              />
+            ) : (
+              <MenuDropdown
+                open={isTemplateMenuOpen}
+                onOpenChange={setIsTemplateMenuOpen}
+                preserveSelection
+                width={260}
+                align="start"
+                aria-label="Wstaw szablon"
+                triggerTitle="Wstaw gotowy szablon lekcji"
+                triggerClassName={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                  isTemplateMenuOpen
+                    ? 'bg-white/[0.08] border-line-strong text-content'
+                    : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
+                }`}
+                trigger={
+                  <>
+                    <LayoutTemplate size={14} />
+                    <span>Szablon</span>
+                    <MenuChevron open={isTemplateMenuOpen} />
+                  </>
+                }
+                sections={[
+                  {
+                    id: 'templates-quick',
+                    label: 'Wstaw szablon',
+                    items: templates.map(tpl => ({
+                      id: `quick-${tpl.id}`,
+                      label: tpl.title,
+                      icon: <LayoutTemplate size={14} />,
+                      onSelect: () => handleInsertTemplate(tpl.contentHtml),
+                    })),
+                  },
+                ]}
+              />
+            )
+          )}
+
           <FormatButton
             icon={<ListTree size={15} />}
             title={isTocOpen ? 'Ukryj spis treści' : 'Pokaż spis treści'}
@@ -1343,12 +1557,51 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
               contentEditable={!isReadOnly}
               onInput={handleInput}
               onClick={handlePaperClick}
+              onPaste={handlePaste}
               suppressContentEditableWarning
               className={`pad-paper min-h-[480px] p-6 md:p-10 md:pl-14 rounded-lg border border-black/10 focus:outline-none focus:border-primary/50 transition-colors font-sans selection:bg-primary/30 ${
                 isReadOnly ? 'cursor-default' : 'cursor-text'
               }`}
               style={{ wordBreak: 'break-word', boxShadow: 'var(--pad-shadow)' }}
             />
+
+            {/* Zaznaczony obraz — ustalone szerokości zamiast uchwytu.
+                Uzasadnienie przy `resizeSelectedImage`. */}
+            {selectedImage && (
+              <div className="sticky top-2 z-20 mb-2 flex justify-center">
+                <div className="flex items-center gap-1 px-1.5 py-1.5 rounded-xl bg-ink-2/95 border border-line-strong shadow-[var(--shadow-md)] backdrop-blur-xl">
+                  <span className="px-1.5 text-[10px] font-bold uppercase tracking-wider text-text-faint">
+                    Obraz
+                  </span>
+                  {[
+                    { label: '25%', value: 0.25 },
+                    { label: '50%', value: 0.5 },
+                    { label: '75%', value: 0.75 },
+                    { label: '100%', value: 1 },
+                  ].map(step => (
+                    <button
+                      key={step.label}
+                      type="button"
+                      onMouseDown={event => event.preventDefault()}
+                      onClick={() => resizeSelectedImage(step.value)}
+                      className="h-7 px-2 rounded-lg text-[11px] font-bold text-text-2 hover:text-content hover:bg-white/[0.08] transition-colors cursor-pointer"
+                    >
+                      {step.label}
+                    </button>
+                  ))}
+                  <span className="w-px h-5 bg-line-strong mx-0.5" aria-hidden />
+                  <button
+                    type="button"
+                    onMouseDown={event => event.preventDefault()}
+                    onClick={removeSelectedImage}
+                    title="Usuń obraz"
+                    className="h-7 w-7 rounded-lg flex items-center justify-center text-danger hover:bg-danger/15 transition-colors cursor-pointer"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Warstwa podziału na strony — leży NAD kartką i nic nie łapie.
                 Kreska co wysokość A4; pierwsza pada dopiero na granicy strony
@@ -1375,6 +1628,21 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           <span>•</span>
           <span>Strony: <strong className="text-text-hi">{pageCount}</strong></span>
           <span>•</span>
+          {/* Rozmiar pokazujemy dopiero od połowy limitu. Wcześniej jest to
+              liczba bez znaczenia; od tego progu zaczyna być ostrzeżeniem. */}
+          {contentBytes > SCRATCHPAD_MAX_CONTENT_BYTES / 2 && (
+            <>
+              <span
+                className={
+                  contentBytes > SCRATCHPAD_MAX_CONTENT_BYTES * 0.85 ? 'text-warn font-bold' : ''
+                }
+                title="Dokument ma twardy limit rozmiaru — liczą się głównie wklejone obrazy."
+              >
+                Rozmiar: {Math.round(contentBytes / 1024)} / {Math.round(SCRATCHPAD_MAX_CONTENT_BYTES / 1024)} kB
+              </span>
+              <span>•</span>
+            </>
+          )}
           <span>Wersja: #{docData.version}</span>
           {docData.lastEditedBy && (
             <>

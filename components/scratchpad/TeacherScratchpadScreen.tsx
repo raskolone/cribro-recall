@@ -226,7 +226,12 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
       className={
         variant === 'overlay'
           ? 'fixed inset-0 z-[100] flex flex-col bg-base-100'
-          : 'flex-1 min-h-0 flex flex-col bg-base-100'
+          /* `h-full`, nie `flex-1`: kontener, w którym stoi ten ekran
+             (`<main>` w Dashboard), jest zwykłym blokiem z przewijaniem, a nie
+             kontenerem flex — `flex-1` nic tam nie znaczy i strona kurczyła się
+             do wysokości treści, przez co stopka ucinała kartkę w połowie
+             ekranu, a pod nią świeciło tło aplikacji. */
+          : 'h-full min-h-0 flex flex-col bg-base-100'
       }
     >
       <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">

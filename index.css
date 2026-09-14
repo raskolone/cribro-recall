@@ -956,3 +956,58 @@ tr.liquid-glass-hover:hover {
 :root[data-theme="light"] [class~="bg-white/10"] {
   background-color: var(--color-line);
 }
+
+/* ── Obrazy w notatniku ──
+   Wklejony zrzut ekranu ma zachowywać się jak akapit: własny wiersz, zaokrąglony
+   róg, obrys w kolorze kartki. `max-width: 100%` jest twarde, bo szerokość
+   ustawiona przez lektora w pikselach nie może wystawać poza kartkę, gdy okno
+   się zwęzi. */
+.pad-paper img,
+.pad-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.8em 0;
+  border-radius: 8px;
+  border: 1px solid var(--pad-line);
+  cursor: pointer;
+}
+
+/* Zaznaczony obraz — obrys akcentu, żeby było widać, którego dotyczy pasek
+   rozmiaru. `outline`, nie `border`: border zmieniłby szerokość obrazu, czyli
+   dokładnie tę wartość, którą pasek edytuje. */
+.pad-paper img:focus,
+.pad-paper img.is-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Wskaźnik laserowy ──
+   Leży na <body>, poza `#root`, i nie łapie ani jednego zdarzenia: ma tylko
+   pokazywać, gdzie jest kursor prowadzącego, a nie przeszkadzać w pisaniu.
+   Środek jest jasny, poświata szeroka i miękka — punkt bez poświaty gubi się
+   na tle tekstu przy kompresji obrazu w transmisji. */
+.pad-laser {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(240, 114, 111, 0.95) 28%,
+    rgba(240, 114, 111, 0.35) 55%,
+    rgba(240, 114, 111, 0) 72%
+  );
+  box-shadow: 0 0 18px 6px rgba(240, 114, 111, 0.45);
+  pointer-events: none;
+  z-index: 2147483647;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pad-laser { box-shadow: 0 0 10px 3px rgba(240, 114, 111, 0.4); }
+}

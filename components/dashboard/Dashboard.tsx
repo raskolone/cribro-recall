@@ -703,7 +703,10 @@ const Dashboard: React.FC = () => {
         newBugsCount={newBugsCount}
         notices={notices}
       />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden relative min-w-0">
+      {/* `flex flex-col` na kontenerze treści: bez tego ekrany, które mają
+          wypełnić okno (notatnik), nie miały od czego wziąć wysokości i
+          kurczyły się do wysokości własnej treści. */}
+      <main className="flex-1 overflow-y-auto overflow-x-hidden relative min-w-0 flex flex-col">
         <StudentNotifications onNavigate={(newView) => handleNavigate(newView)} currentView={view} />
         {showPasswordSuggestion && (
           <div className="px-4 pt-4 max-w-5xl mx-auto w-full">
@@ -730,7 +733,7 @@ const Dashboard: React.FC = () => {
             updateDoc(doc(db, 'users', user.id), { onboardingCompleted: true }).catch(console.error);
           }
         }} language={language} />}
-        {renderContent()}
+        <div className="flex-1 min-h-0 flex flex-col">{renderContent()}</div>
       </main>
       <AdminMessageModal />
     </div>

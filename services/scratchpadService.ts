@@ -11,7 +11,7 @@ import {
   increment,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { ScratchpadDocument } from '../types';
+import { ScratchpadDocument, ScratchpadRevision } from '../types';
 import {
   generateAccessCode,
   normalizeAccessCode,
@@ -388,7 +388,78 @@ export interface ScratchpadSaveResult {
   local: boolean;
   cloud: boolean;
   cloudError?: string;
+  /** Rozmiar zapisanej treści w bajtach — do licznika w stopce edytora. */
+  bytes?: number;
 }
+
+/**
+ * ══ TWARDY LIMIT DOKUMENTU ══
+ *
+ * Dokument Firestore nie może przekroczyć 1 MiB. Przekroczenie nie kończy się
+ * ostrzeżeniem — kończy się odmową zapisu, czyli notatnik przestaje się
+ * zapisywać w środku lekcji i nikt tego nie zauważa, dopóki nie jest za późno.
+ * Dlatego limit jest pilnowany PRZED wysłaniem, z zapasem na metadane,
+ * historię wersji i narzut kodowania.
+ *
+ * 700 kB treści zostawia ~300 kB na resztę dokumentu. Przy zwykłym tekście to
+ * jakieś sto stron; limit ma znaczenie wyłącznie przy wklejanych obrazach
+ * i dlatego wklejanie obrazu je sprawdza.
+ */
+export const SCRATCHPAD_MAX_CONTENT_BYTES = 700 * 1024;
+
+/** Ile bajtów zajmie ten HTML po zapisaniu. */
+export const scratchpadContentBytes = (html: string): number =>
+  typeof TextEncoder === 'undefined' ? html.length : new TextEncoder().encode(html).length;
+
+/**
+ * ══ HISTORIA WERSJI — ZABEZPIECZENIE PRZED UTRATĄ ══
+ *
+ * Notatnik zapisuje CAŁĄ treść przy każdej zmianie, więc jedno nieszczęśliwe
+ * zaznaczenie i naciśnięcie klawisza potrafi skasować godzinę pracy — a zapis
+ * pójdzie w 600 ms, zanim ktokolwiek zdąży cofnąć. „Cofnij" działa tylko
+ * w obrębie jednej karty i ginie razem z jej odświeżeniem.
+ *
+ * Dlatego dokument nosi ze sobą do pięciu migawek. Nie w osobnej kolekcji,
+ * tylko w tym samym dokumencie: osobna kolekcja wymagałaby własnej reguły
+ * w `firestore.rules`, a tam nie wchodzimy przy okazji — migawka w dokumencie
+ * podlega dokładnie tym samym uprawnieniom, co treść, której dotyczy.
+ *
+ * Migawka powstaje najwyżej raz na pięć minut i tylko wtedy, gdy treść
+ * naprawdę się zmieniła. Migawka przy każdym zapisie znaczyłaby pięć kopii
+ * z ostatnich trzydziestu sekund, czyli pięć kopii tej samej pomyłki.
+ */
+const REVISION_INTERVAL_MS = 5 * 60 * 1000;
+const MAX_REVISIONS = 5;
+
+const buildRevisions = (
+  current: ScratchpadDocument | null,
+  nextHtml: string,
+  now: string
+): ScratchpadRevision[] | null => {
+  const previousHtml = (current?.contentHtml || '').trim();
+  // Nie ma czego archiwizować: pusty dokument albo treść bez zmian.
+  if (!previousHtml || previousHtml === nextHtml.trim()) return null;
+
+  const existing = Array.isArray(current?.revisions) ? current!.revisions! : [];
+  const newest = existing[0];
+  if (newest && Date.now() - new Date(newest.at).getTime() < REVISION_INTERVAL_MS) {
+    return null;
+  }
+
+  // Migawka nie może sama wypchnąć dokumentu poza limit.
+  if (scratchpadContentBytes(previousHtml) > SCRATCHPAD_MAX_CONTENT_BYTES / 4) {
+    return null;
+  }
+
+  return [
+    {
+      at: now,
+      html: previousHtml,
+      by: current?.lastEditedBy?.name || 'nieznany',
+    },
+    ...existing,
+  ].slice(0, MAX_REVISIONS);
+};
 
 /**
  * Zapisuje zaktualizowaną treść HTML i tekstową dokumentu z metadanymi edytora.
@@ -401,6 +472,22 @@ export async function saveScratchpadContent(
 ): Promise<ScratchpadSaveResult> {
   const now = new Date().toISOString();
   const current = getLocalScratchpad(id);
+  const bytes = scratchpadContentBytes(contentHtml);
+
+  // Odmowa PRZED wysłaniem, z czytelnym powodem. Bez tego Firestore odrzuciłby
+  // zapis sam, a lektor zobaczyłby tylko „tylko lokalnie" bez wyjaśnienia.
+  if (bytes > SCRATCHPAD_MAX_CONTENT_BYTES) {
+    return {
+      local: false,
+      cloud: false,
+      bytes,
+      cloudError:
+        'Notatnik przekroczył dopuszczalny rozmiar dokumentu. Usuń część wklejonych obrazów — ' +
+        'bez tego zmiany nie zapiszą się w chmurze.',
+    };
+  }
+
+  const revisions = buildRevisions(current, contentHtml, now);
   const updatedDoc: ScratchpadDocument = {
     ...(current || {
       id,
@@ -418,10 +505,11 @@ export async function saveScratchpadContent(
     updatedAt: now,
     version: (current?.version || 1) + 1,
     lastEditedBy: editorMeta || current?.lastEditedBy,
+    revisions: revisions || current?.revisions,
   };
 
   saveLocalScratchpad(updatedDoc);
-  const result: ScratchpadSaveResult = { local: true, cloud: false };
+  const result: ScratchpadSaveResult = { local: true, cloud: false, bytes };
 
   try {
     const ref = scratchpadDocRef(id);
@@ -434,6 +522,10 @@ export async function saveScratchpadContent(
 
     if (editorMeta) {
       patch.lastEditedBy = editorMeta;
+    }
+
+    if (revisions) {
+      patch.revisions = revisions;
     }
 
     await updateDoc(ref, patch);
