@@ -11,6 +11,7 @@ import { useSettings } from '../../context/SettingsContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { FREQUENCIES } from '../../constants';
 import { RevisionFrequency, TTSAccent, VoiceGender, VoiceSpeed, SoundEngine, canUserViewAiMonitor } from '../../types';
+import AiModelsSettings from './AiModelsSettings';
 import { LogOut, Volume2, Play, CheckCircle2, RefreshCw, VolumeX, Sparkles, Sliders, Check, Flame, Mail, Key, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { playSpeech } from '../../services/ttsService';
 import i18n from "i18next";
@@ -594,6 +595,18 @@ const SettingsScreen: React.FC = () => {
                         />
                     </label>
                 </Card>
+
+                {/* TYLKO ADMINISTRATOR: modele AI i klucze dostawców.
+
+                    Świadomie węziej niż `isTeacherOrAdmin` obok: wybór modelu
+                    zmienia koszt i jakość WSZYSTKIM kursantom naraz, a klucz API
+                    to dostęp do rachunku. Lektor prowadzi lekcje i tego nie
+                    potrzebuje. */}
+                {user?.role === 'admin' && (
+                    <div className="md:col-span-2">
+                        <AiModelsSettings />
+                    </div>
+                )}
 
                 {/* ADMIN ONLY: RESEND API CONFIGURATION */}
                 {isTeacherOrAdmin && (

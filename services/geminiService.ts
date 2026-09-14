@@ -8,7 +8,8 @@ import { db } from '../firebase';
 import { Type, Modality } from "@google/genai";
 import { Language, Difficulty, Word, AISuggestion, AudioVocabulary, TranslationExercise, TranslationEvaluationResult, RecallCandidate, RecallLearningType, LessonAttachment } from '../types';
 import { aiMonitor } from './aiMonitorService';
-import { AI_MODEL_CASCADE, PRIMARY_MODEL, SECONDARY_MODEL, TERTIARY_MODEL } from './aiModels';
+import { AI_MODEL_CASCADE, PRIMARY_MODEL, SECONDARY_MODEL, TERTIARY_MODEL, cascadeForCategory } from './aiModels';
+import { peekAiOverrides } from './aiConfigService';
 
 
 export const extractJSON = (text: string): string => {
@@ -514,11 +515,21 @@ export const formatAIModelName = (model?: string): string => {
 export const generateTextWithUnifiedFallback = async (
   prompt: string,
   systemInstruction: string,
-  preferredModels: string[] = PREFERRED_AI_MODELS,
+  /**
+   * Kolejność prób. Pominięcie = kaskada dla RODZAJU zadania, z wyborem
+   * administratora z Ustawień — patrz `cascadeForTask` w `services/aiModels.ts`.
+   * Kategoria zapytania jest podawana tu od dawna, więc jedno miejsce wpina
+   * ten wybór we wszystkie istniejące wywołania naraz.
+   */
+  explicitModels?: string[],
   geminiConfig?: any,
   onModelAttempt?: (model: string) => void,
   taskContext?: { taskName?: string; category?: any }
 ): Promise<{ text: string, modelUsed: string }> => {
+  const preferredModels =
+    explicitModels && explicitModels.length > 0
+      ? explicitModels
+      : cascadeForCategory(taskContext?.category, peekAiOverrides());
   let lastError;
   const taskName = taskContext?.taskName || 'Zapytanie tekstowe AI';
   const reqId = aiMonitor.startRequest({

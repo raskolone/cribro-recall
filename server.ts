@@ -402,6 +402,42 @@ export function createApp() {
   const adminApp = getAdminApp();
   const adminAuth = getAuth(adminApp);
 
+  /*
+   * ══ KLUCZE ZAPISANE W APLIKACJI WRACAJĄ PO RESTARCIE ══
+   *
+   * Klucz podany w ustawieniach ląduje w `process.env` procesu ORAZ w bazie.
+   * Bez tego odczytu przy starcie zmienna znikałaby przy każdym wdrożeniu
+   * i restarcie, a administrator miałby „klucz zapisany" w interfejsie
+   * i niedziałające generowanie w aplikacji.
+   *
+   * Zmienna środowiskowa WYGRYWA z zapisem w bazie: jeżeli ktoś ustawił klucz
+   * we wdrożeniu, to jest decyzja świadoma i nie może jej cicho nadpisać wpis
+   * sprzed miesiąca.
+   */
+  if (adminApp) {
+    (async () => {
+      try {
+        const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+        const snap = await adminDb.collection('system').doc('ai').get();
+        const keys = (snap.exists ? snap.data()?.keys : null) || {};
+        const mapping: Record<string, string> = {
+          openai: 'OPENAI_API_KEY',
+          gemini: 'GEMINI_API_KEY',
+          elevenlabs: 'ELEVENLABS_API_KEY',
+        };
+        for (const [provider, envName] of Object.entries(mapping)) {
+          const stored = String(keys[provider] || '').trim();
+          if (stored && !(process.env[envName] || '').trim()) {
+            process.env[envName] = stored;
+            console.log(`[AI] Klucz ${provider} wczytany z ustawień aplikacji.`);
+          }
+        }
+      } catch (e) {
+        console.warn('[AI] Nie udało się wczytać kluczy z bazy:', e);
+      }
+    })();
+  }
+
   // Authentication Middlewares
   async function optionalFirebaseAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
     const authHeader = req.headers.authorization;
@@ -1023,6 +1059,138 @@ export function createApp() {
         enableBccSender,
         bccEmail,
       });
+    } catch (err: any) {
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════
+     KONFIGURACJA AI — WYBÓR MODELI I KLUCZE
+
+     ══ DWA POZIOMY DOSTĘPU W JEDNYM DOKUMENCIE ══
+
+     `system/ai` trzyma i wybór modeli, i klucze API. Wybór modeli musi
+     przeczytać KAŻDA zalogowana osoba, bo aplikacja nim liczy; klucze nie mogą
+     opuścić serwera nigdy. Dlatego odczyt jest dla zalogowanych, ale zwraca
+     wyłącznie modele i ZAMASKOWANE klucze, a pełną wartość zna tylko proces
+     serwera. Otwarcie reguły odczytu na kolekcji `system` znaczyłoby, że klucz
+     OpenAI da się pobrać z przeglądarki dowolnego kursanta.
+
+     ══ ŹRÓDŁO KLUCZA ══
+
+     Klucz może pochodzić ze zmiennej środowiskowej (wdrożenie) albo z zapisu
+     w aplikacji. Odpowiedź mówi które, żeby administrator wiedział, czy
+     nadpisuje wdrożenie, czy uzupełnia brak — bez tego „klucz jest ustawiony"
+     nie mówi nic o tym, gdzie go szukać.
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  const AI_KEY_ENV: Record<string, string> = {
+    openai: 'OPENAI_API_KEY',
+    gemini: 'GEMINI_API_KEY',
+    elevenlabs: 'ELEVENLABS_API_KEY',
+  };
+
+  const maskKey = (key: string): string =>
+    key.length <= 10 ? '••••' : `${key.slice(0, 6)}••••${key.slice(-4)}`;
+
+  const readAiSettings = async (): Promise<any> => {
+    if (!adminApp) return {};
+    try {
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+      const snap = await adminDb.collection('system').doc('ai').get();
+      return snap.exists ? snap.data() || {} : {};
+    } catch (e) {
+      console.warn('Nie udało się odczytać system/ai:', e);
+      return {};
+    }
+  };
+
+  app.get('/api/ai/config', requireFirebaseAuth, async (_req, res) => {
+    try {
+      const settings = await readAiSettings();
+      const keys: Record<string, any> = {};
+
+      for (const [provider, envName] of Object.entries(AI_KEY_ENV)) {
+        const fromEnv = (process.env[envName] || '').trim();
+        const fromApp = String(settings?.keys?.[provider] || '').trim();
+        const effective = fromApp || fromEnv;
+        keys[provider] = effective
+          ? { configured: true, maskedKey: maskKey(effective), source: fromApp ? 'app' : 'env' }
+          : { configured: false };
+      }
+
+      return res.json({ models: settings?.models || {}, keys });
+    } catch (err: any) {
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
+
+  app.post('/api/ai/config', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { models } = req.body || {};
+      if (!models || typeof models !== 'object') {
+        return res.status(400).json({ error: 'Brak wyboru modeli do zapisania.' });
+      }
+
+      // Przyjmujemy WYŁĄCZNIE znane zadania i znane modele. Bez tego dowolny
+      // ciąg z przeglądarki trafiałby prosto do nazwy modelu w wywołaniu API.
+      const allowedTasks = ['exercises', 'grading', 'chat', 'summaries'];
+      const allowedModels = [
+        'openai/gpt-5.6-luna',
+        'openai/gpt-4o',
+        'openai/gpt-4o-mini',
+        'gemini-3.8-flash',
+        'gemini-2.5-flash',
+      ];
+
+      const clean: Record<string, string> = {};
+      for (const [task, model] of Object.entries(models)) {
+        if (!allowedTasks.includes(task)) continue;
+        if (typeof model !== 'string' || !allowedModels.includes(model)) continue;
+        clean[task] = model;
+      }
+
+      if (!adminApp) {
+        return res.status(503).json({ error: 'Brak połączenia z bazą — nie zapisano.' });
+      }
+
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+      await adminDb.collection('system').doc('ai').set(
+        { models: clean, updatedAt: new Date().toISOString() },
+        { merge: true }
+      );
+
+      return res.json({ ok: true, models: clean });
+    } catch (err: any) {
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
+
+  app.post('/api/ai/save-key', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { provider, apiKey } = req.body || {};
+      const envName = AI_KEY_ENV[String(provider)];
+      if (!envName) {
+        return res.status(400).json({ error: 'Nieznany dostawca klucza.' });
+      }
+      if (typeof apiKey !== 'string' || apiKey.trim().length < 12) {
+        return res.status(400).json({ error: 'Podaj pełny klucz API.' });
+      }
+
+      const cleanKey = apiKey.trim();
+      // Ustawiamy w procesie OD RAZU: bez tego klucz zadziałałby dopiero po
+      // restarcie serwera, a administrator zobaczyłby „zapisano" i dalej błędy.
+      process.env[envName] = cleanKey;
+
+      if (adminApp) {
+        const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+        await adminDb.collection('system').doc('ai').set(
+          { keys: { [String(provider)]: cleanKey }, updatedAt: new Date().toISOString() },
+          { merge: true }
+        );
+      }
+
+      return res.json({ ok: true, maskedKey: maskKey(cleanKey) });
     } catch (err: any) {
       return res.status(500).json({ error: formatErrorString(err) });
     }

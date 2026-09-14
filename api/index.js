@@ -690,6 +690,29 @@ function createApp() {
   });
   const adminApp = getAdminApp();
   const adminAuth = getAuth(adminApp);
+  if (adminApp) {
+    (async () => {
+      try {
+        const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+        const snap = await adminDb.collection("system").doc("ai").get();
+        const keys = (snap.exists ? snap.data()?.keys : null) || {};
+        const mapping = {
+          openai: "OPENAI_API_KEY",
+          gemini: "GEMINI_API_KEY",
+          elevenlabs: "ELEVENLABS_API_KEY"
+        };
+        for (const [provider, envName] of Object.entries(mapping)) {
+          const stored = String(keys[provider] || "").trim();
+          if (stored && !(process.env[envName] || "").trim()) {
+            process.env[envName] = stored;
+            console.log(`[AI] Klucz ${provider} wczytany z ustawie\u0144 aplikacji.`);
+          }
+        }
+      } catch (e) {
+        console.warn("[AI] Nie uda\u0142o si\u0119 wczyta\u0107 kluczy z bazy:", e);
+      }
+    })();
+  }
   async function optionalFirebaseAuth(req, res, next) {
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith("Bearer ")) {
@@ -1207,6 +1230,95 @@ function createApp() {
         enableBccSender,
         bccEmail
       });
+    } catch (err) {
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
+  const AI_KEY_ENV = {
+    openai: "OPENAI_API_KEY",
+    gemini: "GEMINI_API_KEY",
+    elevenlabs: "ELEVENLABS_API_KEY"
+  };
+  const maskKey = (key) => key.length <= 10 ? "\u2022\u2022\u2022\u2022" : `${key.slice(0, 6)}\u2022\u2022\u2022\u2022${key.slice(-4)}`;
+  const readAiSettings = async () => {
+    if (!adminApp) return {};
+    try {
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+      const snap = await adminDb.collection("system").doc("ai").get();
+      return snap.exists ? snap.data() || {} : {};
+    } catch (e) {
+      console.warn("Nie uda\u0142o si\u0119 odczyta\u0107 system/ai:", e);
+      return {};
+    }
+  };
+  app2.get("/api/ai/config", requireFirebaseAuth, async (_req, res) => {
+    try {
+      const settings = await readAiSettings();
+      const keys = {};
+      for (const [provider, envName] of Object.entries(AI_KEY_ENV)) {
+        const fromEnv = (process.env[envName] || "").trim();
+        const fromApp = String(settings?.keys?.[provider] || "").trim();
+        const effective = fromApp || fromEnv;
+        keys[provider] = effective ? { configured: true, maskedKey: maskKey(effective), source: fromApp ? "app" : "env" } : { configured: false };
+      }
+      return res.json({ models: settings?.models || {}, keys });
+    } catch (err) {
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
+  app2.post("/api/ai/config", requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { models } = req.body || {};
+      if (!models || typeof models !== "object") {
+        return res.status(400).json({ error: "Brak wyboru modeli do zapisania." });
+      }
+      const allowedTasks = ["exercises", "grading", "chat", "summaries"];
+      const allowedModels = [
+        "openai/gpt-5.6-luna",
+        "openai/gpt-4o",
+        "openai/gpt-4o-mini",
+        "gemini-3.8-flash",
+        "gemini-2.5-flash"
+      ];
+      const clean = {};
+      for (const [task, model] of Object.entries(models)) {
+        if (!allowedTasks.includes(task)) continue;
+        if (typeof model !== "string" || !allowedModels.includes(model)) continue;
+        clean[task] = model;
+      }
+      if (!adminApp) {
+        return res.status(503).json({ error: "Brak po\u0142\u0105czenia z baz\u0105 \u2014 nie zapisano." });
+      }
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+      await adminDb.collection("system").doc("ai").set(
+        { models: clean, updatedAt: (/* @__PURE__ */ new Date()).toISOString() },
+        { merge: true }
+      );
+      return res.json({ ok: true, models: clean });
+    } catch (err) {
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
+  app2.post("/api/ai/save-key", requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { provider, apiKey } = req.body || {};
+      const envName = AI_KEY_ENV[String(provider)];
+      if (!envName) {
+        return res.status(400).json({ error: "Nieznany dostawca klucza." });
+      }
+      if (typeof apiKey !== "string" || apiKey.trim().length < 12) {
+        return res.status(400).json({ error: "Podaj pe\u0142ny klucz API." });
+      }
+      const cleanKey = apiKey.trim();
+      process.env[envName] = cleanKey;
+      if (adminApp) {
+        const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+        await adminDb.collection("system").doc("ai").set(
+          { keys: { [String(provider)]: cleanKey }, updatedAt: (/* @__PURE__ */ new Date()).toISOString() },
+          { merge: true }
+        );
+      }
+      return res.json({ ok: true, maskedKey: maskKey(cleanKey) });
     } catch (err) {
       return res.status(500).json({ error: formatErrorString(err) });
     }

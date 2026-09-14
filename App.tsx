@@ -21,6 +21,7 @@ import UnsubscribeScreen from './components/auth/UnsubscribeScreen';
 import DirectHomeworkScreen from './components/dashboard/DirectHomeworkScreen';
 import LiveJoinScreen from './components/presentation/LiveJoinScreen';
 import ScratchpadPage from './components/scratchpad/ScratchpadPage';
+import { getAiConfig } from './services/aiConfigService';
 
 
 const App: React.FC = () => {
@@ -58,6 +59,18 @@ const AppContent: React.FC = () => {
 
   const { user, isAuthReady } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
+
+  /*
+   * Wybór modeli AI pobieramy RAZ, zaraz po zalogowaniu.
+   *
+   * `generateTextWithUnifiedFallback` czyta go synchronicznie przy każdym
+   * wywołaniu (`peekAiOverrides`), bo wywołanie modelu nie może czekać na
+   * osobne zapytanie o konfigurację. Gdy pobranie nie zdąży albo się nie uda,
+   * w grze zostają kaskady domyślne — nic się nie zatrzymuje.
+   */
+  useEffect(() => {
+    if (user) getAiConfig();
+  }, [user?.id]);
 
   if (typeof window !== 'undefined' && window.location.pathname === '/starter') {
     return <StarterVocabularyApp />;
