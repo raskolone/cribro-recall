@@ -41,7 +41,7 @@ import AssignVocabularyModal from './AssignVocabularyModal';
 import HomeworkScreen from '../dashboard/HomeworkScreen';
 import { isTaskForStudent } from '../../utils/homework';
 import TeacherOverview from './TeacherOverview';
-import LessonPlanner from './LessonPlanner';
+import LessonPlannerStudio from './LessonPlannerStudio';
 import { LessonPresentationView } from './presentation/LessonPresentationView';
 import { createPresentationFromScenario, savePresentationToStorage } from '../../services/presentationService';
 import StudentNotionSyncModal from './StudentNotionSyncModal';
@@ -2349,37 +2349,50 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     zaczyna się tu albo z gotowego, albo od zera, i to jest
                     jedna decyzja w jednym miejscu. Dotąd wybór „nowy czy
                     z bazy" wymagał wyjścia do innego ekranu w menu. */}
-                <div className="flex items-center justify-between gap-3 mb-4 pb-4 border-b border-line-strong">
-                  <p className="text-xs text-content-muted">
-                    Scenariusze zapisane wcześniej leżą w bazie — możesz zacząć od gotowego
-                    zamiast pisać od zera. Tematy źródłowe są obok.
-                  </p>
-                  <div className="shrink-0 flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => onViewChange?.('lesson-scenarios')}
-                      className="flex items-center gap-1.5"
-                    >
-                      <Layers size={14} />
-                      Baza scenariuszy
-                    </Button>
-                    {/* Baza tematów zeszła tu z „Więcej narzędzi": temat jest
-                        materiałem, z którego powstaje scenariusz, a scenariusz
-                        powstaje w Planerze. Osobna pozycja w menu kazała szukać
-                        źródła gdzie indziej niż miejsca, w którym się go używa. */}
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => onViewChange?.('topic-database')}
-                      className="flex items-center gap-1.5"
-                    >
-                      <Database size={14} />
-                      Baza tematów
-                    </Button>
-                  </div>
+                {/* Dwie bazy schowane w jednym menu.
+
+                    Były dwoma przyciskami i zdaniem wyjaśniającym, co robią —
+                    razem trzy elementy nad narzędziem, zanim padło pytanie
+                    o to, czego lekcja ma dotyczyć. Do baz sięga się RAZ na
+                    kilka lekcji, a planer otwiera się przed każdą. */}
+                <div className="flex items-center justify-end gap-2 mb-4">
+                  <MenuDropdown
+                    align="end"
+                    width={252}
+                    aria-label="Bazy materiałów"
+                    triggerTitle="Gotowe scenariusze i tematy źródłowe"
+                    triggerClassName="px-3 py-1.5 rounded-xl border border-line-strong bg-base-100/50 text-xs font-bold text-content-muted hover:text-text-hi hover:border-primary/40 transition-colors flex items-center gap-1.5 cursor-pointer"
+                    trigger={
+                      <>
+                        <Layers size={13} />
+                        <span>Bazy</span>
+                        <ChevronDown size={12} />
+                      </>
+                    }
+                    sections={[
+                      {
+                        id: 'bases',
+                        items: [
+                          {
+                            id: 'scenarios',
+                            label: 'Baza scenariuszy',
+                            description: 'Lekcje ułożone wcześniej',
+                            icon: <Layers size={14} />,
+                            onSelect: () => onViewChange?.('lesson-scenarios'),
+                          },
+                          {
+                            id: 'topics',
+                            label: 'Baza tematów',
+                            description: 'Materiał źródłowy do scenariusza',
+                            icon: <Database size={14} />,
+                            onSelect: () => onViewChange?.('topic-database'),
+                          },
+                        ],
+                      },
+                    ]}
+                  />
                 </div>
-              <LessonPlanner
+              <LessonPlannerStudio
                 selectedUser={selectedUser}
                 users={users}
                 onSelectUser={(u) => {
