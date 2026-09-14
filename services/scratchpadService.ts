@@ -427,6 +427,19 @@ export const scratchpadContentBytes = (html: string): number =>
  * Migawka powstaje najwyżej raz na pięć minut i tylko wtedy, gdy treść
  * naprawdę się zmieniła. Migawka przy każdym zapisie znaczyłaby pięć kopii
  * z ostatnich trzydziestu sekund, czyli pięć kopii tej samej pomyłki.
+ *
+ * ══ I DLACZEGO TYLKO LEKTOR JE ZAPISUJE ══
+ *
+ * `firestore.rules` pozwala kursantowi z linkiem zapisywać WYŁĄCZNIE pola
+ * `contentHtml`, `contentText`, `updatedAt`, `version` i `lastEditedBy`
+ * (`affectedKeys().hasOnly([...])`). Dołożenie `revisions` do jego zapisu
+ * odrzuciłoby CAŁY zapis — kursant pisałby w notatniku, który po cichu
+ * przestał docierać do chmury. Migawka jest więc robiona tylko wtedy, gdy
+ * zapisuje lektor lub admin; że notatnik i tak otwiera lektor na każdej
+ * lekcji, historia powstaje mimo to.
+ *
+ * Alternatywą byłoby dopisanie `revisions` do listy w regułach — czyli
+ * poszerzenie uprawnień gościa bez logowania. Nie za cenę wygody.
  */
 const REVISION_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_REVISIONS = 5;
@@ -434,8 +447,12 @@ const MAX_REVISIONS = 5;
 const buildRevisions = (
   current: ScratchpadDocument | null,
   nextHtml: string,
-  now: string
+  now: string,
+  editorRole: 'teacher' | 'student' | undefined
 ): ScratchpadRevision[] | null => {
+  // Patrz nagłówek: zapis kursanta nie może nieść tego pola.
+  if (editorRole === 'student') return null;
+
   const previousHtml = (current?.contentHtml || '').trim();
   // Nie ma czego archiwizować: pusty dokument albo treść bez zmian.
   if (!previousHtml || previousHtml === nextHtml.trim()) return null;
@@ -487,7 +504,7 @@ export async function saveScratchpadContent(
     };
   }
 
-  const revisions = buildRevisions(current, contentHtml, now);
+  const revisions = buildRevisions(current, contentHtml, now, editorMeta?.role);
   const updatedDoc: ScratchpadDocument = {
     ...(current || {
       id,
