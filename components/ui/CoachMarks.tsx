@@ -77,7 +77,29 @@ export const CoachMarks: React.FC<CoachMarksProps> = ({
   const bubbleRef = useRef<HTMLDivElement>(null);
   const previousStepRef = useRef<CoachStep | null>(null);
 
-  const step: CoachStep | undefined = steps[stepIndex];
+  /*
+   * ══ KROKI BEZ CELU SĄ POMIJANE ══
+   *
+   * Przewodnik opisuje elementy panelu, ale nie każdy z nich istnieje przy
+   * każdym wejściu: lektor z otwartym profilem kursanta nie ma na ekranie
+   * kafelków pulpitu, kursant bez notatnika nie ma kafelka notatnika. Krok
+   * celujący w nieistniejący element pokazywał wtedy dymek NAD PRZYCIEMNIONYM
+   * EKRANEM, bez niczego podświetlonego — czyli dokładnie ten zarzut, że
+   * „widać dymek, a nie widać, o czym mówi".
+   *
+   * Sprawdzamy przy otwarciu, bo lista celów nie zmienia się w trakcie
+   * przewodnika. Kroki z `onBeforeShow` zostają bezwarunkowo: ich cel powstaje
+   * dopiero po rozwinięciu menu, więc teraz go nie ma i być nie może.
+   */
+  const [activeSteps, setActiveSteps] = useState<CoachStep[]>(steps);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const present = steps.filter(item => item.onBeforeShow || findTarget(item.coachId));
+    setActiveSteps(present.length > 0 ? present : steps);
+  }, [isOpen, steps]);
+
+  const step: CoachStep | undefined = activeSteps[stepIndex];
 
   useEffect(() => {
     const syncViewport = () => setIsCompact(window.innerWidth < MOBILE_BREAKPOINT);
@@ -151,9 +173,9 @@ export const CoachMarks: React.FC<CoachMarksProps> = ({
   }, [stepIndex, isOpen, isCompact]);
 
   const goNext = useCallback(() => {
-    setStepIndex(current => (current < steps.length - 1 ? current + 1 : current));
-    if (stepIndex >= steps.length - 1) onClose();
-  }, [stepIndex, steps.length, onClose]);
+    setStepIndex(current => (current < activeSteps.length - 1 ? current + 1 : current));
+    if (stepIndex >= activeSteps.length - 1) onClose();
+  }, [stepIndex, activeSteps.length, onClose]);
 
   const goPrevious = useCallback(() => {
     setStepIndex(current => Math.max(0, current - 1));
@@ -272,7 +294,19 @@ export const CoachMarks: React.FC<CoachMarksProps> = ({
     };
   })();
 
-  const isLastStep = stepIndex === steps.length - 1;
+  const isLastStep = stepIndex === activeSteps.length - 1;
+
+  /*
+   * Na wąskim ekranie dymek nie mieści się obok elementu, więc przykleja się
+   * do dolnej albo górnej krawędzi — ZAWSZE po przeciwnej stronie niż
+   * podświetlony element. Bez tego arkusz u dołu przykrywał dokładnie to,
+   * o czym mówi, gdy element był w dolnej połowie ekranu: użytkownik czytał
+   * opis rzeczy schowanej pod tekstem opisu.
+   */
+  const compactAnchor: 'top' | 'bottom' =
+    targetRect && targetRect.top + targetRect.height / 2 > window.innerHeight / 2
+      ? 'top'
+      : 'bottom';
 
   const spotlightGeometry = targetRect
     ? {
@@ -290,10 +324,14 @@ export const CoachMarks: React.FC<CoachMarksProps> = ({
           ciemność leżała nad menu, samouczek wskazywałby przyciemniony element. */}
       <div className="fixed inset-0 z-[400]">
         <div
-          className={`absolute inset-0 ${spotlightGeometry && !isCompact ? '' : 'bg-black/75 backdrop-blur-[2px]'}`}
+          /* Przyciemnienie rysuje TYLKO wtedy, gdy nie ma czego podświetlić.
+             Gdy cel istnieje, ciemność bierze się z `box-shadow` reflektora
+             niżej — inaczej byłyby dwie warstwy i element w dziurze też
+             wychodziłby przyciemniony. */
+          className={`absolute inset-0 ${spotlightGeometry ? '' : 'bg-black/75 backdrop-blur-[2px]'}`}
           onClick={onClose}
         />
-        {spotlightGeometry && !isCompact && (
+        {spotlightGeometry && (
           <motion.div
             initial={false}
             animate={spotlightGeometry}
@@ -312,7 +350,7 @@ export const CoachMarks: React.FC<CoachMarksProps> = ({
         aria-modal="true"
         aria-label={title}
       >
-        {spotlightGeometry && !isCompact && (
+        {spotlightGeometry && (
           <motion.div
             initial={false}
             animate={spotlightGeometry}
@@ -341,7 +379,9 @@ export const CoachMarks: React.FC<CoachMarksProps> = ({
             className={
               bubblePosition
                 ? 'fixed rounded-2xl bg-ink-2 border border-line-strong shadow-ambient-lg p-4 pointer-events-auto'
-                : 'fixed left-1/2 -translate-x-1/2 bottom-4 sm:bottom-6 w-[calc(100vw-24px)] max-w-[420px] rounded-2xl bg-ink-2 border border-line-strong shadow-ambient-lg p-4 pointer-events-auto'
+                : `fixed left-1/2 -translate-x-1/2 ${
+                    compactAnchor === 'top' ? 'top-4' : 'bottom-4 sm:bottom-6'
+                  } w-[calc(100vw-24px)] max-w-[420px] rounded-2xl bg-ink-2 border border-line-strong shadow-ambient-lg p-4 pointer-events-auto`
             }
           >
             {tailStyle && <span style={tailStyle} aria-hidden />}
@@ -382,7 +422,7 @@ export const CoachMarks: React.FC<CoachMarksProps> = ({
 
               <div className="mt-3.5 pt-3 border-t border-line-soft flex items-center justify-between gap-3">
                 <span className="text-[10px] font-mono text-text-faint tabular-nums">
-                  {stepIndex + 1} / {steps.length}
+                  {stepIndex + 1} / {activeSteps.length}
                 </span>
 
                 <div className="flex items-center gap-1.5">

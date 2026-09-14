@@ -288,9 +288,9 @@ html, body, #root { min-height: 100vh; }
    Ta klasa (zastana, używana w kilkunastu miejscach) dostaje dokładnie to samo
    wykończenie, co `.glass-tile` z panelu kursanta: półprzezroczysta tafla
    z rozmyciem, linia światła na górnej krawędzi, uniesienie o 3 px i ledwie
-   wyczuwalne powiększenie przy najechaniu. Dwie różne receptury na dwa panele
-   tej samej aplikacji znaczyły tylko tyle, że jeden z nich wyglądał starzej —
-   a zmiana w jednym nie dotyczyła drugiego.
+   wyczuwalne powiększenie przy najechaniu — i nic poza tym. Dwie różne
+   receptury na dwa panele tej samej aplikacji znaczyły tylko tyle, że jeden
+   z nich wyglądał starzej, a zmiana w jednym nie dotyczyła drugiego.
 
    Nazwa zostaje, bo zmiana nazwy klasy w kilkunastu plikach to ryzyko bez
    zysku; zmieniła się treść. */
@@ -330,23 +330,6 @@ html, body, #root { min-height: 100vh; }
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
-/* Przejazd połysku — ten sam, co w `.glass-tile`. */
-.liquid-glass-tile::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: linear-gradient(
-    115deg,
-    transparent 35%,
-    color-mix(in srgb, var(--accent) 20%, transparent) 50%,
-    transparent 65%
-  );
-  transform: translateX(-120%);
-  opacity: 0;
-  pointer-events: none;
-}
-
 @media (hover: hover) and (pointer: fine) {
   .liquid-glass-tile:hover {
     transform: translateY(-3px) scale(1.006);
@@ -355,11 +338,6 @@ html, body, #root { min-height: 100vh; }
       0 1px 1px rgba(0, 0, 0, 0.14),
       0 10px 28px -10px rgba(0, 0, 0, 0.5),
       var(--glow);
-  }
-  .liquid-glass-tile:hover::before {
-    opacity: 1;
-    transform: translateX(120%);
-    transition: transform 0.7s var(--ease), opacity 0.2s var(--ease);
   }
   .liquid-glass-tile:hover::after {
     box-shadow:
@@ -376,10 +354,8 @@ html, body, #root { min-height: 100vh; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .liquid-glass-tile,
-  .liquid-glass-tile::before { transition: none; }
+  .liquid-glass-tile { transition: none; }
   .liquid-glass-tile:hover { transform: none; }
-  .liquid-glass-tile:hover::before { opacity: 0; }
 }
 
 /* Stan wybrany dla kafli i kart wybieralnych — wg components.md:
@@ -785,20 +761,14 @@ tr.liquid-glass-hover:hover {
 /* ═══════════════════════════════════════════════════════════════════════
    KAFELEK SZKLANY — `.glass-tile`
 
-   Jedna receptura dla wszystkich kafelków panelu kursanta: półprzezroczysta
-   tafla z rozmyciem tła, obrys włosowy i POJEDYNCZY przejazd połysku przy
-   najechaniu.
+   Jedna receptura dla wszystkich kafelków w aplikacji: półprzezroczysta tafla
+   z rozmyciem tła, obrys włosowy, linia światła na górnej krawędzi. W spoczynku
+   kafelek NIC NIE ROBI — cały ruch jest reakcją na kursor.
 
-   ══ DLACZEGO POŁYSK PRZEJEŻDŻA, A NIE ŚWIECI STALE ══
-
-   Stała poświata na siedmiu kafelkach naraz to siedem rzeczy wołających
-   o uwagę, czyli żadna. Przejazd trwa 0,7 s i kończy się poza kafelkiem —
-   mówi „dotknąłeś tego" i znika. Poza najechaniem kafelek jest spokojny.
-
-   ══ DLACZEGO PSEUDOELEMENT, A NIE DRUGI DIV ══
+   ══ DLACZEGO WYKOŃCZENIE JEST PSEUDOELEMENTEM, A NIE DRUGIM DIVEM ══
 
    Kafelek jest przyciskiem; dodatkowy element w środku łapałby zdarzenia
-   i psuł czytanie przez czytniki ekranu. `::before` jest niewidoczny dla
+   i psuł czytanie przez czytniki ekranu. `::after` jest niewidoczny dla
    drzewa dostępności i nie da się w niego kliknąć.
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -823,23 +793,17 @@ tr.liquid-glass-hover:hover {
     box-shadow var(--t);
 }
 
-.glass-tile::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  /* Wąskie, ukośne pasmo światła. Zaczyna i kończy poza kafelkiem, więc
-     w spoczynku nie widać go wcale. */
-  background: linear-gradient(
-    115deg,
-    transparent 35%,
-    color-mix(in srgb, var(--accent) 22%, transparent) 50%,
-    transparent 65%
-  );
-  transform: translateX(-120%);
-  opacity: 0;
-  pointer-events: none;
-}
+/* ══ DLACZEGO NIE MA TU PRZEJEŻDŻAJĄCEGO POŁYSKU ══
+
+   Był i został zdjęty. Pasmo światła jadące przez kafelek to animacja SAMEGO
+   kafelka — dzieje się niezależnie od tego, co robi kursor, i przy siatce
+   sześciu kafelków znaczy sześć niezależnych ruchów na jednym ekranie.
+   Najechanie ma mówić „ten, pod kursorem", a nie uruchamiać pokaz.
+
+   Zostaje sam efekt najechania: uniesienie, obrys akcentu, mocniejszy cień
+   i rozjaśniona krawędź. To jest ruch, który ma przyczynę w kursorze i kończy
+   się razem z nim.
+*/
 
 /* Cienka linia światła na górnej krawędzi — to ona robi wrażenie tafli
    uniesionej nad tłem, a nie cień. Cień sam z siebie daje „naklejkę";
@@ -876,11 +840,6 @@ tr.liquid-glass-hover:hover {
       inset 0 1px 0 rgba(255, 255, 255, 0.16),
       inset 0 0 0 1px var(--accent-12);
   }
-  .glass-tile:hover::before {
-    opacity: 1;
-    transform: translateX(120%);
-    transition: transform 0.7s var(--ease), opacity 0.2s var(--ease);
-  }
 }
 
 /* Dotyk nie ma najechania — zostaje wciśnięcie. */
@@ -899,12 +858,8 @@ tr.liquid-glass-hover:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .glass-tile,
-  .glass-tile::before {
-    transition: none;
-  }
+  .glass-tile { transition: none; }
   .glass-tile:hover { transform: none; }
-  .glass-tile:hover::before { opacity: 0; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
