@@ -1193,3 +1193,96 @@ Ryzyka:
   znać wybór modeli) — zwraca modele i MASKI kluczy, nigdy pełne wartości.
 - Zmiana domyślnej wartości `allowStudentEdit` dotyczy wyłącznie NOWYCH
   notatników; istniejące zostają z dotychczasowym ustawieniem.
+
+---
+
+2026-09-14 — Claude Code / Opus 5 (runda 8)
+
+Zadanie: przebudowa nagłówka profilu kursanta i zakładki historii lekcji na
+  symetryczny, „okienkowy" układ; schowanie rzadziej używanych funkcji
+  (zwłaszcza Notion) w menu rozwijanych; jeden zestaw narzędzi na dodawanie
+  lekcji; weryfikacja AI Lesson Summary i prompt systemowy dla transkrypcji;
+  ukrycie panelu lektora po wejściu w profil kursanta; unifikacja układu
+  wszystkich zakładek kursanta; poprawa trybu dziennego (konstelacja, kontrast
+  tekstu, widoczność kafelków, czytelność okien dialogowych); spójna paleta
+  ciemnego trybu notatnika.
+
+Zrobione (siedem commitów, jeden na etap):
+- `components/admin/StudentPanelSection.tsx` (nowy) — wspólna rama okna każdej
+  zakładki kursanta: pasek tytułu z ikoną i licznikiem, narzędzia po prawej,
+  pas filtrów, treść.
+- `components/admin/StudentProfileHeader.tsx` (nowy) — nagłówek kursanta w dwóch
+  piętrach; cztery równe kafelki metryk; przycisk „Panel lektora"; „Zmień
+  kursanta" w menu.
+- `AdminPanel.tsx` — panel lektora ukryty, gdy wybrany jest kursant; zakładki
+  profil/historia/słownictwo/testy/statystyki przepisane na `StudentPanelSection`;
+  menu „Lekcje" (`MenuDropdown`) zbiera wszystkie sposoby dołożenia lekcji
+  i porządki; przełącznik rodzaju materiału w modalu AI; nowe pola formularza
+  lekcji (praca domowa, klucz odpowiedzi); `handleTranscriptFileUpload`.
+- `components/admin/LessonSourceBar.tsx` — zwinięty do jednej linijki, bez
+  własnego przycisku Notion.
+- `server.ts` — `transcriptInstruction` (osobne polecenie systemowe dla surowej
+  transkrypcji), `mode` w `/api/gemini/lesson-summary`, schemat rozszerzony
+  o `date`, `corrections`, `homeworkText`, `homeworkAnswerKey`, `nextLessonPlan`.
+  Osobno: naprawa TDZ `FIRESTORE_DATABASE_ID`.
+- `services/geminiService.ts` — `generateLessonSummary(..., mode)` + prompt
+  zapasowy dla transkrypcji.
+- `services/lessonRecord.ts` — zapis bloków 2b–4 wprost.
+- `index.css`, `design/theme/tokens.css` — odwrócenie `--color-white`
+  i `--color-black` w trybie dziennym, ciemniejsze tło strony, mocniejsze
+  obrysy i cienie, kontrast `content-muted` i `text-faint`, konstelacja,
+  ciemna kartka notatnika, reguła na przyciemnienie okien dialogowych.
+- `utils/notebookPalette.ts` (nowy) — jedna paleta notatnika (sześć odcieni
+  o tej samej jasności); czytają z niej `lessonTemplate`, przyciski koloru
+  i zakreślacze.
+
+Nie dokończone / do sprawdzenia:
+- NIC ZA LOGOWANIEM nie było oglądane w przeglądarce. Sprawdzony wyłącznie ekran
+  startowy w obu motywach (Playwright, build produkcyjny, zero błędów konsoli).
+  Nowy nagłówek kursanta, rama zakładek, menu „Lekcje", modal AI Lesson Summary
+  i ciemna kartka notatnika przeszły `tsc --noEmit`, 316 testów i `npm run build`,
+  ale nikt ich nie widział w działaniu.
+- Tryb transkrypcji AI Lesson Summary NIE był wołany na żywo — brak poświadczeń
+  Firebase w tej sesji. Do sprawdzenia na prawdziwej transkrypcji: czy model
+  wypełnia wszystkie bloki i czy praca domowa trzyma się materiału z lekcji.
+- Port 3000 trzymał serwer deweloperski uruchomiony przez Macieja ponad dobę
+  wcześniej — NIE był zabijany. Podgląd robiony na osobnym porcie (4179).
+- Wpisy notatnika sprzed tej rundy zachowują stare, jaskrawe kolory nagłówków.
+  Nikt ich nie przepisuje.
+
+Decyzje architektoniczne:
+- Tryb dzienny naprawiony JEDNĄ zmienną (`--color-white`, `--color-black`),
+  a nie przejściem przez 94 pliki. Tailwind 4 liczy wszystkie klasy
+  `*-white/X` i `*-black/X` przez `color-mix(… var(--color-*) X%, transparent)`,
+  więc podmiana zmiennej odwraca całą rodzinę z zachowaniem proporcji
+  dobranych w ponad tysiącu miejsc. Ręczny przegląd byłby tysiącem okazji do
+  pomyłki i przeglądem, którego nikt by nie dokończył. Miejsca wymagające
+  dosłownej bieli/czerni dostały wartość arbitralną (`bg-[#ffffff]`), bo ta
+  nie przechodzi przez zmienną.
+- Transkrypcja idzie jako JEDNA lekcja, a nie przez import zbiorczy. Droga
+  zbiorcza szuka w materiale nagłówków kolejnych lekcji i przy zapisie rozmowy
+  rozcinała jedne zajęcia na kilka wpisów tam, gdzie zmieniał się temat.
+- Bloki 2b–4 zapisywane WPROST, zamiast doklejane do `thingsToImprove` pod
+  znacznikiem „Zadanie domowe:" i rozcinane wyrażeniem regularnym. Parsowanie
+  zostaje dla starych wpisów z Notion, gdzie nie ma wyboru; świadome
+  zapisywanie danych w formacie do parsowania robiłoby nowy dług przy każdej
+  lekcji z transkrypcji.
+- Kolory notatnika w jednym pliku i o WSPÓLNEJ jasności względnej. Kolor idzie
+  w treść dokumentu, więc motyw go nie przestawi — jedna wartość musi działać
+  na jasnym papierze i na ciemnej kartce. Wspólna jasność robi z sześciu barw
+  jeden zestaw: różnią się wyłącznie odcieniem, bo tylko odcień niesie
+  znaczenie.
+- Funkcje Notion wyłącznie w zakładce historii lekcji. Wcześniej ten sam
+  przycisk stał w trzech miejscach, w tym nad zakładkami, których Notion
+  nie dotyczy.
+
+Ryzyka:
+- `firestore.rules` NIETKNIĘTY. Middleware autoryzacji i ścieżki tokenowe bez
+  logowania NIETKNIĘTE.
+- `server.ts` zmieniony w dwóch miejscach: nowe polecenie systemowe i pole
+  `mode` w `/api/gemini/lesson-summary` (trasa nadal za `requireFirebaseAdmin`,
+  uprawnienia bez zmian) oraz przeniesienie deklaracji stałej wyżej w tym samym
+  zasięgu. Żadna zmiana nie dotyka autoryzacji.
+- Odwrócenie `--color-white`/`--color-black` działa na CAŁĄ aplikację w trybie
+  dziennym. Sprawdzone na ekranie startowym; ekrany za logowaniem wymagają
+  obejrzenia. Tryb nocny nie jest ruszony — reguły są pod `[data-theme="light"]`.

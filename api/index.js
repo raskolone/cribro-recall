@@ -690,6 +690,7 @@ function createApp() {
   });
   const adminApp = getAdminApp();
   const adminAuth = getAuth(adminApp);
+  const FIRESTORE_DATABASE_ID = "ai-studio-520a4841-33d0-41ef-829a-838ebc44072d";
   if (adminApp) {
     (async () => {
       try {
@@ -887,7 +888,6 @@ function createApp() {
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  const FIRESTORE_DATABASE_ID = "ai-studio-520a4841-33d0-41ef-829a-838ebc44072d";
   const UNSUBSCRIBE_SECRET = process.env.UNSUBSCRIBE_SECRET || "cribro-recall-opt-out-secret-2026";
   const generateUnsubscribeToken = (uid) => {
     return createHmac("sha256", UNSUBSCRIBE_SECRET).update(uid).digest("hex").slice(0, 16);

@@ -48,7 +48,7 @@ CRIBRO ENGLISH (Recall) to zaawansowana platforma edukacyjna do intensywnej nauk
 ## 3. Znane Ograniczenia i Dług Techniczny — PRZECZYTAJ PRZED ZMIANAMI
 
 > Rzeczy, których **nie widać w kodzie na pierwszy rzut oka**, a które zmieniają sposób,
-> w jaki należy do niego podchodzić. Stan na 2026-09-14 (runda 7).
+> w jaki należy do niego podchodzić. Stan na 2026-09-14 (runda 8).
 
 ### ✅ (Naprawione 2026-09-12) Reguły Firestore dla brudnopisu były całkowicie otwarte
 Historyczny wpis — zostawiony jako ślad, bo dokładnie ten problem naprawia commit opisany w sekcji 4 poniżej („Zamknięcie dziury w regułach brudnopisu i indeks PIN-ów").
@@ -100,6 +100,15 @@ notatnik jako osobny ekran ze spisem treści i podziałem na strony, szkło w pa
 trybu jasnego). Notatnik idzie do pierwszych kursantów, więc **wymaga obejrzenia na telefonie
 i na komputerze przed wysłaniem linków**.
 
+**2026-09-14, runda 8 — częściowo obejrzane.** Ekran startowy sprawdzony w przeglądarce
+w OBU motywach (Playwright na buildzie produkcyjnym, bez błędów konsoli): tryb dzienny ma
+widoczną konstelację, czytelne karty i podpisy, tryb nocny jest nietknięty. **Nie obejrzano
+niczego za logowaniem** — nowy nagłówek kursanta, rama zakładek, menu „Lekcje", modal
+AI Lesson Summary i ciemna kartka notatnika przeszły `tsc --noEmit`, 316 testów i `npm run build`,
+ale nikt ich nie widział w działającej aplikacji. Do sprawdzenia w pierwszej kolejności:
+czy przyciemnienie okien dialogowych w trybie dziennym nie zjada kontrastu i czy zakreślacze
+w notatniku czytają się na obu papierach.
+
 ### 🟡 Notatnik: co zostało niedokończone (stan 2026-09-14)
 
 - **Panel duplikatów kasuje wpisy lekcji, ale NIE powiązane `vocabularySets`.**
@@ -111,8 +120,41 @@ i na komputerze przed wysłaniem linków**.
   starą, panelową obudowę — treść jest ta sama, wygląd nie.
 - **Eksport do PDF/Worda nie wie o arkuszu A4.** Łamanie stron w pliku nie
   pokrywa się z kreskami na ekranie.
-- **Trasy `/api/ai/config` i `/api/ai/save-key` nie były wołane na żywo.**
-  Sprawdzić, czy zapis `system/ai` przechodzi kontem administratora.
+- **Trasy `/api/ai/config` i `/api/ai/save-key` nadal nie były wołane na żywo.**
+  Sprawdzić, czy zapis `system/ai` przechodzi kontem administratora. Osobna
+  usterka na tej ścieżce — odczyt kluczy przy starcie serwera wywalał się
+  w każdym uruchomieniu — została znaleziona i naprawiona w rundzie 8
+  (patrz sekcja 4, punkt 9).
+
+### 🟡 Odwrócenie bieli i czerni w trybie dziennym trzyma się JEDNEJ zasady
+
+`--color-white` i `--color-black` są w trybie dziennym zamienione na przeciwne
+wartości (`index.css`), bo w komponentach obie znaczą rolę („włosowa kreska",
+„studzienka", „napis na wypełnieniu"), a nie dosłowny kolor. **Pisząc nowy
+komponent, używaj tokenów** (`border-line-strong`, `bg-base-100`, `text-text-hi`,
+`text-accent-ink`) — wtedy nic nie trzeba odwracać.
+
+Jeżeli w jakimś miejscu potrzebna jest PRAWDZIWA biel albo czerń w obu motywach
+(kartka wydruku, napis na czerwonym tle błędu, barwa spoza palety), wpisz
+`bg-[#ffffff]` / `text-[#0f1720]` — wartość arbitralna nie przechodzi przez
+zmienną i zostaje dosłowna. Takich miejsc jest teraz kilkanaście i wszystkie są
+świadome.
+
+Zapas dla przeglądarek bez `color-mix` (sprzed 2023) zostaje biały — tego nie da
+się obejść i nie warto.
+
+### 🟡 Kolory wpisywane w treść dokumentu notatnika nie podlegają motywom
+
+`execCommand` i szablon lekcji zapisują kolor WPROST w HTML dokumentu
+(`style="color:…"`). Motyw nie ma jak go potem przestawić, a wpisy zrobione
+wcześniej zachowują barwy, które wtedy dostały. Dlatego każda nowa barwa
+w notatniku musi pochodzić z `utils/notebookPalette.ts` i mieć tę samą jasność
+względną (~0,22) co reszta — inaczej będzie czytelna na jednym papierze
+i nieczytelna na drugim. **Nie dobieraj kolorów notatnika „na oko" pod aktualnie
+włączony motyw.**
+
+Wpisy sprzed rundy 8 mają stare, jaskrawe barwy nagłówków. Nikt ich nie
+przepisuje za lektorem.
 
 ### 🟡 Podział na strony w notatniku to kreska, nie paginacja
 Warstwa nad kartką rysuje kreskę co 1123 px (A4 przy 96 dpi). Nie zna wysokości elementu, przez
@@ -135,6 +177,103 @@ Firestore obok lekcji.
 ---
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
+
+### 🧭 Profil kursanta jako osobny widok, tryb dzienny i paleta notatnika (2026-09-14, runda 8)
+
+**1. Wejście w profil kursanta CHOWA panel lektora.** Wcześniej profil dokładał
+się pod pulpitem: nagłówek panelu, baner uwagi, trzy kafelki, listwa narzędzi
+i „więcej narzędzi" zostawały nad nim w całości, więc każde kliknięcie zakładki
+wymagało przewinięcia sześciu ekranów cudzej treści. Teraz widok kursanta zajmuje
+ekran sam, a jedynym wyjściem jest przycisk „Panel lektora" w jego nagłówku.
+
+**2. Nagłówek kursanta to okno z czterema równymi kafelkami.**
+(`components/admin/StudentProfileHeader.tsx`) Poprzedni był jednym pasem
+z czternastoma rzeczami w jednej linii — awatar, imię, login, poziom, rola, stan
+konta, e-mail z dopiskiem, logowania, ostatnia wizyta i trzy przyciski, każde
+innej wysokości i wagi. Teraz dwa piętra: KTO TO JEST (awatar, imię, znaczniki,
+wyjście i menu) oraz CO O NIM WIADOMO — cztery równe kafelki metryk w siatce,
+bo są tej samej rangi. Kafelek e-maila i poziomu prowadzi wprost do właściwej
+sekcji profilu.
+
+**3. Każda zakładka kursanta ma tę samą ramę okna.**
+(`components/admin/StudentPanelSection.tsx`) Sześć zakładek było zbudowanych
+sześcioma sposobami: historia miała nagłówek nad paskiem pięciu przycisków,
+słownictwo nagłówek z przyciskami bez ramy, statystyki gołą siatkę bez nagłówka,
+testy trzy nagłówki jeden pod drugim. Teraz każda to okno: pasek tytułu z ikoną
+i licznikiem po lewej, narzędzia po prawej, pas filtrów pod spodem, treść
+w środku. Zakładki różnią się treścią, nie budową.
+
+**4. Jeden zestaw narzędzi na całą historię lekcji; Notion tylko tutaj.**
+Czynności stały w TRZECH miejscach naraz — „Pobierz z Notion" w nagłówku
+kursanta (czyli także nad statystykami i pracą domową, których Notion nie
+dotyczy), „Sprawdź Notion" w pasku źródeł i pięć przycisków nad listą. Trzy
+z nich dokładały lekcję, a wyglądały jak trzy różne funkcje. Teraz jedno menu
+„Lekcje": wpis ręczny, pobranie z Notion, z transkrypcji (AI), import zbiorczy,
+a pod kreską porządki (bloki Notion, eksport PDF). Pasek źródeł stracił własny
+przycisk i zwinął się do jednej linijki z liczbami; przez zwinięcie przebija się
+tylko transkrypcja czekająca na lektora.
+
+**5. AI Lesson Summary rozróżnia notatki od transkrypcji.** Funkcja dostawała
+JEDNO polecenie systemowe, napisane pod gotowe notatki ze spotkania. Wklejona
+transkrypcja dostawała to samo — model szukał w zapisie rozmowy sekcji, których
+tam nie ma, i oddawał trzy zdania streszczenia przy pustej reszcie pól. Do tego
+szła drogą importu zbiorczego, która przy zmianie tematu w rozmowie rozcinała
+jedne zajęcia na kilka wpisów.
+
+Modal pyta teraz, CO się wkleja. „Transkrypcja lekcji" dostaje osobne polecenie
+systemowe: wyłuskaj każde słowo i zwrot podane przez lektora, każdą poprawkę
+błędu, uwagi o wymowie, gramatykę i ustalenia, po czym ułóż je w STANDARDOWY
+UKŁAD BLOKÓW z historii lekcji — i idzie zawsze jako JEDNA lekcja. Wersja
+transkrypcyjna generuje też pracę domową na materiale z tych zajęć, bo blok 3
+jest częścią układu, który widzi kursant.
+
+**6. Bloki 2b–4 jadą wprost, a nie doklejone do „Things to Improve".** Praca
+domowa, klucz odpowiedzi, korekty i plan na kolejną lekcję mają własne pola
+w schemacie AI, w formularzu lekcji i w zapisie do bazy — wcześniej musiały
+jechać pod znacznikiem „Zadanie domowe:" i być rozcinane wyrażeniem regularnym.
+Stare wpisy otwierają się bez zmian (formularz wyciąga z nich bloki przez
+`extractLessonBlocks`). Data lekcji bierze się z materiału, gdy w nim jest.
+Dołożone wczytywanie plików `.txt/.md/.vtt/.srt` ze ścinaniem znaczników czasu.
+
+**7. Tryb dzienny: biel i czerń przestały być dosłowne.** Komponenty powstawały
+w trybie nocnym, więc kreski i wypełnienia są w nich zapisane jako biel z niskim
+kryciem: 1100 `border-white/10`, 500 `bg-white/5`, 770 `text-white`. Na białej
+karcie ta biel NIE ISTNIEJE — stąd wyprane okna dialogowe. Tailwind 4 liczy
+każdą z tych klas przez `color-mix(… var(--color-white) X%, transparent)`, więc
+podmiana samej zmiennej odwraca całą rodzinę naraz, z zachowaniem proporcji
+dobranych w ponad tysiącu miejsc. To samo z czernią (`bg-black/40` to studzienka
+pola, `text-black` napis na wypełnieniu akcentem). Wyjątki wpisane wprost jako
+`#ffffff` / `#0f1720`; przyciemnienie za oknem dialogowym ma własną regułę
+i zostaje ciemne, ale przy kryciu 0,45 zamiast 0,80.
+
+Poza tym: tło strony `#f2f4f7 → #e9edf2` (biała karta przy kryciu 50–60%
+dawała różnicę trzech jednostek jasności), `content-muted` 4,1:1 → 5,4:1,
+`text-faint` 2,3:1 → 4,5:1, mocniejsze obrysy i dwuwarstwowe cienie,
+a konstelacja z 1,1:1 na wyraźnie widoczną siatkę bliższą grafitowi niż zieleni.
+
+**8. Ciemna kartka notatnika należy do tej samej aplikacji.** Była CIEPŁA
+(`#211f1c`, druk `#e8e3d9`, linki `#5fe3c0`) i leżąc na chłodnym granacie
+wyglądała jak wklejona z innego programu. Teraz granat `#111a2c` o stopień
+jaśniejszy od kanwy, chłodna biel druku, akcent marki `#72f0b4` w linkach
+i zakreśleniach, cień z miętowym obrysem.
+
+Druga rzecz to kolory, które notatnik wpisuje W TREŚĆ dokumentu
+(`style="color:…"`) — motyw nie ma jak ich potem przestawić, więc ta sama
+wartość musi działać na obu papierach. Były dwie niezależne palety dobrane
+wyłącznie pod jasny papier. Teraz jedna (`utils/notebookPalette.ts`): sześć
+odcieni o tej samej jasności względnej (~0,22), czyli ~3,4:1 na papierze
+i ~4,4:1 na ciemnej kartce. Czytają z niej szablon lekcji, przyciski koloru
+i zakreślacze.
+
+**9. Naprawa: klucze AI z bazy nie wracały po restarcie.**
+`FIRESTORE_DATABASE_ID` była zadeklarowana w połowie `createApp`, a wczytanie
+kluczy odpala się na jej początku — każdy start kończył się wyjątkiem
+„Cannot access … before initialization", złapanym przez `catch` i zameldowanym
+jako „nie udało się wczytać kluczy z bazy". Klucz zapisany w Ustawieniach
+Administratora NIGDY nie wracał po wdrożeniu. Deklaracja przeniesiona nad
+pierwsze użycie; sprawdzone na świeżym starcie serwera.
+
+---
 
 ### 📄 Notatnik na własnej karcie, modele AI w ustawieniach (2026-09-14, rundy 5–7)
 
