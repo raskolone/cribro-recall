@@ -1877,7 +1877,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           )}
         </div>
 
-        <div ref={mainMenuRef} className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
+        <div
+          ref={mainMenuRef}
+          data-coach="tour-teacher-main"
+          className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4"
+        >
           {[
             {
               id: 'profile',
@@ -1931,6 +1935,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             return (
               <div
                 key={tile.id}
+                data-coach={
+                  tile.id === 'context'
+                    ? 'tour-teacher-context'
+                    : tile.id === 'notatnik'
+                    ? 'tour-teacher-scratchpad'
+                    : undefined
+                }
                 onClick={() =>
                   (tile as any).route
                     ? onViewChange?.((tile as any).route)
@@ -2002,7 +2013,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           moduł w dwóch miejscach na jednym ekranie znaczy tylko tyle, że
           nie wiadomo, które z nich jest właściwe. Zostaje to, czego wyżej
           nie ma. */}
-      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+      <div data-coach="tour-teacher-work" className="grid grid-cols-3 gap-2.5 sm:gap-3">
         {/*
           * TRZY PODRZĘDNE — i dokładnie trzy.
           *
@@ -2064,7 +2075,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           tydzień. Rozwinięta na stałe byłaby ścianą kafelków nad treścią
           panelu i zacierałaby różnicę między tym, co ważne, a tym, co po
           prostu istnieje. */}
-      <div className="space-y-3">
+      <div data-coach="tour-teacher-more" className="space-y-3">
         <button
           type="button"
           onClick={() => setShowMoreTools((prev) => !prev)}

@@ -32,6 +32,8 @@ import LessonHistoryScreen from './LessonHistoryScreen';
 import StudentScratchpadScreen from '../scratchpad/StudentScratchpadScreen';
 import TeacherScratchpadScreen from '../scratchpad/TeacherScratchpadScreen';
 import TeacherWorkScreen from './TeacherWorkScreen';
+import CoachMarks from '../ui/CoachMarks';
+import { buildStudentTourSteps, buildTeacherTourSteps } from './tourSteps';
 
 import TodayScreen from './TodayScreen';
 import StudentVocabPreview from './StudentVocabPreview';
@@ -49,7 +51,6 @@ import HomeworkScreen from './HomeworkScreen';
 import StudentHomeworkScreen from './StudentHomeworkScreen';
 import StudentHomeworkV2Screen from './StudentHomeworkV2Screen';
 import AdminDebuggingScreen from '../admin/AdminDebuggingScreen';
-import OnboardingOverlay from './OnboardingOverlay';
 import TeacherHomeworkNotification from './TeacherHomeworkNotification';
 import StudentHomeworkGradedModal from './StudentHomeworkGradedModal';
 import PasswordChangeSuggestion from './PasswordChangeSuggestion';
@@ -731,13 +732,21 @@ const Dashboard: React.FC = () => {
             onOpenHomework={(taskId) => handleNavigate('homework', { taskId })}
           />
         )}
-        {showOnboarding && <OnboardingOverlay onComplete={() => {
-          setShowOnboarding(false);
-          try { localStorage.setItem('has_seen_onboarding', 'true'); } catch(e) {}
-          if (user?.id && !user.onboardingCompleted) {
-            updateDoc(doc(db, 'users', user.id), { onboardingCompleted: true }).catch(console.error);
-          }
-        }} language={language} />}
+        {/* Przewodnik powitalny podświetla PRAWDZIWE elementy panelu, a nie
+            własne rysunki tego, jak wyglądają — patrz nagłówek `tourSteps.ts`.
+            To ten sam mechanizm, co samouczek w notatniku. */}
+        <CoachMarks
+          steps={isTeacher ? buildTeacherTourSteps() : buildStudentTourSteps()}
+          isOpen={showOnboarding}
+          onClose={() => {
+            setShowOnboarding(false);
+            try { localStorage.setItem('has_seen_onboarding', 'true'); } catch(e) {}
+            if (user?.id && !user.onboardingCompleted) {
+              updateDoc(doc(db, 'users', user.id), { onboardingCompleted: true }).catch(console.error);
+            }
+          }}
+          title={isTeacher ? 'Przewodnik po panelu lektora' : 'Przewodnik po panelu'}
+        />
         <div className="flex-1 min-h-0 flex flex-col">{renderContent()}</div>
       </main>
       <AdminMessageModal />

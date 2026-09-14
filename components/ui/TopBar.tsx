@@ -137,6 +137,23 @@ const TopBar: React.FC<TopBarProps> = ({
           )}
         </div>
 
+        {/* ── Pomoc ──
+
+            Stała, własny przycisk obok koła zębatego. Pod kołem zębatym była
+            czwartą pozycją w rozwijanym panelu, czyli dokładnie tam, gdzie się
+            jej nie szuka: przewodnik po aplikacji jest potrzebny wtedy, gdy
+            ktoś NIE WIE, gdzie czegokolwiek szukać — a więc nie znajdzie go
+            w menu, którego istnienia też jeszcze nie odkrył. */}
+        <button
+          type="button"
+          onClick={onShowHelp}
+          aria-label={t('Przewodnik po aplikacji', 'App guide')}
+          title={t('Przewodnik po aplikacji', 'App guide')}
+          className="shrink-0 w-10 h-10 rounded-xl border border-line-strong bg-base-100/60 text-content-muted hover:text-primary hover:border-primary/40 flex items-center justify-center transition-colors cursor-pointer"
+        >
+          <HelpCircle size={18} />
+        </button>
+
         {/* ── Panel zarządzania ── */}
         <div className="relative shrink-0" ref={panelRef}>
           <button

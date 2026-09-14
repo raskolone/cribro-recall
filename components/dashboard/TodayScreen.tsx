@@ -540,6 +540,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
     },
     {
       id: 'tests',
+      domId: 'tour-tests',
       label: L.tools.tests,
       icon: <GraduationCap size={20} />,
     },
@@ -552,6 +553,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
     },
     {
       id: 'practice',
+      domId: 'tour-practice',
       label: L.tools.practice,
       icon: <Dumbbell size={20} />,
     },
@@ -602,6 +604,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
   return (
     <div className="w-full max-w-3xl mx-auto px-3 sm:px-4 pt-5 pb-24 sm:py-8 space-y-6">
       {/* Szerszy nagłówek główny ze statystykami, gratulacjami i statusem zadań od lektora */}
+      <div data-coach="tour-hero">
       <StudentHeroHeader
         studentId={targetId}
         onOpenHomework={onOpenHomework || (() => {})}
@@ -610,6 +613,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
         streakCount={user?.streakCount || 0}
         streakHidden={user?.streakHidden}
       />
+      </div>
 
       <div className="max-w-2xl mx-auto space-y-5">
         {reviewCard}

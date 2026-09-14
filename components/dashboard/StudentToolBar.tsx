@@ -38,8 +38,8 @@ export interface StudentTool {
   id: string;
   /**
    * Identyfikator elementu w drzewie — używany przez samouczek, który
-   * podświetla konkretne kafelki (`OnboardingOverlay`, `document.getElementById`).
-   * Bez niego samouczek nie ma czego wskazać i rysuje krok bez reflektora.
+   * podświetla konkretne kafelki (`CoachMarks` szuka po `data-coach`).
+   * Bez niego przewodnik nie ma czego wskazać i rysuje krok bez reflektora.
    */
   domId?: string;
   label: string;
@@ -79,6 +79,9 @@ const StudentToolBar: React.FC<StudentToolBarProps> = ({ tools, openId, onToggle
         <button
           key={tool.id}
           id={tool.domId}
+          /* Ten sam identyfikator służy samouczkowi (CoachMarks szuka po
+             `data-coach`) i podświetleniu w przewodniku powitalnym. */
+          data-coach={tool.domId}
           type="button"
           onClick={() => (tool.onNavigate ? tool.onNavigate() : onToggle(tool.id))}
           aria-expanded={tool.onNavigate ? undefined : isOpen}
