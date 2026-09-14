@@ -101,6 +101,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   /** Druga listwa narzędzi — zwinięta, bo to wejścia „raz na tydzień". */
   const [showMoreTools, setShowMoreTools] = useState(false);
   const [profileSaveModal, setProfileSaveModal] = useState<{ isOpen: boolean; success: boolean; title: string; message: string } | null>(null);
+  /**
+   * Która sekcja profilu jest widoczna.
+   *
+   * ══ DLACZEGO JEDNA NARAZ ══
+   *
+   * Profil kursanta miał pięć rozłożonych kart pod sobą: dane, mailing, poziom
+   * i prompty AI, Notion, uprawnienia. Razem około dwudziestu pól, trzech
+   * przełączników i siedmiu przycisków na jednym przewijanym ekranie — z czego
+   * przy każdym wejściu rusza się jedną, najwyżej dwie rzeczy. Reszta była
+   * tłem, przez które trzeba przewinąć.
+   *
+   * Teraz jest to lista sekcji i JEDNA otwarta. Wysokość ekranu przestaje
+   * zależeć od tego, ile pól ma akurat wybrana sekcja — panel jest za każdym
+   * razem tego samego kształtu.
+   */
+  const [profileSection, setProfileSection] = useState<
+    'basic' | 'mail' | 'level' | 'notion' | 'access'
+  >('basic');
   
 
   const fetchUsers = async () => {
@@ -3231,7 +3249,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           )}
 
           {activeTab === 'profile' && (
-            <div className="max-w-4xl space-y-6 animate-fade-in">
+            <div className="max-w-5xl space-y-5 animate-fade-in">
               {/* Header */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-line-strong">
                 <div>
@@ -3240,7 +3258,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     {i18n.t("Profil i parametry kursanta")}
                   </h3>
                   <p className="text-xs text-content-muted mt-0.5">
-                    {i18n.t("Kompleksowa edycja danych konta, powiadomień e-mail, poziomu CEFR, integracji z Notion i uprawnień systemowych.")}
+                    {i18n.t("Wybierz sekcję po lewej. Zmiany zapisuje przycisk obok.")}
                   </p>
                 </div>
                 <Button 
@@ -3253,8 +3271,49 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 </Button>
               </div>
 
+              {/* SPIS SEKCJI — pięć równych pozycji, jedna otwarta.
+
+                  Na komputerze kolumna z lewej, na telefonie przewijany pasek.
+                  To ten sam wzór, co w ustawieniach systemowych i z tego samego
+                  powodu: ustawień się nie czyta po kolei, tylko wchodzi się po
+                  jedną rzecz i wychodzi. */}
+              <div className="flex flex-col md:flex-row gap-4 md:gap-5">
+                <nav
+                  aria-label="Sekcje profilu"
+                  className="md:w-52 shrink-0 flex md:flex-col gap-1.5 overflow-x-auto md:overflow-visible no-scrollbar -mx-1 px-1 md:mx-0 md:px-0"
+                >
+                  {[
+                    { id: 'basic', label: 'Dane podstawowe', icon: UserIcon },
+                    { id: 'mail', label: 'E-mail i dostęp', icon: Mail },
+                    { id: 'level', label: 'Poziom i AI', icon: Sparkles },
+                    { id: 'notion', label: 'Notion i aktywność', icon: RefreshCw },
+                    { id: 'access', label: 'Uprawnienia', icon: Shield },
+                  ].map(section => {
+                    const SectionIcon = section.icon;
+                    const isActive = profileSection === section.id;
+                    return (
+                      <button
+                        key={section.id}
+                        type="button"
+                        onClick={() => setProfileSection(section.id as any)}
+                        className={`shrink-0 md:w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs sm:text-sm font-semibold whitespace-nowrap transition-colors cursor-pointer border ${
+                          isActive
+                            ? 'bg-primary/12 border-primary/40 text-primary'
+                            : 'bg-base-200/40 border-line-strong text-content-muted hover:text-text-hi hover:border-primary/30'
+                        }`}
+                      >
+                        <SectionIcon size={15} className="shrink-0" />
+                        <span className="truncate">{section.label}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
+
+                <div className="flex-1 min-w-0 space-y-4">
+
               {/* CARD 1: DANE PODSTAWOWE I IDENTYFIKACJA */}
-              <div className="bg-base-200/50 border border-line-strong rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
+              {profileSection === 'basic' && (
+              <div className="rounded-2xl border border-line-strong bg-base-200/50 p-5 md:p-6 space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -3326,9 +3385,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </Button>
                 </div>
               </div>
+              )}
 
               {/* CARD 2: KOMUNIKACJA I MAILING */}
-              <div className="bg-base-200/50 border border-line-strong rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
+              {profileSection === 'mail' && (
+              <div className="rounded-2xl border border-line-strong bg-base-200/50 p-5 md:p-6 space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -3463,10 +3524,12 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </Button>
                 </div>
               </div>
+              )}
 
 
               {/* CARD 3: POZIOM CEFR & KONFIGURACJA AI */}
-              <div className="bg-base-200/50 border border-line-strong rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
+              {profileSection === 'level' && (
+              <div className="rounded-2xl border border-line-strong bg-base-200/50 p-5 md:p-6 space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -3535,9 +3598,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </p>
                 </div>
               </div>
+              )}
 
               {/* CARD 4: INTEGRACJA NOTION & METRYKI AKTYWNOŚCI */}
-              <div className="bg-base-200/50 border border-line-strong rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
+              {profileSection === 'notion' && (
+              <div className="rounded-2xl border border-line-strong bg-base-200/50 p-5 md:p-6 space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -3598,9 +3663,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </div>
                 </div>
               </div>
+              )}
 
               {/* CARD 5: UPRAWNIENIA I ZARZĄDZANIE KONTEM */}
-              <div className="bg-base-200/50 border border-line-strong rounded-2xl p-5 md:p-6 space-y-4 shadow-sm backdrop-blur-sm">
+              {profileSection === 'access' && (
+              <div className="rounded-2xl border border-line-strong bg-base-200/50 p-5 md:p-6 space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -3843,18 +3910,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </div>
                 </div>
               </div>
+              )}
 
-              {/* BOTTOM SAVE BAR */}
-              <div className="pt-2 flex justify-end">
-                <Button 
-                  onClick={() => handleSaveProfile()} 
-                  isLoading={isSavingProfile}
-                  className="bg-primary text-accent-ink hover:brightness-110 font-bold px-6 py-3 rounded-xl shadow-btn flex items-center gap-2 text-sm cursor-pointer"
-                >
-                  <Save size={18} />
-                  {i18n.t("Zapisz wszystkie zmiany w profilu")}
-                </Button>
+                </div>
               </div>
+
+              {/* Drugi przycisk zapisu USUNIĘTY. Był kopią tego z nagłówka,
+                  postawioną na końcu ściany pięciu kart — a że karty są teraz
+                  pokazywane po jednej, do przycisku w nagłówku jest zawsze
+                  blisko. Dwa przyciski robiące to samo na jednym ekranie każą
+                  zastanawiać się, czym się różnią. */}
             </div>
           )}
         </div>
