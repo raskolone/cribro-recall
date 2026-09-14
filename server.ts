@@ -403,6 +403,21 @@ export function createApp() {
   const adminAuth = getAuth(adminApp);
 
   /*
+   * Nazwa bazy Firestore. Stoi TUTAJ, a nie niżej przy sekretach mailingu,
+   * bo wczytanie kluczy AI zaraz pod spodem odpala się przy starcie procesu —
+   * czyli zanim wykonają się deklaracje z dalszej części `createApp`.
+   * Przy poprzednim położeniu każdy start kończył się wyjątkiem
+   * „Cannot access 'FIRESTORE_DATABASE_ID' before initialization", złapanym
+   * przez `catch` i zameldowanym jako „nie udało się wczytać kluczy z bazy" —
+   * więc klucze zapisane w ustawieniach NIGDY nie wracały po restarcie,
+   * a komunikat kazał szukać przyczyny w bazie.
+   *
+   * Pozostałe użycia są w obsłudze żądań, czyli po zakończeniu `createApp`,
+   * i działały niezależnie od tego błędu.
+   */
+  const FIRESTORE_DATABASE_ID = 'ai-studio-520a4841-33d0-41ef-829a-838ebc44072d';
+
+  /*
    * ══ KLUCZE ZAPISANE W APLIKACJI WRACAJĄ PO RESTARCIE ══
    *
    * Klucz podany w ustawieniach ląduje w `process.env` procesu ORAZ w bazie.
@@ -639,7 +654,6 @@ export function createApp() {
     }
   });
 
-  const FIRESTORE_DATABASE_ID = 'ai-studio-520a4841-33d0-41ef-829a-838ebc44072d';
   const UNSUBSCRIBE_SECRET = process.env.UNSUBSCRIBE_SECRET || 'cribro-recall-opt-out-secret-2026';
 
   const generateUnsubscribeToken = (uid: string): string => {
