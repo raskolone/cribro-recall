@@ -73,6 +73,7 @@ import CoachMarks from '../ui/CoachMarks';
 import { buildScratchpadCoachSteps } from './scratchpadCoachSteps';
 import ScratchpadTemplateManagerModal from './ScratchpadTemplateManagerModal';
 import { buildLessonTemplate, LESSON_SECTIONS } from '../../utils/lessonTemplate';
+import { NOTEBOOK_COLORS, NOTEBOOK_INK, NOTEBOOK_SWATCHES } from '../../utils/notebookPalette';
 
 /**
  * Wysokość strony A4 przy 96 dpi (297 mm) minus margines dolny, w pikselach.
@@ -696,6 +697,16 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   }, [refreshTemplates]);
 
   // Szybkie kolorowanie pod błędy / poprawki
+  /**
+   * Zakreślenie fragmentu.
+   *
+   * Kolor tła i tekstu ląduje W TREŚCI dokumentu (styl na `span`), więc motyw
+   * nie ma jak go potem przestawić — obowiązuje ta sama zasada, co dla całej
+   * palety notatnika (`utils/notebookPalette.ts`): jedna wartość ma być
+   * czytelna na jasnym papierze I na ciemnej kartce. Poprzednie pastele
+   * (#fca5a5, #6ee7b7, #fcd34d) były dobrane pod ciemną kartkę i na jasnym
+   * papierze ginęły w tle zakreślenia.
+   */
   const handleHighlight = (bgColor: string, textColor: string) => {
     if (isReadOnly) return;
     const selection = window.getSelection();
@@ -1266,14 +1277,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
               wybór: to notatnik lekcyjny, nie edytor grafiki. */}
           <div className="flex items-center gap-1" data-coach="pad-color" title="Kolor tekstu">
             <Palette size={14} className="text-text-2 mx-0.5" />
-            {[
-              { name: 'Domyślny', value: 'inherit' },
-              { name: 'Czerwony', value: '#dc2626' },
-              { name: 'Niebieski', value: '#2563eb' },
-              { name: 'Zielony', value: '#16a34a' },
-              { name: 'Fioletowy', value: '#7c3aed' },
-              { name: 'Pomarańczowy', value: '#ea580c' },
-            ].map(swatch => (
+            {[{ name: 'Domyślny', value: 'inherit' }, ...NOTEBOOK_SWATCHES].map(swatch => (
               <button
                 key={swatch.value}
                 type="button"
@@ -1285,9 +1289,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
                   execCmd(
                     'foreColor',
                     swatch.value === 'inherit'
-                      ? paperTheme === 'dark'
-                        ? '#e7eaf0'
-                        : '#1f2329'
+                      ? NOTEBOOK_INK[paperTheme === 'dark' ? 'dark' : 'light']
                       : swatch.value
                   )
                 }
@@ -1307,7 +1309,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
             <button
               type="button"
               onMouseDown={event => event.preventDefault()}
-              onClick={() => handleHighlight('rgba(239, 68, 68, 0.25)', '#fca5a5')}
+              onClick={() => handleHighlight('rgba(209, 84, 76, 0.22)', NOTEBOOK_COLORS.red)}
               className="h-8 px-2.5 rounded-lg text-[11px] font-bold bg-danger/15 text-danger border border-danger/30 hover:bg-danger/25 transition-colors cursor-pointer"
               title="Zaznacz fragment jako błąd kursanta"
             >
@@ -1316,7 +1318,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
             <button
               type="button"
               onMouseDown={event => event.preventDefault()}
-              onClick={() => handleHighlight('rgba(16, 185, 129, 0.25)', '#6ee7b7')}
+              onClick={() => handleHighlight('rgba(23, 145, 122, 0.22)', NOTEBOOK_COLORS.green)}
               className="h-8 px-2.5 rounded-lg text-[11px] font-bold bg-accent/12 text-accent border border-accent/30 hover:bg-accent/20 transition-colors cursor-pointer"
               title="Zaznacz fragment jako poprawną formę"
             >
@@ -1325,7 +1327,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
             <button
               type="button"
               onMouseDown={event => event.preventDefault()}
-              onClick={() => handleHighlight('rgba(245, 158, 11, 0.25)', '#fcd34d')}
+              onClick={() => handleHighlight('rgba(192, 106, 38, 0.22)', NOTEBOOK_COLORS.orange)}
               className="h-8 px-2.5 rounded-lg text-[11px] font-bold bg-warn/15 text-warn border border-warn/30 hover:bg-warn/25 transition-colors cursor-pointer"
               title="Wyróżnij nowe słówko"
             >

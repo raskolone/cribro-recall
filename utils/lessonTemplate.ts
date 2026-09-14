@@ -1,3 +1,5 @@
+import { NOTEBOOK_COLORS } from './notebookPalette';
+
 /**
  * Szablon wpisu lekcyjnego w notatniku.
  *
@@ -36,13 +38,30 @@ export const templateDate = (date: Date = new Date()): string =>
  * Sekcje wpisu lekcyjnego. Kolor niesie ROLĘ sekcji, nie ozdobę: te same pięć
  * barw wraca w każdej lekcji, więc po miesiącu lektor trafia wzrokiem w
  * „Homework" bez czytania nagłówka.
+ *
+ * ══ DLACZEGO WSZYSTKIE PIĘĆ MA TĘ SAMĄ JASNOŚĆ ══
+ *
+ * Kolor jest wpisany w HTML dokumentu (`style="color:…"`), więc nie da się
+ * go przestawić motywem — ta sama wartość musi działać na jasnym papierze
+ * I na ciemnej kartce. Poprzedni zestaw był dobrany wyłącznie pod papier:
+ * mocne, ciemne barwy (#d81b7a, #1d4ed8, #7c3aed) na ciemnej kartce robiły
+ * się jaskrawymi plamami, a każda z nich innej mocy — pięć nagłówków
+ * wyglądało jak pięć niezależnych decyzji.
+ *
+ * Te pięć ma tę samą jasność względną (około 0,22), czyli około 3,4:1 na
+ * papierze i 4,4:1 na ciemnej kartce. Wspólna jasność jest tym, co robi
+ * z nich JEDEN zestaw: różnią się wyłącznie odcieniem, bo tylko odcień
+ * niesie tu znaczenie.
+ *
+ * Wpisy zrobione wcześniej zachowują swoje kolory — są zapisane w treści
+ * dokumentu i nikt ich nie przepisuje za lektorem.
  */
 export const LESSON_SECTIONS: { title: string; color: string }[] = [
-  { title: 'Revision', color: '#d81b7a' },
-  { title: 'Main topic / Practice', color: '#0e8f83' },
-  { title: 'Lesson Summary', color: '#1d4ed8' },
-  { title: 'Key Language &amp; Corrections (New words)', color: '#c2321f' },
-  { title: 'Homework', color: '#7c3aed' },
+  { title: 'Revision', color: NOTEBOOK_COLORS.rose },
+  { title: 'Main topic / Practice', color: NOTEBOOK_COLORS.green },
+  { title: 'Lesson Summary', color: NOTEBOOK_COLORS.blue },
+  { title: 'Key Language &amp; Corrections (New words)', color: NOTEBOOK_COLORS.orange },
+  { title: 'Homework', color: NOTEBOOK_COLORS.violet },
 ];
 
 /**

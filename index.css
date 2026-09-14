@@ -711,17 +711,35 @@ tr.liquid-glass-hover:hover {
 }
 
 .pad-paper[data-pad-theme="dark"] {
-  /* Nie czarna: czysta czerń przy białym tekście daje halo wokół liter.
-     #1b1f27 to ta sama różnica jasności co biała kartka, tylko odwrócona. */
-  --pad-bg:     #211f1c;
-  --pad-fg:     #e8e3d9;
-  --pad-h:      #fbf8f2;
-  --pad-muted:  #a8a093;
-  --pad-line:   rgba(255, 255, 255, 0.14);
-  --pad-link:   #5fe3c0;
-  --pad-mark:   rgba(255, 255, 255, 0.07);
-  --pad-page:   rgba(255, 255, 255, 0.18);
-  --pad-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.45);
+  /* ══ CIEMNA KARTKA NALEŻY DO TEJ SAMEJ APLIKACJI ══
+
+     Poprzednia wersja była CIEPŁA (#211f1c, tekst #e8e3d9, link #5fe3c0):
+     brązowo-czarny papier z kremowym drukiem. Sam w sobie czytelny, ale
+     leżący na chłodnym granacie aplikacji wyglądał jak wklejony z innego
+     programu — ciepła plama na zimnym tle, z linkami w odcieniu zieleni
+     o pół tonu innym niż akcent marki.
+
+     Teraz kartka jest z tej samej rodziny co strona startowa i cała reszta
+     trybu nocnego: granat (#111a2c) o jeden stopień jaśniejszy od kanwy pod
+     nią, więc widać, że LEŻY na czymś, chłodna biel druku i akcent marki
+     (#72f0b4) wszędzie, gdzie coś ma być wyróżnione. Nie czysta czerń
+     i nie czysta biel: czerń przy białym tekście daje halo wokół liter. */
+  --pad-bg:     #111a2c;
+  --pad-fg:     #e3e8f0;
+  --pad-h:      #ffffff;
+  --pad-muted:  #93a3ba;
+  --pad-line:   rgba(255, 255, 255, 0.12);
+  --pad-link:   #72f0b4;
+  /* Zakreślenia i kod akcentem, nie szarością — to te same miejsca, które
+     w interfejsie aplikacji dostają miętowy poblask. */
+  --pad-mark:   rgba(114, 240, 180, 0.10);
+  --pad-page:   rgba(255, 255, 255, 0.16);
+  /* Cień z poświatą akcentu na krawędzi: kartka odkleja się od kanwy tak
+     samo, jak karty odklejają się od tła w panelu. */
+  --pad-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.55),
+    0 18px 44px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(114, 240, 180, 0.07);
 }
 
 /* ── Nagłówki stopniowane ──
@@ -986,7 +1004,18 @@ tr.liquid-glass-hover:hover {
   color-scheme: light;
 }
 
-/* Powierzchnie, na których biel zostaje bielą. */
+/* Powierzchnie, na których biel zostaje bielą.
+
+   ══ CZEGO TU JUŻ NIE MA (2026-09-14) ══
+
+   `bg-ink`, `bg-ink-2`, `bg-black`, `bg-black/80` i `bg-black/70` wypadły
+   z tej listy. Wszystkie pięć znaczyło „ciemne wypełnienie", ale w trybie
+   dziennym żadne z nich ciemne nie jest: `--ink` to jasna studzienka pola
+   (#dfe5ec), a czerń jest odwrócona na powierzchnię (patrz `--color-black`
+   wyżej). Wymuszanie na nich bieli dawało biały tekst na jasnym tle —
+   dokładnie ten błąd, przed którym ta lista miała bronić, tylko od drugiej
+   strony. Przyciemnienie za oknem dialogowym ma własną regułę i nie nosi
+   tekstu, więc nic przez to nie traci. */
 :root.light [class~="bg-primary"],
 :root.light [class~="bg-primary/95"],
 :root.light [class~="bg-primary/90"],
@@ -995,11 +1024,6 @@ tr.liquid-glass-hover:hover {
 :root.light [class~="bg-danger"],
 :root.light [class~="bg-warn"],
 :root.light [class~="bg-info"],
-:root.light [class~="bg-ink"],
-:root.light [class~="bg-ink-2"],
-:root.light [class~="bg-black"],
-:root.light [class~="bg-black/80"],
-:root.light [class~="bg-black/70"],
 :root.light [class~="bg-amber-500"],
 :root.light [class~="bg-emerald-500"],
 :root.light [class~="bg-rose-500"],
@@ -1013,11 +1037,6 @@ tr.liquid-glass-hover:hover {
 :root[data-theme="light"] [class~="bg-danger"],
 :root[data-theme="light"] [class~="bg-warn"],
 :root[data-theme="light"] [class~="bg-info"],
-:root[data-theme="light"] [class~="bg-ink"],
-:root[data-theme="light"] [class~="bg-ink-2"],
-:root[data-theme="light"] [class~="bg-black"],
-:root[data-theme="light"] [class~="bg-black/80"],
-:root[data-theme="light"] [class~="bg-black/70"],
 :root[data-theme="light"] [class~="bg-amber-500"],
 :root[data-theme="light"] [class~="bg-emerald-500"],
 :root[data-theme="light"] [class~="bg-rose-500"],
@@ -1227,7 +1246,7 @@ tr.liquid-glass-hover:hover {
 .pad-shell.is-standalone::after { content: none; }
 
 .pad-shell.is-standalone .pad-canvas {
-  background: color-mix(in srgb, var(--ink) 60%, var(--bg));
+  background: color-mix(in srgb, var(--ink) 45%, var(--bg));
 }
 
 .pad-shell.is-standalone .pad-bar {
