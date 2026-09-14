@@ -1125,3 +1125,71 @@ Ryzyka:
 - `firestore.rules` NIETKNIĘTY (44/44).
 - Zmiana w `CoachMarks` dotyczy też samouczka notatnika i prezentacji —
   oba używają tego samego komponentu.
+
+---
+
+2026-09-14 (runda 7) — Claude Code / Opus 5
+
+Zadanie: notatnik jako osobna karta przeglądarki z wyglądem Google Docs
+  i arkuszem A4, domyślna edycja przez kursanta, kolizja w prawym dolnym
+  rogu, ustawienia modeli AI dla administratora, wykrywanie duplikatów
+  w historii lekcji i numeracja od najstarszej.
+
+Zrobione (commit na etap):
+- `components/scratchpad/ScratchpadPage.tsx` (nowy) — trasa `/scratchpad`
+  dla OBU ról; lektor dostaje edytor, reszta widok po linku/PIN-ie.
+  `openScratchpadTab()` w `scratchpadService` jest jedynym wejściem.
+  Warianty `overlay` i trasa w aplikacji USUNIĘTE.
+- `TeacherScratchpadScreen` — wariant `standalone`, `documentId`,
+  dopisywanie id do adresu po utworzeniu notatnika roboczego.
+- `scratchpadService` — `allowStudentEdit: true` domyślnie.
+- `ScratchpadEditor` + `index.css` — arkusz A4 (794 px, margines 76 px),
+  obudowa bez ramy na własnej karcie, motyw całej strony za motywem kartki.
+- `utils/lessonTemplate.ts` (nowy) + 6 testów — wpis „Lesson N — data"
+  z numerem liczonym z nagłówków dokumentu.
+- `index.css` — kolejka prawego dolnego rogu (`--rail-monitor`,
+  `.rail-bug`, `.rail-notice`); monitor melduje własną wysokość.
+- `utils/lessonDuplicates.ts` (nowy) + 10 testów;
+  `components/admin/LessonDuplicatesPanel.tsx` (nowy);
+  zapora w `createLessonRecordWithVocabularySet`.
+- `services/aiModels.ts` — zadania AI, `cascadeForTask/Category`;
+  `services/aiConfigService.ts` (nowy);
+  `components/settings/AiModelsSettings.tsx` (nowy);
+  `server.ts` — `/api/ai/config`, `/api/ai/save-key`, wczytanie kluczy
+  z bazy przy starcie.
+
+Nie dokończone / do sprawdzenia:
+- NIC nie oglądane w przeglądarce. tsc + 316 testów + build + 44 testy
+  reguł przechodzą.
+- `/api/ai/*` nie były wołane na żywo — trzeba sprawdzić, czy
+  `system/ai` daje się zapisać kontem administratora.
+- Duplikaty: panel kasuje wpisy lekcji, ale NIE kasuje powiązanych
+  `vocabularySets`. Zostają osierocone zestawy słownictwa — do decyzji,
+  czy usuwać razem.
+- Eksport do PDF/Worda nie wie o arkuszu A4 — łamanie stron w pliku nadal
+  nie pokrywa się z kreskami na ekranie.
+- Widok kursanta w notatniku (`PublicScratchpadScreen`) nie dostał
+  arkusza A4 ani motywu strony — używa `ScratchpadEditor` bez
+  `standalone`.
+
+Decyzje architektoniczne:
+- JEDEN adres notatnika dla lektora i kursanta; o widoku decyduje rola
+  otwierającego, nie osobna ścieżka. Dzięki temu link z paska adresu jest
+  tym samym linkiem, który idzie do kursanta.
+- Numer lekcji liczony z NAGŁÓWKÓW dokumentu, nie z licznika w bazie —
+  licznik byłby drugą prawdą i rozjechałby się po ręcznej poprawce.
+- Duplikaty dzielone na pewne (temat + data) i podejrzane (temat + treść,
+  inne daty); podejrzanych nie kasujemy hurtem, bo cykliczna powtórka
+  tematu jest normalną lekcją.
+- Wybór modeli wpięty przez kategorię zapytania, którą wszystkie
+  wywołania i tak już podają — zero zmian w miejscach wywołań.
+- Klucze API: zmienna środowiskowa ma pierwszeństwo nad zapisem
+  w aplikacji; interfejs mówi, które źródło jest aktywne.
+
+Ryzyka:
+- `firestore.rules` NIETKNIĘTY (44/44). Nowy dokument `system/ai` jest
+  czytany i zapisywany WYŁĄCZNIE przez Admin SDK na serwerze.
+- `/api/ai/config` jest dostępne dla każdego zalogowanego (aplikacja musi
+  znać wybór modeli) — zwraca modele i MASKI kluczy, nigdy pełne wartości.
+- Zmiana domyślnej wartości `allowStudentEdit` dotyczy wyłącznie NOWYCH
+  notatników; istniejące zostają z dotychczasowym ustawieniem.
