@@ -615,7 +615,10 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
       />
       </div>
 
-      <div className="max-w-2xl mx-auto space-y-5">
+      {/* Ta sama szerokość, co nagłówek wyżej. Wcześniej nagłówek miał 768 px,
+          a listwa kafelków pod nim 672 px — krawędzie nie schodziły się w pionie
+          i panel wyglądał na złożony z dwóch różnych ekranów. */}
+      <div className="space-y-5">
         {reviewCard}
 
         <StudentToolBar
@@ -624,9 +627,28 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
           onToggle={(id) => setOpenTool((prev) => (prev === id ? null : id))}
         />
 
-        {/* Treść otwartego kafelka — zawsze w tym samym miejscu, pod listwą. */}
+        {/* Treść otwartego kafelka — zawsze w tym samym miejscu, pod listwą.
+
+            Z własnym paskiem tytułu: sekcje renderują się bez nagłówków
+            (`headless`), więc po otwarciu kursant dostawał ramkę z treścią
+            i NICZYM, co by mówiło, na co patrzy — a po przewinięciu kafelek
+            z podpisem był już poza ekranem. Pasek mówi to raz i daje wyjście
+            w tym samym miejscu, w którym kończy się czytanie. */}
         {openTool && (
           <div className="rounded-2xl border border-line-strong bg-base-200/40 overflow-hidden">
+            <div className="px-4 py-2.5 flex items-center justify-between gap-3 border-b border-line-soft bg-base-300/40">
+              <span className="min-w-0 flex items-center gap-2 text-sm font-bold text-text-hi truncate">
+                {tools.find((tool) => tool.id === openTool)?.icon}
+                {tools.find((tool) => tool.id === openTool)?.label}
+              </span>
+              <button
+                type="button"
+                onClick={() => setOpenTool(null)}
+                className="shrink-0 h-8 px-2.5 rounded-lg border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] text-[11px] font-semibold transition-colors cursor-pointer"
+              >
+                Zwiń
+              </button>
+            </div>
             {openTool === 'homework' && (
               <StudentHomeworkPanelSection
                 headless
