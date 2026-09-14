@@ -48,6 +48,8 @@ import StudentNotionSyncModal from './StudentNotionSyncModal';
 import LessonSourceBar from './LessonSourceBar';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
 import CleanLessonsModal from './CleanLessonsModal';
+import LessonDuplicatesPanel from './LessonDuplicatesPanel';
+import { sortChronologically } from '../../utils/lessonDuplicates';
 import AdminMailingScreen from './AdminMailingScreen';
 import ScratchpadStudentPicker from '../scratchpad/ScratchpadStudentPicker';
 import { openScratchpadTab } from '../../services/scratchpadService';
@@ -2541,9 +2543,27 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <Button size="sm" onClick={() => openLessonRecordModal('edit')}>{i18n.t("Dodaj wpis")}</Button>
                   </div>
                 </div>
+                {selectedUser && (
+                  <LessonDuplicatesPanel
+                    studentId={selectedUser.id}
+                    lessonRecords={lessonRecords}
+                    onRemoved={(removedIds) => {
+                      setLessonRecords((prev) => prev.filter((r) => !removedIds.includes(r.id)));
+                      showToast(`Usunięto ${removedIds.length} zdublowanych wpisów.`);
+                    }}
+                  />
+                )}
+
                 {(() => {
                   const pendingLessons = lessonRecords.filter(isLessonPendingConfirmation);
                   const confirmedLessons = lessonRecords.filter(r => !isLessonPendingConfirmation(r) && r.status !== 'rejected');
+                  /* Numer lekcji jest przypisany RAZ, po dacie rosnąco, i nie
+                     zależy od tego, w jakiej kolejności ekran akurat wyświetla
+                     wpisy — grupowanie po miesiącach przestawia kolejność, a
+                     numer ma zostać ten sam. */
+                  const chronologicalNumbers = new Map<string, number>(
+                    sortChronologically(confirmedLessons).map((record, index) => [record.id, index + 1])
+                  );
 
                   // Helper: weryfikacja czy dana lekcja z Notion istnieje już w bazie kursanta
                   const findExistingMatch = (pending: LessonRecord): LessonRecord | undefined => {
@@ -2942,8 +2962,12 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                         {isExpanded && (
                                             <div className="grid grid-cols-1 gap-2.5 pl-2 sm:pl-4 border-l-2 border-primary/10 ml-2 sm:ml-4 mt-1 mb-2 animate-fadeIn">
                                                 {group.items.map(record => {
-                                                    const globalIndex = confirmedLessons.findIndex(l => l.id === record.id);
-                                                    const lessonNumber = confirmedLessons.length - globalIndex;
+                                                    /* Numeracja OD NAJSTARSZEJ: #1 to pierwsze zajęcia
+                                                       z tym kursantem i ten numer nigdy się nie zmienia.
+                                                       Wcześniej liczyliśmy od końca, więc każda nowa lekcja
+                                                       przesuwała numery wszystkich poprzednich — „wróć do
+                                                       lekcji 5" znaczyło co tydzień co innego. */
+                                                    const lessonNumber = chronologicalNumbers.get(record.id) || 0;
 
                                                     return (
                                                         <Card 

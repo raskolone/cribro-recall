@@ -1,6 +1,7 @@
 import { db } from '../firebase';
 import { doc, setDoc, collection, getDocs, query, orderBy, where, serverTimestamp, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { LessonRecord, RejectedNotionItem, VocabularySet } from '../types';
+import { findExistingDuplicate } from '../utils/lessonDuplicates';
 import { buildVocabularySetTitle, countVocabularyItems, getApprovedVocabularyText, splitVocabularyLines } from '../utils/vocabulary';
 
 export function parseVocabularyTextToCards(vocabularyText: string) {
@@ -97,6 +98,29 @@ export async function syncFlashcardSetForLesson(
   }
 }
 
+/**
+ * Czy ta lekcja już u kursanta jest.
+ *
+ * Wołane PRZED zapisem. Import z Notion nadaje każdemu wpisowi nowy
+ * identyfikator, więc powtórzona synchronizacja nie nadpisuje niczego —
+ * dokłada bliźniaka. Jedno sprawdzenie tutaj kosztuje jeden odczyt kolekcji
+ * i oszczędza sprzątanie całej historii.
+ */
+export async function findDuplicateLessonRecord(
+  studentId: string,
+  candidate: { topic?: string; date?: string }
+): Promise<LessonRecord | null> {
+  try {
+    const existing = await getLessonRecordsForStudent(studentId);
+    return findExistingDuplicate(existing, candidate);
+  } catch (err: any) {
+    // Brak odczytu nie może blokować zapisu lekcji — w najgorszym razie
+    // powstanie duplikat, który lektor usunie ręcznie.
+    console.warn('[Lekcje] Nie udało się sprawdzić duplikatów:', err?.message || err);
+    return null;
+  }
+}
+
 export async function createLessonRecordWithVocabularySet(input: {
   studentId: string;
   date: string;
@@ -111,7 +135,39 @@ export async function createLessonRecordWithVocabularySet(input: {
   scenarioContent?: string;
   /** Pozycje zatwierdzone do powtórek. Pominięcie = cały `vocabularyText`. */
   approvedItems?: string[];
-}): Promise<{ lessonRecordId: string; vocabularySetId: string }> {
+  /**
+   * Pominięcie sprawdzania duplikatów. Domyślnie sprawdzamy — świadomie
+   * zapisana druga lekcja o tym samym tytule tego samego dnia zdarza się
+   * znacznie rzadziej niż powtórzony import.
+   */
+  allowDuplicate?: boolean;
+}): Promise<{ lessonRecordId: string; vocabularySetId: string; duplicateOf?: string }> {
+  /*
+   * ══ ZAPORA NA DUPLIKATY ══
+   *
+   * Ten sam temat tego samego dnia u tego samego kursanta to w tej aplikacji
+   * zawsze powtórzony import — lektor nie prowadzi dwóch takich samych lekcji
+   * jednego dnia. Zamiast zakładać bliźniaka, zwracamy identyfikator wpisu,
+   * który już jest; wołający wie wtedy, że nic nie doszło, i może o tym
+   * powiedzieć zamiast udawać sukces.
+   */
+  if (!input.allowDuplicate) {
+    const duplicate = await findDuplicateLessonRecord(input.studentId, {
+      topic: input.topic,
+      date: input.date,
+    });
+    if (duplicate) {
+      console.warn(
+        `[Lekcje] Pominięto duplikat „${input.topic}" (${input.date}) — istnieje już ${duplicate.id}.`
+      );
+      return {
+        lessonRecordId: duplicate.id,
+        vocabularySetId: duplicate.vocabularySetId || '',
+        duplicateOf: duplicate.id,
+      };
+    }
+  }
+
   // Generate IDs
   const randomSuffix = Math.floor(Math.random() * 1000000);
   const lessonRecordId = `lesson-${Date.now()}-${randomSuffix}`;

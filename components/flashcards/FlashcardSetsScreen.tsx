@@ -226,6 +226,10 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
   
   const renderLessonSet = (set: FlashcardSet, index: number, view: 'list' | 'grid') => {
     const cleanTitle = getSetCleanTitle(set);
+    /* Numer OD NAJSTARSZEJ lekcji: `lessonNumber` zapisany w zestawie liczy
+       się chronologicznie (services/vocabularyService.ts), a zapasowe
+       wyliczenie daje to samo, bo `lessonSets` są posortowane od najnowszej —
+       ostatni element listy dostaje numer 1. */
     const lessonNum = set.lessonNumber || (lessonSets.length - index);
     const lessonDate = formatDisplayDate(set.lessonDate || set.createdAt);
     const isNew = isNewSet(set);
