@@ -2006,16 +2006,19 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         {/*
           * TRZY PODRZĘDNE — i dokładnie trzy.
           *
-          * Praca domowa, Testy i Mailing to rzeczy, które lektor robi MIĘDZY
-          * lekcjami, a nie w ich trakcie: zadaje, sprawdza, wysyła. Trzy główne
-          * kafelki wyżej obsługują lekcję; ta listwa obsługuje to, co po niej.
-          * Planer i Prezentacja zeszły do „Więcej narzędzi" — Planera używa się
-          * przy układaniu kursu, nie co zajęcia, a Prezentację włącza się na
-          * część niektórych lekcji.
+          * Zadania i testy, Planer i Mailing to rzeczy, które lektor robi
+          * MIĘDZY lekcjami, a nie w ich trakcie: zadaje, układa, wysyła. Trzy
+          * główne kafelki wyżej obsługują samą lekcję; ta listwa obsługuje to,
+          * co wokół niej. Prezentacja zeszła do „Więcej narzędzi" — włącza się
+          * ją na część niektórych lekcji, nie co zajęcia.
           */}
         {[
-          { id: 'homework', title: 'Praca domowa', icon: FileText, isRoute: true },
-          { id: 'tests', title: 'Testy', icon: ClipboardList, isRoute: true },
+          /* Jeden kafelek na jedno miejsce: prace domowe i testy mieszkają
+             teraz na wspólnym ekranie (TeacherWorkScreen). Dwa kafelki do
+             dwóch sekcji tego samego ekranu byłyby dwoma nazwami tej samej
+             rzeczy. */
+          { id: 'homework', title: 'Zadania i testy', icon: ClipboardList, isRoute: true },
+          { id: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
           {
             id: 'mailing',
             title: 'Mailing',
@@ -2087,7 +2090,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                *   Baza tematów     — jest materiałem źródłowym scenariusza,
                *     więc stoi w Planerze lekcji, obok Bazy scenariuszy.
                */
-              { tab: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
               { tab: 'presentation', title: 'Prezentacja', icon: Airplay },
               { view: 'flashcard-sets', title: 'Słownictwo', icon: BookMarked },
               { view: 'admin-stats', title: 'Statystyki', icon: BarChart2 },

@@ -64,6 +64,13 @@ interface HomeworkScreenProps {
   initialStudentId?: string | null;
   initialFilterStatus?: string | null;
   onBack?: () => void;
+  /**
+   * Bez własnego tytułu i bez zewnętrznych marginesów — ekran jest wtedy
+   * sekcją wewnątrz „Zadań i testów", a nie osobną stroną. Przyciski trybów
+   * (lista / przypisz / przegląd v2) zostają: to nawigacja wewnątrz sekcji,
+   * a nie jej nagłówek.
+   */
+  headless?: boolean;
 }
 
 export const getTaskDateMillis = (val: any): number => {
@@ -256,6 +263,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   initialStudentId = null,
   initialFilterStatus = null,
   onBack,
+  headless = false,
 }) => {
   const { user, updateUserStreak } = useAuth();
   const { language } = useLanguage();
@@ -1455,12 +1463,19 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
 
   const filteredTasks = activeTasks;
 
+  /* Czy w ogóle istnieje choć jeden zestaw silnika v2. Liczone z listy, którą
+     ekran i tak ma wczytaną — bez dodatkowego zapytania. */
+  const hasV2Sets = tasks.some((task: any) => task?.engineVersion === 2);
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-20">
+    <div className={headless ? 'space-y-5' : 'max-w-6xl mx-auto space-y-6 pb-20'}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {headless ? (
+          <span />
+        ) : (
         <div>
-          <h1 className="text-2xl font-black text-white flex items-center gap-3">
+          <h1 className="text-2xl font-black text-text-hi flex items-center gap-3">
             <BookOpen className="text-primary" size={28} />
             {isTeacher ? 'Zarządzanie Pracami Domowymi' : 'Moje Prace Domowe'}
           </h1>
@@ -1470,6 +1485,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               : 'Rozwiązuj przydzielone zadania od nauczyciela, doskonal język i wysyłaj odpowiedzi do oceny.'}
           </p>
         </div>
+        )}
 
         {!isTeacher && onBack && (
           <div>
@@ -1515,7 +1531,11 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                 </>
               )}
             </Button>
-            {HOMEWORK_ENGINE_V2 && (
+            {/* „Przegląd v2" pokazuje się dopiero, gdy JEST co przeglądać.
+                Silnik v2 jest włączony flagą, ale dopóki nikomu nie przypisano
+                zestawu v2, przycisk prowadził na ekran z dwoma zerami — czyli
+                był wejściem donikąd, którego nazwy nie da się odgadnąć. */}
+            {HOMEWORK_ENGINE_V2 && hasV2Sets && (
               <Button
                 onClick={() => setActiveTab('v2review')}
                 variant={activeTab === 'v2review' ? 'primary' : 'secondary'}

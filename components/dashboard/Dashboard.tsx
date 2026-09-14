@@ -31,6 +31,7 @@ import StudentStatsScreen from './StudentStatsScreen';
 import LessonHistoryScreen from './LessonHistoryScreen';
 import StudentScratchpadScreen from '../scratchpad/StudentScratchpadScreen';
 import TeacherScratchpadScreen from '../scratchpad/TeacherScratchpadScreen';
+import TeacherWorkScreen from './TeacherWorkScreen';
 
 import TodayScreen from './TodayScreen';
 import StudentVocabPreview from './StudentVocabPreview';
@@ -398,14 +399,14 @@ const Dashboard: React.FC = () => {
     if (view === 'tests') {
 
       if (isTeacher) {
+        /* Dotąd prowadziło to do zakładki „Testy" w panelu, która renderuje się
+           WYŁĄCZNIE w profilu wybranego kursanta — wejście z pulpitu otwierało
+           więc pustą stronę. Teraz ten sam ekran, co prace domowe, otwarty na
+           sekcji testów. */
         return (
-          <AdminPanel
-            initialTab="tests"
-            initialSelectedUserId={adminSelectedUserId}
-            onUserSelect={(id) => {
-              setAdminSelectedUserId(id);
-            }}
-            onViewChange={handleNavigate}
+          <TeacherWorkScreen
+            initialSection="tests"
+            onBack={() => handleNavigate('dashboard')}
           />
         );
       }
@@ -491,8 +492,12 @@ const Dashboard: React.FC = () => {
       // rozwiązuje, drugi układa i ocenia. Jeden ekran dla obu ról znaczył, że
       // kursant przewijał się przez filtry i kreator lektora.
       if (isTeacher) {
+        /* Prace domowe i testy to u lektora jeden ekran — patrz nagłówek
+           TeacherWorkScreen. Kursant zostaje przy swoim ekranie zadań:
+           testów nie zadaje ani nie sprawdza. */
         return (
-          <HomeworkScreen
+          <TeacherWorkScreen
+            initialSection="homework"
             initialTaskId={activeTaskId}
             initialFilterStatus={homeworkFilterStatus}
             onBack={() => handleNavigate('dashboard')}
