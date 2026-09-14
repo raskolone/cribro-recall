@@ -48,7 +48,7 @@ CRIBRO ENGLISH (Recall) to zaawansowana platforma edukacyjna do intensywnej nauk
 ## 3. Znane Ograniczenia i Dług Techniczny — PRZECZYTAJ PRZED ZMIANAMI
 
 > Rzeczy, których **nie widać w kodzie na pierwszy rzut oka**, a które zmieniają sposób,
-> w jaki należy do niego podchodzić. Stan na 2026-09-14.
+> w jaki należy do niego podchodzić. Stan na 2026-09-14 (runda 7).
 
 ### ✅ (Naprawione 2026-09-12) Reguły Firestore dla brudnopisu były całkowicie otwarte
 Historyczny wpis — zostawiony jako ślad, bo dokładnie ten problem naprawia commit opisany w sekcji 4 poniżej („Zamknięcie dziury w regułach brudnopisu i indeks PIN-ów").
@@ -100,6 +100,20 @@ notatnik jako osobny ekran ze spisem treści i podziałem na strony, szkło w pa
 trybu jasnego). Notatnik idzie do pierwszych kursantów, więc **wymaga obejrzenia na telefonie
 i na komputerze przed wysłaniem linków**.
 
+### 🟡 Notatnik: co zostało niedokończone (stan 2026-09-14)
+
+- **Panel duplikatów kasuje wpisy lekcji, ale NIE powiązane `vocabularySets`.**
+  Po posprzątaniu historii zostają osierocone zestawy słownictwa wskazujące na
+  nieistniejące lekcje. Do decyzji, czy usuwać je razem — kasowanie zestawu
+  zabiera też postęp powtórek kursanta, więc nie zrobiono tego automatem.
+- **Widok kursanta (`PublicScratchpadScreen`) nie dostał arkusza A4 ani motywu
+  strony.** Używa `ScratchpadEditor` bez trybu `standalone`, więc kursant widzi
+  starą, panelową obudowę — treść jest ta sama, wygląd nie.
+- **Eksport do PDF/Worda nie wie o arkuszu A4.** Łamanie stron w pliku nie
+  pokrywa się z kreskami na ekranie.
+- **Trasy `/api/ai/config` i `/api/ai/save-key` nie były wołane na żywo.**
+  Sprawdzić, czy zapis `system/ai` przechodzi kontem administratora.
+
 ### 🟡 Podział na strony w notatniku to kreska, nie paginacja
 Warstwa nad kartką rysuje kreskę co 1123 px (A4 przy 96 dpi). Nie zna wysokości elementu, przez
 który przechodzi, więc kreska potrafi przeciąć akapit w połowie wiersza, a eksport do PDF/Worda nie
@@ -121,6 +135,110 @@ Firestore obok lekcji.
 ---
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
+
+### 📄 Notatnik na własnej karcie, modele AI w ustawieniach (2026-09-14, rundy 5–7)
+
+**1. Notatnik jest OSOBNĄ STRONĄ pod `/scratchpad`, otwieraną w nowej karcie.**
+Jest otwarty przez całą lekcję, równolegle do profilu kursanta, pracy domowej
+i prezentacji — ekran wewnątrz aplikacji znaczył, że każde zajrzenie gdzie
+indziej wymaga wyjścia i powrotu, a przy powrocie kartka jest znów na górze.
+**Jeden adres dla obu stron**: o tym, czy pokazać pełny edytor, czy widok po
+linku/PIN-ie, decyduje rola otwierającego, a nie osobna ścieżka. Link
+skopiowany z paska adresu jest dokładnie tym, który idzie do kursanta.
+Notatnik roboczy dopisuje swój identyfikator do adresu zaraz po utworzeniu —
+bez tego odświeżenie karty zakładało drugi, pusty dokument. Warianty `overlay`
+i trasa wewnątrz aplikacji usunięte; wszystkie wejścia wołają
+`openScratchpadTab`.
+
+**2. Kartka to arkusz A4, dokument chodzi za motywem kartki.** 794 px
+(210 mm przy 96 dpi), margines 2 cm. Strona notatnika ustawia motyw okna pod
+motyw kartki — dotąd kartka była jasna, a wszystko wokół ciemne, czyli dwa
+różne programy na jednym ekranie. Na własnej karcie rama traci obrys i cień,
+kanwa jest jednolicie szara.
+
+**3. Wpis lekcyjny z numerem liczonym z dokumentu.** „Nowa lekcja" dokłada
+na końcu `Lesson N — data` i pięć kolorowych sekcji (Revision, Main topic /
+Practice, Lesson Summary, Key Language & Corrections, Homework). Numer bierze
+się z najwyższego numeru w dotychczasowych NAGŁÓWKACH — osobny licznik
+w bazie byłby drugą prawdą i rozjechałby się przy pierwszej ręcznej poprawce.
+Poprawiony palcem jest brany pod uwagę przy następnym wstawieniu.
+
+**4. Kursant może pisać od razu.** Domyślne „tylko podgląd" znaczyło tyle, że
+na każdej pierwszej lekcji trzeba było o tym pamiętać i odblokować — a że
+nikt nie pamiętał, kursant pisał „nie mogę nic wpisać" i lekcja stawała.
+Dotyczy NOWYCH notatników; istniejące zostają z dotychczasowym ustawieniem.
+
+**5. Obrazy ze schowka, wskaźnik laserowy, szablon z paska, historia wersji.**
+Wklejony zrzut jest zmniejszany do 1400 px i przekodowywany na WebP PRZED
+wstawieniem: Storage w tym projekcie nie jest założony, więc obraz mieszka
+w treści dokumentu, a ta ma sufit 1 MiB — zrzut z retiny wklejony wprost
+w ogóle by się nie zapisał. Dokument nosi do pięciu migawek treści, najwyżej
+jedną na pięć minut, i robi je **wyłącznie lektor**: reguły przepuszczają
+kursantowi tylko pięć konkretnych pól, więc `revisions` w jego zapisie
+odrzucałoby CAŁY zapis.
+
+**6. Zadania i testy to jeden ekran.** Kafelek „Testy" prowadził donikąd —
+generator renderuje się wyłącznie w profilu wybranego kursanta. Powstał
+`TeacherWorkScreen` z sekcjami zwijanymi; „Przegląd v2" pokazuje się dopiero,
+gdy istnieje choć jeden zestaw silnika v2.
+
+**7. Panel lektora ma trzy poziomy.** Trzy duże kafelki na prowadzenie lekcji,
+trzy w listwie na to, co między nimi, reszta w „Więcej narzędzi". Ustawienia
+i Diagnostyka straciły kafelki — są pod kołem zębatym. Profil kursanta
+pokazuje JEDNĄ sekcję naraz zamiast pięciu rozłożonych kart. Baza kursantów
+otwiera się prostą listą, arkusz a la Notion jest o klik dalej.
+
+**8. Przewodnik podświetla prawdziwe elementy.** Poprzedni rysował własne
+atrapy tego, co opisuje, więc człowiek uczył się atrapy. Reflektor był poza
+tym wyłączony poniżej 860 px — na telefonie przewodnik pokazywał czarny ekran
+z dymkiem i niczym podświetlonym. Kroki celujące w nieistniejący element są
+pomijane. Pomoc dostała własny przycisk w pasku górnym.
+
+**9. Prawy dolny róg to jedna kolejka.** Monitor AI, zgłaszanie błędu,
+powiadomienia i toasty wpadały w to samo miejsce z własnym `bottom`
+i `z-index`; monitor z najwyższym z-indeksem zakrywał wszystko. Wysokości są
+zmiennymi CSS, a monitor melduje własną — u osób, którym się nie renderuje,
+reszta nie wisi nad pustym miejscem.
+
+**10. Duplikaty w historii lekcji.** Import z Notion nadaje każdemu wpisowi
+nowy identyfikator, więc drugi import tej samej strony dokładał bliźniaka —
+raz powtórzona synchronizacja podwoiła historię temat po temacie. Trzy
+warstwy: zapora przed zapisem (ten sam temat tego samego dnia zwraca
+istniejący wpis), wykrywanie z podziałem na **pewne** (temat + data)
+i **podejrzane** (temat + ta sama treść, inne daty — cykliczna powtórka
+tematu jest normalną lekcją, więc tych nie kasujemy hurtem) oraz panel
+sprzątania, który pokazuje znalezisko i kasuje dopiero na kliknięcie.
+Numeracja idzie od najstarszej: #1 to pierwsze zajęcia i ten numer się nie
+zmienia — dotąd liczyliśmy od końca, więc „wróć do lekcji 5" znaczyło co
+tydzień co innego.
+
+**11. Ustawienia modeli AI i kluczy API (tylko administrator).** Model
+pierwszego wyboru dla czterech rodzajów pracy: generowanie zadań, ocena,
+czat, streszczenia. Wpięte przez kategorię zapytania, którą wszystkie
+wywołania i tak podają — zero zmian w miejscach wywołań. Zapasów nie da się
+przestawić (to one ratują sytuację przy awarii dostawcy), ale są pokazane
+wprost. Klucze OpenAI / Gemini / ElevenLabs zapisuje się w aplikacji, działają
+od razu i wracają z bazy przy starcie serwera; zmienna środowiskowa ma
+pierwszeństwo i interfejs mówi, które źródło jest aktywne. `system/ai` czyta
+i zapisuje **wyłącznie serwer przez Admin SDK** — otwarcie reguły odczytu na
+kolekcji `system` znaczyłoby, że klucz OpenAI da się pobrać z przeglądarki
+dowolnego kursanta.
+
+**12. Podsumowanie pracy domowej po imieniu i po ludzku.** Prompt kazał pisać
+„pięknym, motywującym językiem" i dostawaliśmy „Drogi Kursancie, jestem pod
+wrażeniem… każdy błąd to cenna lekcja". Teraz: zwrot po imieniu w wołaczu,
+najwyżej trzy zdania do 350 znaków, obszar do poprawy nazwany wprost
+(„bezokolicznik po 'decide'", nie „precyzja form czasownikowych"), plus
+przykład dobrego i złego podsumowania w promptcie.
+
+**13. Prototyp asystenta.** Pływające okno dla lektora: „co ostatnio robiłem
+z Bartkiem". Imiona dopasowywane lokalnie, do modelu jadą lekcje tylko tych
+osób, o które zapytano — bez tego każde pytanie kosztowałoby całą bazę.
+
+**Weryfikacja.** `tsc --noEmit`, `npm test` (316/316), `npm run build`
+i `npm run test:rules` (44/44) przechodzą. **Żadna z tych zmian nie była
+oglądana w przeglądarce.**
+
 
 ### 🗂️ Kontekst przed lekcją, notatnik jak dokument i czytelny dzień (2026-09-14, runda 4)
 
