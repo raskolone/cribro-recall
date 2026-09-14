@@ -5,7 +5,8 @@ import { User } from '../../types';
 import { StudentDatabaseScreen } from './StudentDatabaseScreen';
 import { useFirebaseAdminApi } from '../../hooks/useFirebaseAdminApi';
 import { useLanguage } from '../../context/LanguageContext';
-import { ArrowLeft, Database, Plus, X, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Database, Plus, X, Copy, Check, List, Table2 } from 'lucide-react';
+import StudentSimpleList from './StudentSimpleList';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import NotionSyncButton from './NotionSyncButton';
@@ -36,6 +37,9 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
   const [createError, setCreateError] = useState('');
   const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  /* Widok domyślny to lista, nie arkusz — uzasadnienie w nagłówku
+     `StudentSimpleList`. Pełny arkusz jest o jedno kliknięcie dalej. */
+  const [viewMode, setViewMode] = useState<'simple' | 'full'>('simple');
 
   const fetchUsers = async () => {
     try {
@@ -231,7 +235,9 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
               </span>
             </div>
             <p className="text-xs text-content-muted mt-1">
-              Pełny przegląd kont, uprawnień, adresów e-mail oraz synchronizacja danych
+              {viewMode === 'simple'
+                ? 'Wybierz kursanta, żeby wejść w jego profil'
+                : 'Pełny przegląd kont, uprawnień, adresów e-mail oraz synchronizacja danych'}
             </p>
           </div>
         </div>
@@ -245,6 +251,37 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
               o czym aplikacja nie wie" — dla całej bazy, bez wchodzenia
               w dwadzieścia profili po kolei. Baza kursantów jest jedynym
               ekranem, na którym to pytanie ma sens. */}
+          {/* Przełącznik widoku stoi PRZED resztą akcji, bo decyduje, co jest
+              pod spodem — a nie jest kolejną czynnością do wykonania. */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-base-300/50 border border-line">
+            <button
+              type="button"
+              onClick={() => setViewMode('simple')}
+              title="Prosta lista kont"
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                viewMode === 'simple'
+                  ? 'bg-primary text-accent-ink'
+                  : 'text-content-muted hover:text-text-hi'
+              }`}
+            >
+              <List size={13} />
+              Lista
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('full')}
+              title="Pełna baza: uprawnienia, adresy, eksport, zaznaczanie wielu"
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                viewMode === 'full'
+                  ? 'bg-primary text-accent-ink'
+                  : 'text-content-muted hover:text-text-hi'
+              }`}
+            >
+              <Table2 size={13} />
+              Pełny widok
+            </button>
+          </div>
+
           <NotionSyncButton onImported={fetchUsers} />
           <Button
             size="sm"
@@ -265,8 +302,16 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
         </div>
       </div>
 
-      {/* Main Database Screen */}
+      {/* Lista albo arkusz — nigdy oba naraz. */}
       <div className="bg-base-200/40 border border-white/10 rounded-2xl p-4 sm:p-6 shadow-xl">
+        {isLoading ? (
+          <p className="py-10 text-center text-sm text-content-muted">Wczytywanie kont…</p>
+        ) : viewMode === 'simple' ? (
+          <StudentSimpleList
+            users={users}
+            onSelectUser={(user) => onSelectUser(user.id, 'profile')}
+          />
+        ) : (
         <StudentDatabaseScreen
           users={users}
           onSelectUser={(user, targetTab) => {
@@ -282,6 +327,7 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
           onOpenMailing={onOpenMailing}
           onBack={onBack}
         />
+        )}
       </div>
 
       {/* Modal: Dodaj Kursanta */}
