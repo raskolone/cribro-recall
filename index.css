@@ -1199,3 +1199,21 @@ tr.liquid-glass-hover:hover {
 .rail-notice {
   bottom: calc(var(--rail-base) + var(--rail-monitor) + var(--rail-bug));
 }
+
+/* ── Arkusz A4 ──
+   Kartka ma szerokość i proporcje strony A4, a nie „kolumny tekstu": dokument,
+   który się drukuje i eksportuje do PDF-a, musi wyglądać na ekranie tak, jak
+   wyjdzie. Na telefonie arkusz zwęża się do szerokości okna i traci część
+   marginesu — pełne 2 cm z każdej strony zostawiłoby tam kolumnę na sześć
+   słów. */
+.pad-sheet {
+  border-radius: 2px;
+  margin-inline: auto;
+}
+
+@media (max-width: 840px) {
+  .pad-sheet {
+    padding: 28px 22px !important;
+    min-height: 60vh !important;
+  }
+}

@@ -19,6 +19,7 @@ import {
   isValidAccessCode,
 } from '../utils/accessCode';
 import { getDefaultTemplate } from './scratchpadTemplateService';
+import { buildLessonTemplate } from '../utils/lessonTemplate';
 
 /** Usuwa znaczniki HTML dla wersji tekstowej — wystarczające dla podglądu/wyszukiwania. */
 const stripHtmlToText = (html: string): string =>
@@ -124,31 +125,16 @@ export function getInitialScratchpadContent(studentName: string): {
   html: string;
   text: string;
 } {
-  const today = new Date().toLocaleDateString('pl-PL', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-
   /*
-   * Notatnik roboczy nie ma jeszcze kursanta, więc nie ma kogo wymienić.
-   * „Wspólny notatnik z zajęć z Notatnik roboczy" brzmiałoby jak awaria,
-   * a nie jak stan przejściowy — po przypisaniu zdanie i tak jest już
-   * niepotrzebne, bo nazwę kursanta niesie nagłówek okna.
+   * Nowy notatnik zaczyna się od PIERWSZEGO wpisu lekcyjnego, a nie od opisu
+   * tego, czym jest notatnik. Instrukcja w dokumencie roboczym to tekst, który
+   * lektor i tak kasuje przy pierwszym pisaniu — a kursant, który zajrzy
+   * wcześniej, zobaczy wtedy instrukcję obsługi zamiast swoich zajęć.
+   *
+   * Numer kolejnych lekcji dopisuje się sam z nagłówków (patrz
+   * `utils/lessonTemplate.ts`), więc pierwszy wpis to zawsze „Lesson 1".
    */
-  const named = studentName?.trim();
-  const intro =
-    named && named !== 'Notatnik roboczy' && named !== 'Kursant'
-      ? `<p>Wspólny notatnik z zajęć z <strong>${named}</strong>.</p>`
-      : `<p>Notatnik roboczy — kursanta można przypisać w dowolnej chwili.</p>`;
-
-  const html = `<h2>Lesson Template — ${today}</h2>${intro}` +
-    `<h3 style="color:#db2777">Revision</h3><p>Tutaj wklejam powtórkę z poprzedniej lekcji lub robimy zadanie domowe, jeżeli nie zostało wykonane.</p>` +
-    `<h3 style="color:#0d9488">Main topic / Practice</h3><p>Tutaj wklejam pytania, które zadaję kursantowi, sugerowane odpowiedzi oraz ewentualne ćwiczenia z tematu lekcji.</p>` +
-    `<h3 style="color:#2563eb">Lesson Summary</h3><p>Po spotkaniu wklejam podsumowanie w kilku zwięzłych zdaniach.</p>` +
-    `<h3 style="color:#dc2626">Key Language &amp; Corrections (New words)</h3><p>W tym miejscu wrzucam listę słownictwa użytego podczas lekcji i wszystkie poprawki z delayed feedback.</p>` +
-    `<h3 style="color:#7c3aed">Homework</h3><p>Zadanie domowe w postaci tłumaczenia zdań lub przypisane zadanie w aplikacji Recall.</p>`;
-
+  const html = buildLessonTemplate({ previousHtml: '' });
   const text = stripHtmlToText(html);
 
   return { html, text };

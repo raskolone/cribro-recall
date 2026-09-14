@@ -72,6 +72,7 @@ import MenuDropdown, { MenuChevron } from '../ui/MenuDropdown';
 import CoachMarks from '../ui/CoachMarks';
 import { buildScratchpadCoachSteps } from './scratchpadCoachSteps';
 import ScratchpadTemplateManagerModal from './ScratchpadTemplateManagerModal';
+import { buildLessonTemplate, LESSON_SECTIONS } from '../../utils/lessonTemplate';
 
 /**
  * Wysokość strony A4 przy 96 dpi (297 mm) minus margines dolny, w pikselach.
@@ -81,6 +82,17 @@ import ScratchpadTemplateManagerModal from './ScratchpadTemplateManagerModal';
  * trzecia strona"), nie o zgodność co do milimetra.
  */
 const PAGE_HEIGHT_PX = 1123;
+
+/**
+ * Szerokość arkusza A4 przy 96 dpi (210 mm). Kartka ma tyle DOKŁADNIE, a nie
+ * „mniej więcej tyle, co kolumna tekstu": dokument, który ma się drukować
+ * i eksportować do PDF-a, musi mieć proporcje kartki już na ekranie —
+ * inaczej lektor układa akapity w innej szerokości, niż potem wyjdą.
+ */
+const PAGE_WIDTH_PX = 794;
+
+/** Margines dokumentu — 2 cm, czyli standard Worda i Google Docs. */
+const PAGE_MARGIN_PX = 76;
 
 /** Pozycja w spisie treści — jeden nagłówek kartki. */
 interface TocEntry {
@@ -518,8 +530,8 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
     try {
       const paperWidth = editorRef.current
-        ? Math.max(320, editorRef.current.clientWidth - 96)
-        : 720;
+        ? Math.max(280, editorRef.current.clientWidth - PAGE_MARGIN_PX * 2)
+        : PAGE_WIDTH_PX - PAGE_MARGIN_PX * 2;
       const prepared = await prepareImageForScratchpad(file, paperWidth);
 
       const currentBytes = scratchpadContentBytes(editorRef.current?.innerHTML || '');
@@ -555,7 +567,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
    */
   const resizeSelectedImage = (fraction: number) => {
     if (!selectedImage || !editorRef.current) return;
-    const paperWidth = Math.max(320, editorRef.current.clientWidth - 96);
+    const paperWidth = Math.max(280, editorRef.current.clientWidth - PAGE_MARGIN_PX * 2);
     selectedImage.style.width = `${Math.round(paperWidth * fraction)}px`;
     selectedImage.style.height = 'auto';
     handleInput();
@@ -625,16 +637,37 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     }
   };
 
-  // Wstawienie dzisiejszej daty jako nagłówka nowej lekcji
-  const handleInsertDate = () => {
-    if (isReadOnly) return;
-    const dateStr = new Date().toLocaleDateString('pl-PL', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-    const headerHtml = `<h2>📅 Lekcja — ${dateStr}</h2><p></p>`;
-    window.document.execCommand('insertHTML', false, headerHtml);
+  /**
+   * Nowa lekcja w notatniku — nagłówek z NUMEREM i pięć pustych sekcji.
+   *
+   * Numer liczy się z dotychczasowych nagłówków dokumentu (patrz
+   * `utils/lessonTemplate.ts`), więc nikt go nie musi pamiętać; poprawiony
+   * ręcznie zostaje wzięty pod uwagę przy następnym wstawieniu.
+   *
+   * Wstawiamy NA KOŃCU dokumentu, a nie w miejscu kursora: nowa lekcja zawsze
+   * dopisuje się pod poprzednimi, a kursor po godzinie pisania stoi gdzie
+   * popadnie — najczęściej w środku zeszłotygodniowej notatki.
+   */
+  const handleInsertLesson = () => {
+    if (isReadOnly || !editorRef.current) return;
+
+    const html = buildLessonTemplate({ previousHtml: editorRef.current.innerHTML });
+    editorRef.current.insertAdjacentHTML('beforeend', `<p><br></p>${html}`);
+
+    // Kursor ląduje w pierwszej sekcji nowej lekcji — tam zaczyna się pisanie.
+    const headings = editorRef.current.querySelectorAll('h3');
+    const firstSection = headings[headings.length - LESSON_SECTIONS.length];
+    const target = firstSection?.nextElementSibling as HTMLElement | null;
+    if (target) {
+      const range = window.document.createRange();
+      range.selectNodeContents(target);
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
     handleInput();
   };
 
@@ -1329,11 +1362,11 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
                 label: 'Elementy lekcji',
                 items: [
                   {
-                    id: 'date',
-                    label: 'Nagłówek z dzisiejszą datą',
-                    description: 'Otwiera nową lekcję w dokumencie',
+                    id: 'lesson',
+                    label: 'Nowa lekcja',
+                    description: 'Numer, data i pięć sekcji — na końcu dokumentu',
                     icon: <Calendar size={14} />,
-                    onSelect: handleInsertDate,
+                    onSelect: handleInsertLesson,
                   },
                 ],
               },
@@ -1463,6 +1496,12 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           )}
 
           <FormatButton
+            icon={<Calendar size={15} />}
+            title="Nowa lekcja — nagłówek z numerem i pięć sekcji"
+            onClick={handleInsertLesson}
+          />
+
+          <FormatButton
             icon={<ListTree size={15} />}
             title={isTocOpen ? 'Ukryj spis treści' : 'Pokaż spis treści'}
             onClick={() => setIsTocOpen(v => !v)}
@@ -1561,7 +1600,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           ref={paperWrapRef}
           className="pad-canvas flex-1 min-w-0 p-4 md:p-8 md:pt-10 overflow-y-auto min-h-[500px]"
         >
-          <div className="relative max-w-4xl mx-auto">
+          <div className="relative mx-auto" style={{ width: PAGE_WIDTH_PX, maxWidth: '100%' }}>
             <div
               ref={editorRef}
               data-coach="pad-editor"
@@ -1571,10 +1610,17 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
               onClick={handlePaperClick}
               onPaste={handlePaste}
               suppressContentEditableWarning
-              className={`pad-paper min-h-[480px] p-6 md:p-12 md:pl-16 rounded-xl focus:outline-none transition-shadow font-sans selection:bg-primary/30 ${
+              className={`pad-paper pad-sheet focus:outline-none transition-shadow font-sans selection:bg-primary/30 ${
                 isReadOnly ? 'cursor-default' : 'cursor-text'
               }`}
-              style={{ wordBreak: 'break-word', boxShadow: 'var(--pad-shadow)' }}
+              style={{
+                wordBreak: 'break-word',
+                boxShadow: 'var(--pad-shadow)',
+                minHeight: PAGE_HEIGHT_PX,
+                // Margines w pikselach, nie klasą: ta sama wartość jest
+                // podstawą wyliczeń szerokości wklejanego obrazu.
+                padding: `${PAGE_MARGIN_PX}px`,
+              }}
             />
 
             {/* Zaznaczony obraz — ustalone szerokości zamiast uchwytu.
