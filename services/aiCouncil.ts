@@ -179,13 +179,22 @@ export async function runCouncil<T = any>({
     seat: CouncilSeat,
     phase: CouncilEvent['phase'],
     system: string,
-    body: string
+    body: string,
+    /*
+     * Wymuszony tylko na turach AUTORA (draft/revise) i tylko wtedy, gdy
+     * wołający naprawdę oczekuje JSON-a (`expectJson`). Recenzja NIGDY nie
+     * dostaje trybu JSON — `REVIEW_SYSTEM` prosi o zwykłą listę zastrzeżeń
+     * po polsku, a wymuszenie JSON-a na tej turze kazałoby recenzentowi
+     * pakować prozę w cudzysłowy zamiast po prostu ją napisać.
+     */
+    wantsJson: boolean = false
   ): Promise<string> => {
     const startedAt = Date.now();
     const { text, modelUsed } = await generateLessonPlannerAI({
       prompt: body,
       systemInstruction: system,
       preferredModels: cascadeFor(seat.model),
+      jsonMode: wantsJson,
     });
     record({
       seatId: seat.id,
@@ -200,7 +209,7 @@ export async function runCouncil<T = any>({
   };
 
   // ── Tura 1: autor pisze ──
-  let draft = await run(author, 'draft', systemInstruction, prompt);
+  let draft = await run(author, 'draft', systemInstruction, prompt, expectJson);
   let finalModel = transcript[transcript.length - 1]?.model || author.model;
 
   // ── Tura 2: recenzje ──
@@ -233,7 +242,8 @@ export async function runCouncil<T = any>({
         systemInstruction + reviseSystemSuffix,
         `POLECENIE:\n${prompt}\n\n=====\n\nTWOJA POPRZEDNIA PROPOZYCJA:\n${draft}\n\n=====\n\nZASTRZEŻENIA RECENZENTÓW:\n${critiques
           .map((c, i) => `--- Recenzent ${i + 1} ---\n${c}`)
-          .join('\n\n')}`
+          .join('\n\n')}`,
+        expectJson
       );
       finalModel = transcript[transcript.length - 1]?.model || finalModel;
     } catch (err) {

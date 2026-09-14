@@ -361,7 +361,8 @@ export const generateLessonPlannerAI = async ({
   conversationHistory = [],
   preferredModels = PREFERRED_AI_MODELS,
   attachments = [],
-  onModelAttempt
+  onModelAttempt,
+  jsonMode = false
 }: {
   prompt: string;
   systemInstruction: string;
@@ -369,6 +370,25 @@ export const generateLessonPlannerAI = async ({
   preferredModels?: string[];
   attachments?: LessonAttachment[];
   onModelAttempt?: (modelName: string) => void;
+  /**
+   * Wymusza strukturalny tryb JSON u dostawcy, zamiast polegać wyłącznie na
+   * poleceniu w treści promptu.
+   *
+   * ══ DLACZEGO TO BYŁ BŁĄD, ZANIM TEN PARAMETR ISTNIAŁ ══
+   *
+   * Wywołania tej funkcji z JSON-em w odpowiedzi (planer prezentacji, narada
+   * modeli) prosiły o JSON WYŁĄCZNIE zdaniem w promptcie — gałąź OpenAI
+   * wołała `callOpenAI(..., isJson: false)`, więc serwer nigdy nie ustawiał
+   * `response_format: { type: "json_object" }`; gałąź Gemini nie ustawiała
+   * `responseMimeType`. Oba dostawce dostawały więc czystą prośbę tekstową
+   * i parsowanie (`extractJSON` + `JSON.parse`) polegało wyłącznie na tym,
+   * że model akurat posłucha.
+   *
+   * Domyślnie `false`, żeby nie zmieniać zachowania istniejących wywołań na
+   * czat/tekst swobodny (np. odpowiedzi asystenta w starym Planerze) —
+   * włączają go świadomie tylko wywołania, które faktycznie parsują JSON.
+   */
+  jsonMode?: boolean;
 }): Promise<{ text: string; modelUsed: string }> => {
   // Construct augmented prompt with any attached text/markdown/HTML materials
   let augmentedPrompt = prompt;
@@ -423,7 +443,7 @@ export const generateLessonPlannerAI = async ({
           { role: 'user', content: userContent }
         ];
 
-        const openAiRes = await callOpenAI(messages, undefined, model.replace('openai/', ''), false);
+        const openAiRes = await callOpenAI(messages, undefined, model.replace('openai/', ''), jsonMode);
         if (openAiRes?.text) {
           const usedModel = openAiRes.modelUsed || model;
           aiMonitor.completeRequest(reqId, { modelUsed: usedModel });
@@ -455,7 +475,8 @@ export const generateLessonPlannerAI = async ({
               contents: geminiContents,
               config: {
                 systemInstruction,
-                temperature: 0.7
+                temperature: 0.7,
+                ...(jsonMode ? { responseMimeType: 'application/json' } : {})
               }
             });
 

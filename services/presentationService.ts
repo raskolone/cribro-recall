@@ -628,7 +628,11 @@ export const generateAIPresentationDeck = async ({
       'openai/gpt-4o-mini',
       'gemini-3.7-flash',
       'gemini-2.5-flash'
-    ]
+    ],
+    // Wynik jest parsowany jako JSON zaraz niżej (`extractJSON` +
+    // `JSON.parse`) — bez tego oba dostawcy dostawały wyłącznie prośbę
+    // tekstową w promptcie, bez żadnego strukturalnego wymuszenia.
+    jsonMode: true
   });
 
   const jsonStr = extractJSON(res.text);
@@ -715,7 +719,11 @@ export const generateAISingleSlide = async ({
       'openai/gpt-4o-mini',
       'gemini-3.7-flash',
       'gemini-2.5-flash'
-    ]
+    ],
+    // Wynik jest parsowany jako JSON zaraz niżej (`extractJSON` +
+    // `JSON.parse`) — bez tego oba dostawcy dostawały wyłącznie prośbę
+    // tekstową w promptcie, bez żadnego strukturalnego wymuszenia.
+    jsonMode: true
   });
 
   const jsonStr = extractJSON(res.text);
@@ -783,7 +791,11 @@ export const enhanceAISlide = async ({
       'openai/gpt-4o-mini',
       'gemini-3.7-flash',
       'gemini-2.5-flash'
-    ]
+    ],
+    // Wynik jest parsowany jako JSON zaraz niżej (`extractJSON` +
+    // `JSON.parse`) — bez tego oba dostawcy dostawały wyłącznie prośbę
+    // tekstową w promptcie, bez żadnego strukturalnego wymuszenia.
+    jsonMode: true
   });
 
   const jsonStr = extractJSON(res.text);
