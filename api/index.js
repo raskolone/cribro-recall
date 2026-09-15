@@ -1611,7 +1611,13 @@ function createApp() {
     }
     try {
       const decodedToken = await adminAuth.verifyIdToken(idToken);
-      const ADMIN_EMAILS = ["maciej.wyrozumski@gmail.com", "marta.lukaszczyk@gmail.com"];
+      const ADMIN_EMAILS = [
+        "maciej.wyrozumski@gmail.com",
+        "marta.lukaszczyk@gmail.com",
+        "maciejwyrozumski@icloud.com",
+        "wyrozumski@maciej.pro",
+        "maciej@learnwithmaciej.com"
+      ];
       const email = (decodedToken.email || "").toLowerCase();
       const isAdminByEmail = ADMIN_EMAILS.includes(email);
       const isAdminByClaim = decodedToken.role === "admin" || decodedToken.admin === true || decodedToken.role === "teacher";
@@ -2244,18 +2250,21 @@ function createApp() {
           }))
         };
       }
-      if (!adminApp) {
-        return res.status(503).json({ error: "Brak po\u0142\u0105czenia z baz\u0105 \u2014 nie zapisano." });
+      if (adminApp) {
+        try {
+          const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
+          await adminDb.collection("system").doc("ai").set(
+            {
+              ...models ? { models: clean } : {},
+              ...cleanCouncil ? { council: cleanCouncil } : {},
+              updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+            },
+            { merge: true }
+          );
+        } catch (dbErr) {
+          console.warn("[AI] Nie uda\u0142o si\u0119 zapisa\u0107 konfiguracji do Firestore (brak po\u015Bwiadcze\u0144 Admin):", dbErr);
+        }
       }
-      const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
-      await adminDb.collection("system").doc("ai").set(
-        {
-          ...models ? { models: clean } : {},
-          ...cleanCouncil ? { council: cleanCouncil } : {},
-          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-        },
-        { merge: true }
-      );
       return res.json({ ok: true, models: clean, council: cleanCouncil });
     } catch (err) {
       return res.status(500).json({ error: formatErrorString(err) });
@@ -2301,11 +2310,15 @@ ${envName}=${cleanKey}
         console.warn(`Nie uda\u0142o si\u0119 zapisa\u0107 ${envName} w .env:`, e);
       }
       if (adminApp) {
-        const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
-        await adminDb.collection("system").doc("ai").set(
-          { keys: { [String(provider)]: cleanKey }, updatedAt: (/* @__PURE__ */ new Date()).toISOString() },
-          { merge: true }
-        );
+        try {
+          const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
+          await adminDb.collection("system").doc("ai").set(
+            { keys: { [String(provider)]: cleanKey }, updatedAt: (/* @__PURE__ */ new Date()).toISOString() },
+            { merge: true }
+          );
+        } catch (dbErr) {
+          console.warn("[AI] Nie uda\u0142o si\u0119 zapisa\u0107 klucza do Firestore (brak po\u015Bwiadcze\u0144 Admin):", dbErr);
+        }
       }
       return res.json({ ok: true, maskedKey: maskKey(cleanKey) });
     } catch (err) {

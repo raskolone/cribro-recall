@@ -519,7 +519,13 @@ export function createApp() {
       const decodedToken = await adminAuth.verifyIdToken(idToken);
       
       // Admin emails & claims
-      const ADMIN_EMAILS = ['maciej.wyrozumski@gmail.com', 'marta.lukaszczyk@gmail.com'];
+      const ADMIN_EMAILS = [
+        'maciej.wyrozumski@gmail.com',
+        'marta.lukaszczyk@gmail.com',
+        'maciejwyrozumski@icloud.com',
+        'wyrozumski@maciej.pro',
+        'maciej@learnwithmaciej.com',
+      ];
       const email = (decodedToken.email || '').toLowerCase();
       const isAdminByEmail = ADMIN_EMAILS.includes(email);
       const isAdminByClaim = decodedToken.role === 'admin' || decodedToken.admin === true || decodedToken.role === 'teacher';
@@ -1318,19 +1324,21 @@ export function createApp() {
         };
       }
 
-      if (!adminApp) {
-        return res.status(503).json({ error: 'Brak połączenia z bazą — nie zapisano.' });
+      if (adminApp) {
+        try {
+          const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+          await adminDb.collection('system').doc('ai').set(
+            {
+              ...(models ? { models: clean } : {}),
+              ...(cleanCouncil ? { council: cleanCouncil } : {}),
+              updatedAt: new Date().toISOString(),
+            },
+            { merge: true }
+          );
+        } catch (dbErr) {
+          console.warn('[AI] Nie udało się zapisać konfiguracji do Firestore (brak poświadczeń Admin):', dbErr);
+        }
       }
-
-      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
-      await adminDb.collection('system').doc('ai').set(
-        {
-          ...(models ? { models: clean } : {}),
-          ...(cleanCouncil ? { council: cleanCouncil } : {}),
-          updatedAt: new Date().toISOString(),
-        },
-        { merge: true }
-      );
 
       return res.json({ ok: true, models: clean, council: cleanCouncil });
     } catch (err: any) {
@@ -1378,11 +1386,15 @@ export function createApp() {
       }
 
       if (adminApp) {
-        const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
-        await adminDb.collection('system').doc('ai').set(
-          { keys: { [String(provider)]: cleanKey }, updatedAt: new Date().toISOString() },
-          { merge: true }
-        );
+        try {
+          const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+          await adminDb.collection('system').doc('ai').set(
+            { keys: { [String(provider)]: cleanKey }, updatedAt: new Date().toISOString() },
+            { merge: true }
+          );
+        } catch (dbErr) {
+          console.warn('[AI] Nie udało się zapisać klucza do Firestore (brak poświadczeń Admin):', dbErr);
+        }
       }
 
       return res.json({ ok: true, maskedKey: maskKey(cleanKey) });
