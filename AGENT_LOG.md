@@ -1398,3 +1398,45 @@ Ryzyka:
   skład (1 autor + 1 recenzent) trzyma to w ryzach; zmiana w ustawieniach
   na więcej recenzentów jest świadomą decyzją administratora, nie
   przypadkiem.
+
+---
+
+2026-09-15 — Antigravity / Gemini 2.5 Flash
+
+Zadanie:
+1. Baza Notion i grupy kursantów — widok tabelaryczny Notion pod kafelkami lektora oraz obsługa grup (pary, trójki, grupy firmowe 4+).
+2. Rozbudowa Notatnika/Brudnopisu — format A4 (`.pad-page-break`), asystent AI w dokumencie (Gemini 2.5 Flash) z chipami akcji i 1-kliknięciowym wstawianiem, oraz Szybka Powtórka (Quick Recall) przy tworzeniu nowej lekcji (automatyczne wyciąganie 3 poprawek i 5 słówek z ostatniej lekcji).
+3. Powiadomienia o sprawdzonej pracy domowej — mailing transakcyjny Resend + wyskakujący modal w aplikacji z polskim wołaczem (`toPolishVocative`).
+4. Hierarchia modeli AI — `gemini-2.5-flash` jako nadrzędny model podstawowy we wszystkich zadaniach.
+5. Wielosesyjny Asystent Nauczyciela z pamięcią czatu i skrótami do modułów.
+6. Dopracowanie motywu Jasnego (świetliste kule zamiast ostrych linii konstelacji) i motyw Adaptacyjny (07:00–19:00).
+7. Poszerzenie Narady Modeli i konfiguracji kluczy API o nowych dostawców: Anthropic Claude (`Claude 3.7 Sonnet`, `Claude 3.5 Sonnet`, `Claude 3.5 Haiku`) oraz DeepSeek (`DeepSeek V3`, `DeepSeek R1`), z backendowymi proxy `/api/anthropic` i `/api/deepseek`.
+
+Zrobione:
+- `components/admin/TeacherNotionDatabaseView.tsx` (nowy) — osadzony pod kafelkami panelu lektora widok bazy Notion z wyszukiwarką live, filtrami i szybkimi akcjami (notatnik, profil, planer).
+- `components/admin/CreateGroupModal.tsx` (nowy) — modal tworzenia/edycji grup: pary (2), trójki (3), grupy firmowe (4+) z przypisaniem firmy, zleceniodawcy i powiązaniem uczniów.
+- `types.ts` — dodano `isGroup`, `groupType`, `memberIds`, `contractor`, `company` w `User` oraz `studentIds?: string[]` w `LessonRecord`.
+- `components/scratchpad/ScratchpadEditor.tsx` — asystent AI w dokumencie z chipami promptów, podglądem i wstawianiem do edytora; asynchroniczne pobieranie słówek i błędów z poprzedniej lekcji (`getLessonRecordsForStudent`) do sekcji `Revision / Warm-up`.
+- `utils/lessonTemplate.ts` — podział stron A4 `.pad-page-break`.
+- `server.ts` — endpoint `POST /api/homework/notify-graded` (Resend email + `hasGradedHomework: true` w Firestore), proxy `POST /api/anthropic` (`ANTHROPIC_API_KEY`) oraz `POST /api/deepseek` (`DEEPSEEK_API_KEY`).
+- `services/homeworkEmail.ts` — szablon HTML `buildGradedHomeworkEmail` z wynikiem, komentarzem lektora i linkiem bezpośrednim.
+- `components/dashboard/StudentHomeworkGradedModal.tsx` — modal powiadomienia na żywo z wołaczem polskiego imienia (`toPolishVocative`).
+- `components/admin/TeacherAssistant.tsx` & `services/teacherAssistant.ts` — trwała pamięć czatu z kafelkami skrótów nawigacyjnych do modułów.
+- `components/ui/ConstellationBackground.tsx` & `tokens.css` — zastąpienie linii konstelacji dryfującymi świetlistymi kulami gradientowymi w trybie jasnym; pastelowy błękit dzienny (`#f3f8fd` ➔ `#e6effa` ➔ `#dbe7f5`).
+- `context/ThemeContext.tsx` — tryb `adaptive` (07:00–19:00 jasny, noc ciemny).
+- `services/aiModels.ts` & `services/aiConfigService.ts` — `gemini-2.5-flash` jako primary; dodanie modeli Anthropic Claude, DeepSeek, OpenAI o3-mini i Gemini 2.5 Pro do `SELECTABLE_MODELS` i `PROVIDER_META`.
+- `components/settings/AiCouncilSettings.tsx` & `components/settings/AiModelsSettings.tsx` — grupowanie modeli per dostawca (`optgroup`), plakietki dostawców i dedykowane pola kluczy API dla Anthropic i DeepSeek.
+- `services/geminiService.ts` — funkcje `callAnthropic` i `callDeepSeek` wpięte do narady modeli, planera lekcji i uniwersalnych kaskad AI; aktualizacja `formatAIModelName`.
+- `tests/aiModels.test.ts`, `tests/aiTaskModels.test.ts` — zaktualizowane i rozszerzone testy kaskad i modeli (320 testów zaliczonych).
+- `CHANGELOG.md` — uaktualniony o szczegółowy rejestr rundy 10.
+
+Decyzje architektoniczne:
+- Uniwersalne proxy w `server.ts` dla Anthropic i DeepSeek z zachowaniem bezpieczeństwa: klucze API nigdy nie trafiają do przeglądarki, autoryzacja przez Firebase Bearer token.
+- Wszystkie 4 stanowiska w Radzie Modeli (`AiCouncil`) mogą być dowolnie obsadzane modelami od różnych dostawców (Gemini, OpenAI, Anthropic, DeepSeek).
+- Zastosowanie formatowania A4 w notatniku z fizycznymi przerwami stron (`.pad-page-break`) dla estetyki zbliżonej do Google Docs.
+
+Ryzyka i weryfikacja:
+- `firestore.rules` nietknięte.
+- Bezpieczeństwo kluczy API zachowane (maskowanie serwerowe, brak ekspozycji po stronie klienta).
+- Zweryfikowano: `npx tsc --noEmit` (0 błędów), `npm test` (320/320 pass, 100%), `npm run build` (czysty build produkcyjny).
+
