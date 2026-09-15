@@ -13,6 +13,7 @@ lerna-debug.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.ai-settings.json
 
 node_modules
 *.local

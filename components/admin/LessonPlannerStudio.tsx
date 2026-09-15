@@ -2,7 +2,11 @@ import React, { useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Check,
+  CheckCheck,
   ChevronDown,
+  Copy,
+  GraduationCap,
+  Lightbulb,
   Loader2,
   MessageSquare,
   Save,
@@ -26,6 +30,49 @@ import { getAiConfig, peekCouncil } from '../../services/aiConfigService';
 import { saveGeneratedScenario } from '../../services/scenarioService';
 import { formatAIModelName } from '../../services/geminiService';
 import { extractLessonBlocks } from '../../utils/lessonBlocks';
+
+interface ParsedTeacherNotes {
+  goal?: string;
+  scaffolding?: string;
+  followUp?: string;
+  otherLines: string[];
+}
+
+const parseTeacherNotes = (raw: string): ParsedTeacherNotes => {
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  let goal: string | undefined;
+  let scaffolding: string | undefined;
+  let followUp: string | undefined;
+  const otherLines: string[] = [];
+
+  for (const line of lines) {
+    const clean = line.replace(/^[•*\-\d.]+\s*/, '').trim();
+    const lower = clean.toLowerCase();
+
+    if (lower.startsWith('cel:') || lower.startsWith('**cel:**') || lower.startsWith('cel ')) {
+      goal = clean.replace(/^(\*\*)?cel:?(\*\*)?\s*/i, '').trim();
+    } else if (
+      lower.startsWith('scaffolding:') ||
+      lower.startsWith('**scaffolding:**') ||
+      lower.startsWith('sugerowane:') ||
+      lower.startsWith('sugerowane odpowiedzi:') ||
+      lower.startsWith('podpowiedź:')
+    ) {
+      scaffolding = clean.replace(/^(\*\*)?(scaffolding|sugerowane odpowiedzi|sugerowane|podpowiedź):?(\*\*)?\s*/i, '').trim();
+    } else if (
+      lower.startsWith('follow-up:') ||
+      lower.startsWith('**follow-up:**') ||
+      lower.startsWith('follow up:') ||
+      lower.startsWith('pytanie pomocnicze:')
+    ) {
+      followUp = clean.replace(/^(\*\*)?(follow-up|follow up|pytanie pomocnicze):?(\*\*)?\s*/i, '').trim();
+    } else {
+      otherLines.push(clean);
+    }
+  }
+
+  return { goal, scaffolding, followUp, otherLines };
+};
 
 /**
  * PLANER LEKCJI — potężne narzędzie w prostej obudowie.
@@ -208,8 +255,35 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
 
   const [plan, setPlan] = useState<LessonPlan | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
+  const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
   const [chat, setChat] = useState<ChatTurn[]>([]);
   const [chatDraft, setChatDraft] = useState('');
+
+  const toggleNote = (itemId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedNotes(prev => ({ ...prev, [itemId]: !prev[itemId] }));
+  };
+
+  const toggleAllNotesInSection = (section: PlanSection, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const itemsWithNotes = section.items.filter(it => Boolean(it.notes));
+    const allOpen = itemsWithNotes.length > 0 && itemsWithNotes.every(it => expandedNotes[it.id]);
+    setExpandedNotes(prev => {
+      const next = { ...prev };
+      itemsWithNotes.forEach(it => {
+        next[it.id] = !allOpen;
+      });
+      return next;
+    });
+  };
+
+  const handleCopyNoteScaffolding = (id: string, text: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(text);
+    setCopiedNoteId(id);
+    setTimeout(() => setCopiedNoteId(null), 2000);
+  };
 
   const [transcript, setTranscript] = useState<CouncilEvent[]>([]);
   const [showTranscript, setShowTranscript] = useState(false);
@@ -934,15 +1008,31 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
               >
                 <header className="px-4 py-3 border-b border-line-strong bg-base-100/40 flex items-center justify-between gap-3">
                   <h4 className="text-sm font-bold text-text-hi truncate">{section.title}</h4>
-                  {ids.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => toggleSection(section)}
-                      className="text-[10px] font-bold uppercase tracking-wider text-content-muted hover:text-primary shrink-0 cursor-pointer"
-                    >
-                      {allSelected ? 'Odznacz' : 'Zaznacz całość'}
-                    </button>
-                  )}
+                  <div className="flex items-center gap-3 shrink-0">
+                    {section.items.some(item => Boolean(item.notes)) && (
+                      <button
+                        type="button"
+                        onClick={(e) => toggleAllNotesInSection(section, e)}
+                        className="text-[10px] font-bold uppercase tracking-wider text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <GraduationCap size={12} />
+                        <span>
+                          {section.items.filter(it => Boolean(it.notes)).every(it => expandedNotes[it.id])
+                            ? "Zwiń Teacher's Notes"
+                            : "Rozwiń Teacher's Notes"}
+                        </span>
+                      </button>
+                    )}
+                    {ids.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => toggleSection(section)}
+                        className="text-[10px] font-bold uppercase tracking-wider text-content-muted hover:text-primary shrink-0 cursor-pointer transition-colors"
+                      >
+                        {allSelected ? 'Odznacz' : 'Zaznacz całość'}
+                      </button>
+                    )}
+                  </div>
                 </header>
 
                 <div className="p-2 space-y-1">
@@ -954,6 +1044,8 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
 
                   {section.items.map(item => {
                     const isSelected = selectedIds.includes(item.id);
+                    const isNoteOpen = expandedNotes[item.id] ?? false;
+
                     return (
                       <div
                         key={item.id}
@@ -984,10 +1076,97 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
                             <p className="text-sm text-text-hi whitespace-pre-wrap leading-relaxed">
                               {item.text}
                             </p>
+
                             {item.notes && (
-                              <p className="text-[11px] text-content-muted mt-1.5 pl-2.5 border-l-2 border-line-strong leading-relaxed whitespace-pre-wrap">
-                                {item.notes}
-                              </p>
+                              <div className="pt-1.5" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => toggleNote(item.id, e)}
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border ${
+                                    isNoteOpen
+                                      ? 'bg-purple-500/20 border-purple-500/40 text-purple-300 shadow-sm'
+                                      : 'bg-purple-500/10 border-purple-500/25 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300'
+                                  }`}
+                                >
+                                  <ChevronDown
+                                    size={13}
+                                    className={`transition-transform duration-200 ${
+                                      isNoteOpen ? 'rotate-180' : '-rotate-90'
+                                    }`}
+                                  />
+                                  <GraduationCap size={13} className="text-purple-400" />
+                                  <span>{isNoteOpen ? "Ukryj Teacher's Notes" : "Teacher's Notes"}</span>
+                                </button>
+
+                                {isNoteOpen && (() => {
+                                  const parsed = parseTeacherNotes(item.notes);
+                                  return (
+                                    <div className="mt-2 p-3.5 sm:p-4 rounded-xl bg-gradient-to-br from-purple-950/35 via-base-200/90 to-base-200/70 border border-purple-500/35 shadow-lg shadow-purple-950/20 space-y-2.5 text-xs animate-in fade-in duration-200">
+                                      <div className="flex items-center justify-between gap-2 border-b border-purple-500/20 pb-2">
+                                        <span className="text-[11px] font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5 font-mono">
+                                          <GraduationCap size={14} className="text-purple-400" />
+                                          <span>Teacher's Notes · Budka suflera</span>
+                                        </span>
+                                      </div>
+
+                                      {parsed.goal && (
+                                        <div className="flex items-start gap-2">
+                                          <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[10px] font-bold font-mono uppercase tracking-wider shrink-0 mt-0.5">
+                                            Cel
+                                          </span>
+                                          <p className="text-content leading-relaxed font-sans">{parsed.goal}</p>
+                                        </div>
+                                      )}
+
+                                      {parsed.scaffolding && (
+                                        <div className="flex items-start gap-2">
+                                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold font-mono uppercase tracking-wider shrink-0 mt-0.5">
+                                            Scaffolding
+                                          </span>
+                                          <div className="flex-1 flex items-center justify-between gap-2 bg-white/[0.04] px-2.5 py-1.5 rounded-lg border border-white/10">
+                                            <p className="text-white italic font-medium leading-relaxed font-mono text-[12px]">
+                                              {parsed.scaffolding}
+                                            </p>
+                                            <button
+                                              type="button"
+                                              onClick={(e) => handleCopyNoteScaffolding(item.id, parsed.scaffolding!, e)}
+                                              className="p-1 text-content-muted hover:text-white transition-colors shrink-0 cursor-pointer"
+                                              title="Kopiuj do schowka"
+                                            >
+                                              {copiedNoteId === item.id ? (
+                                                <CheckCheck size={12} className="text-primary" />
+                                              ) : (
+                                                <Copy size={12} />
+                                              )}
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {parsed.followUp && (
+                                        <div className="flex items-start gap-2">
+                                          <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold font-mono uppercase tracking-wider shrink-0 mt-0.5">
+                                            Follow-up
+                                          </span>
+                                          <p className="text-amber-200 font-semibold leading-relaxed font-sans">
+                                            {parsed.followUp}
+                                          </p>
+                                        </div>
+                                      )}
+
+                                      {parsed.otherLines.length > 0 && (
+                                        <div className="space-y-1 pt-1 border-t border-purple-500/20">
+                                          {parsed.otherLines.map((l, li) => (
+                                            <p key={li} className="text-content-muted leading-relaxed pl-2 border-l border-purple-500/30 font-sans">
+                                              {l}
+                                            </p>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
                             )}
                           </div>
                         </div>

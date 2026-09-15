@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle, Check, Copy, HelpCircle, RotateCcw } from 'lucide-react';
+import { AlertCircle, Check, Copy, HelpCircle, Languages, Lightbulb, RotateCcw, Sparkles } from 'lucide-react';
 import { HomeworkType } from '../../types';
 
 /**
@@ -27,36 +27,70 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
   const [showHint, setShowHint] = useState(false);
 
   if (type === 'translation') {
-    return (
-      <div className="space-y-3">
-        <p className="prose-justified text-lg font-bold text-white leading-snug">
-          {item.polishSentence}
-        </p>
+    const polishSentence = item.polishSentence || item.content || item.instruction || '';
+    const explicitHint = item.hint || item.hintSmall || item.hintLarge || (Array.isArray(item.requiredMaterial) ? item.requiredMaterial.join(', ') : item.requiredMaterial);
+    const targetRef = item.correctTranslation || item.modelAnswer || '';
+    const hintText = explicitHint || (item.learningObjective ? `Cel: ${item.learningObjective}` : null) || (targetRef ? `Zacznij od: "${String(targetRef).trim().split(/\s+/).slice(0, 2).join(' ')}…"` : null);
 
-        {item.hint && (
-          <div>
+    return (
+      <div className="space-y-4">
+        {/* Nagłówek zadania tłumaczenia */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-bold uppercase tracking-wider">
+            <Languages size={13} />
+            Przetłumacz na angielski
+          </span>
+
+          {hintText && (
             <button
+              type="button"
               onClick={() => setShowHint((v) => !v)}
-              className="inline-flex items-center gap-1.5 min-h-[2.5rem] text-xs font-bold text-warn"
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                showHint
+                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm'
+                  : 'bg-amber-500/10 border-amber-500/25 text-amber-400 hover:bg-amber-500/20'
+              }`}
             >
-              <HelpCircle size={14} />
-              {showHint ? 'Ukryj wskazówkę' : 'Wskazówka'}
+              <Lightbulb size={13} className={showHint ? 'text-amber-300 fill-amber-300/40' : 'text-amber-400'} />
+              <span>{showHint ? 'Ukryj wskazówkę' : 'Wskazówka'}</span>
             </button>
-            {showHint && (
-              <p className="prose-justified text-[13px] text-warn bg-warn/10 border border-warn/20 rounded-xl p-3 mt-1">
-                {item.hint}
-              </p>
-            )}
+          )}
+        </div>
+
+        {/* Zdanie do przetłumaczenia */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-base-100/70 border border-white/10 shadow-inner">
+          <p className="prose-justified text-lg sm:text-xl font-bold text-white leading-relaxed">
+            {polishSentence}
+          </p>
+        </div>
+
+        {/* Rozwijana wskazówka */}
+        {showHint && hintText && (
+          <div className="p-3.5 rounded-xl bg-amber-950/25 border border-amber-500/35 text-amber-200 text-xs sm:text-sm leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-200 shadow-sm">
+            <Lightbulb size={16} className="text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold text-amber-300 block text-[11px] uppercase tracking-wider mb-0.5">
+                Wskazówka lektora:
+              </span>
+              <span>{hintText}</span>
+            </div>
           </div>
         )}
 
-        <textarea
-          value={answer || ''}
-          onChange={(e) => onChange(e.target.value)}
-          rows={3}
-          placeholder="Wpisz tłumaczenie po angielsku…"
-          className="w-full px-3.5 py-3 bg-base-100 text-white text-[15px] border border-white/15 rounded-xl focus:border-primary focus:outline-none resize-y"
-        />
+        {/* Pole odpowiedzi */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-content-muted">Twoja odpowiedź:</label>
+            <span className="text-[11px] text-content-muted/70">Wpisz całe zdanie po angielsku</span>
+          </div>
+          <textarea
+            value={answer || ''}
+            onChange={(e) => onChange(e.target.value)}
+            rows={3}
+            placeholder="Wpisz tłumaczenie po angielsku…"
+            className="w-full p-4 bg-base-100/90 text-white text-[15px] sm:text-base border border-white/15 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
+          />
+        </div>
       </div>
     );
   }
@@ -209,60 +243,75 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
   }
 
   if (type === 'find_errors') {
-    const incorrect = String(item.incorrectSentence || '').trim();
+    const incorrect = String(item.incorrectSentence || item.content || '').trim();
     const currentValue = typeof answer === 'string' ? answer : '';
+    const explicitHint = item.hint || item.hintSmall || item.hintLarge || (Array.isArray(item.requiredMaterial) ? item.requiredMaterial.join(', ') : item.requiredMaterial);
+    const hintText = explicitHint || (item.learningObjective ? `Cel ćwiczenia: ${item.learningObjective}` : null);
+    const meaningText = item.polishHint || (item.exerciseType === 'fix_sentence' && item.instruction ? item.instruction : null);
 
     return (
       <div className="space-y-4">
         {/* Nagłówek typu z odznaką i wskazówką */}
-        <div className="flex items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold uppercase tracking-wider">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold uppercase tracking-wider">
             <AlertCircle size={13} className="shrink-0 text-amber-400" />
             Znajdź i popraw błąd w zdaniu
           </span>
-          {item.hint && (
+
+          {hintText && (
             <button
               type="button"
               onClick={() => setShowHint((v) => !v)}
-              className="inline-flex items-center gap-1 text-xs font-bold text-warn hover:underline"
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                showHint
+                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm'
+                  : 'bg-amber-500/10 border-amber-500/25 text-amber-400 hover:bg-amber-500/20'
+              }`}
             >
-              <HelpCircle size={13} />
-              {showHint ? 'Ukryj wskazówkę' : 'Wskazówka'}
+              <Lightbulb size={13} className={showHint ? 'text-amber-300 fill-amber-300/40' : 'text-amber-400'} />
+              <span>{showHint ? 'Ukryj wskazówkę' : 'Wskazówka'}</span>
             </button>
           )}
         </div>
 
         {/* Zdanie z błędem w wyeksponowanej karcie */}
-        <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/30 space-y-2 shadow-sm">
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-950/20 border border-amber-500/30 space-y-2.5 shadow-sm">
           <span className="text-[11px] font-mono uppercase tracking-wider text-amber-400/90 font-bold block">
-            Zdanie z błędem do korekty:
+            Zdanie z błędem do poprawy:
           </span>
-          <p className="text-lg font-bold text-white leading-snug">
+          <p className="text-lg sm:text-xl font-bold text-white leading-relaxed">
             {incorrect}
           </p>
-          {item.polishHint && (
-            <p className="text-xs text-content-muted pt-2 border-t border-white/5 flex items-center gap-1.5">
-              <span className="font-semibold text-content">Znaczenie:</span>
-              <span className="italic">{item.polishHint}</span>
+          {meaningText && (
+            <p className="text-xs text-content-muted pt-2 border-t border-white/10 flex items-center gap-1.5">
+              <span className="font-semibold text-content">Instrukcja / Znaczenie:</span>
+              <span className="italic">{meaningText}</span>
             </p>
           )}
         </div>
 
-        {showHint && item.hint && (
-          <p className="text-[13px] text-warn bg-warn/10 border border-warn/20 rounded-xl p-3">
-            💡 {item.hint}
-          </p>
+        {/* Rozwijana wskazówka */}
+        {showHint && hintText && (
+          <div className="p-3.5 rounded-xl bg-amber-950/25 border border-amber-500/35 text-amber-200 text-xs sm:text-sm leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-200 shadow-sm">
+            <Lightbulb size={16} className="text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold text-amber-300 block text-[11px] uppercase tracking-wider mb-0.5">
+                Wskazówka lektora:
+              </span>
+              <span>{hintText}</span>
+            </div>
+          </div>
         )}
 
         {/* Pole odpowiedzi z szybką opcją wstawienia zdania do edycji */}
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-content-muted">Twoja poprawiona wersja:</label>
             {incorrect && currentValue !== incorrect && (
               <button
                 type="button"
                 onClick={() => onChange(incorrect)}
-                className="inline-flex items-center gap-1 text-[11px] text-primary/90 hover:text-primary font-bold transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 text-[11px] text-primary hover:text-primary/80 font-bold transition-colors cursor-pointer"
                 title="Wstaw zdanie z błędem, aby szybko zmienić tylko niepoprawne słowo"
               >
                 <Copy size={11} /> Kopiuj zdanie do edycji
@@ -273,9 +322,9 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
           <textarea
             value={currentValue}
             onChange={(e) => onChange(e.target.value)}
-            rows={2}
+            rows={3}
             placeholder="Wpisz w pełni poprawione zdanie po angielsku…"
-            className="w-full px-3.5 py-3 bg-base-100 text-white text-[15px] border border-white/15 rounded-xl focus:border-primary focus:outline-none resize-y"
+            className="w-full p-4 bg-base-100/90 text-white text-[15px] sm:text-base border border-white/15 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
           />
         </div>
       </div>

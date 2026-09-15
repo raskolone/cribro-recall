@@ -2191,16 +2191,27 @@ function createApp() {
     elevenlabs: "ELEVENLABS_API_KEY"
   };
   const maskKey = (key) => key.length <= 10 ? "\u2022\u2022\u2022\u2022" : `${key.slice(0, 6)}\u2022\u2022\u2022\u2022${key.slice(-4)}`;
+  const AI_SETTINGS_FILE = path.resolve(process.cwd(), ".ai-settings.json");
   const readAiSettings = async () => {
-    if (!adminApp) return {};
-    try {
-      const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
-      const snap = await adminDb.collection("system").doc("ai").get();
-      return snap.exists ? snap.data() || {} : {};
-    } catch (e) {
-      console.warn("Nie uda\u0142o si\u0119 odczyta\u0107 system/ai:", e);
-      return {};
+    let firestoreData = null;
+    if (adminApp) {
+      try {
+        const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
+        const snap = await adminDb.collection("system").doc("ai").get();
+        if (snap.exists && snap.data()) {
+          firestoreData = snap.data();
+        }
+      } catch (e) {
+      }
     }
+    let localData = null;
+    try {
+      if (fs.existsSync(AI_SETTINGS_FILE)) {
+        localData = JSON.parse(fs.readFileSync(AI_SETTINGS_FILE, "utf8"));
+      }
+    } catch {
+    }
+    return { ...localData || {}, ...firestoreData || {} };
   };
   app2.get("/api/ai/config", requireFirebaseAuth, async (_req, res) => {
     try {
@@ -2249,6 +2260,21 @@ function createApp() {
             enabled: index === 0 ? true : Boolean(seat?.enabled)
           }))
         };
+      }
+      try {
+        let currentData = {};
+        if (fs.existsSync(AI_SETTINGS_FILE)) {
+          currentData = JSON.parse(fs.readFileSync(AI_SETTINGS_FILE, "utf8"));
+        }
+        const updated = {
+          ...currentData,
+          ...models ? { models: clean } : {},
+          ...cleanCouncil ? { council: cleanCouncil } : {},
+          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        };
+        fs.writeFileSync(AI_SETTINGS_FILE, JSON.stringify(updated, null, 2), "utf8");
+      } catch (e) {
+        console.warn("Nie uda\u0142o si\u0119 zapisa\u0107 wyboru modeli do .ai-settings.json:", e);
       }
       if (adminApp) {
         try {
@@ -2308,6 +2334,20 @@ ${envName}=${cleanKey}
         }
       } catch (e) {
         console.warn(`Nie uda\u0142o si\u0119 zapisa\u0107 ${envName} w .env:`, e);
+      }
+      try {
+        let currentData = {};
+        if (fs.existsSync(AI_SETTINGS_FILE)) {
+          currentData = JSON.parse(fs.readFileSync(AI_SETTINGS_FILE, "utf8"));
+        }
+        const updated = {
+          ...currentData,
+          keys: { ...currentData.keys || {}, [String(provider)]: cleanKey },
+          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        };
+        fs.writeFileSync(AI_SETTINGS_FILE, JSON.stringify(updated, null, 2), "utf8");
+      } catch (e) {
+        console.warn("Nie uda\u0142o si\u0119 zapisa\u0107 klucza do .ai-settings.json:", e);
       }
       if (adminApp) {
         try {

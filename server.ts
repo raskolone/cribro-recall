@@ -1240,16 +1240,30 @@ export function createApp() {
   const maskKey = (key: string): string =>
     key.length <= 10 ? '••••' : `${key.slice(0, 6)}••••${key.slice(-4)}`;
 
+  const AI_SETTINGS_FILE = path.resolve(process.cwd(), '.ai-settings.json');
+
   const readAiSettings = async (): Promise<any> => {
-    if (!adminApp) return {};
-    try {
-      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
-      const snap = await adminDb.collection('system').doc('ai').get();
-      return snap.exists ? snap.data() || {} : {};
-    } catch (e) {
-      console.warn('Nie udało się odczytać system/ai:', e);
-      return {};
+    let firestoreData: any = null;
+    if (adminApp) {
+      try {
+        const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+        const snap = await adminDb.collection('system').doc('ai').get();
+        if (snap.exists && snap.data()) {
+          firestoreData = snap.data();
+        }
+      } catch (e) {
+        // brak poświadczeń Admin w środowisku dev
+      }
     }
+
+    let localData: any = null;
+    try {
+      if (fs.existsSync(AI_SETTINGS_FILE)) {
+        localData = JSON.parse(fs.readFileSync(AI_SETTINGS_FILE, 'utf8'));
+      }
+    } catch {}
+
+    return { ...(localData || {}), ...(firestoreData || {}) };
   };
 
   app.get('/api/ai/config', requireFirebaseAuth, async (_req, res) => {
@@ -1324,6 +1338,23 @@ export function createApp() {
         };
       }
 
+      // Zapis do pliku lokalnego .ai-settings.json (gwarancja natychmiastowej trwałości w dev)
+      try {
+        let currentData: any = {};
+        if (fs.existsSync(AI_SETTINGS_FILE)) {
+          currentData = JSON.parse(fs.readFileSync(AI_SETTINGS_FILE, 'utf8'));
+        }
+        const updated = {
+          ...currentData,
+          ...(models ? { models: clean } : {}),
+          ...(cleanCouncil ? { council: cleanCouncil } : {}),
+          updatedAt: new Date().toISOString(),
+        };
+        fs.writeFileSync(AI_SETTINGS_FILE, JSON.stringify(updated, null, 2), 'utf8');
+      } catch (e) {
+        console.warn('Nie udało się zapisać wyboru modeli do .ai-settings.json:', e);
+      }
+
       if (adminApp) {
         try {
           const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
@@ -1383,6 +1414,22 @@ export function createApp() {
         }
       } catch (e) {
         console.warn(`Nie udało się zapisać ${envName} w .env:`, e);
+      }
+
+      // Zapis do lokalnego .ai-settings.json
+      try {
+        let currentData: any = {};
+        if (fs.existsSync(AI_SETTINGS_FILE)) {
+          currentData = JSON.parse(fs.readFileSync(AI_SETTINGS_FILE, 'utf8'));
+        }
+        const updated = {
+          ...currentData,
+          keys: { ...(currentData.keys || {}), [String(provider)]: cleanKey },
+          updatedAt: new Date().toISOString(),
+        };
+        fs.writeFileSync(AI_SETTINGS_FILE, JSON.stringify(updated, null, 2), 'utf8');
+      } catch (e) {
+        console.warn('Nie udało się zapisać klucza do .ai-settings.json:', e);
       }
 
       if (adminApp) {

@@ -252,8 +252,6 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
       (snapshot) => {
         const list = snapshot.docs
           .map((d) => ({ id: d.id, ...d.data() } as SpecialTask))
-          // Zestawy silnika v2 mają własny ekran — ten ich nie zrozumie.
-          .filter(isV1Task)
           .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         setTasks(list);
         setIsLoading(false);
@@ -381,24 +379,26 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           back: 'Wróć',
           due: (d: string) => `do ${d}`,
           items: (n: number) => `${n} zadań`,
-          submit: 'Wyślij do lektora',
+          submit: 'Odeślij pracę domową',
           next: 'Dalej',
           prev: 'Wstecz',
-          submitting: 'Wysyłam…',
-          resultTitle: 'Praca wysłana',
+          submitting: 'Odsyłam pracę…',
+          resultTitle: 'Praca odesłana',
           resultBody: (s: number) => `Wynik wstępny: ${s}%`,
-          backToList: 'Wróć do listy',
+          backToList: 'Wróć do listy prac',
           correct: 'Dobrze',
           wrong: 'Do poprawy',
           yourAnswer: 'Twoja odpowiedź',
           expected: 'Poprawnie',
-          statusSubmitted: 'Czeka na ocenę',
-          statusGraded: 'Ocenione',
+          statusSubmitted: 'Czeka na ocenę lektora',
+          statusGraded: 'Ocenione przez lektora',
           teacherFeedback: 'Komentarz lektora',
           unanswered: (n: number) =>
-            `Nie odpowiedziałeś na ${n} zadań. Dotknij jeszcze raz, żeby wysłać mimo to.`,
-          sendFailed: 'Nie udało się wysłać pracy. Twoje odpowiedzi są zapisane — spróbuj ponownie.',
-          sendAnyway: 'Wyślij mimo to',
+            n === 1
+              ? 'Nie odpowiedziałeś na 1 zadanie. Kliknij jeszcze raz, żeby odesłać mimo to.'
+              : `Nie odpowiedziałeś na ${n} zadań. Kliknij jeszcze raz, żeby odesłać mimo to.`,
+          sendFailed: 'Nie udało się odesłać pracy. Twoje odpowiedzi są zapisane — spróbuj ponownie.',
+          sendAnyway: 'Odeślij mimo to',
           blockCount: (n: number) => `${n} rodzaje zadań`,
           showBlocks: 'Z czego się składa',
           hideBlocks: 'Zwiń',
@@ -415,23 +415,26 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           back: 'Back',
           due: (d: string) => `by ${d}`,
           items: (n: number) => `${n} tasks`,
-          submit: 'Send to teacher',
+          submit: 'Submit homework',
           next: 'Next',
           prev: 'Back',
-          submitting: 'Sending…',
-          resultTitle: 'Homework sent',
+          submitting: 'Submitting homework…',
+          resultTitle: 'Homework submitted',
           resultBody: (s: number) => `Provisional score: ${s}%`,
-          backToList: 'Back to list',
+          backToList: 'Back to homework list',
           correct: 'Correct',
           wrong: 'To fix',
           yourAnswer: 'Your answer',
           expected: 'Correct answer',
-          statusSubmitted: 'Awaiting review',
-          statusGraded: 'Graded',
+          statusSubmitted: 'Awaiting teacher review',
+          statusGraded: 'Graded by teacher',
           teacherFeedback: 'Teacher feedback',
-          unanswered: (n: number) => `${n} tasks are unanswered. Tap again to send anyway.`,
-          sendFailed: 'Could not send your work. Your answers are saved — try again.',
-          sendAnyway: 'Send anyway',
+          unanswered: (n: number) =>
+            n === 1
+              ? '1 task is unanswered. Click again to submit anyway.'
+              : `${n} tasks are unanswered. Click again to submit anyway.`,
+          sendFailed: 'Could not submit your work. Your answers are saved — try again.',
+          sendAnyway: 'Submit anyway',
           blockCount: (n: number) => `${n} exercise types`,
           showBlocks: "What's inside",
           hideBlocks: 'Collapse',
@@ -870,132 +873,124 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             <span>Lektor sprawdził Twoje odpowiedzi i zatwierdził zadania bez dodatkowego komentarza ogólnego.</span>
           </div>
         ) : (
-          /* Wynik pod spodem wystawia automat, nie lektor. Kursant musi to
-             wiedzieć, zanim przeczyta ocenę — inaczej bierze podpowiedź
-             maszyny za werdykt nauczyciela i albo się nim niepotrzebnie
-             przejmuje, albo uznaje pracę za zamkniętą. */
-          <div className="rounded-3xl bg-gradient-to-br from-info/[0.12] via-base-200 to-base-200 border-2 border-info/40 p-5 sm:p-6 shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-info/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10 flex items-start gap-3.5">
-              <span className="p-2.5 rounded-2xl bg-info/15 text-info border border-info/30 shrink-0">
-                <Sparkles size={20} />
+          <div className="rounded-3xl bg-base-200/80 border-2 border-primary/30 p-5 sm:p-6 shadow-xl relative overflow-hidden space-y-2">
+            <div className="flex items-start gap-3.5">
+              <span className="p-2.5 rounded-2xl bg-primary/15 text-primary border border-primary/30 shrink-0">
+                <Clock size={20} />
               </span>
-              <div className="space-y-1.5 min-w-0">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-[0.14em] bg-info/15 text-info border border-info/30">
-                  Ocena wstępna
+              <div className="space-y-1 min-w-0">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-[0.14em] bg-primary/15 text-primary border border-primary/30">
+                  Czeka na sprawdzenie
                 </span>
                 <h3 className="text-xl sm:text-2xl font-black font-serif text-white leading-tight">
-                  To jest automatyczny feedback
+                  Praca odesłana do lektora
                 </h3>
                 <p className="text-sm text-content leading-relaxed">
-                  Poniższa ocena i uwagi powstały automatycznie, zaraz po odesłaniu pracy — żebyś
-                  nie czekał na pierwszą informację zwrotną.{' '}
-                  <strong className="text-white font-bold">
-                    Komentarz od lektora dostaniesz później
-                  </strong>{' '}
-                  i to on jest oceną wiążącą.
+                  Twoje odpowiedzi trafiły do lektora. Sprawdzenie, ocena oraz wskazówki pojawią się tutaj po zweryfikowaniu pracy przez nauczyciela.
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Score & Summary KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className={`p-4 rounded-2xl border text-center space-y-1 ${scoreColorClass}`}>
-            <span className="text-[11px] font-mono font-bold uppercase tracking-wider opacity-80 block">
-              Ocena pracy
-            </span>
-            <span className="text-3xl font-black font-mono">
-              {score}%
-            </span>
-            <span className="text-[10px] block opacity-90 font-sans">
-              {scoreAssessment}
-            </span>
-          </div>
+        {/* Score & Summary KPI Cards — wyłącznie po sprawdzeniu przez lektora */}
+        {isGraded && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className={`p-4 rounded-2xl border text-center space-y-1 ${scoreColorClass}`}>
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider opacity-80 block">
+                  Ocena lektora
+                </span>
+                <span className="text-3xl font-black font-mono">
+                  {score}%
+                </span>
+                <span className="text-[10px] block opacity-90 font-sans">
+                  {scoreAssessment}
+                </span>
+              </div>
 
-          <div className="p-4 rounded-2xl bg-emerald-500/[0.08] border border-emerald-500/30 text-center space-y-1 flex flex-col justify-center">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-center gap-1">
-              <Check size={13} className="stroke-[3]" /> Zrobione dobrze
-            </span>
-            <span className="text-2xl font-black font-mono text-emerald-300">
-              {correctCount} <span className="text-xs font-sans text-emerald-400/70 font-normal">/ {totalCount}</span>
-            </span>
-            <span className="text-[11px] text-content-muted">
-              {totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0}% poprawności
-            </span>
-          </div>
+              <div className="p-4 rounded-2xl bg-emerald-500/[0.08] border border-emerald-500/30 text-center space-y-1 flex flex-col justify-center">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-center gap-1">
+                  <Check size={13} className="stroke-[3]" /> Zrobione dobrze
+                </span>
+                <span className="text-2xl font-black font-mono text-emerald-300">
+                  {correctCount} <span className="text-xs font-sans text-emerald-400/70 font-normal">/ {totalCount}</span>
+                </span>
+                <span className="text-[11px] text-content-muted">
+                  {totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0}% poprawności
+                </span>
+              </div>
 
-          <div className="p-4 rounded-2xl bg-amber-500/[0.08] border border-amber-500/30 text-center space-y-1 flex flex-col justify-center">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center justify-center gap-1">
-              <AlertTriangle size={13} /> Wymaga poprawy
-            </span>
-            <span className="text-2xl font-black font-mono text-amber-300">
-              {errorCount} <span className="text-xs font-sans text-amber-400/70 font-normal">/ {totalCount}</span>
-            </span>
-            <span className="text-[11px] text-content-muted">
-              {errorCount === 0 ? 'Brak błędów!' : `${errorCount} do analizy`}
-            </span>
-          </div>
-        </div>
-
-        {/* Visual Ratio Progress Bar */}
-        {totalCount > 0 && (
-          <div className="space-y-1.5 px-1">
-            <div className="h-2 rounded-full bg-white/10 overflow-hidden flex">
-              <div
-                className="h-full bg-emerald-500 transition-all"
-                style={{ width: `${(correctCount / totalCount) * 100}%` }}
-                title={`Poprawne: ${correctCount}`}
-              />
-              <div
-                className="h-full bg-amber-500 transition-all"
-                style={{ width: `${(errorCount / totalCount) * 100}%` }}
-                title={`Do poprawy: ${errorCount}`}
-              />
+              <div className="p-4 rounded-2xl bg-amber-500/[0.08] border border-amber-500/30 text-center space-y-1 flex flex-col justify-center">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center justify-center gap-1">
+                  <AlertTriangle size={13} /> Wymaga poprawy
+                </span>
+                <span className="text-2xl font-black font-mono text-amber-300">
+                  {errorCount} <span className="text-xs font-sans text-amber-400/70 font-normal">/ {totalCount}</span>
+                </span>
+                <span className="text-[11px] text-content-muted">
+                  {errorCount === 0 ? 'Brak błędów!' : `${errorCount} do analizy`}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between text-[11px] font-mono text-content-muted">
-              <span>Poprawne: {Math.round((correctCount / totalCount) * 100)}%</span>
-              <span>Do poprawy: {Math.round((errorCount / totalCount) * 100)}%</span>
+
+            {totalCount > 0 && (
+              <div className="space-y-1.5 px-1">
+                <div className="h-2 rounded-full bg-white/10 overflow-hidden flex">
+                  <div
+                    className="h-full bg-emerald-500 transition-all"
+                    style={{ width: `${(correctCount / totalCount) * 100}%` }}
+                    title={`Poprawne: ${correctCount}`}
+                  />
+                  <div
+                    className="h-full bg-amber-500 transition-all"
+                    style={{ width: `${(errorCount / totalCount) * 100}%` }}
+                    title={`Do poprawy: ${errorCount}`}
+                  />
+                </div>
+                <div className="flex justify-between text-[11px] font-mono text-content-muted">
+                  <span>Poprawne: {Math.round((correctCount / totalCount) * 100)}%</span>
+                  <span>Do poprawy: {Math.round((errorCount / totalCount) * 100)}%</span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 p-1 rounded-xl bg-base-200/80 border border-white/10">
+              <button
+                onClick={() => setReviewFilter('all')}
+                className={`flex-1 min-h-[2.5rem] rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                  reviewFilter === 'all'
+                    ? 'bg-primary text-accent-ink shadow-sm'
+                    : 'text-content-muted hover:text-text-hi'
+                }`}
+              >
+                Wszystkie ({totalCount})
+              </button>
+              <button
+                onClick={() => setReviewFilter('errors')}
+                className={`flex-1 min-h-[2.5rem] rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+                  reviewFilter === 'errors'
+                    ? 'bg-amber-500 text-[#0f1720] shadow-sm'
+                    : 'text-amber-400/80 hover:text-amber-300'
+                }`}
+              >
+                <AlertTriangle size={13} />
+                <span>Do poprawy ({errorCount})</span>
+              </button>
+              <button
+                onClick={() => setReviewFilter('correct')}
+                className={`flex-1 min-h-[2.5rem] rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+                  reviewFilter === 'correct'
+                    ? 'bg-emerald-500 text-[#0f1720] shadow-sm'
+                    : 'text-emerald-400/80 hover:text-emerald-300'
+                }`}
+              >
+                <Check size={13} className="stroke-[3]" />
+                <span>Poprawne ({correctCount})</span>
+              </button>
             </div>
-          </div>
+          </>
         )}
-
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-2 p-1 rounded-xl bg-base-200/80 border border-white/10">
-          <button
-            onClick={() => setReviewFilter('all')}
-            className={`flex-1 min-h-[2.5rem] rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-              reviewFilter === 'all'
-                ? 'bg-primary text-accent-ink shadow-sm'
-                : 'text-content-muted hover:text-text-hi'
-            }`}
-          >
-            Wszystkie ({totalCount})
-          </button>
-          <button
-            onClick={() => setReviewFilter('errors')}
-            className={`flex-1 min-h-[2.5rem] rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
-              reviewFilter === 'errors'
-                ? 'bg-amber-500 text-[#0f1720] shadow-sm'
-                : 'text-amber-400/80 hover:text-amber-300'
-            }`}
-          >
-            <AlertTriangle size={13} />
-            <span>Do poprawy ({errorCount})</span>
-          </button>
-          <button
-            onClick={() => setReviewFilter('correct')}
-            className={`flex-1 min-h-[2.5rem] rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
-              reviewFilter === 'correct'
-                ? 'bg-emerald-500 text-[#0f1720] shadow-sm'
-                : 'text-emerald-400/80 hover:text-emerald-300'
-            }`}
-          >
-            <Check size={13} className="stroke-[3]" />
-            <span>Poprawne ({correctCount})</span>
-          </button>
-        </div>
 
         {/* Detailed Exercise Cards */}
         <div className="space-y-3">
@@ -1008,7 +1003,9 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
               <div
                 key={row.index}
                 className={`rounded-2xl border p-4 sm:p-5 space-y-3 transition-all ${
-                  row.isCorrect
+                  !isGraded
+                    ? 'border-white/10 bg-base-200/50'
+                    : row.isCorrect
                     ? 'border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.06] to-base-200/50'
                     : 'border-amber-500/35 bg-gradient-to-br from-amber-500/[0.08] to-base-200/60 shadow-lg shadow-amber-950/20'
                 }`}
@@ -1018,7 +1015,12 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                   <span className="text-xs font-mono font-bold text-content-muted">
                     Zadanie #{row.index} · {typeLabel(row.type)}
                   </span>
-                  {row.isCorrect ? (
+                  {!isGraded ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/10 text-content-muted border border-white/15">
+                      <Clock size={12} />
+                      <span>Odesłano do oceny</span>
+                    </span>
+                  ) : row.isCorrect ? (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/35 shadow-sm">
                       <Check size={13} className="stroke-[3]" />
                       <span>Zrobione dobrze</span>
@@ -1048,15 +1050,19 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                   </span>
                   <div
                     className={`text-[14px] leading-relaxed ${
-                      row.isCorrect ? 'text-white font-medium' : 'text-amber-200 font-medium'
+                      !isGraded
+                        ? 'text-white font-medium'
+                        : row.isCorrect
+                        ? 'text-white font-medium'
+                        : 'text-amber-200 font-medium'
                     }`}
                   >
                     {formatStudentAnswer(row.studentAnswer)}
                   </div>
                 </div>
 
-                {/* Expected answer if incorrect */}
-                {!row.isCorrect && row.expected && (
+                {/* Expected answer if incorrect and already graded */}
+                {isGraded && !row.isCorrect && row.expected && (
                   <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-1">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
                       <Check size={13} className="stroke-[3]" /> Wzorzec lektora (poprawna wersja):
@@ -1067,8 +1073,8 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                   </div>
                 )}
 
-                {/* Explanation or tip */}
-                {row.explanation && (
+                {/* Explanation or tip only when graded */}
+                {isGraded && row.explanation && (
                   <div className="p-3 rounded-xl bg-primary/[0.06] border border-primary/20 flex items-start gap-2.5">
                     <Sparkles size={15} className="text-primary shrink-0 mt-0.5" />
                     <div className="space-y-0.5">
@@ -1137,7 +1143,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
         <div className="flex items-center gap-3">
           <button
             onClick={closeTask}
-            className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border border-white/12 text-content-muted"
+            className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border border-white/12 text-content-muted hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
             aria-label={L.back}
           >
             <ArrowLeft size={18} />
@@ -1151,6 +1157,16 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           <span className="font-mono text-xs text-content-muted shrink-0">
             {index + 1}/{items.length}
           </span>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-colors cursor-pointer shrink-0"
+            title="Odeślij pracę domową do lektora"
+          >
+            <Send size={13} />
+            <span>Odeślij pracę</span>
+          </button>
         </div>
 
         {/* Etykieta bloku: przy pracy z kilku rodzajów kursant widzi, w którym
@@ -1229,23 +1245,25 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           </p>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap sm:flex-nowrap gap-2">
           {index > 0 && (
             <button
+              type="button"
               onClick={() => setIndex((i) => i - 1)}
-              className="min-h-[3.25rem] px-5 rounded-xl border border-white/15 text-content font-bold text-sm"
+              className="min-h-[3.25rem] px-5 rounded-xl border border-white/15 text-content hover:text-white hover:bg-white/5 font-bold text-sm transition-colors cursor-pointer"
             >
               {L.prev}
             </button>
           )}
           {isLast ? (
             <button
+              type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className={`flex-1 min-h-[3.25rem] flex items-center justify-center gap-2 rounded-xl font-bold disabled:opacity-50 ${
+              className={`flex-1 min-h-[3.25rem] flex items-center justify-center gap-2 rounded-xl font-bold transition-all shadow-lg cursor-pointer disabled:opacity-50 ${
                 confirmedIncomplete
-                  ? 'bg-warn text-accent-ink'
-                  : 'bg-primary text-accent-ink'
+                  ? 'bg-warn text-accent-ink hover:bg-warn/90'
+                  : 'bg-primary text-accent-ink hover:bg-primary/90 shadow-primary/20'
               }`}
             >
               {isSubmitting ? (
@@ -1259,12 +1277,26 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
               )}
             </button>
           ) : (
-            <button
-              onClick={() => setIndex((i) => i + 1)}
-              className="flex-1 min-h-[3.25rem] flex items-center justify-center gap-2 rounded-xl bg-primary text-accent-ink font-bold"
-            >
-              {L.next} <ArrowRight size={16} />
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setIndex((i) => i + 1)}
+                className="flex-1 min-h-[3.25rem] flex items-center justify-center gap-2 rounded-xl bg-primary text-accent-ink font-bold hover:bg-primary/90 transition-all cursor-pointer shadow-lg shadow-primary/20"
+              >
+                {L.next} <ArrowRight size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="min-h-[3.25rem] px-4 flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-sm transition-all cursor-pointer shrink-0"
+                title={L.submit}
+              >
+                <Send size={15} />
+                <span className="hidden sm:inline">{L.submit}</span>
+                <span className="sm:hidden">Odeślij</span>
+              </button>
+            </>
           )}
         </div>
       </div>

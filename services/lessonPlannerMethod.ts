@@ -185,7 +185,12 @@ ${brief.grammarTopic?.trim() ? '6' : '5'}. Extra Tasks — DOKŁADNIE 4 różne 
    - Cztery zadania mają się od siebie RÓŻNIĆ. Nie sprawdzaj czterokrotnie tego samego zdania ani tej samej konstrukcji.
    - Nie generuj gap-fillu ani Word Banku.
 
-Teacher's Notes przy każdym pytaniu Main Topic mają 2–4 krótkie, użyteczne elementy: CEL rozmowy, JEDNO naturalne pytanie pogłębiające, oraz wsparcie językowe albo gałąź „jeśli odpowiedź będzie krótka". Czwarty element dodaj tylko wtedy, gdy realnie pomaga. Nie rób z nich drugiego scenariusza lekcji.
+TEACHER'S NOTES (BUDKA SUFLERA):
+Przy KAŻDYM z 10 pytań dyskusyjnych w Main Topic (oraz kluczowych pytaniach w Warm-up) pole "notes" MUSI zawierać zwięzłe, użyteczne wskazówki dla lektora w 3 stałych punktach:
+• Cel: [cel dydaktyczny pytania po polsku — wejście w temat, zebranie argumentu, proste uzasadnienie]
+• Scaffolding: [początki zdań, sugerowane odpowiedzi i zwroty pomocnicze po angielsku w kursywie, np. I work as a... / I am responsible for...]
+• Follow-up: [jedno celne, naturalne pytanie pogłębiające po angielsku, np. What is one important task in your job?]
+Nie rób z nich drugiego scenariusza lekcji — mają służyć jako błyskawiczna „budka suflera” rozwijana pod każdym pytaniem.
 
 Zwróć WYŁĄCZNIE poprawny JSON o strukturze:
 {
@@ -201,7 +206,7 @@ Zwróć WYŁĄCZNIE poprawny JSON o strukturze:
           "id": "warmup-q1",
           "kind": "question",
           "text": "Treść pytania PO ANGIELSKU",
-          "notes": "Teacher's Notes po polsku — pusty string, jeśli niepotrzebne"
+          "notes": "• Cel: krótki icebreaker wprowadzający w temat.\n• Scaffolding: In my opinion... / Usually I prefer...\n• Follow-up: Why is that important to you?"
         }
       ]
     }

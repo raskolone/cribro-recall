@@ -283,7 +283,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
 
   const handleTileClick = (tabId: string) => {
     if (tabId === 'mailing') {
-      setIsMailingModalOpen(true);
+      setActiveTab('mailing');
       return;
     }
     if (tabId === 'context') {
@@ -1720,9 +1720,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   };
 
   // User Profile Edit States
-  const [activeTab, setActiveTab] = useState<string | null>(initialTab === 'mailing' ? null : (initialTab || null));
-  const [isMailingModalOpen, setIsMailingModalOpen] = useState(initialTab === 'mailing');
-  useEscapeModal(isMailingModalOpen, () => setIsMailingModalOpen(false));
+  const [activeTab, setActiveTab] = useState<string | null>(initialTab || null);
 
   const [unreadMailingCount, setUnreadMailingCount] = useState<number>(0);
 
@@ -1811,12 +1809,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
 
   useEffect(() => {
-    if (initialTab === 'mailing') {
-      setIsMailingModalOpen(true);
-      setActiveTab(null);
-    } else {
-      setActiveTab(initialTab || null);
-    }
+    setActiveTab(initialTab || null);
   }, [initialTab]);
 
   const handleTabChange = (tab: string) => {
@@ -2196,8 +2189,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           },
         ].map((item) => {
           const IconComp = item.icon;
-          const isActive =
-            activeTab === item.id || (item.id === 'mailing' && isMailingModalOpen);
+          const isActive = activeTab === item.id;
           return (
             <button
               key={item.id}
@@ -2296,6 +2288,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           a nie na pulpicie obok narzędzi do prowadzenia lekcji. */}
 
         </>
+      )}
+
+      {/* JEŚLI AKTYWNY JEST MODUŁ MAILING */}
+      {activeTab === 'mailing' && (
+        <div className="space-y-4 animate-in fade-in duration-200">
+          <AdminMailingScreen onBack={() => setActiveTab(selectedUser ? 'profile' : null)} />
+        </div>
       )}
 
       {/* JEŚLI AKTYWNY JEST MODUŁ OGÓLNY (Planer, Prezentacja) */}
@@ -5787,51 +5786,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             showToast('Pomyślnie zaktualizowano lekcje do formatu bloków Notion!');
           }}
         />
-      )}
-      {/* DEDYKOWANY POP-UP MODAL DLA MODUŁU MAILING */}
-      {isMailingModalOpen && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsMailingModalOpen(false);
-          }}
-        >
-          <div className="w-full max-w-6xl max-h-[94vh] bg-base-100 border border-primary/30 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-scale-up">
-            {/* Header modalu */}
-            <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-line-strong flex items-center justify-between bg-base-200/70 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
-                  <Mail className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-text-hi text-sm sm:text-base flex items-center gap-2">
-                    Mailing & Powiadomienia e-mail
-                    {unreadMailingCount > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
-                        {unreadMailingCount} nowe
-                      </span>
-                    )}
-                  </h3>
-                  <p className="text-[11px] sm:text-xs text-content-muted">
-                    Szablony wiadomości, skrzynka odbiorcza, monitoring dostarczalności oraz weryfikacja wysyłek
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsMailingModalOpen(false)}
-                className="p-2 rounded-xl bg-line-soft hover:bg-line-soft text-content-muted hover:text-text-hi transition-colors border border-line-strong flex items-center gap-1 text-xs font-bold cursor-pointer"
-                title="Zamknij okno mailingu (Esc)"
-              >
-                <X size={16} />
-                <span className="hidden sm:inline">Zamknij</span>
-              </button>
-            </div>
-            {/* Treść modalu */}
-            <div className="p-4 sm:p-6 overflow-y-auto flex-1">
-              <AdminMailingScreen onBack={() => setIsMailingModalOpen(false)} />
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

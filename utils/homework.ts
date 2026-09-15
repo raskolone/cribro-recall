@@ -68,10 +68,11 @@ export const homeworkItemType = (
   task?: { type?: HomeworkType } | null
 ): HomeworkType => {
   if (item?.type) return item.type as HomeworkType;
-  if (item?.incorrectSentence) return 'find_errors';
+  if (item?.exerciseType === 'fix_sentence' || item?.incorrectSentence) return 'find_errors';
+  if (item?.exerciseType === 'gap_from_context' || item?.textWithBlanks || item?.blanks) return 'fill_in_the_blank';
+  if (item?.exerciseType === 'micro_translation') return 'translation';
   if (item?.chunks) return 'word_order';
   if (item?.options && typeof item?.correctIndex === 'number') return 'multiple_choice';
-  if (item?.textWithBlanks || item?.blanks) return 'fill_in_the_blank';
   return (task?.type as HomeworkType) || 'translation';
 };
 

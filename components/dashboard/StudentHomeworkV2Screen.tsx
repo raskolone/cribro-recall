@@ -259,102 +259,170 @@ const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user,
     );
   }
 
+  const [showManualHint, setShowManualHint] = useState(false);
   const canGoNext = state.done || (state.attemptsLeft === 0 && !state.awaitingCorrection);
 
+  const availableHint =
+    state.hint ||
+    exercise.hintSmall ||
+    exercise.hintLarge ||
+    (Array.isArray(exercise.requiredMaterial) ? exercise.requiredMaterial.join(', ') : exercise.requiredMaterial) ||
+    exercise.learningObjective;
+
   return (
-    <div className="mx-auto max-w-lg space-y-4 px-4 py-6 pb-28">
-      {/* Postęp — ile zadań, nie ile punktów. */}
-      <div className="flex items-center justify-between text-xs text-text-2">
-        <span>
-          Zadanie {index + 1} z {exercises.length}
-        </span>
-        {state.masteryState && (
-          <span
-            className={`rounded-full px-2.5 py-1 ${
-              state.masteryState === 'opanowane'
-                ? 'bg-primary/15 text-primary'
-                : 'bg-line-soft text-text-2'
-            }`}
-          >
-            {MASTERY_LABEL[state.masteryState]}
+    <div className="mx-auto max-w-2xl space-y-5 px-4 py-6 pb-28 animate-in fade-in duration-300">
+      {/* Pasek postępu i nagłówek */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-semibold text-content-muted">
+            Zadanie <strong className="text-white">{index + 1}</strong> z{' '}
+            <strong className="text-white">{exercises.length}</strong>
           </span>
-        )}
-      </div>
-
-      {/* Zadanie */}
-      <section className="rounded-2xl border border-line-strong bg-surface-flat/40 p-5 space-y-3">
-        <p className="text-xs text-text-2">{exercise.instruction}</p>
-        <p className="text-lg leading-relaxed text-text-hi">{exercise.content}</p>
-      </section>
-
-      {/* Podpowiedź — z kontraktu zadania, nie od modelu */}
-      {state.hint && !state.done && (
-        <div className="flex gap-2 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3">
-          <Lightbulb size={16} className="mt-0.5 shrink-0 text-warn" />
-          <p className="text-sm text-warn">{state.hint}</p>
-        </div>
-      )}
-
-      {/* Wzorzec po trzeciej próbie */}
-      {state.modelAnswer && (
-        <div className="rounded-2xl border border-line-strong bg-line-soft px-4 py-3 space-y-1">
-          <p className="text-xs text-text-2">Poprawna odpowiedź</p>
-          <p className="text-sm text-text-hi">{state.modelAnswer}</p>
-          {state.awaitingCorrection && (
-            <p className="pt-1 text-xs text-text-2">Przepisz ją własnymi słowami, żeby utrwalić.</p>
+          {state.masteryState ? (
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                state.masteryState === 'opanowane'
+                  ? 'bg-primary/20 text-primary border border-primary/40'
+                  : 'bg-white/10 text-content-muted border border-white/15'
+              }`}
+            >
+              {MASTERY_LABEL[state.masteryState]}
+            </span>
+          ) : (
+            <span className="text-content-muted font-mono text-[11px]">
+              Próby: {state.attemptsLeft}/3
+            </span>
           )}
         </div>
-      )}
 
-      {/* Feedback Asystenta Cribro */}
-      {state.message && (
-        <div className="rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3">
-          <p className="text-sm leading-relaxed text-text-hi">{state.message}</p>
-        </div>
-      )}
-
-      {/* Odpowiedź */}
-      {!state.done && (
-        <>
-          <textarea
-            value={state.answer}
-            onChange={(e) => setAnswer(e.target.value)}
-            rows={3}
-            placeholder="Twoja odpowiedź"
-            className="w-full rounded-2xl border border-line-strong bg-ink px-4 py-3 text-base text-text-hi"
+        <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+          <div
+            className="h-full bg-primary transition-all duration-300"
+            style={{ width: `${((index + 1) / Math.max(exercises.length, 1)) * 100}%` }}
           />
-          <p className="text-xs text-text-mute">
-            {state.attemptNumber === 0
-              ? 'Masz trzy próby.'
-              : state.attemptsLeft > 0
-              ? `Zostały próby: ${state.attemptsLeft}`
-              : 'To ostatni krok tego zadania.'}
-          </p>
-        </>
-      )}
+        </div>
+      </div>
 
-      {error && <p className="text-sm text-danger">{error}</p>}
+      {/* Karta zadania */}
+      <section className="rounded-2xl border border-white/10 bg-base-200/70 p-5 sm:p-7 shadow-xl space-y-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap border-b border-white/5 pb-3">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-bold uppercase tracking-wider">
+            {exercise.exerciseType === 'fix_sentence' ? 'Korekta zdania' : 'Tłumaczenie'}
+          </span>
 
-      {/* Akcja — duży przycisk, jeden na ekran */}
-      <div className="fixed inset-x-0 bottom-0 border-t border-line-strong bg-ink/95 p-4 backdrop-blur">
-        <div className="mx-auto max-w-lg">
+          {availableHint && !state.done && (
+            <button
+              type="button"
+              onClick={() => setShowManualHint((v) => !v)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                showManualHint
+                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm'
+                  : 'bg-amber-500/10 border-amber-500/25 text-amber-400 hover:bg-amber-500/20'
+              }`}
+            >
+              <Lightbulb size={13} className={showManualHint ? 'text-amber-300 fill-amber-300/40' : 'text-amber-400'} />
+              <span>{showManualHint ? 'Ukryj wskazówkę' : 'Wskazówka'}</span>
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <p className="text-xs text-content-muted font-medium">{exercise.instruction}</p>
+          <p className="text-lg sm:text-xl font-bold leading-relaxed text-white">{exercise.content}</p>
+        </div>
+
+        {/* Wskazówka rozwijana */}
+        {showManualHint && availableHint && !state.done && (
+          <div className="p-3.5 rounded-xl bg-amber-950/25 border border-amber-500/35 text-amber-200 text-xs sm:text-sm leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-200 shadow-sm">
+            <Lightbulb size={16} className="text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold text-amber-300 block text-[11px] uppercase tracking-wider mb-0.5">
+                Wskazówka lektora:
+              </span>
+              <span>{availableHint}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Wzorzec po trzeciej próbie */}
+        {state.modelAnswer && (
+          <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 space-y-1.5 animate-in fade-in">
+            <span className="text-[11px] uppercase font-bold tracking-wider text-primary block">Poprawna odpowiedź:</span>
+            <p className="text-sm sm:text-base font-semibold text-white">{state.modelAnswer}</p>
+            {state.awaitingCorrection && (
+              <p className="pt-1 text-xs text-content-muted">Przepisz ją powyżej własnymi słowami, aby utrwalić konstrukcję.</p>
+            )}
+          </div>
+        )}
+
+        {/* Feedback asystenta */}
+        {state.message && (
+          <div className="rounded-xl border border-white/10 bg-base-100/80 p-4">
+            <p className="text-sm leading-relaxed text-content">{state.message}</p>
+          </div>
+        )}
+
+        {/* Odpowiedź */}
+        {!state.done && (
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-content-muted">Twoja odpowiedź:</label>
+              {exercise.exerciseType === 'fix_sentence' && exercise.content && state.answer !== exercise.content && (
+                <button
+                  type="button"
+                  onClick={() => setAnswer(exercise.content)}
+                  className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                >
+                  Wstaw zdanie do edycji
+                </button>
+              )}
+            </div>
+            <textarea
+              value={state.answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              rows={3}
+              placeholder="Wpisz odpowiedź…"
+              className="w-full p-4 rounded-xl border border-white/15 bg-base-100/90 text-white text-[15px] sm:text-base focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
+            />
+            <div className="flex items-center justify-between text-xs text-content-muted">
+              <span>
+                {state.attemptNumber === 0
+                  ? 'Masz 3 próby.'
+                  : state.attemptsLeft > 0
+                  ? `Pozostałe próby: ${state.attemptsLeft}`
+                  : 'Ostatni krok przed zakończeniem.'}
+              </span>
+              <span className="text-[11px] text-content-muted/70">Wciśnij Sprawdź, aby zatwierdzić</span>
+            </div>
+          </div>
+        )}
+
+        {error && <p className="text-sm text-danger">{error}</p>}
+      </section>
+
+      {/* Pasek akcji na dole */}
+      <div className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-base-100/90 p-4 backdrop-blur-md z-20">
+        <div className="mx-auto max-w-2xl flex items-center gap-3">
           {canGoNext ? (
             <button
               type="button"
-              onClick={() => setIndex((i) => i + 1)}
-              className="w-full rounded-xl bg-primary px-4 py-3.5 text-base font-semibold text-ink"
+              onClick={() => {
+                setShowManualHint(false);
+                setIndex((i) => i + 1);
+              }}
+              className="w-full rounded-xl bg-primary px-5 py-3.5 text-base font-bold text-accent-ink shadow-btn hover:brightness-110 transition-all cursor-pointer"
             >
-              Dalej
+              Następne zadanie →
             </button>
           ) : (
             <button
               type="button"
               onClick={handleSubmit}
               disabled={!state.answer.trim() || isSending}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-base font-semibold text-ink disabled:opacity-40"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-base font-bold text-accent-ink shadow-btn hover:brightness-110 transition-all cursor-pointer disabled:opacity-40"
             >
               {isSending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-              {isSending ? 'Sprawdzam…' : 'Sprawdź'}
+              {isSending ? 'Sprawdzam odpowiedź…' : 'Sprawdź odpowiedź'}
             </button>
           )}
         </div>

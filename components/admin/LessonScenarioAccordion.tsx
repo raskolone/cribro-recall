@@ -508,7 +508,23 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
         </div>
 
         <div className="prose max-w-none text-sm leading-relaxed text-content [&>h1]:text-primary [&>h2]:text-primary [&>h3]:text-text-hi [&>h1]:text-lg [&>h2]:text-base [&>h3]:text-sm [&>ul]:space-y-1.5 [&>ol]:space-y-1.5 [&>p]:leading-relaxed">
-          <Markdown>{content}</Markdown>
+          <Markdown
+            components={{
+              blockquote: ({ children }) => (
+                <details className="my-2.5 border border-purple-500/35 bg-gradient-to-br from-purple-950/40 to-base-100/60 rounded-xl p-3 sm:p-3.5 text-xs group shadow-sm">
+                  <summary className="cursor-pointer font-bold text-purple-300 hover:text-purple-200 select-none flex items-center gap-2 list-none transition-colors">
+                    <span className="text-[10px] text-purple-400 group-open:rotate-90 transition-transform duration-200">▶</span>
+                    <span className="font-mono text-[11px] uppercase tracking-wider">Teacher's Notes · Budka suflera</span>
+                  </summary>
+                  <div className="pt-2.5 text-content-muted leading-relaxed font-sans not-italic space-y-1 border-t border-purple-500/20 mt-2">
+                    {children}
+                  </div>
+                </details>
+              ),
+            }}
+          >
+            {content}
+          </Markdown>
         </div>
 
         {/* Quick action buttons if topics were detected */}
@@ -973,7 +989,23 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
                           </div>
                         ) : (
                           <div className="prose prose-strong:text-text-hi max-w-none text-xs sm:text-sm leading-relaxed text-content [&>ul]:space-y-1.5 [&>ol]:space-y-1.5 pt-2 [&>p]:leading-relaxed">
-                            <Markdown>{block.body || '_Brak treści w tym module._'}</Markdown>
+                            <Markdown
+                              components={{
+                                blockquote: ({ children }) => (
+                                  <details className="my-2.5 border border-purple-500/35 bg-gradient-to-br from-purple-950/40 to-base-100/60 rounded-xl p-3 sm:p-3.5 text-xs group shadow-sm">
+                                    <summary className="cursor-pointer font-bold text-purple-300 hover:text-purple-200 select-none flex items-center gap-2 list-none transition-colors">
+                                      <span className="text-[10px] text-purple-400 group-open:rotate-90 transition-transform duration-200">▶</span>
+                                      <span className="font-mono text-[11px] uppercase tracking-wider">Teacher's Notes · Budka suflera</span>
+                                    </summary>
+                                    <div className="pt-2.5 text-content-muted leading-relaxed font-sans not-italic space-y-1 border-t border-purple-500/20 mt-2">
+                                      {children}
+                                    </div>
+                                  </details>
+                                ),
+                              }}
+                            >
+                              {block.body || '_Brak treści w tym module._'}
+                            </Markdown>
                           </div>
                         )}
                       </div>

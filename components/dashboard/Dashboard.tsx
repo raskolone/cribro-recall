@@ -490,13 +490,7 @@ const Dashboard: React.FC = () => {
           onBack={() => handleNavigate('dashboard')}
         />
       );
-      // Przy włączonej fladze zestawy v2 dostają własny ekran, a kursant bez
-      // zestawów v2 widzi dokładnie to, co widział wcześniej.
-      return HOMEWORK_ENGINE_V2 && user ? (
-        <StudentHomeworkV2Screen user={user} fallback={homeworkV1} />
-      ) : (
-        homeworkV1
-      );
+      return homeworkV1;
     }
     if (view === 'settings') {
       return <SettingsScreen />;

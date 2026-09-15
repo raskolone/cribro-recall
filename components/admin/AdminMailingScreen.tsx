@@ -29,7 +29,8 @@ import {
   Settings,
   Key,
   Lock,
-  EyeOff
+  EyeOff,
+  ChevronDown
 } from 'lucide-react';
 import { collection, query, getDocs, getDoc, doc, updateDoc, setDoc, addDoc, deleteDoc, orderBy, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
@@ -462,6 +463,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
     maskedKey?: string | null;
     fromAddress?: string;
   }>({ configured: false });
+  const [showTestDrawer, setShowTestDrawer] = useState(false);
 
   const fetchKeyStatus = async () => {
     try {
@@ -851,9 +853,6 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
             <h1 className="text-2xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
               <Mail className="w-7 h-7 text-primary" />
               Mailing
-              <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 uppercase">
-                Resend API
-              </span>
             </h1>
             <p className="text-xs text-content-muted mt-1">
               Konfiguracja szablonów wiadomości, wysyłka testowa, zarządzanie rezygnacjami kursantów i automatyzacja Notion.
@@ -993,138 +992,152 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
 
       {/* TAB 1: TEMPLATES */}
       {activeTab === 'templates' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column: Template List */}
-          <div className="lg:col-span-4 space-y-3">
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-content-muted">
-              Wybierz szablon e-mail
-            </h3>
-
-            {TEMPLATES.map((tpl) => {
-              const isSelected = tpl.id === selectedTemplateId;
-              return (
-                <div
-                  key={tpl.id}
-                  onClick={() => setSelectedTemplateId(tpl.id)}
-                  className={`p-4 rounded-2xl cursor-pointer transition-all border ${
-                    isSelected
-                      ? 'border-primary/80 bg-ink-2 shadow-[0_0_20px_rgba(114,240,180,0.15)] ring-1 ring-primary/40'
-                      : 'border-white/10 bg-base-200/50 hover:bg-white/5 hover:border-white/20'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-white flex items-center gap-2">
-                      {tpl.name}
-                    </span>
-                    <span
-                      className={`text-[10px] font-mono px-2 py-0.5 rounded-full border uppercase font-bold ${
-                        tpl.status === 'active'
-                          ? 'bg-primary/20 text-primary border-primary/40'
-                          : 'bg-white/5 text-content-muted border-white/10'
-                      }`}
-                    >
-                      {tpl.status === 'active' ? 'Aktywny' : 'Draft'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-content-muted mt-1.5 line-clamp-2 leading-relaxed">
-                    {tpl.description}
-                  </p>
+        <div className="space-y-5">
+          {/* Top Bar: Szablon w dropdown menu & Akcje */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-base-200/70 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20 shrink-0">
+                <FileText size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <label className="text-[11px] font-extrabold uppercase tracking-wider text-content-muted block mb-1">
+                  Wybierz szablon e-mail (Dropdown):
+                </label>
+                <div className="relative inline-block w-full max-w-md">
+                  <select
+                    value={selectedTemplateId}
+                    onChange={(e) => setSelectedTemplateId(e.target.value)}
+                    className="w-full bg-ink border border-white/20 text-white font-bold text-sm sm:text-base px-4 py-2.5 rounded-xl focus:border-primary focus:outline-none cursor-pointer appearance-none pr-10 shadow-inner"
+                  >
+                    {TEMPLATES.map((tpl) => (
+                      <option key={tpl.id} value={tpl.id}>
+                        {tpl.name} ({tpl.status === 'active' ? 'Aktywny' : 'Szkic'})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-content-muted pointer-events-none" />
                 </div>
-              );
-            })}
+              </div>
+            </div>
 
-            {/* Test Send Box */}
-            <Card className="mt-6 border border-primary/30 bg-primary/5">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span
+                className={`text-xs px-3 py-1.5 rounded-full border uppercase font-bold ${
+                  selectedTemplate.status === 'active'
+                    ? 'bg-primary/20 text-primary border-primary/40'
+                    : 'bg-white/5 text-content-muted border-white/10'
+                }`}
+              >
+                {selectedTemplate.status === 'active' ? 'Aktywny produkcyjnie' : 'Szkic roboczy'}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setShowTestDrawer((v) => !v)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                  showTestDrawer
+                    ? 'bg-primary text-accent-ink border-primary shadow-btn'
+                    : 'bg-white/5 hover:bg-white/10 text-white border-white/15'
+                }`}
+              >
+                <Send size={13} />
+                <span>{showTestDrawer ? 'Schowaj test wysyłki' : 'Wyślij podgląd testowy'}</span>
+                <ChevronDown size={14} className={`transition-transform duration-200 ${showTestDrawer ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Rozwijany panel wysyłki testowej (Dropdown Drawer) */}
+          {showTestDrawer && (
+            <Card className="border border-primary/30 bg-primary/5 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-sm font-bold text-white flex items-center gap-2">
                   <Send size={15} className="text-primary" />
-                  Wyślij podgląd testowy (Resend)
+                  Wyślij podgląd testowy wybranego szablonu
                 </h4>
                 {serverKeyStatus.configured ? (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 font-mono font-semibold flex items-center gap-1">
+                  <span className="text-[10px] px-2.5 py-1 rounded-full bg-primary/20 text-primary border border-primary/40 font-semibold flex items-center gap-1">
                     <CheckCircle2 size={11} />
-                    {serverKeyStatus.maskedKey || 'Aktywny'}
+                    Gotowy do wysyłki
                   </span>
                 ) : (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold flex items-center gap-1">
+                  <span className="text-[10px] px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold flex items-center gap-1">
                     <AlertTriangle size={11} />
-                    Brak klucza API
+                    Brak konfiguracji poczty
                   </span>
                 )}
               </div>
 
               <p className="text-xs text-content-muted mb-3">
-                Wysyła prawdziwą wiadomość testową wybranego szablonu z Twojego własnego adresu lektora.
+                Wysyła wiadomość podglądową wybranego szablonu z Twojego adresu lektorskiego na wskazany e-mail.
               </p>
 
               <div className="space-y-3">
-                {/* Resend API key alert if not configured */}
                 {!serverKeyStatus.configured && (
                   <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
                     <AlertTriangle size={15} className="shrink-0 text-amber-400" />
                     <span>
-                      Klucz Resend API nie jest skonfigurowany. Przejdź do <strong>Ustawień</strong>, aby go wprowadzić.
+                      Dostawca poczty nie jest skonfigurowany. Przejdź do <strong>Ustawień konta administratora</strong>, aby go wprowadzić.
                     </span>
                   </div>
                 )}
 
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[11px] font-bold text-content-muted uppercase">
-                      Adres nadawcy (Z adresu)
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[11px] font-bold text-content-muted uppercase">
+                        Adres nadawcy
+                      </label>
+                    </div>
+                    <div className="flex gap-1.5 mb-2">
+                      <button
+                        type="button"
+                        onClick={() => setTestSenderEmail('wyrozumski@maciej.pro')}
+                        className={`flex-1 px-2 py-1.5 rounded-lg text-[11px] font-medium border text-center truncate transition-colors ${
+                          testSenderEmail === 'wyrozumski@maciej.pro'
+                            ? 'bg-primary/20 border-primary text-primary font-bold'
+                            : 'bg-white/5 border-white/10 text-content-muted hover:text-text-hi'
+                        }`}
+                      >
+                        wyrozumski@maciej.pro
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTestSenderEmail('maciej@learnwithmaciej.com')}
+                        className={`flex-1 px-2 py-1.5 rounded-lg text-[11px] font-medium border text-center truncate transition-colors ${
+                          testSenderEmail === 'maciej@learnwithmaciej.com'
+                            ? 'bg-primary/20 border-primary text-primary font-bold'
+                            : 'bg-white/5 border-white/10 text-content-muted hover:text-text-hi'
+                        }`}
+                      >
+                        maciej@learnwithmaciej.com
+                      </button>
+                    </div>
+                    <input
+                      type="email"
+                      value={testSenderEmail}
+                      onChange={(e) => setTestSenderEmail(e.target.value)}
+                      placeholder="wyrozumski@maciej.pro"
+                      className="w-full px-3.5 py-2 rounded-xl bg-black/40 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-content-muted block mb-1 uppercase">
+                      Adres odbiorcy testowego
                     </label>
-                    <span className="text-[10px] text-primary font-medium">Brak Gmaila</span>
+                    <input
+                      type="email"
+                      value={testRecipient}
+                      onChange={(e) => setTestRecipient(e.target.value)}
+                      placeholder="twoj-email@domena.pl"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-white text-xs focus:outline-none focus:border-primary mt-6"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5 mb-2">
-                    <button
-                      type="button"
-                      onClick={() => setTestSenderEmail('wyrozumski@maciej.pro')}
-                      className={`px-2 py-1.5 rounded-lg text-[11px] font-medium border text-left truncate transition-colors ${
-                        testSenderEmail === 'wyrozumski@maciej.pro'
-                          ? 'bg-primary/20 border-primary text-primary font-bold'
-                          : 'bg-white/5 border-white/10 text-content-muted hover:text-text-hi'
-                      }`}
-                      title="wyrozumski@maciej.pro"
-                    >
-                      wyrozumski@maciej.pro
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTestSenderEmail('maciej@learnwithmaciej.com')}
-                      className={`px-2 py-1.5 rounded-lg text-[11px] font-medium border text-left truncate transition-colors ${
-                        testSenderEmail === 'maciej@learnwithmaciej.com'
-                          ? 'bg-primary/20 border-primary text-primary font-bold'
-                          : 'bg-white/5 border-white/10 text-content-muted hover:text-text-hi'
-                      }`}
-                      title="maciej@learnwithmaciej.com"
-                    >
-                      maciej@learnwithmaciej.com
-                    </button>
-                  </div>
-                  <input
-                    type="email"
-                    value={testSenderEmail}
-                    onChange={(e) => setTestSenderEmail(e.target.value)}
-                    placeholder="wyrozumski@maciej.pro"
-                    className="w-full px-3.5 py-2 rounded-xl bg-black/40 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary"
-                  />
                 </div>
 
-                <div>
-                  <label className="text-[11px] font-bold text-content-muted block mb-1 uppercase">
-                    Adres docelowy (Odbiorca wiadomości)
-                  </label>
-                  <input
-                    type="email"
-                    value={testRecipient}
-                    onChange={(e) => setTestRecipient(e.target.value)}
-                    placeholder="twoj-email@domena.pl lub kursant@gmail.com"
-                    className="w-full px-3.5 py-2 rounded-xl bg-black/40 border border-white/15 text-white text-xs focus:outline-none focus:border-primary"
-                  />
-                </div>
-
-                {/* OPCJA UKRYTEJ KOPII / UKRYTEGO NADAWCY (BCC) */}
-                <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                {/* Opcja BCC */}
+                <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-[11px] font-bold text-white flex items-center gap-2 uppercase tracking-wider cursor-pointer">
                       <input
@@ -1133,52 +1146,17 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                         onChange={(e) => setEnableBcc(e.target.checked)}
                         className="rounded text-primary focus:ring-0 focus:ring-offset-0 bg-ink-2 border-white/20"
                       />
-                      <span>Ukryta kopia (BCC) dla Ciebie</span>
+                      <span>Kopia (BCC) na Twój adres</span>
                     </label>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold font-mono ${
-                      enableBcc ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-content-muted'
-                    }`}>
-                      {enableBcc ? 'BCC aktywne' : 'Brak BCC'}
-                    </span>
                   </div>
-
                   {enableBcc && (
-                    <div className="space-y-1.5 pt-1">
-                      <div className="flex flex-wrap gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setBccRecipient('wyrozumski@maciej.pro')}
-                          className={`px-2 py-0.5 rounded-lg text-[10px] font-mono border transition-colors cursor-pointer ${
-                            bccRecipient === 'wyrozumski@maciej.pro'
-                              ? 'bg-primary/20 border-primary text-primary font-bold'
-                              : 'bg-white/5 border-white/10 text-content-muted hover:text-text-hi'
-                          }`}
-                        >
-                          wyrozumski@maciej.pro
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setBccRecipient('maciej@learnwithmaciej.com')}
-                          className={`px-2 py-0.5 rounded-lg text-[10px] font-mono border transition-colors cursor-pointer ${
-                            bccRecipient === 'maciej@learnwithmaciej.com'
-                              ? 'bg-primary/20 border-primary text-primary font-bold'
-                              : 'bg-white/5 border-white/10 text-content-muted hover:text-text-hi'
-                          }`}
-                        >
-                          maciej@learnwithmaciej.com
-                        </button>
-                      </div>
-                      <input
-                        type="email"
-                        value={bccRecipient}
-                        onChange={(e) => setBccRecipient(e.target.value)}
-                        placeholder="wyrozumski@maciej.pro"
-                        className="w-full px-3 py-1.5 rounded-xl bg-black/40 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary"
-                      />
-                      <p className="text-[10px] text-content-muted leading-relaxed">
-                        Kopia każdej wysłanej wiadomości trafi na Twój e-mail, abyś mógł bezpośrednio zweryfikować czy wiadomości wychodzą.
-                      </p>
-                    </div>
+                    <input
+                      type="email"
+                      value={bccRecipient}
+                      onChange={(e) => setBccRecipient(e.target.value)}
+                      placeholder="wyrozumski@maciej.pro"
+                      className="w-full px-3 py-1.5 rounded-xl bg-black/40 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary"
+                    />
                   )}
                 </div>
 
@@ -1189,7 +1167,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                   className="w-full text-xs font-bold py-2.5 cursor-pointer"
                 >
                   <Send size={14} />
-                  {enableBcc ? 'Wyślij wiadomość z ukrytą kopią (BCC)' : 'Wyślij wiadomość'}
+                  {enableBcc ? 'Wyślij wiadomość testową z kopią (BCC)' : 'Wyślij wiadomość testową'}
                 </Button>
 
                 {testResult && (
@@ -1206,10 +1184,10 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                 )}
               </div>
             </Card>
-          </div>
+          )}
 
-          {/* Right Column: Template Preview & Details */}
-          <div className="lg:col-span-8 space-y-4">
+          {/* Full Width: Template Preview & Details */}
+          <div className="w-full space-y-4">
             <Card className="border border-white/10">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
                 <div>
@@ -1560,22 +1538,22 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                 <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
-                      <Key size={14} className="text-primary" />
-                      Klucz Resend API (RESEND_API_KEY)
+                      <ShieldCheck size={14} className="text-primary" />
+                      Status bramki pocztowej
                     </label>
                     {serverKeyStatus.configured ? (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 font-mono font-bold flex items-center gap-1">
-                        <CheckCircle2 size={11} /> {serverKeyStatus.maskedKey || 'Skonfigurowany'}
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 font-semibold flex items-center gap-1">
+                        <CheckCircle2 size={11} /> Skonfigurowana
                       </span>
                     ) : (
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold flex items-center gap-1">
-                        <AlertTriangle size={11} /> Brak klucza
+                        <AlertTriangle size={11} /> Wymaga konfiguracji w Ustawieniach
                       </span>
                     )}
                   </div>
 
                   <p className="text-[11px] text-content-muted leading-relaxed">
-                    Klucz do autoryzacji wysyłki e-maili przez API Resend jest konfigurowany w <strong>Ustawieniach konta administratora</strong>.
+                    Dostawca poczty e-mail jest konfigurowany centralnie w <strong>Ustawieniach konta administratora</strong>.
                   </p>
                 </div>
 
