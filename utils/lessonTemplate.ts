@@ -67,14 +67,18 @@ export const LESSON_SECTIONS: { title: string; color: string }[] = [
 /**
  * HTML jednego wpisu lekcyjnego. `previousHtml` służy wyłącznie do odczytania
  * numeru poprzedniej lekcji — nic z niego nie jest kopiowane.
+ *
+ * Każda nowa lekcja zaczyna się na nowej stronie A4 (podział strony `pad-page-break`),
+ * a jej główny nagłówek H2 ma automatycznie włączone menu zwijania (toggle).
  */
 export const buildLessonTemplate = (options?: {
   previousHtml?: string;
   lessonNumber?: number;
   date?: Date;
 }): string => {
+  const previous = options?.previousHtml || '';
   const number =
-    options?.lessonNumber ?? highestLessonNumber(options?.previousHtml || '') + 1;
+    options?.lessonNumber ?? highestLessonNumber(previous) + 1;
   const date = templateDate(options?.date);
 
   const sections = LESSON_SECTIONS.map(
@@ -82,5 +86,11 @@ export const buildLessonTemplate = (options?: {
       `<h3 style="color:${section.color}">${section.title}</h3><p><br></p>`
   ).join('');
 
-  return `<h2>Lesson ${number} — ${date}</h2>${sections}`;
+  const hasPreviousContent = previous.trim().length > 0 && previous.replace(/<[^>]+>/g, '').trim().length > 0;
+  const pageBreakHtml = hasPreviousContent
+    ? `<div class="pad-page-break" data-page-break="1" contenteditable="false"><span class="pad-page-break-badge">── Strona A4 • Nowa Lekcja ──</span></div>`
+    : '';
+
+  return `${pageBreakHtml}<h2 data-toggle="1" data-collapsed="0"><span class="pad-toggle" contenteditable="false" title="Zwiń / rozwiń lekcję">▾</span>Lesson ${number} — ${date}</h2>${sections}`;
 };
+

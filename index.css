@@ -833,10 +833,9 @@ tr.liquid-glass-hover:hover {
   font-weight: 400;
 }
 
-/* ── Podział na strony ──
-   Kreski rysuje warstwa NAD kartką (`pointer-events: none`), a nie tło:
-   tło z gradientem przesuwałoby się razem z treścią przy każdej literze,
-   a kreska ma stać w miejscu wyznaczonym wysokością strony A4. */
+/* ── Podział na strony i luki A4 (Google Docs style) ──
+   Kreski rysuje warstwa NAD kartką (`pointer-events: none`), a luki między stronami
+   i podziały lekcji wymuszają fizyczny podział strony A4. */
 .pad-page-rule {
   position: absolute;
   left: 0;
@@ -853,6 +852,64 @@ tr.liquid-glass-hover:hover {
   text-transform: uppercase;
   color: var(--pad-muted);
   opacity: 0.75;
+}
+
+.pad-page-break {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  margin: 40px -76px 32px;
+  background: #080d1a;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.5);
+  user-select: none;
+  page-break-before: always;
+  break-before: page;
+  position: relative;
+  z-index: 5;
+}
+:root.light .pad-page-break,
+:root[data-theme="light"] .pad-page-break,
+.pad-paper[data-pad-theme="light"] .pad-page-break {
+  background: #cbd5e1;
+  border-top: 1px solid rgba(0, 0, 0, 0.14);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.14);
+  box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+.pad-page-break-badge {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pad-muted);
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+@media (max-width: 768px) {
+  .pad-page-break {
+    margin-left: -20px;
+    margin-right: -20px;
+    height: 30px;
+  }
+}
+@media print {
+  .pad-page-break {
+    display: none !important;
+    page-break-before: always !important;
+    break-before: page !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+  .pad-page-rule {
+    display: none !important;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

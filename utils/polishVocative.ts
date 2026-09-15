@@ -206,3 +206,71 @@ export function formatPolishGreeting(rawName?: string | null): string {
   if (!vocative) return 'Cześć!';
   return `Cześć, ${vocative}!`;
 }
+
+export type GrammaticalGender = 'female' | 'male';
+
+/**
+ * Rozpoznaje płeć gramatyczną odbiorcy na podstawie polskiego imienia.
+ * W języku polskim niemal wszystkie imiona żeńskie kończą się na literę "a".
+ * Wyjątki męskie na "a" (np. Kuba, Kosma, Barnaba) oraz żeńskie bez "a" (np. Miriam, Ines, Nicole)
+ * są obsługiwane jawnie.
+ */
+export function detectPolishGender(rawName?: string | null): GrammaticalGender {
+  if (!rawName || typeof rawName !== 'string') return 'male';
+  const trimmed = rawName.trim();
+  if (!trimmed) return 'male';
+
+  const first = trimmed.split(/\s+/)[0].toLowerCase();
+  if (!first) return 'male';
+
+  // Wyjątki: imiona męskie kończące się na -a
+  const maleEndingInA = ['kuba', 'kosma', 'barnaba', 'bonawentura', 'jarema', 'zawisza', 'gotfryd'];
+  if (maleEndingInA.includes(first)) return 'male';
+
+  // Wyjątki: imiona żeńskie niekończące się na -a
+  const femaleNotEndingInA = [
+    'miriam',
+    'ines',
+    'inés',
+    'beatrix',
+    'karmen',
+    'carmen',
+    'karen',
+    'nicole',
+    'rachel',
+    'ruth',
+    'ester',
+    'estera',
+    'nel',
+    'nela',
+  ];
+  if (femaleNotEndingInA.includes(first)) return 'female';
+
+  if (first.endsWith('a')) return 'female';
+  return 'male';
+}
+
+/**
+ * Zwraca formę żeńską lub męską w zależności od płci imienia.
+ * Np. inflectPolishVerb('Anna', 'znalazłaś', 'znalazłeś') -> 'znalazłaś'
+ */
+export function inflectPolishVerb(
+  rawName: string | undefined | null,
+  femaleForm: string,
+  maleForm: string
+): string {
+  const gender = detectPolishGender(rawName);
+  return gender === 'female' ? femaleForm : maleForm;
+}
+
+/**
+ * Pomocnik do doboru formy przymiotnika/zaimka (np. "Gotowa" vs "Gotowy")
+ */
+export function inflectByGender(
+  gender: GrammaticalGender,
+  femaleForm: string,
+  maleForm: string
+): string {
+  return gender === 'female' ? femaleForm : maleForm;
+}
+

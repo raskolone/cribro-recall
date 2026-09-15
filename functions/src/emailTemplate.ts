@@ -145,6 +145,26 @@ export function formatPolishGreeting(rawName?: string | null): string {
   return `Cześć, ${vocative}!`;
 }
 
+export function detectPolishGender(rawName?: string | null): 'female' | 'male' {
+  if (!rawName || typeof rawName !== 'string') return 'male';
+  const first = rawName.trim().split(/\s+/)[0].toLowerCase();
+  if (!first) return 'male';
+  const maleEndingInA = ['kuba', 'kosma', 'barnaba', 'bonawentura', 'jarema'];
+  if (maleEndingInA.includes(first)) return 'male';
+  const femaleNotEndingInA = ['miriam', 'ines', 'inés', 'beatrix', 'karmen', 'carmen', 'karen', 'nicole', 'rachel', 'ruth', 'ester', 'estera', 'nel', 'nela'];
+  if (femaleNotEndingInA.includes(first)) return 'female';
+  if (first.endsWith('a')) return 'female';
+  return 'male';
+}
+
+export function inflectPolishVerb(
+  rawName: string | undefined | null,
+  femaleForm: string,
+  maleForm: string
+): string {
+  return detectPolishGender(rawName) === 'female' ? femaleForm : maleForm;
+}
+
 export function buildHomeworkEmail(data: HomeworkEmailData): {
   subject: string;
   html: string;
@@ -152,6 +172,7 @@ export function buildHomeworkEmail(data: HomeworkEmailData): {
 } {
   const due = formatDate(data.dueDate);
   const greeting = formatPolishGreeting(data.studentName);
+  const verbZnalazl = inflectPolishVerb(data.studentName, 'znalazła', 'znalazł');
 
   const cleanTitle = data.title?.trim() || 'Praca domowa';
   const subject = /praca domowa/i.test(cleanTitle)
@@ -207,7 +228,7 @@ export function buildHomeworkEmail(data: HomeworkEmailData): {
     greeting,
     '',
     `Przygotowałem dla Ciebie nową pracę domową: „${cleanTitle}".`,
-    'Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś znalazł na nie 5-10 minut przed naszą kolejną lekcją — to świetny sposób na utrwalenie materiału.',
+    `Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś ${verbZnalazl} na nie 5-10 minut przed naszą kolejną lekcją — to świetny sposób na utrwalenie materiału.`,
     due ? `Termin wykonania: ${due}` : null,
     data.assignedBy ? `Przypisane przez: ${data.assignedBy}` : null,
     data.instructions ? `\nWskazówki: ${data.instructions}` : null,
@@ -294,7 +315,7 @@ export function buildHomeworkEmail(data: HomeworkEmailData): {
           </p>
 
           <p style="margin:12px 0 0;color:#475569;font-size:14px;line-height:1.6;">
-            Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś znalazł na nie 5–10 minut przed naszym kolejnym spotkaniem — to świetny sposób, żeby utrwalić to, nad czym pracowaliśmy na lekcji.
+            Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś ${verbZnalazl} na nie 5–10 minut przed naszym kolejnym spotkaniem — to świetny sposób, żeby utrwalić to, nad czym pracowaliśmy na lekcji.
           </p>
 
           ${instructions}

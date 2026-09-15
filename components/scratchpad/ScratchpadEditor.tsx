@@ -201,6 +201,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const [isTocOpen, setIsTocOpen] = useState(true);
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState(1);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [paperTheme, setPaperTheme] = useState<'light' | 'dark'>(() => {
     try {
       return window.localStorage.getItem('scratchpad_paper_theme') === 'dark' ? 'dark' : 'light';
@@ -472,6 +473,11 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const handleJumpToHeading = (id: string) => {
     const heading = editorRef.current?.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
     if (!heading) return;
+    if (heading.getAttribute('data-collapsed') === '1') {
+      setSectionCollapsed(heading, false);
+      rebuildToc();
+      measurePages();
+    }
     heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setActiveHeadingId(id);
   };
@@ -1008,16 +1014,32 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
                   },
                   {
                     id: 'export-pdf',
-                    label: 'Eksportuj do PDF',
-                    icon: <FileDown size={14} />,
-                    onSelect: () => exportScratchpadToPDF(docData.title, docData.contentHtml),
+                    label: isExportingPdf ? 'Generowanie PDF…' : 'Eksportuj do PDF',
+                    description: 'Dokument A4 z zachowaniem stylów i podziału stron',
+                    icon: isExportingPdf ? <span className="animate-spin text-primary">⏳</span> : <FileDown size={14} />,
+                    onSelect: async () => {
+                      setIsExportingPdf(true);
+                      try {
+                        await exportScratchpadToPDF(
+                          docData.title || 'Notatnik',
+                          editorRef.current?.innerHTML || docData.contentHtml
+                        );
+                      } catch (err) {
+                        console.error('Błąd eksportu do PDF:', err);
+                      } finally {
+                        setIsExportingPdf(false);
+                      }
+                    },
                   },
                   {
                     id: 'export-word',
-                    label: 'Eksportuj do Worda',
+                    label: 'Eksportuj do Worda (.docx)',
                     description: 'Otwiera się też w Google Docs',
                     icon: <FileType2 size={14} />,
-                    onSelect: () => exportScratchpadToWord(docData.title, docData.contentHtml),
+                    onSelect: () => exportScratchpadToWord(
+                      docData.title || 'Notatnik',
+                      editorRef.current?.innerHTML || docData.contentHtml
+                    ),
                   },
                 ],
               },

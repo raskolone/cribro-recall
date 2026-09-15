@@ -10,6 +10,7 @@ import { Language, Difficulty, Word, AISuggestion, AudioVocabulary, TranslationE
 import { aiMonitor } from './aiMonitorService';
 import { AI_MODEL_CASCADE, PRIMARY_MODEL, SECONDARY_MODEL, TERTIARY_MODEL, cascadeForCategory } from './aiModels';
 import { peekAiOverrides } from './aiConfigService';
+import { toPolishVocative, detectPolishGender } from '../utils/polishVocative';
 
 
 export const extractJSON = (text: string): string => {
@@ -1822,12 +1823,27 @@ export const evaluateTeacherHomework = async (
    */
   names?: { student?: string | null; teacher?: string | null }
 ): Promise<any> => {
-  const studentFirstName = (names?.student || '').trim().split(/\s+/)[0] || '';
+  const rawStudentName = (names?.student || '').trim();
+  const studentFirstName = rawStudentName.split(/\s+/)[0] || '';
   const teacherFirstName = (names?.teacher || '').trim().split(/\s+/)[0] || '';
+  const studentGender = detectPolishGender(studentFirstName);
+  const vocative = toPolishVocative(studentFirstName) || studentFirstName;
 
   const prompt = `ROLA I MISJA:
-Jesteś lektorem języka angielskiego${teacherFirstName ? ` o imieniu ${teacherFirstName}` : ''} i sprawdzasz pracę domową swojego kursanta${studentFirstName ? `, który ma na imię ${studentFirstName}` : ''}. Piszesz tak, jak pisze się do kogoś, kogo się zna i z kim się co tydzień rozmawia.
+Jesteś lektorem języka angielskiego${teacherFirstName ? ` o imieniu ${teacherFirstName}` : ''} i sprawdzasz pracę domową ${
+    studentFirstName
+      ? studentGender === 'female'
+        ? `swojej kursantki, która ma na imię ${studentFirstName}`
+        : `swojego kursanta, który ma na imię ${studentFirstName}`
+      : 'swojego kursanta'
+  }. Piszesz tak, jak pisze się do kogoś, kogo się zna i z kim się co tydzień rozmawia.
 
+${studentFirstName ? `PŁEĆ I FORMA GRAMATYCZNA KURSANTA/KURSANTKI:
+Odbiorca to ${studentGender === 'female' ? `KOBIETA (${studentFirstName})` : `MĘŻCZYZNA (${studentFirstName})`}.
+W podsumowaniu (suggestedTeacherFeedback) oraz w uwagach MUSISZ bezwzględnie stosować właściwe gramatycznie formy czasu przeszłego oraz przymiotników:
+- Forma ${studentGender === 'female' ? 'ŻEŃSKA (np. zrobiłaś, przetłumaczyłaś, napisałaś, odesłałaś, zauważyłaś, zapomniałaś, poradziłaś sobie)' : 'MĘSKA (np. zrobiłeś, przetłumaczyłeś, napisałeś, odesłałeś, zauważyłeś, zapomniałeś, poradziłeś sobie)'}.
+- Zwrot do odbiorcy: zacznij dokładnie od formy wołacza „${vocative}," (np. „${vocative}, tłumaczenia wyszły...").
+` : ''}
 TWÓJ TON:
 1. PO LUDZKU, NIE URZĘDOWO: krótkie zdania, zwykłe słowa, bezpośredni zwrot po imieniu. Żadnych „Drogi Kursancie", „pragnę pochwalić", „obszar, na którym warto się skupić", „droga do mistrzostwa". Tak nikt nie mówi do drugiego człowieka.
 2. KONKRETNIE: mówisz, co poszło dobrze i co poprawić, po nazwie. „Gerund po 'decide'" jest informacją; „precyzja form czasownikowych" nie jest.
@@ -1865,13 +1881,13 @@ Zwróć poprawny obiekt JSON o strukturze:
   ],
   "suggestedTeacherFeedback": "${
     studentFirstName
-      ? `Zacznij od imienia „${studentFirstName}" w WOŁACZU i przecinka — tak, jak zwraca się do kogoś po polsku (Bartek → „Bartku,", Monika → „Moniko,", Kasia → „Kasiu,").`
+      ? `Zacznij od zwrotu „${vocative}," i bezwzględnie zachowaj formę ${studentGender === 'female' ? 'żeńską (np. napisałaś, poradziłaś sobie)' : 'męską (np. napisałeś, poradziłeś sobie)'}.`
       : 'Zacznij od zwrotu do kursanta po imieniu, w wołaczu.'
   } NAJWYŻEJ TRZY ZDANIA, łącznie do 350 znaków. Pierwsze — co konkretnie wyszło. Drugie — co poprawić, nazwane wprost (konkretna konstrukcja, słowo albo czas). Trzecie, opcjonalne — jedno zdanie o tym, co z tym zrobić na następnej lekcji. Bez powitań typu 'Drogi', bez podpisu, bez emotikon, bez motywacyjnych zakończeń. Ma brzmieć jak wiadomość napisana na szybko przez człowieka, który właśnie przejrzał tę pracę."
 }
 
 PRZYKŁAD DOBREGO PODSUMOWANIA (naśladuj długość i ton, nie treść):
-"Kasiu, tłumaczenia wyszły bardzo dobrze — 'be able to' i 'take out a loan' masz opanowane. Do poprawy bezokolicznik po 'decide' i 'need', bo tam konsekwentnie wchodzi Ci -ing. Weźmiemy to na rozgrzewkę w środę."
+"${studentGender === 'female' ? 'Kasiu' : 'Łukaszu'}, tłumaczenia wyszły bardzo dobrze — 'be able to' i 'take out a loan' masz opanowane. Do poprawy bezokolicznik po 'decide' i 'need', bo tam konsekwentnie wchodzi Ci -ing. Weźmiemy to na rozgrzewkę w środę."
 
 PRZYKŁAD ZŁEGO (dokładnie tego NIE rób):
 "Drogi Kursancie, jestem pod wrażeniem Twojego zaangażowania w naukę i intuicji w rozumieniu znaczenia wielu zdań! Szczególnie chciałbym pochwalić Twoje sukcesy... Pamiętaj, że każdy błąd to cenna lekcja i naturalny element drogi do mistrzostwa."`;

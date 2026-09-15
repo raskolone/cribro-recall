@@ -59,30 +59,161 @@ export const exportTestToPDF = (test: StudentTest, t: any) => {
 };
 
 /**
- * Eksport treści notatnika do PDF — dokładnie ten sam wzorzec co
- * `exportTestToPDF` powyżej (html2pdf.js, zero nowych zależności).
+ * Eksport treści notatnika do PDF — wierne odwzorowanie dokumentu A4
+ * z zachowaniem kolorów sekcji lekcji, podziałów stron i czystej typografii.
  */
-export const exportScratchpadToPDF = (title: string, contentHtml: string) => {
+export const exportScratchpadToPDF = async (title: string, contentHtml: string): Promise<boolean> => {
+  const safeTitle = title || 'Notatnik';
+
+  // Stwórz kontener i dołącz go do DOM-u (poza ekranem), żeby html2canvas wyliczył wymiary i style
   const container = document.createElement('div');
-  container.style.padding = '20px';
-  container.style.fontFamily = 'Arial, sans-serif';
-  container.style.color = '#000';
-  container.style.backgroundColor = '#fff';
+  container.className = 'scratchpad-pdf-export-container';
+  container.style.position = 'fixed';
+  container.style.left = '-9999px';
+  container.style.top = '0';
+  container.style.width = '794px'; // Dokładna szerokość A4 @ 96 DPI
+  container.style.padding = '48px 56px';
+  container.style.backgroundColor = '#ffffff';
+  container.style.color = '#1e293b';
+  container.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  container.style.fontSize = '14.5px';
+  container.style.lineHeight = '1.7';
+  container.style.boxSizing = 'border-box';
+
+  // Sformatuj treść: rozwiń wszystkie zwinięte sekcje i usuń przyciski UI
+  const tempDoc = document.createElement('div');
+  tempDoc.innerHTML = contentHtml || '<p>(Brak treści)</p>';
+
+  // Rozwiń ukryte elementy (zwinięte rozdziały)
+  tempDoc.querySelectorAll('[style*="display: none"], [style*="display:none"]').forEach((el: any) => {
+    el.style.display = '';
+  });
+  tempDoc.querySelectorAll('[data-collapsed]').forEach((el) => {
+    el.removeAttribute('data-collapsed');
+  });
+  // Usuń kontrolki strzałek
+  tempDoc.querySelectorAll('.pad-toggle').forEach((el) => el.remove());
+  // Przekształć pad-page-break w czysty podział strony w druku
+  tempDoc.querySelectorAll('.pad-page-break').forEach((el: any) => {
+    el.style.cssText = 'page-break-before: always !important; break-before: page !important; height: 1px; margin: 0; padding: 0; background: transparent; border: none; overflow: hidden;';
+    el.innerHTML = '';
+  });
 
   container.innerHTML = `
-    <h1 style="font-size: 22px; margin-bottom: 16px; color: #111;">${title || 'Notatnik'}</h1>
-    <div style="font-size: 14px; line-height: 1.5;">${contentHtml}</div>
+    <style>
+      .scratchpad-pdf-export-container h1,
+      .scratchpad-pdf-export-container h2,
+      .scratchpad-pdf-export-container h3 {
+        color: #0f172a;
+        font-family: inherit;
+        page-break-after: avoid;
+        break-after: avoid;
+      }
+      .scratchpad-pdf-export-container h1 {
+        font-size: 24px;
+        font-weight: 800;
+        margin: 0 0 16px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #0d9488;
+        color: #0f172a;
+      }
+      .scratchpad-pdf-export-container h2 {
+        font-size: 19px;
+        font-weight: 700;
+        margin: 24px 0 10px;
+        color: #0f172a;
+        page-break-before: auto;
+      }
+      .scratchpad-pdf-export-container h3 {
+        font-size: 15px;
+        font-weight: 700;
+        margin: 18px 0 6px;
+      }
+      .scratchpad-pdf-export-container p {
+        margin: 6px 0;
+      }
+      .scratchpad-pdf-export-container ul, .scratchpad-pdf-export-container ol {
+        margin: 6px 0;
+        padding-left: 24px;
+      }
+      .scratchpad-pdf-export-container li {
+        margin: 3px 0;
+      }
+      .scratchpad-pdf-export-container blockquote {
+        margin: 12px 0;
+        padding: 4px 12px;
+        border-left: 3px solid #0d9488;
+        color: #475569;
+        background: #f8fafc;
+      }
+      .scratchpad-pdf-export-container img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 6px;
+        margin: 10px 0;
+      }
+      .scratchpad-pdf-export-container code {
+        background: #f1f5f9;
+        padding: 2px 5px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 13px;
+      }
+      .scratchpad-pdf-export-container hr {
+        border: none;
+        border-top: 1px solid #e2e8f0;
+        margin: 18px 0;
+      }
+      .scratchpad-pdf-export-container table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0;
+      }
+      .scratchpad-pdf-export-container th,
+      .scratchpad-pdf-export-container td {
+        border: 1px solid #cbd5e1;
+        padding: 6px 10px;
+        font-size: 13.5px;
+      }
+    </style>
+    <div style="margin-bottom: 20px;">
+      <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: #0d9488; margin-bottom: 4px;">
+        CRIBRO ENGLISH • NOTATNIK
+      </div>
+      <h1 style="margin: 0; padding-bottom: 12px; font-size: 22px; font-weight: 800; color: #0f172a; border-bottom: 2px solid #0d9488;">
+        ${safeTitle}
+      </h1>
+    </div>
+    <div>${tempDoc.innerHTML}</div>
   `;
 
+  document.body.appendChild(container);
+
   const opt = {
-    margin: 15,
-    filename: `${(title || 'notatnik').replace(/\s+/g, '_')}.pdf`,
+    margin: [10, 10, 10, 10] as [number, number, number, number],
+    filename: `${safeTitle.replace(/[/\\?%*:|"<>]/g, '_').replace(/\s+/g, '_')}.pdf`,
     image: { type: 'jpeg' as const, quality: 0.98 },
-    html2canvas: { scale: 2 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      scrollY: 0,
+    },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
   };
 
-  html2pdf().from(container).set(opt).save();
+  try {
+    await html2pdf().set(opt).from(container).save();
+    return true;
+  } catch (err) {
+    console.error('[PDF Export] Błąd eksportu PDF:', err);
+    throw err;
+  } finally {
+    if (container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
+  }
 };
 
 /**

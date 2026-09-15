@@ -1,4 +1,4 @@
-import { formatPolishGreeting } from '../utils/polishVocative';
+import { formatPolishGreeting, inflectPolishVerb } from '../utils/polishVocative';
 
 export interface HomeworkConfirmationEmailParams {
   studentName?: string;
@@ -63,6 +63,7 @@ export function buildHomeworkConfirmationEmail(params: HomeworkConfirmationEmail
   const due = formatDate(dueDate);
   const expiresFormatted = formatDate(expiresAt);
   const greeting = formatPolishGreeting(studentName);
+  const verbZnalazl = inflectPolishVerb(studentName, 'znalazła', 'znalazł');
 
   const cleanTitle = title.trim() || 'Praca domowa';
   const subject = /praca domowa/i.test(cleanTitle)
@@ -201,7 +202,7 @@ export function buildHomeworkConfirmationEmail(params: HomeworkConfirmationEmail
           </p>
 
           <p style="margin:12px 0 0;color:#475569;font-size:14px;line-height:1.6;">
-            Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś znalazł na nie 5–10 minut przed naszym kolejnym spotkaniem — to świetny sposób, żeby utrwalić to, nad czym pracowaliśmy na lekcji.
+            Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś ${verbZnalazl} na nie 5–10 minut przed naszym kolejnym spotkaniem — to świetny sposób, żeby utrwalić to, nad czym pracowaliśmy na lekcji.
           </p>
 
           ${instructionsHtml}
@@ -226,7 +227,7 @@ export function buildHomeworkConfirmationEmail(params: HomeworkConfirmationEmail
     greeting,
     '',
     `Przygotowałem dla Ciebie nową pracę domową: „${cleanTitle}".`,
-    'Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś znalazł na nie 5-10 minut przed naszą kolejną lekcją — to świetny sposób na utrwalenie materiału.',
+    `Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś ${verbZnalazl} na nie 5-10 minut przed naszą kolejną lekcją — to świetny sposób na utrwalenie materiału.`,
     due ? `Termin wykonania: ${due}` : null,
     assignedBy ? `Przypisane przez: ${assignedBy}` : null,
     instructions ? `\nWskazówki: ${instructions}` : null,

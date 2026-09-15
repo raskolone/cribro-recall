@@ -41,7 +41,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { useFirebaseAdminApi } from '../../hooks/useFirebaseAdminApi';
 import { formatTaskDateTime } from '../dashboard/HomeworkScreen';
-import { formatPolishGreeting } from '../../utils/polishVocative';
+import { formatPolishGreeting, inflectPolishVerb } from '../../utils/polishVocative';
 import { buildWelcomeEmail, INSTRUCTOR_CARD_HTML } from '../../services/homeworkEmail';
 
 interface AdminMailingScreenProps {
@@ -115,6 +115,7 @@ const TEMPLATES: Array<{
     },
     renderHtml: (data) => {
       const greeting = formatPolishGreeting(data.studentName);
+      const verbZnalazl = inflectPolishVerb(data.studentName, 'znalazła', 'znalazł');
       return `<!doctype html>
 <html lang="pl">
   <body style="margin:0;padding:24px;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -139,7 +140,7 @@ const TEMPLATES: Array<{
           </p>
 
           <p style="margin:12px 0 0;color:#94a3b8;font-size:14px;line-height:1.6;">
-            Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś znalazł na nie 5–10 minut przed naszym kolejnym spotkaniem — to świetny i szybki sposób na utrwalenie materiału z lekcji. Daj znać, jak poszło!
+            Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś ${verbZnalazl} na nie 5–10 minut przed naszym kolejnym spotkaniem — to świetny i szybki sposób na utrwalenie materiału z lekcji. Daj znać, jak poszło!
           </p>
 
           ${data.instructions ? `
@@ -183,7 +184,8 @@ const TEMPLATES: Array<{
     },
     renderText: (data) => {
       const greeting = formatPolishGreeting(data.studentName);
-      return `${greeting}\n\nPrzygotowałem dla Ciebie nową pracę domową: „${data.title}".\nZadanie jest opcjonalne, ale warto znaleźć na nie 5-10 minut przed kolejnymi zajęciami.\n\nLiczba ćwiczeń: ${data.itemCount} zadań\nTermin: ${data.dueDate}\nOd: ${data.assignedBy}\nWskazówki: ${data.instructions}\n\nOtwórz aplikację: https://app.maciej.pro\n\nWypisz się z powiadomień: ${data.unsubscribeUrl}\n\n—\nMaciej Wyrozumski\nCRIBRO ENGLISH`;
+      const verbZnalazl = inflectPolishVerb(data.studentName, 'znalazła', 'znalazł');
+      return `${greeting}\n\nPrzygotowałem dla Ciebie nową pracę domową: „${data.title}".\nZadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś ${verbZnalazl} na nie 5-10 minut przed naszym kolejnym spotkaniem — to świetny sposób na utrwalenie materiału.\n\nLiczba ćwiczeń: ${data.itemCount} zadań\nTermin: ${data.dueDate}\nOd: ${data.assignedBy}\nWskazówki: ${data.instructions}\n\nOtwórz aplikację: https://app.maciej.pro\n\nWypisz się z powiadomień: ${data.unsubscribeUrl}\n\n—\nMaciej Wyrozumski\nCRIBRO ENGLISH`;
     },
   },
   {
@@ -203,6 +205,7 @@ const TEMPLATES: Array<{
     },
     renderHtml: (data) => {
       const greeting = formatPolishGreeting(data.studentName);
+      const verbZnalazl = inflectPolishVerb(data.studentName, 'znalazła', 'znalazł');
       return `<!doctype html>
 <html lang="pl">
   <body style="margin:0;padding:24px;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -227,7 +230,7 @@ const TEMPLATES: Array<{
           </p>
 
           <p style="margin:12px 0 0;color:#94a3b8;font-size:14px;line-height:1.6;">
-            Wiem, że masz sporo na głowie i pamiętaj, że zadanie jest opcjonalne, ale naprawdę warto poświęcić na nie chwilę — nawet 5 minut wystarczy, żeby utrwalić materiał przed kolejnymi zajęciami. Trzymam kciuki!
+            Wiem, że masz sporo na głowie i pamiętaj, że zadanie jest opcjonalne, ale naprawdę warto poświęcić na nie chwilę — nawet 5 minut wystarczy, żeby utrwalić materiał przed kolejnymi zajęciami. Trzymam kciuki, gdybyś ${verbZnalazl} wolną chwilę!
           </p>
 
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;border-top:1px solid #334155;border-bottom:1px solid #334155;">
@@ -261,7 +264,8 @@ const TEMPLATES: Array<{
     },
     renderText: (data) => {
       const greeting = formatPolishGreeting(data.studentName);
-      return `${greeting}\n\nChciałem Ci tylko krótko przypomnieć, że termin zadania „${data.title}" upływa: ${data.dueDate}.\nZadanie jest opcjonalne, ale warto znaleźć na nie chwilę przed naszym spotkaniem.\n\nOtwórz aplikację: https://app.maciej.pro\n\nWypisz się z powiadomień: ${data.unsubscribeUrl}\n\n—\nMaciej Wyrozumski\nCRIBRO ENGLISH`;
+      const verbZnalazl = inflectPolishVerb(data.studentName, 'znalazła', 'znalazł');
+      return `${greeting}\n\nChciałem Ci tylko krótko przypomnieć, że termin zadania „${data.title}" upływa: ${data.dueDate}.\nZadanie jest opcjonalne, ale byłoby miło, gdybyś ${verbZnalazl} na nie chwilę przed naszym spotkaniem.\n\nOtwórz aplikację: https://app.maciej.pro\n\nWypisz się z powiadomień: ${data.unsubscribeUrl}\n\n—\nMaciej Wyrozumski\nCRIBRO ENGLISH`;
     },
   },
   {
@@ -281,6 +285,7 @@ const TEMPLATES: Array<{
     },
     renderHtml: (data) => {
       const greeting = formatPolishGreeting(data.studentName);
+      const verbOdeslales = inflectPolishVerb(data.studentName, 'odesłałaś', 'odesłałeś');
       return `<!doctype html>
 <html lang="pl">
   <body style="margin:0;padding:24px;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -300,7 +305,7 @@ const TEMPLATES: Array<{
           </h1>
 
           <p style="margin:0;color:#cbd5e1;font-size:15px;line-height:1.65;">
-            Sprawdziłem Twoją ostatnią pracę domową:
+            Sprawdziłem pracę domową, którą ${verbOdeslales}:
             <strong style="color:#f1f5f9;display:block;margin-top:6px;font-size:17px;font-weight:700;">${data.title}</strong>
           </p>
 
@@ -336,7 +341,8 @@ const TEMPLATES: Array<{
     },
     renderText: (data) => {
       const greeting = formatPolishGreeting(data.studentName);
-      return `${greeting}\n\nSprawdziłem Twoją pracę domową „${data.title}"!\nWynik: ${data.score}\nKomentarz: ${data.feedback}\n\nOtwórz aplikację: https://app.maciej.pro\n\nWypisz się z powiadomień: ${data.unsubscribeUrl}\n\n—\nMaciej Wyrozumski\nCRIBRO ENGLISH`;
+      const verbOdeslales = inflectPolishVerb(data.studentName, 'odesłałaś', 'odesłałeś');
+      return `${greeting}\n\nSprawdziłem pracę domową „${data.title}", którą ${verbOdeslales}!\nWynik: ${data.score}\nKomentarz: ${data.feedback}\n\nOtwórz aplikację: https://app.maciej.pro\n\nWypisz się z powiadomień: ${data.unsubscribeUrl}\n\n—\nMaciej Wyrozumski\nCRIBRO ENGLISH`;
     },
   },
   {

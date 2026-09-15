@@ -214,7 +214,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
   const [tasks, setTasks] = useState<SpecialTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTask, setActiveTask] = useState<SpecialTask | null>(null);
-  const [showWarmup, setShowWarmup] = useState(true);
+  const [warmupPhase, setWarmupPhase] = useState<'welcome' | 'scrambler' | 'exercises'>('welcome');
   const [index, setIndex] = useState(0);
   // Odpowiedzi przeżywają zamknięcie karty: zadanie robi się między innymi
   // sprawami, a przerwanie nie może kasować dziesięciu rozwiązanych zdań.
@@ -519,7 +519,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
   const startTask = (task: SpecialTask) => {
     markTaskAsViewedByStudent(task);
     setActiveTask(task);
-    setShowWarmup(true);
+    setWarmupPhase('welcome');
     setIndex(0);
     // Odpowiedzi wczyta hook szkicu, gdy zmieni się klucz zadania — czyszczenie
     // ich tutaj kasowałoby właśnie odzyskaną, niedokończoną pracę.
@@ -530,7 +530,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
 
   const closeTask = () => {
     setActiveTask(null);
-    setShowWarmup(true);
+    setWarmupPhase('welcome');
     setResult(null);
   };
 
@@ -1111,13 +1111,109 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
   if (activeTask) {
     const items = activeTask.sentences || [];
 
-    // Opcjonalny tryb rozgrzewki (ADHD-friendly rozsypanka klockowa przed właściwym zadaniem)
-    if (showWarmup && items.length > 0) {
+    // 1. Ekran Powitalny (Mobilny, estetyczny panel z gratulacjami i zapytaniem o rozgrzewkę)
+    if (warmupPhase === 'welcome' && items.length > 0) {
+      const studentFirstName = user?.name ? user.name.split(' ')[0] : 'Kursancie';
+      const formattedDueDate = activeTask.dueDate ? formatTaskDateTime(activeTask.dueDate) : null;
+      return (
+        <div className="min-h-[75vh] flex items-center justify-center p-3 sm:p-6 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-full max-w-lg bg-base-200/90 border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-8 space-y-6 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+            {/* Ambient background glow */}
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Top Bar with Back Button */}
+            <div className="flex items-center justify-between relative z-10">
+              <button
+                type="button"
+                onClick={closeTask}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-content-muted hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-colors cursor-pointer"
+              >
+                <ArrowLeft size={14} />
+                <span>Wróć do listy</span>
+              </button>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary/15 text-primary border border-primary/25">
+                <Sparkles size={12} />
+                <span>Nowe wyzwanie</span>
+              </span>
+            </div>
+
+            {/* Header / Congratulatory hero */}
+            <div className="text-center space-y-3 relative z-10 pt-1">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-2xl bg-gradient-to-tr from-primary/30 to-emerald-400/20 border border-primary/40 flex items-center justify-center text-primary shadow-inner">
+                <GraduationCap className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  Świetnie, że tu jesteś, {studentFirstName}!
+                </h2>
+                <p className="text-sm text-emerald-400/90 font-medium">
+                  Gratulacje za podjęcie wyzwania językowej powtórki 🎯
+                </p>
+              </div>
+            </div>
+
+            {/* Task Card Pill */}
+            <div className="bg-base-100/80 border border-white/10 rounded-2xl p-4 space-y-2 relative z-10 shadow-inner">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="text-content-muted font-mono uppercase tracking-wider font-semibold">Zadanie</span>
+                <span className="text-primary font-bold">{items.length} {items.length === 1 ? 'ćwiczenie' : items.length < 5 ? 'ćwiczenia' : 'ćwiczeń'}</span>
+              </div>
+              <h3 className="text-base font-bold text-white leading-snug">
+                {activeTask.title || 'Praca domowa'}
+              </h3>
+              {formattedDueDate && (
+                <div className="flex items-center gap-1.5 text-xs text-content-muted pt-1 border-t border-white/5">
+                  <Clock size={12} className="text-amber-400" />
+                  <span>Termin: <strong className="text-white font-medium">{formattedDueDate}</strong></span>
+                </div>
+              )}
+            </div>
+
+            {/* Warm-up Callout */}
+            <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-500/25 rounded-2xl p-4 sm:p-5 space-y-2.5 relative z-10">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🧩</span>
+                <h4 className="text-sm font-bold text-emerald-300">
+                  Czy chcesz zacząć od rozgrzewki?
+                </h4>
+              </div>
+              <p className="text-xs sm:text-sm text-content-muted leading-relaxed">
+                Krótka układanka klockowa (1–2 min) pomoże Ci płynnie wejść w tryb myślenia po angielsku i rozgrzać pamięć przed głównymi zadaniami. Rozgrzewkę możesz w każdej chwili pominąć.
+              </p>
+            </div>
+
+            {/* Action Buttons (Mobile-first large targets) */}
+            <div className="space-y-2.5 pt-1 relative z-10">
+              <button
+                type="button"
+                onClick={() => setWarmupPhase('scrambler')}
+                className="w-full min-h-[3.25rem] sm:min-h-[3.5rem] rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm sm:text-base shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+              >
+                <span>🚀 Zacznij od rozgrzewki (Zalecane)</span>
+                <ArrowRight size={16} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setWarmupPhase('exercises')}
+                className="w-full min-h-[3rem] rounded-2xl bg-white/5 hover:bg-white/10 text-content-muted hover:text-white font-semibold text-xs sm:text-sm border border-white/10 transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+              >
+                <span>⚡ Przejdź od razu do zadań</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 2. Opcjonalny tryb rozgrzewki (ADHD-friendly rozsypanka klockowa)
+    if (warmupPhase === 'scrambler' && items.length > 0) {
       return (
         <HomeworkWarmupScrambler
           sentences={items}
-          onComplete={() => setShowWarmup(false)}
-          onSkip={() => setShowWarmup(false)}
+          onComplete={() => setWarmupPhase('exercises')}
+          onSkip={() => setWarmupPhase('exercises')}
         />
       );
     }
