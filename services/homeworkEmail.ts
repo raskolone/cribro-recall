@@ -452,3 +452,102 @@ export function buildWelcomeEmail(params: WelcomeEmailParams): {
   return { subject, html, text };
 }
 
+export interface GradedHomeworkEmailParams {
+  studentName?: string;
+  title: string;
+  score?: number | null;
+  teacherFeedback?: string;
+  gradedBy?: string;
+  appUrl?: string;
+  unsubscribeUrl?: string;
+}
+
+export function buildGradedHomeworkEmail(params: GradedHomeworkEmailParams): {
+  subject: string;
+  html: string;
+  text: string;
+  greeting: string;
+} {
+  const {
+    studentName,
+    title,
+    score,
+    teacherFeedback,
+    gradedBy = 'Maciej Wyrozumski',
+    appUrl = 'https://app.maciej.pro',
+    unsubscribeUrl,
+  } = params;
+
+  const greeting = formatPolishGreeting(studentName);
+  const cleanTitle = title.trim() || 'Praca domowa';
+  const subject = `Sprawdziłem Twoją pracę domową: ${cleanTitle} 🎓 | CRIBRO English`;
+
+  const scoreBadge =
+    typeof score === 'number'
+      ? `<div style="margin:20px 0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px 20px;text-align:center;">
+           <span style="font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:4px;">Twój wynik</span>
+           <span style="font-size:32px;font-weight:900;color:#72f0b4;font-family:'Courier New',monospace;">${score}%</span>
+         </div>`
+      : '';
+
+  const feedbackBlock = teacherFeedback
+    ? `<div style="margin:16px 0;background:rgba(114,240,180,0.08);border-left:4px solid #72f0b4;padding:14px 18px;border-radius:0 10px 10px 0;">
+         <p style="margin:0 0 6px;font-size:12px;font-weight:800;color:#72f0b4;text-transform:uppercase;letter-spacing:0.06em;">Komentarz i wskazówki ode mnie:</p>
+         <p style="margin:0;color:#e2e8f0;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(teacherFeedback)}</p>
+       </div>`
+    : '';
+
+  const unsubscribeHtml = unsubscribeUrl
+    ? `<div style="margin-top:24px;text-align:center;font-size:11px;color:#64748b;">
+         <a href="${escapeHtml(unsubscribeUrl)}" style="color:#64748b;text-decoration:underline;">Wypisz się z powiadomień e-mail</a>
+       </div>`
+    : '';
+
+  const html = `<!doctype html>
+<html lang="pl">
+  <body style="margin:0;padding:24px;background:#09101c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:540px;margin:0 auto;background:#141b2a;border-radius:16px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.5);">
+      <tr>
+        <td style="background:linear-gradient(90deg, #72f0b4, #3b82f6);height:6px;font-size:0;line-height:0;">&nbsp;</td>
+      </tr>
+      <tr>
+        <td style="padding:32px 32px 28px;">
+          <div style="margin-bottom:20px;">
+            <p style="margin:0;font-size:12px;letter-spacing:0.14em;font-weight:800;text-transform:uppercase;color:#72f0b4;">CRIBRO ENGLISH</p>
+            <span style="display:inline-block;margin-top:8px;font-size:11px;font-weight:600;background:rgba(114,240,180,0.15);color:#72f0b4;border:1px solid rgba(114,240,180,0.3);padding:3px 10px;border-radius:999px;">🎓 SPRAWDZONA PRACA DOMOWA</span>
+          </div>
+
+          <h1 style="margin:0 0 14px;font-size:24px;line-height:1.3;color:#ffffff;font-weight:800;">
+            ${escapeHtml(greeting)}
+          </h1>
+
+          <p style="margin:0 0 14px;color:#cbd5e1;font-size:15px;line-height:1.65;">
+            Sprawdziłem Twoją pracę domową <strong style="color:#ffffff;">„${escapeHtml(cleanTitle)}”</strong>. Zajrzyj do aplikacji, aby sprawdzić swój wynik i ewentualnie przećwiczyć rzeczy do poprawy.
+          </p>
+
+          ${scoreBadge}
+          ${feedbackBlock}
+
+          <div style="margin:26px 0 0;text-align:center;">
+            <a href="${escapeHtml(appUrl)}"
+               style="display:inline-block;background:#72f0b4;background:linear-gradient(135deg, #72f0b4 0%, #10b981 100%);color:#06120c;text-decoration:none;
+                      padding:15px 36px;border-radius:12px;font-size:16px;font-weight:800;box-shadow:0 4px 16px rgba(114, 240, 180, 0.4);">
+              Zobacz ocenioną pracę w aplikacji →
+            </a>
+          </div>
+
+          ${INSTRUCTOR_CARD_HTML}
+          ${unsubscribeHtml}
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
+  const text = `${greeting}\n\nSprawdziłem Twoją pracę domową „${cleanTitle}”. Zajrzyj do aplikacji, aby sprawdzić swój wynik i ewentualnie przećwiczyć rzeczy do poprawy.${
+    score !== undefined && score !== null ? `\n\nTwój wynik: ${score}%` : ''
+  }${teacherFeedback ? `\n\nKomentarz lektora:\n${teacherFeedback}` : ''}\n\nOtwórz aplikację: ${appUrl}\n\n—\n${gradedBy}\nCRIBRO ENGLISH`;
+
+  return { subject, html, text, greeting };
+}
+

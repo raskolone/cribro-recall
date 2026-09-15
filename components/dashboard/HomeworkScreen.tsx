@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { User, SpecialTask, HomeworkType, TranslationExercise, FillInTheBlankExercise, ErrorCorrectionExercise, LessonRecord, StudentTest } from '../../types';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, serverTimestamp, onSnapshot } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { auth, db } from '../../firebase';
 import { generateTranslationExercises, generateFillInTheBlankExercises, evaluateErrorCorrectionSentence, evaluateTranslations, evaluateTeacherHomework, processBulkSentences, generateHomeworkChatPipeline } from '../../services/geminiService';
 import { generateFindErrors } from '../../services/homeworkGenerator';
 import { isTaskForStudent, studentTasksQuery, taskOwnerFields, homeworkItemType } from '../../utils/homework';
@@ -1257,7 +1257,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
         teacherRead: true,
       });
 
-      // Powiadomienie dla kursanta o sprawdzeniu pracy i komentarzu lektora
+      // Powiadomienie dla kursanta o sprawdzeniu pracy i komentarzu lektora (e-mail + pop-up)
       const targetStudentUid = reviewTask.studentUid || reviewTask.studentId;
       if (targetStudentUid) {
         try {
@@ -1268,6 +1268,26 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
             lastGradedFeedback: teacherFeedbackText || '',
             lastGradedScore: reviewTask.grade ?? null,
           });
+
+          // Wywołanie endpointu powiadomień e-mail i historii wysyłek
+          const token = await auth.currentUser?.getIdToken();
+          if (token) {
+            fetch('/api/homework/notify-graded', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                studentUid: targetStudentUid,
+                taskId: reviewTask.id,
+                taskTitle: reviewTask.title || 'Praca domowa',
+                score: reviewTask.grade ?? null,
+                teacherFeedback: teacherFeedbackText || '',
+                teacherName: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Maciej Wyrozumski',
+              }),
+            }).catch(err => console.warn('Błąd wysyłki e-mail o sprawdzonej pracy:', err));
+          }
         } catch (uErr) {
           console.warn('Nie udało się zapisać powiadomienia o ocenie u kursanta:', uErr);
         }

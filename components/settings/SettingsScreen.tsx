@@ -98,6 +98,198 @@ const SettingsScreen: React.FC = () => {
         }
     };
 
+    // Notion Integration State
+    const [notionTokenInput, setNotionTokenInput] = useState<string>('');
+    const [showNotionToken, setShowNotionToken] = useState<boolean>(false);
+    const [meetingNotesDbInput, setMeetingNotesDbInput] = useState<string>('5c6d910b-31b7-83b8-810c-0187aa513b51');
+    const [studentsDbInput, setStudentsDbInput] = useState<string>('ca88a293-bd34-4cc7-b09e-f6bd3901ef96');
+    const [autoFetchEnabledInput, setAutoFetchEnabledInput] = useState<boolean>(false);
+    const [autoFetchIntervalInput, setAutoFetchIntervalInput] = useState<number>(30);
+    const [notionConfigStatus, setNotionConfigStatus] = useState<{
+        configured: boolean;
+        maskedToken?: string | null;
+        meetingNotesDbId?: string;
+        studentsDbId?: string;
+        autoFetchEnabled?: boolean;
+        autoFetchIntervalMinutes?: number;
+        lastFetchTime?: string | null;
+        lastFetchStatus?: string | null;
+    }>({ configured: false });
+    const [isSavingNotion, setIsSavingNotion] = useState(false);
+    const [notionSaveSuccess, setNotionSaveSuccess] = useState(false);
+    const [notionError, setNotionError] = useState<string | null>(null);
+    const [isTestingNotion, setIsTestingNotion] = useState(false);
+    const [notionTestResult, setNotionTestResult] = useState<{
+        ok: boolean;
+        botName?: string;
+        workspaceName?: string;
+        meetingDbTitle?: string;
+        studentsDbTitle?: string;
+        message?: string;
+    } | null>(null);
+    const [isFetchingNotion, setIsFetchingNotion] = useState(false);
+    const [notionFetchResult, setNotionFetchResult] = useState<{
+        ok: boolean;
+        found?: number;
+        processed?: number;
+        items?: any[];
+        message?: string;
+    } | null>(null);
+
+    // Fetch Notion config on mount for admin/teacher
+    React.useEffect(() => {
+        if (!isTeacherOrAdmin) return;
+        const fetchNotionStatus = async () => {
+            try {
+                const token = await auth.currentUser?.getIdToken();
+                if (!token) return;
+                const res = await fetch('/api/notion/config', {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setNotionConfigStatus(data);
+                    if (data.meetingNotesDbId) setMeetingNotesDbInput(data.meetingNotesDbId);
+                    if (data.studentsDbId) setStudentsDbInput(data.studentsDbId);
+                    if (typeof data.autoFetchEnabled === 'boolean') setAutoFetchEnabledInput(data.autoFetchEnabled);
+                    if (typeof data.autoFetchIntervalMinutes === 'number') setAutoFetchIntervalInput(data.autoFetchIntervalMinutes);
+                }
+            } catch (e) {
+                console.warn('Nie udało się sprawdzić konfiguracji Notion:', e);
+            }
+        };
+        fetchNotionStatus();
+    }, [isTeacherOrAdmin]);
+
+    const handleSaveNotionConfig = async () => {
+        setIsSavingNotion(true);
+        setNotionError(null);
+        setNotionSaveSuccess(false);
+        try {
+            const token = await auth.currentUser?.getIdToken();
+            if (!token) throw new Error('Brak uprawnień administratora.');
+
+            const res = await fetch('/api/notion/save-config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    token: notionTokenInput.trim() || undefined,
+                    meetingNotesDbId: meetingNotesDbInput.trim() || undefined,
+                    studentsDbId: studentsDbInput.trim() || undefined,
+                    autoFetchEnabled: autoFetchEnabledInput,
+                    autoFetchIntervalMinutes: autoFetchIntervalInput,
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data?.error || 'Błąd zapisu konfiguracji Notion.');
+
+            setNotionConfigStatus({
+                configured: true,
+                maskedToken: data.maskedToken || (notionTokenInput ? `${notionTokenInput.slice(0, 8)}••••` : notionConfigStatus.maskedToken),
+                meetingNotesDbId: data.meetingNotesDbId || meetingNotesDbInput,
+                studentsDbId: data.studentsDbId || studentsDbInput,
+                autoFetchEnabled: data.autoFetchEnabled,
+                autoFetchIntervalMinutes: data.autoFetchIntervalMinutes,
+                lastFetchTime: notionConfigStatus.lastFetchTime,
+                lastFetchStatus: notionConfigStatus.lastFetchStatus,
+            });
+            setNotionSaveSuccess(true);
+            setNotionTokenInput('');
+            setTimeout(() => setNotionSaveSuccess(false), 4000);
+        } catch (err: any) {
+            console.error('Błąd zapisu konfiguracji Notion:', err);
+            setNotionError(err?.message || 'Nie udało się zapisać konfiguracji Notion.');
+        } finally {
+            setIsSavingNotion(false);
+        }
+    };
+
+    const handleTestNotionConnection = async () => {
+        setIsTestingNotion(true);
+        setNotionError(null);
+        setNotionTestResult(null);
+        try {
+            const token = await auth.currentUser?.getIdToken();
+            if (!token) throw new Error('Brak uprawnień administratora.');
+
+            const res = await fetch('/api/notion/test-connection', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    token: notionTokenInput.trim() || undefined,
+                    meetingNotesDbId: meetingNotesDbInput.trim() || undefined,
+                    studentsDbId: studentsDbInput.trim() || undefined,
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                setNotionTestResult({ ok: false, message: data?.error || 'Nie udało się nawiązać połączenia z Notion.' });
+            } else {
+                setNotionTestResult({
+                    ok: true,
+                    botName: data.botName,
+                    workspaceName: data.workspaceName,
+                    meetingDbTitle: data.meetingDbTitle,
+                    studentsDbTitle: data.studentsDbTitle,
+                    message: data.message || 'Połączenie z Notion udane!',
+                });
+            }
+        } catch (err: any) {
+            setNotionTestResult({ ok: false, message: err?.message || 'Błąd testu połączenia.' });
+        } finally {
+            setIsTestingNotion(false);
+        }
+    };
+
+    const handleFetchNotionTranscripts = async () => {
+        setIsFetchingNotion(true);
+        setNotionFetchResult(null);
+        setNotionError(null);
+        try {
+            const token = await auth.currentUser?.getIdToken();
+            if (!token) throw new Error('Brak uprawnień administratora.');
+
+            const res = await fetch('/api/notion/fetch-transcripts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data?.error || 'Błąd pobierania transkrypcji z Notion.');
+
+            setNotionFetchResult({
+                ok: true,
+                found: data.found,
+                processed: data.processed,
+                items: data.items,
+                message: `Pobrano ${data.processed || 0} z ${data.found || 0} znalezionych stron w Notion.`,
+            });
+            if (data.lastFetchTime) {
+                setNotionConfigStatus(prev => ({
+                    ...prev,
+                    lastFetchTime: data.lastFetchTime,
+                    lastFetchStatus: `Przetworzono ${data.processed || 0} stron`,
+                }));
+            }
+        } catch (err: any) {
+            console.error('Błąd pobierania transkrypcji:', err);
+            setNotionError(err?.message || 'Nie udało się pobrać transkrypcji z Notion.');
+        } finally {
+            setIsFetchingNotion(false);
+        }
+    };
+
     const [isSavingStreakPref, setIsSavingStreakPref] = useState(false);
     const [isSavingEmailPref, setIsSavingEmailPref] = useState(false);
     const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
@@ -702,6 +894,229 @@ const SettingsScreen: React.FC = () => {
                                     {language === 'pl'
                                         ? 'Klucz Resend API został pomyślnie zapisany w pliku .env oraz w bazie danych!'
                                         : 'Resend API key saved successfully in .env and Firestore!'}
+                                </p>
+                            )}
+                        </div>
+                    </Card>
+                )}
+
+                {/* ADMIN ONLY: NOTION INTEGRATION & TRANSCRIPTS CONFIGURATION */}
+                {isTeacherOrAdmin && (
+                    <Card className="border border-primary/30 bg-gradient-to-br from-base-200/90 via-base-200/70 to-primary/10 shadow-lg md:col-span-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 mb-4 border-b border-white/10">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                                    <Sparkles className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                        {language === 'pl' ? 'Integracja z Notion (Transkrypcje & Kursanci)' : 'Notion Integration & Transcripts'}
+                                        {notionConfigStatus.configured ? (
+                                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 uppercase tracking-wider flex items-center gap-1 font-bold">
+                                                <CheckCircle2 size={11} /> {notionConfigStatus.maskedToken || 'Połączono'}
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider font-bold">
+                                                {language === 'pl' ? 'Wymagana konfiguracja' : 'Setup required'}
+                                            </span>
+                                        )}
+                                    </h2>
+                                    <p className="text-xs text-content-muted">
+                                        {language === 'pl'
+                                            ? 'Połączenie z workspace Notion do automatycznego i cyklicznego pobierania transkrypcji spotkań AI i bazy kursantów'
+                                            : 'Connect to Notion workspace to fetch meeting transcripts and student database'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            {/* Token */}
+                            <div>
+                                <label className="block text-xs font-semibold text-content uppercase tracking-wider mb-1.5">
+                                    {language === 'pl' ? 'Klucz / Token Integracji Notion (API Secret)' : 'Notion Integration Token (API Secret)'}
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type={showNotionToken ? 'text' : 'password'}
+                                        value={notionTokenInput}
+                                        onChange={(e) => {
+                                            setNotionTokenInput(e.target.value);
+                                            setNotionError(null);
+                                        }}
+                                        placeholder={notionConfigStatus.maskedToken || "secret_123456789abcdef..."}
+                                        className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary pr-10"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowNotionToken(!showNotionToken)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-white"
+                                        title={showNotionToken ? 'Ukryj' : 'Pokaż'}
+                                    >
+                                        {showNotionToken ? <EyeOff size={15} /> : <Eye size={15} />}
+                                    </button>
+                                </div>
+                                <p className="text-[11px] text-content-muted mt-1">
+                                    Klucz utworzysz na <a href="https://www.notion.so/profile/integrations" target="_blank" rel="noreferrer" className="text-primary underline">notion.so/profile/integrations</a>. Pamiętaj, aby udostępnić integracji odpowiednie strony w Notion.
+                                </p>
+                            </div>
+
+                            {/* Database IDs */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-content uppercase tracking-wider mb-1.5">
+                                        {language === 'pl' ? 'ID Bazy Spotkań & Transkrypcji' : 'Meeting Notes Database ID'}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={meetingNotesDbInput}
+                                        onChange={(e) => setMeetingNotesDbInput(e.target.value)}
+                                        placeholder="5c6d910b-31b7-83b8-810c-0187aa513b51"
+                                        className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-content uppercase tracking-wider mb-1.5">
+                                        {language === 'pl' ? 'ID Bazy Kursantów i Grup' : 'Students & Groups Database ID'}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={studentsDbInput}
+                                        onChange={(e) => setStudentsDbInput(e.target.value)}
+                                        placeholder="ca88a293-bd34-4cc7-b09e-f6bd3901ef96"
+                                        className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Auto fetch toggle & interval */}
+                            <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-3">
+                                <label className="flex items-center justify-between cursor-pointer">
+                                    <div className="pr-4">
+                                        <span className="text-sm font-semibold text-white block">
+                                            {language === 'pl' ? 'Automatyczne cykliczne pobieranie w tle (Notion Fetch)' : 'Automatic background polling (Notion Fetch)'}
+                                        </span>
+                                        <span className="text-xs text-content-muted">
+                                            {language === 'pl'
+                                                ? 'System regularnie sprawdza bazę spotkań w Notion i automatycznie przypisuje nowe transkrypcje do właściwych kursantów i grup'
+                                                : 'Regularly queries Notion database and matches new transcripts to students and groups'}
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={autoFetchEnabledInput}
+                                        onChange={(e) => setAutoFetchEnabledInput(e.target.checked)}
+                                        className="w-5 h-5 rounded border-white/20 bg-black/40 text-primary focus:ring-primary accent-primary cursor-pointer shrink-0"
+                                    />
+                                </label>
+
+                                {autoFetchEnabledInput && (
+                                    <div className="flex items-center gap-3 pt-2 border-t border-white/5">
+                                        <label className="text-xs text-content-muted shrink-0">
+                                            {language === 'pl' ? 'Częstotliwość sprawdzania:' : 'Check interval:'}
+                                        </label>
+                                        <select
+                                            value={autoFetchIntervalInput}
+                                            onChange={(e) => setAutoFetchIntervalInput(Number(e.target.value))}
+                                            className="px-3 py-1.5 rounded-lg bg-black/60 border border-white/15 text-white text-xs focus:outline-none focus:border-primary"
+                                        >
+                                            <option value={15}>{language === 'pl' ? 'Co 15 minut' : 'Every 15 minutes'}</option>
+                                            <option value={30}>{language === 'pl' ? 'Co 30 minut (zalecane)' : 'Every 30 minutes (recommended)'}</option>
+                                            <option value={60}>{language === 'pl' ? 'Co 1 godzinę' : 'Every 1 hour'}</option>
+                                            <option value={120}>{language === 'pl' ? 'Co 2 godziny' : 'Every 2 hours'}</option>
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                                <Button
+                                    onClick={handleSaveNotionConfig}
+                                    isLoading={isSavingNotion}
+                                    className="shrink-0"
+                                >
+                                    {language === 'pl' ? 'Zapisz konfigurację Notion' : 'Save Notion Config'}
+                                </Button>
+
+                                <Button
+                                    variant="secondary"
+                                    onClick={handleTestNotionConnection}
+                                    isLoading={isTestingNotion}
+                                    className="shrink-0"
+                                >
+                                    {language === 'pl' ? 'Testuj połączenie' : 'Test Connection'}
+                                </Button>
+
+                                <Button
+                                    variant="secondary"
+                                    onClick={handleFetchNotionTranscripts}
+                                    isLoading={isFetchingNotion}
+                                    className="shrink-0 flex items-center gap-1.5"
+                                >
+                                    <RefreshCw size={14} className={isFetchingNotion ? 'animate-spin' : ''} />
+                                    {language === 'pl' ? 'Pobierz transkrypcje teraz' : 'Fetch Transcripts Now'}
+                                </Button>
+                            </div>
+
+                            {/* Error & Success notices */}
+                            {notionError && (
+                                <p className="text-xs text-danger font-semibold flex items-center gap-1 mt-1">
+                                    <AlertTriangle size={13} /> {notionError}
+                                </p>
+                            )}
+
+                            {notionSaveSuccess && (
+                                <p className="text-xs text-primary font-semibold flex items-center gap-1 mt-1 animate-fade-in">
+                                    <CheckCircle2 size={14} />
+                                    {language === 'pl'
+                                        ? 'Konfiguracja Notion została zapisana!'
+                                        : 'Notion configuration saved!'}
+                                </p>
+                            )}
+
+                            {notionTestResult && (
+                                <div className={`p-3 rounded-xl border text-xs ${notionTestResult.ok ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-danger/10 border-danger/30 text-danger'} animate-fade-in`}>
+                                    <p className="font-semibold flex items-center gap-1.5">
+                                        {notionTestResult.ok ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+                                        {notionTestResult.message || (notionTestResult.ok ? 'Połączenie z Notion działa poprawnie!' : 'Błąd połączenia z Notion')}
+                                    </p>
+                                    {notionTestResult.workspaceName && (
+                                        <p className="text-content-muted mt-1">
+                                            Workspace: <strong className="text-white">{notionTestResult.workspaceName}</strong> | Bot: <strong className="text-white">{notionTestResult.botName}</strong>
+                                        </p>
+                                    )}
+                                    {notionTestResult.meetingDbTitle && (
+                                        <p className="text-content-muted mt-0.5">
+                                            Baza spotkań: <strong className="text-white">{notionTestResult.meetingDbTitle}</strong>
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {notionFetchResult && (
+                                <div className="p-3 rounded-xl bg-primary/10 border border-primary/30 text-xs text-white space-y-1.5 animate-fade-in">
+                                    <p className="font-bold text-primary flex items-center gap-1.5">
+                                        <CheckCircle2 size={14} /> {notionFetchResult.message}
+                                    </p>
+                                    {Array.isArray(notionFetchResult.items) && notionFetchResult.items.length > 0 && (
+                                        <div className="max-h-36 overflow-y-auto space-y-1 mt-2 pr-1">
+                                            {notionFetchResult.items.map((it, idx) => (
+                                                <div key={idx} className="flex items-center justify-between p-1.5 rounded bg-black/40 border border-white/5 text-[11px]">
+                                                    <span className="font-medium truncate max-w-[200px]">{it.title}</span>
+                                                    <span className="text-primary truncate">{it.studentName}</span>
+                                                    <span className="text-[10px] text-content-muted font-mono">{it.status}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Status info */}
+                            {notionConfigStatus.lastFetchTime && (
+                                <p className="text-[11px] text-content-muted pt-1">
+                                    Ostatnia synchronizacja: {new Date(notionConfigStatus.lastFetchTime).toLocaleString()} ({notionConfigStatus.lastFetchStatus || 'Brak uwag'})
                                 </p>
                             )}
                         </div>

@@ -18,27 +18,27 @@
  *                  poprzednie odmówią. Nigdy nie jest pierwszym wyborem.
  */
 
-/** Model pierwszego wyboru — układanie zadań, ocena, streszczenia lekcji. */
-export const PRIMARY_MODEL = 'openai/gpt-5.6-luna';
+/** Model pierwszego wyboru — układanie zadań, ocena, streszczenia lekcji. Zgodnie z wytycznymi: Gemini 2.5 Flash */
+export const PRIMARY_MODEL = 'gemini-2.5-flash';
 
-/** Zapas u drugiego dostawcy — chroni przed awarią po stronie OpenAI. */
+/** Zapas u drugiego dostawcy / nowsza wersja Gemini. */
 export const SECONDARY_MODEL = 'gemini-3.8-flash';
 
-/** Trzeci rzut: lekki, tani, zawsze dostępny. Ostatnia deska ratunku. */
+/** Trzeci rzut: lekki, szybki model OpenAI. */
 export const TERTIARY_MODEL = 'openai/gpt-4o-mini';
+
+/** Opcjonalny model zaawansowany. */
+export const QUATERNARY_MODEL = 'openai/gpt-5.6-luna';
 
 /**
  * Domyślna kaskada dla zadań tekstowych i JSON-owych.
- *
- * `gemini-2.5-flash` zostaje na końcu jako sieć bezpieczeństwa dla kont, na
- * których nowsze modele Gemini nie są jeszcze włączone — kosztuje tylko wtedy,
- * gdy wszystko powyżej zawiodło.
+ * Zgodnie z wytycznymi: na początku zawsze gemini-2.5-flash.
  */
 export const AI_MODEL_CASCADE: string[] = [
   PRIMARY_MODEL,
   SECONDARY_MODEL,
   TERTIARY_MODEL,
-  'gemini-2.5-flash',
+  QUATERNARY_MODEL,
 ];
 
 /**
@@ -117,9 +117,8 @@ export const AI_TASKS: AiTaskDefinition[] = [
     id: 'chat',
     label: 'Czat i asystent',
     description: 'Asystent lektora, rozmowa przy pracy domowej, podpowiedzi w locie.',
-    // Czat ma odpowiadać od razu, więc zaczyna od modelu lekkiego; mocny
-    // zostaje jako zapas, gdy lekki nie poradzi sobie z pytaniem.
-    cascade: [TERTIARY_MODEL, SECONDARY_MODEL, PRIMARY_MODEL],
+    // Czat zaczyna od podstawowego modelu Gemini 2.5 Flash
+    cascade: [PRIMARY_MODEL, SECONDARY_MODEL, TERTIARY_MODEL],
   },
   {
     id: 'summaries',

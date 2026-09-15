@@ -25,8 +25,8 @@ test('kolejność kaskady: mocny → drugi dostawca → lekki', () => {
   assert.equal(AI_MODEL_CASCADE[2], TERTIARY_MODEL);
 });
 
-test('pierwszy jest gpt-5.6-luna, drugi gemini-3.8-flash', () => {
-  assert.equal(PRIMARY_MODEL, 'openai/gpt-5.6-luna');
+test('pierwszy jest gemini-2.5-flash, drugi gemini-3.8-flash', () => {
+  assert.equal(PRIMARY_MODEL, 'gemini-2.5-flash');
   assert.equal(SECONDARY_MODEL, 'gemini-3.8-flash');
 });
 
@@ -36,8 +36,8 @@ test('model trzeciorzędny jest lekki i nie jest tym samym co pierwszy', () => {
 });
 
 test('kaskada dostawców rozdziela się bez prefiksów i bez gubienia modeli', () => {
-  assert.deepEqual(OPENAI_MODEL_CASCADE, ['gpt-5.6-luna', 'gpt-4o-mini']);
-  assert.equal(GEMINI_MODEL_CASCADE[0], 'gemini-3.8-flash');
+  assert.deepEqual(OPENAI_MODEL_CASCADE, ['gpt-4o-mini', 'gpt-5.6-luna']);
+  assert.equal(GEMINI_MODEL_CASCADE[0], 'gemini-2.5-flash');
   assert.equal(
     OPENAI_MODEL_CASCADE.length + GEMINI_MODEL_CASCADE.length,
     AI_MODEL_CASCADE.length

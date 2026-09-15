@@ -6,6 +6,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import Button from '../ui/Button';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
+import { toPolishVocative } from '../../utils/polishVocative';
 
 interface StudentHomeworkGradedModalProps {
   onOpenHomework?: (taskId: string) => void;
@@ -204,6 +205,23 @@ const StudentHomeworkGradedModal: React.FC<StudentHomeworkGradedModalProps> = ({
                 </div>
               </div>
 
+              {/* Exact user-requested message banner */}
+              {(() => {
+                const rawName = user.firstName || user.name || user.username || '';
+                const vocative = toPolishVocative(rawName);
+                const greeting = vocative ? `Cześć ${vocative}, ` : 'Cześć, ';
+                return (
+                  <div className="p-4 rounded-2xl bg-primary/10 border border-primary/25 text-text-hi text-sm leading-relaxed font-sans">
+                    <p className="font-semibold text-primary mb-1">
+                      {greeting}sprawdziłem Twoją pracę domową!
+                    </p>
+                    <p className="text-content-muted text-xs leading-relaxed">
+                      Zajrzyj do aplikacji, aby sprawdzić swój wynik i ewentualnie przećwiczyć rzeczy do poprawy.
+                    </p>
+                  </div>
+                );
+              })()}
+
               {/* Score pill if available */}
               {score !== null && (
                 <div className="flex items-center justify-between p-3.5 rounded-2xl bg-base-100/70 border border-white/10">
@@ -217,7 +235,7 @@ const StudentHomeworkGradedModal: React.FC<StudentHomeworkGradedModalProps> = ({
               )}
 
               {/* Teacher comment quote box */}
-              {feedback ? (
+              {feedback && (
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
                     <MessageSquareQuote size={15} />
@@ -227,10 +245,6 @@ const StudentHomeworkGradedModal: React.FC<StudentHomeworkGradedModalProps> = ({
                     {feedback}
                   </div>
                 </div>
-              ) : (
-                <p className="text-xs text-content-muted leading-relaxed">
-                  Lektor przejrzał Twoje odpowiedzi i zweryfikował zadania. Kliknij poniżej, aby zobaczyć szczegółowe podsumowanie.
-                </p>
               )}
 
               {/* Action buttons */}

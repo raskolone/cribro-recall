@@ -203,6 +203,41 @@ Firestore obok lekcji.
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
+### 🚀 Notion bazy grupowe, asystent AI w dokumencie, szybka powtórka lekcji, powiadomienia o sprawdzonej pracy domowej, płynny motyw i Gemini 2.5 Flash (2026-09-15, runda 10)
+
+**1. Widok bazy Notion pod kafelkami lektora i zarządzanie grupami kursantów.**
+- (`components/admin/TeacherNotionDatabaseView.tsx`, nowy) Osadzony pod kafelkami aktywności panelu lektora pełny widok tabelaryczny bazy Notion kursantów z wyszukiwarką na żywo, filtrami (Wszyscy, Tylko Grupy, Indywidualni, Aktywni), statystykami powiązań Notion ID, szybkimi przełącznikami i bezpośrednimi akcjami: otwarcie notatnika/brudnopisu (`openScratchpadTab`), profil kursanta (`handleSelectUser`), oraz uruchomienie planera lekcji (`lesson-planner`).
+- (`components/admin/CreateGroupModal.tsx`, nowy) Modal do tworzenia i edycji grup kursantów: pary (2 osoby), trójki (3 osoby) oraz grupy firmowe/wieloosobowe (4+ osób). Obsługa przypisywania zleceniodawcy (`contractor`), nazwy firmy (`company`) oraz członków (`memberIds`).
+- (`types.ts`) Rozszerzenie typów o `isGroup?: boolean`, `groupType?: 'pair' | 'triplet' | 'group'`, `memberIds?: string[]`, `contractor?: string`, `company?: string` w `User` oraz `studentIds?: string[]` w `LessonRecord`.
+- (`components/settings/SettingsScreen.tsx`) Dedykowana sekcja konfiguracji integracji Notion w ustawieniach administratora (token Notion, ID bazy, interwał synchronizacji, test połączenia).
+
+**2. Asystent AI wewnątrz Notatnika (Scratchpad Editor) & Szybka Powtórka (Quick Recall).**
+- (`components/scratchpad/ScratchpadEditor.tsx`) Zintegrowany boczny panel In-Document AI Assistant zasilany przez `gemini-2.5-flash`. Oferuje szybkie akcje (wyciąganie błędów z lekcji, generowanie 5 zdań do tłumaczenia, mini-quiz z notatnika), formatowanie markdown z podglądem oraz 1-kliknięciowe wstawianie ("Wstaw do notatnika") wygenerowanej zawartości wprost do aktywnego dokumentu.
+- **Szybka Powtórka przy tworzeniu nowej lekcji**: Asynchroniczne wyciąganie z ostatniej lekcji kursanta (`getLessonRecordsForStudent`) 3 kluczowych poprawek gramatycznych oraz 5 pozycji słownictwa i automatyczne wstrzykiwanie do sekcji `Revision / Warm-up` nowego szablonu lekcji.
+- (`utils/lessonTemplate.ts`) Podział arkusza A4 z klasą `.pad-page-break` i formatowaniem stron.
+
+**3. Powiadomienia o sprawdzonej pracy domowej (Graded Homework Flow).**
+- (`server.ts`, `services/homeworkEmail.ts`) Nowy endpoint `POST /api/homework/notify-graded` wyzwalający wysyłkę e-mail przez Resend (`buildGradedHomeworkEmail`) z wynikiem punktowym, komentarzem lektora i bezpośrednim linkiem oraz aktualizujący flagę `hasGradedHomework: true` w profilu kursanta.
+- (`components/dashboard/StudentHomeworkGradedModal.tsx`) Wyskakujące powiadomienie na żywo po zalogowaniu kursanta z poprawnym wołaczem polskiego imienia (`toPolishVocative`, np. *"Cześć Moniko,"*) oraz exact copy: *"Cześć [Imię], sprawdziłem Twoją pracę domową. Zajrzyj do aplikacji, aby sprawdzić swój wynik i ewentualnie przećwiczyć rzeczy do poprawy."*
+- (`components/dashboard/HomeworkScreen.tsx`, `components/admin/HomeworkV2ReviewScreen.tsx`) Zintegrowane wywołanie powiadomienia przy zatwierdzaniu recenzji i oceny pracy domowej.
+
+**4. Domyślna hierarchia modeli AI: Gemini 2.5 Flash.**
+- (`services/aiModels.ts`, `.ai-settings.json`, `tests/aiModels.test.ts`, `tests/aiTaskModels.test.ts`, `tests/transcriptLesson.test.ts`) Ujednolicenie i ustawienie `gemini-2.5-flash` jako nadrzędnego modelu domyślnego dla wszystkich zadań i kaskad AI.
+- (`services/homeworkV2Client.ts`) Podpięcie telemetrii zdarzeń dla `aiMonitor` w generatorze prac domowych.
+
+**5. Rozbudowa Asystenta Nauczyciela (Teacher Assistant).**
+- (`components/admin/TeacherAssistant.tsx`, `services/teacherAssistant.ts`) Trwała wielosesyjna pamięć czatu z zapamiętywaniem historii konwersacji oraz kafelkami skrótów szybkiej nawigacji do kluczowych modułów (Planer lekcji, Notatnik, Mailing, Ustawienia, Baza Notion, Prace domowe).
+
+**6. Dopracowanie motywu Jasnego i Adaptacyjnego (Aura / Ambient Theme).**
+- (`components/ui/ConstellationBackground.tsx`) W trybie jasnym usunięto ostre linie konstelacji („efekt pękniętego ekranu"), zastępując je płynnymi, dryfującymi świetlistymi kulami gradientowymi (ambient luminous orbs) i subtelnym migotaniem cząsteczek.
+- (`design/theme/tokens.css`) Wprowadzenie kojącej, pastelowej palety dziennego nieba (`#f3f8fd` ➔ `#e6effa` ➔ `#dbe7f5`).
+- (`context/ThemeContext.tsx`) Nowy tryb `adaptive` automatycznie dostosowujący motyw do pory dnia (07:00–19:00 tryb jasny, noc tryb ciemny) z 60-sekundowym timerem.
+
+**7. Weryfikacja jakości.**
+- Komplet 319 testów jednostkowych przechodzi pomyślnie (`npm test`).
+- Pełna zgodność typów TypeScript (`npx tsc --noEmit`).
+- Czysty build produkcyjny (`npm run build`).
+
 ### 🎯 Planer lekcji przepisany na metodę Cribro i naradę modeli (2026-09-14, runda 9)
 
 **Skąd to pochodzi.** Odwzorowanie skilla „🎯 Skill - Lesson Planner" z Notion

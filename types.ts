@@ -82,6 +82,16 @@ export interface User {
   lastInviteSentAt?: string;
   /** Adres lektora, który wysłał zaproszenie. */
   inviteSentBy?: string;
+  /** Flaga oznaczająca grupę (np. Para, Trójka, Grupa firmowa). */
+  isGroup?: boolean;
+  groupType?: 'pair' | 'triplet' | 'group';
+  memberIds?: string[];
+  memberNames?: string[];
+  company?: string;
+  contractor?: string;
+  lessonType?: 'Individual' | 'Group';
+  recordType?: 'Kursant' | 'Grupa';
+  statusWspolpracy?: 'Aktywny' | 'Nieaktywny';
 }
 
 export interface EmailTemplate {
@@ -330,6 +340,7 @@ export interface LessonBlocks {
 export interface LessonRecord {
   id: string;
   studentId: string;
+  studentIds?: string[];
   date: string;
   topic: string;
   vocabularyText: string;

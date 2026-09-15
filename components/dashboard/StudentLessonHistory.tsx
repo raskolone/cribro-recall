@@ -449,12 +449,12 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
               </div>
             )}
 
-            {/* Homework (ZADANIE Z LEKCJI) */}
-            {latestBlocks.homework && (
+            {/* Teacher-only: Homework (Zadanie z lekcji — tylko dla lektora) */}
+            {isTeacher && latestBlocks.homework && (
               <div className="space-y-2">
                 <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles size={13} />
-                  Zadanie z lekcji (Homework)
+                  Zadanie z lekcji (Homework — notatka lektora)
                 </h4>
                 <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">
                   <Markdown>{latestBlocks.homework}</Markdown>
@@ -603,11 +603,11 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                                 </div>
                               </div>
                             )}
-                            {lessonBlocks.homework && (
+                            {isTeacher && lessonBlocks.homework && (
                               <div className="space-y-2">
                                 <h5 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
                                   <Sparkles size={13} />
-                                  Zadanie z lekcji (Homework)
+                                  Zadanie z lekcji (Homework — notatka lektora)
                                 </h5>
                                 <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">
                                   <Markdown>{lessonBlocks.homework}</Markdown>

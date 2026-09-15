@@ -9,7 +9,7 @@ import {
   doc,
   where,
 } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { auth, db } from '../../firebase';
 import { SpecialTask } from '../../types';
 import type { AttemptV2, ExerciseContractV2 } from '../../services/homeworkV2/contracts';
 import Card from '../ui/Card';
@@ -126,10 +126,33 @@ export const HomeworkV2ReviewScreen: React.FC = () => {
     if (!task.id) return;
     setSavingNoteFor(task.id);
     try {
+      const reviewNoteText = noteDraft[task.id] ?? task.teacherReviewNote ?? '';
       await updateDoc(doc(db, 'specialTasks', task.id), {
         teacherReviewedAt: new Date().toISOString(),
-        teacherReviewNote: noteDraft[task.id] ?? task.teacherReviewNote ?? '',
+        teacherReviewNote: reviewNoteText,
       });
+
+      const targetStudentUid = task.studentUid || task.studentId;
+      if (targetStudentUid) {
+        const token = await auth.currentUser?.getIdToken();
+        if (token) {
+          fetch('/api/homework/notify-graded', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              studentUid: targetStudentUid,
+              taskId: task.id,
+              taskTitle: task.title || 'Praca domowa',
+              score: task.grade ?? null,
+              teacherFeedback: reviewNoteText,
+              teacherName: auth.currentUser?.displayName || 'Maciej Wyrozumski',
+            }),
+          }).catch(err => console.warn('Błąd wysyłki e-mail o sprawdzonej pracy v2:', err));
+        }
+      }
     } catch (e) {
       console.error('Nie udało się zapisać przeglądu v2:', e);
       alert('Błąd podczas zapisywania przeglądu.');

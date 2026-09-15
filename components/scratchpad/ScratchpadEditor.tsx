@@ -50,6 +50,14 @@ import {
   Flashlight,
   LayoutTemplate,
   Printer,
+  Bot,
+  Send,
+  Loader2,
+  Copy,
+  PlusCircle,
+  MessageSquare,
+  Lightbulb,
+  Wand2,
 } from 'lucide-react';
 import { ScratchpadDocument, ScratchpadTemplate } from '../../types';
 import {
@@ -75,6 +83,8 @@ import { buildScratchpadCoachSteps } from './scratchpadCoachSteps';
 import ScratchpadTemplateManagerModal from './ScratchpadTemplateManagerModal';
 import { buildLessonTemplate, LESSON_SECTIONS } from '../../utils/lessonTemplate';
 import { NOTEBOOK_COLORS, NOTEBOOK_INK, NOTEBOOK_SWATCHES } from '../../utils/notebookPalette';
+import { getLessonRecordsForStudent } from '../../services/lessonRecord';
+import { generateTextWithUnifiedFallback } from '../../services/geminiService';
 
 /**
  * Wysokość strony A4 przy 96 dpi (297 mm) minus margines dolny, w pikselach.
@@ -219,6 +229,41 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const [templates, setTemplates] = useState<ScratchpadTemplate[]>([]);
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
   const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
+
+  // ── Asystent AI w dokumencie ──
+  interface ScratchpadChatMessage {
+    id: string;
+    role: 'user' | 'assistant';
+    text: string;
+    timestamp: string;
+  }
+
+  const [isAiChatOpen, setIsAiChatOpen] = useState(false);
+  const [aiChatMessages, setAiChatMessages] = useState<ScratchpadChatMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem(`scratchpad_ai_chat_${docData.id}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+  const [aiChatDraft, setAiChatDraft] = useState('');
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [copiedAiMsgId, setCopiedAiMsgId] = useState<string | null>(null);
+  const aiChatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      if (docData.id && aiChatMessages.length > 0) {
+        localStorage.setItem(`scratchpad_ai_chat_${docData.id}`, JSON.stringify(aiChatMessages.slice(-25)));
+      }
+    } catch {}
+  }, [docData.id, aiChatMessages]);
+
+  useEffect(() => {
+    if (isAiChatOpen) {
+      aiChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [isAiChatOpen, aiChatMessages, isAiGenerating]);
 
   // Funkcja wyciągająca czysty tekst z HTML
   const extractText = (html: string): string => {
@@ -646,37 +691,230 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   };
 
   /**
-   * Nowa lekcja w notatniku — nagłówek z NUMEREM i pięć pustych sekcji.
+   * Nowa lekcja w notatniku — nagłówek z NUMEREM i pięć sekcji.
    *
-   * Numer liczy się z dotychczasowych nagłówków dokumentu (patrz
-   * `utils/lessonTemplate.ts`), więc nikt go nie musi pamiętać; poprawiony
-   * ręcznie zostaje wzięty pod uwagę przy następnym wstawieniu.
+   * Jeśli dokument jest przypisany do konkretnego kursanta (`docData.studentId`),
+   * system automatycznie zaczytuje ostatnią lekcję i generuje w sekcji `Revision`:
+   * - 3 elementy do poprawy / zdania do przetłumaczenia,
+   * - 5 słówek do sprawdzenia znajomości.
    *
-   * Wstawiamy NA KOŃCU dokumentu, a nie w miejscu kursora: nowa lekcja zawsze
-   * dopisuje się pod poprzednimi, a kursor po godzinie pisania stoi gdzie
-   * popadnie — najczęściej w środku zeszłotygodniowej notatki.
+   * Nowa lekcja zaczyna się od nowej strony A4 (`pad-page-break`).
    */
-  const handleInsertLesson = () => {
-    if (isReadOnly || !editorRef.current) return;
+  const [isInsertingLesson, setIsInsertingLesson] = useState(false);
 
-    const html = buildLessonTemplate({ previousHtml: editorRef.current.innerHTML });
-    editorRef.current.insertAdjacentHTML('beforeend', `<p><br></p>${html}`);
+  const handleInsertLesson = async () => {
+    if (isReadOnly || !editorRef.current || isInsertingLesson) return;
+    setIsInsertingLesson(true);
 
-    // Kursor ląduje w pierwszej sekcji nowej lekcji — tam zaczyna się pisanie.
-    const headings = editorRef.current.querySelectorAll('h3');
-    const firstSection = headings[headings.length - LESSON_SECTIONS.length];
-    const target = firstSection?.nextElementSibling as HTMLElement | null;
-    if (target) {
-      const range = window.document.createRange();
-      range.selectNodeContents(target);
-      range.collapse(true);
-      const selection = window.getSelection();
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    let recallItems: { corrections?: string[]; vocabulary?: string[] } | undefined = undefined;
+
+    const studentId = docData.studentId || (document as any).studentId;
+    if (studentId) {
+      try {
+        const records = await getLessonRecordsForStudent(studentId);
+        if (records && records.length > 0) {
+          // Sortowanie malejąco po dacie
+          const sorted = [...records].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+          const latest = sorted[0];
+
+          const rawCorrections =
+            latest.thingsToImprove ||
+            latest.corrections ||
+            latest.structuredBlocks?.corrections ||
+            '';
+
+          const rawVocab =
+            latest.vocabularyText ||
+            latest.structuredBlocks?.vocabulary ||
+            '';
+
+          const correctionsList = rawCorrections
+            .split('\n')
+            .map(l => l.replace(/^[-*•\d.]+\s*/, '').trim())
+            .filter(l => l.length > 3)
+            .slice(0, 3);
+
+          const vocabList = rawVocab
+            .split('\n')
+            .map(l => {
+              const clean = l.replace(/^[-*•\d.]+\s*/, '').trim();
+              if (clean.includes(' - ')) return clean.split(' - ')[0].trim();
+              if (clean.includes(' – ')) return clean.split(' – ')[0].trim();
+              if (clean.includes(' — ')) return clean.split(' — ')[0].trim();
+              if (clean.includes(':')) return clean.split(':')[0].trim();
+              return clean;
+            })
+            .filter(w => w.length > 1)
+            .slice(0, 5);
+
+          if (correctionsList.length > 0 || vocabList.length > 0) {
+            recallItems = {
+              corrections: correctionsList,
+              vocabulary: vocabList,
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('[Scratchpad] Błąd pobierania poprzedniej lekcji do powtórki:', err);
+      }
     }
 
+    try {
+      const html = buildLessonTemplate({
+        previousHtml: editorRef.current.innerHTML,
+        recallItems,
+      });
+
+      editorRef.current.insertAdjacentHTML('beforeend', `<p><br></p>${html}`);
+
+      // Kursor ląduje w pierwszej sekcji nowej lekcji — tam zaczyna się pisanie.
+      const headings = editorRef.current.querySelectorAll('h3');
+      const firstSection = headings[headings.length - LESSON_SECTIONS.length];
+      const target = firstSection?.nextElementSibling as HTMLElement | null;
+      if (target) {
+        const range = window.document.createRange();
+        range.selectNodeContents(target);
+        range.collapse(true);
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      handleInput();
+    } finally {
+      setIsInsertingLesson(false);
+    }
+  };
+
+  // ── Obsługa zapytań do wbudowanego Asystenta AI Notatnika ──
+  const handleSendAiChat = async (customPrompt?: string) => {
+    const promptToSend = (customPrompt || aiChatDraft).trim();
+    if (!promptToSend || isAiGenerating) return;
+
+    const userTurn: ScratchpadChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      text: promptToSend,
+      timestamp: new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setAiChatMessages(prev => [...prev, userTurn]);
+    if (!customPrompt) setAiChatDraft('');
+    setIsAiGenerating(true);
+
+    try {
+      const docText = editorRef.current?.innerText || '';
+      const selectedText = window.getSelection()?.toString().trim() || '';
+
+      const systemPrompt = `Jesteś inteligentnym asystentem lektora i kursanta CRIBRO ENGLISH wbudowanym bezpośrednio w notatnik lekcyjny.
+Twoim celem jest pomoc w prowadzeniu efektywnej lekcji języka angielskiego, błyskawiczna analiza notatek, generowanie powtórek (Revision), wyjaśnianie zawiłości gramatycznych, parafrazowanie zdań oraz tworzenie ćwiczeń i zdań do tłumaczenia na żywo.
+Zasady:
+1. Odpowiadaj zwięźle, konkretnie i w uporządkowanej formie Markdown.
+2. Kluczowe słownictwo i konstrukcje pogrubiaj (**word**).
+3. Gdy tworzysz zdania lub ćwiczenia, numeruj je czytelnie (1., 2., 3.).
+4. Wyjaśnienia twórz po polsku, a przykłady i ćwiczenia po angielsku.`;
+
+      let promptWithContext = `Kontekst dokumentu:
+Tytuł: ${docData.title || 'Notatnik lekcyjny'}
+Kursant: ${docData.studentName || 'Kursant'}
+
+${selectedText ? `Aktualnie zaznaczony przez użytkownika fragment tekstu:\n"""${selectedText}"""\n\n` : ''}Treść dokumentu notatnika:\n"""${docText.slice(0, 14000)}"""
+
+Polecenie użytkownika:
+${promptToSend}`;
+
+      const aiResponse = await generateTextWithUnifiedFallback(
+        promptWithContext,
+        systemPrompt,
+        undefined,
+        undefined,
+        undefined,
+        { taskName: 'Asystent notatnika', category: 'chat' }
+      );
+
+      const assistantTurn: ScratchpadChatMessage = {
+        id: `ai-${Date.now()}`,
+        role: 'assistant',
+        text: (aiResponse.text || '').trim(),
+        timestamp: new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      setAiChatMessages(prev => [...prev, assistantTurn]);
+    } catch (err: any) {
+      console.error('[Scratchpad AI Chat Error]:', err);
+      setAiChatMessages(prev => [
+        ...prev,
+        {
+          id: `ai-err-${Date.now()}`,
+          role: 'assistant',
+          text: `⚠️ Nie udało się wygenerować odpowiedzi: ${err?.message || 'Błąd połączenia z modelem AI.'}`,
+          timestamp: new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
+  const handleInsertAiMessageToDoc = (text: string) => {
+    if (isReadOnly || !editorRef.current) return;
+
+    // Konwersja prostego markdown do HTML dla edytora
+    const lines = text.split('\n');
+    let html = '';
+    let inList = false;
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line) {
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
+        html += '<p><br></p>';
+        continue;
+      }
+
+      let formatted = rawLine
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px;">$1</code>');
+
+      if (/^[-*•]\s+/.test(line) || /^\d+\.\s+/.test(line)) {
+        if (!inList) {
+          html += '<ul style="margin: 6px 0; padding-left: 20px;">';
+          inList = true;
+        }
+        const itemContent = formatted.replace(/^[-*•\d.]+\s*/, '');
+        html += `<li>${itemContent}</li>`;
+      } else if (/^#{1,3}\s+/.test(line)) {
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
+        const headingText = formatted.replace(/^#{1,3}\s+/, '');
+        html += `<h3 style="color:var(--accent);margin:12px 0 6px;">${headingText}</h3>`;
+      } else {
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
+        html += `<p style="margin:4px 0;">${formatted}</p>`;
+      }
+    }
+
+    if (inList) html += '</ul>';
+
+    editorRef.current.focus();
+    window.document.execCommand('insertHTML', false, `<div class="ai-inserted-block" style="border-left: 3px solid #72f0b4; padding-left: 10px; margin: 10px 0;">${html}</div>`);
     handleInput();
+  };
+
+  const handleCopyAiMessage = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedAiMsgId(id);
+    setTimeout(() => setCopiedAiMsgId(null), 2000);
   };
 
   // Wstawienie zapisanego szablonu lektora (kolekcja `scratchpadTemplates`)
@@ -1553,8 +1791,21 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           </>
         )}
 
-        {/* Prawa strona paska narzędzi: Spis treści i zwijanie */}
+        {/* Prawa strona paska narzędzi: Czat AI, Spis treści i zwijanie */}
         <div className="ml-auto flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsAiChatOpen(v => !v)}
+            title={isAiChatOpen ? 'Zamknij Czat AI dokumentu' : 'Otwórz Czat AI dokumentu (Gemini 2.5 Flash)'}
+            className={`h-7 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+              isAiChatOpen
+                ? 'bg-primary text-accent-ink shadow-sm shadow-primary/30'
+                : 'bg-primary/10 text-primary border border-primary/25 hover:bg-primary/20'
+            }`}
+          >
+            <Sparkles size={13} className={isAiGenerating ? 'animate-spin' : ''} />
+            <span>Czat AI</span>
+          </button>
           <button
             type="button"
             onClick={() => setIsTocOpen(v => !v)}
@@ -1728,6 +1979,187 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
             ))}
           </div>
         </div>
+
+        {/* PANEL ASYSTENTA AI W DOKUMENCIE */}
+        {isAiChatOpen && (
+          <aside className="w-80 sm:w-96 shrink-0 border-l border-line-strong pad-bar flex flex-col z-20 select-none animate-fadeIn bg-base-200/95 backdrop-blur-xl">
+            {/* Header */}
+            <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-line-soft bg-base-100/60 sticky top-0 z-10">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-primary/15 text-primary border border-primary/25">
+                  <Bot size={15} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-text-hi flex items-center gap-1.5">
+                    <span>Asystent Notatnika</span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-primary/20 text-primary font-mono font-normal">
+                      Gemini 2.5
+                    </span>
+                  </h4>
+                  <p className="text-[10px] text-content-muted truncate max-w-[170px]">
+                    {docData.studentName ? `Kursant: ${docData.studentName}` : 'Analiza dokumentu na żywo'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                {aiChatMessages.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setAiChatMessages([])}
+                    title="Wyczyść historię czatu"
+                    className="p-1.5 rounded-lg text-content-muted hover:text-text-hi hover:bg-white/[0.08] transition-colors cursor-pointer text-[10px]"
+                  >
+                    Wyczyść
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsAiChatOpen(false)}
+                  title="Zamknij asystenta"
+                  className="p-1.5 rounded-lg text-content-muted hover:text-text-hi hover:bg-white/[0.08] transition-colors cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Action Chips */}
+            <div className="p-2.5 border-b border-line-soft bg-base-100/30 flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() =>
+                  handleSendAiChat(
+                    'Przeanalizuj dotychczasowe notatki w tym dokumencie i wyciągnij 3 kluczowe błędy lub trudności językowe kursanta, które warto przećwiczyć.'
+                  )
+                }
+                disabled={isAiGenerating}
+                className="px-2 py-1 rounded-lg bg-base-100/80 hover:bg-primary/15 border border-line-strong hover:border-primary/30 text-[11px] font-medium text-text-2 hover:text-primary transition-all cursor-pointer disabled:opacity-50"
+              >
+                🔍 Wyciągnij błędy z notatnika
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  handleSendAiChat(
+                    'Zaproponuj 5 zdań do przetłumaczenia na następną lekcję (Revision Translation) w oparciu o słownictwo i konstrukcje z tego dokumentu.'
+                  )
+                }
+                disabled={isAiGenerating}
+                className="px-2 py-1 rounded-lg bg-base-100/80 hover:bg-primary/15 border border-line-strong hover:border-primary/30 text-[11px] font-medium text-text-2 hover:text-primary transition-all cursor-pointer disabled:opacity-50"
+              >
+                💡 5 zdań do powtórki (PL ➔ EN)
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  handleSendAiChat(
+                    'Stwórz zwięzły mini-quiz sprawdzający zrozumienie najtrudniejszych słówek z ostatnich lekcji z tego notatnika.'
+                  )
+                }
+                disabled={isAiGenerating}
+                className="px-2 py-1 rounded-lg bg-base-100/80 hover:bg-primary/15 border border-line-strong hover:border-primary/30 text-[11px] font-medium text-text-2 hover:text-primary transition-all cursor-pointer disabled:opacity-50"
+              >
+                📝 Mini-quiz ze słówek
+              </button>
+            </div>
+
+            {/* Messages Body */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[14rem]">
+              {aiChatMessages.length === 0 ? (
+                <div className="py-8 px-4 text-center space-y-2">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center mx-auto">
+                    <Sparkles size={18} />
+                  </div>
+                  <h5 className="text-xs font-bold text-text-hi">W czym mogę pomóc?</h5>
+                  <p className="text-[11px] leading-relaxed text-content-muted">
+                    Zadaj pytanie dotyczące treści notatnika, poproś o wyjaśnienie gramatyki lub kliknij jedną z szybkich akcji u góry.
+                  </p>
+                </div>
+              ) : (
+                aiChatMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`rounded-2xl p-3 text-[12px] leading-relaxed relative group ${
+                      msg.role === 'user'
+                        ? 'bg-primary/15 border border-primary/30 text-text-hi ml-4'
+                        : 'bg-base-100/85 border border-line-strong text-content mr-2'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1 text-[10px] text-content-muted">
+                      <span className="font-semibold">{msg.role === 'user' ? 'Ty' : 'Asystent AI'}</span>
+                      <span>{msg.timestamp}</span>
+                    </div>
+                    <div className="whitespace-pre-wrap font-sans space-y-1">
+                      {msg.text}
+                    </div>
+                    {msg.role === 'assistant' && (
+                      <div className="mt-2 pt-2 border-t border-line-soft flex items-center gap-1.5 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleCopyAiMessage(msg.id, msg.text)}
+                          className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 text-[10px] text-content-muted hover:text-text-hi transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <Copy size={11} />
+                          <span>{copiedAiMsgId === msg.id ? 'Skopiowano!' : 'Kopiuj'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleInsertAiMessageToDoc(msg.text)}
+                          className="px-2 py-0.5 rounded-md bg-primary/20 hover:bg-primary text-[10px] text-primary hover:text-accent-ink font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                        >
+                          <PlusCircle size={11} />
+                          <span>Wstaw do notatnika</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+
+              {isAiGenerating && (
+                <div className="rounded-2xl p-3 bg-base-100/85 border border-primary/30 text-content mr-2 flex items-center gap-2.5">
+                  <Loader2 size={15} className="animate-spin text-primary shrink-0" />
+                  <span className="text-xs text-primary font-medium animate-pulse">
+                    Analizuję notatnik i generuję odpowiedź…
+                  </span>
+                </div>
+              )}
+              <div ref={aiChatEndRef} />
+            </div>
+
+            {/* Input Bar */}
+            <div className="p-3 border-t border-line-strong bg-base-100/60 space-y-2">
+              <div className="relative flex items-center">
+                <textarea
+                  value={aiChatDraft}
+                  onChange={(e) => setAiChatDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendAiChat();
+                    }
+                  }}
+                  rows={2}
+                  placeholder="Zapytaj o treść notatnika..."
+                  disabled={isAiGenerating}
+                  className="w-full bg-base-100/90 border border-line-strong focus:border-primary rounded-xl px-3 py-2 pr-10 text-[12px] text-text-hi placeholder-content-muted outline-none resize-none transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleSendAiChat()}
+                  disabled={isAiGenerating || !aiChatDraft.trim()}
+                  className="absolute right-2 p-2 rounded-lg bg-primary text-accent-ink hover:brightness-110 transition-all disabled:opacity-30 cursor-pointer shadow-btn"
+                  title="Wyślij (Enter)"
+                >
+                  {isAiGenerating ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                </button>
+              </div>
+              <p className="text-[9px] text-center text-content-muted">
+                Shift + Enter dla nowej linii • Kliknij „Wstaw do notatnika”, aby dodać treść
+              </p>
+            </div>
+          </aside>
+        )}
       </div>
 
       {/* 4. DYSKRETNA STOPKA DOKUMENTU */}

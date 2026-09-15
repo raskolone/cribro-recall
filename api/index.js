@@ -310,14 +310,15 @@ import { createHmac } from "crypto";
 import { GoogleGenAI, Type } from "@google/genai";
 
 // services/aiModels.ts
-var PRIMARY_MODEL = "openai/gpt-5.6-luna";
+var PRIMARY_MODEL = "gemini-2.5-flash";
 var SECONDARY_MODEL = "gemini-3.8-flash";
 var TERTIARY_MODEL = "openai/gpt-4o-mini";
+var QUATERNARY_MODEL = "openai/gpt-5.6-luna";
 var AI_MODEL_CASCADE = [
   PRIMARY_MODEL,
   SECONDARY_MODEL,
   TERTIARY_MODEL,
-  "gemini-2.5-flash"
+  QUATERNARY_MODEL
 ];
 var OPENAI_MODEL_CASCADE = AI_MODEL_CASCADE.filter(
   (m) => m.startsWith("openai/")
@@ -1236,6 +1237,294 @@ var buildV2TaskPayload = (input) => ({
   assignedBy: "Lektor"
 });
 var newHomeworkSetId = () => `hwset_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
+// utils/polishVocative.ts
+function toPolishVocative(rawName) {
+  if (!rawName || typeof rawName !== "string") return "";
+  const trimmed = rawName.trim();
+  if (!trimmed) return "";
+  const name = trimmed.split(/\s+/)[0];
+  const irregulars = {
+    "anna": "Anno",
+    "marta": "Marto",
+    "kuba": "Kubo",
+    "tomek": "Tomku",
+    "bartek": "Bartku",
+    "wojtek": "Wojtku",
+    "przemek": "Przemku",
+    "kacper": "Kacprze",
+    "piotr": "Piotrze",
+    "pawe\u0142": "Pawle",
+    "pawel": "Pawle",
+    "micha\u0142": "Michale",
+    "michal": "Michale",
+    "marek": "Marku",
+    "jacek": "Jacku",
+    "leszek": "Leszku",
+    "franciszek": "Franciszku",
+    "aleksander": "Aleksandrze",
+    "artur": "Arturze",
+    "wiktor": "Wiktorze",
+    "igor": "Igorze",
+    "grzegorz": "Grzegorzu",
+    "\u0142ukasz": "\u0141ukaszu",
+    "lukasz": "\u0141ukaszu",
+    "mateusz": "Mateuszu",
+    "bartosz": "Bartoszu",
+    "tomasz": "Tomaszu",
+    "janusz": "Januszu",
+    "mariusz": "Mariuszu",
+    "dariusz": "Dariuszu",
+    "arkadiusz": "Arkadiuszu",
+    "tadeusz": "Tadeuszu",
+    "maciej": "Macieju",
+    "andrzej": "Andrzeju",
+    "miko\u0142aj": "Miko\u0142aju",
+    "mikolaj": "Miko\u0142aju",
+    "rafa\u0142": "Rafale",
+    "rafal": "Rafale",
+    "karol": "Karolu",
+    "kamil": "Kamilu",
+    "emil": "Emilu",
+    "daniel": "Danielu",
+    "gabriel": "Gabrielu",
+    "adam": "Adamie",
+    "przemys\u0142aw": "Przemys\u0142awie",
+    "przemyslaw": "Przemys\u0142awie",
+    "stanis\u0142aw": "Stanis\u0142awie",
+    "stanislaw": "Stanis\u0142awie",
+    "rados\u0142aw": "Rados\u0142awie",
+    "radoslaw": "Rados\u0142awie",
+    "jaros\u0142aw": "Jaros\u0142awie",
+    "jaroslaw": "Jaros\u0142awie",
+    "miros\u0142aw": "Miros\u0142awie",
+    "miroslaw": "Miros\u0142awie",
+    "boles\u0142aw": "Boles\u0142awie",
+    "w\u0142adys\u0142aw": "W\u0142adys\u0142awie",
+    "wladyslaw": "W\u0142adys\u0142awie",
+    "jan": "Janie",
+    "marcin": "Marcinie",
+    "damian": "Damianie",
+    "szymon": "Szymonie",
+    "adrian": "Adrianie",
+    "sebastian": "Sebastianie",
+    "krystian": "Krystianie",
+    "fabian": "Fabianie",
+    "julian": "Julianie",
+    "roman": "Romanie",
+    "marian": "Marianie",
+    "szczepan": "Szczepanie",
+    "stefan": "Stefanie",
+    "jakub": "Jakubie",
+    "filip": "Filipie",
+    "krzysztof": "Krzysztofie",
+    "dawid": "Dawidzie",
+    "konrad": "Konradzie",
+    "robert": "Robercie",
+    "hubert": "Hubercie",
+    "norbert": "Norbercie",
+    "albert": "Albercie",
+    "zbigniew": "Zbigniewie",
+    "bogdan": "Bogdanie",
+    "dominik": "Dominiku",
+    "eryk": "Eryku",
+    "patryk": "Patryku",
+    "oskar": "Oskarze",
+    "cezary": "Cezary",
+    "jerzy": "Jerzy",
+    "antoni": "Antoni",
+    "ignacy": "Ignacy",
+    // Żeńskie zdrobnienia
+    "kasia": "Kasiu",
+    "basia": "Basiu",
+    "zuzia": "Zuziu",
+    "ania": "Aniu",
+    "marysia": "Marysiu",
+    "gosia": "Gosiu",
+    "zosia": "Zosiu",
+    "madzia": "Madziu",
+    "ola": "Olu",
+    "asia": "Asiu",
+    "aga": "Agu",
+    "ula": "Ulu"
+  };
+  const lower = name.toLowerCase();
+  if (irregulars[lower]) {
+    const res = irregulars[lower];
+    return res.charAt(0).toUpperCase() + res.slice(1);
+  }
+  if (lower.endsWith("a")) {
+    if (/(sia|cia|zia|dzia|nia)$/.test(lower)) {
+      return name.slice(0, -1) + "u";
+    }
+    return name.slice(0, -1) + "o";
+  }
+  if (lower.endsWith("ek")) {
+    return name.slice(0, -2) + "ku";
+  }
+  if (lower.endsWith("ik") || lower.endsWith("yk")) {
+    return name + "u";
+  }
+  if (lower.endsWith("sz") || lower.endsWith("cz") || lower.endsWith("rz")) {
+    return name + "u";
+  }
+  if (lower.endsWith("ej") || lower.endsWith("aj")) {
+    return name + "u";
+  }
+  if (lower.endsWith("aw")) {
+    return name + "ie";
+  }
+  if (lower.endsWith("an") || lower.endsWith("on") || lower.endsWith("in") || lower.endsWith("en")) {
+    return name + "ie";
+  }
+  if (lower.endsWith("b") || lower.endsWith("p")) {
+    return name + "ie";
+  }
+  if (lower.endsWith("d")) {
+    return name.slice(0, -1) + "dzie";
+  }
+  if (lower.endsWith("t")) {
+    return name.slice(0, -1) + "cie";
+  }
+  if (lower.endsWith("m") || lower.endsWith("w")) {
+    return name + "ie";
+  }
+  if (lower.endsWith("r")) {
+    return name + "ze";
+  }
+  if (lower.endsWith("l")) {
+    return name + "u";
+  }
+  if (lower.endsWith("\u0142")) {
+    return name.slice(0, -1) + "le";
+  }
+  return name;
+}
+function formatPolishGreeting(rawName) {
+  const vocative = toPolishVocative(rawName);
+  if (!vocative) return "Cze\u015B\u0107!";
+  return `Cze\u015B\u0107, ${vocative}!`;
+}
+
+// services/homeworkEmail.ts
+var escapeHtml = (value) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+var INSTRUCTOR_CARD_HTML = `
+  <div style="margin:28px 0 0;border:1.5px solid #334155;border-radius:12px;background:#0f172a;padding:20px 22px;text-align:left;">
+    <div style="font-size:18px;font-weight:800;color:#e2e8f0;line-height:1.25;letter-spacing:-0.01em;">
+      Maciej Wyrozumski
+    </div>
+    <div style="margin-top:4px;font-size:13px;font-weight:400;color:#94a3b8;line-height:1.4;">
+      Instructional Designer | AI EdTech Specialist | English Trainer
+    </div>
+    <div style="margin:14px 0 12px;border-top:1px solid #334155;height:0;line-height:0;font-size:0;">&nbsp;</div>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;">
+      <tr>
+        <td style="width:24px;vertical-align:middle;padding:4px 0;font-size:15px;line-height:1;">\u2709\uFE0F</td>
+        <td style="vertical-align:middle;padding:4px 0 4px 8px;font-size:13.5px;">
+          <a href="mailto:wyrozumski@maciej.pro" style="color:#e2e8f0;text-decoration:none;font-weight:500;">wyrozumski@maciej.pro</a>
+        </td>
+      </tr>
+      <tr>
+        <td style="width:24px;vertical-align:middle;padding:4px 0;font-size:15px;line-height:1;">\u{1F4DE}</td>
+        <td style="vertical-align:middle;padding:4px 0 4px 8px;font-size:13.5px;">
+          <a href="tel:+48698250507" style="color:#e2e8f0;text-decoration:none;font-weight:500;">+48 698 250 507</a>
+        </td>
+      </tr>
+      <tr>
+        <td style="width:24px;vertical-align:middle;padding:4px 0;font-size:15px;line-height:1;">\u{1F310}</td>
+        <td style="vertical-align:middle;padding:4px 0 4px 8px;font-size:13.5px;">
+          <a href="https://www.maciej.pro" target="_blank" rel="noopener noreferrer" style="color:#e2e8f0;text-decoration:none;font-weight:500;">www.maciej.pro</a>
+        </td>
+      </tr>
+      <tr>
+        <td style="width:24px;vertical-align:middle;padding:4px 0;font-size:15px;line-height:1;">\u{1F517}</td>
+        <td style="vertical-align:middle;padding:4px 0 4px 8px;font-size:13.5px;">
+          <a href="https://linkedin.com/in/maciej-pro" target="_blank" rel="noopener noreferrer" style="color:#e2e8f0;text-decoration:none;font-weight:500;">linkedin.com/in/maciej-pro</a>
+        </td>
+      </tr>
+    </table>
+  </div>
+`;
+function buildGradedHomeworkEmail(params) {
+  const {
+    studentName,
+    title,
+    score,
+    teacherFeedback,
+    gradedBy = "Maciej Wyrozumski",
+    appUrl = "https://app.maciej.pro",
+    unsubscribeUrl
+  } = params;
+  const greeting = formatPolishGreeting(studentName);
+  const cleanTitle = title.trim() || "Praca domowa";
+  const subject = `Sprawdzi\u0142em Twoj\u0105 prac\u0119 domow\u0105: ${cleanTitle} \u{1F393} | CRIBRO English`;
+  const scoreBadge = typeof score === "number" ? `<div style="margin:20px 0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px 20px;text-align:center;">
+           <span style="font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:4px;">Tw\xF3j wynik</span>
+           <span style="font-size:32px;font-weight:900;color:#72f0b4;font-family:'Courier New',monospace;">${score}%</span>
+         </div>` : "";
+  const feedbackBlock = teacherFeedback ? `<div style="margin:16px 0;background:rgba(114,240,180,0.08);border-left:4px solid #72f0b4;padding:14px 18px;border-radius:0 10px 10px 0;">
+         <p style="margin:0 0 6px;font-size:12px;font-weight:800;color:#72f0b4;text-transform:uppercase;letter-spacing:0.06em;">Komentarz i wskaz\xF3wki ode mnie:</p>
+         <p style="margin:0;color:#e2e8f0;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(teacherFeedback)}</p>
+       </div>` : "";
+  const unsubscribeHtml = unsubscribeUrl ? `<div style="margin-top:24px;text-align:center;font-size:11px;color:#64748b;">
+         <a href="${escapeHtml(unsubscribeUrl)}" style="color:#64748b;text-decoration:underline;">Wypisz si\u0119 z powiadomie\u0144 e-mail</a>
+       </div>` : "";
+  const html = `<!doctype html>
+<html lang="pl">
+  <body style="margin:0;padding:24px;background:#09101c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:540px;margin:0 auto;background:#141b2a;border-radius:16px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.5);">
+      <tr>
+        <td style="background:linear-gradient(90deg, #72f0b4, #3b82f6);height:6px;font-size:0;line-height:0;">&nbsp;</td>
+      </tr>
+      <tr>
+        <td style="padding:32px 32px 28px;">
+          <div style="margin-bottom:20px;">
+            <p style="margin:0;font-size:12px;letter-spacing:0.14em;font-weight:800;text-transform:uppercase;color:#72f0b4;">CRIBRO ENGLISH</p>
+            <span style="display:inline-block;margin-top:8px;font-size:11px;font-weight:600;background:rgba(114,240,180,0.15);color:#72f0b4;border:1px solid rgba(114,240,180,0.3);padding:3px 10px;border-radius:999px;">\u{1F393} SPRAWDZONA PRACA DOMOWA</span>
+          </div>
+
+          <h1 style="margin:0 0 14px;font-size:24px;line-height:1.3;color:#ffffff;font-weight:800;">
+            ${escapeHtml(greeting)}
+          </h1>
+
+          <p style="margin:0 0 14px;color:#cbd5e1;font-size:15px;line-height:1.65;">
+            Sprawdzi\u0142em Twoj\u0105 prac\u0119 domow\u0105 <strong style="color:#ffffff;">\u201E${escapeHtml(cleanTitle)}\u201D</strong>. Zajrzyj do aplikacji, aby sprawdzi\u0107 sw\xF3j wynik i ewentualnie prze\u0107wiczy\u0107 rzeczy do poprawy.
+          </p>
+
+          ${scoreBadge}
+          ${feedbackBlock}
+
+          <div style="margin:26px 0 0;text-align:center;">
+            <a href="${escapeHtml(appUrl)}"
+               style="display:inline-block;background:#72f0b4;background:linear-gradient(135deg, #72f0b4 0%, #10b981 100%);color:#06120c;text-decoration:none;
+                      padding:15px 36px;border-radius:12px;font-size:16px;font-weight:800;box-shadow:0 4px 16px rgba(114, 240, 180, 0.4);">
+              Zobacz ocenion\u0105 prac\u0119 w aplikacji \u2192
+            </a>
+          </div>
+
+          ${INSTRUCTOR_CARD_HTML}
+          ${unsubscribeHtml}
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+  const text = `${greeting}
+
+Sprawdzi\u0142em Twoj\u0105 prac\u0119 domow\u0105 \u201E${cleanTitle}\u201D. Zajrzyj do aplikacji, aby sprawdzi\u0107 sw\xF3j wynik i ewentualnie prze\u0107wiczy\u0107 rzeczy do poprawy.${score !== void 0 && score !== null ? `
+
+Tw\xF3j wynik: ${score}%` : ""}${teacherFeedback ? `
+
+Komentarz lektora:
+${teacherFeedback}` : ""}
+
+Otw\xF3rz aplikacj\u0119: ${appUrl}
+
+\u2014
+${gradedBy}
+CRIBRO ENGLISH`;
+  return { subject, html, text, greeting };
+}
 
 // server.ts
 function mapToActualOpenAIModel2(modelName) {
@@ -2410,6 +2699,88 @@ RESEND_API_KEY=${cleanKey}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
+  app2.post("/api/homework/notify-graded", requireFirebaseAuth, async (req, res) => {
+    try {
+      const { studentUid, taskId, taskTitle, score, teacherFeedback, teacherName } = req.body;
+      if (!studentUid) {
+        return res.status(400).json({ error: "Brak studentUid." });
+      }
+      const adminApp2 = getAdminApp();
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const userDocRef = adminDb.collection("users").doc(studentUid);
+      const userSnap = await userDocRef.get();
+      if (!userSnap.exists) {
+        return res.status(404).json({ error: "Kursant nie istnieje." });
+      }
+      const userData = userSnap.data() || {};
+      const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+      await userDocRef.update({
+        hasGradedHomework: true,
+        lastGradedHomeworkId: taskId || "",
+        lastGradedHomeworkTitle: taskTitle || "Praca domowa",
+        lastGradedFeedback: teacherFeedback || "",
+        lastGradedScore: typeof score === "number" ? score : null,
+        lastGradedHomeworkSentAt: nowIso
+      });
+      const studentEmail = userData.email;
+      if (studentEmail && studentEmail.includes("@") && !userData.emailNotificationsDisabled) {
+        let apiKey = process.env.RESEND_API_KEY;
+        if (!apiKey) {
+          try {
+            const mailingDoc = await adminDb.collection("system").doc("mailing").get();
+            if (mailingDoc.exists && mailingDoc.data()?.resendApiKey) {
+              apiKey = String(mailingDoc.data()?.resendApiKey).trim();
+            }
+          } catch {
+          }
+        }
+        if (apiKey) {
+          const studentName = userData.firstName || userData.name || userData.username || "";
+          const emailData = buildGradedHomeworkEmail({
+            studentName,
+            title: taskTitle || "Praca domowa",
+            score: typeof score === "number" ? score : null,
+            teacherFeedback,
+            gradedBy: teacherName || "Maciej Wyrozumski",
+            appUrl: process.env.APP_URL || "https://app.maciej.pro"
+          });
+          let fromAddress = process.env.FROM_ADDRESS || "Maciej Wyrozumski <wyrozumski@maciej.pro>";
+          try {
+            const mailingDoc = await adminDb.collection("system").doc("mailing").get();
+            if (mailingDoc.exists && mailingDoc.data()?.senderEmail) {
+              fromAddress = `${mailingDoc.data()?.senderName || "Maciej Wyrozumski"} <${mailingDoc.data()?.senderEmail}>`;
+            }
+          } catch {
+          }
+          const resendPayload = {
+            from: fromAddress,
+            to: [studentEmail.trim()],
+            reply_to: "wyrozumski@maciej.pro",
+            subject: emailData.subject,
+            html: emailData.html,
+            text: emailData.text
+          };
+          const response = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey.trim()}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(resendPayload)
+          });
+          if (response.ok) {
+            console.log(`[Graded Homework Email Sent] Do ${studentEmail} dla zadania ${taskId}`);
+          } else {
+            console.warn(`[Graded Homework Email Warning] Resend status ${response.status}`);
+          }
+        }
+      }
+      return res.json({ ok: true, message: "Powiadomienie zapisane i wys\u0142ane." });
+    } catch (err) {
+      console.error("[Notify Graded Homework Error]:", err);
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
   app2.post("/api/mailing/test-send", requireFirebaseAdmin, async (req, res) => {
     try {
       const { to, from: clientFrom, subject, html, text, apiKey: clientApiKey, replyTo, bcc: clientBcc } = req.body;
@@ -2645,6 +3016,397 @@ RESEND_API_KEY=${cleanKey}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
+  const DEFAULT_NOTION_LESSONS_DB = "5c6d910b-31b7-83b8-810c-0187aa513b51";
+  const DEFAULT_NOTION_STUDENTS_DB = "ca88a293-bd34-4cc7-b09e-f6bd3901ef96";
+  async function getNotionConfig() {
+    let token = process.env.NOTION_API_KEY || process.env.NOTION_TOKEN || "";
+    let meetingNotesDbId = process.env.NOTION_LESSONS_DB || DEFAULT_NOTION_LESSONS_DB;
+    let studentsDbId = process.env.NOTION_STUDENTS_DB || DEFAULT_NOTION_STUDENTS_DB;
+    let autoFetchEnabled = false;
+    let autoFetchIntervalMinutes = 30;
+    let lastFetchTime = null;
+    let lastFetchStatus = null;
+    if (adminApp) {
+      try {
+        const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
+        const notionDoc = await adminDb.collection("system").doc("notion").get();
+        if (notionDoc.exists) {
+          const data = notionDoc.data() || {};
+          if (data.token) token = String(data.token).trim();
+          if (data.meetingNotesDbId) meetingNotesDbId = String(data.meetingNotesDbId).trim();
+          if (data.studentsDbId) studentsDbId = String(data.studentsDbId).trim();
+          if (typeof data.autoFetchEnabled === "boolean") autoFetchEnabled = data.autoFetchEnabled;
+          if (typeof data.autoFetchIntervalMinutes === "number") autoFetchIntervalMinutes = data.autoFetchIntervalMinutes;
+          if (data.lastFetchTime) lastFetchTime = String(data.lastFetchTime);
+          if (data.lastFetchStatus) lastFetchStatus = String(data.lastFetchStatus);
+        }
+      } catch (e) {
+        console.warn("[Notion] Nie uda\u0142o si\u0119 odczyta\u0107 konfiguracji z Firestore:", e);
+      }
+    }
+    return {
+      token,
+      meetingNotesDbId,
+      studentsDbId,
+      autoFetchEnabled,
+      autoFetchIntervalMinutes,
+      lastFetchTime,
+      lastFetchStatus
+    };
+  }
+  async function fetchNotionBlocksText(token, blockId, depth = 0) {
+    if (depth > 4) return "";
+    const NOTION_API = "https://api.notion.com/v1";
+    const NOTION_VERSION = "2022-06-28";
+    const lines = [];
+    let cursor;
+    do {
+      const url = `${NOTION_API}/blocks/${blockId}/children${cursor ? `?start_cursor=${cursor}&page_size=100` : "?page_size=100"}`;
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Notion-Version": NOTION_VERSION,
+          "Content-Type": "application/json"
+        }
+      });
+      if (!res.ok) break;
+      const data = await res.json();
+      for (const block of data.results || []) {
+        const type = block.type;
+        if (block[type]?.rich_text) {
+          const text = (block[type].rich_text || []).map((t) => t.plain_text || "").join("");
+          if (text) lines.push(text);
+        }
+        if (block.has_children) {
+          const childText = await fetchNotionBlocksText(token, block.id, depth + 1);
+          if (childText) lines.push(childText);
+        }
+      }
+      cursor = data.has_more ? data.next_cursor : void 0;
+    } while (cursor);
+    return lines.join("\n");
+  }
+  app2.get("/api/notion/config", requireFirebaseAdmin, async (_req, res) => {
+    try {
+      const cfg = await getNotionConfig();
+      const maskedToken = cfg.token ? `${cfg.token.slice(0, 8)}\u2022\u2022\u2022\u2022${cfg.token.slice(-4)}` : null;
+      return res.json({
+        configured: Boolean(cfg.token),
+        maskedToken,
+        meetingNotesDbId: cfg.meetingNotesDbId,
+        studentsDbId: cfg.studentsDbId,
+        autoFetchEnabled: cfg.autoFetchEnabled,
+        autoFetchIntervalMinutes: cfg.autoFetchIntervalMinutes,
+        lastFetchTime: cfg.lastFetchTime,
+        lastFetchStatus: cfg.lastFetchStatus
+      });
+    } catch (err) {
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
+  app2.post("/api/notion/save-config", requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { token, meetingNotesDbId, studentsDbId, autoFetchEnabled, autoFetchIntervalMinutes } = req.body;
+      const updates = { updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+      if (typeof token === "string" && token.trim()) {
+        const cleanToken = token.trim();
+        updates.token = cleanToken;
+        process.env.NOTION_API_KEY = cleanToken;
+      }
+      if (typeof meetingNotesDbId === "string" && meetingNotesDbId.trim()) {
+        updates.meetingNotesDbId = meetingNotesDbId.trim();
+        process.env.NOTION_LESSONS_DB = meetingNotesDbId.trim();
+      }
+      if (typeof studentsDbId === "string" && studentsDbId.trim()) {
+        updates.studentsDbId = studentsDbId.trim();
+        process.env.NOTION_STUDENTS_DB = studentsDbId.trim();
+      }
+      if (typeof autoFetchEnabled === "boolean") {
+        updates.autoFetchEnabled = autoFetchEnabled;
+      }
+      if (typeof autoFetchIntervalMinutes === "number") {
+        updates.autoFetchIntervalMinutes = autoFetchIntervalMinutes;
+      }
+      if (adminApp) {
+        const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
+        await adminDb.collection("system").doc("notion").set(updates, { merge: true });
+      }
+      const cfg = await getNotionConfig();
+      return res.json({
+        ok: true,
+        message: "Konfiguracja Notion zosta\u0142a pomy\u015Blnie zapisana.",
+        maskedToken: cfg.token ? `${cfg.token.slice(0, 8)}\u2022\u2022\u2022\u2022${cfg.token.slice(-4)}` : null,
+        meetingNotesDbId: cfg.meetingNotesDbId,
+        studentsDbId: cfg.studentsDbId,
+        autoFetchEnabled: cfg.autoFetchEnabled,
+        autoFetchIntervalMinutes: cfg.autoFetchIntervalMinutes
+      });
+    } catch (err) {
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
+  app2.post("/api/notion/test-connection", requireFirebaseAdmin, async (req, res) => {
+    try {
+      const cfg = await getNotionConfig();
+      const token = typeof req.body?.token === "string" && req.body.token.trim() || cfg.token;
+      const meetingNotesDbId = typeof req.body?.meetingNotesDbId === "string" && req.body.meetingNotesDbId.trim() || cfg.meetingNotesDbId;
+      const studentsDbId = typeof req.body?.studentsDbId === "string" && req.body.studentsDbId.trim() || cfg.studentsDbId;
+      if (!token) {
+        return res.status(400).json({ error: 'Brak tokena Notion API. Wprowad\u017A token integracji (zaczynaj\u0105cy si\u0119 od "secret_").' });
+      }
+      const NOTION_API = "https://api.notion.com/v1";
+      const NOTION_VERSION = "2022-06-28";
+      const userRes = await fetch(`${NOTION_API}/users/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Notion-Version": NOTION_VERSION
+        }
+      });
+      if (!userRes.ok) {
+        const errText = await userRes.text();
+        return res.status(400).json({
+          error: `B\u0142\u0105d uwierzytelnienia w Notion API (${userRes.status}): ${errText.slice(0, 200)}`
+        });
+      }
+      const botData = await userRes.json();
+      const botName = botData?.name || "Cribro Notion Integration";
+      const workspaceName = botData?.bot?.owner?.workspace_name || "Notion Workspace";
+      let meetingDbTitle = "Nie sprawdzono";
+      if (meetingNotesDbId) {
+        try {
+          const dbRes = await fetch(`${NOTION_API}/databases/${meetingNotesDbId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Notion-Version": NOTION_VERSION
+            }
+          });
+          if (dbRes.ok) {
+            const dbData = await dbRes.json();
+            meetingDbTitle = (dbData?.title || []).map((t) => t.plain_text || "").join("") || "Baza spotka\u0144";
+          } else {
+            meetingDbTitle = `Uwaga: brak dost\u0119pu lub baza nieudost\u0119pniona (${dbRes.status})`;
+          }
+        } catch (e) {
+          meetingDbTitle = `B\u0142\u0105d zapytania bazy: ${e.message}`;
+        }
+      }
+      let studentsDbTitle = "Nie sprawdzono";
+      if (studentsDbId) {
+        try {
+          const sdbRes = await fetch(`${NOTION_API}/databases/${studentsDbId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Notion-Version": NOTION_VERSION
+            }
+          });
+          if (sdbRes.ok) {
+            const sdbData = await sdbRes.json();
+            studentsDbTitle = (sdbData?.title || []).map((t) => t.plain_text || "").join("") || "Baza kursant\xF3w";
+          } else {
+            studentsDbTitle = `Uwaga: brak dost\u0119pu lub baza nieudost\u0119pniona (${sdbRes.status})`;
+          }
+        } catch (e) {
+          studentsDbTitle = `B\u0142\u0105d zapytania bazy: ${e.message}`;
+        }
+      }
+      return res.json({
+        ok: true,
+        botName,
+        workspaceName,
+        meetingDbTitle,
+        studentsDbTitle,
+        message: `Po\u0142\u0105czenie z Notion udane! Bot "${botName}" w workspace "${workspaceName}".`
+      });
+    } catch (err) {
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
+  async function syncNotionTranscriptsFromApi() {
+    const cfg = await getNotionConfig();
+    const token = cfg.token;
+    const meetingNotesDbId = cfg.meetingNotesDbId;
+    if (!token || !meetingNotesDbId || !adminApp) {
+      return { found: 0, processed: 0, items: [], lastFetchTime: (/* @__PURE__ */ new Date()).toISOString() };
+    }
+    const NOTION_API = "https://api.notion.com/v1";
+    const NOTION_VERSION = "2022-06-28";
+    const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
+    const usersSnap = await adminDb.collection("users").get();
+    const userList = usersSnap.docs.map((d) => {
+      const u = d.data();
+      const fullName = u.firstName || u.lastName ? `${u.firstName || ""} ${u.lastName || ""}`.trim() : u.username || "";
+      return {
+        id: d.id,
+        name: fullName,
+        email: u.email || "",
+        isGroup: Boolean(u.isGroup || u.role === "group"),
+        memberIds: u.memberIds || [],
+        level: u.level || ""
+      };
+    });
+    const queryRes = await fetch(`${NOTION_API}/databases/${meetingNotesDbId}/query`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Notion-Version": NOTION_VERSION,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ page_size: 40 })
+    });
+    if (!queryRes.ok) {
+      const errTxt = await queryRes.text();
+      throw new Error(`B\u0142\u0105d zapytania bazy Notion (${queryRes.status}): ${errTxt.slice(0, 300)}`);
+    }
+    const queryData = await queryRes.json();
+    const pages = queryData.results || [];
+    const processedItems = [];
+    for (const page of pages) {
+      const props = page.properties || {};
+      let title = "";
+      for (const key of Object.keys(props)) {
+        if (props[key].type === "title") {
+          title = (props[key].title || []).map((t) => t.plain_text || "").join("").trim();
+          break;
+        }
+      }
+      if (!title) title = "Spotkanie bez tytu\u0142u";
+      let dateStr = "";
+      for (const key of Object.keys(props)) {
+        if (props[key].type === "date" && props[key].date?.start) {
+          dateStr = props[key].date.start.split("T")[0];
+          break;
+        }
+      }
+      if (!dateStr) dateStr = (page.created_time || (/* @__PURE__ */ new Date()).toISOString()).split("T")[0];
+      const existingSnap = await adminDb.collection("lessonRecords").where("notionPageId", "==", page.id).limit(1).get();
+      if (!existingSnap.empty) {
+        processedItems.push({
+          id: page.id,
+          title,
+          studentName: existingSnap.docs[0].data().studentName || "Ju\u017C zaimportowano",
+          date: dateStr,
+          status: "istnieje"
+        });
+        continue;
+      }
+      const transcriptText = await fetchNotionBlocksText(token, page.id, 0);
+      if (!transcriptText || transcriptText.length < 50) {
+        processedItems.push({
+          id: page.id,
+          title,
+          studentName: "Brak transkrypcji",
+          date: dateStr,
+          status: "pomini\u0119to (pusta tre\u015B\u0107)"
+        });
+        continue;
+      }
+      let matchedUser = null;
+      const normTitle = title.toLowerCase();
+      const normTranscript = transcriptText.slice(0, 2500).toLowerCase();
+      for (const u of userList) {
+        if (u.isGroup && u.name) {
+          if (normTitle.includes(u.name.toLowerCase()) || normTranscript.includes(u.name.toLowerCase())) {
+            matchedUser = u;
+            break;
+          }
+        }
+      }
+      if (!matchedUser) {
+        for (const u of userList) {
+          if (u.email && (normTitle.includes(u.email.toLowerCase()) || normTranscript.includes(u.email.toLowerCase()))) {
+            matchedUser = u;
+            break;
+          }
+        }
+      }
+      if (!matchedUser) {
+        for (const u of userList) {
+          if (u.name && u.name.length > 4) {
+            const parts = u.name.toLowerCase().split(/\s+/).filter((p) => p.length > 2);
+            if (parts.length >= 2 && (normTitle.includes(parts.join(" ")) || normTranscript.includes(parts.join(" ")))) {
+              matchedUser = u;
+              break;
+            }
+          }
+        }
+      }
+      if (!matchedUser) {
+        for (const u of userList) {
+          if (u.name) {
+            const firstName = u.name.toLowerCase().split(/\s+/)[0];
+            if (firstName && firstName.length >= 3 && normTitle.includes(firstName)) {
+              matchedUser = u;
+              break;
+            }
+          }
+        }
+      }
+      const studentId = matchedUser?.id || "unassigned";
+      const studentName = matchedUser?.name || title.split(/[\-\–—:]/)[0].trim() || "Nieprzypisany";
+      const newLessonRef = adminDb.collection("lessonRecords").doc();
+      await newLessonRef.set({
+        studentId,
+        studentIds: matchedUser?.isGroup && matchedUser.memberIds?.length ? matchedUser.memberIds : [studentId],
+        studentName,
+        date: dateStr,
+        topic: title,
+        rawTranscript: transcriptText,
+        notionPageId: page.id,
+        source: "notion",
+        isGroupLesson: Boolean(matchedUser?.isGroup),
+        sessionStatus: "draft",
+        status: "pending",
+        isPendingConfirmation: true,
+        pendingReason: matchedUser ? "Zaimportowano now\u0105 transkrypcj\u0119 z Notion" : "Wymaga przypisania kursanta i zatwierdzenia",
+        createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+        updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      processedItems.push({
+        id: page.id,
+        title,
+        studentName,
+        date: dateStr,
+        status: matchedUser ? "zaimportowano" : "zaimportowano (wymaga przypisania)"
+      });
+    }
+    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+    await adminDb.collection("system").doc("notion").set({
+      lastFetchTime: nowIso,
+      lastFetchStatus: `Przetworzono ${processedItems.length} stron z Notion`
+    }, { merge: true });
+    return {
+      found: pages.length,
+      processed: processedItems.length,
+      items: processedItems,
+      lastFetchTime: nowIso
+    };
+  }
+  app2.post("/api/notion/fetch-transcripts", requireFirebaseAdmin, async (req, res) => {
+    try {
+      const result = await syncNotionTranscriptsFromApi();
+      return res.json({
+        ok: true,
+        ...result
+      });
+    } catch (err) {
+      console.error("[Notion Fetch Error]:", err);
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
+  setInterval(async () => {
+    try {
+      const cfg = await getNotionConfig();
+      if (!cfg.autoFetchEnabled || !cfg.token) return;
+      const lastFetch = cfg.lastFetchTime ? new Date(cfg.lastFetchTime).getTime() : 0;
+      const intervalMs = (cfg.autoFetchIntervalMinutes || 30) * 60 * 1e3;
+      if (Date.now() - lastFetch >= intervalMs) {
+        console.log("[Notion Auto-Fetch] Uruchamiam cykliczn\u0105 synchronizacj\u0119 transkrypcji...");
+        await syncNotionTranscriptsFromApi();
+      }
+    } catch (e) {
+      console.warn("[Notion Auto-Fetch Error]:", e);
+    }
+  }, 5 * 60 * 1e3);
   app2.post("/api/gemini/generate-test", requireFirebaseAdmin, async (req, res) => {
     try {
       const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, typeCounts, fileData, driveFile } = req.body;

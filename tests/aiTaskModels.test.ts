@@ -14,10 +14,10 @@ describe('services/aiModels — zadania', () => {
     assert.deepEqual(cascadeForTask('exercises'), AI_MODEL_CASCADE);
   });
 
-  it('czat startuje od modelu lekkiego, a mocny zostaje jako zapas', () => {
+  it('czat i zadania startują od modelu podstawowego Gemini 2.5 Flash', () => {
     const chat = cascadeForTask('chat');
-    assert.equal(chat[0], TERTIARY_MODEL);
-    assert.ok(chat.includes(PRIMARY_MODEL));
+    assert.equal(chat[0], PRIMARY_MODEL);
+    assert.ok(chat.includes(TERTIARY_MODEL));
   });
 
   it('wybór administratora wchodzi na początek kaskady', () => {
@@ -39,8 +39,8 @@ describe('services/aiModels — zadania', () => {
   it('kategoria zapytania trafia we właściwe zadanie', () => {
     assert.equal(cascadeForCategory('evaluation', { grading: 'openai/gpt-4o' })[0], 'openai/gpt-4o');
     assert.equal(cascadeForCategory('sentence-gen', { exercises: 'openai/gpt-4o' })[0], 'openai/gpt-4o');
-    // Nieznana kategoria nie może wywrócić wywołania — ląduje w czacie.
-    assert.equal(cascadeForCategory('nieznana')[0], TERTIARY_MODEL);
+    // Nieznana kategoria nie może wywrócić wywołania — ląduje w czacie ze standardowym modelem podstawowym.
+    assert.equal(cascadeForCategory('nieznana')[0], PRIMARY_MODEL);
   });
 
   it('każde zadanie ma niepustą kaskadę i opis', () => {

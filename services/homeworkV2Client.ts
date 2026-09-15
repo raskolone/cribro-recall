@@ -4,6 +4,8 @@ import { auth, db, functions } from '../firebase';
 import { HOMEWORK_ENGINE_V2 } from '../config/featureFlags';
 import type { ExerciseContractV2, MasteryState } from './homeworkV2/contracts';
 import { buildV2TaskPayload, newHomeworkSetId, selectSendableExercises } from '../functions/src/homeworkV2/assignment';
+import { aiMonitor } from './aiMonitorService';
+import { PRIMARY_MODEL } from './aiModels';
 
 const authHeader = async (): Promise<Record<string, string>> => {
   const token = await auth.currentUser?.getIdToken();
@@ -115,36 +117,58 @@ export const generateHomeworkSetV2 = async (
 ): Promise<GenerateSetResponse> => {
   assertEnabled();
 
-  // Najpierw próbujemy własnego serwera Express (/api/homework-v2/generate)
-  try {
-    const headers = await authHeader();
-    const res = await fetch('/api/homework-v2/generate', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(request),
-    });
-
-    if (res.ok) {
-      return (await res.json()) as GenerateSetResponse;
-    }
-
-    const errData = await res.json().catch(() => ({}));
-    if (res.status === 400 || res.status === 403 || res.status === 404 || res.status === 500) {
-      throw new Error(errData.error || `Błąd serwera (${res.status})`);
-    }
-  } catch (err: any) {
-    if (err.message && !err.message.includes('Failed to fetch') && !err.message.includes('404')) {
-      throw err;
-    }
-    console.warn('[hw-v2] /api/homework-v2/generate niedostępny, fallback do Cloud Functions:', err);
-  }
-
-  // Fallback do Cloud Functions
-  const call = httpsCallable<GenerateSetRequest, GenerateSetResponse>(functions, 'generateHomeworkV2', {
-    timeout: 540_000,
+  const reqId = aiMonitor.startRequest({
+    taskName: `Generowanie pracy domowej v2 (${request.itemCount} zadań)`,
+    category: 'sentence-gen',
+    initialModel: PRIMARY_MODEL,
+    promptSnippet: `Kursant: ${request.studentUid}, Poziom: ${request.cefr || 'A2/B1'}, Lekcje: ${request.lessonIds.length}`,
+    statusMessage: `Układanie spersonalizowanego zestawu pracy domowej...`,
   });
-  const result = await call(request);
-  return result.data;
+
+  try {
+    // Najpierw próbujemy własnego serwera Express (/api/homework-v2/generate)
+    try {
+      const headers = await authHeader();
+      const res = await fetch('/api/homework-v2/generate', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(request),
+      });
+
+      if (res.ok) {
+        const data = (await res.json()) as GenerateSetResponse;
+        aiMonitor.completeRequest(reqId, {
+          modelUsed: PRIMARY_MODEL,
+          message: `Wygenerowano ${data.exercises?.length || 0} zadań domowych`,
+        });
+        return data;
+      }
+
+      const errData = await res.json().catch(() => ({}));
+      if (res.status === 400 || res.status === 403 || res.status === 404 || res.status === 500) {
+        throw new Error(errData.error || `Błąd serwera (${res.status})`);
+      }
+    } catch (err: any) {
+      if (err.message && !err.message.includes('Failed to fetch') && !err.message.includes('404')) {
+        throw err;
+      }
+      console.warn('[hw-v2] /api/homework-v2/generate niedostępny, fallback do Cloud Functions:', err);
+    }
+
+    // Fallback do Cloud Functions
+    const call = httpsCallable<GenerateSetRequest, GenerateSetResponse>(functions, 'generateHomeworkV2', {
+      timeout: 540_000,
+    });
+    const result = await call(request);
+    aiMonitor.completeRequest(reqId, {
+      modelUsed: PRIMARY_MODEL,
+      message: `Wygenerowano ${result.data?.exercises?.length || 0} zadań domowych (Cloud Functions)`,
+    });
+    return result.data;
+  } catch (err: any) {
+    aiMonitor.failRequest(reqId, err?.message || 'Błąd generowania pracy domowej v2');
+    throw err;
+  }
 };
 
 /** Zapisuje zestaw i przypisuje go kursantom. */
@@ -223,13 +247,31 @@ export const submitHomeworkAttemptV2 = async (
   request: SubmitAttemptRequest
 ): Promise<SubmitAttemptResponse> => {
   assertEnabled();
-  const call = httpsCallable<SubmitAttemptRequest, SubmitAttemptResponse>(
-    functions,
-    'submitHomeworkV2Attempt',
-    { timeout: 120_000 }
-  );
-  const result = await call(request);
-  return result.data;
+
+  const reqId = aiMonitor.startRequest({
+    taskName: 'Ocena odpowiedzi z pracy domowej v2',
+    category: 'evaluation',
+    initialModel: PRIMARY_MODEL,
+    promptSnippet: `Zadanie: ${request.exerciseId}, Odpowiedź: ${request.answer}`,
+    statusMessage: 'Weryfikacja odpowiedzi kursanta przez AI...',
+  });
+
+  try {
+    const call = httpsCallable<SubmitAttemptRequest, SubmitAttemptResponse>(
+      functions,
+      'submitHomeworkV2Attempt',
+      { timeout: 120_000 }
+    );
+    const result = await call(request);
+    aiMonitor.completeRequest(reqId, {
+      modelUsed: PRIMARY_MODEL,
+      message: `Ocena: ${result.data?.masteryState || 'gotowe'}`,
+    });
+    return result.data;
+  } catch (err: any) {
+    aiMonitor.failRequest(reqId, err?.message || 'Błąd weryfikacji próby pracy domowej');
+    throw err;
+  }
 };
 
 /** Propozycje powtórki dla lektora. Nic nie przydziela. */

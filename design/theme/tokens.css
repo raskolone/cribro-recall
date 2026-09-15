@@ -193,18 +193,17 @@ a:hover { color: var(--accent-soft); }
   /* Ściemnione z #f2f4f7 (2026-09-14): biała karta przy kryciu 50-60%, a tak
      stoi w setkach miejsc, dawała na poprzednim tle różnicę trzech jednostek
      jasności — kartę bez widocznej krawędzi. */
-  --bg:              #e9edf2;   /* chłodna szarość strony */
+  --bg:              #eaf1f8;   /* chłodna, świeża błękitna szarość strony */
   --bg-lift:         #ffffff;   /* karta nad nią */
-  --ink:             #dfe5ec;   /* wgłębienia: inputy, studzienki kodu */
+  --ink:             #dfe8f2;   /* wgłębienia: inputy, studzienki kodu */
   --ink-2:           #ffffff;   /* podniesiony panel */
   --surface:         rgba(255, 255, 255, 0.94);
   --surface-2:       rgba(255, 255, 255, 0.78);
   --surface-flat:    #ffffff;
   --glass:           rgba(255, 255, 255, 0.88);
 
-  /* Prawie płaskie. Gradient jest tu po to, żeby góra ekranu była o włos
-     jaśniejsza od dołu — nie po to, żeby było go widać. */
-  --page-gradient: linear-gradient(180deg, #eef1f5 0%, #e4e9f0 100%);
+  /* Płynny, delikatny gradient dzienny o subtelnym błękitnym odcieniu */
+  --page-gradient: radial-gradient(circle at 50% -10%, #f3f8fd 0%, #e6effa 60%, #dbe7f5 100%);
 
   /* Zieleń ściemniona względem trybu nocnego: #72f0b4 na bieli ma kontrast
      1,4:1, czyli nie nadaje się nawet na obrys. Ten odcień ma 4,6:1, więc

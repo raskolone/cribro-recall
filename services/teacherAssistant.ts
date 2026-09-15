@@ -32,9 +32,26 @@ import { generateTextWithUnifiedFallback } from './geminiService';
  * a nie brak do nadrobienia po cichu.
  */
 
+export interface AssistantAction {
+  type: 'homework' | 'planner' | 'scratchpad' | 'mailing' | 'profile';
+  label: string;
+  studentId?: string;
+  studentName?: string;
+  topic?: string;
+}
+
 export interface AssistantMessage {
   role: 'user' | 'assistant';
   text: string;
+  actions?: AssistantAction[];
+  timestamp?: number;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: number;
+  messages: AssistantMessage[];
 }
 
 export interface StudentIndexEntry {
@@ -42,6 +59,9 @@ export interface StudentIndexEntry {
   name: string;
   /** Wszystkie warianty zapisu, po których szukamy imienia w pytaniu. */
   aliases: string[];
+  level?: string;
+  company?: string;
+  contractor?: string;
   lastLessonDate?: string;
   lastLessonTopic?: string;
   lessonCount: number;
@@ -86,6 +106,9 @@ export const buildStudentIndex = async (): Promise<StudentIndexEntry[]> => {
         aliases: [name, student.firstName, student.lastName, student.username]
           .filter(Boolean)
           .map(String),
+        level: student.level,
+        company: student.company,
+        contractor: student.contractor,
         lastLessonDate: last?.date,
         lastLessonTopic: last?.topic,
         lessonCount: lessons.length,
@@ -146,7 +169,7 @@ export const askTeacherAssistant = async (
   question: string,
   index: StudentIndexEntry[],
   history: AssistantMessage[]
-): Promise<{ text: string; usedStudents: string[] }> => {
+): Promise<{ text: string; usedStudents: string[]; actions: AssistantAction[] }> => {
   const mentioned = matchStudents(question, index);
 
   // Gdy w pytaniu nie padło imię, patrzymy wstecz w rozmowę — „a co dalej?"
@@ -170,7 +193,7 @@ export const askTeacherAssistant = async (
         } catch {
           /* pojedynczy kursant bez dostępu nie blokuje odpowiedzi */
         }
-        return `## ${entry.name} (lekcji w historii: ${entry.lessonCount})\n${
+        return `## ${entry.name} (poziom: ${entry.level || 'A2-B1'}, firma: ${entry.company || '-'}, lekcji: ${entry.lessonCount})\n${
           lessons.slice(0, 5).map(lessonToPrompt).join('\n') || 'Brak zapisanych lekcji.'
         }`;
       })
@@ -180,7 +203,7 @@ export const askTeacherAssistant = async (
     context = `## Spis kursantów (bez szczegółów lekcji)\n${index
       .map(
         entry =>
-          `- ${entry.name}: lekcji ${entry.lessonCount}, ostatnia ${
+          `- ${entry.name} [${entry.level || 'A2-B1'}]: lekcji ${entry.lessonCount}, ostatnia ${
             entry.lastLessonDate || 'brak'
           }${entry.lastLessonTopic ? ` — „${entry.lastLessonTopic}"` : ''}`
       )
@@ -207,5 +230,40 @@ PYTANIE LEKTORA: ${question}`;
     { taskName: 'Asystent lektora', category: 'general' }
   );
 
-  return { text: text.trim(), usedStudents: fallback.map(entry => entry.name) };
+  // Generuj inteligentne przyciski akcji przenoszące bezpośrednio do modułów
+  const actions: AssistantAction[] = [];
+  if (fallback.length > 0) {
+    const primaryStudent = fallback[0];
+    actions.push({
+      type: 'homework',
+      label: `Zadaj pracę domową (${primaryStudent.name})`,
+      studentId: primaryStudent.id,
+      studentName: primaryStudent.name,
+    });
+    actions.push({
+      type: 'planner',
+      label: `Zaplanuj lekcję (${primaryStudent.name})`,
+      studentId: primaryStudent.id,
+      studentName: primaryStudent.name,
+      topic: primaryStudent.lastLessonTopic,
+    });
+    actions.push({
+      type: 'scratchpad',
+      label: `Otwórz notatnik (${primaryStudent.name})`,
+      studentId: primaryStudent.id,
+      studentName: primaryStudent.name,
+    });
+    actions.push({
+      type: 'profile',
+      label: `Profil kursanta`,
+      studentId: primaryStudent.id,
+      studentName: primaryStudent.name,
+    });
+  } else {
+    actions.push({ type: 'planner', label: 'Otwórz Planer lekcji' });
+    actions.push({ type: 'homework', label: 'Zadania i testy' });
+    actions.push({ type: 'mailing', label: 'Otwórz Mailing' });
+  }
+
+  return { text: text.trim(), usedStudents: fallback.map(entry => entry.name), actions };
 };

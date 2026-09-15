@@ -57,6 +57,7 @@ import AdminMailingScreen from './AdminMailingScreen';
 import ScratchpadStudentPicker from '../scratchpad/ScratchpadStudentPicker';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import TeacherAttentionBanner from './TeacherAttentionBanner';
+import TeacherNotionDatabaseView from './TeacherNotionDatabaseView';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
@@ -2282,10 +2283,35 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         )}
       </div>
 
-      {/* Globalna weryfikacja Notion przeniesiona do Bazy kursantów
-          (StandaloneStudentDatabaseScreen). Pytanie „czy w Notion jest coś
-          nowego o kimkolwiek" dotyczy całej bazy, więc stoi przy bazie —
-          a nie na pulpicie obok narzędzi do prowadzenia lekcji. */}
+      {/* Widok bazy danych Notion-style: Kursanci i grupy pod kafelkami */}
+      <TeacherNotionDatabaseView
+        students={users}
+        lessons={lessonRecords}
+        onSelectStudent={(student) => {
+          if (student.id) {
+            handleSelectUser(student as UserWithId, 'profile');
+          }
+        }}
+        onOpenNotebook={(student) => {
+          if (student.id) {
+            handleSelectUser(student as UserWithId, 'scratchpad');
+            openScratchpadTab(`sp_${student.id}`);
+          }
+        }}
+        onOpenHomework={(student) => {
+          if (student.id) {
+            handleSelectUser(student as UserWithId, 'homework');
+            onViewChange?.('homework');
+          }
+        }}
+        onOpenLessonPlanner={(student) => {
+          if (student.id) {
+            handleSelectUser(student as UserWithId, 'lesson-planner');
+            handleTileClick('lesson-planner');
+          }
+        }}
+        onRefreshNotion={fetchUsers}
+      />
 
         </>
       )}

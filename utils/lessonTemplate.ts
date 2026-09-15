@@ -65,8 +65,8 @@ export const LESSON_SECTIONS: { title: string; color: string }[] = [
 ];
 
 /**
- * HTML jednego wpisu lekcyjnego. `previousHtml` służy wyłącznie do odczytania
- * numeru poprzedniej lekcji — nic z niego nie jest kopiowane.
+ * HTML jednego wpisu lekcyjnego. `previousHtml` służy do odczytania
+ * numeru poprzedniej lekcji.
  *
  * Każda nowa lekcja zaczyna się na nowej stronie A4 (podział strony `pad-page-break`),
  * a jej główny nagłówek H2 ma automatycznie włączone menu zwijania (toggle).
@@ -75,16 +75,45 @@ export const buildLessonTemplate = (options?: {
   previousHtml?: string;
   lessonNumber?: number;
   date?: Date;
+  recallItems?: {
+    corrections?: string[];
+    vocabulary?: string[];
+  };
 }): string => {
   const previous = options?.previousHtml || '';
   const number =
     options?.lessonNumber ?? highestLessonNumber(previous) + 1;
   const date = templateDate(options?.date);
 
-  const sections = LESSON_SECTIONS.map(
-    section =>
-      `<h3 style="color:${section.color}">${section.title}</h3><p><br></p>`
-  ).join('');
+  const sections = LESSON_SECTIONS.map((section) => {
+    let innerBody = '<p><br></p>';
+    if (section.title === 'Revision' && options?.recallItems) {
+      const { corrections, vocabulary } = options.recallItems;
+      const hasCorrections = corrections && corrections.length > 0;
+      const hasVocab = vocabulary && vocabulary.length > 0;
+
+      if (hasCorrections || hasVocab) {
+        let recallHtml = '';
+        if (hasCorrections) {
+          recallHtml += '<p><strong>🎯 3 elementy do poprawy / zdania z poprzedniej lekcji:</strong></p><ul>';
+          corrections.slice(0, 3).forEach((item) => {
+            recallHtml += `<li>${item}</li>`;
+          });
+          recallHtml += '</ul>';
+        }
+        if (hasVocab) {
+          recallHtml += '<p><strong>📝 Sprawdź znajomość słówek z poprzedniej lekcji:</strong></p><ul>';
+          vocabulary.slice(0, 5).forEach((item) => {
+            recallHtml += `<li><strong>${item}</strong> — ?</li>`;
+          });
+          recallHtml += '</ul>';
+        }
+        innerBody = `${recallHtml}<p><br></p>`;
+      }
+    }
+
+    return `<h3 style="color:${section.color}">${section.title}</h3>${innerBody}`;
+  }).join('');
 
   const hasPreviousContent = previous.trim().length > 0 && previous.replace(/<[^>]+>/g, '').trim().length > 0;
   const pageBreakHtml = hasPreviousContent
