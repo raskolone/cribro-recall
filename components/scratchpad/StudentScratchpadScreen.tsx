@@ -108,55 +108,7 @@ export const StudentScratchpadScreen: React.FC = () => {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-6xl mx-auto animate-fadeIn">
-      {/* Nagłówek sekcji */}
-      <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-line-strong">
-        <div>
-          <div className="flex items-center gap-2 text-primary text-xs font-bold uppercase tracking-wider mb-1">
-            <FileText size={15} />
-            <span>Wspólny notatnik z lektorem</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-text-hi">
-            Mój notatnik
-          </h1>
-          <p className="text-content-muted text-xs sm:text-sm mt-1">
-            Jeden stały dokument, w którym lektor notuje nowe słownictwo, poprawki gramatyczne i ustalenia.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center bg-base-200 px-3 py-1.5 rounded-xl border border-line-strong text-xs gap-2">
-            <span className="text-content-muted text-[10px] uppercase font-mono">Twój stały PIN:</span>
-            <span className="font-mono font-bold text-primary tracking-widest text-sm">
-              {formatAccessCode(document.pin)}
-            </span>
-          </div>
-
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={handleCopyLink}
-            className="text-xs flex items-center gap-1.5"
-          >
-            {copiedLink ? <Check size={14} className="text-emerald-400" /> : <Share2 size={14} />}
-            <span>{copiedLink ? 'Skopiowano link!' : 'Kopiuj link na telefon'}</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Dyskretna informacja o trybie */}
-      <div className="p-3.5 rounded-2xl bg-base-200/60 border border-line-soft flex items-center gap-3 text-xs text-content-muted">
-        <Info size={18} className="text-primary shrink-0" />
-        <div>
-          <span>
-            Ten notatnik aktualizuje się na żywo w trakcie lekcji. Możesz go otworzyć na dowolnym urządzeniu
-            (np. telefonie lub tablecie) wchodząc na stronę <strong>cribro.pl/scratchpad</strong> i wpisując swój kod PIN.
-          </span>
-        </div>
-      </div>
-
-      {/* Główny edytor / podgląd */}
+    <div className="h-full flex flex-col p-2 sm:p-4 md:p-6 max-w-7xl mx-auto w-full animate-fadeIn min-h-[720px]">
       <ScratchpadEditor
         document={document}
         onSaveContent={document.allowStudentEdit ? handleSaveContent : undefined}
@@ -165,7 +117,7 @@ export const StudentScratchpadScreen: React.FC = () => {
           name: studentName,
           role: 'student',
         }}
-        className="min-h-[620px]"
+        className="h-full flex-1 rounded-2xl border border-line-strong overflow-hidden shadow-[var(--shadow-lg)]"
       />
     </div>
   );

@@ -290,73 +290,21 @@ export const PublicScratchpadScreen: React.FC = () => {
     );
   }
 
-  // EKRAN 2: WIDOK DOKUMENTU DLA KURSANTA
+  // EKRAN 2: WIDOK DOKUMENTU DLA KURSANTA (PEŁNOEKRANOWY W STYLU GOOGLE DOCS)
   return (
-    <div className="min-h-screen bg-base-100 flex flex-col selection:bg-primary/30">
-      {/* Pasek nawigacyjny na samej górze */}
-      <nav className="bg-base-200/90 border-b border-line-strong px-4 py-3 sticky top-0 z-30 backdrop-blur-md flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
-            onClick={handleLeave}
-            className="p-2 rounded-xl bg-base-300 text-content-muted hover:text-text-hi transition-colors cursor-pointer"
-            title="Wróć do ekranu głównego"
-          >
-            <ArrowLeft size={16} />
-          </button>
-          <div className="min-w-0">
-            <h1 className="text-sm sm:text-base font-bold text-text-hi truncate flex items-center gap-2">
-              <span>{document.title}</span>
-              <span className="font-mono text-xs px-2 py-0.5 rounded-lg bg-primary/15 text-primary border border-primary/20">
-                {formatAccessCode(document.pin)}
-              </span>
-            </h1>
-            <p className="text-[11px] text-content-muted truncate">
-              Prowadzący: <span className="text-text-hi">{document.teacherName}</span>
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleCopyAllText}
-            className="text-xs flex items-center gap-1.5"
-            title="Kopiuj całą treść notatek"
-          >
-            {copiedAll ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-            <span className="hidden sm:inline">{copiedAll ? 'Skopiowano!' : 'Kopiuj tekst'}</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={handlePrint}
-            className="text-xs flex items-center gap-1.5"
-            title="Drukuj lub zapisz jako PDF"
-          >
-            <Printer size={14} />
-            <span className="hidden sm:inline">Drukuj / PDF</span>
-          </Button>
-        </div>
-      </nav>
-
-      {/* Główny kontener edytora */}
-      <main className="flex-1 p-3 sm:p-6 md:p-8 max-w-5xl w-full mx-auto flex flex-col">
-        <ScratchpadEditor
-          document={document}
-          onSaveContent={document.allowStudentEdit ? handleSaveStudentContent : undefined}
-          currentUser={{
-            uid: 'student_public',
-            name: document.studentName || 'Kursant',
-            role: 'student',
-          }}
-          className="flex-1"
-        />
-      </main>
+    <div className="h-screen w-screen bg-base-100 flex flex-col overflow-hidden selection:bg-primary/30">
+      <ScratchpadEditor
+        document={document}
+        onSaveContent={document.allowStudentEdit ? handleSaveStudentContent : undefined}
+        currentUser={{
+          uid: 'student_public',
+          name: document.studentName || 'Kursant',
+          role: 'student',
+        }}
+        standalone={true}
+        className="h-full flex-1"
+        onClose={handleLeave}
+      />
     </div>
   );
 };

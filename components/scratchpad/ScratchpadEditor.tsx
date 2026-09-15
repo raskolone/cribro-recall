@@ -49,6 +49,7 @@ import {
   Image as ImageIcon,
   Flashlight,
   LayoutTemplate,
+  Printer,
 } from 'lucide-react';
 import { ScratchpadDocument, ScratchpadTemplate } from '../../types';
 import {
@@ -849,35 +850,37 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   );
 
   return (
-    /* Obudowa notatnika to ta sama szyba, co kafelki panelu: półprzezroczysta
-       tafla z rozmyciem i linią światła na górnej krawędzi. Wcześniej była
-       zwykłym, nieprzezroczystym prostokątem — jedynym takim elementem
-       w aplikacji, przez co wyglądała na doklejoną z innego programu. */
     <div className={`pad-shell flex flex-col overflow-hidden ${standalone ? 'is-standalone' : ''} ${className}`}>
-      {/* 1. NAGŁÓWEK DOKUMENTU
-          Tożsamość po lewej, jedna akcja końcowa i jedno menu dostępu po prawej.
-          Kod PIN i przełączniki uprawnień zeszły do menu — na ekranie zostaje
-          to, czego lektor używa w trakcie pisania. */}
-      <header className="px-4 py-3 pad-bar border-b border-line-strong flex items-center justify-between gap-3 flex-wrap">
+      {/* 1. JEDNOLITY NAGŁÓWEK DOKUMENTU (GOOGLE DOCS STYLE) */}
+      <header className="px-4 py-2.5 pad-bar border-b border-line-strong flex items-center justify-between gap-3 select-none flex-wrap sm:flex-nowrap">
         <div className="flex items-center gap-3 min-w-0" data-coach="pad-identity">
           <div className="p-2 rounded-xl bg-accent/12 text-accent border border-accent/25 shrink-0">
             <FileText size={18} />
           </div>
           <div className="min-w-0">
-            <h2 className="text-sm font-bold text-text-hi truncate flex items-center gap-2">
-              <span>{docData.title || 'Notatnik'}</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-sm sm:text-base font-bold text-text-hi truncate tracking-tight">
+                {docData.title || `Brudnopis lekcyjny — ${docData.studentName || 'Notatki'}`}
+              </h1>
+              {docData.pin && (
+                <span className="px-2 py-0.5 rounded-lg bg-base-200/80 border border-line-strong font-mono text-[11px] font-bold text-primary tracking-wider shrink-0" title="Stały kod PIN do tego notatnika">
+                  PIN: {formatAccessCode(docData.pin)}
+                </span>
+              )}
               {isReadOnly && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/[0.07] border border-line text-text-2 flex items-center gap-1">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/[0.07] border border-line text-text-2 flex items-center gap-1 shrink-0">
                   <Eye size={11} /> Podgląd
                 </span>
               )}
-            </h2>
-            <div className="flex items-center gap-1.5 text-[11px] text-text-faint">
-              <span className="truncate">{docData.studentName}</span>
+            </div>
+            <div className="flex items-center gap-2 text-[11px] text-text-faint mt-0.5">
+              <span className="truncate">
+                {docData.studentName ? `Kursant: ${docData.studentName}` : 'Wspólny notatnik'}
+              </span>
               <span aria-hidden>•</span>
               {saveStatus === 'saving' ? (
                 <span className="text-text-2 flex items-center gap-1">
-                  <CloudUpload size={11} /> Zapisywanie…
+                  <CloudUpload size={11} className="animate-pulse text-primary" /> Zapisywanie…
                 </span>
               ) : saveStatus === 'local_only' ? (
                 <span
@@ -887,15 +890,16 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
                   <CloudUpload size={11} /> Tylko lokalnie
                 </span>
               ) : (
-                <span className="flex items-center gap-1">
-                  <CloudCheck size={11} /> Zapisano
+                <span className="text-accent/90 flex items-center gap-1">
+                  <CloudCheck size={11} /> Zapisano w chmurze
                 </span>
               )}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+          {/* Udostępnij dla lektora */}
           {isTeacher && (
             <MenuDropdown
               open={isShareMenuOpen}
@@ -905,15 +909,15 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
               aria-label="Udostępnianie i uprawnienia"
               coachId="pad-share"
               triggerTitle="Link, kod PIN i uprawnienia kursanta"
-              triggerClassName={`h-9 px-3 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-all cursor-pointer ${
+              triggerClassName={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-semibold transition-all cursor-pointer ${
                 isShareMenuOpen
                   ? 'bg-white/[0.08] border-line-strong text-content'
                   : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
               }`}
               trigger={
                 <>
-                  <Share2 size={14} />
-                  <span>Udostępnij</span>
+                  <Share2 size={13} />
+                  <span className="hidden sm:inline">Udostępnij</span>
                   <MenuChevron open={isShareMenuOpen} />
                 </>
               }
@@ -973,8 +977,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
             />
           )}
 
-          {/* Eksport widoczny i dla lektora, i dla kursanta — obaj mogą chcieć
-              zachować kopię notatnika poza aplikacją. */}
+          {/* Eksport dokumentu */}
           <MenuDropdown
             open={isExportMenuOpen}
             onOpenChange={setIsExportMenuOpen}
@@ -982,14 +985,14 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
             align="end"
             aria-label="Eksport notatnika"
             triggerTitle="Zapisz notatnik jako plik"
-            triggerClassName={`h-9 px-3 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-all cursor-pointer ${
+            triggerClassName={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-semibold transition-all cursor-pointer ${
               isExportMenuOpen
                 ? 'bg-white/[0.08] border-line-strong text-content'
                 : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
             }`}
             trigger={
               <>
-                <Download size={14} />
+                <Download size={13} />
                 <span className="hidden sm:inline">Eksportuj</span>
                 <MenuChevron open={isExportMenuOpen} />
               </>
@@ -1001,7 +1004,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
                   {
                     id: 'export-gdocs',
                     label: 'Otwórz w Google Docs',
-                    description: 'Kopiuje notatnik i otwiera nowy dokument — wklej Ctrl+V',
+                    description: 'Kopiuje treść i otwiera nowy dokument Google Docs (Ctrl+V)',
                     icon: <ExternalLink size={14} />,
                     onSelect: async () => {
                       const copied = await exportScratchpadToGoogleDocs(
@@ -1046,6 +1049,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
             ]}
           />
 
+          {/* Zapisz do dziennika lekcji */}
           {isTeacher && onPushToLessonRecord && (
             <Button
               type="button"
@@ -1053,69 +1057,63 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
               size="sm"
               onClick={handlePushToLesson}
               data-coach="pad-push"
-              className="h-9 text-xs flex items-center gap-1.5"
+              className="h-8 text-xs flex items-center gap-1.5"
               title="Rozłóż notatki na 4 bloki Notion i otwórz formularz lekcji"
             >
-              <Layers size={14} />
-              <span className="hidden sm:inline">Do dziennika</span>
+              <Layers size={13} />
+              <span className="hidden md:inline">Do dziennika</span>
             </Button>
           )}
 
-          {/* Motyw KARTKI, nie aplikacji. Dwa osobne ustawienia, bo to dwie
-              różne rzeczy: okno jest narzędziem, kartka jest dokumentem —
-              i ludzie chcą ciemnego narzędzia z jasnym dokumentem równie
-              często, jak ciemnego jednego i drugiego. Domyślnie jasna. */}
-          {/* Wskaźnik laserowy — do prowadzenia wzroku kursanta po dokumencie
-              w trakcie rozmowy. To jest jedyne narzędzie prezentacyjne, jakiego
-              notatnik potrzebuje: kursor i tak tam jest, chodzi tylko o to,
-              żeby było go widać na drugim końcu połączenia. */}
+          {/* Wskaźnik laserowy */}
           <button
             type="button"
             onClick={() => setIsLaserOn(v => !v)}
             title={isLaserOn ? 'Wyłącz wskaźnik laserowy' : 'Wskaźnik laserowy przy kursorze'}
             aria-pressed={isLaserOn}
-            className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${
+            className={`h-8 w-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer ${
               isLaserOn
                 ? 'border-danger/50 bg-danger/15 text-danger'
                 : 'border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08]'
             }`}
           >
-            <Flashlight size={15} />
+            <Flashlight size={14} />
           </button>
 
+          {/* Motyw kartki (Jasna / Ciemna) */}
           <button
             type="button"
             onClick={() => setPaperTheme(prev => (prev === 'light' ? 'dark' : 'light'))}
             title={paperTheme === 'light' ? 'Ciemna kartka' : 'Jasna kartka'}
             aria-label={paperTheme === 'light' ? 'Przełącz kartkę na ciemną' : 'Przełącz kartkę na jasną'}
-            className="h-9 w-9 rounded-xl border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
+            className="h-8 w-8 rounded-lg border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
           >
-            {paperTheme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
+            {paperTheme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
           </button>
 
+          {/* Samouczek */}
           <button
             type="button"
             onClick={() => setIsCoachOpen(true)}
-            title="Samouczek — dymki opisujące każdą funkcję notatnika"
+            title="Samouczek — opis funkcji notatnika"
             aria-label="Samouczek"
-            className="h-9 w-9 rounded-xl border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
+            className="h-8 w-8 rounded-lg border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
           >
-            <GraduationCap size={15} />
+            <GraduationCap size={14} />
           </button>
 
-          {/* Zamknięcie siedzi w pasku nagłówka, a nie pływa nad nim — pływający
-              krzyżyk nachodził na przyciski udostępniania. */}
+          {/* Zamknięcie notatnika */}
           {onClose && (
             <>
-              <div className="w-px h-6 bg-line-strong mx-0.5" aria-hidden />
+              <div className="w-px h-5 bg-line-strong mx-0.5" aria-hidden />
               <button
                 type="button"
                 onClick={onClose}
                 title="Zamknij notatnik"
                 aria-label="Zamknij notatnik"
-                className="h-9 w-9 rounded-xl border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
+                className="h-8 w-8 rounded-lg border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
               >
-                <X size={16} />
+                <X size={15} />
               </button>
             </>
           )}
@@ -1123,18 +1121,18 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       </header>
 
       {googleDocsHint && (
-        <div className="px-4 py-2.5 bg-primary/[0.08] border-b border-primary/25 flex items-center gap-2.5 text-xs">
+        <div className="px-4 py-2.5 bg-primary/[0.08] border-b border-primary/25 flex items-center gap-2.5 text-xs animate-fadeIn">
           <ExternalLink size={14} className="text-primary shrink-0" />
           <span className="text-content">
             {googleDocsHint === 'copied'
-              ? 'Notatnik jest w schowku, a nowy dokument Google otworzył się w drugiej karcie — wklej go tam (Ctrl+V / ⌘V). Formatowanie przechodzi razem z treścią.'
+              ? 'Notatnik jest w schowku, a nowy dokument Google otworzył się w drugiej karcie — wklej go tam (Ctrl+V / ⌘V).'
               : 'Przeglądarka nie wpuściła treści do schowka. Nowy dokument Google jest otwarty — użyj „Eksportuj do Worda" i wgraj plik na Dysk.'}
           </span>
         </div>
       )}
 
       {imageNotice && (
-        <div className="px-4 py-2.5 bg-warn/[0.1] border-b border-warn/30 flex items-start gap-2.5 text-xs">
+        <div className="px-4 py-2.5 bg-warn/[0.1] border-b border-warn/30 flex items-start gap-2.5 text-xs animate-fadeIn">
           <ImageIcon size={14} className="text-warn shrink-0 mt-0.5" />
           <span className="text-content flex-1">{imageNotice}</span>
           <button
@@ -1148,10 +1146,6 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         </div>
       )}
 
-      {/* Notatnik, który nie dotarł do chmury, wygląda u lektora normalnie —
-          treść siedzi w pamięci przeglądarki. Kursant po drugiej stronie linku
-          zobaczy pustkę, więc ostrzeżenie musi paść tutaj, zanim lektor wyśle
-          link, a nie dopiero w konsoli. */}
       {(docData.cloudBlockedReason || saveStatus === 'local_only') && isTeacher && (
         <div className="px-4 py-3 bg-warn/[0.1] border-b border-warn/30 flex items-start gap-3">
           <AlertTriangle size={16} className="text-warn shrink-0 mt-0.5" />
@@ -1167,449 +1161,473 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         </div>
       )}
 
-      {/* 2. PASEK FORMATOWANIA
-          Widoczne zostaje to, po co sięga się w trakcie notowania: pogrubienie,
-          trzy zakreślacze lektorskie i lista. Nagłówki, pozostałe style oraz
-          wstawki lekcyjne schowane są w dwóch menu. */}
-      {!isReadOnly && (
-        <div className="px-3 py-2 pad-bar border-b border-line-strong flex items-center gap-1.5 flex-wrap select-none sticky top-0 z-30">
-          <MenuDropdown
-            open={isStyleMenuOpen}
-            onOpenChange={setIsStyleMenuOpen}
-            preserveSelection
-            width={252}
-            align="start"
-            aria-label="Styl tekstu"
-            coachId="pad-style"
-            triggerTitle="Nagłówki i style zapisu"
-            triggerClassName={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-              isStyleMenuOpen
-                ? 'bg-white/[0.08] border-line-strong text-content'
-                : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
-            }`}
-            trigger={
-              <>
-                <Type size={14} />
-                <span>Styl</span>
-                <MenuChevron open={isStyleMenuOpen} />
-              </>
-            }
-            sections={[
-              {
-                id: 'blocks',
-                label: 'Blok tekstu',
-                items: [
-                  {
-                    id: 'p',
-                    label: 'Zwykły akapit',
-                    icon: <Pilcrow size={14} />,
-                    onSelect: () => handleFormatBlock('p'),
-                  },
-                  {
-                    id: 'h1',
-                    label: 'Nagłówek 1',
-                    description: 'Tytuł dokumentu',
-                    icon: <Heading1 size={14} />,
-                    onSelect: () => handleFormatBlock('h1'),
-                  },
-                  {
-                    id: 'h2',
-                    label: 'Nagłówek 2',
-                    description: 'Data lekcji',
-                    icon: <Heading2 size={14} />,
-                    onSelect: () => handleFormatBlock('h2'),
-                  },
-                  {
-                    id: 'h3',
-                    label: 'Nagłówek 3',
-                    description: 'Sekcja w lekcji',
-                    icon: <Heading3 size={14} />,
-                    onSelect: () => handleFormatBlock('h3'),
-                  },
-                  {
-                    id: 'toggle-heading',
-                    label: 'Nagłówek zwijany',
-                    description: 'Chowa cały rozdział pod strzałką',
-                    icon: <ChevronRight size={14} />,
-                    onSelect: handleToggleHeading,
-                  },
-                ],
-              },
-              {
-                id: 'inline',
-                label: 'Styl znaku',
-                items: [
-                  {
-                    id: 'underline',
-                    label: 'Podkreślenie',
-                    shortcut: 'Ctrl+U',
-                    icon: <Underline size={14} />,
-                    onSelect: () => execCmd('underline'),
-                  },
-                  {
-                    id: 'strike',
-                    label: 'Przekreślenie',
-                    icon: <Strikethrough size={14} />,
-                    onSelect: () => execCmd('strikeThrough'),
-                  },
-                ],
-              },
-            ]}
-          />
-
-          <div className="w-px h-5 bg-line-strong" aria-hidden />
-
+      {/* 2. PASEK FORMATOWANIA (GOOGLE DOCS TOOLBAR RIBBON) */}
+      <div className="px-3 py-1.5 pad-bar border-b border-line-strong flex items-center gap-1 overflow-x-auto no-scrollbar select-none sticky top-0 z-30 flex-nowrap sm:flex-wrap">
+        {/* Historia / Drukuj */}
+        <div className="flex items-center gap-0.5 shrink-0" data-coach="pad-history">
+          {!isReadOnly && (
+            <>
+              <FormatButton
+                icon={<RotateCcw size={14} />}
+                title="Cofnij (Ctrl+Z)"
+                onClick={() => execCmd('undo')}
+              />
+              <FormatButton
+                icon={<RotateCw size={14} />}
+                title="Ponów (Ctrl+Y)"
+                onClick={() => execCmd('redo')}
+              />
+            </>
+          )}
           <FormatButton
-            icon={<Bold size={15} />}
-            title="Pogrubienie (Ctrl+B)"
-            onClick={() => execCmd('bold')}
+            icon={<Printer size={14} />}
+            title="Drukuj stronę (Ctrl+P)"
+            onClick={() => window.print()}
           />
-          <FormatButton
-            icon={<Italic size={15} />}
-            title="Kursywa (Ctrl+I)"
-            onClick={() => execCmd('italic')}
-          />
-          <FormatButton
-            icon={<List size={15} />}
-            title="Lista wypunktowana"
-            onClick={() => execCmd('insertUnorderedList')}
-          />
+        </div>
 
-          <div className="w-px h-5 bg-line-strong" aria-hidden />
+        {!isReadOnly && (
+          <>
+            <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
 
-          <FormatButton
-            icon={<AlignLeft size={15} />}
-            title="Wyrównaj do lewej"
-            onClick={() => execCmd('justifyLeft')}
-          />
-          <FormatButton
-            icon={<AlignCenter size={15} />}
-            title="Wyśrodkuj"
-            onClick={() => execCmd('justifyCenter')}
-          />
-          <FormatButton
-            icon={<AlignRight size={15} />}
-            title="Wyrównaj do prawej"
-            onClick={() => execCmd('justifyRight')}
-          />
+            {/* Styl tekstu */}
+            <MenuDropdown
+              open={isStyleMenuOpen}
+              onOpenChange={setIsStyleMenuOpen}
+              preserveSelection
+              width={252}
+              align="start"
+              aria-label="Styl tekstu"
+              coachId="pad-style"
+              triggerTitle="Nagłówki i style tekstu"
+              triggerClassName={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer shrink-0 ${
+                isStyleMenuOpen
+                  ? 'bg-white/[0.08] border-line-strong text-content'
+                  : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
+              }`}
+              trigger={
+                <>
+                  <Type size={14} />
+                  <span>Styl</span>
+                  <MenuChevron open={isStyleMenuOpen} />
+                </>
+              }
+              sections={[
+                {
+                  id: 'blocks',
+                  label: 'Blok tekstu',
+                  items: [
+                    {
+                      id: 'p',
+                      label: 'Zwykły akapit',
+                      icon: <Pilcrow size={14} />,
+                      onSelect: () => handleFormatBlock('p'),
+                    },
+                    {
+                      id: 'h1',
+                      label: 'Nagłówek 1',
+                      description: 'Tytuł dokumentu',
+                      icon: <Heading1 size={14} />,
+                      onSelect: () => handleFormatBlock('h1'),
+                    },
+                    {
+                      id: 'h2',
+                      label: 'Nagłówek 2',
+                      description: 'Data lekcji',
+                      icon: <Heading2 size={14} />,
+                      onSelect: () => handleFormatBlock('h2'),
+                    },
+                    {
+                      id: 'h3',
+                      label: 'Nagłówek 3',
+                      description: 'Sekcja w lekcji',
+                      icon: <Heading3 size={14} />,
+                      onSelect: () => handleFormatBlock('h3'),
+                    },
+                    {
+                      id: 'toggle-heading',
+                      label: 'Nagłówek zwijany',
+                      description: 'Chowa cały rozdział pod strzałką',
+                      icon: <ChevronRight size={14} />,
+                      onSelect: handleToggleHeading,
+                    },
+                  ],
+                },
+                {
+                  id: 'inline',
+                  label: 'Styl znaku',
+                  items: [
+                    {
+                      id: 'underline',
+                      label: 'Podkreślenie',
+                      shortcut: 'Ctrl+U',
+                      icon: <Underline size={14} />,
+                      onSelect: () => execCmd('underline'),
+                    },
+                    {
+                      id: 'strike',
+                      label: 'Przekreślenie',
+                      icon: <Strikethrough size={14} />,
+                      onSelect: () => execCmd('strikeThrough'),
+                    },
+                  ],
+                },
+              ]}
+            />
 
-          <div className="w-px h-5 bg-line-strong" aria-hidden />
+            <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
 
-          {/* Kolor tekstu — paleta zamknięta (6 kolorów), nie swobodny
-              wybór: to notatnik lekcyjny, nie edytor grafiki. */}
-          <div className="flex items-center gap-1" data-coach="pad-color" title="Kolor tekstu">
-            <Palette size={14} className="text-text-2 mx-0.5" />
-            {[{ name: 'Domyślny', value: 'inherit' }, ...NOTEBOOK_SWATCHES].map(swatch => (
+            {/* Pogrubienie, Kursywa */}
+            <div className="flex items-center gap-0.5 shrink-0">
+              <FormatButton
+                icon={<Bold size={14} />}
+                title="Pogrubienie (Ctrl+B)"
+                onClick={() => execCmd('bold')}
+              />
+              <FormatButton
+                icon={<Italic size={14} />}
+                title="Kursywa (Ctrl+I)"
+                onClick={() => execCmd('italic')}
+              />
+              <FormatButton
+                icon={<Underline size={14} />}
+                title="Podkreślenie (Ctrl+U)"
+                onClick={() => execCmd('underline')}
+              />
+              <FormatButton
+                icon={<Strikethrough size={14} />}
+                title="Przekreślenie"
+                onClick={() => execCmd('strikeThrough')}
+              />
+            </div>
+
+            <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
+
+            {/* Wyrównanie tekstu */}
+            <div className="flex items-center gap-0.5 shrink-0">
+              <FormatButton
+                icon={<AlignLeft size={14} />}
+                title="Wyrównaj do lewej"
+                onClick={() => execCmd('justifyLeft')}
+              />
+              <FormatButton
+                icon={<AlignCenter size={14} />}
+                title="Wyśrodkuj"
+                onClick={() => execCmd('justifyCenter')}
+              />
+              <FormatButton
+                icon={<AlignRight size={14} />}
+                title="Wyrównaj do prawej"
+                onClick={() => execCmd('justifyRight')}
+              />
+            </div>
+
+            <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
+
+            {/* Kolor tekstu */}
+            <div className="flex items-center gap-1 shrink-0" data-coach="pad-color" title="Kolor tekstu">
+              <Palette size={13} className="text-text-2 mx-0.5" />
+              {[{ name: 'Domyślny', value: 'inherit' }, ...NOTEBOOK_SWATCHES].map(swatch => (
+                <button
+                  key={swatch.value}
+                  type="button"
+                  onMouseDown={event => event.preventDefault()}
+                  onClick={() =>
+                    execCmd(
+                      'foreColor',
+                      swatch.value === 'inherit'
+                        ? NOTEBOOK_INK[paperTheme === 'dark' ? 'dark' : 'light']
+                        : swatch.value
+                    )
+                  }
+                  title={swatch.name}
+                  aria-label={`Kolor tekstu: ${swatch.name}`}
+                  className="h-4.5 w-4.5 rounded-full border border-line-strong cursor-pointer transition-transform hover:scale-110 shrink-0"
+                  style={{ backgroundColor: swatch.value === 'inherit' ? 'transparent' : swatch.value }}
+                />
+              ))}
+            </div>
+
+            <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
+
+            {/* Zakreślacze lektorskie */}
+            <div className="flex items-center gap-1 shrink-0" data-coach="pad-highlighters">
               <button
-                key={swatch.value}
                 type="button"
                 onMouseDown={event => event.preventDefault()}
-                /* „Domyślny" musi trafiać w kolor tekstu AKTUALNEJ kartki —
-                   `execCommand` wpisuje wartość wprost w styl, więc grafit
-                   wstawiony na jasnej kartce znikałby po przełączeniu na ciemną. */
-                onClick={() =>
-                  execCmd(
-                    'foreColor',
-                    swatch.value === 'inherit'
-                      ? NOTEBOOK_INK[paperTheme === 'dark' ? 'dark' : 'light']
-                      : swatch.value
-                  )
-                }
-                title={swatch.name}
-                aria-label={`Kolor tekstu: ${swatch.name}`}
-                className="h-5 w-5 rounded-full border border-line-strong cursor-pointer transition-transform hover:scale-110"
-                style={{ backgroundColor: swatch.value === 'inherit' ? 'transparent' : swatch.value }}
-              />
-            ))}
-          </div>
-
-          <div className="w-px h-5 bg-line-strong" aria-hidden />
-
-          {/* Zakreślacze zostają na wierzchu — to one odróżniają brudnopis
-              lektorski od zwykłego edytora i używa się ich co kilka zdań. */}
-          <div className="flex items-center gap-1" data-coach="pad-highlighters">
-            <button
-              type="button"
-              onMouseDown={event => event.preventDefault()}
-              onClick={() => handleHighlight('rgba(209, 84, 76, 0.22)', NOTEBOOK_COLORS.red)}
-              className="h-8 px-2.5 rounded-lg text-[11px] font-bold bg-danger/15 text-danger border border-danger/30 hover:bg-danger/25 transition-colors cursor-pointer"
-              title="Zaznacz fragment jako błąd kursanta"
-            >
-              ❌ Błąd
-            </button>
-            <button
-              type="button"
-              onMouseDown={event => event.preventDefault()}
-              onClick={() => handleHighlight('rgba(23, 145, 122, 0.22)', NOTEBOOK_COLORS.green)}
-              className="h-8 px-2.5 rounded-lg text-[11px] font-bold bg-accent/12 text-accent border border-accent/30 hover:bg-accent/20 transition-colors cursor-pointer"
-              title="Zaznacz fragment jako poprawną formę"
-            >
-              ✅ Poprawnie
-            </button>
-            <button
-              type="button"
-              onMouseDown={event => event.preventDefault()}
-              onClick={() => handleHighlight('rgba(192, 106, 38, 0.22)', NOTEBOOK_COLORS.orange)}
-              className="h-8 px-2.5 rounded-lg text-[11px] font-bold bg-warn/15 text-warn border border-warn/30 hover:bg-warn/25 transition-colors cursor-pointer"
-              title="Wyróżnij nowe słówko"
-            >
-              💡 Słówko
-            </button>
-          </div>
-
-          <div className="w-px h-5 bg-line-strong" aria-hidden />
-
-          <MenuDropdown
-            open={isInsertMenuOpen}
-            onOpenChange={setIsInsertMenuOpen}
-            preserveSelection
-            width={264}
-            align="start"
-            aria-label="Wstaw element"
-            coachId="pad-insert"
-            triggerTitle="Data lekcji, szablon sekcji, listy i linia"
-            triggerClassName={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-              isInsertMenuOpen
-                ? 'bg-white/[0.08] border-line-strong text-content'
-                : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
-            }`}
-            trigger={
-              <>
-                <Plus size={14} />
-                <span>Wstaw</span>
-                <MenuChevron open={isInsertMenuOpen} />
-              </>
-            }
-            sections={[
-              {
-                id: 'lesson',
-                label: 'Elementy lekcji',
-                items: [
-                  {
-                    id: 'lesson',
-                    label: 'Nowa lekcja',
-                    description: 'Numer, data i pięć sekcji — na końcu dokumentu',
-                    icon: <Calendar size={14} />,
-                    onSelect: handleInsertLesson,
-                  },
-                ],
-              },
-              // Szablony widzi i wstawia wyłącznie lektor/admin — kursant nigdy
-              // nie wybiera szablonu sam (patrz `scratchpadTemplates` w
-              // firestore.rules), więc dla niego ta sekcja po prostu nie istnieje.
-              ...(isTeacher
-                ? [
-                    {
-                      id: 'templates',
-                      label: 'Szablony',
-                      items:
-                        templates.length > 0
-                          ? templates.map(tpl => ({
-                              id: `tpl-${tpl.id}`,
-                              label: tpl.title,
-                              description: 'Wstaw szablon',
-                              icon: <Sparkles size={14} />,
-                              onSelect: () => handleInsertTemplate(tpl.contentHtml),
-                            }))
-                          : [
-                              {
-                                id: 'tpl-empty',
-                                label: 'Brak zapisanych szablonów',
-                                icon: <Sparkles size={14} />,
-                                disabled: true,
-                                onSelect: () => {},
-                              },
-                            ],
-                    },
-                    {
-                      id: 'templates-manage',
-                      items: [
-                        {
-                          id: 'manage-templates',
-                          label: 'Zarządzaj szablonami…',
-                          icon: <Settings2 size={14} />,
-                          onSelect: () => setIsTemplateManagerOpen(true),
-                        },
-                      ],
-                    },
-                  ]
-                : []),
-              {
-                id: 'structure',
-                label: 'Struktura',
-                items: [
-                  {
-                    id: 'ol',
-                    label: 'Lista numerowana',
-                    icon: <ListOrdered size={14} />,
-                    onSelect: () => execCmd('insertOrderedList'),
-                  },
-                  {
-                    id: 'checklist',
-                    label: 'Lista zadań',
-                    description: 'Klikalny checkbox',
-                    icon: <CheckSquare size={14} />,
-                    onSelect: handleInsertChecklist,
-                  },
-                  {
-                    id: 'link',
-                    label: 'Link',
-                    icon: <Link2 size={14} />,
-                    onSelect: handleInsertLink,
-                  },
-                  {
-                    id: 'hr',
-                    label: 'Linia pozioma',
-                    icon: <Minus size={14} />,
-                    onSelect: () => execCmd('insertHorizontalRule'),
-                  },
-                ],
-              },
-            ]}
-          />
-
-          {/* SZABLON JEDNYM DOTKNIĘCIEM.
-
-              Szablon jest pierwszą rzeczą, którą lektor robi na każdej lekcji —
-              wstawia rusztowanie i zaczyna pisać. Siedział w menu „Wstaw",
-              trzy kliknięcia głębiej, obok listy numerowanej i linii poziomej,
-              czyli rzeczy używanych raz na kilka dni. Przy jednym szablonie
-              przycisk wstawia go od razu; przy kilku pyta który. */}
-          {isTeacher && templates.length > 0 && (
-            templates.length === 1 ? (
-              <FormatButton
-                icon={<LayoutTemplate size={15} />}
-                title={`Wstaw szablon: ${templates[0].title}`}
-                onClick={() => handleInsertTemplate(templates[0].contentHtml)}
-              />
-            ) : (
-              <MenuDropdown
-                open={isTemplateMenuOpen}
-                onOpenChange={setIsTemplateMenuOpen}
-                preserveSelection
-                width={260}
-                align="start"
-                aria-label="Wstaw szablon"
-                triggerTitle="Wstaw gotowy szablon lekcji"
-                triggerClassName={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                  isTemplateMenuOpen
-                    ? 'bg-white/[0.08] border-line-strong text-content'
-                    : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
-                }`}
-                trigger={
-                  <>
-                    <LayoutTemplate size={14} />
-                    <span>Szablon</span>
-                    <MenuChevron open={isTemplateMenuOpen} />
-                  </>
-                }
-                sections={[
-                  {
-                    id: 'templates-quick',
-                    label: 'Wstaw szablon',
-                    items: templates.map(tpl => ({
-                      id: `quick-${tpl.id}`,
-                      label: tpl.title,
-                      icon: <LayoutTemplate size={14} />,
-                      onSelect: () => handleInsertTemplate(tpl.contentHtml),
-                    })),
-                  },
-                ]}
-              />
-            )
-          )}
-
-          <FormatButton
-            icon={<Calendar size={15} />}
-            title="Nowa lekcja — nagłówek z numerem i pięć sekcji"
-            onClick={handleInsertLesson}
-          />
-
-          <FormatButton
-            icon={<ListTree size={15} />}
-            title={isTocOpen ? 'Ukryj spis treści' : 'Pokaż spis treści'}
-            onClick={() => setIsTocOpen(v => !v)}
-          />
-          <FormatButton
-            icon={<ChevronsDownUp size={15} />}
-            title="Zwiń wszystkie rozdziały zwijane"
-            onClick={() => handleCollapseAll(true)}
-          />
-
-          <div className="ml-auto flex items-center gap-0.5" data-coach="pad-history">
-            <FormatButton
-              icon={<RotateCcw size={14} />}
-              title="Cofnij (Ctrl+Z)"
-              onClick={() => execCmd('undo')}
-            />
-            <FormatButton
-              icon={<RotateCw size={14} />}
-              title="Ponów (Ctrl+Y)"
-              onClick={() => execCmd('redo')}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* 3. SPIS TREŚCI + KARTKA DOKUMENTU
-
-          ══ SPIS TREŚCI ══
-
-          Powstaje z nagłówków kartki, tak jak w Google Docs: każdy H1 to
-          rozdział, H2 i H3 to podrozdziały pod nim. Nie ma osobnego miejsca,
-          w którym się go redaguje — struktura dokumentu JEST spisem treści,
-          więc dwie listy do utrzymania byłyby dwiema prawdami o tym samym.
-
-          Na telefonie spis kładzie się nad kartką jako niski, przewijalny
-          pasek; na komputerze stoi kolumną z lewej. Ta sama treść i ten sam
-          kod — różni się tylko kierunek układu.
-
-          ══ KARTKA ══
-
-          Kartka ma własny motyw (jasny domyślnie), niezależny od motywu
-          aplikacji — uzasadnienie przy `.pad-paper` w index.css. Kolory
-          i typografia są w arkuszu stylów, a nie w klasach narzędziowych,
-          bo treść to HTML pisany przez lektora: nagłówków i list powstałych
-          z `execCommand` nie da się oklasować. */}
-      <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
-        {isTocOpen && (
-          <aside className="shrink-0 w-full md:w-60 max-h-40 md:max-h-none overflow-y-auto border-b md:border-b-0 md:border-r border-line-strong pad-bar">
-            <div className="px-3 py-2.5 flex items-center justify-between gap-2 sticky top-0 pad-bar backdrop-blur-md border-b border-line-soft">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-text-faint">
-                Spis treści
-              </span>
+                onClick={() => handleHighlight('rgba(209, 84, 76, 0.22)', NOTEBOOK_COLORS.red)}
+                className="h-7 px-2 rounded-lg text-[11px] font-bold bg-danger/15 text-danger border border-danger/30 hover:bg-danger/25 transition-colors cursor-pointer shrink-0"
+                title="Zaznacz fragment jako błąd kursanta"
+              >
+                ❌ Błąd
+              </button>
               <button
                 type="button"
-                onClick={() => handleCollapseAll(false)}
-                title="Rozwiń wszystkie rozdziały"
-                className="text-[10px] font-semibold text-text-2 hover:text-content transition-colors cursor-pointer"
+                onMouseDown={event => event.preventDefault()}
+                onClick={() => handleHighlight('rgba(23, 145, 122, 0.22)', NOTEBOOK_COLORS.green)}
+                className="h-7 px-2 rounded-lg text-[11px] font-bold bg-accent/12 text-accent border border-accent/30 hover:bg-accent/20 transition-colors cursor-pointer shrink-0"
+                title="Zaznacz fragment jako poprawną formę"
               >
-                Rozwiń
+                ✅ Poprawnie
+              </button>
+              <button
+                type="button"
+                onMouseDown={event => event.preventDefault()}
+                onClick={() => handleHighlight('rgba(192, 106, 38, 0.22)', NOTEBOOK_COLORS.orange)}
+                className="h-7 px-2 rounded-lg text-[11px] font-bold bg-warn/15 text-warn border border-warn/30 hover:bg-warn/25 transition-colors cursor-pointer shrink-0"
+                title="Wyróżnij nowe słówko"
+              >
+                💡 Słówko
               </button>
             </div>
+
+            <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
+
+            {/* Listy */}
+            <div className="flex items-center gap-0.5 shrink-0">
+              <FormatButton
+                icon={<List size={14} />}
+                title="Lista wypunktowana"
+                onClick={() => execCmd('insertUnorderedList')}
+              />
+              <FormatButton
+                icon={<ListOrdered size={14} />}
+                title="Lista numerowana"
+                onClick={() => execCmd('insertOrderedList')}
+              />
+            </div>
+
+            <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
+
+            {/* Menu Wstaw */}
+            <MenuDropdown
+              open={isInsertMenuOpen}
+              onOpenChange={setIsInsertMenuOpen}
+              preserveSelection
+              width={264}
+              align="start"
+              aria-label="Wstaw element"
+              coachId="pad-insert"
+              triggerTitle="Data lekcji, szablon sekcji, listy i linia"
+              triggerClassName={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer shrink-0 ${
+                isInsertMenuOpen
+                  ? 'bg-white/[0.08] border-line-strong text-content'
+                  : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
+              }`}
+              trigger={
+                <>
+                  <Plus size={14} />
+                  <span>Wstaw</span>
+                  <MenuChevron open={isInsertMenuOpen} />
+                </>
+              }
+              sections={[
+                {
+                  id: 'lesson',
+                  label: 'Elementy lekcji',
+                  items: [
+                    {
+                      id: 'lesson',
+                      label: 'Nowa lekcja',
+                      description: 'Numer, data i sekcje — na końcu dokumentu',
+                      icon: <Calendar size={14} />,
+                      onSelect: handleInsertLesson,
+                    },
+                  ],
+                },
+                ...(isTeacher
+                  ? [
+                      {
+                        id: 'templates',
+                        label: 'Szablony',
+                        items:
+                          templates.length > 0
+                            ? templates.map(tpl => ({
+                                id: `tpl-${tpl.id}`,
+                                label: tpl.title,
+                                description: 'Wstaw szablon',
+                                icon: <Sparkles size={14} />,
+                                onSelect: () => handleInsertTemplate(tpl.contentHtml),
+                              }))
+                            : [
+                                {
+                                  id: 'tpl-empty',
+                                  label: 'Brak zapisanych szablonów',
+                                  icon: <Sparkles size={14} />,
+                                  disabled: true,
+                                  onSelect: () => {},
+                                },
+                              ],
+                      },
+                      {
+                        id: 'templates-manage',
+                        items: [
+                          {
+                            id: 'manage-templates',
+                            label: 'Zarządzaj szablonami…',
+                            icon: <Settings2 size={14} />,
+                            onSelect: () => setIsTemplateManagerOpen(true),
+                          },
+                        ],
+                      },
+                    ]
+                  : []),
+                {
+                  id: 'structure',
+                  label: 'Struktura',
+                  items: [
+                    {
+                      id: 'checklist',
+                      label: 'Lista zadań',
+                      description: 'Klikalny checkbox',
+                      icon: <CheckSquare size={14} />,
+                      onSelect: handleInsertChecklist,
+                    },
+                    {
+                      id: 'link',
+                      label: 'Link',
+                      icon: <Link2 size={14} />,
+                      onSelect: handleInsertLink,
+                    },
+                    {
+                      id: 'hr',
+                      label: 'Linia pozioma',
+                      icon: <Minus size={14} />,
+                      onSelect: () => execCmd('insertHorizontalRule'),
+                    },
+                  ],
+                },
+              ]}
+            />
+
+            {/* Szybki szablon dla lektora */}
+            {isTeacher && templates.length > 0 && (
+              templates.length === 1 ? (
+                <FormatButton
+                  icon={<LayoutTemplate size={14} />}
+                  title={`Wstaw szablon: ${templates[0].title}`}
+                  onClick={() => handleInsertTemplate(templates[0].contentHtml)}
+                />
+              ) : (
+                <MenuDropdown
+                  open={isTemplateMenuOpen}
+                  onOpenChange={setIsTemplateMenuOpen}
+                  preserveSelection
+                  width={260}
+                  align="start"
+                  aria-label="Wstaw szablon"
+                  triggerTitle="Wstaw gotowy szablon lekcji"
+                  triggerClassName={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer shrink-0 ${
+                    isTemplateMenuOpen
+                      ? 'bg-white/[0.08] border-line-strong text-content'
+                      : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
+                  }`}
+                  trigger={
+                    <>
+                      <LayoutTemplate size={14} />
+                      <span>Szablon</span>
+                      <MenuChevron open={isTemplateMenuOpen} />
+                    </>
+                  }
+                  sections={[
+                    {
+                      id: 'templates-quick',
+                      label: 'Wstaw szablon',
+                      items: templates.map(tpl => ({
+                        id: `quick-${tpl.id}`,
+                        label: tpl.title,
+                        icon: <LayoutTemplate size={14} />,
+                        onSelect: () => handleInsertTemplate(tpl.contentHtml),
+                      })),
+                    },
+                  ]}
+                />
+              )
+            )}
+
+            <FormatButton
+              icon={<Calendar size={14} />}
+              title="Nowa lekcja — nagłówek z numerem i sekcjami"
+              onClick={handleInsertLesson}
+            />
+          </>
+        )}
+
+        {/* Prawa strona paska narzędzi: Spis treści i zwijanie */}
+        <div className="ml-auto flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsTocOpen(v => !v)}
+            title={isTocOpen ? 'Ukryj spis treści (Konspekt)' : 'Pokaż spis treści (Konspekt)'}
+            className={`h-7 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
+              isTocOpen
+                ? 'bg-primary/15 text-primary border border-primary/30'
+                : 'text-text-2 hover:text-content hover:bg-white/[0.08]'
+            }`}
+          >
+            <ListTree size={14} />
+            <span className="hidden sm:inline">Spis treści</span>
+          </button>
+          <FormatButton
+            icon={<ChevronsDownUp size={14} />}
+            title="Zwiń / Rozwiń rozdziały"
+            onClick={() => handleCollapseAll(true)}
+          />
+        </div>
+      </div>
+
+      {/* 3. OBSZAR ROBOCZY: SPIS TREŚCI Z LEWEJ + WYŚRODKOWANA KARTKA A4 */}
+      <div className="flex-1 min-h-0 flex flex-row overflow-hidden relative w-full h-full">
+        {/* SPIS TREŚCI PRZYPIĘTY DO LEWEJ STRONY */}
+        {isTocOpen && (
+          <aside className="w-60 md:w-64 shrink-0 border-r border-line-strong pad-bar overflow-y-auto flex flex-col z-20 select-none animate-fadeIn">
+            <div className="px-3.5 py-2.5 flex items-center justify-between gap-2 border-b border-line-soft sticky top-0 pad-bar backdrop-blur-md">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-text-2">
+                <ListTree size={13} className="text-primary" />
+                <span>Spis treści</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleCollapseAll(false)}
+                  title="Rozwiń wszystkie rozdziały"
+                  className="px-1.5 py-0.5 rounded text-[10px] font-semibold text-text-2 hover:text-content hover:bg-white/[0.08] transition-colors cursor-pointer"
+                >
+                  Rozwiń
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsTocOpen(false)}
+                  title="Ukryj panel spisu treści"
+                  className="p-1 rounded text-text-2 hover:text-content hover:bg-white/[0.08] transition-colors cursor-pointer"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            </div>
+
             {toc.length === 0 ? (
-              <p className="px-3 py-4 text-[11px] leading-relaxed text-text-faint">
-                Spis treści zbuduje się sam z nagłówków. Zaznacz tekst i wybierz
-                „Styl → Nagłówek 1/2/3".
+              <p className="px-4 py-6 text-xs leading-relaxed text-text-faint text-center">
+                Spis treści zbuduje się automatycznie z nagłówków w dokumencie. Zaznacz tekst i wybierz Styl → Nagłówek.
               </p>
             ) : (
-              <nav className="py-1.5">
+              <nav className="py-2">
                 {toc.map(entry => (
                   <button
                     key={entry.id}
                     type="button"
                     onClick={() => handleJumpToHeading(entry.id)}
                     title={entry.text}
-                    className={`w-full text-left px-3 py-1.5 flex items-center gap-1.5 text-[11.5px] leading-snug transition-colors cursor-pointer hover:bg-white/[0.06] ${
+                    className={`w-full text-left px-3.5 py-1.5 flex items-center gap-1.5 text-[12px] leading-snug transition-colors cursor-pointer hover:bg-white/[0.06] ${
                       activeHeadingId === entry.id
-                        ? 'text-accent font-semibold'
+                        ? 'text-primary font-bold bg-primary/10 border-l-2 border-primary'
                         : entry.level === 1
-                        ? 'text-content font-semibold'
+                        ? 'text-content font-bold'
                         : entry.level === 2
-                        ? 'text-text-2'
-                        : 'text-text-faint'
+                        ? 'text-text-2 font-medium'
+                        : 'text-text-faint text-[11px]'
                     }`}
-                    style={{ paddingLeft: `${12 + (entry.level - 1) * 14}px` }}
+                    style={{ paddingLeft: `${14 + (entry.level - 1) * 12}px` }}
                   >
                     {entry.collapsed && <ChevronRight size={11} className="shrink-0 opacity-60" />}
                     <span className="truncate">{entry.text}</span>
@@ -1620,11 +1638,25 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           </aside>
         )}
 
+        {/* ZAKŁADKA DO ROZWINIĘCIA SPISU TREŚCI GDY JEST ZWINIĘTY */}
+        {!isTocOpen && (
+          <button
+            type="button"
+            onClick={() => setIsTocOpen(true)}
+            className="absolute left-0 top-4 z-20 px-2 py-1.5 rounded-r-xl bg-base-200/90 hover:bg-base-200 border-r border-y border-line-strong text-content-muted hover:text-text-hi shadow-md flex items-center gap-1.5 text-xs font-semibold backdrop-blur-md transition-all cursor-pointer group"
+            title="Pokaż spis treści"
+          >
+            <ListTree size={14} className="text-primary group-hover:scale-110 transition-transform" />
+            <span className="hidden sm:inline">Konspekt</span>
+          </button>
+        )}
+
+        {/* KANWA Z SYMETRYCZNIE WYŚRODKOWANĄ KARTKĄ A4 */}
         <div
           ref={paperWrapRef}
-          className="pad-canvas flex-1 min-w-0 p-4 md:p-8 md:pt-10 overflow-y-auto min-h-[500px]"
+          className="pad-canvas flex-1 min-w-0 h-full overflow-y-auto p-3 sm:p-6 md:p-10 flex justify-center items-start"
         >
-          <div className="relative mx-auto" style={{ width: PAGE_WIDTH_PX, maxWidth: '100%' }}>
+          <div className="relative mx-auto w-full flex flex-col items-center" style={{ maxWidth: PAGE_WIDTH_PX }}>
             <div
               ref={editorRef}
               data-coach="pad-editor"
@@ -1634,21 +1666,19 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
               onClick={handlePaperClick}
               onPaste={handlePaste}
               suppressContentEditableWarning
-              className={`pad-paper pad-sheet focus:outline-none transition-shadow font-sans selection:bg-primary/30 ${
+              className={`pad-paper pad-sheet focus:outline-none transition-shadow font-sans selection:bg-primary/30 w-full ${
                 isReadOnly ? 'cursor-default' : 'cursor-text'
               }`}
               style={{
                 wordBreak: 'break-word',
                 boxShadow: 'var(--pad-shadow)',
                 minHeight: PAGE_HEIGHT_PX,
-                // Margines w pikselach, nie klasą: ta sama wartość jest
-                // podstawą wyliczeń szerokości wklejanego obrazu.
                 padding: `${PAGE_MARGIN_PX}px`,
+                boxSizing: 'border-box',
               }}
             />
 
-            {/* Zaznaczony obraz — ustalone szerokości zamiast uchwytu.
-                Uzasadnienie przy `resizeSelectedImage`. */}
+            {/* Zaznaczony obraz — pasek zmiany rozmiaru */}
             {selectedImage && (
               <div className="sticky top-2 z-20 mb-2 flex justify-center">
                 <div className="flex items-center gap-1 px-1.5 py-1.5 rounded-xl bg-ink-2/95 border border-line-strong shadow-[var(--shadow-md)] backdrop-blur-xl">
@@ -1685,10 +1715,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
               </div>
             )}
 
-            {/* Warstwa podziału na strony — leży NAD kartką i nic nie łapie.
-                Kreska co wysokość A4; pierwsza pada dopiero na granicy strony
-                pierwszej i drugiej, bo „Strona 1" na górze pustego dokumentu
-                jest informacją, której nikt nie potrzebuje. */}
+            {/* Podział na strony A4 */}
             {Array.from({ length: Math.max(0, pageCount - 1) }).map((_, index) => (
               <div
                 key={index}
@@ -1704,21 +1731,19 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       </div>
 
       {/* 4. DYSKRETNA STOPKA DOKUMENTU */}
-      <footer className="px-4 py-2 pad-bar border-t border-line-strong flex items-center justify-between text-[11px] text-content-muted gap-3 flex-wrap">
+      <footer className="px-4 py-2 pad-bar border-t border-line-strong flex items-center justify-between text-[11px] text-content-muted gap-3 flex-wrap select-none">
         <div className="flex items-center gap-3">
           <span>Słowa: <strong className="text-text-hi">{wordCount}</strong></span>
           <span>•</span>
           <span>Strony: <strong className="text-text-hi">{pageCount}</strong></span>
           <span>•</span>
-          {/* Rozmiar pokazujemy dopiero od połowy limitu. Wcześniej jest to
-              liczba bez znaczenia; od tego progu zaczyna być ostrzeżeniem. */}
           {contentBytes > SCRATCHPAD_MAX_CONTENT_BYTES / 2 && (
             <>
               <span
                 className={
                   contentBytes > SCRATCHPAD_MAX_CONTENT_BYTES * 0.85 ? 'text-warn font-bold' : ''
                 }
-                title="Dokument ma twardy limit rozmiaru — liczą się głównie wklejone obrazy."
+                title="Dokument ma limit rozmiaru — liczą się głównie wklejone obrazy."
               >
                 Rozmiar: {Math.round(contentBytes / 1024)} / {Math.round(SCRATCHPAD_MAX_CONTENT_BYTES / 1024)} kB
               </span>
@@ -1749,7 +1774,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         </div>
       </footer>
 
-      {/* Samouczek — dymki przypięte do narzędzi brudnopisu. */}
+      {/* Samouczek */}
       <CoachMarks
         steps={coachSteps}
         isOpen={isCoachOpen}

@@ -338,15 +338,6 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
               </div>
             )}
 
-            {/* Po przypisaniu: jedno zdanie potwierdzenia, bez przycisków. */}
-            {scratchpadDoc.studentId && (
-              <div className="px-4 py-2 border-b border-line-strong bg-base-200/40 flex items-center gap-2 text-xs text-content-muted">
-                <Check size={13} className="text-primary shrink-0" />
-                Notatnik kursanta <strong className="text-text-hi">{scratchpadDoc.studentName}</strong>
-                {' '}— widzi go po linku albo PIN-em.
-              </div>
-            )}
-
             <ScratchpadEditor
               document={scratchpadDoc}
               onSaveContent={handleSaveContent}
