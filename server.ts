@@ -165,6 +165,13 @@ import defaultFirebaseConfig from "./firebase-applet-config.json";
 import { AI_MODEL_CASCADE, GEMINI_MODEL_CASCADE, openAiModelsFor } from "./services/aiModels";
 import { normalizeImportedLessons } from "./utils/lessonImport";
 import { shuffleDistinct } from "./utils/exerciseShuffle";
+import { assembleContext } from "./functions/src/homeworkV2/contextAssembler";
+import { planExercises } from "./functions/src/homeworkV2/exercisePlanner";
+import { buildExerciseSet } from "./functions/src/homeworkV2/pipeline";
+import { createAiCall } from "./functions/src/homeworkV2/openai";
+import { getRecentMistakes } from "./functions/src/homeworkV2/learningProfile";
+import { SCHEMA_VERSION } from "./functions/src/homeworkV2/contracts";
+import { buildV2TaskPayload, newHomeworkSetId, selectSendableExercises } from "./functions/src/homeworkV2/assignment";
 let pdfParse: any;
 try {
   const loadedPdf = typeof require !== "undefined" ? require("pdf-parse") : null;
@@ -442,9 +449,9 @@ export function createApp() {
         };
         for (const [provider, envName] of Object.entries(mapping)) {
           const stored = String(keys[provider] || '').trim();
-          if (stored && !(process.env[envName] || '').trim()) {
+          if (stored) {
             process.env[envName] = stored;
-            console.log(`[AI] Klucz ${provider} wczytany z ustawień aplikacji.`);
+            console.log(`[AI] Klucz ${provider} wczytany z ustawień aplikacji (${maskKey(stored)}).`);
           }
         }
       } catch (e) {
@@ -1079,6 +1086,126 @@ export function createApp() {
   });
 
   /* ═══════════════════════════════════════════════════════════════════
+     SILNIK PRAC DOMOWYCH V2 (GEMINI 2.5 FLASH)
+     ═══════════════════════════════════════════════════════════════════ */
+  app.post('/api/homework-v2/generate', requireFirebaseAuth, async (req, res) => {
+    try {
+      const studentUid = String(req.body?.studentUid || '').trim();
+      if (!studentUid) return res.status(400).json({ error: 'Nie wskazano kursanta.' });
+
+      const lessonIds = Array.isArray(req.body?.lessonIds) ? req.body.lessonIds : [];
+      if (lessonIds.length === 0) return res.status(400).json({ error: 'Nie wskazano lekcji.' });
+
+      const itemCount = Number(req.body?.itemCount) || 6;
+      const plannedMinutes = Number(req.body?.plannedMinutes) || 0;
+      const requestedTypes = req.body?.types;
+      const teacherId = (req as any).userUid;
+
+      const rawLessons = Array.isArray(req.body?.rawLessons) ? req.body.rawLessons : undefined;
+      let cefr = String(req.body?.cefr || 'B1');
+      let recentMistakes: string[] = [];
+
+      try {
+        const adminApp = getAdminApp();
+        const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+        const studentSnap = await adminDb.collection('users').doc(studentUid).get();
+        if (studentSnap.exists) {
+          cefr = String(studentSnap.data()?.level || cefr);
+        }
+        recentMistakes = await getRecentMistakes(studentUid);
+      } catch (dbErr) {
+        console.warn('[server] pomijam zapytanie Admin DB przy generowaniu prac domowych v2:', dbErr);
+      }
+
+      const context = await assembleContext({
+        studentUid,
+        lessonIds,
+        cefr,
+        recentMistakes,
+        rawLessons,
+      });
+
+      const plan = planExercises({ context, requestedTypes, itemCount, plannedMinutes });
+
+      const geminiKey = (process.env.GEMINI_API_KEY || '').trim();
+      const openAiKey = (process.env.OPENAI_API_KEY || '').trim();
+
+      const aiCall = createAiCall({
+        geminiApiKey: geminiKey,
+        openAiApiKey: openAiKey,
+      });
+
+      const result = await buildExerciseSet({
+        context,
+        plan,
+        call: aiCall,
+        teacherId,
+        studentId: studentUid,
+      });
+
+      return res.json({
+        exercises: result.exercises,
+        warnings: result.warnings,
+        needsReviewCount: result.needsReviewCount,
+        schemaVersion: SCHEMA_VERSION,
+      });
+    } catch (err: any) {
+      console.error('[server] błąd generowania pracy domowej v2:', err);
+      return res.status(500).json({ error: err?.message || 'Nie udało się ułożyć zestawu.' });
+    }
+  });
+
+  app.post('/api/homework-v2/assign', requireFirebaseAuth, async (req, res) => {
+    try {
+      const rawExercises = Array.isArray(req.body?.exercises) ? req.body.exercises : [];
+      const studentUids = Array.isArray(req.body?.studentUids) ? req.body.studentUids : [];
+      const title = String(req.body?.title || 'Praca domowa').trim();
+      const dueDate = String(req.body?.dueDate || '').trim();
+      const groupId = String(req.body?.groupId || '').trim();
+      const teacherId = (req as any).userUid;
+
+      if (studentUids.length === 0) return res.status(400).json({ error: 'Nie wskazano kursantów.' });
+
+      const exercises = selectSendableExercises(rawExercises);
+      if (exercises.length === 0) {
+        return res.status(400).json({ error: 'Żadne z zadań nie nadaje się do wysłania.' });
+      }
+
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+      const nowIso = new Date().toISOString();
+      const homeworkSetId = newHomeworkSetId();
+
+      const created: string[] = [];
+
+      for (const studentUid of studentUids) {
+        const payload = buildV2TaskPayload({
+          studentUid,
+          exercises,
+          teacherId,
+          title,
+          dueDate,
+          groupId,
+          homeworkSetId,
+          createdAt: nowIso,
+        });
+
+        const ref = await adminDb.collection('specialTasks').add(payload);
+        created.push(ref.id);
+
+        try {
+          await adminDb.collection('users').doc(studentUid).update({ hasNewHomework: true });
+        } catch {}
+      }
+
+      return res.json({ taskIds: created, homeworkSetId, assignedCount: exercises.length });
+    } catch (err: any) {
+      console.error('[server] błąd przypisywania pracy domowej v2:', err);
+      return res.status(500).json({ error: err?.message || 'Nie udało się przypisać zestawu.' });
+    }
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════
      KONFIGURACJA AI — WYBÓR MODELI I KLUCZE
 
      ══ DWA POZIOMY DOSTĘPU W JEDNYM DOKUMENCIE ══
@@ -1223,9 +1350,32 @@ export function createApp() {
       }
 
       const cleanKey = apiKey.trim();
-      // Ustawiamy w procesie OD RAZU: bez tego klucz zadziałałby dopiero po
-      // restarcie serwera, a administrator zobaczyłby „zapisano" i dalej błędy.
       process.env[envName] = cleanKey;
+      if (provider === 'gemini') {
+        process.env.VITE_GEMINI_API_KEY = cleanKey;
+      }
+
+      // Zapis do lokalnego .env
+      try {
+        const envPath = path.resolve(process.cwd(), '.env');
+        if (fs.existsSync(envPath)) {
+          let content = fs.readFileSync(envPath, 'utf8');
+          const regex = new RegExp(`${envName}=.*(\\r?\\n|$)`);
+          if (content.includes(`${envName}=`)) {
+            content = content.replace(regex, `${envName}=${cleanKey}\n`);
+          } else {
+            content += `\n${envName}=${cleanKey}\n`;
+          }
+          if (provider === 'gemini') {
+            if (content.includes('VITE_GEMINI_API_KEY=')) {
+              content = content.replace(/VITE_GEMINI_API_KEY=.*(\r?\n|$)/, `VITE_GEMINI_API_KEY=${cleanKey}\n`);
+            }
+          }
+          fs.writeFileSync(envPath, content, 'utf8');
+        }
+      } catch (e) {
+        console.warn(`Nie udało się zapisać ${envName} w .env:`, e);
+      }
 
       if (adminApp) {
         const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);

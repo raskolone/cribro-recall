@@ -60,13 +60,10 @@ const draft = (overrides: Partial<DraftExercise> = {}): DraftExercise => ({
 
 // --- kaskada modeli ----------------------------------------------------------
 
-test('kaskada v2 nie zawiera żadnego modelu spoza OpenAI', () => {
-  for (const model of V2_MODEL_CASCADE) {
-    assert.ok(!model.includes('gemini'), `${model} nie ma prawa być w kaskadzie v2`);
-    assert.ok(!model.includes('deepseek'));
-    assert.ok(!model.includes('claude'));
-  }
-  assert.equal(V2_MODEL_CASCADE.length, 2);
+test('kaskada v2 rozpoczyna się od Gemini 2.5 Flash', () => {
+  assert.equal(V2_MODEL_CASCADE[0], 'gemini-2.5-flash');
+  assert.ok(V2_MODEL_CASCADE.includes('gpt-4o-mini'));
+  assert.equal(V2_MODEL_CASCADE.length, 3);
 });
 
 test('nazwa logiczna modelu tłumaczy się tak samo jak w server.ts', () => {

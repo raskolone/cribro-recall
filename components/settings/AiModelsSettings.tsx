@@ -68,6 +68,8 @@ const AiModelsSettings: React.FC = () => {
     }
   };
 
+  const [savedKeyProvider, setSavedKeyProvider] = useState<string | null>(null);
+
   const handleSaveKey = async (provider: 'openai' | 'gemini' | 'elevenlabs') => {
     const draft = (keyDrafts[provider] || '').trim();
     if (draft.length < 12) {
@@ -82,6 +84,8 @@ const AiModelsSettings: React.FC = () => {
         prev ? { ...prev, keys: { ...(prev.keys || {}), [provider]: status } } : prev
       );
       setKeyDrafts(prev => ({ ...prev, [provider]: '' }));
+      setSavedKeyProvider(provider);
+      setTimeout(() => setSavedKeyProvider(null), 4000);
     } catch (err: any) {
       setError(err?.message || 'Nie udało się zapisać klucza.');
     } finally {
@@ -234,10 +238,9 @@ const AiModelsSettings: React.FC = () => {
                 </button>
               </div>
 
-              {status?.source === 'env' && (
-                <p className="text-[11px] text-content-muted">
-                  Ten klucz jest ustawiony we wdrożeniu i ma pierwszeństwo. Zapisany tutaj zadziała
-                  dopiero po usunięciu zmiennej środowiskowej.
+              {savedKeyProvider === provider.id && (
+                <p className="text-[11px] text-primary flex items-center gap-1">
+                  <Check size={12} /> Klucz został zapisany i jest natychmiast aktywny.
                 </p>
               )}
             </div>

@@ -303,9 +303,9 @@ var import_firebase_applet_config = __toESM(require_firebase_applet_config(), 1)
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
+import { initializeApp as initializeApp2, cert, getApps as getApps2, getApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore as getFirestore2 } from "firebase-admin/firestore";
 import { createHmac } from "crypto";
 import { GoogleGenAI, Type } from "@google/genai";
 
@@ -390,8 +390,855 @@ function shuffleDistinct(items, random = Math.random) {
   return fallback;
 }
 
+// functions/src/homeworkV2/contracts.ts
+var ENGINE_VERSION = 2;
+var SCHEMA_VERSION = "2.0.0";
+var PROMPT_VERSION = "hw-v2-2026-09-12";
+var EXERCISE_TYPES_V2 = [
+  "micro_translation",
+  "fix_sentence",
+  "gap_from_context"
+];
+var MAX_REGENERATIONS = 2;
+var MAX_LESSONS_AS_FUEL = 3;
+var isNonEmptyString = (value) => typeof value === "string" && value.trim().length > 0;
+var isStringArray = (value) => Array.isArray(value) && value.every((item) => typeof item === "string");
+var isExerciseTypeV2 = (value) => typeof value === "string" && EXERCISE_TYPES_V2.includes(value);
+var isSourceRefV2 = (value) => {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value;
+  return candidate.kind === "lessonRecord" && isNonEmptyString(candidate.id);
+};
+var isValidationResultV2 = (value) => {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value;
+  return typeof candidate.passed === "boolean" && typeof candidate.score === "number" && candidate.score >= 0 && candidate.score <= 1 && isStringArray(candidate.failedChecks) && typeof candidate.regenerationCount === "number" && candidate.regenerationCount >= 0 && candidate.regenerationCount <= MAX_REGENERATIONS && isNonEmptyString(candidate.modelVersion) && isNonEmptyString(candidate.checkedAt);
+};
+var isExerciseContractV2 = (value) => {
+  if (!value || typeof value !== "object") return false;
+  const c = value;
+  const hasExactlyOneAudience = (isNonEmptyString(c.studentId) ? 1 : 0) + (isNonEmptyString(c.groupId) ? 1 : 0) === 1;
+  return isNonEmptyString(c.id) && c.engineVersion === ENGINE_VERSION && isNonEmptyString(c.schemaVersion) && isNonEmptyString(c.promptVersion) && isNonEmptyString(c.modelVersion) && isNonEmptyString(c.teacherId) && hasExactlyOneAudience && c.mode === "training" && isExerciseTypeV2(c.exerciseType) && c.responseMode === "text" && isNonEmptyString(c.sourceLanguage) && isNonEmptyString(c.targetLanguage) && isNonEmptyString(c.cefr) && typeof c.difficulty === "number" && c.difficulty >= 1 && c.difficulty <= 5 && isNonEmptyString(c.learningObjective) && isNonEmptyString(c.content) && isNonEmptyString(c.instruction) && isNonEmptyString(c.modelAnswer) && isStringArray(c.acceptedVariants) && isStringArray(c.requiredMaterial) && c.requiredMaterial.length > 0 && isStringArray(c.commonMistakes) && isNonEmptyString(c.hintSmall) && isNonEmptyString(c.hintLarge) && Array.isArray(c.sourceRefs) && c.sourceRefs.length > 0 && c.sourceRefs.every(isSourceRefV2) && isValidationResultV2(c.validation) && typeof c.requiresTeacherReview === "boolean" && isNonEmptyString(c.createdAt);
+};
+
+// functions/src/homeworkV2/db.ts
+import { getApps, initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+
+// functions/src/config.ts
+var DATABASE_ID = "ai-studio-520a4841-33d0-41ef-829a-838ebc44072d";
+
+// functions/src/homeworkV2/db.ts
+var cached = null;
+var getDb = () => {
+  if (!cached) {
+    if (getApps().length === 0) initializeApp();
+    cached = getFirestore(DATABASE_ID);
+  }
+  return cached;
+};
+
+// functions/src/homeworkV2/contextAssembler.ts
+var PRONUNCIATION_MARKERS = /(wymow|pronunc|akcent|stress|intonac|intonat|sylab|syllab|\/[a-zʃʒθðŋæɪʊəɜɑɒʌ:ˈˌ]+\/|\[[a-zʃʒθðŋæɪʊəɜɑɒʌ:ˈˌ]+\])/i;
+var stripPronunciationLines = (corrections) => (corrections || "").split("\n").filter((line) => line.trim().length > 0 && !PRONUNCIATION_MARKERS.test(line)).join("\n").trim();
+var readLessonFuel = (lessonId, record) => {
+  const blocks = record.structuredBlocks || {};
+  const text = (blockValue, flatValue) => String(blockValue || flatValue || "").trim();
+  return {
+    lessonId,
+    topic: String(record.topic || "").trim(),
+    date: String(record.date || "").trim(),
+    vocabulary: text(blocks.vocabulary, record.vocabularyText),
+    corrections: stripPronunciationLines(text(blocks.corrections, record.corrections)),
+    summary: text(blocks.summary, record.lessonSummary),
+    goals: text(blocks.nextLesson, record.nextLessonPlan || record.suggestedFollowUp)
+  };
+};
+var isApprovedLesson = (record) => {
+  if (record.status === "rejected" || record.status === "pending_confirmation") return false;
+  if (record.isPendingConfirmation === true) return false;
+  if (record.isDateMissing === true) return false;
+  const reason = String(record.pendingReason || "").trim();
+  return reason.length === 0;
+};
+var hasUsableFuel = (fuel) => fuel.vocabulary.length > 0 || fuel.corrections.length > 0;
+var assembleContext = async (input) => {
+  const ids = input.lessonIds.slice(0, MAX_LESSONS_AS_FUEL);
+  if (ids.length === 0) throw new Error("Nie wskazano \u017Cadnej lekcji jako paliwa.");
+  const lessons = [];
+  const rejected = [];
+  if (Array.isArray(input.rawLessons) && input.rawLessons.length > 0) {
+    input.rawLessons.forEach((record) => {
+      const id = String(record.id || record.lessonId || "");
+      if (!isApprovedLesson(record)) {
+        rejected.push(`${id}: lekcja niezatwierdzona`);
+        return;
+      }
+      const fuel = readLessonFuel(id, record);
+      if (!hasUsableFuel(fuel)) {
+        rejected.push(`${id}: brak s\u0142ownictwa i korekt`);
+        return;
+      }
+      lessons.push(fuel);
+    });
+  } else {
+    const snapshots = await Promise.all(
+      ids.map((id) => getDb().collection("users").doc(input.studentUid).collection("lessonRecords").doc(id).get())
+    );
+    snapshots.forEach((snapshot, index) => {
+      const id = ids[index];
+      if (!snapshot.exists) {
+        rejected.push(`${id}: lekcja nie istnieje`);
+        return;
+      }
+      const record = snapshot.data();
+      if (!isApprovedLesson(record)) {
+        rejected.push(`${id}: lekcja niezatwierdzona`);
+        return;
+      }
+      const fuel = readLessonFuel(id, record);
+      if (!hasUsableFuel(fuel)) {
+        rejected.push(`${id}: brak s\u0142ownictwa i korekt`);
+        return;
+      }
+      lessons.push(fuel);
+    });
+  }
+  if (lessons.length === 0) {
+    throw new Error(
+      `\u017Badna z wybranych lekcji nie nadaje si\u0119 na paliwo. ${rejected.join("; ")}`
+    );
+  }
+  return {
+    lessons,
+    student: {
+      cefr: input.cefr,
+      // Przycięte: model ma wiedzieć, co wraca, a nie dostać całą historię.
+      recentMistakes: (input.recentMistakes || []).slice(0, 8)
+    },
+    lessonIds: lessons.map((lesson) => lesson.lessonId)
+  };
+};
+var renderContextForPrompt = (context) => {
+  const lessonSections = context.lessons.map((lesson, index) => {
+    const parts = [`### LEKCJA ${index + 1}: ${lesson.topic || "(bez tematu)"} (${lesson.date})`];
+    if (lesson.summary) parts.push(`NOTATKA LEKTORA:
+${lesson.summary}`);
+    if (lesson.vocabulary) parts.push(`S\u0141OWNICTWO:
+${lesson.vocabulary}`);
+    if (lesson.corrections) parts.push(`KOREKTY J\u0118ZYKOWE:
+${lesson.corrections}`);
+    if (lesson.goals) parts.push(`CELE NA DALEJ:
+${lesson.goals}`);
+    return parts.join("\n\n");
+  });
+  const mistakes = context.student.recentMistakes.length ? `
+
+### POWTARZAJ\u0104CE SI\u0118 B\u0141\u0118DY KURSANTA
+${context.student.recentMistakes.map((m) => `- ${m}`).join("\n")}` : "";
+  return `### KURSANT
+Poziom: ${context.student.cefr}
+(Kursant jest anonimowy. Nie u\u017Cywaj imion ani fakt\xF3w osobistych \u2014 nie masz ich i nie wolno Ci ich wymy\u015Bla\u0107.)
+
+${lessonSections.join("\n\n")}${mistakes}`;
+};
+
+// functions/src/homeworkV2/exercisePlanner.ts
+var MINUTES_PER_TYPE = {
+  micro_translation: 3,
+  fix_sentence: 2,
+  gap_from_context: 1.5
+};
+var difficultyForCefr = (cefr) => {
+  const level = String(cefr || "").trim().toUpperCase();
+  if (level.startsWith("A1")) return 1;
+  if (level.startsWith("A2")) return 2;
+  if (level.startsWith("B1")) return 3;
+  if (level.startsWith("B2")) return 4;
+  if (level.startsWith("C")) return 5;
+  return 3;
+};
+var planExercises = (input) => {
+  const warnings = [];
+  const types = input.requestedTypes && input.requestedTypes.length > 0 ? input.requestedTypes.filter((t) => EXERCISE_TYPES_V2.includes(t)) : [...EXERCISE_TYPES_V2];
+  if (types.length === 0) {
+    throw new Error("Nie wybrano \u017Cadnego typu zadania obj\u0119tego silnikiem v2.");
+  }
+  const itemCount = Math.max(1, Math.floor(input.itemCount));
+  const baseDifficulty = difficultyForCefr(input.context.student.cefr);
+  const slots = Array.from({ length: itemCount }, (_, index) => ({
+    exerciseType: types[index % types.length],
+    difficulty: baseDifficulty
+  }));
+  const estimatedMinutes = slots.reduce((sum, slot) => sum + MINUTES_PER_TYPE[slot.exerciseType], 0);
+  if (input.plannedMinutes && input.plannedMinutes > 0) {
+    const ratio = estimatedMinutes / input.plannedMinutes;
+    if (ratio > 1.5) {
+      warnings.push(
+        `${itemCount} zada\u0144 to oko\u0142o ${Math.round(estimatedMinutes)} min pracy, a zaplanowano ${input.plannedMinutes} min. Kursant prawdopodobnie nie sko\u0144czy w za\u0142o\u017Conym czasie.`
+      );
+    } else if (ratio < 0.5) {
+      warnings.push(
+        `${itemCount} zada\u0144 to oko\u0142o ${Math.round(estimatedMinutes)} min pracy przy zaplanowanych ${input.plannedMinutes} min. Zestaw mo\u017Ce by\u0107 za kr\xF3tki na t\u0119 lekcj\u0119.`
+      );
+    }
+  }
+  const vocabularyLines = input.context.lessons.reduce(
+    (sum, lesson) => sum + lesson.vocabulary.split("\n").filter((l) => l.trim()).length,
+    0
+  );
+  const correctionLines = input.context.lessons.reduce(
+    (sum, lesson) => sum + lesson.corrections.split("\n").filter((l) => l.trim()).length,
+    0
+  );
+  const availableMaterial = vocabularyLines + correctionLines;
+  if (availableMaterial > 0 && itemCount > availableMaterial) {
+    warnings.push(
+      `Zam\xF3wiono ${itemCount} zada\u0144, a w wybranych lekcjach jest ${availableMaterial} pozycji materia\u0142u. Cz\u0119\u015B\u0107 zada\u0144 b\u0119dzie powtarza\u0107 ten sam cel.`
+    );
+  }
+  if (types.includes("fix_sentence") && correctionLines === 0) {
+    warnings.push(
+      'Wybrano \u201ENapraw zdanie", ale w lekcjach nie ma bloku korekt. B\u0142\u0119dy powstan\u0105 z typowych pomy\u0142ek na tym poziomie, a nie z realnych pomy\u0142ek kursanta.'
+    );
+  }
+  return { slots, warnings };
+};
+
+// functions/src/homeworkV2/exerciseGenerator.ts
+import { randomUUID } from "crypto";
+
+// functions/src/homeworkV2/coreKnowledge.ts
+var ASSISTANT_IDENTITY = `Jeste\u015B Asystentem Cribro \u2014 cz\u0119\u015Bci\u0105 platformy do nauki angielskiego,
+w kt\xF3rej lektor pracuje z konkretnymi kursantami.
+
+Nie podszywasz si\u0119 pod lektora. Nigdy nie twierdzisz, \u017Ce Maciej osobi\u015Bcie sprawdzi\u0142 odpowied\u017A.
+Jeste\u015B spokojny, konkretny, ludzki, cierpliwy i wspieraj\u0105cy.
+Nie cukrujesz, ale zawsze zauwa\u017Casz prawdziwy element post\u0119pu.
+Wynik traktujesz jako informacj\u0119 o etapie nauki, nie ocen\u0119 cz\u0142owieka.`;
+var NATURALNESS_RULES = `ZASADY NATURALNO\u015ACI:
+1. Zdanie ma brzmie\u0107 jak wypowied\u017A \u017Cywego cz\u0142owieka w konkretnej sytuacji, nie jak przyk\u0142ad z podr\u0119cznika.
+2. Polska wersja musi by\u0107 naturaln\u0105 polszczyzn\u0105, a nie kalk\u0105 z angielskiego.
+3. Angielska wersja musi by\u0107 naturaln\u0105 angielszczyzn\u0105, a nie kalk\u0105 z polskiego.
+4. Kontekst ma by\u0107 zwyczajny i ludzki: praca, dom, plany, zm\u0119czenie, jedzenie, dojazdy, znajomi.
+5. S\u0142ownictwo wspieraj\u0105ce musi by\u0107 PROSTSZE ni\u017C cel \u0107wiczenia. Zadanie sprawdza jedn\u0105 rzecz,
+   a nie odporno\u015B\u0107 kursanta na nieznane s\u0142owa obok.
+6. Jedno zadanie = jeden g\u0142\xF3wny cel j\u0119zykowy.
+7. Polecenie i klucz musz\u0105 by\u0107 jednoznaczne. Je\u015Bli da si\u0119 odpowiedzie\u0107 poprawnie na dwa sposoby,
+   oba musz\u0105 by\u0107 w wariantach akceptowanych.`;
+var ANTI_PATTERNS = `ANTYWZORCE \u2014 tego nie wolno produkowa\u0107:
+- Zdania-wydmuszki bez sytuacji: \u201EThe man is tall.", \u201EShe has a book."
+- Konteksty rodem z podr\u0119cznika lat 90.: pi\xF3ra, ciotki, ogrodnicy.
+- Zdania, w kt\xF3rych \u0107wiczona konstrukcja jest ozdob\u0105, a nie konieczno\u015Bci\u0105.
+- S\u0142ownictwo wspieraj\u0105ce trudniejsze od celu.
+- Dwa cele gramatyczne naraz (\u201Eu\u017Cywaj\u0105c strony biernej ORAZ trybu warunkowego").
+- Polecenia, z kt\xF3rych nie wynika, czego si\u0119 oczekuje.
+- Zdania zale\u017Cne od wiedzy o kursancie, kt\xF3rej nie ma w materiale lekcji.
+- Fakty wymy\u015Blone o kursancie: imiona, miejsca, praca, rodzina \u2014 je\u015Bli nie ma ich
+  w zatwierdzonym materiale, nie wolno ich u\u017Cy\u0107.`;
+var EXERCISE_TYPE_BRIEFS = {
+  micro_translation: `T\u0141UMACZENIE MIKRO-KONTEKSTU (micro_translation)
+Kursant t\u0142umaczy jedno polskie zdanie na angielski, u\u017Cywaj\u0105c materia\u0142u z lekcji.
+- \`content\`: polskie zdanie do przet\u0142umaczenia.
+- \`modelAnswer\`: wzorcowe t\u0142umaczenie angielskie.
+- \`acceptedVariants\`: inne naturalne t\u0142umaczenia, kt\xF3re zas\u0142uguj\u0105 na pe\u0142ne punkty.
+- \`requiredMaterial\`: konstrukcja lub s\u0142owa z lekcji, kt\xF3re MUSZ\u0104 si\u0119 pojawi\u0107.
+- \`hintSmall\`: pierwsze s\u0142owo lub konstrukcja, od kt\xF3rej zaczyna si\u0119 zdanie.
+- \`hintLarge\`: szkielet zdania z lukami.`,
+  fix_sentence: `NAPRAW ZDANIE (fix_sentence)
+Kursant przepisuje ca\u0142e zdanie, poprawiaj\u0105c zawarty w nim b\u0142\u0105d.
+- \`content\`: zdanie angielskie z JEDNYM b\u0142\u0119dem \u2014 typowym, nie wymy\u015Blonym.
+- \`modelAnswer\`: pe\u0142ne poprawne zdanie (nie samo wskazanie b\u0142\u0119du).
+- \`acceptedVariants\`: inne poprawne wersje tego zdania.
+- \`requiredMaterial\`: mechanizm j\u0119zykowy, kt\xF3rego dotyczy b\u0142\u0105d.
+- \`hintSmall\`: wskazanie MIEJSCA b\u0142\u0119du, bez nazywania go.
+- \`hintLarge\`: nazwa typu b\u0142\u0119du (np. \u201Ez\u0142y czas"), nadal bez pe\u0142nej poprawki.`,
+  gap_from_context: `UZUPE\u0141NIJ Z KONTEKSTU (gap_from_context)
+Kursant sam wpisuje brakuj\u0105ce s\u0142owo lub fraz\u0119. Bez banku s\u0142\xF3w.
+- \`content\`: zdanie angielskie z luk\u0105 oznaczon\u0105 jako \`___\`.
+- \`modelAnswer\`: s\u0142owo lub fraza, kt\xF3ra wchodzi w luk\u0119.
+- \`acceptedVariants\`: inne trafne uzupe\u0142nienia.
+- \`requiredMaterial\`: s\u0142owo lub konstrukcja z lekcji.
+- \`hintSmall\`: pierwsza litera brakuj\u0105cego s\u0142owa.
+- \`hintLarge\`: liczba s\u0142\xF3w albo fragment odpowiedzi.
+Kontekst musi by\u0107 na tyle jednoznaczny, \u017Ceby pasowa\u0142o dok\u0142adnie jedno sensowne uzupe\u0142nienie.`
+};
+var VALIDATOR_CHECKS = `SPRAWD\u0179 KA\u017BDE ZADANIE, ODPOWIADAJ\u0104C NA DZIESI\u0118\u0106 PYTA\u0143:
+1. grounding \u2014 czy zadanie wynika z podanego materia\u0142u lekcji?
+2. naturalness_pl \u2014 czy polska wersja brzmi naturalnie?
+3. naturalness_en \u2014 czy angielska wersja brzmi naturalnie?
+4. meaning_match \u2014 czy znaczenie, czas, osoba, liczba i modalno\u015B\u0107 si\u0119 zgadzaj\u0105?
+5. level_fit \u2014 czy poziom odpowiada mo\u017Cliwo\u015Bciom kursanta?
+6. single_goal \u2014 czy zadanie ma dok\u0142adnie jeden g\u0142\xF3wny cel?
+7. unambiguous \u2014 czy polecenie i klucz s\u0105 jednoznaczne?
+8. variants_covered \u2014 czy uwzgl\u0119dniono naturalne odpowiedzi alternatywne?
+9. no_invented_facts \u2014 czy nie u\u017Cyto wymy\u015Blonego faktu o kursancie?
+10. supporting_simpler \u2014 czy s\u0142ownictwo wspieraj\u0105ce jest prostsze od celu?
+
+Zadanie przechodzi, gdy \u017Cadne z pyta\u0144 nie wypada \u017Ale.
+B\u0105d\u017A surowy. Przepuszczone s\u0142abe zadanie kosztuje czas kursanta i zaufanie lektora.`;
+var buildCoreSystemPrompt = () => [ASSISTANT_IDENTITY, NATURALNESS_RULES, ANTI_PATTERNS].join("\n\n");
+
+// functions/src/homeworkV2/exerciseGenerator.ts
+var isNonEmptyString2 = (value) => typeof value === "string" && value.trim().length > 0;
+var asStringArray = (value) => Array.isArray(value) ? value.filter((v) => typeof v === "string" && v.trim().length > 0) : [];
+var parseDraft = (raw, fallbackType) => {
+  if (!raw || typeof raw !== "object") return null;
+  const d = raw;
+  if (!isNonEmptyString2(d.content)) return null;
+  if (!isNonEmptyString2(d.modelAnswer)) return null;
+  if (!isNonEmptyString2(d.learningObjective)) return null;
+  const requiredMaterial = asStringArray(d.requiredMaterial);
+  if (requiredMaterial.length === 0) return null;
+  return {
+    exerciseType: isNonEmptyString2(d.exerciseType) ? d.exerciseType : fallbackType,
+    learningObjective: String(d.learningObjective).trim(),
+    content: String(d.content).trim(),
+    instruction: isNonEmptyString2(d.instruction) ? String(d.instruction).trim() : "",
+    modelAnswer: String(d.modelAnswer).trim(),
+    acceptedVariants: asStringArray(d.acceptedVariants),
+    requiredMaterial,
+    commonMistakes: asStringArray(d.commonMistakes),
+    hintSmall: isNonEmptyString2(d.hintSmall) ? String(d.hintSmall).trim() : "",
+    hintLarge: isNonEmptyString2(d.hintLarge) ? String(d.hintLarge).trim() : "",
+    sourceLessonIndex: typeof d.sourceLessonIndex === "number" ? d.sourceLessonIndex : 1
+  };
+};
+var buildGeneratorPrompt = (context, slots) => {
+  const typeBriefs = Array.from(new Set(slots.map((s) => s.exerciseType))).map((type) => EXERCISE_TYPE_BRIEFS[type]).join("\n\n");
+  const order = slots.map((slot, index) => `${index + 1}. ${slot.exerciseType} (trudno\u015B\u0107 ${slot.difficulty}/5)`).join("\n");
+  return `${renderContextForPrompt(context)}
+
+---
+
+${typeBriefs}
+
+---
+
+ZAM\xD3WIENIE \u2014 u\u0142\xF3\u017C dok\u0142adnie ${slots.length} zada\u0144, w tej kolejno\u015Bci i tych typach:
+${order}
+
+TWARDE ZASADY:
+- Ka\u017Cde zadanie MUSI wynika\u0107 z materia\u0142u powy\u017Cej. Nie wolno wprowadza\u0107 nowego celu nauki.
+- Ka\u017Cde zadanie ma DOK\u0141ADNIE JEDEN g\u0142\xF3wny cel w polu \`learningObjective\`.
+- \`requiredMaterial\` to konkretne s\u0142owa lub konstrukcje z lekcji, kt\xF3rych odpowied\u017A musi u\u017Cy\u0107.
+- \`acceptedVariants\` musi zawiera\u0107 realne, naturalne alternatywy. Pusta tablica tylko wtedy,
+  gdy odpowied\u017A jest naprawd\u0119 jedna.
+- \`hintSmall\` i \`hintLarge\` uk\u0142adasz zgodnie z opisem typu. To one b\u0119d\u0105 pokazane
+  przy pr\xF3bie 2 i 3 \u2014 nie wolno w nich zdradzi\u0107 ca\u0142ej odpowiedzi.
+- \`sourceLessonIndex\` to numer lekcji (1, 2 lub 3), z kt\xF3rej wzi\u0119ty jest materia\u0142.
+- Nie powtarzaj tego samego celu w dw\xF3ch zadaniach, je\u015Bli materia\u0142u starcza na r\xF3\u017Cne.
+
+FORMAT ODPOWIEDZI \u2014 obiekt JSON z jednym kluczem \`exercises\`, tablic\u0105 ${slots.length} obiekt\xF3w:
+{
+  "exercises": [
+    {
+      "exerciseType": "micro_translation",
+      "learningObjective": "kr\xF3tki opis jednego celu",
+      "content": "tre\u015B\u0107 zadania",
+      "instruction": "polecenie dla kursanta po polsku",
+      "modelAnswer": "odpowied\u017A wzorcowa",
+      "acceptedVariants": ["inna naturalna wersja"],
+      "requiredMaterial": ["konstrukcja z lekcji"],
+      "commonMistakes": ["typowy b\u0142\u0105d przy tym zadaniu"],
+      "hintSmall": "podpowied\u017A do pr\xF3by 2",
+      "hintLarge": "podpowied\u017A do pr\xF3by 3",
+      "sourceLessonIndex": 1
+    }
+  ]
+}`;
+};
+var generateExercises = async (input) => {
+  const response = await input.call({
+    system: `${buildCoreSystemPrompt()}
+
+Twoje zadanie: u\u0142o\u017Cy\u0107 \u0107wiczenia na podstawie materia\u0142u z odbytej lekcji.
+Pracujesz wy\u0142\u0105cznie na podanym materiale. Nie dodajesz nowych cel\xF3w nauki.`,
+    user: buildGeneratorPrompt(input.context, input.slots),
+    taskName: "hw-v2/generate",
+    // Wyżej niż domyślna: zdania mają brzmieć żywo, a nie jak wariacje
+    // jednego szablonu. Kontrolę nad sensem trzyma walidator, nie temperatura.
+    temperature: 0.6
+  });
+  const payload = response.data;
+  const rawList = Array.isArray(payload?.exercises) ? payload.exercises : [];
+  const drafts = [];
+  rawList.forEach((raw, index) => {
+    const fallbackType = input.slots[index]?.exerciseType || input.slots[0].exerciseType;
+    const draft = parseDraft(raw, fallbackType);
+    if (draft) drafts.push(draft);
+  });
+  return {
+    drafts,
+    modelUsed: response.modelUsed,
+    missingSlots: Math.max(0, input.slots.length - drafts.length)
+  };
+};
+var finalizeContract = (input) => {
+  const { draft, context } = input;
+  const lessonIndex = Math.min(Math.max(1, draft.sourceLessonIndex), context.lessons.length) - 1;
+  const lesson = context.lessons[lessonIndex] || context.lessons[0];
+  return {
+    id: randomUUID(),
+    engineVersion: ENGINE_VERSION,
+    schemaVersion: SCHEMA_VERSION,
+    promptVersion: PROMPT_VERSION,
+    modelVersion: input.modelVersion,
+    teacherId: input.teacherId,
+    ...input.studentId ? { studentId: input.studentId } : {},
+    ...input.groupId ? { groupId: input.groupId } : {},
+    mode: "training",
+    exerciseType: draft.exerciseType,
+    responseMode: "text",
+    sourceLanguage: "pl",
+    targetLanguage: "en",
+    cefr: context.student.cefr,
+    difficulty: input.slot.difficulty,
+    learningObjective: draft.learningObjective,
+    content: draft.content,
+    instruction: draft.instruction || defaultInstruction(draft.exerciseType),
+    modelAnswer: draft.modelAnswer,
+    acceptedVariants: draft.acceptedVariants,
+    requiredMaterial: draft.requiredMaterial,
+    commonMistakes: draft.commonMistakes,
+    hintSmall: draft.hintSmall || defaultHint(draft.exerciseType, "small"),
+    hintLarge: draft.hintLarge || defaultHint(draft.exerciseType, "large"),
+    sourceRefs: [
+      {
+        kind: "lessonRecord",
+        id: lesson.lessonId,
+        block: "vocabulary",
+        label: "lekcja"
+      }
+    ],
+    validation: input.validation,
+    requiresTeacherReview: input.requiresTeacherReview,
+    createdAt: (/* @__PURE__ */ new Date()).toISOString()
+  };
+};
+var defaultInstruction = (type) => {
+  if (type === "micro_translation") return "Przet\u0142umacz zdanie na angielski, u\u017Cywaj\u0105c materia\u0142u z lekcji.";
+  if (type === "fix_sentence") return "Popraw b\u0142\u0105d i wpisz ca\u0142e poprawne zdanie.";
+  return "Uzupe\u0142nij luk\u0119 jednym pasuj\u0105cym s\u0142owem lub fraz\u0105.";
+};
+var defaultHint = (type, level) => {
+  if (type === "micro_translation") {
+    return level === "small" ? "Zacznij od konstrukcji z lekcji." : "U\u0142\xF3\u017C zdanie wed\u0142ug wzoru z lekcji.";
+  }
+  if (type === "fix_sentence") {
+    return level === "small" ? "B\u0142\u0105d jest w jednym miejscu \u2014 poszukaj go." : "B\u0142\u0105d dotyczy konstrukcji z lekcji.";
+  }
+  return level === "small" ? "Brakuje jednego s\u0142owa z lekcji." : "To s\u0142owo pojawi\u0142o si\u0119 w s\u0142ownictwie lekcji.";
+};
+var regenerateDraft = async (input) => {
+  const { draft, failedChecks } = input;
+  const response = await input.call({
+    system: `${buildCoreSystemPrompt()}
+
+Twoje zadanie: poprawi\u0107 \u0107wiczenie, kt\xF3re nie przesz\u0142o kontroli jako\u015Bci.
+Zachowujesz ten sam typ i ten sam cel nauki. Naprawiasz wykonanie.`,
+    user: `${renderContextForPrompt(input.context)}
+
+---
+
+${EXERCISE_TYPE_BRIEFS[draft.exerciseType]}
+
+---
+
+ZADANIE, KT\xD3RE NIE PRZESZ\u0141O:
+${JSON.stringify(
+      {
+        exerciseType: draft.exerciseType,
+        learningObjective: draft.learningObjective,
+        content: draft.content,
+        instruction: draft.instruction,
+        modelAnswer: draft.modelAnswer,
+        acceptedVariants: draft.acceptedVariants,
+        requiredMaterial: draft.requiredMaterial,
+        hintSmall: draft.hintSmall,
+        hintLarge: draft.hintLarge
+      },
+      null,
+      2
+    )}
+
+ZARZUTY KONTROLERA: ${failedChecks.length > 0 ? failedChecks.join(", ") : "og\xF3lnie za s\u0142abe"}
+
+U\u0142\xF3\u017C to zadanie od nowa tak, \u017Ceby zarzuty przesta\u0142y obowi\u0105zywa\u0107.
+Zachowaj \`exerciseType\` i \`learningObjective\`. Zwr\xF3\u0107 pojedynczy obiekt JSON
+w tym samym kszta\u0142cie co powy\u017Cej, uzupe\u0142niony o \`commonMistakes\` i \`sourceLessonIndex\`.`,
+    taskName: "hw-v2/regenerate",
+    temperature: 0.6
+  });
+  const parsed = parseDraft(response.data, draft.exerciseType);
+  if (!parsed) return null;
+  return { ...parsed, exerciseType: draft.exerciseType, learningObjective: draft.learningObjective };
+};
+
+// functions/src/homeworkV2/qualityValidator.ts
+var VALIDATION_PASS_THRESHOLD = 0.7;
+var buildValidatorPrompt = (context, draft) => `${renderContextForPrompt(context)}
+
+---
+
+${VALIDATOR_CHECKS}
+
+---
+
+ZADANIE DO SPRAWDZENIA:
+{
+  "exerciseType": ${JSON.stringify(draft.exerciseType)},
+  "learningObjective": ${JSON.stringify(draft.learningObjective)},
+  "content": ${JSON.stringify(draft.content)},
+  "instruction": ${JSON.stringify(draft.instruction)},
+  "modelAnswer": ${JSON.stringify(draft.modelAnswer)},
+  "acceptedVariants": ${JSON.stringify(draft.acceptedVariants)},
+  "requiredMaterial": ${JSON.stringify(draft.requiredMaterial)},
+  "hintSmall": ${JSON.stringify(draft.hintSmall)},
+  "hintLarge": ${JSON.stringify(draft.hintLarge)}
+}
+
+FORMAT ODPOWIEDZI (JSON):
+{
+  "passed": true,
+  "score": 0.9,
+  "failedChecks": [],
+  "notes": "jedno zdanie dla lektora, po polsku"
+}
+
+\`failedChecks\` zawiera nazwy pyta\u0144, kt\xF3re wypad\u0142y \u017Ale \u2014 dok\u0142adnie tak, jak nazwano je wy\u017Cej
+(np. "naturalness_pl", "single_goal"). Je\u015Bli zadanie jest dobre, tablica jest pusta.`;
+var validateDraft = async (context, draft, call, regenerationCount) => {
+  const response = await call({
+    system: `${buildCoreSystemPrompt()}
+
+Twoja rola: niezale\u017Cny kontroler jako\u015Bci \u0107wicze\u0144 j\u0119zykowych.
+Nie uk\u0142adasz zada\u0144. Oceniasz cudze. Jeste\u015B surowy i konkretny.`,
+    user: buildValidatorPrompt(context, draft),
+    taskName: "hw-v2/validate",
+    // Ocena ma być powtarzalna — to samo zadanie ma dostać ten sam werdykt.
+    temperature: 0
+  });
+  const verdict = response.data || {};
+  const failedChecks = Array.isArray(verdict.failedChecks) ? verdict.failedChecks.filter((c) => typeof c === "string") : [];
+  const rawScore = typeof verdict.score === "number" ? verdict.score : 0;
+  const score = Math.min(1, Math.max(0, rawScore));
+  const passed = verdict.passed === true && failedChecks.length === 0 && score >= VALIDATION_PASS_THRESHOLD;
+  return {
+    passed,
+    score,
+    failedChecks,
+    regenerationCount,
+    modelVersion: response.modelUsed,
+    checkedAt: (/* @__PURE__ */ new Date()).toISOString()
+  };
+};
+var validateAll = async (input) => {
+  const results = [];
+  for (const originalDraft of input.drafts) {
+    let draft = originalDraft;
+    let validation = await validateDraft(input.context, draft, input.call, 0);
+    let attempts = 0;
+    while (!validation.passed && attempts < MAX_REGENERATIONS) {
+      attempts += 1;
+      const regenerated = await input.regenerate(draft, validation.failedChecks);
+      if (!regenerated) break;
+      draft = regenerated;
+      validation = await validateDraft(input.context, draft, input.call, attempts);
+    }
+    results.push({
+      draft,
+      validation,
+      requiresTeacherReview: !validation.passed
+    });
+  }
+  return results;
+};
+
+// functions/src/homeworkV2/pipeline.ts
+var buildExerciseSet = async (input) => {
+  const warnings = [...input.plan.warnings];
+  const generated = await generateExercises({
+    context: input.context,
+    slots: input.plan.slots,
+    call: input.call
+  });
+  if (generated.drafts.length === 0) {
+    throw new Error("Model nie zwr\xF3ci\u0142 ani jednego poprawnego zadania.");
+  }
+  if (generated.missingSlots > 0) {
+    warnings.push(
+      `Zam\xF3wiono ${input.plan.slots.length} zada\u0144, a model zwr\xF3ci\u0142 ${generated.drafts.length}. Brakuj\u0105ce pozycje zosta\u0142y pomini\u0119te.`
+    );
+  }
+  const validated = await validateAll({
+    context: input.context,
+    drafts: generated.drafts,
+    call: input.call,
+    regenerate: (draft, failedChecks) => regenerateDraft({ context: input.context, draft, failedChecks, call: input.call })
+  });
+  const exercises = validated.map((item, index) => {
+    const slot = input.plan.slots[index] || input.plan.slots[0];
+    return finalizeContract({
+      draft: item.draft,
+      slot,
+      context: input.context,
+      teacherId: input.teacherId,
+      studentId: input.studentId,
+      groupId: input.groupId,
+      modelVersion: generated.modelUsed,
+      validation: item.validation,
+      requiresTeacherReview: item.requiresTeacherReview
+    });
+  });
+  const needsReviewCount = exercises.filter((e) => e.requiresTeacherReview).length;
+  if (needsReviewCount > 0) {
+    warnings.push(
+      `${needsReviewCount} z ${exercises.length} zada\u0144 nie przesz\u0142o kontroli jako\u015Bci i wymaga Twojej decyzji przed wys\u0142aniem.`
+    );
+  }
+  return { exercises, warnings, needsReviewCount, modelUsed: generated.modelUsed };
+};
+
+// functions/src/homeworkV2/openai.ts
+var V2_PRIMARY_MODEL = "gemini-2.5-flash";
+var V2_FALLBACK_MODEL = "gemini-3.8-flash";
+var V2_TERTIARY_MODEL = "gpt-4o-mini";
+var V2_MODEL_CASCADE = [
+  V2_PRIMARY_MODEL,
+  V2_FALLBACK_MODEL,
+  V2_TERTIARY_MODEL
+];
+var mapToActualOpenAIModel = (modelName) => {
+  const clean = String(modelName || "").replace(/^openai\//, "").trim().toLowerCase();
+  if (clean === "gpt-5.6-luna" || clean === "gpt-5.6" || clean.includes("luna")) return "gpt-4o";
+  if (clean.includes("gpt-4o-mini")) return "gpt-4o-mini";
+  if (clean.includes("gpt-4o")) return "gpt-4o";
+  return "gpt-4o-mini";
+};
+var mapToActualGeminiModel = (modelName) => {
+  const clean = String(modelName || "").trim().toLowerCase();
+  if (clean.includes("2.5-flash") || clean === "gemini-2.5-flash") return "gemini-2.5-flash";
+  if (clean.includes("3.8-flash") || clean === "gemini-3.8-flash") return "gemini-2.5-flash";
+  if (clean.includes("1.5-flash")) return "gemini-1.5-flash";
+  return "gemini-2.5-flash";
+};
+var extractJson = (text) => {
+  if (!text) throw new Error("Model zwr\xF3ci\u0142 pust\u0105 odpowied\u017A.");
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  const candidate = fenced && fenced[1] ? fenced[1].trim() : text.trim();
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    const firstBrace = candidate.indexOf("{");
+    const firstBracket = candidate.indexOf("[");
+    const start = firstBrace === -1 ? firstBracket : firstBracket === -1 ? firstBrace : Math.min(firstBrace, firstBracket);
+    const end = Math.max(candidate.lastIndexOf("}"), candidate.lastIndexOf("]"));
+    if (start === -1 || end === -1 || end <= start) {
+      throw new Error("Odpowied\u017A modelu nie zawiera poprawnego JSON-a.");
+    }
+    return JSON.parse(candidate.slice(start, end + 1));
+  }
+};
+var OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+var GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+var REQUEST_TIMEOUT_MS = 6e4;
+var COST_PER_MTOK = {
+  "gemini-2.5-flash": { input: 0.075, output: 0.3 },
+  "gemini-1.5-flash": { input: 0.075, output: 0.3 },
+  "gpt-4o": { input: 2.5, output: 10 },
+  "gpt-4o-mini": { input: 0.15, output: 0.6 }
+};
+var estimateCostUsd = (apiModel, promptTokens, completionTokens) => {
+  const rate = COST_PER_MTOK[apiModel];
+  if (!rate) return 0;
+  return (promptTokens * rate.input + completionTokens * rate.output) / 1e6;
+};
+var createAiCall = (keys) => {
+  return async (request) => {
+    const geminiKey = (keys.geminiApiKey || process.env.GEMINI_API_KEY || "").trim();
+    const openAiKey = (keys.openAiApiKey || process.env.OPENAI_API_KEY || "").trim();
+    if (!geminiKey && !openAiKey) {
+      throw new Error("Brak kluczy GEMINI_API_KEY oraz OPENAI_API_KEY \u2014 silnik v2 nie ma czym generowa\u0107.");
+    }
+    const errors = [];
+    for (const logicalModel of V2_MODEL_CASCADE) {
+      const isGemini = logicalModel.startsWith("gemini");
+      const startedAt = Date.now();
+      if (isGemini) {
+        if (!geminiKey) {
+          errors.push(`${logicalModel}: brak GEMINI_API_KEY`);
+          continue;
+        }
+        const apiModel = mapToActualGeminiModel(logicalModel);
+        const url = `${GEMINI_BASE_URL}/${apiModel}:generateContent?key=${geminiKey}`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+        try {
+          const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [
+                {
+                  role: "user",
+                  parts: [{ text: request.user }]
+                }
+              ],
+              systemInstruction: {
+                parts: [{ text: `${request.system}
+
+Odpowiadaj wy\u0142\u0105cznie poprawnym JSON-em.` }]
+              },
+              generationConfig: {
+                responseMimeType: "application/json",
+                temperature: request.temperature ?? 0.3
+              }
+            }),
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          const latencyMs = Date.now() - startedAt;
+          if (!response.ok) {
+            const errText = await response.text();
+            errors.push(`${logicalModel}: HTTP ${response.status} (${errText.slice(0, 100)})`);
+            continue;
+          }
+          const payload = await response.json();
+          const content = payload.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          if (!content) {
+            errors.push(`${logicalModel}: pusta odpowied\u017A`);
+            continue;
+          }
+          const promptTokens = payload.usageMetadata?.promptTokenCount ?? 0;
+          const completionTokens = payload.usageMetadata?.candidatesTokenCount ?? 0;
+          console.info("[hw-v2] wywo\u0142anie modelu Gemini", {
+            taskName: request.taskName,
+            model: logicalModel,
+            apiModel,
+            latencyMs,
+            promptTokens,
+            completionTokens,
+            estimatedCostUsd: Number(estimateCostUsd(apiModel, promptTokens, completionTokens).toFixed(6))
+          });
+          return { data: extractJson(content), modelUsed: logicalModel, latencyMs };
+        } catch (error) {
+          clearTimeout(timeoutId);
+          const message = error instanceof Error ? error.message : String(error);
+          errors.push(`${logicalModel}: ${message}`);
+        }
+      } else {
+        if (!openAiKey) {
+          errors.push(`${logicalModel}: brak OPENAI_API_KEY`);
+          continue;
+        }
+        const apiModel = mapToActualOpenAIModel(logicalModel);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+        try {
+          const response = await fetch(OPENAI_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${openAiKey}`
+            },
+            body: JSON.stringify({
+              model: apiModel,
+              messages: [
+                { role: "system", content: `${request.system}
+
+Odpowiadaj wy\u0142\u0105cznie poprawnym JSON-em.` },
+                { role: "user", content: request.user }
+              ],
+              temperature: request.temperature ?? 0.3,
+              response_format: { type: "json_object" }
+            }),
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          const latencyMs = Date.now() - startedAt;
+          if (!response.ok) {
+            const errText = await response.text();
+            errors.push(`${logicalModel}: HTTP ${response.status}`);
+            if (response.status === 401 || response.status === 429 || errText.includes("insufficient_quota")) {
+              errors.push(`OpenAI odmawia (${response.status}). Sprawd\u017A OPENAI_API_KEY i limity konta.`);
+            }
+            continue;
+          }
+          const payload = await response.json();
+          const content = payload.choices?.[0]?.message?.content || "";
+          if (!content) {
+            errors.push(`${logicalModel}: pusta odpowied\u017A`);
+            continue;
+          }
+          const promptTokens = payload.usage?.prompt_tokens ?? 0;
+          const completionTokens = payload.usage?.completion_tokens ?? 0;
+          console.info("[hw-v2] wywo\u0142anie modelu OpenAI", {
+            taskName: request.taskName,
+            model: logicalModel,
+            apiModel,
+            latencyMs,
+            promptTokens,
+            completionTokens,
+            estimatedCostUsd: Number(estimateCostUsd(apiModel, promptTokens, completionTokens).toFixed(6))
+          });
+          return { data: extractJson(content), modelUsed: logicalModel, latencyMs };
+        } catch (error) {
+          clearTimeout(timeoutId);
+          const message = error instanceof Error ? error.message : String(error);
+          errors.push(`${logicalModel}: ${message}`);
+        }
+      }
+    }
+    throw new Error(`\u017Baden model nie odpowiedzia\u0142. Pr\xF3by: ${errors.join("; ")}`);
+  };
+};
+
+// functions/src/homeworkV2/learningProfile.ts
+var profileRef = (studentUid) => getDb().collection("users").doc(studentUid).collection("profile").doc("homeworkV2");
+var getRecentMistakes = async (studentUid) => {
+  try {
+    const snapshot = await profileRef(studentUid).get();
+    const profile = snapshot.data();
+    return profile?.recentMistakes || [];
+  } catch {
+    return [];
+  }
+};
+
+// functions/src/homeworkV2/assignment.ts
+var selectSendableExercises = (rawExercises) => (Array.isArray(rawExercises) ? rawExercises : []).filter(
+  (item) => isExerciseContractV2(item) && !item.requiresTeacherReview
+);
+var buildV2TaskPayload = (input) => ({
+  // --- pola wymagane przez v1 i przez reguły ---
+  studentUid: input.studentUid,
+  studentId: input.studentUid,
+  userId: input.studentUid,
+  studentIds: [input.studentUid],
+  title: input.title,
+  instructions: "Masz trzy pr\xF3by na ka\u017Cde zadanie. Podpowied\u017A pojawi si\u0119, gdy b\u0119dzie potrzebna.",
+  createdAt: input.createdAt,
+  ...input.dueDate ? { dueDate: input.dueDate } : {},
+  status: "pending",
+  sentences: input.exercises.map((exercise) => ({ ...exercise, studentId: input.studentUid })),
+  // --- tryb mailingu identyczny jak w kreatorach v1 ---
+  manualEmailConfirmationRequired: true,
+  skipAutoEmail: true,
+  emailNotificationSent: false,
+  // --- pola v2 ---
+  engineVersion: ENGINE_VERSION,
+  schemaVersion: SCHEMA_VERSION,
+  teacherId: input.teacherId,
+  homeworkSetId: input.homeworkSetId,
+  ...input.groupId ? { groupId: input.groupId } : {},
+  mode: "training",
+  assignedBy: "Lektor"
+});
+var newHomeworkSetId = () => `hwset_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
 // server.ts
-function mapToActualOpenAIModel(modelName) {
+function mapToActualOpenAIModel2(modelName) {
   const clean = String(modelName || "").replace(/^openai\//, "").trim().toLowerCase();
   if (clean === "gpt-5.6-luna" || clean === "gpt-5.6" || clean.includes("luna")) {
     return "gpt-4o";
@@ -550,7 +1397,7 @@ async function generateContentWithRetry(aiClient, contents, config, customModels
             console.warn("[Server] OPENAI_API_KEY not configured, skipping model");
             throw new Error("OPENAI_API_KEY not configured");
           }
-          const targetModel = mapToActualOpenAIModel(model);
+          const targetModel = mapToActualOpenAIModel2(model);
           const isJsonMode = config?.responseMimeType === "application/json";
           let finalPrompt = promptText;
           if (isJsonMode) {
@@ -649,12 +1496,12 @@ function getAdminProjectId() {
   return import_firebase_applet_config.default?.projectId || "";
 }
 function getAdminApp() {
-  if (getApps().length > 0) return getApp();
+  if (getApps2().length > 0) return getApp();
   const serviceAccountStr = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (serviceAccountStr) {
     try {
       const parsed = JSON.parse(serviceAccountStr);
-      return initializeApp({ credential: cert(parsed) });
+      return initializeApp2({ credential: cert(parsed) });
     } catch {
       console.warn("[Firebase Admin] Failed to parse service account");
     }
@@ -664,10 +1511,10 @@ function getAdminApp() {
     console.warn(
       `[Firebase Admin] Brak FIREBASE_SERVICE_ACCOUNT \u2014 weryfikuj\u0119 tokeny samym ID projektu (${projectId}). Wystarczy do ochrony tras /api; operacje wymagaj\u0105ce uprawnie\u0144 administratora b\u0119d\u0105 niedost\u0119pne.`
     );
-    return initializeApp({ projectId });
+    return initializeApp2({ projectId });
   }
   console.error("[Firebase Admin] Brak konta us\u0142ugi i ID projektu \u2014 trasy /api b\u0119d\u0105 odrzuca\u0107 wszystkie \u017C\u0105dania.");
-  return initializeApp();
+  return initializeApp2();
 }
 function createApp() {
   const app2 = express();
@@ -694,7 +1541,7 @@ function createApp() {
   if (adminApp) {
     (async () => {
       try {
-        const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+        const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
         const snap = await adminDb.collection("system").doc("ai").get();
         const keys = (snap.exists ? snap.data()?.keys : null) || {};
         const mapping = {
@@ -704,9 +1551,9 @@ function createApp() {
         };
         for (const [provider, envName] of Object.entries(mapping)) {
           const stored = String(keys[provider] || "").trim();
-          if (stored && !(process.env[envName] || "").trim()) {
+          if (stored) {
             process.env[envName] = stored;
-            console.log(`[AI] Klucz ${provider} wczytany z ustawie\u0144 aplikacji.`);
+            console.log(`[AI] Klucz ${provider} wczytany z ustawie\u0144 aplikacji (${maskKey(stored)}).`);
           }
         }
       } catch (e) {
@@ -771,7 +1618,7 @@ function createApp() {
       if (!isAdminByEmail && !isAdminByClaim) {
         try {
           const adminApp2 = getAdminApp();
-          const adminDb = getFirestore(adminApp2, FIRESTORE_DATABASE_ID);
+          const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
           const userDoc = await adminDb.collection("users").doc(decodedToken.uid).get();
           const role = userDoc.data()?.role;
           if (role !== "admin" && role !== "teacher") {
@@ -875,7 +1722,7 @@ function createApp() {
       }
       try {
         const adminApp2 = getAdminApp();
-        const adminDb = getFirestore(adminApp2, FIRESTORE_DATABASE_ID);
+        const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
         await adminDb.collection("users").doc(uid).set({
           email: trimmedEmail
         }, { merge: true });
@@ -903,7 +1750,7 @@ function createApp() {
         return res.status(403).json({ error: "Nieprawid\u0142owy lub wygas\u0142y token wypisania." });
       }
       const adminApp2 = getAdminApp();
-      const adminDb = getFirestore(adminApp2, FIRESTORE_DATABASE_ID);
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
       const userRef = adminDb.collection("users").doc(uid);
       const userSnap = await userRef.get();
       if (!userSnap.exists) {
@@ -945,7 +1792,7 @@ function createApp() {
         return res.status(400).json({ error: "missing_token", message: "Brak tokenu dost\u0119powego." });
       }
       const adminApp2 = getAdminApp();
-      const adminDb = getFirestore(adminApp2, FIRESTORE_DATABASE_ID);
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
       let taskSnap = await adminDb.collection("specialTasks").where("accessToken", "==", token).limit(1).get();
       if (taskSnap.empty && token.length > 8) {
         const directDoc = await adminDb.collection("specialTasks").doc(token).get();
@@ -1042,7 +1889,7 @@ function createApp() {
         return res.status(400).json({ error: "missing_answers", message: "Brak udzielonych odpowiedzi do oceny." });
       }
       const adminApp2 = getAdminApp();
-      const adminDb = getFirestore(adminApp2, FIRESTORE_DATABASE_ID);
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
       const taskSnap = await adminDb.collection("specialTasks").where("accessToken", "==", token.trim()).limit(1).get();
       if (taskSnap.empty) {
         return res.status(404).json({ error: "not_found", message: "Nie znaleziono zadania dla podanego tokenu." });
@@ -1197,7 +2044,7 @@ function createApp() {
       let dbFromAddress = null;
       if (adminApp) {
         try {
-          const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+          const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
           const mailingDoc = await adminDb.collection("system").doc("mailing").get();
           if (mailingDoc.exists) {
             const data = mailingDoc.data();
@@ -1234,6 +2081,104 @@ function createApp() {
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
+  app2.post("/api/homework-v2/generate", requireFirebaseAuth, async (req, res) => {
+    try {
+      const studentUid = String(req.body?.studentUid || "").trim();
+      if (!studentUid) return res.status(400).json({ error: "Nie wskazano kursanta." });
+      const lessonIds = Array.isArray(req.body?.lessonIds) ? req.body.lessonIds : [];
+      if (lessonIds.length === 0) return res.status(400).json({ error: "Nie wskazano lekcji." });
+      const itemCount = Number(req.body?.itemCount) || 6;
+      const plannedMinutes = Number(req.body?.plannedMinutes) || 0;
+      const requestedTypes = req.body?.types;
+      const teacherId = req.userUid;
+      const rawLessons = Array.isArray(req.body?.rawLessons) ? req.body.rawLessons : void 0;
+      let cefr = String(req.body?.cefr || "B1");
+      let recentMistakes = [];
+      try {
+        const adminApp2 = getAdminApp();
+        const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+        const studentSnap = await adminDb.collection("users").doc(studentUid).get();
+        if (studentSnap.exists) {
+          cefr = String(studentSnap.data()?.level || cefr);
+        }
+        recentMistakes = await getRecentMistakes(studentUid);
+      } catch (dbErr) {
+        console.warn("[server] pomijam zapytanie Admin DB przy generowaniu prac domowych v2:", dbErr);
+      }
+      const context = await assembleContext({
+        studentUid,
+        lessonIds,
+        cefr,
+        recentMistakes,
+        rawLessons
+      });
+      const plan = planExercises({ context, requestedTypes, itemCount, plannedMinutes });
+      const geminiKey = (process.env.GEMINI_API_KEY || "").trim();
+      const openAiKey = (process.env.OPENAI_API_KEY || "").trim();
+      const aiCall = createAiCall({
+        geminiApiKey: geminiKey,
+        openAiApiKey: openAiKey
+      });
+      const result = await buildExerciseSet({
+        context,
+        plan,
+        call: aiCall,
+        teacherId,
+        studentId: studentUid
+      });
+      return res.json({
+        exercises: result.exercises,
+        warnings: result.warnings,
+        needsReviewCount: result.needsReviewCount,
+        schemaVersion: SCHEMA_VERSION
+      });
+    } catch (err) {
+      console.error("[server] b\u0142\u0105d generowania pracy domowej v2:", err);
+      return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 u\u0142o\u017Cy\u0107 zestawu." });
+    }
+  });
+  app2.post("/api/homework-v2/assign", requireFirebaseAuth, async (req, res) => {
+    try {
+      const rawExercises = Array.isArray(req.body?.exercises) ? req.body.exercises : [];
+      const studentUids = Array.isArray(req.body?.studentUids) ? req.body.studentUids : [];
+      const title = String(req.body?.title || "Praca domowa").trim();
+      const dueDate = String(req.body?.dueDate || "").trim();
+      const groupId = String(req.body?.groupId || "").trim();
+      const teacherId = req.userUid;
+      if (studentUids.length === 0) return res.status(400).json({ error: "Nie wskazano kursant\xF3w." });
+      const exercises = selectSendableExercises(rawExercises);
+      if (exercises.length === 0) {
+        return res.status(400).json({ error: "\u017Badne z zada\u0144 nie nadaje si\u0119 do wys\u0142ania." });
+      }
+      const adminApp2 = getAdminApp();
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+      const homeworkSetId = newHomeworkSetId();
+      const created = [];
+      for (const studentUid of studentUids) {
+        const payload = buildV2TaskPayload({
+          studentUid,
+          exercises,
+          teacherId,
+          title,
+          dueDate,
+          groupId,
+          homeworkSetId,
+          createdAt: nowIso
+        });
+        const ref = await adminDb.collection("specialTasks").add(payload);
+        created.push(ref.id);
+        try {
+          await adminDb.collection("users").doc(studentUid).update({ hasNewHomework: true });
+        } catch {
+        }
+      }
+      return res.json({ taskIds: created, homeworkSetId, assignedCount: exercises.length });
+    } catch (err) {
+      console.error("[server] b\u0142\u0105d przypisywania pracy domowej v2:", err);
+      return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 przypisa\u0107 zestawu." });
+    }
+  });
   const AI_KEY_ENV = {
     openai: "OPENAI_API_KEY",
     gemini: "GEMINI_API_KEY",
@@ -1243,7 +2188,7 @@ function createApp() {
   const readAiSettings = async () => {
     if (!adminApp) return {};
     try {
-      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+      const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
       const snap = await adminDb.collection("system").doc("ai").get();
       return snap.exists ? snap.data() || {} : {};
     } catch (e) {
@@ -1302,7 +2247,7 @@ function createApp() {
       if (!adminApp) {
         return res.status(503).json({ error: "Brak po\u0142\u0105czenia z baz\u0105 \u2014 nie zapisano." });
       }
-      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+      const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
       await adminDb.collection("system").doc("ai").set(
         {
           ...models ? { models: clean } : {},
@@ -1328,8 +2273,35 @@ function createApp() {
       }
       const cleanKey = apiKey.trim();
       process.env[envName] = cleanKey;
+      if (provider === "gemini") {
+        process.env.VITE_GEMINI_API_KEY = cleanKey;
+      }
+      try {
+        const envPath = path.resolve(process.cwd(), ".env");
+        if (fs.existsSync(envPath)) {
+          let content = fs.readFileSync(envPath, "utf8");
+          const regex = new RegExp(`${envName}=.*(\\r?\\n|$)`);
+          if (content.includes(`${envName}=`)) {
+            content = content.replace(regex, `${envName}=${cleanKey}
+`);
+          } else {
+            content += `
+${envName}=${cleanKey}
+`;
+          }
+          if (provider === "gemini") {
+            if (content.includes("VITE_GEMINI_API_KEY=")) {
+              content = content.replace(/VITE_GEMINI_API_KEY=.*(\r?\n|$)/, `VITE_GEMINI_API_KEY=${cleanKey}
+`);
+            }
+          }
+          fs.writeFileSync(envPath, content, "utf8");
+        }
+      } catch (e) {
+        console.warn(`Nie uda\u0142o si\u0119 zapisa\u0107 ${envName} w .env:`, e);
+      }
       if (adminApp) {
-        const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+        const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
         await adminDb.collection("system").doc("ai").set(
           { keys: { [String(provider)]: cleanKey }, updatedAt: (/* @__PURE__ */ new Date()).toISOString() },
           { merge: true }
@@ -1367,7 +2339,7 @@ RESEND_API_KEY=${cleanKey}
       }
       if (adminApp) {
         try {
-          const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+          const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
           await adminDb.collection("system").doc("mailing").set({
             resendApiKey: cleanKey,
             updatedAt: (/* @__PURE__ */ new Date()).toISOString()
@@ -1394,7 +2366,7 @@ RESEND_API_KEY=${cleanKey}
       let apiKey = typeof clientApiKey === "string" && clientApiKey.trim() || process.env.RESEND_API_KEY;
       if (!apiKey && adminApp) {
         try {
-          const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+          const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
           const mailingDoc = await adminDb.collection("system").doc("mailing").get();
           if (mailingDoc.exists && mailingDoc.data()?.resendApiKey) {
             apiKey = String(mailingDoc.data()?.resendApiKey).trim();
@@ -1433,7 +2405,7 @@ RESEND_API_KEY=${cleanKey}
       let systemEnableBcc = true;
       if (adminApp) {
         try {
-          const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+          const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
           const mailingDoc = await adminDb.collection("system").doc("mailing").get();
           if (mailingDoc.exists) {
             const data2 = mailingDoc.data();
@@ -1515,7 +2487,7 @@ RESEND_API_KEY=${cleanKey}
       const fromEmail = (emailMatch[1] || rawFrom).trim().toLowerCase();
       const fromName = rawFrom.includes("<") ? rawFrom.split("<")[0].trim().replace(/"/g, "") : fromEmail;
       const adminApp2 = getAdminApp();
-      const adminDb = getFirestore(adminApp2, FIRESTORE_DATABASE_ID);
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
       let studentId = null;
       let studentName = null;
       if (fromEmail) {
@@ -1551,7 +2523,7 @@ RESEND_API_KEY=${cleanKey}
   app2.get("/api/mailing/inbound-messages", requireFirebaseAdmin, async (req, res) => {
     try {
       const adminApp2 = getAdminApp();
-      const adminDb = getFirestore(adminApp2, FIRESTORE_DATABASE_ID);
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
       const snap = await adminDb.collection("inboundMessages").orderBy("receivedAt", "desc").limit(100).get();
       const messages = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       return res.json({ ok: true, messages });
@@ -1565,7 +2537,7 @@ RESEND_API_KEY=${cleanKey}
       const id = String(req.params.id);
       const { read } = req.body;
       const adminApp2 = getAdminApp();
-      const adminDb = getFirestore(adminApp2, FIRESTORE_DATABASE_ID);
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
       await adminDb.collection("inboundMessages").doc(id).update({ read: Boolean(read) });
       return res.json({ ok: true });
     } catch (err) {
@@ -1577,7 +2549,7 @@ RESEND_API_KEY=${cleanKey}
     try {
       const id = String(req.params.id);
       const adminApp2 = getAdminApp();
-      const adminDb = getFirestore(adminApp2, FIRESTORE_DATABASE_ID);
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
       await adminDb.collection("inboundMessages").doc(id).delete();
       return res.json({ ok: true });
     } catch (err) {
@@ -1589,7 +2561,7 @@ RESEND_API_KEY=${cleanKey}
     try {
       const { fromEmail, fromName, subject, text } = req.body;
       const adminApp2 = getAdminApp();
-      const adminDb = getFirestore(adminApp2, FIRESTORE_DATABASE_ID);
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
       const targetEmail = (fromEmail || "kursant@example.com").trim().toLowerCase();
       let studentId = null;
       let resolvedName = fromName || "Przyk\u0142adowy Kursant";
@@ -2561,7 +3533,7 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       let usedModel = "";
       if (openaiKey) {
         for (const modelName of openAiModels) {
-          const actualApiTarget = mapToActualOpenAIModel(modelName);
+          const actualApiTarget = mapToActualOpenAIModel2(modelName);
           console.log(`OpenAI Pipeline -> Wywo\u0142uj\u0119 model: ${modelName} (target API: ${actualApiTarget})`);
           try {
             const bodyPayload = {

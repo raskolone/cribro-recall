@@ -603,7 +603,7 @@ const SettingsScreen: React.FC = () => {
                     zmienia koszt i jakość WSZYSTKIM kursantom naraz, a klucz API
                     to dostęp do rachunku. Lektor prowadzi lekcje i tego nie
                     potrzebuje. */}
-                {user?.role === 'admin' && (
+                {isTeacherOrAdmin && (
                     <div className="md:col-span-2 space-y-6">
                         <AiModelsSettings />
                         {/* Narada modeli stoi OSOBNO, a nie w sekcji modeli AI:

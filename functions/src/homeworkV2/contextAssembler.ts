@@ -129,37 +129,55 @@ export interface AssembleInput {
   cefr: string;
   /** Ostatnie błędy z homework v2, jeśli są. */
   recentMistakes?: string[];
+  /** Gotowe obiekty lekcji z klienta (np. przy wywołaniu przez lokalny serwer Express). */
+  rawLessons?: Record<string, unknown>[];
 }
 
 export const assembleContext = async (input: AssembleInput): Promise<AssembledContext> => {
   const ids = input.lessonIds.slice(0, MAX_LESSONS_AS_FUEL);
   if (ids.length === 0) throw new Error('Nie wskazano żadnej lekcji jako paliwa.');
 
-  const snapshots = await Promise.all(
-    ids.map((id) => getDb().collection('users').doc(input.studentUid).collection('lessonRecords').doc(id).get())
-  );
-
   const lessons: LessonFuel[] = [];
   const rejected: string[] = [];
 
-  snapshots.forEach((snapshot, index) => {
-    const id = ids[index];
-    if (!snapshot.exists) {
-      rejected.push(`${id}: lekcja nie istnieje`);
-      return;
-    }
-    const record = snapshot.data() as Record<string, unknown>;
-    if (!isApprovedLesson(record)) {
-      rejected.push(`${id}: lekcja niezatwierdzona`);
-      return;
-    }
-    const fuel = readLessonFuel(id, record);
-    if (!hasUsableFuel(fuel)) {
-      rejected.push(`${id}: brak słownictwa i korekt`);
-      return;
-    }
-    lessons.push(fuel);
-  });
+  if (Array.isArray(input.rawLessons) && input.rawLessons.length > 0) {
+    input.rawLessons.forEach((record) => {
+      const id = String(record.id || record.lessonId || '');
+      if (!isApprovedLesson(record)) {
+        rejected.push(`${id}: lekcja niezatwierdzona`);
+        return;
+      }
+      const fuel = readLessonFuel(id, record);
+      if (!hasUsableFuel(fuel)) {
+        rejected.push(`${id}: brak słownictwa i korekt`);
+        return;
+      }
+      lessons.push(fuel);
+    });
+  } else {
+    const snapshots = await Promise.all(
+      ids.map((id) => getDb().collection('users').doc(input.studentUid).collection('lessonRecords').doc(id).get())
+    );
+
+    snapshots.forEach((snapshot, index) => {
+      const id = ids[index];
+      if (!snapshot.exists) {
+        rejected.push(`${id}: lekcja nie istnieje`);
+        return;
+      }
+      const record = snapshot.data() as Record<string, unknown>;
+      if (!isApprovedLesson(record)) {
+        rejected.push(`${id}: lekcja niezatwierdzona`);
+        return;
+      }
+      const fuel = readLessonFuel(id, record);
+      if (!hasUsableFuel(fuel)) {
+        rejected.push(`${id}: brak słownictwa i korekt`);
+        return;
+      }
+      lessons.push(fuel);
+    });
+  }
 
   if (lessons.length === 0) {
     throw new Error(

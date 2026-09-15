@@ -135,12 +135,15 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
     setExercises([]);
     setWarnings([]);
     try {
+      const selectedLessons = lessons.filter((l) => selectedLessonIds.includes(l.id));
       const result = await generateHomeworkSetV2({
         studentUid: studentId,
         lessonIds: selectedLessonIds,
         itemCount,
         plannedMinutes,
         types,
+        rawLessons: selectedLessons as unknown as Record<string, unknown>[],
+        cefr: student?.level || 'B1',
       });
       setExercises(result.exercises);
       setWarnings(result.warnings);

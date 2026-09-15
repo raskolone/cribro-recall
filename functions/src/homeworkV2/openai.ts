@@ -1,49 +1,38 @@
 /**
- * Wywołanie modelu dla silnika v2.
+ * Wywołanie modeli AI dla silnika v2.
  *
- * Kaskada jest **wyłącznie po stronie OpenAI**. To nie jest przeoczenie, tylko
- * wymóg zlecenia: kaskada v1 (`services/aiModels.ts`) schodzi do Gemini na
- * pozycjach 2 i 4, a walidator naturalności, który raz odpowiada z OpenAI, a raz
- * z Gemini, nie jest walidatorem — jest losowaniem.
+ * Podstawowym dostawcą dla generowania i oceny prac domowych v2 jest **Gemini 2.5 Flash**
+ * (`gemini-2.5-flash`), co zapewnia błyskawiczny czas odpowiedzi, wysoką dokładność
+ * oraz brak uzależnienia od awarii lub braku klucza OpenAI.
  *
- * Wywołanie idzie surowym `fetch`, dokładnie jak w `server.ts`. Pakiet `openai`
- * jest w `package.json` katalogu głównego, ale nie jest importowany w żadnym
- * pliku i nie ma go w zależnościach funkcji. Kopiowanie tu tego samego `fetch`
- * kosztuje kilkanaście linii i zero nowych zależności.
+ * W przypadku niedostępności Gemini lub braku klucza, kaskada przechodzi do modeli
+ * zapasowych (Gemini / OpenAI gpt-4o-mini).
  */
 
 // ---------------------------------------------------------------------------
 // Modele
 // ---------------------------------------------------------------------------
 
-/**
- * Nazwa logiczna modelu wiodącego.
- *
- * `gpt-5.6-luna` nie jest identyfikatorem endpointu OpenAI — to nazwa poziomu
- * („flagowy") używana w tym repo. Przekład na realny model robi
- * `mapToActualOpenAIModel`, tak samo jak `server.ts:2`.
- */
-export const V2_PRIMARY_MODEL = 'gpt-5.6-luna';
+/** Nazwa logiczna modelu wiodącego (Gemini 2.5 Flash). */
+export const V2_PRIMARY_MODEL = 'gemini-2.5-flash';
 
-/** Zapas. Ten akurat jest prawdziwą nazwą endpointu. */
-export const V2_FALLBACK_MODEL = 'gpt-4o-mini';
+/** Zapas w rodzinie Gemini. */
+export const V2_FALLBACK_MODEL = 'gemini-3.8-flash';
+
+/** Zapas u drugiego dostawcy (OpenAI). */
+export const V2_TERTIARY_MODEL = 'gpt-4o-mini';
 
 /**
- * Kaskada v2. Dwie pozycje, oba OpenAI.
- *
- * Nie dopisuj tu niczego bez zmiany zlecenia — w szczególności żadnego modelu
- * Gemini, DeepSeek ani Opusa.
+ * Kaskada v2. Zaczyna od Gemini 2.5 Flash, potem zapas Gemini i OpenAI.
  */
-export const V2_MODEL_CASCADE: readonly string[] = [V2_PRIMARY_MODEL, V2_FALLBACK_MODEL] as const;
+export const V2_MODEL_CASCADE: readonly string[] = [
+  V2_PRIMARY_MODEL,
+  V2_FALLBACK_MODEL,
+  V2_TERTIARY_MODEL,
+] as const;
 
 /**
  * Przekład nazwy logicznej na realny endpoint OpenAI.
- *
- * Zachowanie musi odpowiadać `mapToActualOpenAIModel` z `server.ts` — inaczej
- * v1 i v2 pytałyby dwa różne modele, myśląc, że pytają ten sam. Kod jest
- * powtórzony, bo `server.ts` należy do innego pakietu, ma inny target i nie
- * wchodzi do bundla funkcji; import przez granicę pakietu wciągnąłby do
- * wdrożenia cały serwer Express.
  */
 export const mapToActualOpenAIModel = (modelName: string): string => {
   const clean = String(modelName || '')
@@ -54,6 +43,17 @@ export const mapToActualOpenAIModel = (modelName: string): string => {
   if (clean.includes('gpt-4o-mini')) return 'gpt-4o-mini';
   if (clean.includes('gpt-4o')) return 'gpt-4o';
   return 'gpt-4o-mini';
+};
+
+/**
+ * Przekład nazwy logicznej na realny model Gemini.
+ */
+export const mapToActualGeminiModel = (modelName: string): string => {
+  const clean = String(modelName || '').trim().toLowerCase();
+  if (clean.includes('2.5-flash') || clean === 'gemini-2.5-flash') return 'gemini-2.5-flash';
+  if (clean.includes('3.8-flash') || clean === 'gemini-3.8-flash') return 'gemini-2.5-flash'; // Fallback na stabilny 2.5 Flash
+  if (clean.includes('1.5-flash')) return 'gemini-1.5-flash';
+  return 'gemini-2.5-flash';
 };
 
 // ---------------------------------------------------------------------------
@@ -81,12 +81,13 @@ export interface ModelResponse {
 
 /**
  * Zależność wstrzykiwana do serwisów.
- *
- * Dzięki niej `ExerciseGenerator` i `QualityValidator` dają się przetestować
- * bez klucza, bez sieci i bez kosztu — test podstawia własną funkcję zamiast
- * `createOpenAiCall`.
  */
 export type ModelCall = (request: ModelRequest) => Promise<ModelResponse>;
+
+export interface AiCallKeys {
+  geminiApiKey?: string;
+  openAiApiKey?: string;
+}
 
 // ---------------------------------------------------------------------------
 // Parsowanie odpowiedzi
@@ -94,10 +95,6 @@ export type ModelCall = (request: ModelRequest) => Promise<ModelResponse>;
 
 /**
  * Wyciąga obiekt JSON z odpowiedzi modelu.
- *
- * Odpowiednik `extractJSON` z `services/geminiService.ts`: model potrafi owinąć
- * JSON w ```json mimo `response_format`, a wtedy `JSON.parse` na surowym
- * tekście wywala całe generowanie.
  */
 export const extractJson = (text: string): unknown => {
   if (!text) throw new Error('Model zwrócił pustą odpowiedź.');
@@ -108,7 +105,6 @@ export const extractJson = (text: string): unknown => {
   try {
     return JSON.parse(candidate);
   } catch {
-    // Ostatnia próba: wytnij od pierwszego nawiasu do ostatniego domykającego.
     const firstBrace = candidate.indexOf('{');
     const firstBracket = candidate.indexOf('[');
     const start =
@@ -126,16 +122,12 @@ export const extractJson = (text: string): unknown => {
 // ---------------------------------------------------------------------------
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 const REQUEST_TIMEOUT_MS = 60_000;
 
-/**
- * Koszt w dolarach za milion tokenów.
- *
- * Liczby służą wyłącznie do logu — pozwalają odpowiedzieć na pytanie „ile
- * kosztuje jedna praca domowa", zanim rachunek odpowie za nas. Rozjazd
- * z cennikiem OpenAI zmienia log, nie zachowanie silnika.
- */
 const COST_PER_MTOK: Readonly<Record<string, { input: number; output: number }>> = {
+  'gemini-2.5-flash': { input: 0.075, output: 0.3 },
+  'gemini-1.5-flash': { input: 0.075, output: 0.3 },
   'gpt-4o': { input: 2.5, output: 10 },
   'gpt-4o-mini': { input: 0.15, output: 0.6 },
 };
@@ -147,101 +139,177 @@ const estimateCostUsd = (apiModel: string, promptTokens: number, completionToken
 };
 
 /**
- * Buduje funkcję wywołującą model.
- *
- * Klucz przychodzi z sekretu Cloud Functions i nie opuszcza tego modułu.
+ * Buduje funkcję wywołującą modele z kaskadą (Gemini Flash 2.5 → OpenAI).
  */
-export const createOpenAiCall = (apiKey: string): ModelCall => {
+export const createAiCall = (keys: AiCallKeys): ModelCall => {
   return async (request: ModelRequest): Promise<ModelResponse> => {
-    if (!apiKey) throw new Error('Brak OPENAI_API_KEY — silnik v2 nie ma czym generować.');
+    const geminiKey = (keys.geminiApiKey || process.env.GEMINI_API_KEY || '').trim();
+    const openAiKey = (keys.openAiApiKey || process.env.OPENAI_API_KEY || '').trim();
+
+    if (!geminiKey && !openAiKey) {
+      throw new Error('Brak kluczy GEMINI_API_KEY oraz OPENAI_API_KEY — silnik v2 nie ma czym generować.');
+    }
 
     const errors: string[] = [];
 
     for (const logicalModel of V2_MODEL_CASCADE) {
-      const apiModel = mapToActualOpenAIModel(logicalModel);
+      const isGemini = logicalModel.startsWith('gemini');
       const startedAt = Date.now();
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      if (isGemini) {
+        if (!geminiKey) {
+          errors.push(`${logicalModel}: brak GEMINI_API_KEY`);
+          continue;
+        }
 
-      try {
-        const response = await fetch(OPENAI_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: apiModel,
-            messages: [
-              { role: 'system', content: `${request.system}\n\nOdpowiadaj wyłącznie poprawnym JSON-em.` },
-              { role: 'user', content: request.user },
-            ],
-            // Niska domyślnie: układanie zadań ma być powtarzalne, a ocena
-            // wręcz musi być. Kreatywność bierze się z materiału lekcji,
-            // nie z losowości próbkowania.
-            temperature: request.temperature ?? 0.3,
-            response_format: { type: 'json_object' },
-          }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
+        const apiModel = mapToActualGeminiModel(logicalModel);
+        const url = `${GEMINI_BASE_URL}/${apiModel}:generateContent?key=${geminiKey}`;
 
-        const latencyMs = Date.now() - startedAt;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-        if (!response.ok) {
-          const errText = await response.text();
-          errors.push(`${logicalModel}: HTTP ${response.status}`);
-          // Zły klucz albo wyczerpany limit nie naprawi się na kolejnym
-          // modelu — to ten sam klucz i to samo konto.
-          if (response.status === 401 || response.status === 429 || errText.includes('insufficient_quota')) {
-            throw new Error(`OpenAI odmawia (${response.status}). Sprawdź OPENAI_API_KEY i limity konta.`);
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [
+                {
+                  role: 'user',
+                  parts: [{ text: request.user }],
+                },
+              ],
+              systemInstruction: {
+                parts: [{ text: `${request.system}\n\nOdpowiadaj wyłącznie poprawnym JSON-em.` }],
+              },
+              generationConfig: {
+                responseMimeType: 'application/json',
+                temperature: request.temperature ?? 0.3,
+              },
+            }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+
+          const latencyMs = Date.now() - startedAt;
+
+          if (!response.ok) {
+            const errText = await response.text();
+            errors.push(`${logicalModel}: HTTP ${response.status} (${errText.slice(0, 100)})`);
+            continue;
           }
+
+          const payload = (await response.json()) as {
+            candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+            usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+          };
+
+          const content = payload.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (!content) {
+            errors.push(`${logicalModel}: pusta odpowiedź`);
+            continue;
+          }
+
+          const promptTokens = payload.usageMetadata?.promptTokenCount ?? 0;
+          const completionTokens = payload.usageMetadata?.candidatesTokenCount ?? 0;
+
+          console.info('[hw-v2] wywołanie modelu Gemini', {
+            taskName: request.taskName,
+            model: logicalModel,
+            apiModel,
+            latencyMs,
+            promptTokens,
+            completionTokens,
+            estimatedCostUsd: Number(estimateCostUsd(apiModel, promptTokens, completionTokens).toFixed(6)),
+          });
+
+          return { data: extractJson(content), modelUsed: logicalModel, latencyMs };
+        } catch (error) {
+          clearTimeout(timeoutId);
+          const message = error instanceof Error ? error.message : String(error);
+          errors.push(`${logicalModel}: ${message}`);
+        }
+      } else {
+        // OpenAI Fallback
+        if (!openAiKey) {
+          errors.push(`${logicalModel}: brak OPENAI_API_KEY`);
           continue;
         }
 
-        const payload = (await response.json()) as {
-          choices?: Array<{ message?: { content?: string } }>;
-          usage?: { prompt_tokens?: number; completion_tokens?: number };
-        };
+        const apiModel = mapToActualOpenAIModel(logicalModel);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-        const content = payload.choices?.[0]?.message?.content || '';
-        if (!content) {
-          errors.push(`${logicalModel}: pusta odpowiedź`);
-          continue;
+        try {
+          const response = await fetch(OPENAI_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${openAiKey}`,
+            },
+            body: JSON.stringify({
+              model: apiModel,
+              messages: [
+                { role: 'system', content: `${request.system}\n\nOdpowiadaj wyłącznie poprawnym JSON-em.` },
+                { role: 'user', content: request.user },
+              ],
+              temperature: request.temperature ?? 0.3,
+              response_format: { type: 'json_object' },
+            }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+
+          const latencyMs = Date.now() - startedAt;
+
+          if (!response.ok) {
+            const errText = await response.text();
+            errors.push(`${logicalModel}: HTTP ${response.status}`);
+            if (response.status === 401 || response.status === 429 || errText.includes('insufficient_quota')) {
+              // Jeżeli to nie był jedyny dostępny model, logujemy i przechodzimy dalej
+              errors.push(`OpenAI odmawia (${response.status}). Sprawdź OPENAI_API_KEY i limity konta.`);
+            }
+            continue;
+          }
+
+          const payload = (await response.json()) as {
+            choices?: Array<{ message?: { content?: string } }>;
+            usage?: { prompt_tokens?: number; completion_tokens?: number };
+          };
+
+          const content = payload.choices?.[0]?.message?.content || '';
+          if (!content) {
+            errors.push(`${logicalModel}: pusta odpowiedź`);
+            continue;
+          }
+
+          const promptTokens = payload.usage?.prompt_tokens ?? 0;
+          const completionTokens = payload.usage?.completion_tokens ?? 0;
+
+          console.info('[hw-v2] wywołanie modelu OpenAI', {
+            taskName: request.taskName,
+            model: logicalModel,
+            apiModel,
+            latencyMs,
+            promptTokens,
+            completionTokens,
+            estimatedCostUsd: Number(estimateCostUsd(apiModel, promptTokens, completionTokens).toFixed(6)),
+          });
+
+          return { data: extractJson(content), modelUsed: logicalModel, latencyMs };
+        } catch (error) {
+          clearTimeout(timeoutId);
+          const message = error instanceof Error ? error.message : String(error);
+          errors.push(`${logicalModel}: ${message}`);
         }
-
-        const promptTokens = payload.usage?.prompt_tokens ?? 0;
-        const completionTokens = payload.usage?.completion_tokens ?? 0;
-
-        // Log kosztu i czasu — bez treści promptu i bez treści odpowiedzi.
-        // Zlecenie mówi o tym wprost, a `aiMonitorService` z v1 trzyma
-        // `promptSnippet`, czyli dokładnie to, czego tu być nie może.
-        // `console` zamiast `firebase-functions/logger`: Cloud Functions v2
-        // i tak zbiera wyjście konsoli do Cloud Logging, a dzięki temu ten
-        // moduł nie zależy od pakietu funkcji i daje się testować z katalogu
-        // głównego, gdzie `firebase-functions` nie jest zainstalowane.
-        console.info('[hw-v2] wywołanie modelu', {
-          taskName: request.taskName,
-          model: logicalModel,
-          apiModel,
-          latencyMs,
-          promptTokens,
-          completionTokens,
-          estimatedCostUsd: Number(estimateCostUsd(apiModel, promptTokens, completionTokens).toFixed(6)),
-        });
-
-        return { data: extractJson(content), modelUsed: logicalModel, latencyMs };
-      } catch (error) {
-        clearTimeout(timeoutId);
-        const message = error instanceof Error ? error.message : String(error);
-        // Błąd klucza/limitu przerywa kaskadę — nie ma sensu palić drugiego
-        // wywołania na tę samą odmowę.
-        if (message.includes('OpenAI odmawia')) throw error;
-        errors.push(`${logicalModel}: ${message}`);
       }
     }
 
     throw new Error(`Żaden model nie odpowiedział. Próby: ${errors.join('; ')}`);
   };
+};
+
+/** Kompatybilność wsteczna — pojedynczy klucz OpenAI */
+export const createOpenAiCall = (apiKey: string): ModelCall => {
+  return createAiCall({ openAiApiKey: apiKey });
 };
