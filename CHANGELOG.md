@@ -233,8 +233,13 @@ Firestore obok lekcji.
 - (`design/theme/tokens.css`) Wprowadzenie kojącej, pastelowej palety dziennego nieba (`#f3f8fd` ➔ `#e6effa` ➔ `#dbe7f5`).
 - (`context/ThemeContext.tsx`) Nowy tryb `adaptive` automatycznie dostosowujący motyw do pory dnia (07:00–19:00 tryb jasny, noc tryb ciemny) z 60-sekundowym timerem.
 
-**7. Weryfikacja jakości.**
-- Komplet 319 testów jednostkowych przechodzi pomyślnie (`npm test`).
+**7. Poszerzenie Narady Modeli i Kluczy API o nowych dostawców (Anthropic Claude & DeepSeek).**
+- (`services/aiModels.ts`, `services/aiConfigService.ts`) Rozszerzenie listy modeli (`SELECTABLE_MODELS`) i typów o dostawców `Anthropic Claude` (`Claude 3.7 Sonnet`, `Claude 3.5 Sonnet`, `Claude 3.5 Haiku`) oraz `DeepSeek` (`DeepSeek V3 (Chat)`, `DeepSeek R1 (Reasoner)`), a także dodanie `openai/o3-mini` i `gemini-2.5-pro`.
+- (`components/settings/AiCouncilSettings.tsx`, `components/settings/AiModelsSettings.tsx`) Wprowadzenie grupowania modeli wg dostawców (`optgroup`), kolorystycznych plakietek dostawców (`PROVIDER_META`) oraz dedykowanych pól zapisu kluczy API dla `Anthropic` (`ANTHROPIC_API_KEY`) i `DeepSeek` (`DEEPSEEK_API_KEY`) obok Gemini, OpenAI i ElevenLabs.
+- (`server.ts`, `services/geminiService.ts`) Implementacja backendowych endpointów proxy `/api/anthropic` i `/api/deepseek` z obsługą `callAnthropic` i `callDeepSeek`, mapowaniem na docelowe modele API dostawców i integracją w naradzie modeli (`runCouncil`), planerze lekcji oraz kaskadach zapasowych.
+
+**8. Weryfikacja jakości.**
+- Komplet 320 testów jednostkowych przechodzi pomyślnie (`npm test`).
 - Pełna zgodność typów TypeScript (`npx tsc --noEmit`).
 - Czysty build produkcyjny (`npm run build`).
 

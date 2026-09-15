@@ -1534,10 +1534,23 @@ function mapToActualOpenAIModel2(modelName) {
   }
   if (clean.includes("gpt-4o-mini")) return "gpt-4o-mini";
   if (clean.includes("gpt-4o")) return "gpt-4o";
+  if (clean.includes("o3-mini")) return "o3-mini";
   if (clean.includes("gpt-4-turbo")) return "gpt-4-turbo";
   if (clean.includes("gpt-4")) return "gpt-4";
   if (clean.includes("gpt-3.5-turbo") || clean.includes("gpt-3.5")) return "gpt-3.5-turbo";
   return "gpt-4o-mini";
+}
+function mapToActualAnthropicModel(modelName) {
+  const clean = String(modelName || "").replace(/^anthropic\//, "").trim().toLowerCase();
+  if (clean.includes("3-7") || clean.includes("3.7")) return "claude-3-7-sonnet-20250219";
+  if (clean.includes("3-5-haiku") || clean.includes("3.5-haiku") || clean.includes("haiku")) return "claude-3-5-haiku-20241022";
+  if (clean.includes("3-5-sonnet") || clean.includes("3.5-sonnet") || clean.includes("sonnet")) return "claude-3-5-sonnet-20241022";
+  return "claude-3-7-sonnet-20250219";
+}
+function mapToActualDeepSeekModel(modelName) {
+  const clean = String(modelName || "").replace(/^deepseek\//, "").trim().toLowerCase();
+  if (clean.includes("reasoner") || clean.includes("r1")) return "deepseek-reasoner";
+  return "deepseek-chat";
 }
 function extractJsonFromString(str) {
   if (!str || typeof str !== "string") return null;
@@ -1773,6 +1786,12 @@ function getGeminiApiKey() {
 }
 function getOpenAIApiKey() {
   return process.env.OPENAI_API_KEY || "";
+}
+function getAnthropicApiKey() {
+  return process.env.ANTHROPIC_API_KEY || "";
+}
+function getDeepSeekApiKey() {
+  return process.env.DEEPSEEK_API_KEY || "";
 }
 function getAdminProjectId() {
   if (process.env.FIREBASE_PROJECT_ID) return process.env.FIREBASE_PROJECT_ID;
@@ -2477,7 +2496,9 @@ function createApp() {
   const AI_KEY_ENV = {
     openai: "OPENAI_API_KEY",
     gemini: "GEMINI_API_KEY",
-    elevenlabs: "ELEVENLABS_API_KEY"
+    elevenlabs: "ELEVENLABS_API_KEY",
+    anthropic: "ANTHROPIC_API_KEY",
+    deepseek: "DEEPSEEK_API_KEY"
   };
   const maskKey = (key) => key.length <= 10 ? "\u2022\u2022\u2022\u2022" : `${key.slice(0, 6)}\u2022\u2022\u2022\u2022${key.slice(-4)}`;
   const AI_SETTINGS_FILE = path.resolve(process.cwd(), ".ai-settings.json");
@@ -2528,8 +2549,15 @@ function createApp() {
         "openai/gpt-5.6-luna",
         "openai/gpt-4o",
         "openai/gpt-4o-mini",
+        "openai/o3-mini",
+        "gemini-2.5-flash",
         "gemini-3.8-flash",
-        "gemini-2.5-flash"
+        "gemini-2.5-pro",
+        "anthropic/claude-3-7-sonnet",
+        "anthropic/claude-3-5-sonnet",
+        "anthropic/claude-3-5-haiku",
+        "deepseek/deepseek-chat",
+        "deepseek/deepseek-reasoner"
       ];
       const clean = {};
       for (const [task, model] of Object.entries(models || {})) {
@@ -4441,6 +4469,143 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       return res.status(503).json({ error: "Us\u0142uga AI jest chwilowo niedost\u0119pna." });
     }
   };
+  const handleAnthropic = async (req, res) => {
+    try {
+      const { prompt, systemInstruction, messages, model, max_tokens, isJson } = req.body || {};
+      if (!prompt && !messages) return res.status(400).json({ error: "Missing prompt or messages" });
+      const anthropicKey = getAnthropicApiKey();
+      if (!anthropicKey) {
+        console.warn("[Anthropic] Brak ANTHROPIC_API_KEY na serwerze.");
+        return res.status(503).json({ error: "Brak skonfigurowanego klucza Anthropic API (ANTHROPIC_API_KEY)." });
+      }
+      let sysInst = systemInstruction || "";
+      if (isJson && !sysInst.toLowerCase().includes("json")) {
+        sysInst = (sysInst ? sysInst + "\n\n" : "") + "Respond in valid JSON format only.";
+      }
+      let chatMessages = [];
+      if (Array.isArray(messages) && messages.length > 0) {
+        for (const m of messages) {
+          if (m && typeof m === "object" && m.content) {
+            chatMessages.push({
+              role: m.role === "assistant" ? "assistant" : "user",
+              content: String(m.content)
+            });
+          }
+        }
+      } else {
+        let userPrompt = String(prompt || "");
+        if (isJson && !userPrompt.toLowerCase().includes("json")) {
+          userPrompt += "\n\n(Output must be valid JSON)";
+        }
+        chatMessages.push({ role: "user", content: userPrompt || "Generate content" });
+      }
+      const targetModel = mapToActualAnthropicModel(model);
+      console.log(`Anthropic Pipeline -> Wywo\u0142uj\u0119 model: ${model} (target API: ${targetModel})`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6e4);
+      const bodyPayload = {
+        model: targetModel,
+        max_tokens: max_tokens || 4096,
+        messages: chatMessages,
+        temperature: 0.7
+      };
+      if (sysInst) {
+        bodyPayload.system = sysInst;
+      }
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": anthropicKey,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify(bodyPayload),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.content?.[0]?.text || "";
+        return res.json({ text: content, modelUsed: model || targetModel });
+      } else {
+        const errText = await response.text();
+        console.warn(`Anthropic error (${response.status}):`, errText);
+        return res.status(response.status).json({ error: `Anthropic error: ${errText}` });
+      }
+    } catch (err) {
+      console.error("Anthropic handler error:", err);
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  };
+  const handleDeepSeek = async (req, res) => {
+    try {
+      const { prompt, systemInstruction, messages, model, isJson } = req.body || {};
+      if (!prompt && !messages) return res.status(400).json({ error: "Missing prompt or messages" });
+      const deepseekKey = getDeepSeekApiKey();
+      if (!deepseekKey) {
+        console.warn("[DeepSeek] Brak DEEPSEEK_API_KEY na serwerze.");
+        return res.status(503).json({ error: "Brak skonfigurowanego klucza DeepSeek API (DEEPSEEK_API_KEY)." });
+      }
+      let sysInst = systemInstruction || "";
+      if (isJson && !sysInst.toLowerCase().includes("json")) {
+        sysInst = (sysInst ? sysInst + "\n\n" : "") + "Respond in valid JSON format.";
+      }
+      let chatMessages = [];
+      if (sysInst) {
+        chatMessages.push({ role: "system", content: sysInst });
+      }
+      if (Array.isArray(messages) && messages.length > 0) {
+        for (const m of messages) {
+          if (m && typeof m === "object" && m.content) {
+            chatMessages.push({
+              role: m.role === "system" || m.role === "assistant" || m.role === "user" ? m.role : "user",
+              content: String(m.content)
+            });
+          }
+        }
+      } else {
+        let userPrompt = String(prompt || "");
+        if (isJson && !userPrompt.toLowerCase().includes("json")) {
+          userPrompt += "\n\n(Output must be in valid JSON format)";
+        }
+        chatMessages.push({ role: "user", content: userPrompt || "Generate content" });
+      }
+      const targetModel = mapToActualDeepSeekModel(model);
+      console.log(`DeepSeek Pipeline -> Wywo\u0142uj\u0119 model: ${model} (target API: ${targetModel})`);
+      const bodyPayload = {
+        model: targetModel,
+        messages: chatMessages,
+        temperature: targetModel === "deepseek-reasoner" ? void 0 : 0.7
+      };
+      if (isJson && targetModel !== "deepseek-reasoner") {
+        bodyPayload.response_format = { type: "json_object" };
+      }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6e4);
+      const response = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${deepseekKey}`
+        },
+        body: JSON.stringify(bodyPayload),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || "";
+        return res.json({ text: content, modelUsed: model || targetModel });
+      } else {
+        const errText = await response.text();
+        console.warn(`DeepSeek error (${response.status}):`, errText);
+        return res.status(response.status).json({ error: `DeepSeek error: ${errText}` });
+      }
+    } catch (err) {
+      console.error("DeepSeek handler error:", err);
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  };
   const GEMINI_MODEL_PATTERN = /^gemini-[a-z0-9.\-]{1,60}$/i;
   app2.post("/api/gemini/generate", requireFirebaseAuth, async (req, res) => {
     try {
@@ -4500,6 +4665,10 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
   });
   app2.post("/api/openai", requireFirebaseAuth, handleOpenAI);
   app2.post("/api/openai/generate", requireFirebaseAuth, handleOpenAI);
+  app2.post("/api/anthropic", requireFirebaseAuth, handleAnthropic);
+  app2.post("/api/anthropic/generate", requireFirebaseAuth, handleAnthropic);
+  app2.post("/api/deepseek", requireFirebaseAuth, handleDeepSeek);
+  app2.post("/api/deepseek/generate", requireFirebaseAuth, handleDeepSeek);
   app2.use("/api", (req, res) => {
     res.status(404).json({ error: `Nie odnaleziono endpointu API: ${req.method} ${req.originalUrl || req.path}` });
   });

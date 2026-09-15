@@ -37,6 +37,8 @@ export interface AiConfig {
     openai?: AiKeyStatus;
     gemini?: AiKeyStatus;
     elevenlabs?: AiKeyStatus;
+    anthropic?: AiKeyStatus;
+    deepseek?: AiKeyStatus;
   };
 }
 
@@ -110,7 +112,7 @@ export const saveAiCouncil = async (council: CouncilConfig): Promise<void> => {
 };
 
 export const saveAiKey = async (
-  provider: 'openai' | 'gemini' | 'elevenlabs',
+  provider: 'openai' | 'gemini' | 'elevenlabs' | 'anthropic' | 'deepseek',
   apiKey: string
 ): Promise<AiKeyStatus> => {
   const res = await fetch('/api/ai/save-key', {

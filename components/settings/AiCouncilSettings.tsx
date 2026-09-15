@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Check, Loader2, MessageSquare, Save, Users } from 'lucide-react';
-import { SELECTABLE_MODELS } from '../../services/aiModels';
+import {
+  AiProvider,
+  PROVIDER_META,
+  SELECTABLE_MODELS,
+} from '../../services/aiModels';
 import {
   CouncilConfig,
   DEFAULT_COUNCIL,
@@ -19,6 +23,9 @@ import { getAiConfig, invalidateAiConfig, saveAiCouncil } from '../../services/a
  * bez autora nie ma czego recenzować, a dwóch autorów to dwa niezależne
  * teksty, nie narada.
  *
+ * Modele można dowolnie miksować pomiędzy dostawcami: Google Gemini,
+ * OpenAI, Anthropic Claude oraz DeepSeek.
+ *
  * ══ DLACZEGO CZTERY MIEJSCA, A NIE DOWOLNIE WIELE ══
  *
  * Każdy głos to osobne wywołanie modelu, czyli osobny koszt i osobne
@@ -31,6 +38,13 @@ import { getAiConfig, invalidateAiConfig, saveAiCouncil } from '../../services/a
  */
 
 const SEAT_LABELS = ['Autor', 'Recenzent 1', 'Recenzent 2', 'Recenzent 3'];
+
+const PROVIDER_GROUPS: { provider: AiProvider; label: string }[] = [
+  { provider: 'gemini', label: 'Google Gemini' },
+  { provider: 'openai', label: 'OpenAI' },
+  { provider: 'anthropic', label: 'Anthropic Claude' },
+  { provider: 'deepseek', label: 'DeepSeek' },
+];
 
 const AiCouncilSettings: React.FC = () => {
   const [council, setCouncil] = useState<CouncilConfig>(DEFAULT_COUNCIL);
@@ -84,7 +98,7 @@ const AiCouncilSettings: React.FC = () => {
           <div className="min-w-0">
             <h3 className="text-sm sm:text-base font-bold text-text-hi">Narada modeli — Planer lekcji</h3>
             <p className="text-[11px] text-content-muted mt-0.5">
-              Jeden model pisze scenariusz, pozostałe sprawdzają go pod kątem wytycznych metody
+              Wybierz modele od Google Gemini, OpenAI, Anthropic Claude lub DeepSeek do pisania i recenzowania scenariusza
             </p>
           </div>
         </div>
@@ -131,6 +145,8 @@ const AiCouncilSettings: React.FC = () => {
             const isAuthor = index === 0;
             const isActive = isAuthor || seat.enabled;
             const isDimmed = !isActive || (!council.enabled && !isAuthor);
+            const currentModelMeta = SELECTABLE_MODELS.find(m => m.id === seat.model);
+            const pMeta = currentModelMeta ? PROVIDER_META[currentModelMeta.provider] : null;
 
             return (
               <div
@@ -157,19 +173,37 @@ const AiCouncilSettings: React.FC = () => {
                   </span>
                 </span>
 
-                <select
-                  value={seat.model}
-                  onChange={e => updateSeat(index, { model: e.target.value })}
-                  className="flex-1 min-w-[11rem] bg-base-100/70 border border-line-strong rounded-lg px-3 py-2 text-sm text-text-hi outline-none focus:border-primary cursor-pointer"
-                >
-                  {SELECTABLE_MODELS.map(model => (
-                    <option key={model.id} value={model.id}>
-                      {model.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex-1 min-w-[13rem] flex items-center gap-2">
+                  <select
+                    value={seat.model}
+                    onChange={e => updateSeat(index, { model: e.target.value })}
+                    className="flex-1 bg-base-100/70 border border-line-strong rounded-lg px-3 py-2 text-sm text-text-hi outline-none focus:border-primary cursor-pointer"
+                  >
+                    {PROVIDER_GROUPS.map(grp => {
+                      const grpModels = SELECTABLE_MODELS.filter(m => m.provider === grp.provider);
+                      if (grpModels.length === 0) return null;
+                      return (
+                        <optgroup key={grp.provider} label={grp.label}>
+                          {grpModels.map(model => (
+                            <option key={model.id} value={model.id}>
+                              {model.label} {model.tag ? `(${model.tag})` : ''}
+                            </option>
+                          ))}
+                        </optgroup>
+                      );
+                    })}
+                  </select>
 
-                <span className="text-[11px] text-content-muted w-full sm:w-auto sm:max-w-[16rem]">
+                  {pMeta && (
+                    <span
+                      className={`hidden sm:inline-flex text-[10px] font-semibold px-2 py-1 rounded-lg border shrink-0 ${pMeta.bgClass} ${pMeta.textClass} ${pMeta.borderClass}`}
+                    >
+                      {pMeta.name.split(' ')[0]}
+                    </span>
+                  )}
+                </div>
+
+                <span className="text-[11px] text-content-muted w-full sm:w-auto sm:max-w-[15rem]">
                   {isAuthor
                     ? 'Pisze scenariusz i ma ostatnie słowo po recenzjach.'
                     : 'Czyta cudzą wersję i wypisuje maksymalnie 6 zastrzeżeń. Nie pisze własnej.'}
@@ -189,7 +223,7 @@ const AiCouncilSettings: React.FC = () => {
             {reviewerCount > 0
               ? '(autor pisze, recenzenci zgłaszają uwagi, autor poprawia).'
               : '(sam autor, bez recenzji).'}{' '}
-            Klucze API dostawców ustawia się w sekcji „Modele AI" obok — narada korzysta z tych samych.
+            Klucze API dostawców (Gemini, OpenAI, Anthropic, DeepSeek) ustawia się w sekcji „Modele AI" obok — narada korzysta z tych samych.
           </p>
         </div>
       </div>

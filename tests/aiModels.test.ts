@@ -62,3 +62,21 @@ test('model wskazany dwa razy nie powiela się w liście prób', () => {
   assert.equal(models.filter((m) => m === 'gpt-5.6-luna').length, 1);
   assert.equal(models[0], 'gpt-5.6-luna');
 });
+
+test('SELECTABLE_MODELS zawiera modele od wszystkich 4 dostawców (Gemini, OpenAI, Anthropic, DeepSeek)', async () => {
+  const { SELECTABLE_MODELS, PROVIDER_META } = await import('../services/aiModels');
+  const providers = new Set(SELECTABLE_MODELS.map(m => m.provider));
+  assert.ok(providers.has('gemini'), 'Brak modeli Gemini');
+  assert.ok(providers.has('openai'), 'Brak modeli OpenAI');
+  assert.ok(providers.has('anthropic'), 'Brak modeli Anthropic');
+  assert.ok(providers.has('deepseek'), 'Brak modeli DeepSeek');
+
+  assert.ok(SELECTABLE_MODELS.some(m => m.id.startsWith('anthropic/claude-3-7-sonnet')));
+  assert.ok(SELECTABLE_MODELS.some(m => m.id.startsWith('deepseek/deepseek-chat')));
+  assert.ok(SELECTABLE_MODELS.some(m => m.id.startsWith('deepseek/deepseek-reasoner')));
+
+  assert.ok(PROVIDER_META.gemini);
+  assert.ok(PROVIDER_META.openai);
+  assert.ok(PROVIDER_META.anthropic);
+  assert.ok(PROVIDER_META.deepseek);
+});

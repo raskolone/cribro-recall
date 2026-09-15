@@ -274,6 +274,22 @@ const generateContentWithFallback = async (params: any) => {
          return { text: openAiRes.text };
       }
 
+      if (model.startsWith('anthropic')) {
+         const isJsonMode = apiParams.config?.responseMimeType === 'application/json';
+         const anthropicRes = await callAnthropic(promptText, sysInst, model.replace('anthropic/', ''), isJsonMode);
+         const usedModel = anthropicRes.modelUsed || model;
+         aiMonitor.completeRequest(reqId, { modelUsed: usedModel });
+         return { text: anthropicRes.text };
+      }
+
+      if (model.startsWith('deepseek')) {
+         const isJsonMode = apiParams.config?.responseMimeType === 'application/json';
+         const deepseekRes = await callDeepSeek(promptText, sysInst, model.replace('deepseek/', ''), isJsonMode);
+         const usedModel = deepseekRes.modelUsed || model;
+         aiMonitor.completeRequest(reqId, { modelUsed: usedModel });
+         return { text: deepseekRes.text };
+      }
+
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error("Request timed out after 60 seconds")), 60000);
       });
@@ -307,6 +323,98 @@ const generateContentWithFallback = async (params: any) => {
   }
   aiMonitor.failRequest(reqId, lastError?.message || "Wszystkie modele AI zawiodły");
   throw lastError;
+};
+
+const callAnthropic = async (
+  promptOrMessages: string | Array<{ role: string; content: string }>,
+  systemInstruction?: string,
+  model: string = "claude-3-7-sonnet",
+  isJson: boolean = false
+): Promise<{ text: string; modelUsed?: string }> => {
+  console.log("Wysyłam zapytanie do Anthropic przez proxy (" + model + ")...");
+  try {
+    const isMessages = Array.isArray(promptOrMessages);
+    const bodyPayload: any = {
+      systemInstruction,
+      isJson,
+      model
+    };
+    if (isMessages) {
+      bodyPayload.messages = promptOrMessages;
+    } else {
+      bodyPayload.prompt = promptOrMessages;
+    }
+
+    const res = await fetch('/api/anthropic', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(bodyPayload)
+    });
+    
+    const rawText = await res.text();
+    let data: any;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      throw new Error(`Serwer zwrócił nieprawidłową odpowiedź (status ${res.status}): ${rawText.slice(0, 100)}`);
+    }
+
+    if (!res.ok) {
+      throw new Error(extractErrorMessage(data, `Błąd Anthropic (${res.status})`));
+    }
+    
+    console.log("Odpowiedź Anthropic odebrana pomyślnie. Model:", data.modelUsed);
+    return { text: data.text || "", modelUsed: data.modelUsed };
+  } catch (error) {
+    console.error("Błąd wywołania Anthropic:", error);
+    throw error;
+  }
+};
+
+const callDeepSeek = async (
+  promptOrMessages: string | Array<{ role: string; content: string }>,
+  systemInstruction?: string,
+  model: string = "deepseek-chat",
+  isJson: boolean = false
+): Promise<{ text: string; modelUsed?: string }> => {
+  console.log("Wysyłam zapytanie do DeepSeek przez proxy (" + model + ")...");
+  try {
+    const isMessages = Array.isArray(promptOrMessages);
+    const bodyPayload: any = {
+      systemInstruction,
+      isJson,
+      model
+    };
+    if (isMessages) {
+      bodyPayload.messages = promptOrMessages;
+    } else {
+      bodyPayload.prompt = promptOrMessages;
+    }
+
+    const res = await fetch('/api/deepseek', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(bodyPayload)
+    });
+    
+    const rawText = await res.text();
+    let data: any;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      throw new Error(`Serwer zwrócił nieprawidłową odpowiedź (status ${res.status}): ${rawText.slice(0, 100)}`);
+    }
+
+    if (!res.ok) {
+      throw new Error(extractErrorMessage(data, `Błąd DeepSeek (${res.status})`));
+    }
+    
+    console.log("Odpowiedź DeepSeek odebrana pomyślnie. Model:", data.modelUsed);
+    return { text: data.text || "", modelUsed: data.modelUsed };
+  } catch (error) {
+    console.error("Błąd wywołania DeepSeek:", error);
+    throw error;
+  }
 };
 
 const callOpenAI = async (
@@ -450,6 +558,40 @@ export const generateLessonPlannerAI = async ({
           aiMonitor.completeRequest(reqId, { modelUsed: usedModel });
           return { text: openAiRes.text, modelUsed: usedModel };
         }
+      } else if (model.startsWith('anthropic')) {
+        const userContent: any = augmentedPrompt;
+        const messages = [
+          ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
+          ...conversationHistory.map(m => ({
+            role: m.role === 'assistant' ? 'assistant' : 'user',
+            content: m.content
+          })),
+          { role: 'user', content: userContent }
+        ];
+
+        const anthropicRes = await callAnthropic(messages, undefined, model.replace('anthropic/', ''), jsonMode);
+        if (anthropicRes?.text) {
+          const usedModel = anthropicRes.modelUsed || model;
+          aiMonitor.completeRequest(reqId, { modelUsed: usedModel });
+          return { text: anthropicRes.text, modelUsed: usedModel };
+        }
+      } else if (model.startsWith('deepseek')) {
+        const userContent: any = augmentedPrompt;
+        const messages = [
+          ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
+          ...conversationHistory.map(m => ({
+            role: m.role === 'assistant' ? 'assistant' : 'user',
+            content: m.content
+          })),
+          { role: 'user', content: userContent }
+        ];
+
+        const deepseekRes = await callDeepSeek(messages, undefined, model.replace('deepseek/', ''), jsonMode);
+        if (deepseekRes?.text) {
+          const usedModel = deepseekRes.modelUsed || model;
+          aiMonitor.completeRequest(reqId, { modelUsed: usedModel });
+          return { text: deepseekRes.text, modelUsed: usedModel };
+        }
       } else if (model.startsWith('gemini')) {
         let retries = 2;
         while (retries > 0) {
@@ -515,22 +657,32 @@ export const generateLessonPlannerAI = async ({
 export const PREFERRED_AI_MODELS = AI_MODEL_CASCADE;
 
 export const formatAIModelName = (model?: string): string => {
-  if (!model) return 'GPT 5.6 Luna';
-  if (model.includes('gpt-5.6-luna') || model.includes('gpt-5.6') || model.includes('luna') || model.includes('GPT 5.6')) return 'GPT 5.6 Luna';
-  if (model.includes('gemini-3.8')) return 'Gemini 3.8 Flash';
-  if (model.includes('tts-1-hd')) return 'OpenAI (TTS-1 HD)';
-  if (model.includes('tts-1') || model === 'openai-tts-1') return 'OpenAI (TTS-1 Audio)';
-  if (model.includes('gpt-4o-mini-audio')) return 'OpenAI (GPT-4o mini Audio)';
-  if (model.includes('gpt-4o-mini')) return 'OpenAI (GPT-4o mini)';
-  if (model.includes('gpt-4o')) return 'OpenAI (GPT-4o)';
-  if (model.includes('gpt-4-turbo')) return 'OpenAI (GPT-4 Turbo)';
-  if (model.includes('gpt-4')) return 'OpenAI (GPT-4)';
-  if (model.includes('gpt-3.5')) return 'OpenAI (GPT-3.5 Turbo)';
-  if (model.includes('gemini-3.1-flash-tts')) return 'Gemini 3.1 Flash (TTS Audio)';
-  if (model.includes('gemini-3.7')) return 'Gemini 3.7 Flash';
-  if (model.includes('gemini-2.5')) return 'Gemini 2.5 Flash';
-  if (model.includes('gemini')) return 'Gemini Flash';
-  if (model.includes('Web Speech') || model.toLowerCase().includes('speech') || model.toLowerCase().includes('browser')) return 'Web Speech API (Browser)';
+  if (!model) return 'Gemini 2.5 Flash';
+  const m = model.toLowerCase();
+  if (m.includes('claude-3-7') || m.includes('claude-3.7')) return 'Anthropic (Claude 3.7 Sonnet)';
+  if (m.includes('claude-3-5-sonnet') || m.includes('claude-3.5-sonnet')) return 'Anthropic (Claude 3.5 Sonnet)';
+  if (m.includes('claude-3-5-haiku') || m.includes('claude-3.5-haiku')) return 'Anthropic (Claude 3.5 Haiku)';
+  if (m.includes('claude')) return 'Anthropic Claude';
+  if (m.includes('deepseek-reasoner') || m.includes('deepseek-r1') || m.includes('deepseek/deepseek-reasoner')) return 'DeepSeek R1 (Reasoner)';
+  if (m.includes('deepseek-chat') || m.includes('deepseek-v3') || m.includes('deepseek/deepseek-chat')) return 'DeepSeek V3 (Chat)';
+  if (m.includes('deepseek')) return 'DeepSeek';
+  if (m.includes('o3-mini')) return 'OpenAI (o3-mini)';
+  if (m.includes('gpt-5.6-luna') || m.includes('gpt-5.6') || m.includes('luna')) return 'GPT 5.6 Luna';
+  if (m.includes('gemini-3.8')) return 'Gemini 3.8 Flash';
+  if (m.includes('gemini-2.5-pro')) return 'Gemini 2.5 Pro';
+  if (m.includes('gemini-2.5')) return 'Gemini 2.5 Flash';
+  if (m.includes('tts-1-hd')) return 'OpenAI (TTS-1 HD)';
+  if (m.includes('tts-1') || model === 'openai-tts-1') return 'OpenAI (TTS-1 Audio)';
+  if (m.includes('gpt-4o-mini-audio')) return 'OpenAI (GPT-4o mini Audio)';
+  if (m.includes('gpt-4o-mini')) return 'OpenAI (GPT-4o mini)';
+  if (m.includes('gpt-4o')) return 'OpenAI (GPT-4o)';
+  if (m.includes('gpt-4-turbo')) return 'OpenAI (GPT-4 Turbo)';
+  if (m.includes('gpt-4')) return 'OpenAI (GPT-4)';
+  if (m.includes('gpt-3.5')) return 'OpenAI (GPT-3.5 Turbo)';
+  if (m.includes('gemini-3.1-flash-tts')) return 'Gemini 3.1 Flash (TTS Audio)';
+  if (m.includes('gemini-3.7')) return 'Gemini 3.7 Flash';
+  if (m.includes('gemini')) return 'Gemini Flash';
+  if (m.includes('web speech') || m.includes('browser')) return 'Web Speech API (Browser)';
   return model;
 };
 
@@ -581,6 +733,26 @@ export const generateTextWithUnifiedFallback = async (
             : model;
           aiMonitor.completeRequest(reqId, { modelUsed: usedModel });
           return { text: openAiRes.text, modelUsed: usedModel };
+        }
+      } else if (model.startsWith('anthropic')) {
+        const isJson = geminiConfig?.responseMimeType === 'application/json';
+        const anthropicRes = await callAnthropic(prompt, systemInstruction, model.replace('anthropic/', ''), isJson);
+        if (anthropicRes && anthropicRes.text) {
+          const usedModel = anthropicRes.modelUsed
+            ? (anthropicRes.modelUsed.startsWith('anthropic') ? anthropicRes.modelUsed : `anthropic/${anthropicRes.modelUsed}`)
+            : model;
+          aiMonitor.completeRequest(reqId, { modelUsed: usedModel });
+          return { text: anthropicRes.text, modelUsed: usedModel };
+        }
+      } else if (model.startsWith('deepseek')) {
+        const isJson = geminiConfig?.responseMimeType === 'application/json';
+        const deepseekRes = await callDeepSeek(prompt, systemInstruction, model.replace('deepseek/', ''), isJson);
+        if (deepseekRes && deepseekRes.text) {
+          const usedModel = deepseekRes.modelUsed
+            ? (deepseekRes.modelUsed.startsWith('deepseek') ? deepseekRes.modelUsed : `deepseek/${deepseekRes.modelUsed}`)
+            : model;
+          aiMonitor.completeRequest(reqId, { modelUsed: usedModel });
+          return { text: deepseekRes.text, modelUsed: usedModel };
         }
       } else if (model.startsWith('gemini')) {
         let retries = 3;

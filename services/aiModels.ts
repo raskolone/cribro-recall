@@ -145,13 +145,67 @@ export const AI_CATEGORY_TO_TASK: Record<string, AiTaskId> = {
   general: 'chat',
 };
 
-/** Wszystkie modele, które wolno wybrać w ustawieniach. */
-export const SELECTABLE_MODELS: { id: string; label: string; provider: 'openai' | 'gemini' }[] = [
-  { id: 'openai/gpt-5.6-luna', label: 'GPT 5.6 Luna', provider: 'openai' },
-  { id: 'openai/gpt-4o', label: 'GPT-4o', provider: 'openai' },
-  { id: 'openai/gpt-4o-mini', label: 'GPT-4o mini', provider: 'openai' },
-  { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', provider: 'gemini' },
-  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', provider: 'gemini' },
+export type AiProvider = 'openai' | 'gemini' | 'anthropic' | 'deepseek';
+
+export interface SelectableAiModel {
+  id: string;
+  label: string;
+  provider: AiProvider;
+  tag?: string;
+}
+
+export const PROVIDER_META: Record<
+  AiProvider,
+  { name: string; badgeColor: string; bgClass: string; textClass: string; borderClass: string }
+> = {
+  gemini: {
+    name: 'Google Gemini',
+    badgeColor: '#4285F4',
+    bgClass: 'bg-blue-500/10',
+    textClass: 'text-blue-400',
+    borderClass: 'border-blue-500/30',
+  },
+  openai: {
+    name: 'OpenAI',
+    badgeColor: '#10A37F',
+    bgClass: 'bg-emerald-500/10',
+    textClass: 'text-emerald-400',
+    borderClass: 'border-emerald-500/30',
+  },
+  anthropic: {
+    name: 'Anthropic Claude',
+    badgeColor: '#D97706',
+    bgClass: 'bg-amber-500/10',
+    textClass: 'text-amber-400',
+    borderClass: 'border-amber-500/30',
+  },
+  deepseek: {
+    name: 'DeepSeek',
+    badgeColor: '#6366F1',
+    bgClass: 'bg-indigo-500/10',
+    textClass: 'text-indigo-400',
+    borderClass: 'border-indigo-500/30',
+  },
+};
+
+/** Wszystkie modele, które wolno wybrać w ustawieniach i radzie modeli. */
+export const SELECTABLE_MODELS: SelectableAiModel[] = [
+  // Google Gemini
+  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', provider: 'gemini', tag: 'Domyślny' },
+  { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', provider: 'gemini', tag: 'Najnowszy Flash' },
+  { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', provider: 'gemini', tag: 'Zaawansowany' },
+  // OpenAI
+  { id: 'openai/gpt-5.6-luna', label: 'GPT 5.6 Luna', provider: 'openai', tag: 'Flagowy' },
+  { id: 'openai/gpt-4o', label: 'GPT-4o', provider: 'openai', tag: 'Omni' },
+  { id: 'openai/gpt-4o-mini', label: 'GPT-4o mini', provider: 'openai', tag: 'Lekki' },
+  { id: 'openai/o3-mini', label: 'OpenAI o3-mini', provider: 'openai', tag: 'Rozumowanie' },
+  // Anthropic Claude
+  { id: 'anthropic/claude-3-7-sonnet', label: 'Claude 3.7 Sonnet', provider: 'anthropic', tag: 'Hybrydowy' },
+  { id: 'anthropic/claude-3-5-sonnet', label: 'Claude 3.5 Sonnet', provider: 'anthropic', tag: 'Precyzja' },
+  { id: 'anthropic/claude-3-5-haiku', label: 'Claude 3.5 Haiku', provider: 'anthropic', tag: 'Szybki' },
+  // DeepSeek
+  { id: 'deepseek/deepseek-chat', label: 'DeepSeek V3 (Chat)', provider: 'deepseek', tag: 'Ekonomiczny' },
+  { id: 'deepseek/deepseek-reasoner', label: 'DeepSeek R1 (Reasoner)', provider: 'deepseek', tag: 'Myślenie' },
 ];
 
 /** Nadpisania z ustawień: zadanie → model pierwszego wyboru. */
