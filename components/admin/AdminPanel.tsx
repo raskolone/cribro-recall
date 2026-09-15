@@ -1332,14 +1332,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserWithId | null>(null);
 
   useEffect(() => {
-    if (users.length > 0) {
-      if (initialSelectedUserId) {
-        if (!selectedUser || selectedUser.id !== initialSelectedUserId) {
-          const user = users.find(u => u.id === initialSelectedUserId);
-          if (user) {
-            setSelectedUser(user);
-            fetchUserLogsAndStats(user.id);
-          }
+    if (!initialSelectedUserId) {
+      if (selectedUser) setSelectedUser(null);
+    } else if (users.length > 0) {
+      if (!selectedUser || selectedUser.id !== initialSelectedUserId) {
+        const user = users.find(u => u.id === initialSelectedUserId);
+        if (user) {
+          setSelectedUser(user);
+          fetchUserLogsAndStats(user.id);
         }
       }
     }

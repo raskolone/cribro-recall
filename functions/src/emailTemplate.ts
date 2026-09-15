@@ -206,7 +206,8 @@ export function buildHomeworkEmail(data: HomeworkEmailData): {
   const textLines: Array<string | null> = [
     greeting,
     '',
-    `W systemie została dla Ciebie przypisana nowa praca domowa: „${cleanTitle}".`,
+    `Przygotowałem dla Ciebie nową pracę domową: „${cleanTitle}".`,
+    'Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś znalazł na nie 5-10 minut przed naszą kolejną lekcją — to świetny sposób na utrwalenie materiału.',
     due ? `Termin wykonania: ${due}` : null,
     data.assignedBy ? `Przypisane przez: ${data.assignedBy}` : null,
     data.instructions ? `\nWskazówki: ${data.instructions}` : null,
@@ -254,7 +255,7 @@ export function buildHomeworkEmail(data: HomeworkEmailData): {
 
   const instructions = data.instructions
     ? `<div style="margin:16px 0 0;background:#f0fdf4;border-left:4px solid #16a34a;padding:12px 16px;border-radius:0 8px 8px 0;">
-         <p style="margin:0;font-size:12px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.05em;">Wskazówki od lektora:</p>
+         <p style="margin:0;font-size:12px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.05em;">Wskazówki ode mnie:</p>
          <p style="margin:4px 0 0;color:#14532d;font-size:14px;line-height:1.5;">${escapeHtml(data.instructions)}</p>
        </div>`
     : '';
@@ -288,8 +289,12 @@ export function buildHomeworkEmail(data: HomeworkEmailData): {
           </h1>
 
           <p style="margin:0;color:#334155;font-size:15px;line-height:1.65;">
-            Lektor przypisał dla Ciebie nową pracę domową:
+            Przygotowałem dla Ciebie nową pracę domową:
             <strong style="color:#0f172a;display:block;margin-top:6px;font-size:17px;font-weight:700;">${escapeHtml(cleanTitle)}</strong>
+          </p>
+
+          <p style="margin:12px 0 0;color:#475569;font-size:14px;line-height:1.6;">
+            Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś znalazł na nie 5–10 minut przed naszym kolejnym spotkaniem — to świetny sposób, żeby utrwalić to, nad czym pracowaliśmy na lekcji.
           </p>
 
           ${instructions}
@@ -409,8 +414,12 @@ export function buildHomeworkGradedEmail(data: HomeworkGradedEmailData): {
           </h1>
 
           <p style="margin:0;color:#334155;font-size:15px;line-height:1.65;">
-            Lektor sprawdził Twoją pracę domową:
+            Sprawdziłem Twoją pracę domową:
             <strong style="color:#0f172a;display:block;margin-top:6px;font-size:17px;font-weight:700;">${escapeHtml(cleanTitle)}</strong>
+          </p>
+
+          <p style="margin:12px 0 0;color:#475569;font-size:14px;line-height:1.6;">
+            Zostawiłem dla Ciebie kilka uwag i wskazówek. Zerknij do aplikacji, żeby zobaczyć szczegóły — dobra robota z wykonaniem zadania!
           </p>
 
           ${gradeHtml}
@@ -427,7 +436,7 @@ export function buildHomeworkGradedEmail(data: HomeworkGradedEmailData): {
   const textLines: Array<string | null> = [
     greeting,
     '',
-    `Lektor sprawdził Twoją pracę domową: „${cleanTitle}".`,
+    `Sprawdziłem Twoją pracę domową: „${cleanTitle}".`,
     typeof data.grade === 'number' ? `Ocena: ${data.grade}` : null,
     data.teacherFeedback ? `\nKomentarz lektora: ${data.teacherFeedback}` : null,
     APP_URL ? `\nZobacz szczegóły w aplikacji: ${APP_URL}` : null,

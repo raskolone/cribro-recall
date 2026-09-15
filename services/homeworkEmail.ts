@@ -196,8 +196,12 @@ export function buildHomeworkConfirmationEmail(params: HomeworkConfirmationEmail
           </h1>
 
           <p style="margin:0;color:#334155;font-size:15px;line-height:1.65;">
-            Lektor przypisał dla Ciebie nową pracę domową:
+            Przygotowałem dla Ciebie nową pracę domową:
             <strong style="color:#0f172a;display:block;margin-top:6px;font-size:17px;font-weight:700;">${escapeHtml(cleanTitle)}</strong>
+          </p>
+
+          <p style="margin:12px 0 0;color:#475569;font-size:14px;line-height:1.6;">
+            Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś znalazł na nie 5–10 minut przed naszym kolejnym spotkaniem — to świetny sposób, żeby utrwalić to, nad czym pracowaliśmy na lekcji.
           </p>
 
           ${instructionsHtml}
@@ -221,11 +225,12 @@ export function buildHomeworkConfirmationEmail(params: HomeworkConfirmationEmail
   const textLines = [
     greeting,
     '',
-    `W systemie została dla Ciebie przypisana nowa praca domowa: „${cleanTitle}".`,
+    `Przygotowałem dla Ciebie nową pracę domową: „${cleanTitle}".`,
+    'Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś znalazł na nie 5-10 minut przed naszą kolejną lekcją — to świetny sposób na utrwalenie materiału.',
     due ? `Termin wykonania: ${due}` : null,
     assignedBy ? `Przypisane przez: ${assignedBy}` : null,
-    instructions ? `\nWskazówki lektora: ${instructions}` : null,
-    customNote ? `\nWiadomość od lektora: ${customNote}` : null,
+    instructions ? `\nWskazówki: ${instructions}` : null,
+    customNote ? `\nWiadomość ode mnie: ${customNote}` : null,
     '',
     isDirect
       ? `Wykonaj zadanie teraz (bez logowania): ${appUrl}${expiresFormatted ? `\n(Link jest unikalny i ważny do: ${expiresFormatted})` : ''}`
@@ -361,7 +366,7 @@ export function buildWelcomeEmail(params: WelcomeEmailParams): {
           </h1>
 
           <p style="margin:0;color:#cbd5e1;font-size:15px;line-height:1.65;">
-            Twoje konto na platformie <strong style="color:#f1f5f9;">CRIBRO ENGLISH</strong> jest już aktywne! Poniżej znajdziesz dane logowania — zapamiętaj je lub zmień hasło po pierwszym zalogowaniu.
+            Twoje konto na platformie <strong style="color:#f1f5f9;">CRIBRO ENGLISH</strong> jest już w pełni gotowe! Przygotowałem dla Ciebie przestrzeń, w której znajdziesz notatki z naszych lekcji, słownictwo oraz krótkie, dopasowane do Ciebie zadania powtórkowe. Poniżej podsyłam Twoje dane logowania — wskocz na platformę i zerknij, jak to wygląda!
           </p>
 
           ${customNoteHtml}
@@ -396,12 +401,12 @@ export function buildWelcomeEmail(params: WelcomeEmailParams): {
 
           <!-- Co Cię czeka -->
           <div style="margin:28px 0 0;background:rgba(13,148,136,0.08);border:1px solid rgba(13,148,136,0.2);border-radius:12px;padding:16px 18px;">
-            <p style="margin:0 0 10px;font-size:12px;font-weight:700;color:#5eead4;text-transform:uppercase;letter-spacing:0.05em;">Co Cię czeka na platformie:</p>
+            <p style="margin:0 0 10px;font-size:12px;font-weight:700;color:#5eead4;text-transform:uppercase;letter-spacing:0.05em;">Co na Ciebie czeka:</p>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-              <tr><td style="padding:5px 0;color:#cbd5e1;font-size:13px;line-height:1.5;">📝 Interaktywne prace domowe z natychmiastową oceną</td></tr>
+              <tr><td style="padding:5px 0;color:#cbd5e1;font-size:13px;line-height:1.5;">📝 Krótkie i interaktywne prace domowe</td></tr>
               <tr><td style="padding:5px 0;color:#cbd5e1;font-size:13px;line-height:1.5;">🃏 Fiszki i system inteligentnych powtórek (SRS)</td></tr>
-              <tr><td style="padding:5px 0;color:#cbd5e1;font-size:13px;line-height:1.5;">📖 Historia lekcji z notatkami i słownictwem</td></tr>
-              <tr><td style="padding:5px 0;color:#cbd5e1;font-size:13px;line-height:1.5;">📊 Statystyki postępów i śledzenie rozwoju</td></tr>
+              <tr><td style="padding:5px 0;color:#cbd5e1;font-size:13px;line-height:1.5;">📖 Pełna historia naszych lekcji i słówek</td></tr>
+              <tr><td style="padding:5px 0;color:#cbd5e1;font-size:13px;line-height:1.5;">📊 Śledzenie Twoich postępów i statystyk</td></tr>
             </table>
           </div>
 
@@ -418,11 +423,12 @@ export function buildWelcomeEmail(params: WelcomeEmailParams): {
   const textLines: (string | null)[] = [
     greeting,
     '',
-    'Twoje konto na platformie CRIBRO ENGLISH jest gotowe!',
+    'Twoje konto na platformie CRIBRO ENGLISH jest już gotowe!',
+    'Przygotowałem dla Ciebie przestrzeń z notatkami z lekcji, słownictwem oraz zadaniami.',
   ];
 
   if (customNote) {
-    textLines.push('', 'Wiadomość od lektora:', customNote);
+    textLines.push('', 'Wiadomość ode mnie:', customNote);
   }
 
   textLines.push(

@@ -32,6 +32,7 @@ import { recordExerciseResults } from '../../services/learningProfile';
 import { useDraftAnswers } from '../../hooks/useDraftAnswers';
 import { normalizeLevel } from '../../utils/learningCurve';
 import HomeworkExercise from './HomeworkExercise';
+import HomeworkWarmupScrambler from './HomeworkWarmupScrambler';
 import TakeTestScreen from '../tests/TakeTestScreen';
 import { exportTestToPDF } from '../../utils/pdfExport';
 import Markdown from 'react-markdown';
@@ -213,6 +214,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
   const [tasks, setTasks] = useState<SpecialTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTask, setActiveTask] = useState<SpecialTask | null>(null);
+  const [showWarmup, setShowWarmup] = useState(true);
   const [index, setIndex] = useState(0);
   // Odpowiedzi przeżywają zamknięcie karty: zadanie robi się między innymi
   // sprawami, a przerwanie nie może kasować dziesięciu rozwiązanych zdań.
@@ -517,6 +519,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
   const startTask = (task: SpecialTask) => {
     markTaskAsViewedByStudent(task);
     setActiveTask(task);
+    setShowWarmup(true);
     setIndex(0);
     // Odpowiedzi wczyta hook szkicu, gdy zmieni się klucz zadania — czyszczenie
     // ich tutaj kasowałoby właśnie odzyskaną, niedokończoną pracę.
@@ -527,6 +530,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
 
   const closeTask = () => {
     setActiveTask(null);
+    setShowWarmup(true);
     setResult(null);
   };
 
@@ -1106,6 +1110,18 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
   // ————— Rozwiązywanie —————
   if (activeTask) {
     const items = activeTask.sentences || [];
+
+    // Opcjonalny tryb rozgrzewki (ADHD-friendly rozsypanka klockowa przed właściwym zadaniem)
+    if (showWarmup && items.length > 0) {
+      return (
+        <HomeworkWarmupScrambler
+          sentences={items}
+          onComplete={() => setShowWarmup(false)}
+          onSkip={() => setShowWarmup(false)}
+        />
+      );
+    }
+
     // Jedna praca domowa miesza rodzaje ćwiczeń, więc rodzaj rozstrzyga
     // element, a nie dokument (patrz utils/homework.ts).
     const type = homeworkItemType(items[index], activeTask);

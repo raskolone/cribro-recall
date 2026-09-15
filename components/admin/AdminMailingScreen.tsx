@@ -134,13 +134,17 @@ const TEMPLATES: Array<{
           </h1>
 
           <p style="margin:0;color:#cbd5e1;font-size:15px;line-height:1.65;">
-            W systemie została dla Ciebie przypisana nowa praca domowa:
+            Przygotowałem dla Ciebie nową pracę domową:
             <strong style="color:#f1f5f9;display:block;margin-top:6px;font-size:17px;font-weight:700;">${data.title}</strong>
+          </p>
+
+          <p style="margin:12px 0 0;color:#94a3b8;font-size:14px;line-height:1.6;">
+            Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś znalazł na nie 5–10 minut przed naszym kolejnym spotkaniem — to świetny i szybki sposób na utrwalenie materiału z lekcji. Daj znać, jak poszło!
           </p>
 
           ${data.instructions ? `
           <div style="margin:20px 0;background:#0f172a;border-left:3px solid #0d9488;border-radius:0 8px 8px 0;padding:14px 16px;">
-            <p style="margin:0 0 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#0d9488;">Wskazówki lektora</p>
+            <p style="margin:0 0 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#0d9488;">Wskazówki ode mnie</p>
             <p style="margin:0;color:#cbd5e1;font-size:14px;line-height:1.6;">${data.instructions}</p>
           </div>` : ''}
 
@@ -179,7 +183,7 @@ const TEMPLATES: Array<{
     },
     renderText: (data) => {
       const greeting = formatPolishGreeting(data.studentName);
-      return `${greeting}\n\nCzeka na Ciebie nowa praca domowa: „${data.title}".\n\nLiczba ćwiczeń: ${data.itemCount} zadań\nTermin: ${data.dueDate}\nOd: ${data.assignedBy}\nWskazówki: ${data.instructions}\n\nOtwórz aplikację: https://app.maciej.pro\n\nWypisz się z powiadomień: ${data.unsubscribeUrl}\n\n—\nCRIBRO ENGLISH`;
+      return `${greeting}\n\nPrzygotowałem dla Ciebie nową pracę domową: „${data.title}".\nZadanie jest opcjonalne, ale warto znaleźć na nie 5-10 minut przed kolejnymi zajęciami.\n\nLiczba ćwiczeń: ${data.itemCount} zadań\nTermin: ${data.dueDate}\nOd: ${data.assignedBy}\nWskazówki: ${data.instructions}\n\nOtwórz aplikację: https://app.maciej.pro\n\nWypisz się z powiadomień: ${data.unsubscribeUrl}\n\n—\nMaciej Wyrozumski\nCRIBRO ENGLISH`;
     },
   },
   {
@@ -218,8 +222,12 @@ const TEMPLATES: Array<{
           </h1>
 
           <p style="margin:0;color:#cbd5e1;font-size:15px;line-height:1.65;">
-            Przypominamy o zbliżającym się terminie zadania:
+            Chciałem Ci tylko krótko przypomnieć, że termin Twojego zadania mija jutro:
             <strong style="color:#f1f5f9;display:block;margin-top:6px;font-size:17px;font-weight:700;">${data.title}</strong>
+          </p>
+
+          <p style="margin:12px 0 0;color:#94a3b8;font-size:14px;line-height:1.6;">
+            Wiem, że masz sporo na głowie i pamiętaj, że zadanie jest opcjonalne, ale naprawdę warto poświęcić na nie chwilę — nawet 5 minut wystarczy, żeby utrwalić materiał przed kolejnymi zajęciami. Trzymam kciuki!
           </p>
 
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;border-top:1px solid #334155;border-bottom:1px solid #334155;">
@@ -253,7 +261,7 @@ const TEMPLATES: Array<{
     },
     renderText: (data) => {
       const greeting = formatPolishGreeting(data.studentName);
-      return `${greeting}\n\nPrzypominamy, że termin zadania „${data.title}" upływa: ${data.dueDate}.\n\nOtwórz aplikację: https://app.maciej.pro\n\nWypisz się z powiadomień: ${data.unsubscribeUrl}\n\n—\nCRIBRO ENGLISH`;
+      return `${greeting}\n\nChciałem Ci tylko krótko przypomnieć, że termin zadania „${data.title}" upływa: ${data.dueDate}.\nZadanie jest opcjonalne, ale warto znaleźć na nie chwilę przed naszym spotkaniem.\n\nOtwórz aplikację: https://app.maciej.pro\n\nWypisz się z powiadomień: ${data.unsubscribeUrl}\n\n—\nMaciej Wyrozumski\nCRIBRO ENGLISH`;
     },
   },
   {
@@ -292,8 +300,12 @@ const TEMPLATES: Array<{
           </h1>
 
           <p style="margin:0;color:#cbd5e1;font-size:15px;line-height:1.65;">
-            Lektor sprawdził Twoje zadanie:
+            Sprawdziłem Twoją ostatnią pracę domową:
             <strong style="color:#f1f5f9;display:block;margin-top:6px;font-size:17px;font-weight:700;">${data.title}</strong>
+          </p>
+
+          <p style="margin:12px 0 0;color:#94a3b8;font-size:14px;line-height:1.6;">
+            Zostawiłem dla Ciebie kilka uwag i wskazówek. Zerknij do aplikacji, żeby zobaczyć szczegóły — dobra robota z wykonaniem zadania!
           </p>
 
           <div style="margin:22px 0;background:#0f172a;border:1px solid #10b981;border-radius:12px;padding:18px 20px;">
@@ -324,7 +336,7 @@ const TEMPLATES: Array<{
     },
     renderText: (data) => {
       const greeting = formatPolishGreeting(data.studentName);
-      return `${greeting}\n\nTwoja praca domowa „${data.title}" została sprawdzona!\nWynik: ${data.score}\nKomentarz lektora: ${data.feedback}\n\nOtwórz aplikację: https://app.maciej.pro\n\nWypisz się z powiadomień: ${data.unsubscribeUrl}\n\n—\nCRIBRO ENGLISH`;
+      return `${greeting}\n\nSprawdziłem Twoją pracę domową „${data.title}"!\nWynik: ${data.score}\nKomentarz: ${data.feedback}\n\nOtwórz aplikację: https://app.maciej.pro\n\nWypisz się z powiadomień: ${data.unsubscribeUrl}\n\n—\nMaciej Wyrozumski\nCRIBRO ENGLISH`;
     },
   },
   {
@@ -362,9 +374,12 @@ const TEMPLATES: Array<{
           </h1>
 
           <p style="margin:0;color:#cbd5e1;font-size:15px;line-height:1.65;">
-            W aplikacji czeka podsumowanie lekcji:
+            Nasze ostatnie spotkanie jest już podsumowane w aplikacji:
             <strong style="color:#f1f5f9;display:block;margin-top:6px;font-size:17px;font-weight:700;">${data.lessonTopic}</strong>
-            oraz <strong>${data.wordCount} nowych słówek</strong> do powtórki w systemie fiszek.
+          </p>
+
+          <p style="margin:12px 0 0;color:#94a3b8;font-size:14px;line-height:1.6;">
+            Dodałem notatki oraz <strong>${data.wordCount} nowych słówek i zwrotów</strong> do Twojego systemu powtórek fiszek. W wolnej chwili zerknij i przerób krótką powtórkę — regularność robi największą różnicę!
           </p>
 
           <div style="margin:26px 0 0;text-align:center;">
@@ -387,7 +402,7 @@ const TEMPLATES: Array<{
     },
     renderText: (data) => {
       const greeting = formatPolishGreeting(data.studentName);
-      return `${greeting}\n\nW aplikacji czeka podsumowanie lekcji „${data.lessonTopic}" oraz ${data.wordCount} nowych słówek do powtórki.\n\nOtwórz aplikację: https://app.maciej.pro\n\nWypisz się z powiadomień: ${data.unsubscribeUrl}\n\n—\nCRIBRO ENGLISH`;
+      return `${greeting}\n\nNasze ostatnie spotkanie „${data.lessonTopic}" jest już podsumowane w aplikacji!\nDodałem ${data.wordCount} nowych słówek do powtórki.\n\nOtwórz aplikację: https://app.maciej.pro\n\nWypisz się z powiadomień: ${data.unsubscribeUrl}\n\n—\nMaciej Wyrozumski\nCRIBRO ENGLISH`;
     },
   },
 ];

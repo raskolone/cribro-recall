@@ -674,10 +674,24 @@ const Dashboard: React.FC = () => {
     return list;
   })();
 
+  const handleHomeClick = () => {
+    setActiveSetId(null);
+    setActiveTaskId(null);
+    setActiveTestId(null);
+    setHomeworkFilterStatus(null);
+    if (isTeacher) {
+      setAdminActiveTab(null);
+      setAdminSelectedUserId(null);
+      handleNavigate('dashboard');
+    } else {
+      handleNavigate('student-today');
+    }
+  };
+
   return (
     <div className="flex flex-col h-[100dvh] w-full overflow-hidden">
       <TopBar
-        onHome={() => handleNavigate(isTeacher ? 'dashboard' : 'student-today')}
+        onHome={handleHomeClick}
         onOpenSettings={() => handleNavigate('settings')}
         onShowHelp={() => setShowOnboarding(true)}
         onOpenDiagnostics={isAdmin ? () => handleNavigate('admin-debugging') : undefined}

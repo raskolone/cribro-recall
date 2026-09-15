@@ -56,7 +56,7 @@ test('buildHomeworkEmail działa poprawnie bez podanego unsubscribeUrl', () => {
 
   assert.ok(!email.html.includes('Wypisz się z powiadomień e-mail'));
   assert.ok(email.html.includes('NOWA PRACA DOMOWA'));
-  assert.ok(email.text.includes('przypisana nowa praca domowa'));
+  assert.ok(email.text.includes('Przygotowałem dla Ciebie nową pracę domową'));
   assert.ok(email.html.includes('Maciej Wyrozumski'));
   assert.ok(email.html.includes('wyrozumski@maciej.pro'));
   assert.ok(email.html.includes('+48 698 250 507'));
