@@ -14,11 +14,14 @@ import {
   Zap,
   Volume2,
   Music,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import Button from '../ui/Button';
 import { ScratchpadDocument } from '../../types';
 import { WheelOfFortune } from '../presentation/WheelOfFortune';
 import { EMPTY_SLIDE_INTERACTION } from '../admin/presentation/SlideCard';
+import { useTheme } from '../../context/ThemeContext';
 
 export type PresentationState = NonNullable<ScratchpadDocument['presentationState']>;
 
@@ -74,8 +77,17 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
   onUpdatePresentation,
   onAddToNotes,
 }) => {
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [localInputAnswer, setLocalInputAnswer] = useState<string>('');
   const [showHints, setShowHints] = useState(false);
-  const [localInputAnswer, setLocalInputAnswer] = useState('');
+
+  let theme: 'light' | 'dark' = 'dark';
+  let toggleTheme = () => {};
+  try {
+    const t = useTheme();
+    theme = t.theme;
+    toggleTheme = t.toggleTheme;
+  } catch {}
 
   // Obsługa klawisza ESC do wyjścia z prezentacji
   useEffect(() => {
@@ -117,9 +129,9 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0b0f17]/95 backdrop-blur-2xl animate-in fade-in duration-300 text-text-hi select-none overflow-y-auto p-4 sm:p-8">
+    <div className="fixed inset-0 z-50 flex flex-col dark:bg-[#0b0f17]/95 bg-slate-50/98 backdrop-blur-2xl animate-in fade-in duration-300 dark:text-white text-slate-900 select-none overflow-y-auto p-4 sm:p-8 transition-colors duration-200">
       {/* Top Bar */}
-      <div className="flex items-center justify-between pb-4 border-b border-white/10 max-w-5xl mx-auto w-full">
+      <div className="flex items-center justify-between pb-4 border-b dark:border-white/10 border-slate-200 max-w-5xl mx-auto w-full">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary shadow-[0_0_20px_rgba(114,240,180,0.25)] animate-pulse">
             <Zap size={22} />
@@ -139,13 +151,22 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
                 {isTeacher ? 'Widok lektora (sterowanie)' : 'Twój widok na żywo'}
               </span>
             </div>
-            <h2 className="text-lg sm:text-xl font-extrabold text-white mt-0.5">
+            <h2 className="text-lg sm:text-xl font-extrabold dark:text-white text-slate-900 mt-0.5">
               {presentation.title || 'Ćwiczenie z lektorem'}
             </h2>
           </div>
         </div>
 
         <div className="flex items-center gap-2.5">
+          {/* Niezależny przełącznik motywu dla lektora i kursanta */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
+            className="p-2 rounded-xl border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-white text-content-muted hover:text-text-hi transition-colors cursor-pointer shadow-sm"
+          >
+            {theme === 'dark' ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} className="text-indigo-500" />}
+          </button>
           {/* Teacher Action: Reveal Answer */}
           {isTeacher && isInteractive && !isAnswerRevealed && onRevealAnswer && (
             <button

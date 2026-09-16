@@ -4,7 +4,8 @@ import confetti from 'canvas-confetti';
 import { 
   Sparkles, RotateCcw, Volume2, CheckCircle2, Clock, 
   HelpCircle, ChevronRight, Plus, Shuffle, Copy, Check,
-  BookOpen, History, MessageSquare, Award, ArrowRight, Play, Pause
+  BookOpen, History, MessageSquare, Award, ArrowRight, Play, Pause,
+  Sun, Moon
 } from 'lucide-react';
 import { PresentationSlide, LessonRecord } from '../../types';
 import { SlideInteraction } from '../admin/presentation/SlideCard';
@@ -17,6 +18,7 @@ import {
   generateWheelQuestionsAI 
 } from '../../services/wheelQuestionService';
 import { animateDropletSuccess, prefersReducedMotion } from '../../services/gsapAnimations';
+import { useTheme } from '../../context/ThemeContext';
 
 interface WheelOfFortuneProps {
   slide?: PresentationSlide;
@@ -29,16 +31,28 @@ interface WheelOfFortuneProps {
   isStudent?: boolean;
 }
 
-// Stonowana, elegancka paleta HSL dla sektorów koła (Liquid Glass aesthetic, ADHD-friendly)
-const SECTOR_PALETTE = [
-  { fill: 'rgba(16, 185, 129, 0.28)', stroke: '#10b981', text: '#6ee7b7', name: 'Emerald' },
-  { fill: 'rgba(14, 165, 233, 0.28)', stroke: '#0ea5e9', text: '#7dd3fc', name: 'Sky' },
-  { fill: 'rgba(245, 158, 11, 0.28)', stroke: '#f59e0b', text: '#fcd34d', name: 'Amber' },
-  { fill: 'rgba(139, 92, 246, 0.28)', stroke: '#8b5cf6', text: '#c4b5fd', name: 'Violet' },
-  { fill: 'rgba(236, 72, 153, 0.28)', stroke: '#ec4899', text: '#f472b6', name: 'Rose' },
-  { fill: 'rgba(20, 184, 166, 0.28)', stroke: '#14b8a6', text: '#5eead4', name: 'Teal' },
-  { fill: 'rgba(99, 102, 241, 0.28)', stroke: '#6366f1', text: '#a5b4fc', name: 'Indigo' },
-  { fill: 'rgba(249, 115, 22, 0.28)', stroke: '#f97316', text: '#fdba74', name: 'Orange' },
+// Stonowana, elegancka paleta dla sektorów koła w trybie ciemnym (Nocturne)
+const SECTOR_PALETTE_DARK = [
+  { fill: 'rgba(16, 185, 129, 0.32)', stroke: '#10b981', text: '#6ee7b7', name: 'Emerald' },
+  { fill: 'rgba(14, 165, 233, 0.32)', stroke: '#0ea5e9', text: '#7dd3fc', name: 'Sky' },
+  { fill: 'rgba(245, 158, 11, 0.32)', stroke: '#f59e0b', text: '#fcd34d', name: 'Amber' },
+  { fill: 'rgba(139, 92, 246, 0.32)', stroke: '#8b5cf6', text: '#c4b5fd', name: 'Violet' },
+  { fill: 'rgba(236, 72, 153, 0.32)', stroke: '#ec4899', text: '#f472b6', name: 'Rose' },
+  { fill: 'rgba(20, 184, 166, 0.32)', stroke: '#14b8a6', text: '#5eead4', name: 'Teal' },
+  { fill: 'rgba(99, 102, 241, 0.32)', stroke: '#6366f1', text: '#a5b4fc', name: 'Indigo' },
+  { fill: 'rgba(249, 115, 22, 0.32)', stroke: '#f97316', text: '#fdba74', name: 'Orange' },
+];
+
+// Wyrazista, świeża paleta o wysokim kontraście dla sektorów koła w trybie jasnym (Clean Studio)
+const SECTOR_PALETTE_LIGHT = [
+  { fill: 'rgba(16, 185, 129, 0.22)', stroke: '#059669', text: '#064e3b', name: 'Emerald' },
+  { fill: 'rgba(14, 165, 233, 0.22)', stroke: '#0284c7', text: '#075985', name: 'Sky' },
+  { fill: 'rgba(245, 158, 11, 0.22)', stroke: '#d97706', text: '#78350f', name: 'Amber' },
+  { fill: 'rgba(139, 92, 246, 0.22)', stroke: '#7c3aed', text: '#4c1d95', name: 'Violet' },
+  { fill: 'rgba(236, 72, 153, 0.22)', stroke: '#db2777', text: '#831843', name: 'Rose' },
+  { fill: 'rgba(20, 184, 166, 0.22)', stroke: '#0d9488', text: '#134e4a', name: 'Teal' },
+  { fill: 'rgba(99, 102, 241, 0.22)', stroke: '#4f46e5', text: '#312e81', name: 'Indigo' },
+  { fill: 'rgba(249, 115, 22, 0.22)', stroke: '#ea580c', text: '#7c2d12', name: 'Orange' },
 ];
 
 export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
@@ -51,6 +65,19 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
   onAddToNotes,
   isStudent = false,
 }) => {
+  // Bezpieczne pobranie motywu lektora/kursanta (niezależne w każdym oknie)
+  let currentTheme: 'light' | 'dark' = 'dark';
+  let toggleTheme = () => {};
+  try {
+    const themeCtx = useTheme();
+    currentTheme = themeCtx.theme;
+    toggleTheme = themeCtx.toggleTheme;
+  } catch {
+    // Fallback gdy komponent jest renderowany poza ThemeProvider
+  }
+  const isDark = currentTheme === 'dark';
+  const sectorPalette = isDark ? SECTOR_PALETTE_DARK : SECTOR_PALETTE_LIGHT;
+
   // Wybór źródła pytań (scenariusz vs poprzednie lekcje)
   const [questionSource, setQuestionSource] = useState<'scenario' | 'past_lessons'>('scenario');
 
@@ -83,6 +110,7 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
   const resultCardRef = useRef<HTMLDivElement | null>(null);
   const rotationRef = useRef<number>(0);
   const lastPegIndexRef = useRef<number>(-1);
+  const lastTickTimeRef = useRef<number>(0);
 
   // Synchronizacja źródła pytań
   useEffect(() => {
@@ -103,13 +131,12 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
 
     if (
       interaction.wheelRotation != null &&
-      interaction.wheelRotation !== rotationRef.current &&
-      !isSpinning
+      Math.abs(interaction.wheelRotation - rotationRef.current) > 1
     ) {
-      // Zewnętrzny trigger obrotu koła (np. lektor zakręcił, kursant odbiera ruch)
-      performWheelSpin(interaction.wheelRotation, interaction.drawnQuestionId);
+      // Zewnętrzny trigger obrotu koła (np. lektor zakręcił, kursant płynnie odbiera ruch)
+      performWheelSpin(interaction.wheelRotation, interaction.drawnQuestionId, true);
     }
-  }, [interaction]);
+  }, [interaction?.wheelRotation, interaction?.questionSource, interaction?.drawnQuestionId]);
 
   // Obsługa stopera
   useEffect(() => {
@@ -132,15 +159,13 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
   const wheelRadius = 175;
   const centerCoord = 200;
 
-  // Główna funkcja wykonująca obrót koła z fizyką GSAP
-  const performWheelSpin = (targetRotation: number, forcedWinnerId?: string | null) => {
+  // Główna funkcja wykonująca obrót koła z ulepszoną, płynną fizyką
+  const performWheelSpin = (targetRotation: number, forcedWinnerId?: string | null, isRemote = false) => {
     if (!wheelGroupRef.current) return;
 
     setIsSpinning(true);
     setIsTimerRunning(false);
     setTimerSeconds(60);
-
-    // Dźwięk/haczenie iglicy (tick)
     lastPegIndexRef.current = -1;
 
     if (prefersReducedMotion()) {
@@ -152,31 +177,43 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
     }
 
     gsap.killTweensOf(wheelGroupRef.current);
-    gsap.killTweensOf(needleRef.current);
+    if (needleRef.current) gsap.killTweensOf(needleRef.current);
+
+    // Dynamiczny, zoptymalizowany czas trwania: 2.8s (oraz 2.4s dla zdalnej synchronizacji kursanta, aby nie lagował)
+    const spinDuration = isRemote ? 2.4 : 2.8;
 
     gsap.to(wheelGroupRef.current, {
       rotation: targetRotation,
-      duration: 4.4,
-      ease: 'power4.out',
+      duration: spinDuration,
+      ease: 'power3.out',
       onUpdate: () => {
         if (!wheelGroupRef.current) return;
         const currentRot = gsap.getProperty(wheelGroupRef.current, 'rotation') as number;
-        // Oblicz który kołek przechodzi pod wskaźnikiem na godzinie 12
         const normalizedRot = ((currentRot % 360) + 360) % 360;
         const currentPeg = Math.floor(normalizedRot / sliceAngle);
 
         if (currentPeg !== lastPegIndexRef.current && needleRef.current) {
           lastPegIndexRef.current = currentPeg;
-          // Odchylenie iglicy przy uderzeniu o kołek
-          gsap.fromTo(
-            needleRef.current,
-            { rotation: -18 },
-            { rotation: 0, duration: 0.12, ease: 'back.out(2)' }
-          );
+          const now = performance.now();
+          // Ograniczenie częstotliwości animacji iglicy (max ~25 fps) – koniec z lagami CPU!
+          if (now - lastTickTimeRef.current > 38) {
+            lastTickTimeRef.current = now;
+            gsap.to(needleRef.current, {
+              rotation: -14,
+              duration: 0.04,
+              yoyo: true,
+              repeat: 1,
+              overwrite: 'auto',
+              ease: 'power1.out',
+            });
+          }
         }
       },
       onComplete: () => {
         rotationRef.current = targetRotation;
+        if (needleRef.current) {
+          gsap.to(needleRef.current, { rotation: 0, duration: 0.15, ease: 'back.out(2)' });
+        }
         setIsSpinning(false);
         finishSpin(targetRotation, forcedWinnerId);
       }
@@ -185,9 +222,7 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
 
   // Zakończenie obrotu, wyznaczenie wylosowanego pytania
   const finishSpin = (finalRotation: number, forcedWinnerId?: string | null) => {
-    // Wskaźnik znajduje się na samej górze koła (270 stopni w układzie współrzędnych SVG / 12:00)
     const normalizedRotation = ((finalRotation % 360) + 360) % 360;
-    // Kąt wskaźnika to 270 deg (godzina 12:00)
     const pointerAngle = (360 - normalizedRotation + 270) % 360;
     const winningIndex = Math.floor(pointerAngle / sliceAngle) % questionsCount;
 
@@ -209,7 +244,9 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
         particleCount: 28,
         spread: 55,
         origin: { y: 0.7 },
-        colors: ['#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6'],
+        colors: isDark 
+          ? ['#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6'] 
+          : ['#059669', '#0284c7', '#d97706', '#7c3aed'],
         disableForReducedMotion: true
       });
     } catch {}
@@ -219,7 +256,6 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
   const handleSpinClick = () => {
     if (isSpinning || activeQuestions.length === 0) return;
 
-    // Wybierz losowy indeks pytania z dostępnych (preferuj te jeszcze nie omówione)
     const undiscussedIndices = activeQuestions
       .map((q, idx) => ({ q, idx }))
       .filter(({ q }) => !discussedQuestionIds.has(q.id));
@@ -232,21 +268,19 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
     const chosenIndex = randomPick.idx;
     const chosenQuestion = randomPick.q;
 
-    // Kąt środka wybranego wycinka (przy rotation = 0)
+    // Kąt środka wybranego wycinka
     const sliceCenterAngle = chosenIndex * sliceAngle + sliceAngle / 2;
-    // Aby wycinek znalazł się na godzinie 12:00 (270°), musimy obrócić koło tak,
-    // by sliceCenterAngle pokrył się z 270°.
+    // Dopasowanie do iglicy na 270° (godzina 12:00)
     const targetAngleAtPointer = (270 - sliceCenterAngle + 360) % 360;
 
-    // Dodaj 5 do 7 pełnych obrotów dla spektakularnego ruchu
-    const extraSpins = (5 + Math.floor(Math.random() * 3)) * 360;
+    // 4 do 5 pełnych obrotów dla spektakularnego, ale szybkiego ruchu
+    const extraSpins = (4 + Math.floor(Math.random() * 2)) * 360;
     const currentRot = rotationRef.current;
     const currentModulo = ((currentRot % 360) + 360) % 360;
     const angleDelta = ((targetAngleAtPointer - currentModulo) + 360) % 360;
 
     const finalTargetRotation = currentRot + extraSpins + angleDelta;
 
-    // Powiadom partnera / zaktualizuj stan live
     if (onInteractionChange) {
       onInteractionChange({
         revealedAnswers: interaction?.revealedAnswers || {},
@@ -260,7 +294,7 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
       });
     }
 
-    performWheelSpin(finalTargetRotation, chosenQuestion.id);
+    performWheelSpin(finalTargetRotation, chosenQuestion.id, false);
   };
 
   // Oznaczenie pytania jako omówionego
@@ -304,10 +338,16 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
 
   return (
     <div className="w-full space-y-5 animate-in fade-in duration-300 select-none">
-      {/* ─── GÓRNY PASEK WYBORU ŹRÓDŁA I AKCJI LEKTORA ─── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-2xl liquid-glass-card border border-white/10 shadow-md">
+      {/* ─── GÓRNY PASEK WYBORU ŹRÓDŁA I AKCJI LEKTORA / KURSANTA ─── */}
+      <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 sm:p-3.5 rounded-2xl border transition-colors duration-200 backdrop-blur-xl ${
+        isDark 
+          ? 'bg-slate-900/80 border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)]'
+          : 'bg-white/90 border-slate-200/90 shadow-[0_4px_24px_rgba(15,23,42,0.06)]'
+      }`}>
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] font-mono uppercase font-bold text-content-muted flex items-center gap-1.5 mr-1">
+          <span className={`text-[11px] font-mono uppercase font-bold flex items-center gap-1.5 mr-1 ${
+            isDark ? 'text-slate-400' : 'text-slate-500'
+          }`}>
             <Sparkles size={13} className="text-primary" /> Źródło pytań:
           </span>
 
@@ -328,13 +368,19 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
             }}
             className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               questionSource === 'scenario'
-                ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(114,240,180,0.25)] ring-1 ring-primary/40'
-                : 'border-white/10 bg-white/[0.03] text-content-muted hover:text-white hover:bg-white/[0.08]'
+                ? isDark
+                  ? 'bg-primary/25 border-primary text-primary shadow-[0_0_15px_rgba(114,240,180,0.25)] ring-1 ring-primary/40'
+                  : 'bg-emerald-500/15 border-emerald-500 text-emerald-800 ring-1 ring-emerald-500/40 shadow-sm'
+                : isDark
+                ? 'border-white/10 bg-white/[0.04] text-slate-400 hover:text-white hover:bg-white/[0.08]'
+                : 'border-slate-200 bg-slate-50 text-slate-600 hover:text-slate-900 hover:border-slate-300'
             }`}
           >
             <BookOpen size={13} />
             <span>Aktualny scenariusz</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-white/10 text-white font-bold">
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+              isDark ? 'bg-white/10 text-white' : 'bg-slate-200 text-slate-800'
+            }`}>
               {scenarioQuestions.length}
             </span>
           </button>
@@ -356,13 +402,19 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
             }}
             className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               questionSource === 'past_lessons'
-                ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.25)] ring-1 ring-amber-400/40'
-                : 'border-white/10 bg-white/[0.03] text-content-muted hover:text-white hover:bg-white/[0.08]'
+                ? isDark
+                  ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.25)] ring-1 ring-amber-400/40'
+                  : 'bg-amber-500/15 border-amber-500 text-amber-900 ring-1 ring-amber-500/40 shadow-sm'
+                : isDark
+                ? 'border-white/10 bg-white/[0.04] text-slate-400 hover:text-white hover:bg-white/[0.08]'
+                : 'border-slate-200 bg-slate-50 text-slate-600 hover:text-slate-900 hover:border-slate-300'
             }`}
           >
             <History size={13} />
             <span>Z poprzednich lekcji</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-white/10 text-white font-bold">
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+              isDark ? 'bg-white/10 text-white' : 'bg-slate-200 text-slate-800'
+            }`}>
               {pastLessonQuestions.length}
             </span>
           </button>
@@ -376,7 +428,11 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
               variant="secondary"
               disabled={isSpinning || isAiGenerating}
               onClick={handleGenerateAiQuestions}
-              className="h-8 px-2.5 text-xs text-primary font-bold flex items-center gap-1.5 border-primary/30 bg-primary/10 hover:bg-primary/20"
+              className={`h-8 px-2.5 text-xs font-bold flex items-center gap-1.5 border ${
+                isDark 
+                  ? 'border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary' 
+                  : 'border-emerald-500/30 bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
+              }`}
               title="Wygeneruj 8 świeżych pytań rozgrzewkowych przez AI"
             >
               <Sparkles size={12} className={isAiGenerating ? 'animate-spin' : ''} />
@@ -388,22 +444,46 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
             size="sm"
             variant="ghost"
             onClick={() => setShowQuestionPool(!showQuestionPool)}
-            className="h-8 px-2.5 text-xs text-content-muted hover:text-white flex items-center gap-1"
+            className={`h-8 px-2.5 text-xs flex items-center gap-1 ${
+              isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+            }`}
           >
             <HelpCircle size={13} />
             <span>{showQuestionPool ? 'Ukryj listę' : 'Pokaż pytania'}</span>
           </Button>
+
+          {/* Przełącznik motywu (Lektor i kursant zmieniają niezależnie w swoim oknie) */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title={isDark ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
+            className={`h-8 w-8 rounded-xl border flex items-center justify-center transition-all cursor-pointer shadow-sm ${
+              isDark
+                ? 'border-white/10 bg-white/5 text-amber-400 hover:bg-white/10 hover:border-white/20'
+                : 'border-slate-200 bg-slate-100/80 text-indigo-600 hover:bg-slate-200'
+            }`}
+          >
+            {isDark ? <Sun size={14} /> : <Moon size={14} />}
+          </button>
         </div>
       </div>
 
       {/* ─── PODGLĄD LISTY PYTAŃ (JEŚLI ROZWINIĘTA) ─── */}
       {showQuestionPool && (
-        <div className="p-4 rounded-2xl bg-base-300/80 border border-white/10 space-y-2.5 animate-fadeIn">
-          <div className="flex items-center justify-between pb-2 border-b border-white/10">
-            <span className="text-xs font-bold uppercase tracking-wider text-content-muted flex items-center gap-1.5">
+        <div className={`p-4 rounded-2xl border space-y-2.5 animate-fadeIn backdrop-blur-xl ${
+          isDark 
+            ? 'bg-slate-900/85 border-white/10' 
+            : 'bg-white/95 border-slate-200 shadow-md'
+        }`}>
+          <div className={`flex items-center justify-between pb-2 border-b ${
+            isDark ? 'border-white/10' : 'border-slate-200'
+          }`}>
+            <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+              isDark ? 'text-slate-400' : 'text-slate-500'
+            }`}>
               <span>🎯</span> Pula pytań na kole ({activeQuestions.length}):
             </span>
-            <span className="text-[11px] font-mono text-primary">
+            <span className="text-[11px] font-mono text-primary font-bold">
               Omówione: {discussedQuestionIds.size} / {activeQuestions.length}
             </span>
           </div>
@@ -418,27 +498,37 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                   onClick={() => toggleQuestionDiscussed(q.id)}
                   className={`p-2.5 rounded-xl border text-xs flex items-start justify-between gap-2.5 cursor-pointer transition-all ${
                     isCurrent
-                      ? 'bg-primary/20 border-primary text-white ring-1 ring-primary/40'
+                      ? isDark
+                        ? 'bg-primary/20 border-primary text-white ring-1 ring-primary/40'
+                        : 'bg-emerald-500/15 border-emerald-500 text-emerald-950 ring-1 ring-emerald-500/40'
                       : isDiscussed
-                      ? 'bg-base-200/40 border-white/5 text-content-muted line-through opacity-60'
-                      : 'bg-base-200/80 border-white/10 text-text-hi hover:border-white/20'
+                      ? isDark
+                        ? 'bg-base-200/40 border-white/5 text-content-muted line-through opacity-60'
+                        : 'bg-slate-100 border-slate-200 text-slate-400 line-through opacity-60'
+                      : isDark
+                      ? 'bg-base-200/80 border-white/10 text-text-hi hover:border-white/20'
+                      : 'bg-slate-50 border-slate-200 text-slate-800 hover:border-slate-300'
                   }`}
                 >
                   <div className="flex items-start gap-2 min-w-0">
-                    <span className="w-5 h-5 rounded-md bg-white/10 font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
+                    <span className={`w-5 h-5 rounded-md font-mono text-[10px] font-bold flex items-center justify-center shrink-0 ${
+                      isDark ? 'bg-white/10' : 'bg-slate-200'
+                    }`}>
                       {idx + 1}
                     </span>
                     <div className="min-w-0">
                       <p className="font-medium truncate">{q.question}</p>
                       {q.sourceTag && (
-                        <span className="text-[9px] font-mono text-content-muted">{q.sourceTag}</span>
+                        <span className={`text-[9px] font-mono ${isDark ? 'text-content-muted' : 'text-slate-500'}`}>
+                          {q.sourceTag}
+                        </span>
                       )}
                     </div>
                   </div>
                   <button
                     type="button"
                     className={`p-1 rounded-md transition-colors ${
-                      isDiscussed ? 'text-primary' : 'text-content-muted hover:text-white'
+                      isDiscussed ? 'text-primary' : isDark ? 'text-content-muted hover:text-white' : 'text-slate-400 hover:text-slate-800'
                     }`}
                   >
                     <CheckCircle2 size={14} />
@@ -457,7 +547,11 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
           {/* Pojemnik Koła */}
           <div className="relative w-[340px] h-[340px] sm:w-[380px] sm:h-[380px] flex items-center justify-center">
             {/* Optyczna poświata tła */}
-            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary/15 via-info/10 to-purple-500/10 blur-2xl pointer-events-none" />
+            <div className={`absolute inset-0 rounded-full blur-2xl pointer-events-none ${
+              isDark 
+                ? 'bg-gradient-to-tr from-primary/20 via-sky-500/15 to-purple-500/15'
+                : 'bg-gradient-to-tr from-emerald-500/15 via-sky-400/10 to-amber-400/10'
+            }`} />
 
             {/* Wskaźnik iglicy na godzinie 12:00 */}
             <div className="absolute -top-3 z-30 flex flex-col items-center pointer-events-none">
@@ -467,7 +561,7 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                 height="44"
                 viewBox="0 0 34 44"
                 fill="none"
-                className="drop-shadow-[0_4px_10px_rgba(0,0,0,0.6)] origin-top"
+                className="drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)] origin-top"
               >
                 <path
                   d="M17 44L4 12C2.5 8 5.5 2 10 2H24C28.5 2 31.5 8 30 12L17 44Z"
@@ -492,30 +586,38 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
               width="380"
               height="380"
               viewBox="0 0 400 400"
-              className="w-full h-full max-w-[380px] max-h-[380px] drop-shadow-[0_12px_35px_rgba(0,0,0,0.7)] select-none"
+              className={`w-full h-full max-w-[380px] max-h-[380px] select-none ${
+                isDark ? 'drop-shadow-[0_12px_35px_rgba(0,0,0,0.7)]' : 'drop-shadow-[0_12px_28px_rgba(15,23,42,0.14)]'
+              }`}
             >
               <defs>
-                {/* Gradient zewnętrznej ramki koła */}
-                <radialGradient id="rim-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="90%" stopColor="#1e293b" />
-                  <stop offset="97%" stopColor="#334155" />
-                  <stop offset="100%" stopColor="#0f172a" />
+                {/* Gradient ramki - Tryb ciemny */}
+                <radialGradient id="rim-gradient-dark" cx="50%" cy="50%" r="50%">
+                  <stop offset="88%" stopColor="#182234" />
+                  <stop offset="96%" stopColor="#25344d" />
+                  <stop offset="100%" stopColor="#0b101b" />
                 </radialGradient>
-                {/* Wewnętrzny blask */}
+                {/* Gradient ramki - Tryb jasny */}
+                <radialGradient id="rim-gradient-light" cx="50%" cy="50%" r="50%">
+                  <stop offset="88%" stopColor="#f8fafc" />
+                  <stop offset="96%" stopColor="#e2e8f0" />
+                  <stop offset="100%" stopColor="#cbd5e1" />
+                </radialGradient>
+                {/* Wewnętrzny blask soczewki */}
                 <radialGradient id="center-glaze" cx="50%" cy="40%" r="60%">
-                  <stop offset="0%" stopColor="rgba(255,255,255,0.3)" />
-                  <stop offset="70%" stopColor="rgba(255,255,255,0.02)" />
+                  <stop offset="0%" stopColor={isDark ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.45)'} />
+                  <stop offset="70%" stopColor={isDark ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.06)'} />
                   <stop offset="100%" stopColor="transparent" />
                 </radialGradient>
               </defs>
 
-              {/* Zewnętrzna obwódka */}
+              {/* Zewnętrzna obwódka koła */}
               <circle
                 cx={centerCoord}
                 cy={centerCoord}
                 r={wheelRadius + 14}
-                fill="url(#rim-gradient)"
-                stroke="rgba(255,255,255,0.18)"
+                fill={isDark ? 'url(#rim-gradient-dark)' : 'url(#rim-gradient-light)'}
+                stroke={isDark ? 'rgba(255,255,255,0.18)' : 'rgba(15,23,42,0.15)'}
                 strokeWidth="3"
               />
 
@@ -535,7 +637,7 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                   const largeArcFlag = sliceAngle > 180 ? 1 : 0;
                   const pathData = `M ${centerCoord} ${centerCoord} L ${x1} ${y1} A ${wheelRadius} ${wheelRadius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
 
-                  const colorInfo = SECTOR_PALETTE[idx % SECTOR_PALETTE.length];
+                  const colorInfo = sectorPalette[idx % sectorPalette.length];
                   const midAngle = startAngle + sliceAngle / 2;
                   const isWinner = drawnQuestion?.id === q.id && !isSpinning;
 
@@ -545,29 +647,39 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                   const tx = centerCoord + textRadius * Math.cos(textRad);
                   const ty = centerCoord + textRadius * Math.sin(textRad);
 
+                  // Inteligentna orientacja tekstu — koniec z obróconymi do góry nogami cyframi!
+                  const isBottomHalf = midAngle > 90 && midAngle < 270;
+                  const textRotation = isBottomHalf ? midAngle - 90 : midAngle + 90;
+
                   return (
                     <g key={q.id || idx}>
                       {/* Sektor / Wedge */}
                       <path
                         d={pathData}
-                        fill={isWinner ? 'rgba(114, 240, 180, 0.45)' : colorInfo.fill}
-                        stroke={isWinner ? '#72f0b4' : colorInfo.stroke}
+                        fill={
+                          isWinner 
+                            ? isDark ? 'rgba(114, 240, 180, 0.45)' : 'rgba(16, 185, 129, 0.38)' 
+                            : colorInfo.fill
+                        }
+                        stroke={isWinner ? (isDark ? '#72f0b4' : '#059669') : colorInfo.stroke}
                         strokeWidth={isWinner ? '2.5' : '1.2'}
                         className="transition-colors duration-200"
                       />
 
-                      {/* Numer sektora i krótka etykieta */}
+                      {/* Numer sektora — zawsze czytelny i poprawnie zorientowany */}
                       <text
                         x={tx}
                         y={ty}
-                        fill={isWinner ? '#ffffff' : colorInfo.text}
+                        fill={isWinner ? (isDark ? '#ffffff' : '#064e3b') : colorInfo.text}
                         fontSize="15"
                         fontWeight="800"
                         fontFamily="monospace"
                         textAnchor="middle"
                         dominantBaseline="central"
-                        transform={`rotate(${midAngle + 90}, ${tx}, ${ty})`}
-                        className="pointer-events-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+                        transform={`rotate(${textRotation}, ${tx}, ${ty})`}
+                        className={`pointer-events-none ${
+                          isDark ? 'drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]' : 'font-extrabold'
+                        }`}
                       >
                         #{idx + 1}
                       </text>
@@ -588,9 +700,9 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                       cy={py}
                       r="3.5"
                       fill="#ffffff"
-                      stroke="#0f172a"
-                      strokeWidth="1"
-                      className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]"
+                      stroke={isDark ? '#0f172a' : '#475569'}
+                      strokeWidth={isDark ? '1' : '1.2'}
+                      className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]"
                     />
                   );
                 })}
@@ -606,33 +718,43 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
               />
             </svg>
 
-            {/* Środkowy przycisk 3D Liquid Glass (SPIN / ZAKRĘĆ) */}
+            {/* Środkowy przycisk 3D (SPIN / ZAKRĘĆ) dopasowany do motywu */}
             <div className="absolute z-20 flex items-center justify-center">
               <button
                 type="button"
                 onClick={handleSpinClick}
                 disabled={isSpinning || activeQuestions.length === 0}
                 title="Kliknij, aby zakręcić kołem fortuny"
-                className={`w-24 h-24 sm:w-26 sm:h-26 rounded-full border flex flex-col items-center justify-center cursor-pointer transition-all duration-200 select-none shadow-[0_6px_25px_rgba(0,0,0,0.7),inset_0_2px_4px_rgba(255,255,255,0.4)] ${
+                className={`w-24 h-24 sm:w-26 sm:h-26 rounded-full border flex flex-col items-center justify-center cursor-pointer transition-all duration-200 select-none ${
                   isSpinning
-                    ? 'scale-95 bg-primary/25 border-primary text-primary animate-pulse'
-                    : 'bg-gradient-to-b from-slate-800/90 via-slate-900/95 to-black border-white/30 text-white hover:border-primary hover:text-primary hover:scale-105 active:scale-95 active:shadow-inner'
+                    ? isDark
+                      ? 'scale-95 bg-primary/25 border-primary text-primary animate-pulse'
+                      : 'scale-95 bg-emerald-500/20 border-emerald-500 text-emerald-700 animate-pulse'
+                    : isDark
+                    ? 'bg-gradient-to-b from-slate-800/95 via-slate-900 to-black border-white/25 text-white shadow-[0_6px_25px_rgba(0,0,0,0.7),inset_0_2px_4px_rgba(255,255,255,0.3)] hover:border-primary hover:text-primary hover:scale-105 active:scale-95'
+                    : 'bg-gradient-to-b from-white via-slate-50 to-slate-100 border-slate-300 text-slate-800 shadow-[0_6px_20px_rgba(15,23,42,0.12),inset_0_2px_4px_#ffffff] hover:border-emerald-500 hover:text-emerald-700 hover:scale-105 active:scale-95'
                 }`}
               >
-                <div className="p-1 rounded-full bg-primary/20 text-primary mb-0.5">
+                <div className={`p-1 rounded-full mb-0.5 ${
+                  isDark ? 'bg-primary/20 text-primary' : 'bg-emerald-500/15 text-emerald-600'
+                }`}>
                   <RotateCcw size={16} className={isSpinning ? 'animate-spin' : ''} />
                 </div>
                 <span className="font-black text-[13px] tracking-wider uppercase">
                   {isSpinning ? 'LOSUJĘ…' : 'ZAKRĘĆ'}
                 </span>
-                <span className="text-[8px] font-mono text-content-muted opacity-80 uppercase tracking-widest">
+                <span className={`text-[8px] font-mono opacity-80 uppercase tracking-widest ${
+                  isDark ? 'text-slate-400' : 'text-slate-500'
+                }`}>
                   SPIN
                 </span>
               </button>
             </div>
           </div>
 
-          <p className="text-[11px] text-content-muted mt-2 font-mono flex items-center gap-1.5">
+          <p className={`text-[11px] mt-2 font-mono flex items-center gap-1.5 ${
+            isDark ? 'text-slate-400' : 'text-slate-500'
+          }`}>
             <span>💡</span> Kliknij środek koła, aby wylosować pytanie do dyskusji
           </p>
         </div>
@@ -641,21 +763,35 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
         <div className="lg:col-span-6 flex flex-col gap-4">
           <div
             ref={resultCardRef}
-            className="p-6 rounded-3xl liquid-glass-card border border-primary/30 shadow-[0_12px_40px_rgba(0,0,0,0.45)] relative overflow-hidden flex flex-col justify-between min-h-[300px]"
+            className={`p-6 rounded-3xl border relative overflow-hidden flex flex-col justify-between min-h-[340px] transition-colors duration-200 backdrop-blur-xl ${
+              isDark
+                ? 'bg-slate-900/80 border-primary/30 shadow-[0_12px_40px_rgba(0,0,0,0.5)]'
+                : 'bg-white/95 border-emerald-500/30 shadow-[0_12px_36px_rgba(15,23,42,0.08)]'
+            }`}
           >
             {/* Tło akcentowe */}
-            <div className="absolute top-0 right-0 w-60 h-60 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+            <div className={`absolute top-0 right-0 w-60 h-60 rounded-full blur-3xl pointer-events-none ${
+              isDark ? 'bg-primary/10' : 'bg-emerald-500/10'
+            }`} />
 
             <div className="relative z-10 space-y-4">
               {/* Nagłówek statusu pytania */}
-              <div className="flex items-center justify-between gap-2 flex-wrap border-b border-white/10 pb-3">
+              <div className={`flex items-center justify-between gap-2 flex-wrap pb-3 border-b ${
+                isDark ? 'border-white/10' : 'border-slate-200'
+              }`}>
                 <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-primary/20 text-primary border border-primary/30 flex items-center gap-1.5">
+                  <span className={`px-3 py-1 rounded-full text-xs font-mono font-bold border flex items-center gap-1.5 ${
+                    isDark
+                      ? 'bg-primary/20 text-primary border-primary/30'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                  }`}>
                     <Award size={13} />
                     {drawnQuestion ? 'Wylosowane pytanie' : 'Gotowy do rozgrzewki'}
                   </span>
                   {drawnQuestion?.sourceTag && (
-                    <span className="text-[10px] font-mono text-content-muted px-2 py-0.5 rounded bg-white/5 border border-white/10">
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+                      isDark ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+                    }`}>
                       {drawnQuestion.sourceTag}
                     </span>
                   )}
@@ -668,8 +804,12 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                       onClick={() => toggleQuestionDiscussed(drawnQuestion.id)}
                       className={`px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
                         discussedQuestionIds.has(drawnQuestion.id)
-                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                          : 'bg-white/5 border-white/10 text-content-muted hover:text-white'
+                          ? isDark
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                            : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                          : isDark
+                          ? 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                          : 'bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-900'
                       }`}
                       title="Oznacz jako omówione (nie pojawi się w kolejnych losowaniach)"
                     >
@@ -680,7 +820,11 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                     <button
                       type="button"
                       onClick={() => handleCopy(drawnQuestion.question)}
-                      className="p-1.5 rounded-xl border border-white/10 text-content-muted hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                      className={`p-1.5 rounded-xl border transition-colors cursor-pointer ${
+                        isDark 
+                          ? 'border-white/10 text-slate-400 hover:text-white hover:bg-white/5' 
+                          : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
                       title="Kopiuj treść pytania lub dodaj do notatnika"
                     >
                       {copiedQuestion ? <Check size={14} className="text-primary" /> : <Copy size={14} />}
@@ -693,7 +837,9 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
               {drawnQuestion ? (
                 <div className="space-y-3 pt-1 animate-fadeIn">
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className={`font-extrabold text-white leading-relaxed tracking-tight ${
+                    <h3 className={`font-extrabold leading-relaxed tracking-tight ${
+                      isDark ? 'text-white' : 'text-slate-900'
+                    } ${
                       isFullscreen ? 'text-xl sm:text-2xl md:text-3xl' : 'text-lg sm:text-xl'
                     }`}>
                       "{drawnQuestion.question}"
@@ -702,30 +848,46 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                   </div>
 
                   {drawnQuestion.followUpHint && (
-                    <div className="p-3 rounded-xl bg-base-300/70 border border-primary/20 text-xs text-text-2 space-y-1">
+                    <div className={`p-3 rounded-xl border text-xs space-y-1 ${
+                      isDark 
+                        ? 'bg-base-300/70 border-primary/20 text-slate-300' 
+                        : 'bg-emerald-50/70 border-emerald-200 text-slate-700'
+                    }`}>
                       <span className="font-bold text-primary flex items-center gap-1 text-[11px] font-mono uppercase">
-                        <Sparkles size={11} /> Wskazówka do odpowiedzi:
+                        <Sparkles size={11} /> Wskazówka do dyskusji:
                       </span>
                       <p>{drawnQuestion.followUpHint}</p>
                     </div>
                   )}
 
                   {drawnQuestion.relatedWord && (
-                    <div className="text-xs text-amber-300/90 font-mono bg-amber-500/10 border border-amber-500/20 p-2 rounded-lg inline-block">
+                    <div className={`text-xs font-mono p-2 rounded-lg inline-block border ${
+                      isDark 
+                        ? 'text-amber-300 bg-amber-500/10 border-amber-500/20' 
+                        : 'text-amber-900 bg-amber-50 border-amber-200'
+                    }`}>
                       🎯 Słówko kluczowe do użycia: <span className="font-bold underline">{drawnQuestion.relatedWord}</span>
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="py-12 text-center space-y-3">
-                  <div className="w-14 h-14 rounded-3xl bg-primary/10 border border-primary/25 text-primary flex items-center justify-center mx-auto text-2xl shadow-inner">
+                  <div className={`w-14 h-14 rounded-3xl border flex items-center justify-center mx-auto text-2xl shadow-inner ${
+                    isDark 
+                      ? 'bg-primary/10 border-primary/25 text-primary' 
+                      : 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                  }`}>
                     🎯
                   </div>
                   <div>
-                    <h4 className="text-base sm:text-lg font-extrabold text-white">
+                    <h4 className={`text-base sm:text-lg font-extrabold ${
+                      isDark ? 'text-white' : 'text-slate-900'
+                    }`}>
                       Zakręć kołem fortuny!
                     </h4>
-                    <p className="text-xs text-content-muted max-w-sm mx-auto mt-1 leading-relaxed">
+                    <p className={`text-xs max-w-sm mx-auto mt-1 leading-relaxed ${
+                      isDark ? 'text-slate-400' : 'text-slate-500'
+                    }`}>
                       Wylosuj pierwsze pytanie do rozgrzewki. Wybierz powyżej, czy chcesz pytania ze scenariusza czy z poprzednich lekcji.
                     </p>
                   </div>
@@ -734,11 +896,15 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
             </div>
 
             {/* ─── DOLNY PASEK: STOPER WYPOWIEDZI & PRZYCISK PONOWNEGO LOSOWANIA ─── */}
-            <div className="relative z-10 pt-4 border-t border-white/10 mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className={`relative z-10 pt-4 border-t mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 ${
+              isDark ? 'border-white/10' : 'border-slate-200'
+            }`}>
               {/* Mini-stoper mówienia (Speaking pace) */}
               <div className="flex items-center gap-2.5 w-full sm:w-auto">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-base-300/90 border border-white/10 text-xs font-mono font-bold text-white">
-                  <Clock size={13} className={isTimerRunning ? 'text-primary animate-pulse' : 'text-content-muted'} />
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-mono font-bold ${
+                  isDark ? 'bg-base-300/90 border-white/10 text-white' : 'bg-slate-100 border-slate-200 text-slate-800'
+                }`}>
+                  <Clock size={13} className={isTimerRunning ? 'text-primary animate-pulse' : isDark ? 'text-slate-400' : 'text-slate-500'} />
                   <span>{timerSeconds}s</span>
                 </div>
 
@@ -753,7 +919,9 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                       setIsTimerRunning(true);
                     }
                   }}
-                  className="h-8 px-2.5 text-xs text-content-muted hover:text-white"
+                  className={`h-8 px-2.5 text-xs ${
+                    isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
                 >
                   {isTimerRunning ? <Pause size={12} /> : <Play size={12} />}
                   <span className="ml-1">{isTimerRunning ? 'Pauza' : 'Start (60s)'}</span>
@@ -766,7 +934,9 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                     setIsTimerRunning(false);
                     setTimerSeconds(60);
                   }}
-                  className="h-8 px-2 text-xs text-content-muted hover:text-white"
+                  className={`h-8 px-2 text-xs ${
+                    isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
                   title="Resetuj stoper"
                 >
                   <RotateCcw size={12} />

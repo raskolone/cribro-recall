@@ -198,6 +198,39 @@ we dwoje na żywo.
 
 ---
 
+### 🚀 Nowy Design Koła Fortuny (Dark/Light Mode), Niezależny Wybór Motywu Lektora i Kursanta oraz Lekka, Płynna Animacja GSAP (2026-09-16, runda 27)
+
+**1. Kompleksowy Redesign Wizualny Koła Fortuny w Trybach Jasnym i Ciemnym (`WheelOfFortune.tsx`):**
+- **Eliminacja defektu białego tła**:
+  - Wcześniejsza klasa `.liquid-glass-card` w trybie jasnym wymuszała jednolite, białe tło `rgba(255, 255, 255, 0.98)`, co przy ciemnym tle prezentacji tworzyło nieestetyczny, ostry kontrast.
+  - Zastąpiono sztywne klasy dedykowanym, responsywnym systemem motywów opartym o `useTheme` (`isDark`):
+    - **Tryb Ciemny (Nocturne Obsidian)**: głębokie szkliste tło `dark:bg-slate-900/80`, tytanowy pierścień SVG koła (`#182234` do `#0b101b`), ciemne szkło 3D przycisku centralnego z poświatą neonową oraz pastelowe, luminescencyjne etykiety sektorów (`SECTOR_PALETTE_DARK`).
+    - **Tryb Jasny (Clean Porcelain Studio)**: eleganckie porcelanowe szkło `bg-white/95 border-slate-200/90`, gradient platynowo-aluminiowy na obwodzie koła (`#f8fafc` do `#cbd5e1`), biało-ceramiczny przycisk 3D oraz czytelne, ciemne napisy o wysokim kontraście (`SECTOR_PALETTE_LIGHT`).
+- **Niezależne Przełączanie Motywu dla Kursanta i Lektora**:
+  - Zarówno lektor, jak i kursant mogą w dowolnym momencie kliknąć ikonę słońca/księżyca na pasku Koła Fortuny lub w górnym pasku nakładki prezentacji (`ScratchpadPresentationOverlay.tsx`).
+  - Zmiana motywu jest lokalna dla danego ekranu (`toggleTheme`), nie nadpisuje stanu drugiego uczestnika lekcji i nie jest synchronizowana do bazy danych, zapewniając pełną autonomię preferencji wizualnych.
+- **Czytelność Tekstu Sektorów (Zero Odwróconych Napisów)**:
+  - Zoptymalizowano kalkulację kątów w elementach `<text>` SVG — numery pytań (`#1` do `#8`) są automatycznie obracane tak, aby zawsze pozostawały czytelne w pozycji pionowej, bez konieczności przechylania głowy.
+
+**2. Płynna, Niskonakładowa Animacja Obrotu i Błyskawiczna Synchronizacja (`WheelOfFortune.tsx`):**
+- **Krzywa wyhamowania `power3.out` i krótszy czas obrotu**:
+  - Czas trwania obrotu zredukowano z ociężałych 4.4s do dynamicznych, eleganckich 2.8s (oraz 2.4s przy synchronizacji sieciowej u kursanta), eliminując znużenie podczas lekcji na żywo.
+- **Ochrona procesora przed dławieniem (Throttling tyknięć iglicy)**:
+  - Wcześniejsza implementacja tworzyła do 40 animacji GSAP na sekundę w handlerze `onUpdate`, co obciążało słabsze komputery i urządzenia mobilne.
+  - Wprowadzono precyzyjny bufor czasowy (`now - lastTickTimeRef.current > 38ms`) oraz flagę `overwrite: 'auto'`, stabilizując odświeżanie wskaźnika na poziomie ~25 klatek/s przy minimalnym zużyciu CPU.
+- **Pewna synchronizacja stanu u kursanta**:
+  - Usunięto błąd, w którym kursant ignorował aktualizację obrotu z Firestore w trakcie trwania lokalnego stanu `isSpinning`. Różnica kąta `Math.abs(interaction.wheelRotation - rotationRef.current) > 1` natychmiast płynnie dociąga koło kursanta do pozycji wyznaczonej przez lektora.
+
+**3. Synchronizacja Nakładki Prezentacji Notatnika (`ScratchpadPresentationOverlay.tsx`):**
+- Usunięto sztywne tło `bg-[#0b0f17]/95`, wprowadzając pełną obsługę motywów: `dark:bg-[#0b0f17]/95 bg-slate-50/98`.
+- Karty pytań (`Question Card`) oraz nagłówek odtwarzacza audio automatycznie dostosowują tła, cienie i kolory tekstu do aktywnego motywu.
+
+**4. Zarządzanie Procesami i Zasobami Maszyny:**
+- Wyłączono lokalne serwery deweloperskie na portach 3000 i 3001, zwalniając pamięć RAM i zasoby procesora.
+- Wcześniejsze zmiany (obsługa załączników audio w planerze lekcji, odtwarzacz audio w prezentacji, blokada asystenta AI dla kursanta) zostały zweryfikowane i wypchnięte do repozytorium GitHub (`origin/main`).
+
+---
+
 ### 🚀 Głęboka Harmonia Trybu Ciemnego Notatnika z Systemem Nocturne Green (2026-09-16, runda 26)
 
 **1. Eliminacja Płaskiej Szaro-Niebieskiej Belki i Przejście na Frosted Nocturne Glass (`index.css`):**
