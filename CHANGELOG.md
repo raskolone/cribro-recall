@@ -2123,7 +2123,37 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 - **Bezpieczne usuwanie (Bulk Delete & Single Delete)**:
   - Modal masowego usuwania z listą usuwanych użytkowników, wyraźnym ostrzeżeniem o nieodwracalności oraz usunięciem kont zarówno z bazy Firestore, jak i z systemu Firebase Authentication.
 
-### F. Zmiana Kolejności Zadań (Reordering) oraz Nowy Standard E-mail ze Stopką-Wizytówką
+### 4. Rejestr Zmian (Changelog)
+
+### 🚀 2026-09-16 — Naprawa kontrastu Prezentacji Live, Generator Lekcji w Slajdach (AI Council), Nawigacja Wieloslajdowa i Samouczek
+
+#### 1. Naprawa kontrastu i stylistyki Prezentacji Live (Tryb Ciemny & Jasny)
+- **Problem**: Karta fiszek 3D (`InteractiveSlideDeck`) oraz nagłówek prezentacji (`ScratchpadPresentationOverlay`) renderowały ciemny tekst na ciemnym tle w trybie nocnym ze względu na niezdefiniowane aliasy klas Tailwind (`text-text-muted`, `bg-bg-surface`, `border-border-subtle`).
+- **Rozwiązanie**:
+  - Przepisano komponenty `InteractiveSlideDeck.tsx` i `ScratchpadPresentationOverlay.tsx` na jawne, odporne na motyw klasy z wariantami `dark:` i jasnymi (`dark:bg-[#111827] bg-white`, `dark:text-white text-slate-900`, `dark:text-slate-300 text-slate-600`, `dark:border-white/15 border-slate-200`).
+  - Dodano podwyższony kontrast dla pytań, wskazówek, przykładów oraz przycisku wyjścia („Zakończ i wróć Esc").
+  - Wzbogacono fiszki 3D o wyraźne etykiety pojęć, wskazówki fonetyczne/kontekstowe oraz płynną animację obrotu.
+
+#### 2. Generator Lekcji w Slajdach (AI Council)
+- **Nowa funkcjonalność**: Dodano zakładkę **„✨ Generator Slajdów AI (Lekcja)"** w `ScratchpadLivePresentationModal.tsx`.
+- Lektor podaje temat (lub klika w gotowy szablon biznesowy np. *Negocjacje & Obiekcje*, *Small Talk & Networking*, *Trendy & Wykresy*), opcjonalne notatki/materiały, poziom CEFR (A2-C2) i liczbę slajdów (3-6).
+- Wielomodelowa Narada AI (`runCouncil`) generuje kompletną lekcję ze zróżnicowanymi metodycznie slajdami:
+  1. *Rozgrzewka i dyskusja* (`slide` / Hook) z chwytliwym pytaniem i zwrotami do wypowiedzi,
+  2. *Struktura lub etapy procesu* (`process_tabs`),
+  3. *Kluczowe zwroty w kontekście* (`flip_cards` 3D),
+  4. *Interaktywny quiz / scenariusz* (`interactive_quiz`) z autentycznym uzasadnieniem,
+  5. *Wyzwanie komunikacyjne* (`scenario_item`).
+- Możliwość natychmiastowego podejrzenia każdego slajdu w oknie modalnym przed startem.
+
+#### 3. Zsynchronizowana Nawigacja Wieloslajdowa
+- `presentationState` w `types.ts` i `ScratchpadPresentationOverlay.tsx` obsługuje tablicę `slides` oraz synchronizację `slideIndex`.
+- Pasek miniaturek slajdów, przełączniki `< Poprzedni` / `Następny >` oraz obsługa skrótów klawiaturowych (`←` / `→` dla lektora, `Esc` dla wyjścia).
+
+#### 4. Samouczek i Przewodnik Prezentacji
+- Dodano krok samouczka `pad-presentation` w `scratchpadCoachSteps.ts` oraz atrybut `data-coach="pad-presentation"` na pasku narzędzi.
+- Dodano okno modalne przewodnika („Przewodnik po Centrum Prezentacji Live") w `ScratchpadLivePresentationModal.tsx`.
+
+### Poprzedni etap: Zmiana Kolejności Zadań (Reordering) oraz Nowy Standard E-mail ze Stopką-Wizytówką
 - **Zmiana kolejności zadań przed przypisaniem kursantowi (Reordering)**:
   - **Kreator prac domowych ([HomeworkComposer.tsx](components/admin/HomeworkComposer.tsx))**:
     - W kroku 4 („Sprawdź i przypisz”) dodano możliwość zmiany kolejności całych bloków/typów ćwiczeń (`moveSection`) oraz pojedynczych zadań wewnątrz sekcji (`moveItem`) przy pomocy przycisków góra/dół (`ChevronUp`, `ChevronDown`).

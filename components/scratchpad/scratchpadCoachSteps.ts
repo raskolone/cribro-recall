@@ -110,6 +110,16 @@ export const buildScratchpadCoachSteps = ({
       onBeforeShow: () => setShareMenuOpen(true),
       onAfterShow: () => setShareMenuOpen(false),
     });
+
+    steps.push({
+      coachId: 'pad-presentation',
+      group: 'Prezentacja Live',
+      title: 'Centrum Prezentacji & Slajdów AI',
+      description:
+        'Uruchamia interaktywny tryb slajdów na żywo. Możesz wygenerować całą lekcję z AI (rozgrzewka, etapy, fiszki 3D, quiz), odtworzyć nagranie audio lub zakręcić Kołem Fortuny ze zsynchronizowanym widokiem kursanta.',
+      tip: 'W trakcie prezentacji kursant widzi ten sam materiał w czasie rzeczywistym. Do notatnika wrócisz klawiszem Esc.',
+      preferredPlacement: 'bottom',
+    });
   }
 
   if (canPushToLesson) {

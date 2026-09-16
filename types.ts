@@ -1083,6 +1083,22 @@ export interface ScratchpadDocument {
     questionSource?: 'scenario' | 'past_lessons';
     cards?: Array<{ term: string; definition: string; example?: string; hint?: string }>;
     steps?: Array<{ title: string; subtitle?: string; content: string; keyPoints?: string[] }>;
+    slides?: Array<{
+      id?: string;
+      title: string;
+      type: 'image_prompt' | 'slide' | 'scenario_item' | 'interactive_quiz' | 'sentence_scramble' | 'error_hunt' | 'wheel_of_fortune' | 'listening' | 'flip_cards' | 'process_tabs';
+      question?: string;
+      prompt?: string;
+      imageUrl?: string;
+      audioUrl?: string;
+      audioName?: string;
+      hints?: string[];
+      cards?: Array<{ term: string; definition: string; example?: string; hint?: string }>;
+      steps?: Array<{ title: string; subtitle?: string; content: string; keyPoints?: string[] }>;
+      options?: string[];
+      correctAnswer?: string | number;
+      explanation?: string;
+    }>;
   };
   /** Do pięciu ostatnich migawek treści. Najnowsza pierwsza. */
   revisions?: ScratchpadRevision[];

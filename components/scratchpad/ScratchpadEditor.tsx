@@ -1677,6 +1677,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
             <button
               type="button"
               onClick={() => setIsLivePresentationModalOpen(true)}
+              data-coach="pad-presentation"
               title="Uruchom tryb prezentacji (wyświetla kursantowi ćwiczenia/slajdy zamiast notatnika)"
               className="h-8 px-2.5 rounded-lg border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-sm"
             >
