@@ -1319,7 +1319,6 @@ tr.liquid-glass-hover:hover {
 :root.light [class~="bg-danger"],
 :root.light [class~="bg-warn"],
 :root.light [class~="bg-info"],
-:root.light [class~="bg-amber-500"],
 :root.light [class~="bg-emerald-500"],
 :root.light [class~="bg-rose-500"],
 :root.light [class~="bg-red-500"],
@@ -1332,12 +1331,24 @@ tr.liquid-glass-hover:hover {
 :root[data-theme="light"] [class~="bg-danger"],
 :root[data-theme="light"] [class~="bg-warn"],
 :root[data-theme="light"] [class~="bg-info"],
-:root[data-theme="light"] [class~="bg-amber-500"],
 :root[data-theme="light"] [class~="bg-emerald-500"],
 :root[data-theme="light"] [class~="bg-rose-500"],
 :root[data-theme="light"] [class~="bg-red-500"],
 :root[data-theme="light"] [class~="bg-blue-600"] {
   --on-fill: #ffffff;
+}
+
+/* Wypełnienia żółte i bursztynowe (amber) mają zbyt wysoką luminancję na biały tekst —
+   wymagają atramentu (#0f1720), aby spełnić wymóg kontrastu WCAG AA/AAA. */
+:root.light [class~="bg-amber-500"],
+:root.light [class~="bg-amber-400"],
+:root.light [class~="bg-yellow-500"],
+:root.light [class~="bg-yellow-400"],
+:root[data-theme="light"] [class~="bg-amber-500"],
+:root[data-theme="light"] [class~="bg-amber-400"],
+:root[data-theme="light"] [class~="bg-yellow-500"],
+:root[data-theme="light"] [class~="bg-yellow-400"] {
+  --on-fill: #0f1720;
 }
 
 /* Kartka notatnika ma własną skalę kolorów i nie podlega tej regule —

@@ -15,15 +15,20 @@ import {
 } from 'lucide-react';
 import Button from '../ui/Button';
 import { ScratchpadDocument } from '../../types';
+import { WheelOfFortune } from '../presentation/WheelOfFortune';
+import { EMPTY_SLIDE_INTERACTION } from '../admin/presentation/SlideCard';
 
 export type PresentationState = NonNullable<ScratchpadDocument['presentationState']>;
 
 interface ScratchpadPresentationOverlayProps {
   presentation: PresentationState;
   isTeacher: boolean;
+  studentName?: string | null;
   onClose: () => void;
   onRevealAnswer?: () => void;
   onSubmitAnswer?: (answer: string) => void;
+  onUpdatePresentation?: (pres: Partial<PresentationState>) => void;
+  onAddToNotes?: (text: string) => void;
 }
 
 const OPTION_THEMES = [
@@ -60,9 +65,12 @@ const OPTION_THEMES = [
 export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverlayProps> = ({
   presentation,
   isTeacher,
+  studentName,
   onClose,
   onRevealAnswer,
   onSubmitAnswer,
+  onUpdatePresentation,
+  onAddToNotes,
 }) => {
   const [showHints, setShowHints] = useState(false);
   const [localInputAnswer, setLocalInputAnswer] = useState('');
@@ -117,7 +125,11 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-mono uppercase bg-primary/20 text-primary border border-primary/30 px-2.5 py-0.5 rounded-full font-bold">
-                {isInteractive ? '⚡ Interaktywne Ćwiczenie Live' : 'Prezentacja Live'}
+                {presentation.type === 'wheel_of_fortune'
+                  ? '🎡 Koło Fortuny Live'
+                  : isInteractive
+                  ? '⚡ Interaktywne Ćwiczenie Live'
+                  : 'Prezentacja Live'}
               </span>
               <span className="text-xs text-content-muted">
                 {isTeacher ? 'Widok lektora (sterowanie)' : 'Twój widok na żywo'}
@@ -163,7 +175,38 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto w-full my-6 sm:my-8 space-y-6">
+      {presentation.type === 'wheel_of_fortune' ? (
+        <div className="flex-1 flex flex-col items-center justify-center max-w-5xl mx-auto w-full my-4 sm:my-6 animate-in fade-in zoom-in-95 duration-200">
+          <WheelOfFortune
+            slide={{
+              id: 'scratchpad-live-wheel',
+              type: 'wheel_of_fortune',
+              title: presentation.title || 'Warm-up: Koło Fortuny',
+              subtitle: presentation.prompt || 'Zakręć kołem i wylosuj pytanie rozgrzewkowe na start lekcji',
+            }}
+            studentName={studentName}
+            isFullscreen={false}
+            isStudent={!isTeacher}
+            interaction={{
+              ...EMPTY_SLIDE_INTERACTION,
+              wheelRotation: presentation.wheelRotation,
+              drawnQuestionId: presentation.drawnQuestionId,
+              questionSource: presentation.questionSource,
+            }}
+            onInteractionChange={(next) => {
+              if (onUpdatePresentation) {
+                onUpdatePresentation({
+                  wheelRotation: next.wheelRotation,
+                  drawnQuestionId: next.drawnQuestionId,
+                  questionSource: next.questionSource,
+                });
+              }
+            }}
+            onAddToNotes={onAddToNotes}
+          />
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto w-full my-6 sm:my-8 space-y-6">
         {/* Optional Image */}
         {presentation.imageUrl && (
           <div className="relative group max-h-[36vh] rounded-2xl overflow-hidden border border-white/10 bg-base-300 shadow-2xl">
@@ -359,6 +402,7 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
           )}
         </div>
       </div>
+    )}
 
       {/* Footer */}
       <div className="border-t border-white/10 pt-4 max-w-5xl mx-auto w-full text-center text-xs text-content-muted flex items-center justify-between">

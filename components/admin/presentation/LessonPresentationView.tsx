@@ -411,6 +411,31 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
   }, [currentDeck]);
 
   // Slide CRUD
+  const handleJumpToWheelOfFortune = () => {
+    const wheelIdx = currentDeck.slides.findIndex(
+      (s) => s.type === 'wheel_of_fortune' || s.type === 'warmup'
+    );
+    if (wheelIdx !== -1) {
+      setActiveSlideIndex(wheelIdx);
+      showToast(`Przełączono na slajd ${wheelIdx + 1}: Koło Fortuny / Rozgrzewka`);
+    } else {
+      const newWheelSlide: PresentationSlide = {
+        id: `slide-wheel-${Date.now()}`,
+        type: 'wheel_of_fortune',
+        title: 'Warm-up: Koło Fortuny',
+        subtitle: 'Zakręć kołem i wylosuj pytanie rozgrzewkowe na start lekcji',
+        content: 'Wybierz źródło pytań i zakręć kołem, aby wylosować pierwsze pytanie do rozmowy.',
+        timerMinutes: 8,
+        bgTheme: 'emerald',
+      };
+      const updatedSlides = [...currentDeck.slides];
+      updatedSlides.splice(activeSlideIndex + 1, 0, newWheelSlide);
+      setCurrentDeck((prev) => ({ ...prev, slides: updatedSlides }));
+      setActiveSlideIndex(activeSlideIndex + 1);
+      showToast('Dodano i uruchomiono slajd z Kołem Fortuny!');
+    }
+  };
+
   const handleSaveSlide = (newSlide: PresentationSlide) => {
     if (editingSlide) {
       // Update
@@ -572,6 +597,13 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
             active={laserPointerActive}
             coachId="pres-laser"
             labelHidden
+          />
+          <ToolbarButton
+            icon={<Sparkles size={15} className="text-amber-400" />}
+            label="Koło Fortuny"
+            title="Przejdź do ćwiczenia Koło Fortuny (lub utwórz rozgrzewkę)"
+            onClick={handleJumpToWheelOfFortune}
+            coachId="pres-wheel"
           />
 
           <div className="h-6 w-px bg-line-strong mx-0.5" aria-hidden />

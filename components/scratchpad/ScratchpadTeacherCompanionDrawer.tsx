@@ -26,6 +26,7 @@ interface ScratchpadTeacherCompanionDrawerProps {
   onClose: () => void;
   docData: ScratchpadDocument;
   onLaunchExercise: (exercise: InteractiveExercise) => void;
+  onLaunchWheelOfFortune?: () => void;
   onTriggerAiSummary?: (prompt: string) => void;
 }
 
@@ -34,6 +35,7 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
   onClose,
   docData,
   onLaunchExercise,
+  onLaunchWheelOfFortune,
   onTriggerAiSummary,
 }) => {
   const [activeTab, setActiveTab] = useState<'scenario' | 'notes'>('scenario');
@@ -166,6 +168,17 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
         </div>
 
         <div className="flex items-center gap-1.5">
+          {onLaunchWheelOfFortune && (
+            <button
+              type="button"
+              onClick={onLaunchWheelOfFortune}
+              title="Uruchom Koło Fortuny na żywo dla kursanta"
+              className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-950 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
+            >
+              <span>🎡</span>
+              <span className="hidden sm:inline">Koło Fortuny</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -196,14 +209,18 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
           onClick={() => setActiveTab('notes')}
           className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer relative ${
             activeTab === 'notes'
-              ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-ink shadow-sm font-extrabold'
+              ? 'bg-amber-500 text-slate-950 font-black dark:bg-amber-400 dark:text-ink shadow-sm'
               : 'text-content-muted hover:text-text-hi hover:bg-base-300/50'
           }`}
         >
           <FileSignature size={14} />
           Side Notes (Prywatne)
           {sideNotes.trim() && (
-            <span className="w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400 ring-2 ring-base-200" />
+            <span
+              className={`w-2 h-2 rounded-full ring-2 ring-base-200 ${
+                activeTab === 'notes' ? 'bg-slate-950/70 dark:bg-ink/70' : 'bg-amber-500 dark:bg-amber-400'
+              }`}
+            />
           )}
         </button>
       </div>
@@ -211,6 +228,39 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
       {/* Tab 1: Scenario Body */}
       {activeTab === 'scenario' && (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Szybkie narzędzie rozgrzewkowe: Koło Fortuny */}
+          {onLaunchWheelOfFortune && (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-primary/10 to-amber-500/10 border border-amber-500/30 dark:border-amber-400/25 shadow-sm space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-950 dark:text-amber-300 flex items-center justify-center text-lg shrink-0">
+                    🎡
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-black text-text-hi flex items-center gap-1.5">
+                      <span>Koło Fortuny (Rozgrzewka)</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-950 dark:text-amber-300 border border-amber-500/30 font-bold uppercase">
+                        Live Game
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-content-muted truncate">
+                      Interaktywne pytania rozgrzewkowe z fizyką GSAP
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={onLaunchWheelOfFortune}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 dark:bg-amber-400 dark:hover:bg-amber-300 text-slate-950 dark:text-ink font-black text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0"
+                  title="Uruchom Koło Fortuny kursantowi na żywo"
+                >
+                  <Sparkles size={12} />
+                  <span>Uruchom</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Scenario Selector bar */}
           <div className="p-3 rounded-2xl bg-base-100 border border-line space-y-2">
             <div className="flex items-center justify-between">
@@ -439,10 +489,10 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
                                             )}
                                             {item.teacherNotes.followUp && (
                                               <div>
-                                                <span className="font-bold text-amber-800 dark:text-amber-400">
+                                                <span className="font-bold text-amber-950 dark:text-amber-300">
                                                   • Follow-up:{' '}
                                                 </span>
-                                                <span className="text-amber-800 dark:text-amber-200">
+                                                <span className="text-slate-800 dark:text-amber-100 font-medium">
                                                   {item.teacherNotes.followUp}
                                                 </span>
                                               </div>
@@ -524,12 +574,14 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
       {/* Tab 2: Side Notes Body */}
       {activeTab === 'notes' && (
         <div className="flex-1 flex flex-col p-4 space-y-3 overflow-hidden">
-          <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-900 dark:text-amber-200 space-y-1">
-            <div className="font-bold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
-              <FileSignature size={14} />
-              Prywatna przestrzeń lektora
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 dark:bg-amber-500/15 dark:border-amber-400/30 text-xs space-y-1.5 shadow-sm">
+            <div className="font-black flex items-center gap-2 text-amber-950 dark:text-amber-300">
+              <span className="p-1 rounded-md bg-amber-500/20 text-amber-950 dark:text-amber-300">
+                <FileSignature size={14} />
+              </span>
+              <span>Prywatna przestrzeń lektora</span>
             </div>
-            <p className="text-[11px] text-amber-800/90 dark:text-amber-200/80 leading-relaxed">
+            <p className="text-[11px] text-slate-800 dark:text-amber-100/90 leading-relaxed font-medium">
               Te notatki są w 100% niewidoczne dla kursanta. Zapisuj na bieżąco trudności kursanta,
               nowe pomysły lub błędy. Asystent AI w notatniku wykorzysta je do wygenerowania
               podsumowania i pracy domowej!
@@ -541,10 +593,10 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
               value={sideNotes}
               onChange={(e) => setSideNotes(e.target.value)}
               placeholder="np. Marek ciągle myli 'there is' z 'there are' przy pytaniach; zawiesił się na słowie 'forklift'; świetnie opisał swój dzień pracy w magazynie..."
-              className="w-full flex-1 p-3.5 rounded-2xl bg-base-100 border border-line-strong text-text-hi placeholder:text-content-muted focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 text-xs leading-relaxed resize-none font-sans"
+              className="w-full flex-1 p-3.5 rounded-2xl bg-base-100 border border-line-strong hover:border-line-stronger text-text-hi placeholder:text-content-muted/80 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 text-xs leading-relaxed resize-none font-sans transition-all"
             />
             {isSavingNotes && (
-              <span className="absolute bottom-3 right-3 text-[10px] text-amber-700 dark:text-amber-400 bg-base-200/90 px-2 py-0.5 rounded-md border border-amber-500/20 shadow-sm">
+              <span className="absolute bottom-3 right-3 text-[10px] text-amber-950 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 px-2 py-0.5 rounded-md border border-amber-300 dark:border-amber-600/40 shadow-sm font-bold">
                 Zapisywanie...
               </span>
             )}
@@ -563,7 +615,7 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
                     'Na podstawie moich prywatnych Side Notes oraz treści lekcji, przygotuj zwięzłe podsumowanie dla kursanta, listę kluczowych błędów do utrwalenia i zadanie domowe.'
                   )
                 }
-                className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 dark:bg-amber-400 dark:hover:bg-amber-300 text-white dark:text-ink font-bold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+                className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 dark:bg-amber-400 dark:hover:bg-amber-300 text-slate-950 dark:text-ink font-black text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
               >
                 <Sparkles size={13} />
                 Wygeneruj podsumowanie z AI

@@ -12,12 +12,19 @@ interface ScratchpadLivePresentationModalProps {
 
 const PRESET_ACTIVITIES: Array<{
   title: string;
-  type: 'image_prompt' | 'slide' | 'scenario_item';
+  type: 'image_prompt' | 'slide' | 'scenario_item' | 'wheel_of_fortune';
   question: string;
   prompt: string;
   imageUrl?: string;
   hints: string[];
 }> = [
+  {
+    title: '🎡 Koło Fortuny (Warm-up Wheel / Rozgrzewka)',
+    type: 'wheel_of_fortune',
+    question: 'Zakręć kołem i wylosuj pytanie rozgrzewkowe na start lekcji.',
+    prompt: 'Interaktywne koło pytań rozgrzewkowych z fizyką GSAP. Wybierz źródło pytań (scenariusz lub historia lekcji) i wylosuj temat do swobodnej rozmowy.',
+    hints: ['Give a concrete example from your work...', 'From my perspective...', 'If I had to choose...', 'In my day-to-day routine...'],
+  },
   {
     title: '📸 Opisanie obrazka (Describe the picture)',
     type: 'image_prompt',

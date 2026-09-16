@@ -107,6 +107,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
                 className="w-full bg-base-300 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-primary"
               >
                 <option value="title">Tytułowy / Wstęp (Title)</option>
+                <option value="wheel_of_fortune">🎡 Koło Fortuny (Rozgrzewka / Warm-up)</option>
                 <option value="warmup">Warm-up / Pytania rozgrzewkowe</option>
                 <option value="vocabulary">Słownictwo & Wymowa (Vocabulary)</option>
                 <option value="grammar">Struktury językowe (Grammar / Formula)</option>

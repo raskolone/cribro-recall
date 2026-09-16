@@ -1039,7 +1039,7 @@ export interface ScratchpadDocument {
   presentationState?: {
     active: boolean;
     title: string;
-    type: 'image_prompt' | 'slide' | 'scenario_item' | 'interactive_quiz' | 'sentence_scramble' | 'error_hunt';
+    type: 'image_prompt' | 'slide' | 'scenario_item' | 'interactive_quiz' | 'sentence_scramble' | 'error_hunt' | 'wheel_of_fortune';
     imageUrl?: string;
     prompt?: string;
     hints?: string[];
@@ -1051,6 +1051,9 @@ export interface ScratchpadDocument {
     explanation?: string;
     slideIndex?: number;
     totalSlides?: number;
+    wheelRotation?: number;
+    drawnQuestionId?: string;
+    questionSource?: 'scenario' | 'past_lessons';
   };
   /** Do pięciu ostatnich migawek treści. Najnowsza pierwsza. */
   revisions?: ScratchpadRevision[];

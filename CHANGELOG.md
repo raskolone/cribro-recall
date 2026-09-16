@@ -198,6 +198,35 @@ we dwoje na żywo.
 
 ---
 
+### 🚀 Kontrast Pomocnika Lektora w Trybie Jasnym & Pełna Dostępność Ćwiczenia „Koło Fortuny" w Notatniku i Prezentacji (2026-09-16, runda 25)
+
+**1. Poprawa Kontrastu w Trybie Jasnym (`index.css`, `ScratchpadTeacherCompanionDrawer.tsx`):**
+- **Wyeliminowanie nieczytelnej bieli na żółtym tle**:
+  - W pliku `index.css` usunięto regułę wymuszającą `--on-fill: #ffffff` dla klas `bg-amber-500` i wprowadzono dedykowaną regułę dla `bg-amber-500`, `bg-amber-400`, `bg-yellow-500`, `bg-yellow-400` ustawiającą ciemny atrament `--on-fill: #0f1720`. Dzięki temu wszystkie żółte i bursztynowe przyciski oraz plakietki w trybie jasnym zyskują certyfikowany kontrast WCAG AAA (ponad 10:1).
+- **Czytelność prywatnych Side Notes w Pomocniku Lektora**:
+  - Aktywna zakładka `Side Notes (Prywatne)` używa nasyconego koloru `bg-amber-500 text-slate-950 font-black` (oraz `dark:bg-amber-400 dark:text-ink`), gwarantując perfekcyjną czytelność etykiety.
+  - Informacyjny boks `Prywatna przestrzeń lektora` zyskał wyrazisty nagłówek `text-amber-950 dark:text-amber-300` oraz tekst `text-slate-800 dark:text-amber-100/90 font-medium`, likwidując wyblakły, słomkowy odcień.
+  - Pole notatek `textarea` otrzymało wyraźny obrys `border-line-strong hover:border-line-stronger focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20` oraz czytelną plakietkę auto-zapisu `text-amber-950 bg-amber-100`.
+  - Przycisk `Wygeneruj podsumowanie z AI` ma teraz ciemny atrament `text-slate-950 font-black` na bursztynowym tle.
+  - W zakładce scenariusza poprawiono kontrast Budki Suflera (Teacher's Notes follow-up i scaffolding).
+
+**2. Uniwersalna Dostępność i Odkrywalność Ćwiczenia „Koło Fortuny" (Wheel of Fortune) (`ScratchpadTeacherCompanionDrawer.tsx`, `ScratchpadEditor.tsx`, `ScratchpadLivePresentationModal.tsx`, `ScratchpadPresentationOverlay.tsx`, `SlideEditorModal.tsx`, `LessonPresentationView.tsx`, `types.ts`, `services/scratchpadService.ts`):**
+- **Bezpośrednie uruchomienie z Pomocnika Lektora**:
+  - W nagłówku szuflady pomocnika lektora dodano przycisk szybkiego startu `[ 🎡 Koło Fortuny ]`.
+  - Na samej górze zakładki scenariusza umieszczono dedykowaną, elegancką kartę `🎡 Koło Fortuny (Rozgrzewka)` z przyciskiem `[ ✨ Uruchom ]`.
+- **Szybki start z poziomu Notatnika**:
+  - W górnym pasku `ScratchpadEditor.tsx` obok przycisku `Prezentacja` dodano przycisk `[ 🎡 Koło Fortuny ]` dla lektora.
+- **Gotowy wzorzec w modalu Prezentacji**:
+  - W oknie wyboru aktywności na żywo (`ScratchpadLivePresentationModal.tsx`) dodano `🎡 Koło Fortuny (Warm-up Wheel / Rozgrzewka)` jako pierwszy, domyślny preset.
+- **Pełne renderowanie gry w nakładce prezentacji notatnika**:
+  - W `ScratchpadPresentationOverlay.tsx` zintegrowano silnik `WheelOfFortune` (fizyka GSAP, dźwięki, TTS, konfetti, losowanie pytań ze scenariusza lub historii lekcji) wraz z dwukierunkową synchronizacją obrotu oraz dodawaniem wylosowanych pytań do treści notatnika (`onAddToNotes`).
+- **Wybór typu w edytorze slajdów**:
+  - W `SlideEditorModal.tsx` dodano typ `🎡 Koło Fortuny (Rozgrzewka / Warm-up)` do listy wyboru typów slajdu.
+- **Narzędzie w pasku prezentacji lektorskiej**:
+  - W `LessonPresentationView.tsx` w pasku narzędzi na żywo (obok Tablicy, Notatnika i Lasera) dodano przycisk `[ 🎡 Koło Fortuny ]`, który jednym kliknięciem przenosi lektora na slajd rozgrzewkowy lub tworzy go dynamicznie w talii.
+
+---
+
 ### 🚀 Spójność Motywów Pomocnika Lektora, Walidacja Ciemnego Trybu Notatnika & Wyjście z Prezentacji Klawiszem ESC (2026-09-16, runda 24)
 
 **1. Spójność Motywów Pomocnika Lektora (Live Companion) (`ScratchpadTeacherCompanionDrawer.tsx`):**

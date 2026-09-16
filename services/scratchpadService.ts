@@ -791,22 +791,7 @@ export async function updateScratchpadLaser(
  */
 export async function updateScratchpadPresentation(
   id: string,
-  presentation: {
-    active: boolean;
-    title: string;
-    type: 'image_prompt' | 'slide' | 'scenario_item' | 'interactive_quiz' | 'sentence_scramble' | 'error_hunt';
-    imageUrl?: string;
-    prompt?: string;
-    hints?: string[];
-    question?: string;
-    options?: string[];
-    correctAnswer?: string | number;
-    revealedAnswer?: boolean;
-    studentAnswer?: string | number | null;
-    explanation?: string;
-    slideIndex?: number;
-    totalSlides?: number;
-  } | null
+  presentation: ScratchpadDocument['presentationState'] | null
 ): Promise<void> {
   if (!id) return;
   const local = getLocalScratchpad(id);

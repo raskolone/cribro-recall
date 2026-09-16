@@ -1443,6 +1443,21 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
     }
   };
 
+  const handleLaunchWheelOfFortune = async () => {
+    if (!docData.id) return;
+    try {
+      await updateScratchpadPresentation(docData.id, {
+        active: true,
+        title: 'Warm-up: Koło Fortuny',
+        type: 'wheel_of_fortune',
+        question: 'Zakręć kołem i wylosuj pytanie rozgrzewkowe na start lekcji.',
+        prompt: 'Interaktywne koło pytań rozgrzewkowych z fizyką GSAP. Wybierz źródło pytań i zakręć kołem!',
+      });
+    } catch (err) {
+      console.error('Błąd uruchamiania Koła Fortuny:', err);
+    }
+  };
+
   const handleTriggerAiFromNotes = (promptText: string) => {
     setIsAiChatOpen(true);
     handleSendAiChat(promptText);
@@ -1541,6 +1556,19 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
             >
               <Airplay size={14} />
               <span className="hidden md:inline">Prezentacja</span>
+            </button>
+          )}
+
+          {/* Szybki start: Koło Fortuny dla lektora */}
+          {isTeacher && (
+            <button
+              type="button"
+              onClick={handleLaunchWheelOfFortune}
+              title="Uruchom Koło Fortuny na żywo (losowanie pytań rozgrzewkowych)"
+              className="h-8 px-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 dark:text-amber-300 flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-sm"
+            >
+              <span>🎡</span>
+              <span className="hidden lg:inline">Koło Fortuny</span>
             </button>
           )}
 
@@ -2937,6 +2965,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           onClose={() => setIsScenarioDrawerOpen(false)}
           docData={docData}
           onLaunchExercise={handleLaunchExerciseFromScenario}
+          onLaunchWheelOfFortune={handleLaunchWheelOfFortune}
           onTriggerAiSummary={handleTriggerAiFromNotes}
         />
       )}
@@ -2946,9 +2975,22 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
         <ScratchpadPresentationOverlay
           presentation={docData.presentationState}
           isTeacher={isTeacher}
+          studentName={docData.studentName}
           onClose={handleStopPresentation}
           onRevealAnswer={() => docData.id && revealScratchpadExerciseAnswer(docData.id)}
           onSubmitAnswer={(ans) => docData.id && submitStudentExerciseAnswer(docData.id, ans)}
+          onUpdatePresentation={(updates) => {
+            if (docData.id && docData.presentationState) {
+              updateScratchpadPresentation(docData.id, {
+                ...docData.presentationState,
+                ...updates,
+              });
+            }
+          }}
+          onAddToNotes={(text) => {
+            const snippet = `<p><strong>🎯 Rozgrzewka (Koło Fortuny):</strong> ${text}</p>`;
+            handleInsertTemplate(snippet);
+          }}
         />
       )}
     </div>
