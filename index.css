@@ -919,36 +919,104 @@ tr.liquid-glass-hover:hover {
 }
 
 .pad-paper[data-pad-theme="dark"] {
-  /* ══ CIEMNA KARTKA NALEŻY DO TEJ SAMEJ APLIKACJI ══
-
-     Poprzednia wersja była CIEPŁA (#211f1c, tekst #e8e3d9, link #5fe3c0):
-     brązowo-czarny papier z kremowym drukiem. Sam w sobie czytelny, ale
-     leżący na chłodnym granacie aplikacji wyglądał jak wklejony z innego
-     programu — ciepła plama na zimnym tle, z linkami w odcieniu zieleni
-     o pół tonu innym niż akcent marki.
-
-     Teraz kartka jest z tej samej rodziny co strona startowa i cała reszta
-     trybu nocnego: granat (#111a2c) o jeden stopień jaśniejszy od kanwy pod
-     nią, więc widać, że LEŻY na czymś, chłodna biel druku i akcent marki
-     (#72f0b4) wszędzie, gdzie coś ma być wyróżnione. Nie czysta czerń
-     i nie czysta biel: czerń przy białym tekście daje halo wokół liter. */
-  --pad-bg:     #111a2c;
-  --pad-fg:     #e3e8f0;
+  /* ══ CIEMNA KARTKA — NOCTURNE GREEN SYSTEM ══
+     Głęboki granat z rodziny Nocturne (#0c1322), aksamitny gradient,
+     ciepły kremowy druk (#eae8e3) wolny od olśnienia oraz akcent marki
+     (#72f0b4) w roli świetlistego przewodnika. */
+  --pad-bg:     #0c1322;
+  --pad-fg:     #eae8e3;
   --pad-h:      #ffffff;
-  --pad-muted:  #93a3ba;
-  --pad-line:   rgba(255, 255, 255, 0.12);
+  --pad-muted:  #8ea1ba;
+  --pad-line:   rgba(255, 255, 255, 0.08);
   --pad-link:   #72f0b4;
-  /* Zakreślenia i kod akcentem, nie szarością — to te same miejsca, które
-     w interfejsie aplikacji dostają miętowy poblask. */
-  --pad-mark:   rgba(114, 240, 180, 0.10);
-  --pad-page:   rgba(255, 255, 255, 0.16);
-  /* Cień z poświatą akcentu na krawędzi: kartka odkleja się od kanwy tak
-     samo, jak karty odklejają się od tła w panelu. */
+  --pad-mark:   rgba(114, 240, 180, 0.12);
+  --pad-page:   rgba(255, 255, 255, 0.15);
   --pad-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.55),
-    0 18px 44px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(114, 240, 180, 0.07);
+    0 4px 20px -2px rgba(0, 0, 0, 0.55),
+    0 24px 60px -12px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(114, 240, 180, 0.14),
+    0 0 45px -10px rgba(114, 240, 180, 0.08);
 }
+
+/* ── Harmonizacja barw nagłówków i wyróżnień (Nocturne Dark Glow) ──
+   Szablon i edytor wpisują kolory w HTML jako inline style="color: ...".
+   W ciemnej kartce nadajemy im świetlistość z palety Nocturne Green,
+   zamiast zgaszonych, mdłych kolorów — dotyczy to zarówno istniejących
+   jak i nowo dodawanych notatek. */
+.pad-paper[data-pad-theme="dark"] [style*="#17917a"],
+.pad-paper[data-pad-theme="dark"] [style*="rgb(23, 145, 122)"],
+.pad-paper[data-pad-theme="dark"] [style*="#72f0b4"],
+.pad-paper[data-pad-theme="dark"] [style*="rgb(114, 240, 180)"] {
+  color: #72f0b4 !important;
+  text-shadow: 0 0 16px rgba(114, 240, 180, 0.28);
+}
+
+.pad-paper[data-pad-theme="dark"] [style*="#4c7fe0"],
+.pad-paper[data-pad-theme="dark"] [style*="rgb(76, 127, 224)"],
+.pad-paper[data-pad-theme="dark"] [style*="#67b5fa"],
+.pad-paper[data-pad-theme="dark"] [style*="rgb(103, 181, 250)"] {
+  color: #67b5fa !important;
+  text-shadow: 0 0 14px rgba(103, 181, 250, 0.22);
+}
+
+.pad-paper[data-pad-theme="dark"] [style*="#c06a26"],
+.pad-paper[data-pad-theme="dark"] [style*="rgb(192, 106, 38)"],
+.pad-paper[data-pad-theme="dark"] [style*="#fbbf24"],
+.pad-paper[data-pad-theme="dark"] [style*="rgb(251, 191, 36)"] {
+  color: #fbbf24 !important;
+  text-shadow: 0 0 14px rgba(251, 191, 36, 0.22);
+}
+
+.pad-paper[data-pad-theme="dark"] [style*="#d4577f"],
+.pad-paper[data-pad-theme="dark"] [style*="rgb(212, 87, 127)"],
+.pad-paper[data-pad-theme="dark"] [style*="#fb7185"],
+.pad-paper[data-pad-theme="dark"] [style*="rgb(251, 113, 133)"] {
+  color: #fb7185 !important;
+  text-shadow: 0 0 14px rgba(251, 113, 133, 0.22);
+}
+
+.pad-paper[data-pad-theme="dark"] [style*="#8f6fe0"],
+.pad-paper[data-pad-theme="dark"] [style*="rgb(143, 111, 224)"],
+.pad-paper[data-pad-theme="dark"] [style*="#a78bfa"],
+.pad-paper[data-pad-theme="dark"] [style*="rgb(167, 139, 250)"] {
+  color: #a78bfa !important;
+  text-shadow: 0 0 14px rgba(167, 139, 250, 0.22);
+}
+
+.pad-paper[data-pad-theme="dark"] [style*="#d1544c"],
+.pad-paper[data-pad-theme="dark"] [style*="rgb(209, 84, 76)"],
+.pad-paper[data-pad-theme="dark"] [style*="#f87171"],
+.pad-paper[data-pad-theme="dark"] [style*="rgb(248, 113, 113)"] {
+  color: #f87171 !important;
+  text-shadow: 0 0 14px rgba(248, 113, 113, 0.22);
+}
+
+/* ── Harmonizacja w jasnym notatniku (gwarancja kontrastu AAA) ── */
+.pad-paper[data-pad-theme="light"] [style*="#72f0b4"],
+.pad-paper[data-pad-theme="light"] [style*="rgb(114, 240, 180)"] {
+  color: #0d8a5f !important;
+}
+.pad-paper[data-pad-theme="light"] [style*="#67b5fa"],
+.pad-paper[data-pad-theme="light"] [style*="rgb(103, 181, 250)"] {
+  color: #1d4ed8 !important;
+}
+.pad-paper[data-pad-theme="light"] [style*="#fbbf24"],
+.pad-paper[data-pad-theme="light"] [style*="rgb(251, 191, 36)"] {
+  color: #b45309 !important;
+}
+.pad-paper[data-pad-theme="light"] [style*="#fb7185"],
+.pad-paper[data-pad-theme="light"] [style*="rgb(251, 113, 133)"] {
+  color: #be185d !important;
+}
+.pad-paper[data-pad-theme="light"] [style*="#a78bfa"],
+.pad-paper[data-pad-theme="light"] [style*="rgb(167, 139, 250)"] {
+  color: #6d28d9 !important;
+}
+.pad-paper[data-pad-theme="light"] [style*="#f87171"],
+.pad-paper[data-pad-theme="light"] [style*="rgb(248, 113, 113)"] {
+  color: #b91c1c !important;
+}
+
 
 /* ── Nagłówki stopniowane ──
    Trzy stopnie muszą różnić się na pierwszy rzut oka, bo to one budują spis
@@ -1563,56 +1631,84 @@ tr.liquid-glass-hover:hover {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-/* Paski: nagłówek, narzędzia, spis treści, stopka. Przezroczyste z rozmyciem,
-   żeby kanwa pod nimi była wyczuwalna — pasek narzędzi jest przyklejony do
-   góry przy przewijaniu i nieprzezroczysty wyglądałby jak odcięta krawędź. */
+/* Paski: nagłówek, narzędzia, spis treści, stopka.
+   Szklisty Nocturne z rozmyciem tła — spójny z resztą nawigacji i paneli. */
 .pad-bar {
-  background: color-mix(in srgb, var(--ink-2) 62%, transparent);
-  backdrop-filter: blur(14px) saturate(1.2);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  background: rgba(10, 16, 28, 0.90);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
-/* Kanwa wokół kartki — ciemniejsza od ramy, żeby kartka wyglądała na
-   położoną NA czymś, a nie wklejoną w panel. Gradient jest ledwie widoczny
-   i biegnie z góry: tam, gdzie w dokumencie pada światło. */
+:root.light .pad-bar,
+:root[data-theme="light"] .pad-bar,
+.pad-shell[data-pad-theme="light"] .pad-bar {
+  background: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-color: rgba(15, 23, 32, 0.12) !important;
+}
+
+/* Kanwa wokół kartki — klimatyczne światło Nocturne z góry, zamiast płaskiej czerni */
 .pad-canvas {
   background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--ink) 45%, transparent) 0%,
-      color-mix(in srgb, var(--ink) 72%, transparent) 100%
-    );
+    radial-gradient(ellipse 90% 65% at 50% -10%, rgba(23, 42, 70, 0.45) 0%, transparent 75%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(11, 25, 44, 0.35) 0%, transparent 80%),
+    linear-gradient(180deg, #09101c 0%, #060a12 100%);
+}
+
+:root.light .pad-canvas,
+:root[data-theme="light"] .pad-canvas,
+.pad-shell[data-pad-theme="light"] .pad-canvas {
+  background: #e9edf2 !important;
 }
 
 /* ── Notatnik jako OSOBNA STRONA ──
-
-   Na własnej karcie notatnik jest edytorem tekstu, a nie kartą leżącą w panelu:
-   rama traci zaokrąglenia, obrys i cień, bo nie ma na czym leżeć — wypełnia
-   okno. To jest ta różnica między „dokumentem otwartym w programie"
-   a „dokumentem wklejonym w stronę".
-
-   Kanwa robi się jednolita i wyraźnie szara (jak w Google Docs): przy pełnym
-   oknie gradient było widać jako smugę, a jednolita szarość lepiej pokazuje,
-   gdzie kończy się kartka. */
+   Na własnej karcie notatnik wypełnia okno, zachowując spójność z Nocturne Green. */
 .pad-shell.is-standalone {
   border: 0;
   border-radius: 0;
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  background: var(--bg);
+  background: #09101c;
+}
+
+:root.light .pad-shell.is-standalone,
+:root[data-theme="light"] .pad-shell.is-standalone,
+.pad-shell[data-pad-theme="light"].is-standalone {
+  background: #e9edf2;
 }
 
 .pad-shell.is-standalone::after { content: none; }
 
 .pad-shell.is-standalone .pad-canvas {
-  background: color-mix(in srgb, var(--ink) 45%, var(--bg));
+  background:
+    radial-gradient(ellipse 90% 65% at 50% -10%, rgba(23, 42, 70, 0.45) 0%, transparent 75%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(11, 25, 44, 0.35) 0%, transparent 80%),
+    linear-gradient(180deg, #09101c 0%, #060a12 100%);
+}
+
+:root.light .pad-shell.is-standalone .pad-canvas,
+:root[data-theme="light"] .pad-shell.is-standalone .pad-canvas,
+.pad-shell[data-pad-theme="light"].is-standalone .pad-canvas {
+  background: #e9edf2 !important;
 }
 
 .pad-shell.is-standalone .pad-bar {
-  background: var(--bg-lift);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  background: rgba(10, 16, 28, 0.90);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+:root.light .pad-shell.is-standalone .pad-bar,
+:root[data-theme="light"] .pad-shell.is-standalone .pad-bar,
+.pad-shell[data-pad-theme="light"].is-standalone .pad-bar {
+  background: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-color: rgba(15, 23, 32, 0.12) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -1665,8 +1761,19 @@ tr.liquid-glass-hover:hover {
    marginesu — pełne 2 cm z każdej strony zostawiłoby tam kolumnę na sześć
    słów. */
 .pad-sheet {
-  border-radius: 2px;
+  border-radius: 8px;
   margin-inline: auto;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.pad-paper[data-pad-theme="dark"].pad-sheet {
+  background: linear-gradient(180deg, #0e1728 0%, #0a111e 100%);
+  border: 1px solid rgba(114, 240, 180, 0.14);
+}
+
+.pad-paper[data-pad-theme="light"].pad-sheet {
+  background: #fbfbfa;
+  border: 1px solid rgba(15, 23, 32, 0.10);
 }
 
 @media (max-width: 840px) {

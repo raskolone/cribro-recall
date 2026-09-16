@@ -1477,7 +1477,10 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
   );
 
   return (
-    <div className={`pad-shell flex flex-col overflow-hidden ${standalone ? 'is-standalone' : ''} ${className}`}>
+    <div
+      data-pad-theme={paperTheme}
+      className={`pad-shell flex flex-col overflow-hidden ${standalone ? 'is-standalone' : ''} ${className}`}
+    >
       {/* 1. JEDNOLITY NAGŁÓWEK DOKUMENTU */}
       <header className="px-4 py-2.5 pad-bar border-b border-line-strong flex items-center justify-between gap-3 select-none flex-wrap sm:flex-nowrap">
         <div className="flex items-center gap-3 min-w-0" data-coach="pad-identity">
@@ -2078,8 +2081,8 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                 onMouseDown={event => event.preventDefault()}
                 onClick={() =>
                   handleHighlight(
-                    paperTheme === 'dark' ? 'rgba(239, 68, 68, 0.28)' : 'rgba(209, 84, 76, 0.18)',
-                    paperTheme === 'dark' ? '#fca5a5' : '#b91c1c'
+                    paperTheme === 'dark' ? 'rgba(244, 63, 94, 0.22)' : 'rgba(209, 84, 76, 0.18)',
+                    paperTheme === 'dark' ? '#fb7185' : '#b91c1c'
                   )
                 }
                 className="h-7 px-2 rounded-lg text-[11px] font-bold bg-danger/15 text-danger border border-danger/30 hover:bg-danger/25 transition-colors cursor-pointer shrink-0"
@@ -2092,8 +2095,8 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                 onMouseDown={event => event.preventDefault()}
                 onClick={() =>
                   handleHighlight(
-                    paperTheme === 'dark' ? 'rgba(16, 185, 129, 0.28)' : 'rgba(23, 145, 122, 0.18)',
-                    paperTheme === 'dark' ? '#6ee7b7' : '#047857'
+                    paperTheme === 'dark' ? 'rgba(114, 240, 180, 0.22)' : 'rgba(23, 145, 122, 0.18)',
+                    paperTheme === 'dark' ? '#72f0b4' : '#047857'
                   )
                 }
                 className="h-7 px-2 rounded-lg text-[11px] font-bold bg-accent/12 text-accent border border-accent/30 hover:bg-accent/20 transition-colors cursor-pointer shrink-0"
@@ -2106,8 +2109,8 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                 onMouseDown={event => event.preventDefault()}
                 onClick={() =>
                   handleHighlight(
-                    paperTheme === 'dark' ? 'rgba(245, 158, 11, 0.28)' : 'rgba(192, 106, 38, 0.18)',
-                    paperTheme === 'dark' ? '#fcd34d' : '#b45309'
+                    paperTheme === 'dark' ? 'rgba(251, 191, 36, 0.22)' : 'rgba(192, 106, 38, 0.18)',
+                    paperTheme === 'dark' ? '#fbbf24' : '#b45309'
                   )
                 }
                 className="h-7 px-2 rounded-lg text-[11px] font-bold bg-warn/15 text-warn border border-warn/30 hover:bg-warn/25 transition-colors cursor-pointer shrink-0"
@@ -2437,13 +2440,19 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                       type="button"
                       onClick={() => handleJumpToHeading(entry.id)}
                       title={entry.text}
-                      className={`w-full text-left pl-7 pr-2 py-1 flex items-center gap-1.5 text-[11px] leading-snug rounded-md transition-colors cursor-pointer hover:bg-white/[0.06] ${
+                      className={`w-full text-left pl-6 pr-2 py-1.5 flex items-center gap-2 text-[11.5px] leading-snug rounded-md transition-all cursor-pointer ${
                         activeHeadingId === entry.id
-                          ? 'text-primary font-bold bg-primary/10'
-                          : 'text-text-2 font-medium'
+                          ? 'text-primary font-bold bg-primary/15 border-l-2 border-primary'
+                          : 'text-text-2 font-medium hover:text-content hover:bg-white/[0.05]'
                       }`}
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-line-strong shrink-0" />
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all ${
+                          activeHeadingId === entry.id
+                            ? 'bg-primary shadow-[0_0_8px_rgba(114,240,180,0.8)] scale-125'
+                            : 'bg-line-strong'
+                        }`}
+                      />
                       <span className="truncate">{entry.text}</span>
                     </button>
                   );

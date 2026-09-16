@@ -198,6 +198,46 @@ we dwoje na żywo.
 
 ---
 
+### 🚀 Głęboka Harmonia Trybu Ciemnego Notatnika z Systemem Nocturne Green (2026-09-16, runda 26)
+
+**1. Eliminacja Płaskiej Szaro-Niebieskiej Belki i Przejście na Frosted Nocturne Glass (`index.css`):**
+- **Szkliste paski narzędzi i nagłówka**:
+  - W trybie ciemnym usunięto sztywne, nieprzezroczyste tło `--bg-lift` (`#172a46`) ze `.pad-shell.is-standalone .pad-bar`.
+  - Wszystkie paski notatnika (`.pad-bar` — górny nagłówek, pasek formatowania, panel spisu treści i stopka) otrzymały nowoczesne, półprzezroczyste wykończenie `rgba(10, 16, 28, 0.90)` z mocnym rozmyciem `backdrop-filter: blur(18px) saturate(1.2)` i subtelnym obrysem `rgba(255, 255, 255, 0.08)`.
+  - W trybie jasnym paski zachowują czyste, matowe szkło `rgba(255, 255, 255, 0.94)` z `blur(16px)` i obrysem `rgba(15, 23, 32, 0.12)`.
+
+**2. Klimatyczne Oświetlenie Kanwy Biurka Zamiast Płaskiej Czerni (`index.css`):**
+- **Likwidacja czarnej pustki wokół arkusza**:
+  - Dotychczas kanwa `.pad-canvas` w trybie samodzielnym przybierała jednolitą czerń `#070b14`.
+  - Wprowadzono atmosferyczny, podwójny gradient radialny zgodny z sygnaturą CRIBRO: subtelne światło padające od góry z odcieniem `--bg-lift` (`rgba(23, 42, 70, 0.45)`) oraz aksamitne przejście do głębokiego granatu bazy `#09101c` — arkusz notatnika leży teraz w trójwymiarowej, nastrojowej przestrzeni.
+
+**3. Szlachetny Ciemny Arkusz Notatnika (`index.css`):**
+- **Stylizacja luksusowego pergaminu Nocturne**:
+  - Zaokrąglenie rogów arkusza `.pad-sheet` zwiększono z surowych 2px do eleganckich 8px.
+  - Kartka w trybie ciemnym otrzymała gradient `linear-gradient(180deg, #0e1728 0%, #0a111e 100%)` z delikatnym, szmaragdowym obrysem `1px solid rgba(114, 240, 180, 0.14)`.
+  - Tekst podstawowy został zsynchronizowany z kremowym odcieniem marki `--pad-fg: #eae8e3` (ciepła kość słoniowa eliminująca zmęczenie wzroku i efekt poświaty).
+  - Cień arkusza zyskał subtelny, szmaragdowy rim-light: wielowarstwowy drop-shadow z poświatą `rgba(114, 240, 180, 0.08)`.
+
+**4. Dynamiczna Harmonizacja Kolorów Nagłówków w Treści Dokumentu (`index.css`, `notebookPalette.ts`):**
+- **Rozwiązanie problemu starych i nowych inline stylów w notatkach**:
+  - Szablon lekcji i edytor wpisują barwy bezpośrednio w atrybut `style="color: ..."`. Zgaszone, mdłe pastele (`#17917a`, `#4c7fe0`, `#c06a26`, `#d4577f`, `#8f6fe0`) gryzły się z ciemnym tłem.
+  - W `index.css` wdrożono reguły selektorów atrybutów dla `.pad-paper[data-pad-theme="dark"]`, które w locie przekształcają kolory na ciemnej kartce w świetliste, nasycone barwy z palety Nocturne:
+    - Zielony (`#17917a` / `#72f0b4`) → `#72f0b4` (Nocturne Green) z poświatą `text-shadow: 0 0 16px rgba(114, 240, 180, 0.28)`,
+    - Niebieski (`#4c7fe0` / `#67b5fa`) → `#67b5fa` (Sky Blue) z poświatą,
+    - Pomarańczowy (`#c06a26` / `#fbbf24`) → `#fbbf24` (Ciepły Bursztyn / Warm Amber),
+    - Różowy (`#d4577f` / `#fb7185`) → `#fb7185` (Koralowy Róż / Coral Rose),
+    - Fioletowy (`#8f6fe0` / `#a78bfa`) → `#a78bfa` (Aksamitny Fiolet / `--accent-2`),
+    - Czerwony (`#d1544c` / `#f87171`) → `#f87171` (Złagodzona Czerwień).
+  - W trybie jasnym reguły te dbają o zachowanie maksymalnego kontrastu AAA (np. `#72f0b4` renderuje się jako głęboki szmaragd `#0d8a5f`).
+  - W `utils/notebookPalette.ts` zaktualizowano `NOTEBOOK_COLORS`, `NOTEBOOK_INK.dark` (`#eae8e3`) oraz próbniki `NOTEBOOK_SWATCHES`, dzięki czemu nowo tworzone sekcje od razu korzystają z palety Nocturne.
+
+**5. Dopracowanie Spisu Treści (TOC) i Narzędzi Edytora (`ScratchpadEditor.tsx`):**
+- Na kontenerze `.pad-shell` dodano atrybut `data-pad-theme={paperTheme}`, umożliwiający płynną kaskadę motywów.
+- W spisie treści aktywny rozdział/lekcja otrzymuje szmaragdowy akcent z lewej strony (`border-l-2 border-primary bg-primary/15`), a punkt wskaźnika zyskuje szmaragdową poświatę `shadow-[0_0_8px_rgba(114,240,180,0.8)] scale-125`.
+- Zakreślacze lektorskie w trybie ciemnym używają autentycznych barw Nocturne (`#72f0b4`, `#fbbf24`, `#fb7185`).
+
+---
+
 ### 🚀 Kontrast Pomocnika Lektora w Trybie Jasnym & Pełna Dostępność Ćwiczenia „Koło Fortuny" w Notatniku i Prezentacji (2026-09-16, runda 25)
 
 **1. Poprawa Kontrastu w Trybie Jasnym (`index.css`, `ScratchpadTeacherCompanionDrawer.tsx`):**

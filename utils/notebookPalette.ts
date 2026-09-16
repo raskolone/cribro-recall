@@ -32,27 +32,28 @@ export interface NotebookColor {
   value: string;
 }
 
-/** Sześć odcieni jednej jasności — źródło dla szablonu i paska narzędzi. */
+/** Sześć odcieni jednej jasności — źródło dla szablonu i paska narzędzi.
+ * Zsynchronizowane z systemem kolorów Nocturne Green (tokens.css). */
 export const NOTEBOOK_COLORS = {
-  rose: '#d4577f',
-  red: '#d1544c',
-  orange: '#c06a26',
-  green: '#17917a',
-  blue: '#4c7fe0',
-  violet: '#8f6fe0',
+  rose: '#fb7185',
+  red: '#f87171',
+  orange: '#fbbf24',
+  green: '#72f0b4',
+  blue: '#67b5fa',
+  violet: '#a78bfa',
 } as const;
 
 /** Kolor tekstu kartki — musi zgadzać się z `--pad-fg` w `index.css`. */
 export const NOTEBOOK_INK = {
   light: '#2c2822',
-  dark: '#e3e8f0',
+  dark: '#eae8e3',
 } as const;
 
 /** Paleta paska narzędzi. Zamknięta: to notatnik lekcyjny, nie edytor grafiki. */
 export const NOTEBOOK_SWATCHES: NotebookColor[] = [
   { name: 'Czerwony', value: NOTEBOOK_COLORS.red },
   { name: 'Pomarańczowy', value: NOTEBOOK_COLORS.orange },
-  { name: 'Zielony', value: NOTEBOOK_COLORS.green },
+  { name: 'Zielony (Nocturne)', value: NOTEBOOK_COLORS.green },
   { name: 'Niebieski', value: NOTEBOOK_COLORS.blue },
   { name: 'Fioletowy', value: NOTEBOOK_COLORS.violet },
 ];
