@@ -110,6 +110,26 @@ export interface User {
   statusWspolpracy?: 'Aktywny' | 'Nieaktywny';
   /** Trwałe obserwacje i profil kursanta z transkrypcji lekcji (Etap B workflow). */
   studentInsights?: string;
+  /** Przypisane grupy, do których należy kursant */
+  groupIds?: string[];
+}
+
+export interface StudentGroup {
+  id: string;
+  name: string;
+  type: 'pair' | 'triplet' | 'group' | 'b2b_corporate';
+  teacherId: string;
+  teacherName?: string;
+  level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2' | string;
+  company?: string;
+  memberIds: string[];
+  memberNames: string[];
+  memberEmails?: string[];
+  activeScratchpadId?: string;
+  status: 'active' | 'archived';
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface EmailTemplate {
@@ -392,6 +412,8 @@ export interface LessonRecord {
   studentId: string;
   studentIds?: string[];
   studentName?: string;
+  groupId?: string | null;
+  groupName?: string | null;
   date: string;
   topic: string;
   vocabularyText: string;
@@ -999,6 +1021,9 @@ export interface ScratchpadDocument {
   pin: string;
   studentId?: string | null;
   studentName: string;
+  groupId?: string | null;
+  groupName?: string | null;
+  memberIds?: string[];
   teacherUid: string;
   teacherName: string;
   title: string;
@@ -1039,7 +1064,7 @@ export interface ScratchpadDocument {
   presentationState?: {
     active: boolean;
     title: string;
-    type: 'image_prompt' | 'slide' | 'scenario_item' | 'interactive_quiz' | 'sentence_scramble' | 'error_hunt' | 'wheel_of_fortune' | 'listening';
+    type: 'image_prompt' | 'slide' | 'scenario_item' | 'interactive_quiz' | 'sentence_scramble' | 'error_hunt' | 'wheel_of_fortune' | 'listening' | 'flip_cards' | 'process_tabs';
     imageUrl?: string;
     audioUrl?: string;
     audioName?: string;
@@ -1056,6 +1081,8 @@ export interface ScratchpadDocument {
     wheelRotation?: number;
     drawnQuestionId?: string;
     questionSource?: 'scenario' | 'past_lessons';
+    cards?: Array<{ term: string; definition: string; example?: string; hint?: string }>;
+    steps?: Array<{ title: string; subtitle?: string; content: string; keyPoints?: string[] }>;
   };
   /** Do pięciu ostatnich migawek treści. Najnowsza pierwsza. */
   revisions?: ScratchpadRevision[];

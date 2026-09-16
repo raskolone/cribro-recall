@@ -41,8 +41,9 @@ import Button from '../ui/Button';
 import Card from '../ui/Card';
 import Badge from '../ui/Badge';
 import { useLanguage } from '../../context/LanguageContext';
-import StudentNotionSyncModal from './StudentNotionSyncModal';
+import { useAuth } from '../../context/AuthContext';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
+import GroupManagementModal from './GroupManagementModal';
 import { openScratchpadTab } from '../../services/scratchpadService';
 
 import {
@@ -122,6 +123,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
   onBack,
 }) => {
   const { language } = useLanguage();
+  const { user: currentUser } = useAuth();
 
   // Navigation / View Tabs (Notion Views)
   const [currentViewTab, setCurrentViewTab] = useState<ViewTab>('all');
@@ -139,13 +141,10 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
   // Per-record expanded options menu
   const [openMenuUserId, setOpenMenuUserId] = useState<string | null>(null);
 
-  // Notion Fetch / Sync Modal State
-  const [notionSyncUser, setNotionSyncUser] = useState<User | null>(null);
-  const [showNotionSyncModal, setShowNotionSyncModal] = useState<boolean>(false);
-
   // App Invite Modal State
   const [inviteStudent, setInviteStudent] = useState<User | null>(null);
   const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
   const [copiedPasswordId, setCopiedPasswordId] = useState<string | null>(null);
   const [togglingInviteId, setTogglingInviteId] = useState<string | null>(null);
 
@@ -670,6 +669,15 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
             </button>
           )}
 
+          <button
+            onClick={() => setIsGroupModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-ink/70 hover:bg-white/10 text-white border border-primary/30 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+            title="Zarządzaj kursami grupowymi, parami i wspólnymi notatnikami"
+          >
+            <Users size={14} className="text-primary" />
+            <span>Pary & Grupy</span>
+          </button>
+
           {onAddNewStudent && (
             <button
               onClick={onAddNewStudent}
@@ -1131,19 +1139,6 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                       {/* Direct Action Shortcuts & More Options Menu */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5 relative">
-                          {/* Fast Notion Sync Button */}
-                          <button
-                            onClick={() => {
-                              setNotionSyncUser(user);
-                              setShowNotionSyncModal(true);
-                            }}
-                            className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-semibold transition-colors flex items-center gap-1 border border-primary/25 hover:border-primary/50 cursor-pointer shadow-sm"
-                            title="Pobierz lub zaktualizuj lekcje kursanta z Notion"
-                          >
-                            <RefreshCw size={12} />
-                            <span>Notion</span>
-                          </button>
-
                           <button
                             onClick={() => onSelectUser(user, 'profile')}
                             className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white font-semibold transition-colors flex items-center gap-1 hover:border-primary/40 border border-transparent cursor-pointer"
@@ -1246,17 +1241,6 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                                   <span>Otwórz współdzielony Notatnik (PIN)</span>
                                 </button>
 
-                                <button
-                                  onClick={() => {
-                                    setOpenMenuUserId(null);
-                                    setNotionSyncUser(user);
-                                    setShowNotionSyncModal(true);
-                                  }}
-                                  className="w-full px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-white flex items-center gap-2 transition-colors cursor-pointer text-left"
-                                >
-                                  <RefreshCw size={13} className="text-primary shrink-0" />
-                                  <span>Pobierz / Zaktualizuj z Notion</span>
-                                </button>
                                 <button
                                   onClick={() => {
                                     setOpenMenuUserId(null);
@@ -1385,23 +1369,6 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
             </button>
           </div>
         </div>
-      )}
-
-      {/* Notion Fetch / Sync Modal */}
-      {showNotionSyncModal && notionSyncUser && (
-        <StudentNotionSyncModal
-          isOpen={showNotionSyncModal}
-          onClose={() => {
-            setShowNotionSyncModal(false);
-            setNotionSyncUser(null);
-          }}
-          selectedUser={notionSyncUser}
-          onSyncComplete={() => {
-            if (onRefreshUsers) {
-              onRefreshUsers();
-            }
-          }}
-        />
       )}
 
       {/* Student App Invite Modal */}
@@ -1766,11 +1733,16 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
         </div>
       )}
 
-      {/* Notatnik otwiera się w OSOBNEJ KARCIE przeglądarki — patrz nagłówek
-          `ScratchpadPage`. Warstwa nad listą zniknęła: adres notatnika jest
-          jednocześnie linkiem, który idzie do kursanta, więc musi dać się
-          skopiować z paska adresu. */}
-
+      {/* Modal Zarządzania Kursami Grupowymi i Parami */}
+      <GroupManagementModal
+        isOpen={isGroupModalOpen}
+        onClose={() => setIsGroupModalOpen(false)}
+        users={users}
+        currentTeacher={{
+          uid: currentUser?.id || 'admin',
+          name: currentUser?.name || currentUser?.username || 'Lektor',
+        }}
+      />
     </div>
   );
 };

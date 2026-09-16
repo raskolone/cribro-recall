@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Airplay,
   CheckCircle2,
@@ -18,8 +18,9 @@ import {
   Moon,
 } from 'lucide-react';
 import Button from '../ui/Button';
-import { ScratchpadDocument } from '../../types';
+import { ScratchpadDocument, LessonRecord } from '../../types';
 import { WheelOfFortune } from '../presentation/WheelOfFortune';
+import { InteractiveSlideDeck } from '../presentation/InteractiveSlideDeck';
 import { EMPTY_SLIDE_INTERACTION } from '../admin/presentation/SlideCard';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -29,6 +30,7 @@ interface ScratchpadPresentationOverlayProps {
   presentation: PresentationState;
   isTeacher: boolean;
   studentName?: string | null;
+  lessonRecords?: LessonRecord[];
   onClose: () => void;
   onRevealAnswer?: () => void;
   onSubmitAnswer?: (answer: string) => void;
@@ -71,6 +73,7 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
   presentation,
   isTeacher,
   studentName,
+  lessonRecords = [],
   onClose,
   onRevealAnswer,
   onSubmitAnswer,
@@ -80,6 +83,10 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [localInputAnswer, setLocalInputAnswer] = useState<string>('');
   const [showHints, setShowHints] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
+  const [listeningNotes, setListeningNotes] = useState<string>('');
+  const [copiedNotes, setCopiedNotes] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   let theme: 'light' | 'dark' = 'dark';
   let toggleTheme = () => {};
@@ -88,6 +95,19 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
     theme = t.theme;
     toggleTheme = t.toggleTheme;
   } catch {}
+
+  const handleSpeedChange = (speed: number) => {
+    setPlaybackSpeed(speed);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = speed;
+    }
+  };
+
+  const handleSkipAudio = (seconds: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime + seconds);
+    }
+  };
 
   // Obsługa klawisza ESC do wyjścia z prezentacji
   useEffect(() => {
@@ -112,6 +132,7 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
   const isAnswerRevealed = Boolean(presentation.revealedAnswer);
   const currentAnswer = presentation.studentAnswer != null ? String(presentation.studentAnswer) : null;
   const correctAnswerStr = presentation.correctAnswer != null ? String(presentation.correctAnswer) : '';
+  const isStreamAudio = Boolean(presentation.audioUrl && (presentation.audioUrl.startsWith('http') && !presentation.audioUrl.startsWith('data:')));
 
   const handleSelectOption = (opt: string) => {
     if (isAnswerRevealed) return; // locked once revealed
@@ -209,6 +230,7 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
               title: presentation.title || 'Warm-up: Koło Fortuny',
               subtitle: presentation.prompt || 'Zakręć kołem i wylosuj pytanie rozgrzewkowe na start lekcji',
             }}
+            lessonRecords={lessonRecords}
             studentName={studentName}
             isFullscreen={false}
             isStudent={!isTeacher}
@@ -230,6 +252,24 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
             onAddToNotes={onAddToNotes}
           />
         </div>
+      ) : presentation.type === 'flip_cards' || presentation.type === 'process_tabs' ? (
+        <div className="flex-1 flex flex-col items-center justify-center max-w-5xl mx-auto w-full my-4 sm:my-6 animate-in fade-in duration-200">
+          <InteractiveSlideDeck
+            type={presentation.type}
+            title={presentation.title}
+            cards={presentation.cards}
+            steps={presentation.steps}
+            question={presentation.question}
+            options={presentation.options}
+            correctAnswer={presentation.correctAnswer}
+            explanation={presentation.explanation}
+            hints={presentation.hints}
+            isTeacher={isTeacher}
+            revealedAnswer={presentation.revealedAnswer}
+            selectedOption={presentation.studentAnswer}
+            onSelectOption={(opt) => onSubmitAnswer && onSubmitAnswer(String(opt))}
+          />
+        </div>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto w-full my-6 sm:my-8 space-y-6">
         {/* Optional Image */}
@@ -243,30 +283,70 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
           </div>
         )}
 
-        {/* Audio Player Banner (jeśli dołączono audioUrl) */}
+        {/* Audio Player Banner (jeśli dołączono audioUrl lub tryb listening) */}
         {presentation.audioUrl && (
-          <div className="w-full max-w-2xl p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-purple-950/60 via-base-200 to-purple-950/40 border border-purple-500/40 shadow-[0_0_40px_rgba(168,85,247,0.15)] flex flex-col sm:flex-row items-center justify-between gap-4 animate-fadeIn">
-            <div className="flex items-center gap-3.5 w-full sm:w-auto">
-              <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
-                <Volume2 size={24} className="animate-pulse" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-mono font-bold text-purple-400 tracking-wider">
-                    Nagranie audio lekcji
-                  </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+          <div className="w-full max-w-2xl p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-purple-950/70 via-base-200 to-purple-950/50 border border-purple-500/40 shadow-[0_0_40px_rgba(168,85,247,0.2)] flex flex-col gap-3.5 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5 w-full sm:w-auto">
+                <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                  <Volume2 size={24} className="animate-pulse" />
                 </div>
-                <h4 className="text-sm sm:text-base font-bold text-white truncate max-w-[280px] sm:max-w-xs" title={presentation.audioName || 'Ścieżka dźwiękowa'}>
-                  {presentation.audioName || 'Ścieżka dźwiękowa do odsłuchania'}
-                </h4>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase font-mono font-bold text-purple-400 tracking-wider">
+                      {isStreamAudio ? 'Strumień audio live' : 'Plik audio do odsłuchania'}
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  </div>
+                  <h4 className="text-sm sm:text-base font-bold text-white truncate max-w-[280px] sm:max-w-xs" title={presentation.audioName || 'Ścieżka dźwiękowa'}>
+                    {presentation.audioName || 'Ścieżka dźwiękowa do odsłuchania'}
+                  </h4>
+                </div>
+              </div>
+
+              {/* Kontrola prędkości i cofania */}
+              <div className="flex items-center gap-1.5 self-end sm:self-center">
+                <button
+                  type="button"
+                  onClick={() => handleSkipAudio(-10)}
+                  title="Cofnij o 10 sekund"
+                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono font-bold text-purple-200 transition-colors cursor-pointer"
+                >
+                  -10s
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSkipAudio(10)}
+                  title="Przewiń o 10 sekund do przodu"
+                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono font-bold text-purple-200 transition-colors cursor-pointer"
+                >
+                  +10s
+                </button>
+                <div className="flex items-center gap-1 bg-white/5 p-1 rounded-lg border border-white/10">
+                  {[0.75, 1, 1.25, 1.5].map((speed) => (
+                    <button
+                      key={speed}
+                      type="button"
+                      onClick={() => handleSpeedChange(speed)}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                        playbackSpeed === speed
+                          ? 'bg-purple-500 text-white shadow-sm'
+                          : 'text-purple-300/70 hover:text-white'
+                      }`}
+                    >
+                      {speed}x
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-            <div className="w-full sm:w-auto flex-1 max-w-md">
+
+            <div className="w-full">
               <audio
+                ref={audioRef}
                 controls
                 src={presentation.audioUrl}
-                className="w-full h-10 rounded-xl accent-primary shadow-inner"
+                className="w-full h-10 rounded-xl accent-purple-400 shadow-inner"
                 preload="metadata"
               />
             </div>
@@ -455,6 +535,36 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Sekcja notatek ze słuchania dla lektora i kursanta */}
+          {(presentation.type === 'listening' || presentation.audioUrl) && (
+            <div className="pt-4 border-t border-white/10 space-y-2 text-left">
+              <div className="flex items-center justify-between text-xs font-bold text-purple-300">
+                <span>📝 Twoje notatki ze słuchania (kluczowe myśli, nowe słówka):</span>
+                {onAddToNotes && listeningNotes.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onAddToNotes(`\n### 🎧 Notatki ze słuchania: ${presentation.audioName || presentation.title || 'Nagranie'}\n${listeningNotes.trim()}\n`);
+                      setCopiedNotes(true);
+                      setTimeout(() => setCopiedNotes(false), 2000);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-primary/20 hover:bg-primary text-primary hover:text-accent-ink font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                  >
+                    <Check size={12} />
+                    <span>{copiedNotes ? 'Dodano do notatnika!' : 'Wklej do notatnika'}</span>
+                  </button>
+                )}
+              </div>
+              <textarea
+                value={listeningNotes}
+                onChange={(e) => setListeningNotes(e.target.value)}
+                placeholder="Notuj na bieżąco podczas odtwarzania nagrania..."
+                rows={3}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-ink-2/90 border border-purple-500/30 text-white placeholder:text-content-muted focus:outline-none focus:border-purple-400 text-xs font-medium"
+              />
             </div>
           )}
         </div>

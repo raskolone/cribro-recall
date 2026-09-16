@@ -1,5 +1,7 @@
 import { LessonRecord, PresentationSlide, GeneratedLessonScenario } from '../types';
 import { generateLessonPlannerAI, extractJSON } from './geminiService';
+import { extractLessonBlocks } from '../utils/lessonBlocks';
+import { runCouncil, WARMUP_REVIEW_SYSTEM } from './aiCouncil';
 
 export interface WheelQuestionItem {
   id: string;
@@ -163,6 +165,7 @@ export function extractQuestionsFromScenario(
 
 /**
  * Wyciąga i generuje inteligentne pytania rekapitulacyjne z historii poprzednich lekcji kursanta.
+ * Korzysta z pełnego układu 4 bloków Notion (Słownictwo, Korekty, Podsumowanie, Zadanie domowe).
  */
 export function extractQuestionsFromPastLessons(
   lessonRecords: LessonRecord[] = [],
@@ -171,12 +174,14 @@ export function extractQuestionsFromPastLessons(
   const list: WheelQuestionItem[] = [];
 
   if (!lessonRecords || lessonRecords.length === 0) {
+    const studentGreeting = studentName ? `Witaj ${studentName}! ` : '';
     return [
       {
         id: 'pl-empty-1',
-        question: `Brak wcześniejszych lekcji w historii. Jakie są Twoje główne cele językowe na ten kurs?`,
+        question: `${studentGreeting}Brak wcześniejszych lekcji w historii. Jakie są Twoje główne cele językowe na ten kurs?`,
         category: 'past_lessons',
-        sourceTag: 'Pierwsza lekcja'
+        sourceTag: 'Pierwsza lekcja',
+        followUpHint: 'Opowiedz o sytuacjach, w których najbardziej potrzebujesz swobodnego angielskiego.'
       },
       ...FALLBACK_WARMUP_QUESTIONS.slice(0, 7).map((fb, idx) => ({
         ...fb,
@@ -197,80 +202,97 @@ export function extractQuestionsFromPastLessons(
   sortedLessons.forEach((rec, rIdx) => {
     if (list.length >= 10) return;
 
-    const topic = rec.topic?.trim();
+    const blocks = extractLessonBlocks(rec);
+    const topic = rec.topic?.trim() || 'poprzednia lekcja';
     const dateFormatted = rec.date ? new Date(rec.date).toLocaleDateString('pl-PL') : `Lekcja #${rIdx + 1}`;
 
-    // 1. Z suggestedFollowUp (często zawiera pytania otwarte lektora)
-    if (rec.suggestedFollowUp && rec.suggestedFollowUp.trim().length > 10) {
-      const followUpLines = rec.suggestedFollowUp
+    // 1. Z kluczowych słówek (Words & Phrases / Block 2)
+    if (blocks.vocabulary && blocks.vocabulary.trim().length > 3 && list.length < 10) {
+      const vocabLines = blocks.vocabulary
         .split('\n')
         .map(l => l.replace(/^[-*•\d.)\s]+/, '').trim())
-        .filter(l => l.length > 12);
+        .filter(l => l.length > 2 && !l.toLowerCase().includes('brak'));
 
-      followUpLines.forEach((fLine, fIdx) => {
-        if (list.length < 10 && !list.some(item => item.question === fLine)) {
-          const isRealQuestion = fLine.includes('?');
-          const formulated = isRealQuestion 
-            ? fLine 
-            : `Follow-up from "${topic || 'our last lesson'}": ${fLine}`;
+      if (vocabLines.length > 0) {
+        // Weź do 2 słówek z danej lekcji
+        const sampleWords = vocabLines.slice(0, 2);
+        sampleWords.forEach((wordLine, wIdx) => {
+          if (list.length >= 10) return;
+          const cleanWord = wordLine.split(/\s+[-–—:=]\s+/)[0].trim().replace(/[*_]/g, '');
+          const wordMeaning = wordLine.includes('-') ? wordLine.split(/\s+[-–—:=]\s+/)[1]?.trim() : '';
 
-          list.push({
-            id: `pl-fu-${rIdx}-${fIdx}`,
-            question: formulated,
-            category: 'past_lessons',
-            sourceTag: `Follow-up (${dateFormatted})`,
-            followUpHint: topic ? `Nawiązanie do tematu: ${topic}` : undefined
-          });
-        }
-      });
-    }
+          const variations = [
+            `Vocabulary Recall: Use the phrase "${cleanWord}" in a natural sentence about your recent work or week.`,
+            `Context Challenge: Explain what "${cleanWord}" means in English and give a quick practical example.`,
+            `Quick Collocation: What prepositions or words go naturally with "${cleanWord}"? Create a short scenario.`
+          ];
+          const chosenQuestion = variations[(rIdx + wIdx) % variations.length];
 
-    // 2. Z kluczowych słówek (Words & Phrases / vocabularyText)
-    const wordsRaw = (rec as any).words || rec.vocabularyText;
-    if (wordsRaw && wordsRaw.trim().length > 3 && list.length < 10) {
-      const wordsList = wordsRaw
-        .split(/[\n,;]+/)
-        .map((w: string) => w.replace(/^[-*•\d.)\s]+/, '').trim())
-        .filter((w: string) => w.length > 2 && !w.toLowerCase().includes('brak'));
-
-      if (wordsList.length > 0) {
-        // Wybierz słowo
-        const pickedWord = wordsList[0];
-        const wordQuestion = `Recall challenge: Use the phrase "${pickedWord}" from our lesson on "${topic || 'vocabulary'}" in a real sentence about your day.`;
-
-        if (!list.some(item => item.question === wordQuestion)) {
-          list.push({
-            id: `pl-word-${rIdx}`,
-            question: wordQuestion,
-            category: 'past_lessons',
-            sourceTag: `Słówko: ${pickedWord}`,
-            relatedWord: pickedWord
-          });
-        }
+          if (!list.some(item => item.relatedWord === cleanWord || item.question === chosenQuestion)) {
+            list.push({
+              id: `pl-voc-${rIdx}-${wIdx}`,
+              question: chosenQuestion,
+              category: 'past_lessons',
+              sourceTag: `Słówko: ${cleanWord.slice(0, 20)}`,
+              relatedWord: cleanWord,
+              followUpHint: wordMeaning ? `Znaczenie: ${wordMeaning}` : `Z lekcji: ${topic}`
+            });
+          }
+        });
       }
     }
 
-    // 3. Z punktów do poprawy (Things to improve / Accuracy)
-    if (rec.thingsToImprove && rec.thingsToImprove.trim().length > 8 && list.length < 10) {
-      const improvePoint = rec.thingsToImprove.split('\n')[0].replace(/^[-*•\d.)\s]+/, '').trim();
-      if (improvePoint && !improvePoint.toLowerCase().includes('brak')) {
-        const accuracyQuestion = `Accuracy check from "${topic || 'previous session'}": How would you express this correctly in English: "${improvePoint.slice(0, 90)}"?`;
+    // 2. Z punktów do poprawy / korekt (Accuracy & Corrections)
+    if (blocks.corrections && blocks.corrections.trim().length > 5 && list.length < 10) {
+      const fixLines = blocks.corrections
+        .split('\n')
+        .map(l => l.replace(/^[-*•\d.)\s]+/, '').trim())
+        .filter(l => l.length > 6 && !l.toLowerCase().includes('brak'));
+
+      if (fixLines.length > 0) {
+        const fixLine = fixLines[0];
+        const accuracyQuestion = `Accuracy Check: In our lesson on "${topic}", we corrected: "${fixLine.slice(0, 95)}". How would you express this correctly now?`;
 
         if (!list.some(item => item.question === accuracyQuestion)) {
           list.push({
-            id: `pl-improve-${rIdx}`,
+            id: `pl-fix-${rIdx}`,
             question: accuracyQuestion,
             category: 'past_lessons',
             sourceTag: `Korekta (${dateFormatted})`,
-            followUpHint: 'Zwróć uwagę na poprawną strukturę i czasy gramatyczne.'
+            followUpHint: 'Zwróć uwagę na precyzyjną strukturę gramatyczną i dobór słów.'
           });
         }
       }
     }
 
-    // 4. Z tematu lekcji (Discussion continuation)
-    if (topic && topic.length > 4 && list.length < 10) {
-      const topicQuestion = `Since our lesson on "${topic}": Have you encountered a situation where you had to use this in practice? Tell me briefly what happened.`;
+    // 3. Z kolejnych kroków / follow-up / nextLesson
+    if (blocks.nextLesson && blocks.nextLesson.trim().length > 8 && list.length < 10) {
+      const nextLines = blocks.nextLesson
+        .split('\n')
+        .map(l => l.replace(/^[-*•\d.)\s]+/, '').trim())
+        .filter(l => l.length > 10);
+
+      if (nextLines.length > 0) {
+        const line = nextLines[0];
+        const formulated = line.includes('?') 
+          ? line 
+          : `Follow-up from "${topic}": ${line}`;
+
+        if (!list.some(item => item.question === formulated)) {
+          list.push({
+            id: `pl-next-${rIdx}`,
+            question: formulated,
+            category: 'past_lessons',
+            sourceTag: `Follow-up (${dateFormatted})`,
+            followUpHint: `Nawiązanie do zagadnienia z lekcji: ${topic}`
+          });
+        }
+      }
+    }
+
+    // 4. Z tematu lekcji i podsumowania (Discussion continuation)
+    if (topic && topic.length > 3 && topic !== 'poprzednia lekcja' && list.length < 10) {
+      const topicQuestion = `Reflection: Regarding our session on "${topic}" (${dateFormatted}) — have you had an opportunity to use this or encountered a related topic recently?`;
 
       if (!list.some(item => item.question === topicQuestion)) {
         list.push({
@@ -283,7 +305,7 @@ export function extractQuestionsFromPastLessons(
     }
   });
 
-  // Uzupełnij do minimum 6 pytań
+  // Uzupełnij do minimum 6 pytań jeśli historia była bardzo krótka
   if (list.length < 6) {
     FALLBACK_WARMUP_QUESTIONS.forEach(fb => {
       if (list.length < 8 && !list.some(l => l.question === fb.question)) {
@@ -328,13 +350,13 @@ RULES:
 ]`;
 
   try {
-    const aiRes = await generateLessonPlannerAI({
-      prompt,
+    const councilRes = await runCouncil<any[]>({
       systemInstruction: 'You are an elite ESL conversation coach crafting engaging warm-up questions. Return valid JSON only.',
-      jsonMode: true
+      prompt,
+      reviewerSystemInstruction: WARMUP_REVIEW_SYSTEM,
+      expectJson: true,
     });
-    const jsonStr = extractJSON(aiRes.text);
-    const parsed = JSON.parse(jsonStr);
+    const parsed = councilRes.data;
     if (Array.isArray(parsed) && parsed.length > 0) {
       return parsed.slice(0, 10).map((item: any, idx: number) => ({
         id: `ai-wq-${Date.now()}-${idx}`,
@@ -345,7 +367,7 @@ RULES:
       }));
     }
   } catch (err) {
-    console.warn('[WheelQuestionService] AI generation failed, using fallback:', err);
+    console.warn('[WheelQuestionService] AI council generation failed, using fallback:', err);
   }
 
   return FALLBACK_WARMUP_QUESTIONS;

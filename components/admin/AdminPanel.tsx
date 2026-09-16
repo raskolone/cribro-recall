@@ -46,7 +46,6 @@ import TeacherOverview from './TeacherOverview';
 import LessonPlannerStudio from './LessonPlannerStudio';
 import { LessonPresentationView } from './presentation/LessonPresentationView';
 import { createPresentationFromScenario, savePresentationToStorage } from '../../services/presentationService';
-import StudentNotionSyncModal from './StudentNotionSyncModal';
 import LessonSourceBar from './LessonSourceBar';
 import MenuDropdown from '../ui/MenuDropdown';
 import StudentPanelSection from './StudentPanelSection';
@@ -136,7 +135,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
    * razem tego samego kształtu.
    */
   const [profileSection, setProfileSection] = useState<
-    'basic' | 'mail' | 'level' | 'notion' | 'access'
+    'basic' | 'mail' | 'level' | 'activity' | 'access'
   >('basic');
   
 
@@ -1516,7 +1515,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [showAIModal, setShowAIModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [showBulkPreviewModal, setShowBulkPreviewModal] = useState(false);
-  const [showStudentNotionSyncModal, setShowStudentNotionSyncModal] = useState(false);
   const [showCleanLessonsModal, setShowCleanLessonsModal] = useState(false);
   const [isPendingSectionOpen, setIsPendingSectionOpen] = useState(false);
   const [bulkPreviewLessons, setBulkPreviewLessons] = useState<any[]>([]);
@@ -1872,7 +1870,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   useEscapeModal(showAIModal, () => setShowAIModal(false));
   useEscapeModal(showBulkModal, () => setShowBulkModal(false));
   useEscapeModal(showBulkPreviewModal, () => setShowBulkPreviewModal(false));
-  useEscapeModal(showStudentNotionSyncModal, () => setShowStudentNotionSyncModal(false));
   useEscapeModal(showInviteModal, () => setShowInviteModal(false));
   useEscapeModal(showCleanLessonsModal, () => setShowCleanLessonsModal(false));
   useEscapeModal(showLessonRecordModal, () => closeLessonRecordModal());
@@ -2708,13 +2705,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                               description: 'Pusty formularz lekcji',
                               icon: <Plus size={14} />,
                               onSelect: () => openLessonRecordModal('edit'),
-                            },
-                            {
-                              id: 'notion',
-                              label: 'Pobierz z Notion',
-                              description: 'Sprawdź kartę kursanta w Teacher HQ',
-                              icon: <RefreshCw size={14} />,
-                              onSelect: () => setShowStudentNotionSyncModal(true),
                             },
                             {
                               id: 'ai',
@@ -3571,7 +3561,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     { id: 'basic', label: 'Dane podstawowe', icon: UserIcon },
                     { id: 'mail', label: 'E-mail i dostęp', icon: Mail },
                     { id: 'level', label: 'Poziom i AI', icon: Sparkles },
-                    { id: 'notion', label: 'Notion i aktywność', icon: RefreshCw },
+                    { id: 'activity', label: 'Aktywność i statystyki', icon: Activity },
                     { id: 'access', label: 'Uprawnienia', icon: Shield },
                   ].map(section => {
                     const SectionIcon = section.icon;
@@ -3885,40 +3875,19 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </div>
               )}
 
-              {/* CARD 4: INTEGRACJA NOTION & METRYKI AKTYWNOŚCI */}
-              {profileSection === 'notion' && (
+              {/* CARD 4: METRYKI AKTYWNOŚCI */}
+              {profileSection === 'activity' && (
               <div className="rounded-xl border border-line-strong bg-base-100/40 p-4 md:p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
-                      <RefreshCw size={16} />
+                      <Activity size={16} />
                     </span>
-                    <h4 className="font-bold text-text-hi text-base">{i18n.t("Integracja Notion & Aktywność")}</h4>
+                    <h4 className="font-bold text-text-hi text-base">{i18n.t("Aktywność i Statystyki")}</h4>
                   </div>
-                  <span className="text-xs text-content-muted">
-                    Baza Notion
+                  <span className="text-xs text-content-muted font-mono">
+                    {selectedUser.id}
                   </span>
-                </div>
-
-                <div className="p-4 rounded-xl bg-base-100/40 border border-line-strong flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <span className="text-sm font-semibold text-text-hi flex items-center gap-2">
-                      <RefreshCw size={15} className="text-primary" />
-                      {i18n.t("Synchronizacja lekcji i 4 bloków")}
-                    </span>
-                    <p className="text-xs text-content-muted max-w-md">
-                      {i18n.t("Pobierz nowe lekcje lub zaktualizuj istniejące wpisy bezpośrednio z powiązanej bazy Notion kursanta.")}
-                    </p>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="bg-primary/15 text-primary hover:bg-primary/25 border-primary/30 flex items-center gap-2 shrink-0 cursor-pointer font-semibold"
-                    onClick={() => setShowStudentNotionSyncModal(true)}
-                  >
-                    <RefreshCw size={14} />
-                    {i18n.t("Pobierz / Zaktualizuj z Notion")}
-                  </Button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
@@ -5818,20 +5787,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             </div>
           </div>
         </div>
-      )}
-
-      {showStudentNotionSyncModal && (
-        <StudentNotionSyncModal
-          isOpen={showStudentNotionSyncModal}
-          onClose={() => setShowStudentNotionSyncModal(false)}
-          selectedUser={selectedUser}
-          onSyncComplete={() => {
-            if (selectedUser) {
-              fetchUserLogsAndStats(selectedUser.id);
-            }
-            fetchUsers();
-          }}
-        />
       )}
 
       {/* Student App Invite Modal */}

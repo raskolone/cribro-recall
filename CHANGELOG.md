@@ -198,6 +198,66 @@ we dwoje na żywo.
 
 ---
 
+### 🚀 Kursy Grupowe & Pary, Wielomodelowa Narada AI (Flash 3.8 + Recenzenci), Uproszczony Mailing i E-Learning w Notatniku (2026-09-16, runda 29)
+
+**1. Obsługa Kursów Grupowych, Par i Grup Firmowych (B2B):**
+- **Model danych & Kolekcja Firestore (`types.ts`, `services/groupService.ts`)**:
+  - Wprowadzono typ `StudentGroup` z polami `name`, `type` (`pair` | `triplet` | `group` | `b2b_corporate`), `level`, `teacherId`, `memberIds`, `memberNames`, `activeScratchpadId`.
+  - Rozszerzono `ScratchpadDocument` oraz `LessonRecord` o pola `groupId`, `groupName` i `memberIds`.
+  - Utworzono serwis `services/groupService.ts` z funkcjami zarządzania grupami (`createGroup`, `updateGroup`, `deleteGroup`, `getGroupsForTeacher`, `getGroupsForStudent`, `ensureGroupScratchpad`).
+- **Interfejs Zarządzania Grupami (`GroupManagementModal.tsx`, `StudentDatabaseScreen.tsx`)**:
+  - Dodano przycisk „Pary & Grupy" w pasku bazy kursantów.
+  - Szybki kreator grupy z wyborem poziomu CEFR, firmy B2B, typu oraz wyszukiwarką i multiselectem kursantów.
+  - Automatyczne powiązanie i generowanie wspólnego notatnika grupowego (`ensureGroupScratchpad`).
+
+**2. Wielomodelowa Narada AI (AI Council) dla Wszystkich Generatorów Treści:**
+- **Skład Narady zgodny z wytycznymi (`services/aiCouncil.ts`)**:
+  - **Autor**: `gemini-3.8-flash` (Najnowszy Flash) z automatycznym fallbackiem do OpenAI.
+  - **Recenzent 1**: `gemini-2.5-flash` (Domyślny).
+  - **Recenzent 2**: `openai/gpt-4o-mini` (Lekki).
+  - **Recenzent 3**: `openai/gpt-4o` / `claude` (Opcjonalny).
+- **Zastosowanie we wszystkich modułach**:
+  - **Generator Prac Domowych & Ćwiczeń (`services/homeworkGenerator.ts`)**: Narada AI weryfikuje naturalność zdań, sens kontekstowy, brak sztucznych zdań-wydmuszek oraz zgodność z Learning Curve kursanta (`EXERCISE_REVIEW_SYSTEM`).
+  - **Generator Rozgrzewek & Koła Fortuny (`services/wheelQuestionService.ts`)**: Narada dba o naturalne, dojrzałe pytania konwersacyjne dla dorosłych (`WARMUP_REVIEW_SYSTEM`).
+  - **Asystent AI w Notatniku (`ScratchpadEditor.tsx`)**: Narada recenzuje tworzone opracowania notatek i formatowanie bloków Notion (`SCRATCHPAD_REVIEW_SYSTEM`).
+
+**3. Uproszczony Mailing, Zaproszenia Kursantów i Monitoring Skrzynki Poczty:**
+- **Wysyłanie zaproszeń do aplikacji (`StudentInviteEmailModal.tsx`)**:
+  - Szybkie generowanie spersonalizowanych e-maili powitalnych z bezpiecznym hasłem i linkiem logowania bezpośrednio z bazy kursantów.
+- **Odczyt poczty przychodzącej (`wyrozumski@maciej.pro`)**:
+  - Monitoring skrzynki w `AdminMailingScreen.tsx` z filtrami nieprzeczytanych, podglądem odpowiedzi i gotowością pod reguły automatyzacji.
+
+**4. Notatnik jako Centrum Prezentacji i Interaktywny E-Learning (Articulate 360 Style):**
+- **Czyszczenie menu głównego**:
+  - Prezentacja została w 100% zintegrowana wewnątrz Notatnika (`ScratchpadEditor.tsx`), eliminując zbędne przełączniki.
+- **Szybki Wklejacz Treści (Quick Paste)**:
+  - Wklejanie zdań/słówek i natychmiastowa zamiana w interaktywne slajdy dla kursanta.
+- **Prototyp Slajdów E-Learningowych (`InteractiveSlideDeck.tsx`)**:
+  - **Fiszki 3D (Flip Cards)**: Płynny obrót 3D kart ze słówkami, wymową, polskim znaczeniem i przykładem zdania.
+  - **Kroki Procesu (Interactive Step-by-Step Tabs)**: Przechodzenie przez sekcje case study z kluczowymi wnioskami.
+  - **Interaktywny Quiz**: Pytania jednokrotnego wyboru z natychmiastową weryfikacją i wyjaśnieniem lektorskim.
+
+---
+
+### 🚀 Pełna Migracja Bazy Kursantów i Lekcji z Notion do Firestore & Usunięcie Nadmiarowej Synchronizacji (2026-09-16, runda 28)
+
+**1. 100% Bezstratna Migracja Danych z Notion do Firestore:**
+- **Kompletny zrzut i import historii**:
+  - Zaimportowano wszystkich **22 kursantów i grup** (w tym profile archiwalne i firmy: Axell, Media-Saturn, AMW, DB Schenker, Fundacja Rakiety, Gulermak, Kramp) oraz wszystkie **110 lekcji** z bazy Notion bez ani jednej pominiętej lekcji (`lessonsImported: 110`, `lessonsSkipped: 0`).
+  - Każda lekcja została deterministycznie sparsowana do kanonicznej struktury 4 bloków Notion (*Words & Phrases*, *Grammar & Accuracy*, *Pronunciation*, *Homework* z osobnym Answer Key oraz Learning Curve / Student Speaking) i zapisana w podkolekcji `users/{studentId}/lessonRecords/{lessonId}`.
+  - Wygenerowano bezpieczne konta startowe i hasła jednorazowe dla nowo utworzonych użytkowników.
+
+**2. Całkowite Usunięcie Modułów i Przycisków Importu Kursantów z Notion:**
+- Usunięto zbędne modale i komponenty synchronizacji: `NotionSyncButton.tsx`, `StudentNotionSyncModal.tsx`, `NotionSyncResultModal.tsx`, `TeacherNotionDatabaseView.tsx`.
+- Z `AdminPanel.tsx` oraz `StudentDatabaseScreen.tsx` usunięto przyciski, modale i opcje menu rozwijanego „Pobierz z Notion" / „Pobierz / Zaktualizuj z Notion".
+- Z `SettingsScreen.tsx` usunięto pole konfiguracji bazy kursantów (`studentsDbId`), upraszczając konfigurację Notion wyłącznie do klucza API i **Bazy Spotkań & Transkrypcji** (`meetingNotesDbId`).
+- Usunięto nieużywane funkcje Cloud Functions (`previewNotionSync`, `importNotionSelection`, `checkNotionDaily`), pozostawiając integrację z Notion **wyłącznie** jako magazyn notatek i transkrypcji AI ze spotkań.
+
+**3. Odporność na Błędy w Pobieraniu Transkrypcji (`TeacherLessonHistoryView.tsx`):**
+- Naprawiono błąd `Unexpected token 'A', "An error o"... is not valid JSON` poprzez bezpieczne sprawdzanie `Content-Type` odpowiedzi serwera przed wywołaniem `.json()`.
+
+---
+
 ### 🚀 Nowy Design Koła Fortuny (Dark/Light Mode), Niezależny Wybór Motywu Lektora i Kursanta oraz Lekka, Płynna Animacja GSAP (2026-09-16, runda 27)
 
 **1. Kompleksowy Redesign Wizualny Koła Fortuny w Trybach Jasnym i Ciemnym (`WheelOfFortune.tsx`):**

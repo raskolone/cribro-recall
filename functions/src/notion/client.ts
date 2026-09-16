@@ -22,31 +22,60 @@ export interface NotionPage {
   properties: Record<string, any>;
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const request = async (
   token: string,
   path: string,
   init?: { method?: string; body?: unknown }
 ): Promise<any> => {
-  const res = await fetch(`${NOTION_API}${path}`, {
-    method: init?.method || 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Notion-Version': NOTION_VERSION,
-      'Content-Type': 'application/json',
-    },
-    body: init?.body ? JSON.stringify(init.body) : undefined,
-  });
+  const maxRetries = 6;
+  let attempt = 0;
 
-  if (!res.ok) {
-    const detail = await res.text();
-    // Najczęstsza przyczyna 404 to nie literówka w identyfikatorze, tylko baza
-    // nieudostępniona integracji — Notion nie odróżnia „nie ma" od „nie widzisz".
-    throw new Error(
-      `Notion ${init?.method || 'GET'} ${path} → ${res.status}: ${detail.slice(0, 400)}`
-    );
+  while (attempt < maxRetries) {
+    attempt++;
+    // Bezpieczny pacing między żądaniami do Notion API
+    await sleep(350);
+
+    const res = await fetch(`${NOTION_API}${path}`, {
+      method: init?.method || 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Notion-Version': NOTION_VERSION,
+        'Content-Type': 'application/json',
+      },
+      body: init?.body ? JSON.stringify(init.body) : undefined,
+    });
+
+    if (res.status === 429) {
+      let retryAfter = 16;
+      try {
+        const errJson: any = await res.json();
+        if (errJson?.additional_data?.retry_after) {
+          retryAfter = Number(errJson.additional_data.retry_after);
+        }
+      } catch {
+        const header = res.headers.get('retry-after');
+        if (header) retryAfter = Number(header);
+      }
+      logger.warn(`Notion rate limit (429) — oczekiwanie ${retryAfter + 1}s (próba ${attempt}/${maxRetries})`);
+      await sleep((retryAfter + 1) * 1000);
+      continue;
+    }
+
+    if (!res.ok) {
+      const detail = await res.text();
+      // Najczęstsza przyczyna 404 to nie literówka w identyfikatorze, tylko baza
+      // nieudostępniona integracji — Notion nie odróżnia „nie ma" od „nie widzisz".
+      throw new Error(
+        `Notion ${init?.method || 'GET'} ${path} → ${res.status}: ${detail.slice(0, 400)}`
+      );
+    }
+
+    return res.json();
   }
 
-  return res.json();
+  throw new Error(`Przekroczono limit ponowień (${maxRetries}) dla Notion API (${path})`);
 };
 
 /** Wszystkie strony bazy, z przewijaniem kolejnych stron wyników. */
@@ -83,12 +112,18 @@ export const queryDatabase = async (
  * wywołanie. Stąd zejście w dzieci, ograniczone głębokością: pętla po cyklicznej
  * strukturze kosztowałaby limit zapytań, a nic sensownego by nie wniosła.
  */
+/**
+ * Treść strony jako tekst zoptymalizowana pod podsumowania 4 bloków Notion.
+ *
+ * Pobiera bloki najwyższego poziomu oraz wchodzi w głąb toggle „Podsumowanie lekcji"
+ * / „Learning Curve", pomijając zbędne wielostronicowe surowe transkrypcje.
+ */
 export const pageToText = async (
   token: string,
   blockId: string,
   depth = 0
 ): Promise<string> => {
-  if (depth > 4) return '';
+  if (depth > 2) return '';
 
   const lines: string[] = [];
   let cursor: string | undefined;
@@ -99,10 +134,28 @@ export const pageToText = async (
 
     for (const block of data.results || []) {
       const text = richTextOf(block);
+      const lower = text.toLowerCase();
       if (text) lines.push(prefixFor(block.type, text));
-      if (block.has_children) {
-        const nested = await pageToText(token, block.id, depth + 1);
-        if (nested) lines.push(nested);
+
+      if (block.has_children && depth < 2) {
+        // Wchodzimy w głąb toggle'i podsumowania, bloków lub calloutów
+        const isSummaryToggle =
+          block.type === 'toggle' &&
+          (lower.includes('podsumowanie') ||
+            lower.includes('blok') ||
+            lower.includes('learning curve') ||
+            lower.includes('key language') ||
+            lower.includes('homework') ||
+            lower.includes('lekcja w skrócie') ||
+            lower.includes('next lesson') ||
+            lower.includes('corrections'));
+
+        const isStandardContainer = ['callout', 'quote'].includes(block.type);
+
+        if (isSummaryToggle || isStandardContainer || depth === 0) {
+          const nested = await pageToText(token, block.id, depth + 1);
+          if (nested) lines.push(nested);
+        }
       }
     }
 

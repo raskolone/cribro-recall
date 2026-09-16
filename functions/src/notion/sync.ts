@@ -170,7 +170,7 @@ const fetchLessons = async (token: string): Promise<NotionPage[]> =>
  * zawieszenie. Powyżej mniej więcej tej wartości Notion zaczyna odrzucać
  * zapytania limitem tempa, więc nie ma sensu podnosić jej wyżej.
  */
-const LESSON_FETCH_CONCURRENCY = 5;
+const LESSON_FETCH_CONCURRENCY = 2;
 
 /**
  * Wiąże lekcję z kartą kursanta.
@@ -477,26 +477,30 @@ export const importSelection = async (
     const emails = propEmails(page, 'Adresy e-mail');
     const match = findAccount(usersSnap.docs, page.id, emails, name);
 
+    const isGroup = propText(page, 'Typ') === 'Grupa';
+    const isInactive = propText(page, 'Status współpracy') === 'Nieaktywny';
+    const company = propText(page, 'Gdzie pracuje') || propText(page, 'Firma');
+
     if (match) {
       const ref = match.doc.ref;
       const data = match.doc.data() || {};
       const updates: Record<string, unknown> = {};
 
       if (data.notionPageId !== page.id) updates.notionPageId = page.id;
+      if (isGroup && !data.isGroup) updates.isGroup = true;
+      if (company && !data.company) updates.company = company;
+      if (isInactive && !data.isArchived) {
+        updates.isArchived = true;
+        updates.statusWspolpracy = 'Nieaktywny';
+      }
 
-      // Prawdziwy adres zastępuje zaślepkę `@student.vocabboost.com`, pod którą
-      // powiadomienia i tak nie dochodziły. Poprawnego adresu nie ruszamy —
-      // kursant mógł zmienić go u siebie.
+      // Prawdziwy adres zastępuje zaślepkę `@student.vocabboost.com`
       const real = emails.find(isRealEmail);
       if (real && !isRealEmail(data.email || '')) {
         updates.email = real;
         report.emailsUpdated += 1;
       }
 
-      // Poziom i opis: uzupełniamy tylko puste miejsca oraz naprawiamy plakietkę,
-      // w którą wcześniejszy import wpisał całą notatkę z Notion. Tego, co lektor
-      // wpisał sam, nie ruszamy — Notion jest źródłem prawdy dla historii lekcji,
-      // nie dla profilu prowadzonego w aplikacji.
       const { level, profile } = splitLevel(propText(page, 'Poziom / profil'));
       const currentLevel = (data.level || '').toString();
       if (level && (!currentLevel || currentLevel === profile)) updates.level = level;
@@ -515,10 +519,10 @@ export const importSelection = async (
       continue;
     }
 
-    const email = emails.find(isRealEmail);
+    let email = emails.find(isRealEmail);
     if (!email) {
-      report.warnings.push(`„${name}" pominięty — brak prawdziwego adresu e-mail w Notion.`);
-      continue;
+      const cleanName = normalize(name).replace(/[^a-z0-9]/g, '');
+      email = `${cleanName || 'kursant'}@student.vocabboost.com`;
     }
 
     const password = tempPassword();
@@ -530,7 +534,6 @@ export const importSelection = async (
       try {
         record = await auth.createUser({ email, password, displayName: name });
       } catch (error: any) {
-        // Konto w Auth mogło powstać wcześniej, bez profilu w bazie.
         if (error?.code === 'auth/email-already-exists') {
           record = await auth.getUserByEmail(email);
           await auth.updateUser(record.uid, { password });
@@ -548,6 +551,10 @@ export const importSelection = async (
           lastName,
           level,
           description: profile,
+          company,
+          isGroup,
+          isArchived: isInactive,
+          statusWspolpracy: isInactive ? 'Nieaktywny' : 'Aktywny',
           notionPageId: page.id,
           tempPassword: password,
           requirePasswordChange: true,

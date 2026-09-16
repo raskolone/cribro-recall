@@ -78,8 +78,12 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
   const isDark = currentTheme === 'dark';
   const sectorPalette = isDark ? SECTOR_PALETTE_DARK : SECTOR_PALETTE_LIGHT;
 
-  // Wybór źródła pytań (scenariusz vs poprzednie lekcje)
-  const [questionSource, setQuestionSource] = useState<'scenario' | 'past_lessons'>('scenario');
+  // Wybór źródła pytań (scenariusz vs poprzednie lekcje kursanta)
+  const [questionSource, setQuestionSource] = useState<'scenario' | 'past_lessons'>(() => {
+    if (slide?.wheelQuestions && slide.wheelQuestions.length > 0) return 'scenario';
+    if (lessonRecords && lessonRecords.length > 0) return 'past_lessons';
+    return 'scenario';
+  });
 
   // Pula pytań dla obu źródeł
   const scenarioQuestions = useMemo(() => {
@@ -90,8 +94,19 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
     return extractQuestionsFromPastLessons(lessonRecords, studentName);
   }, [lessonRecords, studentName]);
 
+  // Automatyczne przełączenie na historię gdy załadują się rekordy lekcji i brak pytań ze scenariusza
+  useEffect(() => {
+    if (lessonRecords && lessonRecords.length > 0 && (!slide?.wheelQuestions || slide.wheelQuestions.length === 0)) {
+      setQuestionSource('past_lessons');
+    }
+  }, [lessonRecords?.length, slide?.wheelQuestions]);
+
   // Aktywna lista pytań
-  const [activeQuestions, setActiveQuestions] = useState<WheelQuestionItem[]>(scenarioQuestions);
+  const [activeQuestions, setActiveQuestions] = useState<WheelQuestionItem[]>(() => {
+    return lessonRecords && lessonRecords.length > 0 && (!slide?.wheelQuestions || slide.wheelQuestions.length === 0)
+      ? pastLessonQuestions
+      : scenarioQuestions;
+  });
   const [discussedQuestionIds, setDiscussedQuestionIds] = useState<Set<string>>(new Set());
   const [isSpinning, setIsSpinning] = useState<boolean>(false);
   const [drawnQuestion, setDrawnQuestion] = useState<WheelQuestionItem | null>(null);

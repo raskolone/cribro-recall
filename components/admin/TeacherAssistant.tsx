@@ -39,6 +39,7 @@ import {
 } from '../../services/teacherAssistant';
 import { LessonAttachment } from '../../types';
 import { AIAssistantIcon } from '../ui/AIAssistantIcon';
+import Markdown from 'react-markdown';
 
 const STORAGE_KEY = 'cribro_teacher_assistant_sessions_v1';
 
@@ -769,9 +770,64 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                               </div>
                             )}
 
-                            {/* Główna treść odpowiedzi tekstowej */}
-                            <div className="text-xs sm:text-[13px] leading-relaxed whitespace-pre-wrap font-normal">
-                              {message.text}
+                            {/* Główna treść odpowiedzi tekstowej (bogato sformatowany Markdown) */}
+                            <div className="text-xs sm:text-[13px] leading-relaxed font-normal space-y-2 text-content">
+                              <Markdown
+                                components={{
+                                  h1: ({ children }) => (
+                                    <h3 className="text-sm font-black text-text-hi border-b border-line-soft pb-1 mt-2.5 mb-1.5 flex items-center gap-1.5">
+                                      {children}
+                                    </h3>
+                                  ),
+                                  h2: ({ children }) => (
+                                    <h4 className="text-[13px] font-extrabold text-primary border-b border-primary/20 pb-1 mt-2 mb-1 flex items-center gap-1.5">
+                                      {children}
+                                    </h4>
+                                  ),
+                                  h3: ({ children }) => (
+                                    <h5 className="text-xs font-bold text-text-hi mt-2 mb-1 flex items-center gap-1">
+                                      {children}
+                                    </h5>
+                                  ),
+                                  p: ({ children }) => (
+                                    <p className="leading-relaxed mb-1.5 text-content last:mb-0">
+                                      {children}
+                                    </p>
+                                  ),
+                                  ul: ({ children }) => (
+                                    <ul className="pl-4 space-y-1 my-1.5 list-disc marker:text-primary">
+                                      {children}
+                                    </ul>
+                                  ),
+                                  ol: ({ children }) => (
+                                    <ol className="pl-4 space-y-1 my-1.5 list-decimal marker:text-primary font-mono text-xs">
+                                      {children}
+                                    </ol>
+                                  ),
+                                  li: ({ children }) => (
+                                    <li className="leading-relaxed pl-0.5 text-content">
+                                      {children}
+                                    </li>
+                                  ),
+                                  strong: ({ children }) => (
+                                    <strong className="font-bold text-text-hi bg-primary/10 text-primary px-1 py-0.2 rounded-md">
+                                      {children}
+                                    </strong>
+                                  ),
+                                  blockquote: ({ children }) => (
+                                    <blockquote className="pl-3 border-l-2 border-primary/60 text-content-muted italic my-2 bg-primary/5 py-1.5 pr-2 rounded-r-xl">
+                                      {children}
+                                    </blockquote>
+                                  ),
+                                  code: ({ children }) => (
+                                    <code className="font-mono text-[11px] bg-base-300/90 text-amber-300 px-1.5 py-0.5 rounded border border-line-strong">
+                                      {children}
+                                    </code>
+                                  ),
+                                }}
+                              >
+                                {message.text}
+                              </Markdown>
                             </div>
                           </div>
 

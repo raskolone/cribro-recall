@@ -101,16 +101,41 @@ export const buildStudentIndex = async (): Promise<StudentIndexEntry[]> => {
   return entries.filter(entry => entry.name.length > 0);
 };
 
-/** Kursanci wymienieni w pytaniu — dopasowanie po imieniu, nazwisku lub loginie. */
+/** Kursanci wymienieni w pytaniu — dopasowanie po imieniu, nazwisku lub loginie z uwzględnieniem odmiany w języku polskim. */
 export const matchStudents = (
   question: string,
   index: StudentIndexEntry[]
 ): StudentIndexEntry[] => {
   const haystack = fold(question);
+  
+  // Rozbijamy pytanie na tokeny słowne
+  const questionTokens = haystack
+    .split(/[\s,.;:?!()"'-]+/)
+    .filter(t => t.length >= 3);
+
   return index.filter(entry =>
     entry.aliases.some(alias => {
-      const needle = fold(alias);
-      return needle.length >= 3 && haystack.includes(needle);
+      const needle = fold(alias.trim());
+      if (needle.length < 3) return false;
+
+      // 1. Dokładne lub podciągowe dopasowanie (np. "Dariusz" w "dariusza", "dariuszem")
+      if (haystack.includes(needle)) return true;
+
+      // 2. Rdzeń imienia / fleksja (np. Paweł -> Pawła/Pawłem, Michał -> Michale)
+      const stem = needle.length > 4 ? needle.slice(0, -1) : needle;
+      if (stem.length >= 3 && haystack.includes(stem)) return true;
+
+      // Specjalne formy nieregularne dla popularnych imion
+      if (needle === 'pawel' && (haystack.includes('pawl') || haystack.includes('pawla') || haystack.includes('pawlem'))) return true;
+      if (needle === 'piotr' && (haystack.includes('piotr') || haystack.includes('piotrk') || haystack.includes('piotrem'))) return true;
+      if (needle === 'jan' && (haystack.includes('jan') || haystack.includes('jank') || haystack.includes('jas'))) return true;
+      if (needle === 'aleksander' && (haystack.includes('olek') || haystack.includes('aleksandr'))) return true;
+
+      // 3. Sprawdzenie tokenów pytania pod kątem podobieństwa rdzenia
+      return questionTokens.some(tok => {
+        if (tok.startsWith(stem) || needle.startsWith(tok)) return true;
+        return false;
+      });
     })
   );
 };
@@ -118,15 +143,19 @@ export const matchStudents = (
 const clip = (text: string | undefined, limit: number): string =>
   !text ? '' : text.length > limit ? `${text.slice(0, limit)}…` : text;
 
-const lessonToPrompt = (lesson: LessonRecord): string => {
+const lessonToPrompt = (lesson: LessonRecord, idx: number): string => {
   const blocks = extractLessonBlocks(lesson);
+  const isLatest = idx === 0;
+
   return [
-    `- ${lesson.date || 'bez daty'} — „${lesson.topic || 'bez tematu'}"`,
-    blocks.summary ? `  przebieg: ${clip(blocks.summary, 700)}` : '',
-    blocks.vocabulary ? `  słownictwo: ${clip(blocks.vocabulary, 400)}` : '',
+    `### LEKCJA ${lesson.date || 'bez daty'} — „${lesson.topic || 'bez tematu'}" ${isLatest ? '(OSTATNIA LEKCJA)' : ''}`,
+    blocks.summary ? `* Podsumowanie / Przebieg:\n${isLatest ? blocks.summary : clip(blocks.summary, 800)}` : '',
+    blocks.vocabulary ? `* Słownictwo i zwroty (Vocabulary):\n${isLatest ? blocks.vocabulary : clip(blocks.vocabulary, 600)}` : '',
     blocks.corrections || lesson.thingsToImprove
-      ? `  do poprawy: ${clip(blocks.corrections || lesson.thingsToImprove, 300)}`
+      ? `* Korekty językowe i błędy do poprawy (Corrections):\n${isLatest ? (blocks.corrections || lesson.thingsToImprove) : clip(blocks.corrections || lesson.thingsToImprove, 400)}`
       : '',
+    blocks.homework ? `* Zadanie domowe:\n${isLatest ? blocks.homework : clip(blocks.homework, 300)}` : '',
+    blocks.nextLesson ? `* Rekomendowany kolejny krok:\n${isLatest ? blocks.nextLesson : clip(blocks.nextLesson, 200)}` : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -136,16 +165,30 @@ const SYSTEM_INSTRUCTION = `Jesteś zaawansowanym Asystentem Lektora Języka Ang
 
 Twoje możliwości:
 1. Odpowiadanie na pytania o kursantów na podstawie ich historii lekcji, poziomu i notatek w CRM.
-2. Analiza załączonych materiałów: screenshotów, zdjęć zadań, plików PDF, artykułów i dokumentów.
-3. PRZYGOTOWYWANIE TEMATÓW LEKCJI, SCENARIUSZY I POWTÓREK dla kursantów.
+2. Tworzenie czytelnych, estetycznych podsumowań ostatnich lekcji i analizy postępów językowych.
+3. Analiza załączonych materiałów: screenshotów, zdjęć zadań, plików PDF, artykułów i dokumentów.
+4. PRZYGOTOWYWANIE TEMATÓW LEKCJI, SCENARIUSZY I POWTÓREK dla kursantów.
 
-ZASADY ODPOWIADANIA:
-- Odpowiadasz PO POLSKU, nowocześnie, przejrzyście i profesjonalnie. Terminy angielskie, zwroty i przykłady zostawiasz po angielsku.
-- Gdy lektor prosi o przygotowanie tematu lekcji, powtórki lub scenariusza (np. „Przygotuj temat lekcji dla Dariusza”, „Zaplanuj lekcję na podstawie załączonego PDF-a / zdjęcia”):
+ZASADY ODPOWIADANIA I FORMATOWANIA (BARDZO WAŻNE):
+- Odpowiadasz PO POLSKU, nowocześnie, przejrzyście, z zachowaniem nienagannej estetyki wizualnej.
+- Terminy angielskie, zwroty i przykłady zostawiasz po angielsku z polskim tłumaczeniem lub kontekstem.
+- Gdy lektor pyta o podsumowanie ostatniej lekcji lub postępów kursanta (np. „podsumuj ostatnią lekcję z kursantem X”):
+  • Przedstaw odpowiedź w postaci czytelnych, elegancko sformatowanych sekcji Markdown.
+  • Użyj logicznego układu z nagłówkami i emoji:
+    ### 📅 Lekcja: [Tytuł lekcji] ([Data])
+    📖 **Przebieg i omówione zagadnienia**
+    🧠 **Kluczowe słownictwo i zwroty** (w punktach: **słówko** — znaczenie)
+    ✍️ **Korekty językowe i gramatyka** (wyraźnie wskaż: *Say:* ... zamiast *Not:* ...)
+    🏠 **Zadanie domowe**
+    🔮 **Rekomendowany follow-up na następne zajęcia**
+  • Dbaj o przejrzyste odstępy, punktory i wyróżnienia (**bold** dla ważnych terminów).
+  • NIGDY nie generuj surowego, zlanego bloku tekstu ze znakami ucieczki (np. \\n, \", ~~~).
+
+- Gdy lektor prosi o przygotowanie tematu lekcji, powtórki lub nowego konspektu:
   1. Zaproponuj chwytliwy temat i poziom.
-  2. Wskaż cel i kluczowe słownictwo (angielski + polskie znaczenie w formacie „słowo - znaczenie”).
+  2. Wskaż cel i kluczowe słownictwo (**słowo** - znaczenie).
   3. Opisz przebieg / ćwiczenia konwersacyjne i gramatyczne.
-  4. Zaproponuj zwięzłe zadanie domowe.
+  4. Zaproponuj zadanie domowe.
   5. NA SAMYM KOŃCU odpowiedzi dołącz blok maszynowy w formacie JSON w tagach \`\`\`lesson_json ... \`\`\`:
 \`\`\`lesson_json
 {
@@ -156,8 +199,9 @@ ZASADY ODPOWIADANIA:
   "homework": "Zadanie domowe"
 }
 \`\`\`
-- Gdy pytanie dotyczy wyłącznie faktów z bazy („z kim była ostatnia lekcja”, „kto nie miał zajęć”), odpowiedz krótko i zwięźle (kilka zdań lub punkty), bez bloku lesson_json.
-- Nie zmyślasz faktów z przeszłości. Jeśli czegoś nie ma w historii, mówisz wprost: „Tego nie ma w notatkach”.`;
+
+- Gdy pytanie dotyczy wyłącznie faktów z bazy („z kim była ostatnia lekcja”, „kto ma zaległości”), odpowiedz zwięźle i konkretnie w punktach, bez zbędnego bloku lesson_json.
+- Nie zmyślasz faktów z przeszłości. Jeśli czegoś nie ma w historii, poinformuj o tym wprost.`;
 
 /**
  * Odpowiedź asystenta lektora z obsługą kontekstu bazy CRM, załączników multimedialnych oraz automatycznych akcji Notion AI.
@@ -194,12 +238,12 @@ export const askTeacherAssistant = async (
         } catch {
           /* pojedynczy kursant bez dostępu nie blokuje odpowiedzi */
         }
-        return `## ${entry.name} (poziom: ${entry.level || 'A2-B1'}, firma: ${entry.company || '-'}, lekcji: ${entry.lessonCount})\n${
-          lessons.slice(0, 5).map(lessonToPrompt).join('\n') || 'Brak zapisanych lekcji.'
+        return `## Kursant: ${entry.name} (poziom: ${entry.level || 'A2-B1'}, firma: ${entry.company || '-'}, łączna liczba lekcji: ${entry.lessonCount})\n${
+          lessons.slice(0, 6).map((l, lIdx) => lessonToPrompt(l, lIdx)).join('\n\n') || 'Brak zapisanych lekcji w historii.'
         }`;
       })
     );
-    context = details.join('\n\n');
+    context = details.join('\n\n====================\n\n');
   } else {
     context = `## Spis kursantów (bez szczegółów lekcji)\n${index
       .map(
@@ -216,7 +260,7 @@ export const askTeacherAssistant = async (
     .map(message => `${message.role === 'user' ? 'LEKTOR' : 'ASYSTENT'}: ${message.text}`)
     .join('\n');
 
-  let prompt = `DANE Z BAZY CRM KURRO:\n${context}\n\n`;
+  let prompt = `DANE Z BAZY CRM I HISTORII LEKCJI KURSANTÓW:\n${context}\n\n`;
 
   if (conversation) {
     prompt += `WCZEŚNIEJSZA ROZMOWA:\n${conversation}\n\n`;
@@ -312,6 +356,12 @@ export const askTeacherAssistant = async (
     }
     cleanText = rawResponseText.replace(/```lesson_json[\s\S]*?```/g, '').trim();
   }
+
+  // Czyścimy ewentualne otaczające znaczniki markdown
+  cleanText = cleanText
+    .replace(/^~~~[a-zA-Z]*\s*/gm, '')
+    .replace(/~~~$/gm, '')
+    .trim();
 
   // Generuj inteligentne przyciski akcji (Notion AI style)
   const actions: AssistantAction[] = [];

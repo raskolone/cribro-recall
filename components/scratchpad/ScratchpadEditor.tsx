@@ -66,7 +66,7 @@ import {
   Target,
   FileSignature,
 } from 'lucide-react';
-import { ScratchpadDocument, ScratchpadTemplate, LessonAttachment } from '../../types';
+import { ScratchpadDocument, ScratchpadTemplate, LessonAttachment, LessonRecord } from '../../types';
 import {
   buildScratchpadUrl,
   scratchpadContentBytes,
@@ -102,6 +102,12 @@ import { buildLessonTemplate, highestLessonNumber, LESSON_SECTIONS } from '../..
 import { NOTEBOOK_COLORS, NOTEBOOK_INK, NOTEBOOK_SWATCHES } from '../../utils/notebookPalette';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { generateTextWithUnifiedFallback } from '../../services/geminiService';
+import { runCouncil, SCRATCHPAD_REVIEW_SYSTEM } from '../../services/aiCouncil';
+import mammoth from 'mammoth';
+import ScratchpadInsertPreviewModal, {
+  parseRawTextToStructuredLesson,
+  StructuredLessonContent,
+} from './ScratchpadInsertPreviewModal';
 
 /**
  * Wysokość strony A4 przy 96 dpi (297 mm) minus margines dolny, w pikselach.
@@ -253,6 +259,28 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
   const [isLivePresentationModalOpen, setIsLivePresentationModalOpen] = useState(false);
   const [isScenarioDrawerOpen, setIsScenarioDrawerOpen] = useState(false);
+  const [studentLessons, setStudentLessons] = useState<LessonRecord[]>([]);
+  const [insertPreviewState, setInsertPreviewState] = useState<{
+    isOpen: boolean;
+    content: Partial<StructuredLessonContent>;
+  }>({ isOpen: false, content: {} });
+
+  // Pobieranie historii lekcji przypisanego kursanta pod kątem koła fortuny i asystenta
+  useEffect(() => {
+    const studentId = docData.studentId || (document as any)?.studentId || ((docData as any)?.studentIds && (docData as any)?.studentIds[0]);
+    if (!studentId) return;
+    let active = true;
+    getLessonRecordsForStudent(studentId)
+      .then((records) => {
+        if (active && records) {
+          setStudentLessons(records);
+        }
+      })
+      .catch((err) => console.warn('[ScratchpadEditor] Błąd pobierania lekcji kursanta:', err));
+    return () => {
+      active = false;
+    };
+  }, [docData.studentId, (docData as any)?.studentIds]);
 
   // Synchronizacja orientacji z chmury
   useEffect(() => {
@@ -956,6 +984,8 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         detectedType = 'image';
       } else if (file.type === 'application/pdf' || ext === 'pdf') {
         detectedType = 'pdf';
+      } else if (['docx', 'doc'].includes(ext) || file.type.includes('wordprocessingml') || file.type === 'application/msword') {
+        detectedType = 'text';
       } else if (ext === 'md' || ext === 'markdown') {
         detectedType = 'markdown';
       } else if (ext === 'html' || ext === 'htm') {
@@ -965,6 +995,26 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       }
 
       try {
+        // Obsługa plików Microsoft Word (.docx)
+        if (['docx', 'doc'].includes(ext) || file.type.includes('wordprocessingml') || file.type === 'application/msword') {
+          try {
+            const arrayBuffer = await file.arrayBuffer();
+            const mammothResult = await mammoth.extractRawText({ arrayBuffer });
+            const docxText = mammothResult?.value || '';
+            newAtts.push({
+              id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+              name: file.name,
+              type: 'text',
+              size: file.size,
+              mimeType: file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              textContent: docxText,
+            });
+            continue;
+          } catch (docxErr) {
+            console.warn('[Docx parsing error]:', docxErr);
+          }
+        }
+
         if (detectedType === 'image' || detectedType === 'pdf') {
           const dataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
@@ -1026,6 +1076,63 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     setPendingAiAttachments(prev => [...prev, ...newAtts]);
   };
 
+  // ── Otwarcie modalu zatwierdzenia formatowania ──
+  const handleOpenInsertPreview = (rawText: string) => {
+    const structured = parseRawTextToStructuredLesson(rawText);
+    setInsertPreviewState({
+      isOpen: true,
+      content: structured,
+    });
+  };
+
+  // ── Potwierdzenie wstawienia z modalu podglądu ──
+  const handleConfirmInsertFromModal = (
+    html: string,
+    mode: 'template' | 'append' | 'cursor' | 'replace'
+  ) => {
+    if (isReadOnly || !editorRef.current) return;
+
+    if (mode === 'replace') {
+      editorRef.current.innerHTML = html;
+      handleInput();
+      setTimeout(() => {
+        measurePages();
+      }, 80);
+      return;
+    }
+
+    if (mode === 'cursor') {
+      window.document.execCommand('insertHTML', false, html);
+      handleInput();
+      setTimeout(() => {
+        measurePages();
+      }, 80);
+      return;
+    }
+
+    if (mode === 'template') {
+      const hasExisting = editorRef.current.innerHTML.trim().length > 0 && editorRef.current.innerText.trim().length > 0;
+      const pageBreakHtml = hasExisting
+        ? `<div class="pad-page-break" data-page-break="1" contenteditable="false"><span class="pad-page-break-badge">── Strona A4 • Nowa Lekcja ──</span></div>`
+        : '';
+      editorRef.current.insertAdjacentHTML('beforeend', pageBreakHtml + html);
+      handleInput();
+      setTimeout(() => {
+        measurePages();
+        editorRef.current?.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 100);
+      return;
+    }
+
+    // append
+    editorRef.current.insertAdjacentHTML('beforeend', `<p><br></p>${html}<p><br></p>`);
+    handleInput();
+    setTimeout(() => {
+      measurePages();
+      editorRef.current?.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 100);
+  };
+
   // ── Obsługa zapytań do wbudowanego Asystenta AI Notatnika ──
   const handleSendAiChat = async (customPrompt?: string) => {
     if (!isTeacher) return;
@@ -1055,28 +1162,29 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       const systemPrompt = `Jesteś inteligentnym, wszechstronnym asystentem lektora i kursanta CRIBRO ENGLISH wbudowanym bezpośrednio w notatnik lekcyjny (Notebook / Scratchpad).
 Twoim celem jest:
 1. Prowadzenie i planowanie efektywnej lekcji języka angielskiego.
-2. Błyskawiczna analiza notatek, transkrypcji i załączników (pliki PDF, screenshoty, dokumenty, wklejony tekst).
+2. Błyskawiczna analiza notatek, transkrypcji i załączników (pliki PDF, dokumenty DOCX/Word, screenshoty, dokumenty, wklejony tekst).
 3. Wyciąganie kluczowego słownictwa, korekt gramatycznych i tworzenie podsumowań.
-4. Gdy użytkownik prosi o przygotowanie lekcji lub uporządkowanie notatek/materiałów:
-   - Przygotuj przejrzyste opracowanie w czytelnym Markdownie.
-   - Wyróżnij 5 standardowych sekcji lekcji CRIBRO/Notion:
-     • [Revision] (powtórka / 3 kluczowe elementy do poprawy z poprzedniej lekcji)
-     • [Main topic / Practice] (temat główny, zagadnienia, teoria i ćwiczenia)
-     • [Lesson Summary] (streszczenie i najważniejsze punkty lekcji)
-     • [Key Language & Corrections (New words)] (nowe słówka z definicjami i zdania z korektą)
-     • [Homework] (zadanie domowe / słówka do utrwalenia w Recall)
-   - Na końcu odpowiedzi zaproponuj lektorowi/kursantowi opcje:
-     „Czy chcesz wstawić tę lekcję do notatnika zgodnie z domyślnym szablonem lekcji (nagłówek z datą i 5 sekcji), czy dopisać treść na końcu dokumentu?”
+4. Gdy użytkownik prosi o:
+   - Przygotowanie lekcji lub uporządkowanie notatek/materiałów w standardzie CRIBRO:
+     • Wyróżnij 5 standardowych sekcji lekcji CRIBRO/Notion:
+       [Revision] (powtórka / kluczowe elementy do poprawy)
+       [Main topic / Practice] (temat główny, zagadnienia, teoria i ćwiczenia)
+       [Lesson Summary] (streszczenie i najważniejsze punkty lekcji)
+       [Key Language & Corrections] (nowe słówka z definicjami w formacie "słowo - znaczenie" oraz zdania z korektą)
+       [Homework] (zadanie domowe / słówka do utrwalenia w Recall)
+       [Next Lesson] (rekomendowany follow-up)
+   - Przeprowadzenie operacji formatowania na dokumencie (np. sformatowanie notatek, pogrubienie trudnych słówek, korekta):
+     Przygotuj przejrzyste, gotowe do zatwierdzenia opracowanie.
 Zasady:
-- Odpowiadaj konkretnie i zwięźle. Słownictwo pogrubiaj (**word**).
+- Odpowiadaj konkretnie, estetycznie i nowocześnie. Słownictwo pogrubiaj (**word**).
 - Wyjaśnienia po polsku, przykłady i ćwiczenia po angielsku.`;
 
       let attachmentsContext = '';
       if (attachmentsToSend.length > 0) {
         attachmentsContext = '\n\n[ZAŁĄCZNIKI UŻYTKOWNIKA DO ANALIZY]:\n' + attachmentsToSend.map((att, idx) => {
-          let desc = `--- Załącznik ${idx + 1}: ${att.name} (${att.type}) ---\n`;
+          let desc = `--- Załącznik ${idx + 1}: ${att.name} (${att.type.toUpperCase()}) ---\n`;
           if (att.textContent) {
-            desc += `Treść tekstu / PDF:\n"""${att.textContent.slice(0, 10000)}"""\n`;
+            desc += `Treść tekstu / PDF / DOCX:\n"""${att.textContent.slice(0, 12000)}"""\n`;
           } else if (att.type === 'image') {
             desc += `[Obraz: ${att.name}]\n`;
           }
@@ -1095,19 +1203,32 @@ ${attachmentsContext}
 Polecenie użytkownika:
 ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z nich opracowanie lekcji zgodnie ze standardem CRIBRO.'}`;
 
-      const aiResponse = await generateTextWithUnifiedFallback(
-        promptWithContext,
-        systemPrompt,
-        undefined,
-        undefined,
-        undefined,
-        { taskName: 'Asystent notatnika', category: 'chat' }
-      );
+      let responseText = '';
+      try {
+        const councilRes = await runCouncil<string>({
+          systemInstruction: systemPrompt,
+          prompt: promptWithContext,
+          reviewerSystemInstruction: SCRATCHPAD_REVIEW_SYSTEM,
+          expectJson: false,
+        });
+        responseText = councilRes.raw || (councilRes.data as string) || '';
+      } catch (councilErr) {
+        console.warn('[Scratchpad AI] Narada nie powiodła się, przejście do fallbacku:', councilErr);
+        const aiResponse = await generateTextWithUnifiedFallback(
+          promptWithContext,
+          systemPrompt,
+          undefined,
+          undefined,
+          undefined,
+          { taskName: 'Asystent notatnika', category: 'chat' }
+        );
+        responseText = aiResponse.text || '';
+      }
 
       const assistantTurn: ScratchpadChatMessage = {
         id: `ai-${Date.now()}`,
         role: 'assistant',
-        text: (aiResponse.text || '').trim(),
+        text: responseText.trim(),
         timestamp: new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
       };
 
@@ -2700,8 +2821,8 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               {isAiDraggingOver && (
                 <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-base-200/90 backdrop-blur-md rounded-xl text-center p-4">
                   <Paperclip size={24} className="text-primary animate-bounce mb-2" />
-                  <span className="text-xs font-bold text-text-hi">Upuść pliki PDF, obrazy lub notatki tutaj</span>
-                  <span className="text-[10px] text-content-muted">Asystent przeanalizuje ich zawartość</span>
+                  <span className="text-xs font-bold text-text-hi">Upuść pliki PDF, DOCX, obrazy lub notatki tutaj</span>
+                  <span className="text-[10px] text-content-muted">Asystent przeanalizuje ich zawartość i przygotuje lekcję</span>
                 </div>
               )}
 
@@ -2710,7 +2831,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                   <AIAssistantIcon size="md" variant="avatar" state="idle" glow={true} className="mx-auto" />
                   <h5 className="text-xs font-bold text-text-hi">Inteligentny Asystent Notatnika</h5>
                   <p className="text-[11px] leading-relaxed text-content-muted">
-                    Wklej notatki, przeciągnij plik PDF / screenshot lub wpisz polecenie, aby przeanalizować materiał i wstawić go bezpośrednio do notatnika.
+                    Wklej notatki, załącz plik PDF / DOCX, screenshot lub wpisz polecenie, aby przeanalizować materiał i wstawić go bezpośrednio do notatnika.
                   </p>
                 </div>
               ) : (
@@ -2750,8 +2871,20 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                       <div className="mt-3 pt-2.5 border-t border-line-soft flex flex-col gap-1.5">
                         <div className="text-[10px] font-bold text-content-muted uppercase tracking-wider flex items-center gap-1">
                           <Layers size={11} className="text-primary" />
-                          <span>Opcje wstawienia do notatnika:</span>
+                          <span>Opcje wstawienia i formatowania:</span>
                         </div>
+
+                        {/* Główny przycisk: Podgląd i zatwierdzenie formatowania 4 bloków */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenInsertPreview(msg.text)}
+                          title="Otwórz okno podglądu formatowania, edycji 4 bloków i zatwierdzenia"
+                          className="w-full px-2.5 py-2 rounded-xl bg-primary text-accent-ink font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-btn hover:brightness-110"
+                        >
+                          <Sparkles size={13} />
+                          <span>Podgląd i formatowanie (Zatwierdź)</span>
+                        </button>
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5">
                           <button
                             type="button"
@@ -2837,7 +2970,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                 ref={aiFileInputRef}
                 type="file"
                 multiple
-                accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.markdown,.html"
+                accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.webp,.txt,.md,.markdown,.html"
                 className="hidden"
                 onChange={(e) => {
                   if (e.target.files) {
@@ -2989,6 +3122,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           presentation={docData.presentationState}
           isTeacher={isTeacher}
           studentName={docData.studentName}
+          lessonRecords={studentLessons}
           onClose={handleStopPresentation}
           onRevealAnswer={() => docData.id && revealScratchpadExerciseAnswer(docData.id)}
           onSubmitAnswer={(ans) => docData.id && submitStudentExerciseAnswer(docData.id, ans)}
@@ -3006,6 +3140,14 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           }}
         />
       )}
+
+      {/* Modal zatwierdzania i podglądu formatowania lekcji z asystenta AI */}
+      <ScratchpadInsertPreviewModal
+        isOpen={insertPreviewState.isOpen}
+        onClose={() => setInsertPreviewState({ isOpen: false, content: {} })}
+        initialContent={insertPreviewState.content}
+        onConfirmInsert={handleConfirmInsertFromModal}
+      />
     </div>
   );
 };

@@ -16,6 +16,7 @@ import {
 import { getApprovedVocabularyText, splitVocabularyLines } from '../utils/vocabulary';
 import { PRIMARY_MODEL } from './aiModels';
 import { getStudentAiContext } from './learningProfile';
+import { runCouncil, EXERCISE_REVIEW_SYSTEM } from './aiCouncil';
 
 /**
  * Układanie pracy domowej z materiału lektora.
@@ -196,15 +197,26 @@ ZASADY JAKOŚCI — OBOWIĄZUJĄ W KAŻDYM ZADANIU:
    których jedyną treścią jest to, że zawierają słowo z listy.`;
 
 const askForJson = async (prompt: string): Promise<{ parsed: any; modelUsed: string }> => {
-  const { text, modelUsed } = await generateTextWithUnifiedFallback(
-    prompt,
-    SYSTEM_INSTRUCTION,
-    MODELS_FOR_HOMEWORK,
-    { responseMimeType: 'application/json' },
-    undefined,
-    { taskName: 'Układanie pracy domowej', category: 'homework' }
-  );
-  return { parsed: JSON.parse(extractJSON(text)), modelUsed };
+  try {
+    const councilRes = await runCouncil({
+      systemInstruction: SYSTEM_INSTRUCTION,
+      prompt,
+      reviewerSystemInstruction: EXERCISE_REVIEW_SYSTEM,
+      expectJson: true,
+    });
+    return { parsed: councilRes.data, modelUsed: councilRes.finalModel };
+  } catch (err) {
+    console.warn('[homeworkGenerator] Narada modeli nie powiodła się, przejście do zapasowego wywołania:', err);
+    const { text, modelUsed } = await generateTextWithUnifiedFallback(
+      prompt,
+      SYSTEM_INSTRUCTION,
+      MODELS_FOR_HOMEWORK,
+      { responseMimeType: 'application/json' },
+      undefined,
+      { taskName: 'Układanie pracy domowej', category: 'homework' }
+    );
+    return { parsed: JSON.parse(extractJSON(text)), modelUsed };
+  }
 };
 
 /**

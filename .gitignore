@@ -44,3 +44,4 @@ src-tauri/gen/schemas/
 # Domyślnie ląduje poza repo (iCloud Drive), ale gdyby ktoś zmienił
 # CRIBRO_BACKUP_DIR na katalog projektu, to i tak nie wyjdzie na GitHub.
 auth-users-*.json
+scripts/*.json

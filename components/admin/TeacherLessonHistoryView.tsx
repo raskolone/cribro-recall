@@ -99,7 +99,16 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
-      const data = await res.json();
+      let data: any = {};
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        if (!res.ok) {
+          throw new Error(text.slice(0, 200) || `Błąd serwera (${res.status})`);
+        }
+      }
       if (!res.ok) {
         throw new Error(data.error || 'Nie udało się sprawdzić transkrypcji w Notion');
       }

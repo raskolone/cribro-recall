@@ -1,8 +1,28 @@
 import React, { useState, useRef } from 'react';
-import { Airplay, Image as ImageIcon, Lightbulb, MessageSquare, Plus, Sparkles, X, Volume2, Music, UploadCloud } from 'lucide-react';
+import {
+  Airplay,
+  Image as ImageIcon,
+  Lightbulb,
+  MessageSquare,
+  Plus,
+  Sparkles,
+  X,
+  Volume2,
+  Music,
+  UploadCloud,
+  Layers,
+  ListOrdered,
+  FileText,
+  RotateCcw,
+  Zap,
+  ArrowRight,
+  Loader2
+} from 'lucide-react';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 import { PresentationState } from './ScratchpadPresentationOverlay';
 import Button from '../ui/Button';
+import { runCouncil, SCRATCHPAD_REVIEW_SYSTEM } from '../../services/aiCouncil';
+import { FlipCardItem, ProcessStepItem } from '../presentation/InteractiveSlideDeck';
 
 interface ScratchpadLivePresentationModalProps {
   isOpen: boolean;
@@ -12,14 +32,79 @@ interface ScratchpadLivePresentationModalProps {
 
 const PRESET_ACTIVITIES: Array<{
   title: string;
-  type: 'image_prompt' | 'slide' | 'scenario_item' | 'wheel_of_fortune' | 'listening';
-  question: string;
-  prompt: string;
+  type: PresentationState['type'];
+  question?: string;
+  prompt?: string;
   imageUrl?: string;
   audioUrl?: string;
   audioName?: string;
   hints: string[];
+  cards?: FlipCardItem[];
+  steps?: ProcessStepItem[];
+  options?: string[];
+  correctAnswer?: string | number;
+  explanation?: string;
 }> = [
+  {
+    title: '🎴 Interaktywne Fiszki 3D (Flip Cards E-Learning)',
+    type: 'flip_cards',
+    question: 'Obracaj karty, aby poznać kluczowe zwroty w kontekście.',
+    prompt: 'Dotknij karty, aby sprawdzić znaczenie, wymowę i autentyczne zdanie przykładowe.',
+    hints: ['Tap to flip...', 'Repeat out loud...', 'Use in a sentence...'],
+    cards: [
+      {
+        term: 'Leverage synergy',
+        definition: 'Wykorzystać synergię / połączyć siły dla lepszego rezultatu',
+        example: 'By merging our teams, we can leverage synergy to deliver the project twice as fast.',
+        hint: 'Biznesowy czasownik oznaczający efektywne wykorzystanie zasobów',
+      },
+      {
+        term: 'Double-edged sword',
+        definition: 'Broń obosieczna / rozwiązanie niosące zarówno korzyści, jak i ryzyka',
+        example: 'Rapid AI adoption is a double-edged sword: it boosts speed but requires strict oversight.',
+        hint: 'Popularny idiom opisujący niejednoznaczne zjawiska',
+      },
+      {
+        term: 'Streamline operations',
+        definition: 'Usprawnić i zoptymalizować procesy operacyjne',
+        example: 'Our primary goal this quarter is to streamline operations and eliminate bottlenecks.',
+        hint: 'Często używane w kontekście optymalizacji pracy i automatyzacji',
+      },
+      {
+        term: 'Radical candour',
+        definition: 'Radykalna szczerość / bezpośredni, ale życzliwy feedback',
+        example: 'Practicing radical candour helps build trust without sugarcoating important issues.',
+        hint: 'Koncepcja otwartej i konstruktywnej komunikacji w zespole',
+      },
+    ],
+  },
+  {
+    title: '📋 Sekcje i Kroki Lekcji (Interactive Process Steps)',
+    type: 'process_tabs',
+    question: 'Przechodź krok po kroku przez strukturę zagadnienia.',
+    prompt: 'Interaktywny moduł w stylu Articulate 360: analiza studium przypadku i argumentacji.',
+    hints: ['Review each step...', 'Synthesize arguments...', 'Prepare concluding remarks...'],
+    steps: [
+      {
+        title: 'Krok 1: Wprowadzenie i Diagnoza',
+        subtitle: 'Context & Problem Statement',
+        content: 'Klient stoi przed wyzwaniem spadku zaangażowania użytkowników o 15% po ostatniej aktualizacji platformy. Zespół musi zidentyfikować przyczyny i zaproponować plan naprawczy.',
+        keyPoints: ['Spadek wskaźnika retencji w kluczowym segmencie', 'Brak intuicyjnej nawigacji w nowym interfejsie', 'Wymóg szybkiej reakcji w ciągu 48h'],
+      },
+      {
+        title: 'Krok 2: Burza Mózgów i Opcje',
+        subtitle: 'Proposed Interventions',
+        content: 'Dyskutujemy trzy możliwe ścieżki: szybki rollback, wdrożenie przewodnika onboardingowego (coach marks) lub bezpośrednie webinary wsparcia dla klientów.',
+        keyPoints: ['Opcja A: Rollback (bezpieczna, lecz kosztowna wizerunkowo)', 'Opcja B: Interactive Onboarding (rekomendowana)', 'Opcja C: Direct Consultations'],
+      },
+      {
+        title: 'Krok 3: Decyzja i Plan Wdrożenia',
+        subtitle: 'Actionable Execution Plan',
+        content: 'Formułujemy ostateczną rekomendację w języku angielskim z użyciem zaawansowanych struktur warunkowych i czasowników modalnych.',
+        keyPoints: ['Przygotowanie executive summary dla zarządu', 'Wdrożenie mikro-samouczków', 'Pomiar efektów po 7 dniach'],
+      },
+    ],
+  },
   {
     title: '🎧 Słuchanie & Audio (Listening comprehension)',
     type: 'listening',
@@ -65,7 +150,15 @@ export const ScratchpadLivePresentationModal: React.FC<ScratchpadLivePresentatio
 }) => {
   useEscapeModal(isOpen, onClose);
 
+  const [activeTab, setActiveTab] = useState<'presets' | 'quick_paste' | 'custom'>('presets');
   const [selectedPresetIndex, setSelectedPresetIndex] = useState(0);
+
+  // Stan dla Quick Paste
+  const [quickPasteText, setQuickPasteText] = useState('');
+  const [quickPasteType, setQuickPasteType] = useState<'discussion' | 'flip_cards' | 'quiz' | 'process'>('discussion');
+  const [isProcessingAi, setIsProcessingAi] = useState(false);
+
+  // Stan dla Custom
   const [customTitle, setCustomTitle] = useState('');
   const [customQuestion, setCustomQuestion] = useState('');
   const [customPrompt, setCustomPrompt] = useState('');
@@ -73,55 +166,132 @@ export const ScratchpadLivePresentationModal: React.FC<ScratchpadLivePresentatio
   const [customAudioUrl, setCustomAudioUrl] = useState('');
   const [customAudioName, setCustomAudioName] = useState('');
   const [customHints, setCustomHints] = useState('');
-  const [isCustom, setIsCustom] = useState(false);
   const audioInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
-  const handleLaunch = () => {
-    if (isCustom) {
-      if (!customQuestion.trim() && !customTitle.trim()) return;
-      onStartPresentation({
-        active: true,
-        title: customTitle.trim() || (customAudioUrl ? 'Słuchanie & Audio' : 'Prezentacja z notatnika'),
-        type: customAudioUrl ? 'listening' : customImageUrl ? 'image_prompt' : 'slide',
-        question: customQuestion.trim(),
-        prompt: customPrompt.trim(),
-        imageUrl: customImageUrl.trim() || undefined,
-        audioUrl: customAudioUrl.trim() || undefined,
-        audioName: customAudioName.trim() || undefined,
-        hints: customHints.split(',').map((h) => h.trim()).filter(Boolean),
-      });
-    } else {
-      const preset = PRESET_ACTIVITIES[selectedPresetIndex];
-      onStartPresentation({
-        active: true,
-        ...preset,
-      });
-    }
+  const handleLaunchPreset = (idx: number) => {
+    const preset = PRESET_ACTIVITIES[idx];
+    onStartPresentation({
+      active: true,
+      ...preset,
+      audioUrl: customAudioUrl.trim() || preset.audioUrl,
+      audioName: customAudioName.trim() || preset.audioName,
+    });
     onClose();
   };
 
+  const handleLaunchCustom = () => {
+    if (!customQuestion.trim() && !customTitle.trim()) return;
+    onStartPresentation({
+      active: true,
+      title: customTitle.trim() || (customAudioUrl ? 'Słuchanie & Audio' : 'Prezentacja z notatnika'),
+      type: customAudioUrl ? 'listening' : customImageUrl ? 'image_prompt' : 'slide',
+      question: customQuestion.trim(),
+      prompt: customPrompt.trim(),
+      imageUrl: customImageUrl.trim() || undefined,
+      audioUrl: customAudioUrl.trim() || undefined,
+      audioName: customAudioName.trim() || undefined,
+      hints: customHints.split(',').map((h) => h.trim()).filter(Boolean),
+    });
+    onClose();
+  };
+
+  const handleQuickPasteProcess = async () => {
+    if (!quickPasteText.trim()) return;
+    setIsProcessingAi(true);
+
+    try {
+      if (quickPasteType === 'flip_cards') {
+        // Generowanie fiszek 3D z tekstu
+        const lines = quickPasteText.split('\n').filter(Boolean);
+        const cards: FlipCardItem[] = lines.map((l) => {
+          if (l.includes(' - ') || l.includes(' – ') || l.includes(':')) {
+            const parts = l.split(/\s*[-–:]\s*/);
+            return {
+              term: parts[0].trim(),
+              definition: parts.slice(1).join(' – ').trim(),
+              example: `We should consider ${parts[0].trim().toLowerCase()} in our daily communication.`,
+            };
+          }
+          return {
+            term: l.trim(),
+            definition: 'Kluczowe pojęcie do omówienia',
+            example: `Let's discuss how "${l.trim()}" applies to our context.`,
+          };
+        });
+
+        onStartPresentation({
+          active: true,
+          title: '🎴 Interaktywne Fiszki Słówek',
+          type: 'flip_cards',
+          question: 'Obracaj karty, aby przećwiczyć nowe słownictwo.',
+          prompt: 'Dotknij karty, aby sprawdzić polskie znaczenie i zdanie przykładowe.',
+          cards: cards.slice(0, 8),
+          hints: ['Repeat after the teacher...', 'Make your own sentence...'],
+        });
+        onClose();
+      } else if (quickPasteType === 'process') {
+        const lines = quickPasteText.split('\n').filter(Boolean);
+        const steps: ProcessStepItem[] = lines.map((l, i) => ({
+          title: `Etap ${i + 1}: ${l.slice(0, 45)}`,
+          content: l,
+          keyPoints: ['Przeanalizuj założenia', 'Sformułuj odpowiedź po angielsku'],
+        }));
+
+        onStartPresentation({
+          active: true,
+          title: '📋 Sekcje Procesu / Zagadnienia',
+          type: 'process_tabs',
+          question: 'Przechodź krok po kroku przez kolejne etapy.',
+          prompt: 'Interaktywna prezentacja etapów zadania.',
+          steps: steps.slice(0, 5),
+          hints: ['Next step...', 'Synthesize...'],
+        });
+        onClose();
+      } else {
+        // Dyskusja lub pojedynczy slajd
+        const lines = quickPasteText.split('\n').filter(Boolean);
+        const question = lines[0] || 'Dyskusja na żywo';
+        const prompt = lines.slice(1).join('\n') || 'Przeanalizuj powyższe zagadnienie i przedstaw swoje stanowisko.';
+
+        onStartPresentation({
+          active: true,
+          title: '💬 Dyskusja & Pytania',
+          type: 'slide',
+          question,
+          prompt,
+          hints: ['From my perspective...', 'On the other hand...', 'In my experience...'],
+        });
+        onClose();
+      }
+    } catch (err) {
+      console.warn('[QuickPaste Error]:', err);
+    } finally {
+      setIsProcessingAi(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="presentation-modal-title"
-        className="relative w-full max-w-2xl bg-base-200 border border-primary/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
+        className="relative w-full max-w-3xl bg-base-200 border border-primary/40 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-line-strong bg-base-300/60">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary">
-              <Airplay size={20} />
+            <div className="w-10 h-10 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary shadow-[0_0_15px_rgba(114,240,180,0.2)]">
+              <Airplay size={22} />
             </div>
             <div>
               <h3 id="presentation-modal-title" className="text-base sm:text-lg font-bold text-text-hi">
-                Uruchom tryb prezentacji w notatniku (Prototyp)
+                Centrum Prezentacji & E-Learningu Notatnika
               </h3>
               <p className="text-xs text-content-muted">
-                Wybrany slajd lub ćwiczenie pojawi się na ekranie kursanta zamiast notatnika
+                Uruchom interaktywny slajd, fiszki 3D, audio lub wklej treść dla kursanta
               </p>
             </div>
           </div>
@@ -134,205 +304,282 @@ export const ScratchpadLivePresentationModal: React.FC<ScratchpadLivePresentatio
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-5">
-          <div className="flex items-center gap-2 p-1 bg-base-300 rounded-xl border border-line-strong">
-            <button
-              type="button"
-              onClick={() => setIsCustom(false)}
-              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-                !isCustom ? 'bg-primary text-accent-ink shadow-sm' : 'text-content-muted hover:text-text-hi'
-              }`}
-            >
-              Gotowe wzorce aktywności
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsCustom(true)}
-              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-                isCustom ? 'bg-primary text-accent-ink shadow-sm' : 'text-content-muted hover:text-text-hi'
-              }`}
-            >
-              Własny slajd / Treść lektora
-            </button>
-          </div>
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-1.5 p-2 bg-base-300/40 border-b border-line-soft">
+          <button
+            onClick={() => setActiveTab('presets')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-semibold text-xs transition-all cursor-pointer ${
+              activeTab === 'presets'
+                ? 'bg-primary text-ink-base shadow-sm font-bold'
+                : 'text-content-muted hover:text-text-hi hover:bg-white/5'
+            }`}
+          >
+            <Sparkles size={14} /> Gotowe Wzorce Aktywności
+          </button>
+          <button
+            onClick={() => setActiveTab('quick_paste')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-semibold text-xs transition-all cursor-pointer ${
+              activeTab === 'quick_paste'
+                ? 'bg-primary text-ink-base shadow-sm font-bold'
+                : 'text-content-muted hover:text-text-hi hover:bg-white/5'
+            }`}
+          >
+            <Zap size={14} /> Szybki Wklejacz Treści (AI)
+          </button>
+          <button
+            onClick={() => setActiveTab('custom')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-semibold text-xs transition-all cursor-pointer ${
+              activeTab === 'custom'
+                ? 'bg-primary text-ink-base shadow-sm font-bold'
+                : 'text-content-muted hover:text-text-hi hover:bg-white/5'
+            }`}
+          >
+            <FileText size={14} /> Własny Slajd / Audio
+          </button>
+        </div>
 
-          {!isCustom ? (
+        {/* Tab Content */}
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
+          {/* TAB 1: PRESETS */}
+          {activeTab === 'presets' && (
             <div className="space-y-3">
-              <label className="text-xs font-bold uppercase tracking-wider text-content-muted">
-                Wybierz aktywność dla kursanta:
-              </label>
-              <div className="grid grid-cols-1 gap-2.5">
-                {PRESET_ACTIVITIES.map((act, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => setSelectedPresetIndex(idx)}
-                    className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                      selectedPresetIndex === idx
-                        ? 'border-primary bg-primary/10 shadow-[0_0_20px_rgba(114,240,180,0.15)] ring-1 ring-primary/50'
-                        : 'border-line-strong bg-base-100/60 hover:border-primary/40'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm text-text-hi">{act.title}</span>
-                      <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-line-soft border border-line-strong text-content-muted">
-                        {act.type}
-                      </span>
+              <div className="text-xs font-bold text-content-muted uppercase tracking-wider mb-2">
+                Wybierz aktywność do wyświetlenia kursantowi:
+              </div>
+              <div className="grid grid-cols-1 gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
+                {PRESET_ACTIVITIES.map((act, idx) => {
+                  const isSelected = selectedPresetIndex === idx;
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => setSelectedPresetIndex(idx)}
+                      className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+                        isSelected
+                          ? 'bg-primary/15 border-primary shadow-lg ring-1 ring-primary/40'
+                          : 'bg-base-300/40 border-line-soft hover:border-line-strong hover:bg-base-300/70'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-sm sm:text-base text-text-hi">
+                          {act.title}
+                        </span>
+                        <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-content-muted">
+                          {act.type}
+                        </span>
+                      </div>
+                      <p className="text-xs sm:text-sm font-medium text-primary line-clamp-1">
+                        {act.question}
+                      </p>
+                      <p className="text-xs text-content-muted line-clamp-2">
+                        {act.prompt}
+                      </p>
                     </div>
-                    <p className="text-xs font-semibold text-primary mt-1">{act.question}</p>
-                    <p className="text-[11px] text-content-muted mt-1 line-clamp-2">{act.prompt}</p>
-                  </div>
-                ))}
+                  );
+                })}
+              </div>
+
+              {/* Szybki start zaznaczonego wzorca */}
+              <div className="pt-3 flex justify-end">
+                <Button
+                  variant="primary"
+                  onClick={() => handleLaunchPreset(selectedPresetIndex)}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 shadow-lg shadow-primary/20 font-bold"
+                >
+                  <Airplay size={16} /> Uruchom ten slajd dla kursanta
+                </Button>
               </div>
             </div>
-          ) : (
-            <div className="space-y-3">
+          )}
+
+          {/* TAB 2: QUICK PASTE */}
+          {activeTab === 'quick_paste' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 text-xs text-text-hi leading-relaxed flex items-start gap-2.5">
+                <Sparkles size={16} className="text-primary flex-shrink-0 mt-0.5" />
+                <div>
+                  <strong>Szybkie tworzenie slajdów:</strong> Wklej poniżej kilka zdań do dyskusji, listę słówek (np. <code>term - definition</code>) lub punkty lekcji. System błyskawicznie przekształci je w interaktywny slajd dla kursanta.
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-bold text-content-muted mb-1">Tytuł slajdu:</label>
+                <label className="text-xs font-bold text-text-hi mb-1.5 block">
+                  Wybierz format prezentacji:
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setQuickPasteType('discussion')}
+                    className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                      quickPasteType === 'discussion'
+                        ? 'bg-primary text-ink-base border-primary font-bold'
+                        : 'bg-base-300/40 border-line-soft text-content-muted hover:text-text-hi'
+                    }`}
+                  >
+                    <MessageSquare size={14} /> Temat dyskusji
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickPasteType('flip_cards')}
+                    className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                      quickPasteType === 'flip_cards'
+                        ? 'bg-primary text-ink-base border-primary font-bold'
+                        : 'bg-base-300/40 border-line-soft text-content-muted hover:text-text-hi'
+                    }`}
+                  >
+                    <RotateCcw size={14} /> Fiszki 3D (Słówka)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickPasteType('process')}
+                    className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                      quickPasteType === 'process'
+                        ? 'bg-primary text-ink-base border-primary font-bold'
+                        : 'bg-base-300/40 border-line-soft text-content-muted hover:text-text-hi'
+                    }`}
+                  >
+                    <ListOrdered size={14} /> Kroki procesu
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-text-hi mb-1.5 block">
+                  Wklej treść (zdania lub lista haseł):
+                </label>
+                <textarea
+                  value={quickPasteText}
+                  onChange={(e) => setQuickPasteText(e.target.value)}
+                  placeholder={
+                    quickPasteType === 'flip_cards'
+                      ? 'Leverage synergy - Wykorzystać synergię\nDouble-edged sword - Broń obosieczna\nStreamline operations - Usprawnić procesy'
+                      : 'How has remote work transformed team communication?\nDiscuss advantages, drawbacks, and async tools.'
+                  }
+                  rows={6}
+                  className="w-full p-3.5 rounded-2xl bg-base-300 border border-line-strong text-text-hi text-sm focus:outline-none focus:border-primary font-mono"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="primary"
+                  onClick={handleQuickPasteProcess}
+                  disabled={!quickPasteText.trim() || isProcessingAi}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 font-bold"
+                >
+                  {isProcessingAi ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Przetwarzanie...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} /> Przekształć i uruchom dla kursanta
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: CUSTOM */}
+          {activeTab === 'custom' && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-text-hi mb-1 block">
+                  Tytuł aktywności
+                </label>
                 <input
                   type="text"
                   value={customTitle}
                   onChange={(e) => setCustomTitle(e.target.value)}
-                  placeholder="np. Opisanie wykresu / Dyskusja o strategii"
-                  className="w-full px-3 py-2 rounded-xl bg-base-100 border border-line-strong text-xs text-text-hi focus:border-primary focus:outline-none"
+                  placeholder="np. Ćwiczenie ze słuchu / Pytanie do debaty"
+                  className="w-full p-3 rounded-xl bg-base-300 border border-line-strong text-text-hi text-sm focus:outline-none focus:border-primary"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-content-muted mb-1">Pytanie główne / Zadanie:</label>
-                <input
-                  type="text"
+                <label className="text-xs font-bold text-text-hi mb-1 block">
+                  Pytanie główne / Nagłówek dla kursanta
+                </label>
+                <textarea
                   value={customQuestion}
                   onChange={(e) => setCustomQuestion(e.target.value)}
-                  placeholder="np. What are the key takeaways from this graph?"
-                  className="w-full px-3 py-2 rounded-xl bg-base-100 border border-line-strong text-xs text-text-hi focus:border-primary focus:outline-none"
+                  placeholder="np. Odsłuchaj nagranie i wynotuj 3 kluczowe argumenty"
+                  rows={2}
+                  className="w-full p-3 rounded-xl bg-base-300 border border-line-strong text-text-hi text-sm focus:outline-none focus:border-primary font-medium"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-content-muted mb-1">Opis / Instrukcja dla kursanta:</label>
+                <label className="text-xs font-bold text-text-hi mb-1 block">
+                  Instrukcja / Prompt pomocniczy
+                </label>
                 <textarea
                   value={customPrompt}
                   onChange={(e) => setCustomPrompt(e.target.value)}
-                  rows={3}
-                  placeholder="Wskazówki, polecenie lub kontekst..."
-                  className="w-full px-3 py-2 rounded-xl bg-base-100 border border-line-strong text-xs text-text-hi focus:border-primary focus:outline-none"
+                  placeholder="Zwróć uwagę na intonację mówcy i użyte konstrukcje gramatyczne..."
+                  rows={2}
+                  className="w-full p-3 rounded-xl bg-base-300 border border-line-strong text-text-hi text-sm focus:outline-none focus:border-primary"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-content-muted mb-1">URL obrazka (opcjonalnie):</label>
-                <input
-                  type="url"
-                  value={customImageUrl}
-                  onChange={(e) => setCustomImageUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full px-3 py-2 rounded-xl bg-base-100 border border-line-strong text-xs text-text-hi focus:border-primary focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-content-muted mb-1">
-                  Plik audio / nagranie do odsłuchania (opcjonalnie):
-                </label>
-                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-                  <input
-                    ref={audioInputRef}
-                    type="file"
-                    accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      if (file.size > 15 * 1024 * 1024) {
-                        alert(`Plik "${file.name}" przekracza maksymalny limit 15 MB.`);
-                        return;
-                      }
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        setCustomAudioUrl(reader.result as string);
-                        setCustomAudioName(file.name);
-                        if (!customTitle.trim()) {
-                          setCustomTitle(`Nagranie: ${file.name}`);
-                        }
-                      };
-                      reader.readAsDataURL(file);
-                      e.target.value = '';
-                    }}
-                  />
+              {/* Audio URL & Upload */}
+              <div className="p-4 rounded-2xl bg-base-300/60 border border-purple-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                    <Music size={15} /> Plik Audio lub Strumień URL
+                  </span>
                   <button
                     type="button"
                     onClick={() => audioInputRef.current?.click()}
-                    className="px-3 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-300 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+                    className="text-xs text-purple-300 hover:text-white flex items-center gap-1 bg-purple-500/20 px-2.5 py-1 rounded-lg border border-purple-500/40 cursor-pointer"
                   >
-                    <UploadCloud size={14} />
-                    Wgraj audio (.mp3, .wav)
+                    <UploadCloud size={13} /> Wgraj plik (.mp3, .wav)
                   </button>
                   <input
-                    type="url"
-                    value={customAudioUrl.startsWith('data:') ? '' : customAudioUrl}
+                    ref={audioInputRef}
+                    type="file"
+                    accept="audio/*"
+                    className="hidden"
                     onChange={(e) => {
-                      setCustomAudioUrl(e.target.value);
-                      if (!customAudioName) setCustomAudioName('Audio z URL');
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (re) => {
+                          setCustomAudioUrl(re.target?.result as string);
+                          setCustomAudioName(file.name);
+                        };
+                        reader.readAsDataURL(file);
+                      }
                     }}
-                    placeholder={customAudioUrl.startsWith('data:') ? `Załączono: ${customAudioName}` : 'lub wklej bezpośredni link URL do audio...'}
-                    className="flex-1 px-3 py-2 rounded-xl bg-base-100 border border-line-strong text-xs text-text-hi focus:border-primary focus:outline-none"
                   />
-                  {customAudioUrl && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomAudioUrl('');
-                        setCustomAudioName('');
-                      }}
-                      className="p-2 rounded-xl border border-line hover:border-rose-500/50 text-content-muted hover:text-rose-400 text-xs transition-colors cursor-pointer shrink-0"
-                      title="Usuń nagranie"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
                 </div>
+                <input
+                  type="url"
+                  value={customAudioUrl.startsWith('data:') ? '' : customAudioUrl}
+                  onChange={(e) => {
+                    setCustomAudioUrl(e.target.value);
+                    setCustomAudioName(e.target.value.split('/').pop() || 'Strumień audio');
+                  }}
+                  placeholder="https://example.com/audio-stream.mp3"
+                  className="w-full p-2.5 rounded-xl bg-base-200 border border-line-strong text-text-hi text-xs focus:outline-none focus:border-purple-400"
+                />
                 {customAudioUrl && (
-                  <div className="mt-2 p-2.5 rounded-xl bg-purple-950/25 border border-purple-500/30 space-y-1.5">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-purple-200">
-                      <Music size={13} className="text-purple-400 shrink-0" />
-                      <span className="truncate">{customAudioName || 'Nagranie audio'}</span>
-                    </div>
-                    <audio controls src={customAudioUrl} className="w-full h-8 rounded-lg accent-primary" />
-                  </div>
+                  <audio controls src={customAudioUrl} className="w-full h-8 rounded-lg mt-2" />
                 )}
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-content-muted mb-1">Podpowiedzi / Słówka (po przecinku):</label>
-                <input
-                  type="text"
-                  value={customHints}
-                  onChange={(e) => setCustomHints(e.target.value)}
-                  placeholder="In my opinion, On the one hand, Significantly"
-                  className="w-full px-3 py-2 rounded-xl bg-base-100 border border-line-strong text-xs text-text-hi focus:border-primary focus:outline-none"
-                />
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="primary"
+                  onClick={handleLaunchCustom}
+                  disabled={!customQuestion.trim() && !customTitle.trim()}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 font-bold"
+                >
+                  <Airplay size={16} /> Uruchom dla kursanta
+                </Button>
               </div>
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-line-strong bg-base-300/60 flex items-center justify-between">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-line-soft text-content-muted hover:text-text-hi text-xs font-bold border border-line-strong"
-          >
-            Anuluj
-          </button>
-          <Button
-            size="sm"
-            onClick={handleLaunch}
-            className="text-xs font-bold py-2 px-5 bg-primary text-accent-ink shadow-btn flex items-center gap-1.5"
-          >
-            <Airplay size={14} />
-            Uruchom slajd dla kursanta
-          </Button>
         </div>
       </div>
     </div>

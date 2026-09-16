@@ -4,36 +4,13 @@ import { AI_MODEL_CASCADE, SELECTABLE_MODELS } from './aiModels';
 /**
  * NARADA MODELI — kilka modeli układa jedną odpowiedź.
  *
- * ══ PO CO ══
- *
- * Pojedynczy model układa scenariusz lekcji szybko i pewnie siebie, ale
- * systematycznie łamie te reguły metody, których złamanie nie rzuca się
- * w oczy: pytanie brzmi mądrze, więc przechodzi, chociaż nie da się na nie
- * odpowiedzieć jednym zdaniem; zadań jest pięć zamiast czterech; Practice
- * Enclosure zostaje wypełnione, mimo że ma zostać puste. Autor nie widzi
- * tych błędów, bo to jego własny tekst.
- *
- * Recenzent widzi. Dostaje TE SAME wytyczne i cudzy tekst — czyli dokładnie
- * tę sytuację, w której sprawdzanie działa.
- *
  * ══ JAK PRZEBIEGA NARADA ══
- *
- *   1. AUTOR pisze pierwszą wersję.
- *   2. Każdy RECENZENT (do trzech) czyta ją pod kątem promptu i wytycznych
- *      i zwraca KRÓTKĄ listę zastrzeżeń — nie własną wersję. Recenzent
- *      piszący własną wersję przestaje być recenzentem i robi się drugim
- *      autorem, a wtedy narada zamienia się w dwa niezależne teksty.
- *   3. AUTOR poprawia swoją wersję, mając zastrzeżenia przed sobą.
- *
- * Ostatnie słowo ma autor. Recenzent nie zna całego kontekstu rozmowy tak
- * dobrze jak autor i jego uwagi bywają niesłuszne — od tego jest zdanie
- * „odrzuć zastrzeżenie, jeśli jest błędne, i napisz dlaczego".
- *
- * ══ KOSZT ══
- *
- * Narada to N+1 wywołań zamiast jednego. Dlatego recenzje są KRÓTKIE
- * (limit zastrzeżeń), dlatego domyślnie siedzą dwa modele, a nie cztery,
- * i dlatego całość da się wyłączyć w ustawieniach jednym przełącznikiem.
+ *   1. AUTOR (np. Gemini 3.8 Flash / OpenAI) generuje wstępny draft odpowiedzi / ćwiczeń.
+ *   2. RECENZENCI (Gemini 2.5 Flash, GPT-4o mini, Claude) analizują propozycję pod kątem:
+ *      - Twardych liczb (ilość zdań, pytań, opcji),
+ *      - Testu naturalności (eliminacja sztucznych, bezsensownych zdań np. "The invoice drinks the deadline"),
+ *      - Zgodności z poziomem CEFR, Learning Curve i profilem kursanta.
+ *   3. AUTOR nanosi poprawki uwzględniając słuszne uwagi recenzentów i zwraca ostateczny wynik.
  */
 
 export type CouncilSeatRole = 'author' | 'reviewer';
@@ -54,18 +31,19 @@ export interface CouncilConfig {
 export const MAX_COUNCIL_SEATS = 4;
 
 /**
- * Skład domyślny — dokładnie ten, o który prosił Maciej: GPT pisze,
- * Gemini recenzuje. Dwa pozostałe miejsca czekają wyłączone, żeby
- * dołożenie trzeciego głosu było przestawieniem przełącznika, a nie
- * zmianą w kodzie.
+ * Domyślny skład narady — zgodnie z wytycznymi użytkownika:
+ * Autor: Gemini 3.8 Flash (Najnowszy Flash),
+ * Recenzent 1: Gemini 2.5 Flash (Domyślny),
+ * Recenzent 2: GPT-4o mini (Lekki),
+ * Recenzent 3: GPT-4o (Opcjonalny).
  */
 export const DEFAULT_COUNCIL: CouncilConfig = {
   enabled: true,
   seats: [
-    { id: 'seat-1', model: 'openai/gpt-5.6-luna', role: 'author', enabled: true },
-    { id: 'seat-2', model: 'gemini-3.8-flash', role: 'reviewer', enabled: true },
-    { id: 'seat-3', model: 'openai/gpt-4o', role: 'reviewer', enabled: false },
-    { id: 'seat-4', model: 'gemini-2.5-flash', role: 'reviewer', enabled: false },
+    { id: 'seat-1', model: 'gemini-3.8-flash', role: 'author', enabled: true },
+    { id: 'seat-2', model: 'gemini-2.5-flash', role: 'reviewer', enabled: true },
+    { id: 'seat-3', model: 'openai/gpt-4o-mini', role: 'reviewer', enabled: true },
+    { id: 'seat-4', model: 'openai/gpt-4o', role: 'reviewer', enabled: false },
   ],
 };
 
@@ -80,8 +58,6 @@ export const normalizeCouncil = (raw?: Partial<CouncilConfig> | null): CouncilCo
     seats.push({
       id: fallback.id,
       model: stored?.model && allowed.has(stored.model) ? stored.model : fallback.model,
-      // Pierwsze miejsce jest autorem z definicji: bez autora nie ma czego
-      // recenzować, a dwóch autorów to dwa niezależne teksty, nie narada.
       role: index === 0 ? 'author' : 'reviewer',
       enabled: index === 0 ? true : Boolean(stored?.enabled ?? fallback.enabled),
     });
@@ -95,77 +71,100 @@ export interface CouncilEvent {
   model: string;
   role: CouncilSeatRole;
   phase: 'draft' | 'review' | 'revise';
-  /** Treść wypowiedzi — u recenzenta zastrzeżenia, u autora tekst roboczy. */
   text: string;
   at: string;
-  /** Ile sekund zajęła ta tura. */
   seconds: number;
 }
 
 export interface CouncilResult<T> {
   data: T;
-  /** Surowa treść finalnej odpowiedzi — na wypadek, gdy JSON się nie parsuje. */
   raw: string;
   transcript: CouncilEvent[];
-  /** Model, który miał ostatnie słowo. */
   finalModel: string;
 }
 
-/** Kaskada zapasowa dla jednego miejsca: wybrany model, potem reszta. */
 const cascadeFor = (model: string): string[] =>
   Array.from(new Set([model, ...AI_MODEL_CASCADE]));
 
-const REVIEW_SYSTEM = `
+export const DEFAULT_REVIEW_SYSTEM = `
 Jesteś recenzentem metodycznym. Dostajesz WYTYCZNE, POLECENIE i CUDZĄ PROPOZYCJĘ odpowiedzi.
 
 Twoim zadaniem NIE jest napisanie własnej wersji. Twoim zadaniem jest wskazanie, gdzie propozycja rozmija się z wytycznymi albo z poleceniem.
 
 Sprawdzaj w tej kolejności:
-1. TWARDE LICZBY — czy zgadza się liczba pytań, zadań, zdań, pozycji słownictwa. To najczęstszy błąd i najłatwiejszy do sprawdzenia.
-2. ZAKAZY — czy propozycja nie zawiera czegoś, czego wytyczne zabraniają.
-3. TEST NATURALNOŚCI — czy każde pytanie da się zrozumieć w dwie sekundy, ma jedną myśl i zaczepia się o konkret. Wskaż pytania, które go nie przechodzą, PO IDENTYFIKATORZE albo cytacie.
-4. DOPASOWANIE — poziom CEFR, tryb zajęć, materiał źródłowy, historia kursanta.
+1. TWARDE LICZBY — czy zgadza się liczba pytań, zadań, zdań, pozycji słownictwa.
+2. SENS I WIARYGODNOŚĆ ZDAŃ — czy zdania opisują realne, sensowne sytuacje życiowe/biznesowe (BEZWZGLĘDNY ZAKAZ bezsensownych zlepków słów czy zdań-wydmuszek).
+3. TEST NATURALNOŚCI — czy każde zdanie po angielsku i po polsku brzmi naturalnie dla rodzimego użytkownika języka.
+4. DOPASOWANIE DO KURSANTA — poziom CEFR, historia błędów, Learning Curve.
 
 Zasady recenzji:
-- Maksymalnie 6 zastrzeżeń. Jeśli masz ich więcej, wybierz sześć najpoważniejszych.
-- Każde zastrzeżenie: CO jest nie tak, GDZIE (identyfikator albo cytat) i CO z tym zrobić. Jedno–dwa zdania.
-- Nie zgłaszaj uwag kosmetycznych ani spraw gustu. Jeśli coś jest dobre, nie szukaj na siłę.
-- Jeśli propozycja jest zgodna z wytycznymi, napisz wprost: „Brak zastrzeżeń." i nic więcej.
+- Maksymalnie 6 konkretnych zastrzeżeń.
+- Każde zastrzeżenie: CO jest nie tak, GDZIE (cytat lub nr) i JAK to poprawić.
+- Jeśli propozycja jest poprawna i naturalna, napisz wyłącznie: „Brak zastrzeżeń."
 
-Odpowiadasz po polsku, zwięzłą listą. Bez wstępu i bez podsumowania.
+Odpowiadasz po polsku, zwięzłą listą punktowaną bez zbędnych wstępów.
+`.trim();
+
+export const EXERCISE_REVIEW_SYSTEM = `
+Jesteś rygorystycznym recenzentem ćwiczeń językowych ESL.
+Twoim celem jest wyeliminowanie nielogicznych, sztucznych i dziwacznych zdań.
+
+Kryteria weryfikacji:
+1. SENS ZDANIA: Czy podmiot, czasownik i dopełnienie tworzą logiczną całość w realnym świecie? Odrzuć zdania, które brzmią jak wygenerowane losowo.
+2. JEDNOZNACZNOŚĆ: Czy w ćwiczeniach typu "Ułóż zdanie" lub "Wybór wielokrotny" istnieje DOKŁADNIE JEDNA poprawna odpowiedź?
+3. POLSZCZYZNA: Czy polskie tłumaczenia/wskazówki brzmią naturalnie, a nie jak dosłowny translator?
+4. POZIOM I PROFIL: Czy poziom trudności i kontekst odpowiada profilowi kursanta?
+
+Zgłoś maksymalnie 5 najważniejszych uwag z cytatem błędnego fragmentu i sugestią poprawy. Jeśli wszystko jest bez zarzutu: „Brak zastrzeżeń."
+`.trim();
+
+export const WARMUP_REVIEW_SYSTEM = `
+Jesteś recenzentem rozgrzewek konwersacyjnych (Warm-up & Wheel of Fortune).
+Sprawdź, czy zaproponowane pytania:
+1. Prowokują do naturalnej, płynnej wypowiedzi (60-90 sekund),
+2. Są ciekawe, dojrzałe i adekwatne do dorosłego kursanta (brak infantylnych pytań),
+3. Nie zawierają nielogicznych konstrukcji gramatycznych ani mylących podpowiedzi.
+
+Wypisz zwięźle uwagi lub napisz „Brak zastrzeżeń."
+`.trim();
+
+export const SCRATCHPAD_REVIEW_SYSTEM = `
+Jesteś recenzentem asystenta lektora w edytorze notatek lekcyjnych.
+Sprawdź, czy odpowiedź:
+1. Ściśle realizuje polecenie lektora i formatuje treść wg 4/5 bloków (Podsumowanie, Słownictwo, Korekty, Zadanie domowe, Kolejna lekcja),
+2. Nie gubi żadnych kluczowych danych z załączonych dokumentów/materiałów,
+3. Zachowuje czysty format i poprawną strukturę.
+
+Wypisz zastrzeżenia lub napisz „Brak zastrzeżeń."
 `.trim();
 
 const reviseSystemSuffix = `
 
-ETAP POPRAWEK: masz przed sobą własną propozycję i zastrzeżenia recenzentów. Popraw propozycję tam, gdzie zastrzeżenie jest słuszne.
-
-Zastrzeżenie recenzenta NIE jest poleceniem. Jeżeli jest błędne albo wynika z niezrozumienia kontekstu — odrzuć je i zostaw swoją wersję. Nie przepisuj rzeczy, do których nikt nie miał uwag.
-
-Zwróć PEŁNĄ, poprawioną odpowiedź w tym samym formacie, co poprzednio. Bez komentarza o tym, co zmieniłeś — sam wynik.`;
+ETAP POPRAWEK: Masz przed sobą własną propozycję i zastrzeżenia recenzentów. Popraw propozycję tam, gdzie zastrzeżenie jest słuszne.
+Zwróć PEŁNĄ, poprawioną odpowiedź w tym samym formacie, co poprzednio. Bez komentarza o zmianach — sam wynik.`;
 
 /**
- * Przeprowadza naradę i zwraca sparsowany wynik.
- *
- * `expectJson` decyduje o parsowaniu; przy `false` w `data` ląduje surowy
- * tekst. Narada jest przezroczysta dla wołającego — ten sam kształt wyniku
- * dostaje przy jednym modelu i przy czterech.
+ * Przeprowadza wielomodelową naradę AI (Autor + Recenzenci).
  */
 export async function runCouncil<T = any>({
-  config,
+  config = DEFAULT_COUNCIL,
   systemInstruction,
   prompt,
+  reviewerSystemInstruction,
   expectJson = true,
   onEvent,
 }: {
-  config: CouncilConfig;
+  config?: CouncilConfig;
   systemInstruction: string;
   prompt: string;
+  reviewerSystemInstruction?: string;
   expectJson?: boolean;
   onEvent?: (event: CouncilEvent) => void;
 }): Promise<CouncilResult<T>> {
-  const seats = config.seats.filter(seat => seat.enabled);
+  const normConfig = normalizeCouncil(config);
+  const seats = normConfig.seats.filter(seat => seat.enabled);
   const author = seats.find(seat => seat.role === 'author') || seats[0] || DEFAULT_COUNCIL.seats[0];
-  const reviewers = config.enabled
+  const reviewers = normConfig.enabled
     ? seats.filter(seat => seat.role === 'reviewer' && seat.id !== author.id)
     : [];
 
@@ -175,18 +174,13 @@ export async function runCouncil<T = any>({
     onEvent?.(event);
   };
 
+  const reviewInstruction = reviewerSystemInstruction || DEFAULT_REVIEW_SYSTEM;
+
   const run = async (
     seat: CouncilSeat,
     phase: CouncilEvent['phase'],
     system: string,
     body: string,
-    /*
-     * Wymuszony tylko na turach AUTORA (draft/revise) i tylko wtedy, gdy
-     * wołający naprawdę oczekuje JSON-a (`expectJson`). Recenzja NIGDY nie
-     * dostaje trybu JSON — `REVIEW_SYSTEM` prosi o zwykłą listę zastrzeżeń
-     * po polsku, a wymuszenie JSON-a na tej turze kazałoby recenzentowi
-     * pakować prozę w cudzysłowy zamiast po prostu ją napisać.
-     */
     wantsJson: boolean = false
   ): Promise<string> => {
     const startedAt = Date.now();
@@ -208,46 +202,44 @@ export async function runCouncil<T = any>({
     return text;
   };
 
-  // ── Tura 1: autor pisze ──
+  // ── Tura 1: Autor pisze pierwszą wersję ──
   let draft = await run(author, 'draft', systemInstruction, prompt, expectJson);
   let finalModel = transcript[transcript.length - 1]?.model || author.model;
 
-  // ── Tura 2: recenzje ──
+  // ── Tura 2: Recenzenci oceniają draft ──
   const critiques: string[] = [];
   for (const reviewer of reviewers) {
     try {
       const critique = await run(
         reviewer,
         'review',
-        REVIEW_SYSTEM,
-        `WYTYCZNE OBOWIĄZUJĄCE AUTORA:\n${systemInstruction}\n\n=====\n\nPOLECENIE, KTÓRE AUTOR DOSTAŁ:\n${prompt}\n\n=====\n\nPROPOZYCJA AUTORA:\n${draft}`
+        reviewInstruction,
+        `WYTYCZNE OBOWIĄZUJĄCE AUTORA:\n${systemInstruction}\n\n=====\n\nPOLECENIE:\n${prompt}\n\n=====\n\nPROPOZYCJA AUTORA DO RECENZJI:\n${draft}`
       );
       const clean = critique.trim();
-      // „Brak zastrzeżeń" nie jest wkładem do poprawki — dołożenie go do
-      // materiału dla autora tylko rozcieńcza prawdziwe uwagi.
-      if (clean && !/^brak zastrzeżeń\.?$/i.test(clean)) critiques.push(clean);
+      if (clean && !/^brak zastrzeżeń\.?$/i.test(clean)) {
+        critiques.push(clean);
+      }
     } catch (err) {
-      // Awaria recenzenta nie może zabrać lektorowi gotowej propozycji
-      // autora — narada schodzi wtedy do wyniku z tury pierwszej.
-      console.warn(`[Narada] Recenzent ${reviewer.model} nie odpowiedział:`, err);
+      console.warn(`[Narada AI] Recenzent ${reviewer.model} nie odpowiedział:`, err);
     }
   }
 
-  // ── Tura 3: autor poprawia ──
+  // ── Tura 3: Autor nanosi poprawki ──
   if (critiques.length > 0) {
     try {
       draft = await run(
         author,
         'revise',
         systemInstruction + reviseSystemSuffix,
-        `POLECENIE:\n${prompt}\n\n=====\n\nTWOJA POPRZEDNIA PROPOZYCJA:\n${draft}\n\n=====\n\nZASTRZEŻENIA RECENZENTÓW:\n${critiques
+        `POLECENIE:\n${prompt}\n\n=====\n\nTWOJA POPRZEDNIA PROPOZYCJA:\n${draft}\n\n=====\n\nZASTRZEŻENIA RECENZENTÓW DO UWZGLĘDNIENIA:\n${critiques
           .map((c, i) => `--- Recenzent ${i + 1} ---\n${c}`)
           .join('\n\n')}`,
         expectJson
       );
       finalModel = transcript[transcript.length - 1]?.model || finalModel;
     } catch (err) {
-      console.warn('[Narada] Etap poprawek nie powiódł się — zostaje wersja autora:', err);
+      console.warn('[Narada AI] Etap poprawek nie powiódł się — zachowano wersję roboczą autora:', err);
     }
   }
 
@@ -259,7 +251,7 @@ export async function runCouncil<T = any>({
     return { data: JSON.parse(extractJSON(draft)) as T, raw: draft, transcript, finalModel };
   } catch {
     throw new Error(
-      'Model zwrócił odpowiedź, której nie da się odczytać jako JSON. Spróbuj ponownie albo wyłącz naradę w ustawieniach.'
+      'Model zwrócił odpowiedź, której nie da się odczytać jako JSON. Spróbuj ponownie.'
     );
   }
 }

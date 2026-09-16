@@ -8,7 +8,6 @@ import { openScratchpadTab } from '../../services/scratchpadService';
 import { getAllLessonRecordsForTeacher } from '../../services/lessonRecord';
 import CreateGroupModal from './CreateGroupModal';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
-import NotionSyncButton from './NotionSyncButton';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import {
@@ -453,8 +452,6 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
 
         {/* Action buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          <NotionSyncButton onImported={fetchUsersAndLessons} />
-
           <Button
             size="sm"
             onClick={() => {

@@ -113,14 +113,12 @@ const SettingsScreen: React.FC = () => {
     const [notionTokenInput, setNotionTokenInput] = useState<string>('');
     const [showNotionToken, setShowNotionToken] = useState<boolean>(false);
     const [meetingNotesDbInput, setMeetingNotesDbInput] = useState<string>('');
-    const [studentsDbInput, setStudentsDbInput] = useState<string>('');
     const [autoFetchEnabledInput, setAutoFetchEnabledInput] = useState<boolean>(false);
     const [autoFetchIntervalInput, setAutoFetchIntervalInput] = useState<number>(30);
     const [notionConfigStatus, setNotionConfigStatus] = useState<{
         configured: boolean;
         maskedToken?: string | null;
         meetingNotesDbId?: string;
-        studentsDbId?: string;
         autoFetchEnabled?: boolean;
         autoFetchIntervalMinutes?: number;
         lastFetchTime?: string | null;
@@ -175,7 +173,6 @@ const SettingsScreen: React.FC = () => {
                     const data = await res.json();
                     setNotionConfigStatus(data);
                     if (data.meetingNotesDbId) setMeetingNotesDbInput(data.meetingNotesDbId);
-                    if (data.studentsDbId) setStudentsDbInput(data.studentsDbId);
                     if (typeof data.autoFetchEnabled === 'boolean') setAutoFetchEnabledInput(data.autoFetchEnabled);
                     if (typeof data.autoFetchIntervalMinutes === 'number') setAutoFetchIntervalInput(data.autoFetchIntervalMinutes);
                 }
@@ -189,7 +186,6 @@ const SettingsScreen: React.FC = () => {
     const hasUnsavedNotionChanges = Boolean(
         (notionTokenInput.trim() !== '') ||
         (cleanNotionId(meetingNotesDbInput) !== cleanNotionId(notionConfigStatus.meetingNotesDbId || '')) ||
-        (cleanNotionId(studentsDbInput) !== cleanNotionId(notionConfigStatus.studentsDbId || '')) ||
         (autoFetchEnabledInput !== Boolean(notionConfigStatus.autoFetchEnabled)) ||
         (autoFetchIntervalInput !== (notionConfigStatus.autoFetchIntervalMinutes || 30))
     );
@@ -216,7 +212,6 @@ const SettingsScreen: React.FC = () => {
 
             const cleanToken = notionTokenInput.trim().replace(/["']/g, '');
             const cleanMeetingId = cleanNotionId(meetingNotesDbInput);
-            const cleanStudentsId = cleanNotionId(studentsDbInput);
 
             const res = await fetch('/api/notion/save-config', {
                 method: 'POST',
@@ -227,7 +222,6 @@ const SettingsScreen: React.FC = () => {
                 body: JSON.stringify({
                     token: cleanToken || undefined,
                     meetingNotesDbId: cleanMeetingId || undefined,
-                    studentsDbId: cleanStudentsId || undefined,
                     autoFetchEnabled: autoFetchEnabledInput,
                     autoFetchIntervalMinutes: autoFetchIntervalInput,
                 }),
@@ -240,14 +234,12 @@ const SettingsScreen: React.FC = () => {
                 configured: true,
                 maskedToken: data.maskedToken || (cleanToken ? `${cleanToken.slice(0, 8)}••••` : notionConfigStatus.maskedToken),
                 meetingNotesDbId: data.meetingNotesDbId || cleanMeetingId,
-                studentsDbId: data.studentsDbId || cleanStudentsId,
                 autoFetchEnabled: data.autoFetchEnabled,
                 autoFetchIntervalMinutes: data.autoFetchIntervalMinutes,
                 lastFetchTime: notionConfigStatus.lastFetchTime,
                 lastFetchStatus: notionConfigStatus.lastFetchStatus,
             });
             if (data.meetingNotesDbId) setMeetingNotesDbInput(data.meetingNotesDbId);
-            if (data.studentsDbId) setStudentsDbInput(data.studentsDbId);
             setNotionSaveSuccess(true);
             setNotionTokenInput('');
             setTimeout(() => setNotionSaveSuccess(false), 4000);
@@ -269,7 +261,6 @@ const SettingsScreen: React.FC = () => {
 
             const cleanToken = notionTokenInput.trim().replace(/["']/g, '');
             const cleanMeetingId = cleanNotionId(meetingNotesDbInput);
-            const cleanStudentsId = cleanNotionId(studentsDbInput);
 
             const res = await fetch('/api/notion/test-connection', {
                 method: 'POST',
@@ -280,7 +271,6 @@ const SettingsScreen: React.FC = () => {
                 body: JSON.stringify({
                     token: cleanToken || undefined,
                     meetingNotesDbId: cleanMeetingId || undefined,
-                    studentsDbId: cleanStudentsId || undefined,
                 }),
             });
 
@@ -405,12 +395,10 @@ const SettingsScreen: React.FC = () => {
 
             setNotionTokenInput('');
             setMeetingNotesDbInput('');
-            setStudentsDbInput('');
             setNotionConfigStatus({
                 configured: false,
                 maskedToken: null,
                 meetingNotesDbId: '',
-                studentsDbId: '',
                 autoFetchEnabled: false,
                 lastFetchTime: null,
                 lastFetchStatus: null,
@@ -1202,19 +1190,14 @@ const SettingsScreen: React.FC = () => {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1">
                                             {discoveredDatabases.map((db) => {
                                                 const isMeetingSelected = cleanNotionId(meetingNotesDbInput) === cleanNotionId(db.id);
-                                                const isStudentsSelected = cleanNotionId(studentsDbInput) === cleanNotionId(db.id);
 
                                                 return (
                                                     <div
                                                         key={db.id}
                                                         className={`p-3 rounded-xl border transition-all ${
-                                                            isMeetingSelected && isStudentsSelected
-                                                                ? 'bg-primary/15 border-primary shadow-md'
-                                                                : isMeetingSelected
-                                                                    ? 'bg-emerald-500/10 border-emerald-500/40 shadow-sm'
-                                                                    : isStudentsSelected
-                                                                        ? 'bg-cyan-500/10 border-cyan-500/40 shadow-sm'
-                                                                        : 'bg-black/50 border-white/10 hover:border-white/20'
+                                                            isMeetingSelected
+                                                                ? 'bg-emerald-500/10 border-emerald-500/40 shadow-sm'
+                                                                : 'bg-black/50 border-white/10 hover:border-white/20'
                                                         }`}
                                                     >
                                                         <div className="flex items-start justify-between gap-2">
@@ -1231,11 +1214,6 @@ const SettingsScreen: React.FC = () => {
                                                                     {isMeetingSelected && (
                                                                         <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold uppercase tracking-wider">
                                                                             🎯 Transkrypcje
-                                                                        </span>
-                                                                    )}
-                                                                    {isStudentsSelected && (
-                                                                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold uppercase tracking-wider">
-                                                                            👥 Kursanci
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -1274,36 +1252,21 @@ const SettingsScreen: React.FC = () => {
                                                             </div>
                                                         )}
 
-                                                        <div className="grid grid-cols-2 gap-1.5 mt-2.5 pt-2 border-t border-white/5">
+                                                        <div className="mt-2.5 pt-2 border-t border-white/5 flex justify-end">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => {
                                                                     setMeetingNotesDbInput(db.id);
                                                                     setNotionError(null);
                                                                 }}
-                                                                className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${
+                                                                className={`w-full px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer ${
                                                                     isMeetingSelected
                                                                         ? 'bg-emerald-500 text-black font-bold shadow-xs'
                                                                         : 'bg-white/5 hover:bg-emerald-500/20 text-content border border-white/10 hover:text-white hover:border-emerald-500/30'
                                                                 }`}
                                                             >
-                                                                {isMeetingSelected ? <Check size={11} /> : <span>🎯</span>}
-                                                                {isMeetingSelected ? 'Baza Spotkań ✓' : '🎯 Do transkrypcji'}
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setStudentsDbInput(db.id);
-                                                                    setNotionError(null);
-                                                                }}
-                                                                className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${
-                                                                    isStudentsSelected
-                                                                        ? 'bg-cyan-500 text-black font-bold shadow-xs'
-                                                                        : 'bg-white/5 hover:bg-cyan-500/20 text-content border border-white/10 hover:text-white hover:border-cyan-500/30'
-                                                                }`}
-                                                            >
-                                                                {isStudentsSelected ? <Check size={11} /> : <span>👥</span>}
-                                                                {isStudentsSelected ? 'Baza Kursantów ✓' : '👥 Baza kursantów'}
+                                                                {isMeetingSelected ? <Check size={12} /> : <span>🎯</span>}
+                                                                {isMeetingSelected ? 'Wybrana do transkrypcji ✓' : 'Wybierz jako bazę transkrypcji'}
                                                             </button>
                                                         </div>
                                                     </div>
@@ -1315,96 +1278,49 @@ const SettingsScreen: React.FC = () => {
                             </div>
 
                             {/* Database IDs (Quick Dropdown from Discovered or Manual/Paste) */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                    <div className="flex items-center justify-between">
-                                        <label className="block text-xs font-semibold text-content uppercase tracking-wider">
-                                            {language === 'pl' ? 'ID Bazy Spotkań & Transkrypcji' : 'Meeting Notes Database ID'}
-                                        </label>
-                                        {meetingNotesDbInput && (
-                                            <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-0.5">
-                                                <Check size={10} /> {language === 'pl' ? 'Ustawiona' : 'Set'}
-                                            </span>
-                                        )}
-                                    </div>
-                                    {discoveredDatabases.length > 0 && (
-                                        <select
-                                            value={discoveredDatabases.some(d => cleanNotionId(d.id) === cleanNotionId(meetingNotesDbInput)) ? cleanNotionId(meetingNotesDbInput) : ''}
-                                            onChange={(e) => {
-                                                if (e.target.value) {
-                                                    setMeetingNotesDbInput(e.target.value);
-                                                    setNotionError(null);
-                                                }
-                                            }}
-                                            className="w-full px-3 py-2 rounded-xl bg-black/70 border border-emerald-500/30 text-white text-xs focus:outline-none focus:border-emerald-500 mb-1"
-                                        >
-                                            <option value="">-- Wybierz z wykrytych baz w Notion ({discoveredDatabases.length}) --</option>
-                                            {discoveredDatabases.map(d => (
-                                                <option key={d.id} value={cleanNotionId(d.id)}>
-                                                    {d.icon ? `${d.icon} ` : ''}{d.title} ({d.id.slice(0, 8)}...)
-                                                </option>
-                                            ))}
-                                        </select>
+                            <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                    <label className="block text-xs font-semibold text-content uppercase tracking-wider">
+                                        {language === 'pl' ? 'ID Bazy Spotkań & Transkrypcji' : 'Meeting Notes Database ID'}
+                                    </label>
+                                    {meetingNotesDbInput && (
+                                        <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-0.5">
+                                            <Check size={10} /> {language === 'pl' ? 'Ustawiona' : 'Set'}
+                                        </span>
                                     )}
-                                    <input
-                                        type="text"
-                                        value={meetingNotesDbInput}
-                                        onChange={(e) => {
-                                            setMeetingNotesDbInput(cleanNotionId(e.target.value));
-                                            setNotionError(null);
-                                        }}
-                                        placeholder="Wklej ID lub link do bazy spotkań w Notion..."
-                                        className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary"
-                                    />
-                                    <p className="text-[10px] text-content-muted">
-                                        {language === 'pl' ? 'Baza ze spotkaniami i transkrypcjami AI z lekcji.' : 'Database with meeting notes and AI transcripts.'}
-                                    </p>
                                 </div>
-
-                                <div className="space-y-1.5">
-                                    <div className="flex items-center justify-between">
-                                        <label className="block text-xs font-semibold text-content uppercase tracking-wider">
-                                            {language === 'pl' ? 'ID Bazy Kursantów i Grup' : 'Students & Groups Database ID'}
-                                        </label>
-                                        {studentsDbInput && (
-                                            <span className="text-[10px] text-cyan-400 font-mono flex items-center gap-0.5">
-                                                <Check size={10} /> {language === 'pl' ? 'Ustawiona' : 'Set'}
-                                            </span>
-                                        )}
-                                    </div>
-                                    {discoveredDatabases.length > 0 && (
-                                        <select
-                                            value={discoveredDatabases.some(d => cleanNotionId(d.id) === cleanNotionId(studentsDbInput)) ? cleanNotionId(studentsDbInput) : ''}
-                                            onChange={(e) => {
-                                                if (e.target.value) {
-                                                    setStudentsDbInput(e.target.value);
-                                                    setNotionError(null);
-                                                }
-                                            }}
-                                            className="w-full px-3 py-2 rounded-xl bg-black/70 border border-cyan-500/30 text-white text-xs focus:outline-none focus:border-cyan-500 mb-1"
-                                        >
-                                            <option value="">-- Wybierz z wykrytych baz w Notion ({discoveredDatabases.length}) --</option>
-                                            {discoveredDatabases.map(d => (
-                                                <option key={d.id} value={cleanNotionId(d.id)}>
-                                                    {d.icon ? `${d.icon} ` : ''}{d.title} ({d.id.slice(0, 8)}...)
-                                                </option>
-                                            ))}
-                                        </select>
-                                    )}
-                                    <input
-                                        type="text"
-                                        value={studentsDbInput}
+                                {discoveredDatabases.length > 0 && (
+                                    <select
+                                        value={discoveredDatabases.some(d => cleanNotionId(d.id) === cleanNotionId(meetingNotesDbInput)) ? cleanNotionId(meetingNotesDbInput) : ''}
                                         onChange={(e) => {
-                                            setStudentsDbInput(cleanNotionId(e.target.value));
-                                            setNotionError(null);
+                                            if (e.target.value) {
+                                                setMeetingNotesDbInput(e.target.value);
+                                                setNotionError(null);
+                                            }
                                         }}
-                                        placeholder="Wklej ID lub link do bazy kursantów w Notion..."
-                                        className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary"
-                                    />
-                                    <p className="text-[10px] text-content-muted">
-                                        {language === 'pl' ? 'Baza z profilami kursantów, grupami i adresami e-mail.' : 'Database with students, groups and emails.'}
-                                    </p>
-                                </div>
+                                        className="w-full px-3 py-2 rounded-xl bg-black/70 border border-emerald-500/30 text-white text-xs focus:outline-none focus:border-emerald-500 mb-1"
+                                    >
+                                        <option value="">-- Wybierz z wykrytych baz w Notion ({discoveredDatabases.length}) --</option>
+                                        {discoveredDatabases.map(d => (
+                                            <option key={d.id} value={cleanNotionId(d.id)}>
+                                                {d.icon ? `${d.icon} ` : ''}{d.title} ({d.id.slice(0, 8)}...)
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                                <input
+                                    type="text"
+                                    value={meetingNotesDbInput}
+                                    onChange={(e) => {
+                                        setMeetingNotesDbInput(cleanNotionId(e.target.value));
+                                        setNotionError(null);
+                                    }}
+                                    placeholder="Wklej ID lub link do bazy spotkań w Notion..."
+                                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary"
+                                />
+                                <p className="text-[10px] text-content-muted">
+                                    {language === 'pl' ? 'Baza ze spotkaniami i transkrypcjami AI z lekcji.' : 'Database with meeting notes and AI transcripts.'}
+                                </p>
                             </div>
 
                             {/* Auto fetch toggle & interval */}
