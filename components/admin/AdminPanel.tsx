@@ -2,6 +2,7 @@ import {
   createLessonRecordWithVocabularySet, 
   syncFlashcardSetForLesson, 
   getLessonRecordsForStudent, 
+  getAllLessonRecordsForTeacher,
   deleteLessonRecord,
   rejectNotionLesson,
   restoreRejectedNotionLesson,
@@ -57,7 +58,7 @@ import AdminMailingScreen from './AdminMailingScreen';
 import ScratchpadStudentPicker from '../scratchpad/ScratchpadStudentPicker';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import TeacherAttentionBanner from './TeacherAttentionBanner';
-import TeacherNotionDatabaseView from './TeacherNotionDatabaseView';
+import TeacherLessonHistoryView from './TeacherLessonHistoryView';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
@@ -139,6 +140,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         return dateB - dateA;
       });
       setUsers(usersList);
+      fetchAllLessons(usersList);
       setIsLoading(false);
     } catch (e) {
       console.error(e);
@@ -1348,6 +1350,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
   const [practiceLogs, setPracticeLogs] = useState<PracticeLog[]>([]);
   const [lessonRecords, setLessonRecords] = useState<LessonRecord[]>([]);
+  const [allTeacherLessons, setAllTeacherLessons] = useState<LessonRecord[]>([]);
+  const [isLoadingAllLessons, setIsLoadingAllLessons] = useState(false);
   const [rejectedLessons, setRejectedLessons] = useState<RejectedNotionItem[]>([]);
   const [showRejectedLessonsSection, setShowRejectedLessonsSection] = useState(false);
   const [isRejectingLessonId, setIsRejectingLessonId] = useState<string | null>(null);
@@ -1363,6 +1367,19 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [showSpecialTaskModal, setShowSpecialTaskModal] = useState(false);
   const [selectedSetIdToAssign, setSelectedSetIdToAssign] = useState('');
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
+
+  const fetchAllLessons = async (userList: UserWithId[] = users) => {
+    if (!userList || userList.length === 0) return;
+    setIsLoadingAllLessons(true);
+    try {
+      const list = await getAllLessonRecordsForTeacher(userList);
+      setAllTeacherLessons(list);
+    } catch (e) {
+      console.warn('Błąd pobierania lekcji dla panelu głównego:', e);
+    } finally {
+      setIsLoadingAllLessons(false);
+    }
+  };
 
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const pdfExportContainerRef = useRef<HTMLDivElement>(null);
@@ -2283,13 +2300,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         )}
       </div>
 
-      {/* Widok bazy danych Notion-style: Kursanci i grupy pod kafelkami */}
-      <TeacherNotionDatabaseView
+      {/* Widok Historii Lekcji Notion-style na ekranie głównym */}
+      <TeacherLessonHistoryView
+        lessons={allTeacherLessons}
         students={users}
-        lessons={lessonRecords}
-        onSelectStudent={(student) => {
+        isLoading={isLoadingAllLessons}
+        onRefresh={() => fetchAllLessons(users)}
+        onSelectStudent={(student, targetTab) => {
           if (student.id) {
-            handleSelectUser(student as UserWithId, 'profile');
+            handleSelectUser(student as UserWithId, targetTab || 'profile');
           }
         }}
         onOpenNotebook={(student) => {
@@ -2298,19 +2317,33 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             openScratchpadTab(`sp_${student.id}`);
           }
         }}
-        onOpenHomework={(student) => {
+        onOpenHomework={(student, lesson) => {
           if (student.id) {
             handleSelectUser(student as UserWithId, 'homework');
             onViewChange?.('homework');
           }
         }}
-        onOpenLessonPlanner={(student) => {
-          if (student.id) {
-            handleSelectUser(student as UserWithId, 'lesson-planner');
-            handleTileClick('lesson-planner');
+        onOpenPresentation={async (lesson, student) => {
+          if (student?.id) {
+            handleSelectUser(student as UserWithId, 'presentation');
+            setActiveTab('presentation');
           }
         }}
-        onRefreshNotion={fetchUsers}
+        onDeleteLesson={async (studentId, lesson) => {
+          try {
+            await deleteLessonRecord(studentId, lesson);
+            showToast("Lekcja została usunięta.");
+            if (selectedUser && selectedUser.id === studentId) {
+              fetchUserLogsAndStats(studentId);
+            }
+            fetchAllLessons(users);
+          } catch (e: any) {
+            alert("Błąd podczas usuwania lekcji: " + (e.message || String(e)));
+          }
+        }}
+        onAddNewLesson={() => {
+          handleTileClick('lesson-planner');
+        }}
       />
 
         </>

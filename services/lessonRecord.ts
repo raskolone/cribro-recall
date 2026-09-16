@@ -287,6 +287,49 @@ export async function getLessonRecordsForStudent(studentId: string): Promise<Les
   return records;
 }
 
+/**
+ * Pobiera lekcje dla wszystkich przekazanych kursantów i grup,
+ * scalając je w jeden posortowany chronologicznie strumień.
+ */
+export async function getAllLessonRecordsForTeacher(students: { id?: string }[]): Promise<LessonRecord[]> {
+  const validStudents = students.filter((s) => Boolean(s.id));
+  if (validStudents.length === 0) return [];
+
+  const results = await Promise.all(
+    validStudents.map(async (student) => {
+      try {
+        return await getLessonRecordsForStudent(student.id!);
+      } catch (err) {
+        console.warn(`[Lekcje] Błąd pobierania lekcji dla kursanta ${student.id}:`, err);
+        return [];
+      }
+    })
+  );
+
+  const allLessons: LessonRecord[] = results.flat();
+
+  // Deduplikacja po ID
+  const seenIds = new Set<string>();
+  const uniqueLessons: LessonRecord[] = [];
+
+  for (const lesson of allLessons) {
+    if (lesson.id && !seenIds.has(lesson.id)) {
+      seenIds.add(lesson.id);
+      uniqueLessons.push(lesson);
+    }
+  }
+
+  // Sortowanie chronologiczne malejąco (najnowsze pierwsze)
+  uniqueLessons.sort((a, b) => {
+    const dateB = new Date(b.date || 0).getTime();
+    const dateA = new Date(a.date || 0).getTime();
+    if (dateB !== dateA) return dateB - dateA;
+    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+  });
+
+  return uniqueLessons;
+}
+
 export async function getVocabularySetsForStudent(studentId: string): Promise<VocabularySet[]> {
   const setsRef = collection(db, `users/${studentId}/vocabularySets`);
   const q = query(setsRef, orderBy('date', 'desc'));

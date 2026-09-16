@@ -203,6 +203,26 @@ Firestore obok lekcji.
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
+### 🚀 Unifikacja CRM Kursantów i Grup w „Profile kursantów” oraz nowy widok „Historia Lekcji” w stylu Notion na ekranie głównym lektora (2026-09-16, runda 11)
+
+**1. Nowy panel „Historia Lekcji” na Ekranie Głównym Lektora (`TeacherLessonHistoryView.tsx`).**
+- Zastąpienie tabeli kursantów na ekranie głównym dedykowanym widokiem historii lekcji wzorowanym bezpośrednio na układzie z Notion.
+- **Poziome zakładki kursantów i grup**: Na górze tabeli umieszczono pasek z zakładkami `[ ▦ Wszystkie lekcje ]` oraz wszystkimi kursantami i grupami (`[ ▦ Dariusz Wach ]`, `[ ▦ Łukasz Kołłątaj ]`, `[ 👥 Grupa Gülermak ]`, `[ 👥 Kramp ]`, `[ ▦ Milena Miksa-Matyjasik ]` itd.) wraz z licznikami lekcji, umożliwiający natychmiastowe filtrowanie strumienia lekcji bez przeładowywania strony.
+- **Wyszukiwarka i filtry statusu**: Wyszukiwanie na żywo po tematach, słownictwie, dacie i podsumowaniach oraz filtry statusu (*Wszystkie*, *Odbyte* — zielony pill `Odbyta`, *Weryfikacja / Brudnopis* — bursztynowy pill, sortowanie chronologiczne).
+- **Tabela 4 Bloków Notion**: Kolumny z tematem (z ikoną strony Notion), kursantem/grupą, datą lekcji, statusem, wskaźnikami 4 bloków (*Słownictwo*, *Korekty & Wymowa*, *Zadanie domowe*, *Plan*) oraz szybkimi akcjami.
+- **Błyskawiczny Slide-over Drawer / Modal 4 Bloków**: Szczegółowy podgląd z podziałem na Blok 1 (Words & Phrases z odsłuchem wymowy TTS i kopiowaniem), Blok 2 (Corrections & Pronunciation), Blok 3 (Homework z kluczem odpowiedzi) oraz Blok 4 (Next Lesson Plan) i notatki z lekcji.
+- **1-klik akcje**: Bezpośrednie przejście do Notatnika kursanta na żywo (`openScratchpadTab`), zadanie pracy domowej, tryb prezentacji oraz przejście do profilu.
+
+**2. Zunifikowany CRM w „Profile kursantów” (`StandaloneStudentDatabaseScreen.tsx`).**
+- Przeniesienie i zintegrowanie pełnego widoku tabeli Notion z bazy głównej do dedykowanego modułu CRM (`students-database`).
+- **Filtry kontraktorów i typów**: Zakładki *Wszyscy*, *Aktywni*, *Indywidualni (1:1)*, *Grupy & Pary*, *🏢 JCL*, *🏢 Inspiro*, *🏢 Axell*, *⚡ Direct* oraz wyszukiwarka.
+- **Akcje masowe (Bulk Actions)**: Zaznaczanie wielu kont (multi-select checkboxy), masowa zmiana poziomu (A1..C2), zmiana kontraktora, zmiana statusu współpracy, usuwanie zaznaczonych.
+- **Tworzenie i edycja kont**: Pełna integracja z modalem tworzenia kursantów (z automatycznym generatorem haseł i kopiowaniem poświadczeń), tworzeniem grup i par (`CreateGroupModal`), wysyłką zaproszeń e-mail (`StudentInviteEmailModal`) oraz synchronizacją z Notion (`NotionSyncButton`).
+- **Kolumny CRM**: Nazwa z awatarem i składem grupy, Typ, Poziom/Profil, Adresy e-mail z kopiowaniem, Kontraktor, Gdzie pracuje, Ostatnia lekcja, Status, Typ zajęć oraz akcje bezpośrednie (Profil, Notatnik, Praca domowa, Planer, Edycja grupy, Usunięcie).
+
+**3. Agregacja i synchronizacja lekcji w `services/lessonRecord.ts`.**
+- Nowa funkcja `getAllLessonRecordsForTeacher(students)` do wydajnego pobierania, deduplikacji i chronologicznego sortowania lekcji ze wszystkich podkolekcji kursantów.
+
 ### 🚀 Notion bazy grupowe, asystent AI w dokumencie, szybka powtórka lekcji, powiadomienia o sprawdzonej pracy domowej, płynny motyw i Gemini 2.5 Flash (2026-09-15, runda 10)
 
 **1. Widok bazy Notion pod kafelkami lektora i zarządzanie grupami kursantów.**

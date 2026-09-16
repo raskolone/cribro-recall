@@ -1440,3 +1440,27 @@ Ryzyka i weryfikacja:
 - Bezpieczeństwo kluczy API zachowane (maskowanie serwerowe, brak ekspozycji po stronie klienta).
 - Zweryfikowano: `npx tsc --noEmit` (0 błędów), `npm test` (320/320 pass, 100%), `npm run build` (czysty build produkcyjny).
 
+---
+
+2026-09-16 — Antigravity / Gemini 2.5 Flash
+
+Zadanie:
+1. Unifikacja modułu Kursanci i Grupy w „Profile kursantów” (CRM): przeniesienie eleganckiego widoku bazy danych Notion z ekranu głównego do bazy CRM z pełnym zestawem narzędzi (tworzenie kursantów z generatorami haseł, tworzenie grup/par `CreateGroupModal`, synchronizacja Notion, akcje masowe na zaznaczonych kontach).
+2. Nowy widok „Historia Lekcji” na ekranie głównym panelu lektora w stylu Notion: poziome zakładki kursantów/grup na górze, wyszukiwarka live i filtry statusu, tabela z 4 blokami Notion, błyskawiczny slide-over drawer do podglądu 4 bloków z odsłuchem TTS i kopiowaniem oraz bezpośrednie skróty do Notatnika, Pracy domowej, Prezentacji i Profilu.
+
+Zrobione:
+- `components/admin/TeacherLessonHistoryView.tsx` (nowy plik) — dedykowany widok historii lekcji w stylu Notion z poziomymi zakładkami wszystkich kursantów/grup, filtrami statusu (*Wszystkie*, *Odbyte*, *Weryfikacja*), tabelą 4 bloków oraz wysuwanym modalem/drawerem szczegółów 4 bloków (Words & Phrases z audio TTS, Corrections & Pronunciation, Homework z kluczem odpowiedzi, Next Lesson Plan) i skrótami 1-klik.
+- `components/admin/StandaloneStudentDatabaseScreen.tsx` — zunifikowany panel CRM łączący widok tabeli Notion z filtrami kontraktorów (*Wszyscy*, *Aktywni*, *Indywidualni*, *Grupy & Pary*, *JCL*, *Inspiro*, *Axell*, *Direct*), wyszukiwarką, multi-selectem i paskiem akcji masowych (zmiana poziomu, kontraktora, statusu, usuwanie) oraz modalami: dodawanie kursanta z generatorem haseł, tworzenie grup/par (`CreateGroupModal`), wysyłka zaproszeń e-mail (`StudentInviteEmailModal`) i synchronizacja Notion (`NotionSyncButton`).
+- `components/admin/AdminPanel.tsx` — zastąpienie tabeli kursantów na głównym ekranie komponentem `TeacherLessonHistoryView`, dodanie agregacji lekcji `allTeacherLessons` i `fetchAllLessons`, przekierowanie kafelka „Profil kursantów” do zunifikowanego CRM.
+- `services/lessonRecord.ts` — funkcja `getAllLessonRecordsForTeacher` agregująca, deduplikująca i sortująca lekcje ze wszystkich podkolekcji kursantów.
+- `CHANGELOG.md` & `AGENT_LOG.md` — uzupełnienie dokumentacji projektu o rejestr rundy 11.
+
+Decyzje architektoniczne:
+- Ekran główny lektora stawia teraz w centrum bieżący strumień lekcji i 4 bloki dydaktyczne, dając lektorowi natychmiastowy dostęp do historii spotkań, notatnika live i zadawania prac domowych.
+- Pełne zarządzanie kontami, uprawnieniami, grupami i profilami zostało zintegrowane w dedykowanym module „Profile kursantów” (CRM), eliminując redundancję i podwójne listy.
+
+Weryfikacja i stan:
+- `npx tsc --noEmit` — 0 błędów typowania TypeScript.
+- `npm test` — 320/320 testów jednostkowych zaliczonych (100%).
+- `npm run build` — poprawna kompilacja bundle frontend + service worker + backend.
+
