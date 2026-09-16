@@ -814,6 +814,7 @@ export const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
             vocabulary: data.words,
             followUp: data.followUp,
           }) : undefined}
+          onClose={() => setShowPresentationView(false)}
         />
       </div>
     );

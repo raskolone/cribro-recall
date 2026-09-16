@@ -2349,6 +2349,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   openLessonRecordModal('edit', undefined, true);
                   showToast('Przeniesiono podsumowanie prezentacji do formularza lekcji!');
                 }}
+                onClose={() => setActiveTab(null)}
               />
             )}
             {activeTab === 'lesson-planner' && (

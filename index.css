@@ -994,9 +994,11 @@ tr.liquid-glass-hover:hover {
 .pad-paper hr { border: 0; border-top: 1px solid var(--pad-line); margin: 1.2em 0; }
 .pad-paper blockquote {
   margin: 0.8em 0;
-  padding: 0.1em 0 0.1em 1em;
-  border-left: 3px solid var(--pad-line);
-  color: var(--pad-muted);
+  padding: 0.25em 0.8em;
+  border-left: 3px solid var(--pad-link);
+  background: var(--pad-mark);
+  border-radius: 0 6px 6px 0;
+  color: var(--pad-fg);
 }
 .pad-paper code {
   background: var(--pad-mark);
@@ -1007,6 +1009,7 @@ tr.liquid-glass-hover:hover {
 }
 .pad-paper table { border-collapse: collapse; }
 .pad-paper td, .pad-paper th { border: 1px solid var(--pad-line); padding: 0.35em 0.6em; }
+.pad-paper th { background: var(--pad-mark); color: var(--pad-h); font-weight: 700; }
 .pad-paper input[type="checkbox"] { accent-color: var(--pad-link); }
 
 /* ── Nagłówki zwijane (toggle) ──

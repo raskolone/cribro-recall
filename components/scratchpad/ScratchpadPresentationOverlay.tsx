@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Airplay,
   CheckCircle2,
@@ -67,6 +67,18 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
   const [showHints, setShowHints] = useState(false);
   const [localInputAnswer, setLocalInputAnswer] = useState('');
 
+  // Obsługa klawisza ESC do wyjścia z prezentacji
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   if (!presentation.active) return null;
 
   const isInteractive =
@@ -134,10 +146,12 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
             <button
               type="button"
               onClick={onClose}
+              title="Zakończ prezentację (Klawisz Esc)"
               className="text-xs font-bold py-2 px-4 rounded-xl bg-white/10 hover:bg-rose-500/20 text-text-hi hover:text-rose-300 border border-white/15 hover:border-rose-500/40 flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <X size={15} />
-              Zakończ i wróć do notatnika
+              <span>Zakończ i wróć</span>
+              <kbd className="text-[10px] font-mono opacity-70 px-1 py-0.2 rounded bg-white/10">Esc</kbd>
             </button>
           ) : (
             <span className="text-xs text-content-muted flex items-center gap-1.5 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full">

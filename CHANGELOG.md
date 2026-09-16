@@ -198,6 +198,41 @@ we dwoje na żywo.
 
 ---
 
+### 🚀 Spójność Motywów Pomocnika Lektora, Walidacja Ciemnego Trybu Notatnika & Wyjście z Prezentacji Klawiszem ESC (2026-09-16, runda 24)
+
+**1. Spójność Motywów Pomocnika Lektora (Live Companion) (`ScratchpadTeacherCompanionDrawer.tsx`):**
+- **Eliminacja sztywnych barw i pełna adaptacja do motywu jasnego/ciemnego**:
+  - Usunięto sztywne, ciemne heksadecymalne wartości (`bg-[#0e131f]`, `bg-[#16273b]`, `bg-[#331828]`, `bg-[#2b192e]`, `bg-ink-1`, surowe `text-white`), które powodowały drastyczny rozjazd wizualny przy włączonym trybie jasnym.
+  - Całość szuflady oparto na tokenach projektowych: kontener `bg-base-200 border-l border-line-strong`, nagłówki `bg-base-100/70 border-line`, teksty `text-text-hi` oraz `text-content-muted`.
+- **Czytelność prywatnej przestrzeni lektora (Side Notes)**:
+  - Naprawiono żółtą kartkę informacyjną: w trybie jasnym tekst ma wysoki kontrast (`text-amber-900` / `text-amber-800`), a w ciemnym elegancki odcień (`text-amber-200` / `text-amber-300`).
+  - Pole `textarea` zyskało naturalne tło `bg-base-100`, wyraźny obrys `border-line-strong` oraz czytelny kolor atramentu `text-text-hi` z delikatnym akcentem focus ring.
+- **Karty scenariusza i ćwiczeń Kahoot-Style**:
+  - Karty zagadnień i pytań dyskusyjnych otrzymały tokeny semantyczne (`bg-sky-500/15`, `bg-rose-500/15`), a Budka Suflera (Teacher's Notes) i ćwiczenia interaktywne płynnie dopasowują się do wybranego motywu.
+
+**2. Walidacja i Optymalizacja Kolorystyczna Ciemnego Trybu Notatnika (`ScratchpadEditor.tsx`, `index.css`):**
+- **Inteligentny domyślny motyw kartki (`paperTheme`)**:
+  - Jeżeli użytkownik nie zapisał ręcznie preferencji w `localStorage`, notatnik automatycznie przyjmuje aktualny motyw aplikacji (w trybie nocnym startuje z ciemną kartką, w dziennym z jasną).
+- **Zwiększony kontrast zakreślaczy lektorskich na ciemnej kartce**:
+  - Wprowadzono dynamiczny dobór parametrów zakreślaczy w `ScratchpadEditor.tsx` zależny od motywu kartki (`paperTheme === 'dark' ? ... : ...`).
+  - Na ciemnej kartce (`#111a2c`): błąd to `#fca5a5` na `rgba(239, 68, 68, 0.28)`, poprawna forma to `#6ee7b7` na `rgba(16, 185, 129, 0.28)` (spójne z akcentem marki), a nowe słówko to `#fcd34d` na `rgba(245, 158, 11, 0.28)`.
+  - W trybie jasnym zakreślenia używają nasyconych, ciemniejszych atramentów z delikatniejszym tłem.
+- **Dopracowane elementy edytora w CSS**:
+  - Wzbogacono bloki cytatów (`blockquote`) oraz nagłówki tabel (`th`), nadając im elegancki akcent marki Nocturne Green i wysoki kontrast.
+
+**3. Opcja Wyjścia z Prezentacji oraz Klawisz ESC (`LessonPresentationView.tsx`, `AdminPanel.tsx`, `LessonPlannerStudio.tsx`, `ScratchpadPresentationOverlay.tsx`, `LiveJoinScreen.tsx`):**
+- **Dedykowany przycisk wyjścia**:
+  - W pasku narzędzi prezentacji (`LessonPresentationView.tsx`) umieszczono wyrazisty, ergonomiczny przycisk `[🚪 Wyjdź Esc]` z ikoną `LogOut` i etykietą skrótu.
+- **Hierarchiczna obsługa klawisza ESC w trybie prezentacji**:
+  - Po naciśnięciu ESC system w pierwszej kolejności zamyka ewentualnie otwarte okna podręczne (tablicę, edytor slajdów, generator AI, bibliotekę talii, samouczek).
+  - Jeśli żadne podrzędne okno nie jest otwarte, ESC wyłącza tryb pełnoekranowy i zamyka prezentację poprzez callback `onClose`, zwracając użytkownika do panelu głównego.
+- **Propagacja wyjścia w aplikacji**:
+  - `AdminPanel.tsx` oraz `LessonPlannerStudio.tsx` przekazują `onClose`, dzięki czemu lektor może błyskawicznie zamknąć prezentację jednym klawiszem.
+  - W nakładce prezentacji notatnika (`ScratchpadPresentationOverlay.tsx`) klawisz ESC natychmiast zamyka ćwiczenie i wraca do kartki.
+  - W widoku kursanta (`LiveJoinScreen.tsx`) klawisz ESC wyłącza fullscreen lub umożliwia opuszczenie aktywnej sesji live.
+
+---
+
 ### 🚀 Zarządzanie Kontami Kursantów, Bezpieczeństwo Haseł, Opcjonalny Mailing Notion, Weryfikacja Statystyk & Zasilanie Learning Curve ze Wszystkich Źródeł (2026-09-16, runda 23)
 
 **1. Bezpieczeństwo Haseł Kursantów i Kopiowanie Hasła dla Admina (`StudentProfileHeader.tsx`, `StandaloneStudentDatabaseScreen.tsx`, `StudentDatabaseScreen.tsx`, `AuthContext.tsx`, `ForcePasswordChangeScreen.tsx`, `PasswordChangeSuggestion.tsx`):**

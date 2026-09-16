@@ -159,6 +159,26 @@ export const LiveJoinScreen: React.FC = () => {
     setErrorMessage(null);
   };
 
+  // Obsługa klawisza ESC do wyjścia z pełnego ekranu lub opuszczenia lekcji
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isFullscreen) {
+          e.preventDefault();
+          if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+          }
+          setIsFullscreen(false);
+        } else if (joinedPin) {
+          e.preventDefault();
+          handleLeave();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen, joinedPin]);
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen().catch(() => {});
@@ -348,7 +368,8 @@ export const LiveJoinScreen: React.FC = () => {
           </button>
           <button
             onClick={handleLeave}
-            title="Opuść lekcję"
+            title="Opuść lekcję (Klawisz Esc)"
+            aria-label="Opuść lekcję"
             className="p-1.5 rounded-lg bg-error/15 hover:bg-error/25 text-error transition-all border border-error/30"
           >
             <LogOut className="w-4 h-4" />

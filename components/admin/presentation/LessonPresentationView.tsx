@@ -4,7 +4,7 @@ import {
   Plus, Edit2, Trash2, Save, CheckCircle2,
   BookOpen, Layers, CloudUpload, CloudOff,
   Zap, MessageSquare, Folder, Wand2,
-  PenLine, FileEdit, GraduationCap, SlidersHorizontal
+  PenLine, FileEdit, GraduationCap, SlidersHorizontal, LogOut
 } from 'lucide-react';
 
 import { 
@@ -82,12 +82,14 @@ interface LessonPresentationViewProps {
     thingsToImprove: string;
     followUp: string;
   }) => void;
+  onClose?: () => void;
 }
 
 export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
   selectedUser,
   lessonRecords = [],
-  onOpenLessonFormWithData
+  onOpenLessonFormWithData,
+  onClose
 }) => {
   const studentName = selectedUser 
     ? (selectedUser.firstName ? `${selectedUser.firstName} ${selectedUser.lastName || ''}`.trim() : selectedUser.username)
@@ -192,6 +194,19 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
     }
   };
 
+  // Wyjście z trybu prezentacji (zamknięcie ewentualnego fullscreen i powrót)
+  const handleExitPresentation = useCallback(() => {
+    if (isFullscreen) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+      setIsFullscreen(false);
+    }
+    if (onClose) {
+      onClose();
+    }
+  }, [isFullscreen, onClose]);
+
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -205,6 +220,50 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger if typing in an input/textarea
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) {
+        return;
+      }
+
+      // Klawisz ESC — zamyka najpierw aktywne modale/narzędzia, a potem zamyka całą prezentację
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (isWhiteboardOpen) {
+          setIsWhiteboardOpen(false);
+          return;
+        }
+        if (isSavedDecksOpen) {
+          setIsSavedDecksOpen(false);
+          return;
+        }
+        if (isDeckMenuOpen) {
+          setIsDeckMenuOpen(false);
+          return;
+        }
+        if (isSlideEditorOpen) {
+          setIsSlideEditorOpen(false);
+          return;
+        }
+        if (isAiGeneratorOpen) {
+          setIsAiGeneratorOpen(false);
+          return;
+        }
+        if (isImportModalOpen) {
+          setIsImportModalOpen(false);
+          return;
+        }
+        if (isGuidelinesModalOpen) {
+          setIsGuidelinesModalOpen(false);
+          return;
+        }
+        if (isSlideAssistantModalOpen) {
+          setIsSlideAssistantModalOpen(false);
+          return;
+        }
+        if (isCoachOpen) {
+          setIsCoachOpen(false);
+          return;
+        }
+
+        handleExitPresentation();
         return;
       }
 
@@ -237,7 +296,20 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentDeck.slides.length, isFullscreen, isCoachOpen]);
+  }, [
+    currentDeck.slides.length,
+    isFullscreen,
+    isCoachOpen,
+    isWhiteboardOpen,
+    isSavedDecksOpen,
+    isDeckMenuOpen,
+    isSlideEditorOpen,
+    isAiGeneratorOpen,
+    isImportModalOpen,
+    isGuidelinesModalOpen,
+    isSlideAssistantModalOpen,
+    handleExitPresentation
+  ]);
 
   /**
    * Obiekt notatnika w pamięci, nie tworzony przy każdym renderze.
@@ -624,6 +696,19 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
             onClick={() => setIsCoachOpen(true)}
             labelHidden
           />
+
+          {/* Przycisk wyjścia z prezentacji */}
+          <button
+            type="button"
+            onClick={handleExitPresentation}
+            title="Wyjdź z trybu prezentacji (Klawisz Esc)"
+            aria-label="Wyjdź z prezentacji"
+            className="h-9 px-3 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 hover:text-rose-300 border border-rose-500/30 flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-sm ml-1"
+          >
+            <LogOut size={14} />
+            <span>Wyjdź</span>
+            <kbd className="hidden sm:inline text-[10px] font-mono opacity-70 px-1 py-0.2 rounded bg-black/20 dark:bg-white/10">Esc</kbd>
+          </button>
         </div>
       </div>
 

@@ -231,9 +231,16 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [paperTheme, setPaperTheme] = useState<'light' | 'dark'>(() => {
     try {
-      return window.localStorage.getItem('scratchpad_paper_theme') === 'dark' ? 'dark' : 'light';
+      const saved = window.localStorage.getItem('scratchpad_paper_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      if (typeof document !== 'undefined') {
+        const isLight = document.documentElement.classList.contains('light') ||
+          document.documentElement.getAttribute('data-theme') === 'light';
+        return isLight ? 'light' : 'dark';
+      }
+      return 'dark';
     } catch {
-      return 'light';
+      return 'dark';
     }
   });
   const paperWrapRef = useRef<HTMLDivElement>(null);
@@ -2041,7 +2048,12 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               <button
                 type="button"
                 onMouseDown={event => event.preventDefault()}
-                onClick={() => handleHighlight('rgba(209, 84, 76, 0.22)', NOTEBOOK_COLORS.red)}
+                onClick={() =>
+                  handleHighlight(
+                    paperTheme === 'dark' ? 'rgba(239, 68, 68, 0.28)' : 'rgba(209, 84, 76, 0.18)',
+                    paperTheme === 'dark' ? '#fca5a5' : '#b91c1c'
+                  )
+                }
                 className="h-7 px-2 rounded-lg text-[11px] font-bold bg-danger/15 text-danger border border-danger/30 hover:bg-danger/25 transition-colors cursor-pointer shrink-0"
                 title="Zaznacz fragment jako błąd kursanta"
               >
@@ -2050,7 +2062,12 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               <button
                 type="button"
                 onMouseDown={event => event.preventDefault()}
-                onClick={() => handleHighlight('rgba(23, 145, 122, 0.22)', NOTEBOOK_COLORS.green)}
+                onClick={() =>
+                  handleHighlight(
+                    paperTheme === 'dark' ? 'rgba(16, 185, 129, 0.28)' : 'rgba(23, 145, 122, 0.18)',
+                    paperTheme === 'dark' ? '#6ee7b7' : '#047857'
+                  )
+                }
                 className="h-7 px-2 rounded-lg text-[11px] font-bold bg-accent/12 text-accent border border-accent/30 hover:bg-accent/20 transition-colors cursor-pointer shrink-0"
                 title="Zaznacz fragment jako poprawną formę"
               >
@@ -2059,7 +2076,12 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               <button
                 type="button"
                 onMouseDown={event => event.preventDefault()}
-                onClick={() => handleHighlight('rgba(192, 106, 38, 0.22)', NOTEBOOK_COLORS.orange)}
+                onClick={() =>
+                  handleHighlight(
+                    paperTheme === 'dark' ? 'rgba(245, 158, 11, 0.28)' : 'rgba(192, 106, 38, 0.18)',
+                    paperTheme === 'dark' ? '#fcd34d' : '#b45309'
+                  )
+                }
                 className="h-7 px-2 rounded-lg text-[11px] font-bold bg-warn/15 text-warn border border-warn/30 hover:bg-warn/25 transition-colors cursor-pointer shrink-0"
                 title="Wyróżnij nowe słówko"
               >
