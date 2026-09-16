@@ -236,6 +236,11 @@ we dwoje na żywo.
 - W spisie treści aktywny rozdział/lekcja otrzymuje szmaragdowy akcent z lewej strony (`border-l-2 border-primary bg-primary/15`), a punkt wskaźnika zyskuje szmaragdową poświatę `shadow-[0_0_8px_rgba(114,240,180,0.8)] scale-125`.
 - Zakreślacze lektorskie w trybie ciemnym używają autentycznych barw Nocturne (`#72f0b4`, `#fbbf24`, `#fb7185`).
 
+**6. Blokada Czatu AI Notatnika dla Kursanta (`ScratchpadEditor.tsx`):**
+- Asystent notatnika (Czat AI / Gemini 2.5 Flash) został stworzony jako narzędzie metodyczno-dydaktyczne dla lektora (analiza prywatnych Side Notes, generowanie ćwiczeń, podsumowywanie notatek do prac domowych).
+- Przycisk `[ ✨ Czat AI ]` w pasku formatowania oraz wysuwany panel asystenta są renderowane **wyłącznie dla lektora i administratora** (`isTeacher`).
+- Funkcje wysyłki wiadomości (`handleSendAiChat`) oraz aktywacji z poziomu notatek lektorskich (`handleTriggerAiFromNotes`) zostały zabezpieczone twardą strażą uprawnień (`if (!isTeacher) return;`), całkowicie odcinając dostęp kursantom.
+
 ---
 
 ### 🚀 Kontrast Pomocnika Lektora w Trybie Jasnym & Pełna Dostępność Ćwiczenia „Koło Fortuny" w Notatniku i Prezentacji (2026-09-16, runda 25)

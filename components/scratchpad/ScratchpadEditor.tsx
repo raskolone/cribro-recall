@@ -1028,6 +1028,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
   // ── Obsługa zapytań do wbudowanego Asystenta AI Notatnika ──
   const handleSendAiChat = async (customPrompt?: string) => {
+    if (!isTeacher) return;
     const promptToSend = (customPrompt || aiChatDraft).trim();
     const attachmentsToSend = [...pendingAiAttachments];
     if ((!promptToSend && attachmentsToSend.length === 0) || isAiGenerating) return;
@@ -1459,6 +1460,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
   };
 
   const handleTriggerAiFromNotes = (promptText: string) => {
+    if (!isTeacher) return;
     setIsAiChatOpen(true);
     handleSendAiChat(promptText);
   };
@@ -2313,21 +2315,23 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           </>
         )}
 
-        {/* Prawa strona paska narzędzi: Czat AI, Spis treści i zwijanie */}
+        {/* Prawa strona paska narzędzi: Czat AI (tylko dla lektora), Spis treści i zwijanie */}
         <div className="ml-auto flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={() => setIsAiChatOpen(v => !v)}
-            title={isAiChatOpen ? 'Zamknij Czat AI dokumentu' : 'Otwórz Czat AI dokumentu (Gemini 2.5 Flash)'}
-            className={`h-7 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
-              isAiChatOpen
-                ? 'bg-primary text-accent-ink shadow-sm shadow-primary/30'
-                : 'bg-primary/10 text-primary border border-primary/25 hover:bg-primary/20'
-            }`}
-          >
-            <Sparkles size={13} className={isAiGenerating ? 'animate-spin' : ''} />
-            <span>Czat AI</span>
-          </button>
+          {isTeacher && (
+            <button
+              type="button"
+              onClick={() => setIsAiChatOpen(v => !v)}
+              title={isAiChatOpen ? 'Zamknij Czat AI dokumentu' : 'Otwórz Czat AI dokumentu (Gemini 2.5 Flash)'}
+              className={`h-7 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                isAiChatOpen
+                  ? 'bg-primary text-accent-ink shadow-sm shadow-primary/30'
+                  : 'bg-primary/10 text-primary border border-primary/25 hover:bg-primary/20'
+              }`}
+            >
+              <Sparkles size={13} className={isAiGenerating ? 'animate-spin' : ''} />
+              <span>Czat AI</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setIsTocOpen(v => !v)}
@@ -2594,8 +2598,8 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           </div>
         </div>
 
-        {/* PANEL ASYSTENTA AI W DOKUMENCIE */}
-        {isAiChatOpen && (
+        {/* PANEL ASYSTENTA AI W DOKUMENCIE (Dostępny wyłącznie dla lektora) */}
+        {isTeacher && isAiChatOpen && (
           <aside className="w-80 sm:w-96 shrink-0 border-l border-line-strong pad-bar flex flex-col z-20 select-none animate-fadeIn bg-base-200/95 backdrop-blur-xl">
             {/* Header */}
             <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-line-soft bg-base-100/60 sticky top-0 z-10">
