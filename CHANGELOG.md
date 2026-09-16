@@ -203,6 +203,32 @@ Firestore obok lekcji.
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
+### 🚀 Strona Główna Panelu Nauczyciela z Centralnym Chatem Asystenta AI, Sugerowanymi Pytaniami, Symetrycznym Rozmieszczeniem Kafelków oraz Kontekstowym Dymkiem Czatu (2026-09-16, runda 14)
+
+**1. Nowa Strona Główna Panelu Lektora z Centralnym Asystentem AI (`AdminPanel.tsx`, `TeacherAssistant.tsx`):**
+- **Domyślny widok pulpitu**: Po wejściu do panelu nauczyciela (gdy żaden moduł ani profil kursanta nie jest wybrany) system nie wyświetla już bezpośrednio historii lekcji ani bazy kursantów, lecz prezentuje nowoczesne, centralne okno **Asystenta AI CRIBRO**.
+- **Sugerowane pytania (Prompt chips)**: Chat zawiera zestaw szybkich sugestii kontekstowych klikalnych jednym przyciskiem:
+  - *„Z kim była ostatnia lekcja?”*
+  - *„Kto ma niezrobioną pracę domową?”*
+  - *„Zaproponuj powtórkę na dzisiejszą lekcję”*
+  - *„Jakie słownictwo ostatnio przerabiałem?”*
+  - *„Kto najdłużej nie miał lekcji?”*
+  - *„Podsumuj postępy moich kursantów”*
+- **Karty akcji i przekierowania**: Odpowiedzi asystenta generują automatyczne przyciski akcji przenoszące lektora wprost do odpowiedniego modułu (profil ucznia, zadanie domowe, planer lekcji, notatnik).
+- **Historia sesji i kopiowanie odpowiedzi**: Pełna historia wcześniejszych rozmów z możliwością wznawiania sesji oraz przycisk kopiowania treści odpowiedzi.
+
+**2. Symetryczne, Wyśrodkowane Rozmieszczenie Wszystkich Rzędów Kafelków (`AdminPanel.tsx`):**
+- **Jednolita szerokość i wyśrodkowanie (`max-w-5xl mx-auto w-full justify-center`)**: Wszystkie 3 poziomy narzędzi lektora:
+  1. Główne narzędzia (Kursanci, Historia lekcji, Notatnik) — siatka 3 kolumn;
+  2. Narzędzia pomocnicze (Zadania i testy, Planer lekcji, Mailing) — siatka 3 kolumn;
+  3. Rozwijany panel „Więcej narzędzi” (Prezentacja, Słownictwo, Statystyki) — siatka 3 kolumn;
+  zostały wyśrodkowane i mają identyczną geometrię, eliminując wszelkie asymetrie niezależnie od rozdzielczości ekranu.
+- **Płynne przełączanie / Toggle modułów**: Ponowne kliknięcie aktywnego kafelka zamyka moduł i natychmiast powraca do strony głównej z centralnym chatem AI. Przycisk *„Wróć do strony głównej”* pozwala na natychmiastowe wyczyszczenie aktywnego widoku.
+
+**3. Warunkowy, Pływający Dymek Czatu w Lewym Dolnym Rogu (`Dashboard.tsx`, `TeacherAssistant.tsx`):**
+- **Inteligentne ukrywanie**: Na stronie głównej panelu lektora pływający dymek w lewym dolnym rogu jest niewidoczny, aby nie dublować centralnego chatu.
+- **Pojawianie się w innych sekcjach**: W momencie przejścia do jakiejkolwiek innej sekcji lub modułu (Baza kursantów, Historia lekcji, Profil kursanta, Mailing, Planer, Prezentacja, Zadania domowe itd.), dymek asystenta natychmiast pojawia się w lewym dolnym rogu ekranu, umożliwiając szybkie zadawanie pytań w kontekście bieżącej pracy.
+
 ### 🚀 Filtrowanie spotkań spoza lekcji w Notion, Jednolity CRM i Historia pod kafelkami ze skalowaniem i strzałkami "Pokaż więcej", Wskaźnik Laserowy na żywo, Orientacja A4, Spis Treści H1/H2 i Prototyp Prezentacji w Notatniku (2026-09-16, runda 13)
 
 **1. Inteligentne filtrowanie i popup dla transkrypcji Notion (`server.ts`, `NotionUnmatchedTranscriptsModal.tsx`, `TeacherLessonHistoryView.tsx`):**

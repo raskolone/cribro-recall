@@ -58,6 +58,7 @@ import { openScratchpadTab } from '../../services/scratchpadService';
 import TeacherAttentionBanner from './TeacherAttentionBanner';
 import TeacherLessonHistoryView from './TeacherLessonHistoryView';
 import { StandaloneStudentDatabaseScreen } from './StandaloneStudentDatabaseScreen';
+import TeacherAssistant from './TeacherAssistant';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
@@ -76,7 +77,13 @@ interface UserWithId extends User {
   id: string;
 }
 
-interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: any, extra?: any) => void; initialSelectedUserId?: string | null; onUserSelect?: (userId: string | null) => void; }
+interface AdminPanelProps { 
+  initialTab?: string | null; 
+  onViewChange?: (view: any, extra?: any) => void; 
+  initialSelectedUserId?: string | null; 
+  onUserSelect?: (userId: string | null) => void; 
+  onTabChange?: (tab: string | null) => void;
+}
 
 /**
  * Przebudowa panelu wg docs/kolejka-przebudowa-panelu.md: Przegląd panelu i
@@ -90,7 +97,7 @@ interface AdminPanelProps { initialTab?: string | null; onViewChange?: (view: an
  */
 const SHOW_LEGACY_PANEL_TOOLS = false;
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId, onUserSelect }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId, onUserSelect, onTabChange }) => {
   const { sets: adminSets, getFlashcards } = useFlashcards();
   const { language } = useLanguage();
   const { connectGoogleDrive, connectGoogleWorkspace } = useAuth();
@@ -285,15 +292,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
 
   const handleTileClick = (tabId: string) => {
     if (tabId === 'students') {
-      setActiveTab('students');
+      setActiveTab((prev) => (prev === 'students' ? null : 'students'));
       return;
     }
     if (tabId === 'lesson-history' || tabId === 'history') {
-      setActiveTab('lesson-history');
+      setActiveTab((prev) => (prev === 'lesson-history' || prev === 'history' ? null : 'lesson-history'));
       return;
     }
     if (tabId === 'mailing') {
-      setActiveTab('mailing');
+      setActiveTab((prev) => (prev === 'mailing' ? null : 'mailing'));
       return;
     }
     if (tabId === 'notatnik') {
@@ -308,7 +315,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     }
     // Moduły ogólne (niezwiązane z profilem) — przełączane bezpośrednio
     if (tabId === 'lesson-planner' || tabId === 'presentation') {
-      setActiveTab(tabId);
+      setActiveTab((prev) => (prev === tabId ? null : tabId));
       setTimeout(() => {
         tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 150);
@@ -318,7 +325,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       setTargetTabAfterSelect(tabId);
       setIsStudentPickerOpen(true);
     } else {
-      setActiveTab(tabId);
+      setActiveTab((prev) => (prev === tabId ? null : tabId));
       setTimeout(() => {
         tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 150);
@@ -1807,7 +1814,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         { opacity: 1, y: 0, duration: 0.3, ease: "power2.out", stagger: 0.05, clearProps: "all" }
       );
     }
-  }, [activeTab]);
+    onTabChange?.(activeTab);
+  }, [activeTab, onTabChange]);
 
 
   useEffect(() => {
@@ -1942,19 +1950,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         )}
       </div>
 
-      {/* Sygnał "wymaga uwagi" — trwały nad treścią panelu, patrz
-          docs/kolejka-przebudowa-panelu.md pkt 1 i docs/plan-weekend-2026-09-12.md Etap C. */}
+      {/* Sygnał "wymaga uwagi" — trwały nad treścią panelu */}
       <TeacherAttentionBanner
         onOpenHomework={(filterStatus) => onViewChange?.('homework', { filterStatus })}
       />
 
       {SHOW_LEGACY_PANEL_TOOLS && <TeacherOverview students={activeUsers} language={language} />}
 
-      {/* GŁÓWNE KAFELKI LEKTORA — trzy najczęściej używane narzędzia.
-          Kolejność i wybór wg docs/kolejka-przebudowa-panelu.md §2 i §5:
-          Notatnik jako trzeci kafelek, bo jest używany na każdej lekcji
-          (Planer, używany rzadziej, zostaje w listwie poniżej). */}
-      <div className="space-y-3">
+      {/* GŁÓWNE KAFELKI LEKTORA — symetryczne i wyśrodkowane */}
+      <div className="space-y-4 max-w-5xl mx-auto w-full">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-extrabold uppercase tracking-wider text-content-muted flex items-center gap-2">
             <span>Główne Narzędzia Lektora</span>
@@ -1962,20 +1966,21 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               Tryb ogólny
             </span>
           </h2>
-          {activeTab && ['lesson-planner', 'presentation'].includes(activeTab) && (
+          {activeTab && (
             <button
-              onClick={() => setActiveTab(selectedUser ? 'profile' : null)}
+              onClick={() => setActiveTab(null)}
               className="text-xs text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
             >
-              <X size={13} /> Zamknij moduł ogólny
+              <X size={13} /> Wróć do strony głównej
             </button>
           )}
         </div>
 
+        {/* 1. Główne 3 kafelki lektora (Kursanci, Historia lekcji, Notatnik) - symetryczne, wyśrodkowane */}
         <div
           ref={mainMenuRef}
           data-coach="tour-teacher-main"
-          className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4"
+          className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4 max-w-5xl mx-auto w-full justify-center"
         >
           {[
             {
@@ -2001,7 +2006,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             }
           ].map((tile) => {
             const IconComp = tile.icon;
-            const isActive = activeTab === tile.id || (tile.id === 'lesson-history' && (activeTab === null || activeTab === 'lesson-history' || activeTab === 'history'));
+            const isActive = activeTab === tile.id || (tile.id === 'lesson-history' && (activeTab === 'lesson-history' || activeTab === 'history'));
             const hasNotification = Boolean((tile as any).hasNotification);
             const notificationCount = Number((tile as any).notificationCount || 0);
 
@@ -2077,135 +2082,91 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             );
           })}
         </div>
-      </div>
 
-      {/* LISTWA NARZĘDZI — to, czego nie ma w kafelkach wyżej.
+        {/* 2. Trzy narzędzia pomocnicze (Zadania i testy, Planer lekcji, Mailing) - symetryczne, wyśrodkowane */}
+        <div data-coach="tour-teacher-work" className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 max-w-5xl mx-auto w-full justify-center">
+          {[
+            { id: 'homework', title: 'Zadania i testy', icon: ClipboardList, isRoute: true },
+            { id: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
+            {
+              id: 'mailing',
+              title: 'Mailing',
+              icon: Mail,
+              badge: unreadMailingCount > 0 ? String(unreadMailingCount) : undefined,
+            },
+          ].map((item) => {
+            const IconComp = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => ((item as any).isRoute ? onViewChange?.(item.id) : handleTileClick(item.id))}
+                className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                  item.badge
+                    ? 'border-amber-400/60 bg-amber-500/10 text-amber-200'
+                    : isActive
+                    ? 'border-primary/60 bg-primary/15 text-primary'
+                    : 'border-line-strong bg-line-soft/40 text-content-muted hover:text-text-hi hover:border-primary/40'
+                }`}
+              >
+                {item.badge && (
+                  <span className="absolute -top-1.5 -right-1.5 h-5 min-w-[1.25rem] px-1 rounded-full bg-amber-500 text-accent-ink text-[10px] font-bold flex items-center justify-center border border-black/20">
+                    {item.badge}
+                  </span>
+                )}
+                <IconComp size={18} />
+                <span>{item.title}</span>
+              </button>
+            );
+          })}
+        </div>
 
-          Prezentacja i Notatnik stały tu wcześniej po raz DRUGI, obok
-          własnych kafelków. Zamierzone to nie było korzyścią: ten sam
-          moduł w dwóch miejscach na jednym ekranie znaczy tylko tyle, że
-          nie wiadomo, które z nich jest właściwe. Zostaje to, czego wyżej
-          nie ma. */}
-      <div data-coach="tour-teacher-work" className="grid grid-cols-3 gap-2.5 sm:gap-3">
-        {/*
-          * TRZY PODRZĘDNE — i dokładnie trzy.
-          *
-          * Zadania i testy, Planer i Mailing to rzeczy, które lektor robi
-          * MIĘDZY lekcjami, a nie w ich trakcie: zadaje, układa, wysyła. Trzy
-          * główne kafelki wyżej obsługują samą lekcję; ta listwa obsługuje to,
-          * co wokół niej. Prezentacja zeszła do „Więcej narzędzi" — włącza się
-          * ją na część niektórych lekcji, nie co zajęcia.
-          */}
-        {[
-          /* Jeden kafelek na jedno miejsce: prace domowe i testy mieszkają
-             teraz na wspólnym ekranie (TeacherWorkScreen). Dwa kafelki do
-             dwóch sekcji tego samego ekranu byłyby dwoma nazwami tej samej
-             rzeczy. */
-          { id: 'homework', title: 'Zadania i testy', icon: ClipboardList, isRoute: true },
-          { id: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
-          {
-            id: 'mailing',
-            title: 'Mailing',
-            icon: Mail,
-            badge: unreadMailingCount > 0 ? String(unreadMailingCount) : undefined,
-          },
-        ].map((item) => {
-          const IconComp = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => ((item as any).isRoute ? onViewChange?.(item.id) : handleTileClick(item.id))}
-              className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-colors ${
-                item.badge
-                  ? 'border-amber-400/60 bg-amber-500/10 text-amber-200'
-                  : isActive
-                  ? 'border-primary/60 bg-primary/15 text-primary'
-                  : 'border-line-strong bg-line-soft/40 text-content-muted hover:text-text-hi hover:border-primary/40'
-              }`}
-            >
-              {item.badge && (
-                <span className="absolute -top-1.5 -right-1.5 h-5 min-w-[1.25rem] px-1 rounded-full bg-amber-500 text-accent-ink text-[10px] font-bold flex items-center justify-center border border-black/20">
-                  {item.badge}
-                </span>
-              )}
-              <IconComp size={18} />
-              <span>{item.title}</span>
-            </button>
-          );
-        })}
-      </div>
+        {/* 3. Więcej narzędzi — wyśrodkowane symetrycznie */}
+        <div data-coach="tour-teacher-more" className="space-y-3 max-w-5xl mx-auto w-full">
+          <button
+            type="button"
+            onClick={() => setShowMoreTools((prev) => !prev)}
+            className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-content-muted hover:text-text-hi transition-colors cursor-pointer"
+          >
+            {showMoreTools ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            Więcej narzędzi
+          </button>
 
-      {/* WIĘCEJ NARZĘDZI — zwinięte.
-
-          Panel lektora ma teraz TRZY POZIOMY i to jest cała jego struktura:
-          trzy duże kafelki na to, czym prowadzi się lekcję (profil kursanta,
-          kontekst, notatnik), trzy w listwie na to, co robi się między
-          lekcjami (praca domowa, testy, mailing), i ta lista na całą resztę.
-
-          Reszta jest zwinięta, bo to są rzeczy, po które sięga się raz na
-          tydzień. Rozwinięta na stałe byłaby ścianą kafelków nad treścią
-          panelu i zacierałaby różnicę między tym, co ważne, a tym, co po
-          prostu istnieje. */}
-      <div data-coach="tour-teacher-more" className="space-y-3">
-        <button
-          type="button"
-          onClick={() => setShowMoreTools((prev) => !prev)}
-          className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-content-muted hover:text-text-hi transition-colors"
-        >
-          {showMoreTools ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          Więcej narzędzi
-        </button>
-
-        {showMoreTools && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {[
-              /*
-               * Czego tu NIE MA i dlaczego:
-               *   Baza kursantów  — jest głównym kafelkiem wyżej,
-               *   Historia lekcji — nie jest narzędziem, jest zakładką
-               *                     w profilu kursanta (tam ma źródło danych),
-               *   Scenariusze     — należą do Planera lekcji, nie obok niego,
-               *   Podgląd kursanta — usunięty w całości (wraz z ekranami
-               *     `preview-*` i `StudentPreviewFrame`). Pięć kafelków
-               *     odtwarzających panel kursanta utrzymywało drugą, równoległą
-               *     drogę do tych samych danych i nikt z niej nie korzystał.
-               *   Baza tematów     — jest materiałem źródłowym scenariusza,
-               *     więc stoi w Planerze lekcji, obok Bazy scenariuszy.
-               */
-              { tab: 'presentation', title: 'Prezentacja', icon: Airplay },
-              { view: 'flashcard-sets', title: 'Słownictwo', icon: BookMarked },
-              { view: 'admin-stats', title: 'Statystyki', icon: BarChart2 },
-              /*
-               * Ustawienia i Diagnostyka NIE MAJĄ tu kafelków: oba siedzą pod
-               * kołem zębatym w pasku górnym, czyli tam, gdzie w każdym innym
-               * programie. Kafelek obok narzędzi do prowadzenia lekcji był
-               * drugim wejściem do tego samego miejsca — a dwa wejścia znaczą
-               * tylko tyle, że nie wiadomo, które jest właściwe.
-               */
-            ].map((item) => {
-              const IconComp = item.icon;
-              return (
-                <button
-                  key={(item as any).view || (item as any).tab}
-                  onClick={() =>
-                    (item as any).tab
-                      ? handleTileClick((item as any).tab)
-                      : onViewChange?.((item as any).view)
-                  }
-                  className="flex flex-col items-center justify-center gap-1.5 min-h-[4.5rem] py-3.5 px-2 rounded-2xl border border-line-strong bg-line-soft/40 text-content-muted hover:text-text-hi hover:border-primary/40 text-xs sm:text-sm font-semibold transition-colors text-center"
-                >
-                  <IconComp size={18} />
-                  <span className="leading-tight">{item.title}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
+          {showMoreTools && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-5xl mx-auto w-full justify-center">
+              {[
+                { tab: 'presentation', title: 'Prezentacja', icon: Airplay },
+                { view: 'flashcard-sets', title: 'Słownictwo', icon: BookMarked },
+                { view: 'admin-stats', title: 'Statystyki', icon: BarChart2 },
+              ].map((item) => {
+                const IconComp = item.icon;
+                const isActive = activeTab === (item as any).tab;
+                return (
+                  <button
+                    key={(item as any).view || (item as any).tab}
+                    onClick={() =>
+                      (item as any).tab
+                        ? handleTileClick((item as any).tab)
+                        : onViewChange?.((item as any).view)
+                    }
+                    className={`flex flex-col items-center justify-center gap-1.5 min-h-[4.5rem] py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-colors text-center cursor-pointer ${
+                      isActive
+                        ? 'border-primary/60 bg-primary/15 text-primary'
+                        : 'border-line-strong bg-line-soft/40 text-content-muted hover:text-text-hi hover:border-primary/40'
+                    }`}
+                  >
+                    <IconComp size={18} />
+                    <span className="leading-tight">{item.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
       </div>
 
-      {/* GŁÓWNY WIDOK: MODUŁ MAILING / PLANER / PREZENTACJA / KURSANCI LUB HISTORIA LEKCJI */}
+      {/* GŁÓWNY WIDOK: MODUŁ MAILING / PLANER / PREZENTACJA / KURSANCI / HISTORIA LEKCJI LUB STRONA GŁÓWNA (CHAT) */}
       <div className="w-full max-w-[1640px] mx-auto px-3 sm:px-6 lg:px-8">
       {activeTab === 'students' ? (
         <div className="space-y-4 animate-in fade-in duration-200 mt-2">
@@ -2216,6 +2177,53 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             }}
             onOpenMailing={() => setActiveTab('mailing')}
             onBack={() => setActiveTab(null)}
+          />
+        </div>
+      ) : activeTab === 'lesson-history' || activeTab === 'history' ? (
+        <div className="space-y-4 animate-in fade-in duration-200 mt-2">
+          <TeacherLessonHistoryView
+            lessons={allTeacherLessons}
+            students={users}
+            isLoading={isLoadingAllLessons}
+            onRefresh={() => fetchAllLessons(users)}
+            onSelectStudent={(student, targetTab) => {
+              if (student.id) {
+                handleSelectUser(student as UserWithId, targetTab || 'profile');
+              }
+            }}
+            onOpenNotebook={(student) => {
+              if (student.id) {
+                handleSelectUser(student as UserWithId, 'scratchpad');
+                openScratchpadTab(`sp_${student.id}`);
+              }
+            }}
+            onOpenHomework={(student, lesson) => {
+              if (student.id) {
+                handleSelectUser(student as UserWithId, 'homework');
+                onViewChange?.('homework');
+              }
+            }}
+            onOpenPresentation={async (lesson, student) => {
+              if (student?.id) {
+                handleSelectUser(student as UserWithId, 'presentation');
+                setActiveTab('presentation');
+              }
+            }}
+            onDeleteLesson={async (studentId, lesson) => {
+              try {
+                await deleteLessonRecord(studentId, lesson);
+                showToast("Lekcja została usunięta.");
+                if (selectedUser && selectedUser.id === studentId) {
+                  fetchUserLogsAndStats(studentId);
+                }
+                fetchAllLessons(users);
+              } catch (e: any) {
+                alert("Błąd podczas usuwania lekcji: " + (e.message || String(e)));
+              }
+            }}
+            onAddNewLesson={() => {
+              handleTileClick('lesson-planner');
+            }}
           />
         </div>
       ) : activeTab === 'mailing' ? (
@@ -2237,7 +2245,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               className="px-3 py-1.5 rounded-xl bg-line-soft hover:bg-line-soft text-content-muted hover:text-text-hi text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-line-strong"
             >
               <X size={14} />
-              Wróć do historii
+              Wróć do strony głównej
             </button>
           </div>
 
@@ -2351,51 +2359,25 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </div>
         </div>
       ) : (
-        /* Widok Historii Lekcji Notion-style na ekranie głównym */
-        <TeacherLessonHistoryView
-          lessons={allTeacherLessons}
-          students={users}
-          isLoading={isLoadingAllLessons}
-          onRefresh={() => fetchAllLessons(users)}
-          onSelectStudent={(student, targetTab) => {
-            if (student.id) {
-              handleSelectUser(student as UserWithId, targetTab || 'profile');
-            }
-          }}
-          onOpenNotebook={(student) => {
-            if (student.id) {
-              handleSelectUser(student as UserWithId, 'scratchpad');
-              openScratchpadTab(`sp_${student.id}`);
-            }
-          }}
-          onOpenHomework={(student, lesson) => {
-            if (student.id) {
-              handleSelectUser(student as UserWithId, 'homework');
-              onViewChange?.('homework');
-            }
-          }}
-          onOpenPresentation={async (lesson, student) => {
-            if (student?.id) {
-              handleSelectUser(student as UserWithId, 'presentation');
-              setActiveTab('presentation');
-            }
-          }}
-          onDeleteLesson={async (studentId, lesson) => {
-            try {
-              await deleteLessonRecord(studentId, lesson);
-              showToast("Lekcja została usunięta.");
-              if (selectedUser && selectedUser.id === studentId) {
-                fetchUserLogsAndStats(studentId);
+        /* activeTab === null: Strona główna panelu lektora - centralny Asystent AI / Chat */
+        <div className="mt-4 max-w-4xl mx-auto w-full animate-in fade-in duration-200">
+          <TeacherAssistant
+            mode="embedded"
+            onNavigateToModule={(mod, extra) => {
+              if (mod === 'scratchpad') {
+                openScratchpadTab(extra?.studentId ? `sp_${extra.studentId}` : undefined);
+              } else if (mod === 'students' || mod === 'lesson-history' || mod === 'mailing' || mod === 'lesson-planner' || mod === 'presentation') {
+                setActiveTab(mod);
+              } else if (onViewChange) {
+                onViewChange(mod, extra);
               }
-              fetchAllLessons(users);
-            } catch (e: any) {
-              alert("Błąd podczas usuwania lekcji: " + (e.message || String(e)));
-            }
-          }}
-          onAddNewLesson={() => {
-            handleTileClick('lesson-planner');
-          }}
-        />
+            }}
+            onSelectStudent={(studentId) => {
+              const u = users.find((x) => x.id === studentId);
+              if (u) handleSelectUser(u as UserWithId, 'profile');
+            }}
+          />
+        </div>
       )}
       </div>
         </>

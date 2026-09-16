@@ -340,6 +340,9 @@ const Dashboard: React.FC = () => {
             onUserSelect={(id) => {
               setAdminSelectedUserId(id);
             }}
+            onTabChange={(tab) => {
+              setAdminActiveTab(tab);
+            }}
             onViewChange={handleNavigate}
           />
         );
@@ -357,6 +360,9 @@ const Dashboard: React.FC = () => {
             initialSelectedUserId={adminSelectedUserId}
             onUserSelect={(id) => {
               setAdminSelectedUserId(id);
+            }}
+            onTabChange={(tab) => {
+              setAdminActiveTab(tab);
             }}
             onViewChange={handleNavigate}
           />
@@ -553,6 +559,9 @@ const Dashboard: React.FC = () => {
           onUserSelect={(id) => {
             setAdminSelectedUserId(id);
           }}
+          onTabChange={(tab) => {
+            setAdminActiveTab(tab);
+          }}
           onViewChange={handleNavigate}
         />
       );
@@ -582,6 +591,9 @@ const Dashboard: React.FC = () => {
             initialSelectedUserId={adminSelectedUserId}
             onUserSelect={(id) => {
               setAdminSelectedUserId(id);
+            }}
+            onTabChange={(tab) => {
+              setAdminActiveTab(tab);
             }}
             onViewChange={handleNavigate}
           />
@@ -738,10 +750,18 @@ const Dashboard: React.FC = () => {
         />
         <div className="flex-1 min-h-0 flex flex-col">{renderContent()}</div>
       </main>
-      {/* Asystent — pływający, wyłącznie dla lektora. Pytanie „co ostatnio
-          robiłem z Bartkiem" pada w trakcie robienia czegoś innego, więc nie
-          może wymagać porzucenia tego, co się robi. */}
-      {isTeacher && <TeacherAssistant />}
+      {/* Asystent — pływający w lewym dolnym rogu. Ukryty na stronie głównej panelu lektora (tam jest wbudowany na środku), widoczny w każdej innej sekcji i module */}
+      {isTeacher && (
+        <TeacherAssistant
+          mode="floating"
+          hidden={view === 'dashboard' && !adminSelectedUserId && !adminActiveTab}
+          onNavigateToModule={(mod, extra) => handleNavigate(mod as any, extra)}
+          onSelectStudent={(sId) => {
+            setAdminSelectedUserId(sId);
+            handleNavigate('admin', { studentId: sId });
+          }}
+        />
+      )}
       <AdminMessageModal />
     </div>
   );
