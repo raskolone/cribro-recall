@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Save, Plus, Trash2, Layers, Clock, Bookmark, Sparkles } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Save, Plus, Trash2, Layers, Clock, Bookmark, Sparkles, Volume2, Music, UploadCloud } from 'lucide-react';
 import { PresentationSlide, PresentationSlideItem, PresentationSlideType } from '../../../types';
 import Button from '../../ui/Button';
 
@@ -25,7 +25,10 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
   const [timerMinutes, setTimerMinutes] = useState(slide?.timerMinutes || 10);
   const [speakerNotes, setSpeakerNotes] = useState(slide?.speakerNotes || '');
   const [bgTheme, setBgTheme] = useState<PresentationSlide['bgTheme']>(slide?.bgTheme || 'dark');
+  const [audioUrl, setAudioUrl] = useState(slide?.audioUrl || '');
+  const [audioName, setAudioName] = useState(slide?.audioName || '');
   const [items, setItems] = useState<PresentationSlideItem[]>(slide?.items || []);
+  const audioInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddItem = () => {
     const newItem: PresentationSlideItem = {
@@ -65,6 +68,8 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
       timerMinutes: Number(timerMinutes) || 10,
       speakerNotes: speakerNotes.trim() || undefined,
       bgTheme,
+      audioUrl: audioUrl.trim() || undefined,
+      audioName: audioName.trim() || undefined,
       items: items.length > 0 ? items : undefined
     };
 
@@ -112,6 +117,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
                 <option value="vocabulary">Słownictwo & Wymowa (Vocabulary)</option>
                 <option value="grammar">Struktury językowe (Grammar / Formula)</option>
                 <option value="speaking">Konwersacje / Scenka (Speaking)</option>
+                <option value="listening">🎧 Słuchanie & Audio (Listening comprehension)</option>
                 <option value="practice">Ćwiczenia / Drills (Practice)</option>
                 <option value="enclosure">Enclosure (Podsumowanie, Quick Check, Exit Ticket)</option>
                 <option value="correction">Poprawki językowe (Correction)</option>
@@ -276,6 +282,76 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* AUDIO ATTACHMENT SECTION */}
+          <div className="pt-2 border-t border-white/10 space-y-2">
+            <label className="block text-xs font-bold text-content-muted">
+              Plik audio do slajdu (opcjonalnie):
+            </label>
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+              <input
+                ref={audioInputRef}
+                type="file"
+                accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > 15 * 1024 * 1024) {
+                    alert(`Plik "${file.name}" przekracza limit 15 MB.`);
+                    return;
+                  }
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    setAudioUrl(reader.result as string);
+                    setAudioName(file.name);
+                  };
+                  reader.readAsDataURL(file);
+                  e.target.value = '';
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => audioInputRef.current?.click()}
+                className="px-3 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-300 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <UploadCloud size={14} />
+                Wgraj audio (.mp3, .wav)
+              </button>
+              <input
+                type="url"
+                value={audioUrl.startsWith('data:') ? '' : audioUrl}
+                onChange={(e) => {
+                  setAudioUrl(e.target.value);
+                  if (!audioName) setAudioName('Audio z URL');
+                }}
+                placeholder={audioUrl.startsWith('data:') ? `Załączono: ${audioName}` : 'lub wklej bezpośredni link URL do audio...'}
+                className="flex-1 bg-base-300 border border-white/10 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-primary"
+              />
+              {audioUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAudioUrl('');
+                    setAudioName('');
+                  }}
+                  className="p-2 rounded-xl border border-white/10 hover:border-rose-500/50 text-content-muted hover:text-rose-400 text-xs transition-colors cursor-pointer shrink-0"
+                  title="Usuń plik audio"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            {audioUrl && (
+              <div className="p-2.5 rounded-xl bg-purple-950/25 border border-purple-500/30 space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-semibold text-purple-200">
+                  <Music size={13} className="text-purple-400 shrink-0" />
+                  <span className="truncate">{audioName || 'Ścieżka dźwiękowa'}</span>
+                </div>
+                <audio controls src={audioUrl} className="w-full h-8 rounded-lg accent-primary" />
               </div>
             )}
           </div>

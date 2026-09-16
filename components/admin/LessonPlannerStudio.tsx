@@ -35,6 +35,9 @@ import {
   FileText,
   Eye,
   HelpCircle,
+  Volume2,
+  Music,
+  UploadCloud,
 } from 'lucide-react';
 import { GeneratedLessonScenario, LessonAttachment, LessonRecord, User } from '../../types';
 import { LessonFileUploader } from './LessonFileUploader';
@@ -249,6 +252,38 @@ export const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
   const [showOptional, setShowOptional] = useState(false);
 
   const [attachments, setAttachments] = useState<LessonAttachment[]>([]);
+  const audioFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    if (file.size > 15 * 1024 * 1024) {
+      alert(`Plik "${file.name}" przekracza maksymalny limit 15 MB.`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const newAtt: LessonAttachment = {
+        id: `att-audio-${Date.now()}`,
+        name: file.name,
+        type: 'audio',
+        size: file.size,
+        mimeType: file.type || 'audio/mpeg',
+        dataUrl,
+      };
+      setAttachments(prev => [...prev, newAtt]);
+      setLaunchFeedback(`Dodano nagranie audio: ${file.name}`);
+      setTimeout(() => setLaunchFeedback(null), 3500);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleRemoveAttachment = (attId: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== attId));
+  };
   const [suggestion, setSuggestion] = useState('');
   const [variantCount, setVariantCount] = useState(3);
   const [variants, setVariants] = useState<TopicVariant[]>([]);
@@ -521,6 +556,11 @@ export const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
       }
     }
     setSavedScenarioId(scenario.id);
+    if (scenario.attachments && scenario.attachments.length > 0) {
+      setAttachments(scenario.attachments);
+    } else {
+      setAttachments([]);
+    }
     setIsLibraryOpen(false);
     setStep('plan');
   };
@@ -555,6 +595,7 @@ export const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
           format: plan.format,
           goal: plan.goal,
           sourceMaterialDescription: plan.sourceMaterialDescription,
+          attachments: attachments.length > 0 ? attachments : undefined,
         },
         selectedUser?.id,
         sName
@@ -764,6 +805,7 @@ export const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
         format: plan.format,
         goal: plan.goal,
         sourceMaterialDescription: plan.sourceMaterialDescription,
+        attachments: attachments.length > 0 ? attachments : undefined,
       });
       setSavedScenarioId(saved.id);
       setLaunchFeedback('Scenariusz został pomyślnie zapisany w bazie „Moje scenariusze”!');
@@ -1361,6 +1403,92 @@ export const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
               </span>
             </div>
           </div>
+
+          {/* KARTA AUDIO & ZAŁĄCZNIKÓW DO PREZENTACJI W NOTEBOOKU */}
+          {(() => {
+            const audioAtts = attachments.filter(a => a.type === 'audio' && a.dataUrl);
+            return (
+              <div className="rounded-2xl border border-purple-500/30 bg-purple-950/20 p-4 space-y-3 shadow-lg">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center shrink-0">
+                      <Volume2 size={16} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                        Materiały Audio i Rozumienie ze Słuchu
+                        {audioAtts.length > 0 && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-200 font-mono font-bold">
+                            {audioAtts.length}
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-[11px] text-purple-200/70">
+                        Wgrane nagrania zostaną automatycznie włączone do slajdów prezentacji w notatniku
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <input
+                      ref={audioFileInputRef}
+                      type="file"
+                      accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac"
+                      className="hidden"
+                      onChange={handleAudioUpload}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => audioFileInputRef.current?.click()}
+                      className="px-3 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/50 text-xs font-bold text-purple-200 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <UploadCloud size={13} />
+                      Wgraj plik audio (.mp3, .wav)
+                    </button>
+                  </div>
+                </div>
+
+                {audioAtts.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {audioAtts.map((att) => (
+                      <div
+                        key={att.id}
+                        className="p-3 rounded-xl bg-base-300/80 border border-purple-500/30 space-y-2 flex flex-col justify-between"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Music size={14} className="text-purple-400 shrink-0" />
+                            <span className="text-xs font-bold text-white truncate" title={att.name}>
+                              {att.name}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAttachment(att.id)}
+                            className="p-1 rounded-lg text-content-muted hover:text-rose-400 hover:bg-white/5 transition-colors cursor-pointer shrink-0"
+                            title="Usuń plik audio"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                        <audio
+                          controls
+                          src={att.dataUrl}
+                          className="w-full h-8 rounded-lg accent-primary"
+                          preload="metadata"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl border border-dashed border-purple-500/30 bg-purple-950/10 text-center">
+                    <p className="text-xs text-purple-200/60">
+                      Brak załączonych plików audio. Kliknij „Wgraj plik audio”, aby dodać ścieżkę MP3/WAV do tego scenariusza.
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* 6 ZWIJANYCH SEKCJI AKORDEONU (Zrzuty ekranu 1 i 2) */}
           <div className="space-y-2.5">

@@ -2215,6 +2215,21 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
   - Parser w `presentationService.ts` automatycznie wyodrębnia odpowiedzi w nawiasach `(Odpowiedź: ...)`, `(Answer: ...)`, `(Tłumaczenie: ...)` i tworzy interaktywne elementy z ukrytą odpowiedzią (`revealed: false`), którą można odkryć jednym kliknięciem.
   - Załączone zdjęcia i screenshoty stron podręczników są automatycznie przypisywane do slajdów (`slide.imageUrl`) z funkcją powiększenia w pełnym modalu lightbox.
 
+### H. Integracja Audio w Planerze Lekcji i Odtwarzanie w Prezentacji w Notatniku (2026-09-16)
+- **Wgrywanie i Zarządzanie Plikami Audio w Planerze Lekcji ([LessonPlannerStudio.tsx](components/admin/LessonPlannerStudio.tsx))**:
+  - **Krok 3 (Scenariusz)**: Dodano dedykowaną kartę „Materiały Audio i Rozumienie ze Słuchu” z bezpośrednim przyciskiem `Wgraj plik audio (.mp3, .wav)`, listą załączonych nagrań, podglądem dźwiękowym oraz możliwością usuwania.
+  - **Trwałość (Persistence)**: Zapewniono pełny cykl życia załączników – zapisywanie `attachments` do bazy scenariuszy Firestore (`saveGeneratedScenario`), odzyskiwanie załączników audio przy wczytywaniu scenariusza z biblioteki (`handleLoadScenarioFromLibrary`) oraz przekazywanie ich do generatora prezentacji (`createPresentationFromScenario`).
+- **Odtwarzacz Audio w Prezentacji w Notatniku ([ScratchpadPresentationOverlay.tsx](components/scratchpad/ScratchpadPresentationOverlay.tsx))**:
+  - Rozszerzono `ScratchpadDocument['presentationState']` o `audioUrl`, `audioName` oraz typ slajdu `'listening'`.
+  - Wdrożono nowoczesny, fioletowo-szmaragdowy baner odtwarzacza audio ze wskaźnikiem fali i kontrolerem HTML5 dostępnym zarówno dla kursanta na żywo, jak i lektora.
+- **Boczna Szuflada Lektora ([ScratchpadTeacherCompanionDrawer.tsx](components/scratchpad/ScratchpadTeacherCompanionDrawer.tsx))**:
+  - W zakładce „Scenariusz lekcji” dodano automatyczne wykrywanie załączników audio aktywnego scenariusza.
+  - Lektor ma do dyspozycji odsłuch podglądowy oraz przycisk **„🚀 Odtwórz w Prezentacji”**, który jednym kliknięciem emituje slajd ze ścieżką audio na ekran kursanta w czasie rzeczywistym.
+  - Dodano możliwość szybkiego dogrania pliku audio na żywo w trakcie lekcji za pomocą przycisku `+ Dodaj audio`.
+- **Kreatory i Edytory Slajdów ([ScratchpadLivePresentationModal.tsx](components/scratchpad/ScratchpadLivePresentationModal.tsx), [SlideEditorModal.tsx](components/admin/presentation/SlideEditorModal.tsx))**:
+  - Wzbogacono presety prezentacji o „🎧 Słuchanie & Audio (Listening comprehension)”.
+  - Dodano pole wgrywania plików audio z dysku lub linku URL z podglądem na żywo w edytorze pojedynczych slajdów oraz w modalu prezentacji live.
+
 ---
 
 

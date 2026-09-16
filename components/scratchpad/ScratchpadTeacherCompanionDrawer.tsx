@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Target,
   FileSignature,
@@ -15,11 +15,15 @@ import {
   RotateCcw,
   Layers,
   FolderOpen,
+  Volume2,
+  Music,
+  Airplay,
+  UploadCloud,
 } from 'lucide-react';
-import { GeneratedLessonScenario, ScratchpadDocument } from '../../types';
+import { GeneratedLessonScenario, LessonAttachment, ScratchpadDocument } from '../../types';
 import { LessonPlan, PlanSection, InteractiveExercise } from '../../services/lessonPlannerMethod';
 import { getGeneratedScenarios, getScenarioById } from '../../services/scenarioService';
-import { updateScratchpadTeacherNotes, updateScratchpadActiveScenario } from '../../services/scratchpadService';
+import { updateScratchpadTeacherNotes, updateScratchpadActiveScenario, updateScratchpadPresentation } from '../../services/scratchpadService';
 
 interface ScratchpadTeacherCompanionDrawerProps {
   isOpen: boolean;
@@ -51,6 +55,7 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
   const [openSubnotes, setOpenSubnotes] = useState<Record<string, boolean>>({});
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
 
   // Side Notes local state
   const [sideNotes, setSideNotes] = useState(docData.teacherNotes || '');
@@ -299,6 +304,137 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
               ))}
             </select>
           </div>
+
+          {/* Scenario Audio Materials Card */}
+          {(() => {
+            const scenarioAudio = activeScenario?.attachments?.filter(
+              (a): a is LessonAttachment & { dataUrl: string } => a.type === 'audio' && Boolean(a.dataUrl)
+            ) || [];
+
+            const handleDrawerAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+              const file = e.target.files?.[0];
+              if (!file || !activeScenario) return;
+              if (file.size > 15 * 1024 * 1024) {
+                alert(`Plik "${file.name}" przekracza maksymalny limit 15 MB.`);
+                return;
+              }
+              const reader = new FileReader();
+              reader.onload = async () => {
+                const dataUrl = reader.result as string;
+                const newAtt: LessonAttachment = {
+                  id: `att-audio-${Date.now()}`,
+                  name: file.name,
+                  type: 'audio',
+                  size: file.size,
+                  mimeType: file.type || 'audio/mpeg',
+                  dataUrl,
+                };
+                const updatedAttachments = [...(activeScenario.attachments || []), newAtt];
+                setActiveScenario({ ...activeScenario, attachments: updatedAttachments });
+                if (docData.id) {
+                  await updateScratchpadPresentation(docData.id, {
+                    active: true,
+                    type: 'listening',
+                    title: `Nagranie: ${file.name}`,
+                    prompt: 'Odsłuchaj nagranie audio i wykonaj polecenia lektora.',
+                    audioUrl: dataUrl,
+                    audioName: file.name,
+                    studentAnswer: null,
+                    revealedAnswer: null,
+                  });
+                }
+              };
+              reader.readAsDataURL(file);
+              e.target.value = '';
+            };
+
+            if (scenarioAudio.length === 0 && !activeScenario) return null;
+
+            return (
+              <div className="p-3.5 rounded-2xl bg-purple-950/25 border border-purple-500/35 space-y-3 shadow-md">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-purple-200 flex items-center gap-1.5">
+                    <Volume2 size={14} className="text-purple-400" />
+                    Nagrania audio ze scenariusza
+                    {scenarioAudio.length > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/30 text-purple-200 font-mono">
+                        {scenarioAudio.length}
+                      </span>
+                    )}
+                  </span>
+                  {activeScenario && (
+                    <div>
+                      <input
+                        ref={audioInputRef}
+                        type="file"
+                        accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac"
+                        className="hidden"
+                        onChange={handleDrawerAudioUpload}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => audioInputRef.current?.click()}
+                        className="px-2 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-[10px] font-bold text-purple-300 hover:text-white transition-all flex items-center gap-1 cursor-pointer"
+                        title="Dodaj plik audio i uruchom go w prezentacji u kursanta"
+                      >
+                        <UploadCloud size={12} />
+                        + Dodaj audio
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {scenarioAudio.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {scenarioAudio.map((att) => (
+                      <div
+                        key={att.id}
+                        className="p-2.5 rounded-xl bg-base-100/70 border border-purple-500/20 space-y-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-text-hi truncate" title={att.name}>
+                            🎧 {att.name}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (docData.id) {
+                                await updateScratchpadPresentation(docData.id, {
+                                  active: true,
+                                  type: 'listening',
+                                  title: `Nagranie: ${att.name}`,
+                                  prompt: 'Odsłuchaj nagranie audio i wykonaj polecenia lektora.',
+                                  audioUrl: att.dataUrl,
+                                  audioName: att.name,
+                                  studentAnswer: null,
+                                  revealedAnswer: null,
+                                });
+                              }
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-primary/20 hover:bg-primary/30 border border-primary/40 text-primary text-[11px] font-bold transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-sm"
+                            title="Włącz ten slajd audio w prezentacji u kursanta"
+                          >
+                            <Airplay size={12} />
+                            Odtwórz w Prezentacji
+                          </button>
+                        </div>
+                        <audio
+                          controls
+                          src={att.dataUrl}
+                          className="w-full h-8 rounded-lg accent-primary"
+                          preload="metadata"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-purple-200/60 text-center py-1">
+                    Brak wgranych plików audio w tym scenariuszu.
+                  </p>
+                )}
+              </div>
+            );
+          })()}
 
           {isLoadingScenario ? (
             <div className="py-12 text-center text-xs text-content-muted animate-pulse">

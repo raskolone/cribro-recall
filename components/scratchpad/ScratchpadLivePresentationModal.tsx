@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Airplay, Image as ImageIcon, Lightbulb, MessageSquare, Plus, Sparkles, X } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Airplay, Image as ImageIcon, Lightbulb, MessageSquare, Plus, Sparkles, X, Volume2, Music, UploadCloud } from 'lucide-react';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 import { PresentationState } from './ScratchpadPresentationOverlay';
 import Button from '../ui/Button';
@@ -12,12 +12,21 @@ interface ScratchpadLivePresentationModalProps {
 
 const PRESET_ACTIVITIES: Array<{
   title: string;
-  type: 'image_prompt' | 'slide' | 'scenario_item' | 'wheel_of_fortune';
+  type: 'image_prompt' | 'slide' | 'scenario_item' | 'wheel_of_fortune' | 'listening';
   question: string;
   prompt: string;
   imageUrl?: string;
+  audioUrl?: string;
+  audioName?: string;
   hints: string[];
 }> = [
+  {
+    title: '🎧 Słuchanie & Audio (Listening comprehension)',
+    type: 'listening',
+    question: 'Odsłuchaj nagranie i wynotuj kluczowe argumenty.',
+    prompt: 'Zwróć uwagę na ton wypowiedzi mówcy, użyte kolokacje oraz kluczowe wnioski.',
+    hints: ['Focus on the main idea first...', 'Note down specific keywords...', 'Listen for transition words (however, furthermore)...'],
+  },
   {
     title: '🎡 Koło Fortuny (Warm-up Wheel / Rozgrzewka)',
     type: 'wheel_of_fortune',
@@ -61,8 +70,11 @@ export const ScratchpadLivePresentationModal: React.FC<ScratchpadLivePresentatio
   const [customQuestion, setCustomQuestion] = useState('');
   const [customPrompt, setCustomPrompt] = useState('');
   const [customImageUrl, setCustomImageUrl] = useState('');
+  const [customAudioUrl, setCustomAudioUrl] = useState('');
+  const [customAudioName, setCustomAudioName] = useState('');
   const [customHints, setCustomHints] = useState('');
   const [isCustom, setIsCustom] = useState(false);
+  const audioInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -71,11 +83,13 @@ export const ScratchpadLivePresentationModal: React.FC<ScratchpadLivePresentatio
       if (!customQuestion.trim() && !customTitle.trim()) return;
       onStartPresentation({
         active: true,
-        title: customTitle.trim() || 'Prezentacja z notatnika',
-        type: customImageUrl ? 'image_prompt' : 'slide',
+        title: customTitle.trim() || (customAudioUrl ? 'Słuchanie & Audio' : 'Prezentacja z notatnika'),
+        type: customAudioUrl ? 'listening' : customImageUrl ? 'image_prompt' : 'slide',
         question: customQuestion.trim(),
         prompt: customPrompt.trim(),
         imageUrl: customImageUrl.trim() || undefined,
+        audioUrl: customAudioUrl.trim() || undefined,
+        audioName: customAudioName.trim() || undefined,
         hints: customHints.split(',').map((h) => h.trim()).filter(Boolean),
       });
     } else {
@@ -215,6 +229,78 @@ export const ScratchpadLivePresentationModal: React.FC<ScratchpadLivePresentatio
                   placeholder="https://images.unsplash.com/..."
                   className="w-full px-3 py-2 rounded-xl bg-base-100 border border-line-strong text-xs text-text-hi focus:border-primary focus:outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-content-muted mb-1">
+                  Plik audio / nagranie do odsłuchania (opcjonalnie):
+                </label>
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                  <input
+                    ref={audioInputRef}
+                    type="file"
+                    accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 15 * 1024 * 1024) {
+                        alert(`Plik "${file.name}" przekracza maksymalny limit 15 MB.`);
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        setCustomAudioUrl(reader.result as string);
+                        setCustomAudioName(file.name);
+                        if (!customTitle.trim()) {
+                          setCustomTitle(`Nagranie: ${file.name}`);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                      e.target.value = '';
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => audioInputRef.current?.click()}
+                    className="px-3 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-300 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    <UploadCloud size={14} />
+                    Wgraj audio (.mp3, .wav)
+                  </button>
+                  <input
+                    type="url"
+                    value={customAudioUrl.startsWith('data:') ? '' : customAudioUrl}
+                    onChange={(e) => {
+                      setCustomAudioUrl(e.target.value);
+                      if (!customAudioName) setCustomAudioName('Audio z URL');
+                    }}
+                    placeholder={customAudioUrl.startsWith('data:') ? `Załączono: ${customAudioName}` : 'lub wklej bezpośredni link URL do audio...'}
+                    className="flex-1 px-3 py-2 rounded-xl bg-base-100 border border-line-strong text-xs text-text-hi focus:border-primary focus:outline-none"
+                  />
+                  {customAudioUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomAudioUrl('');
+                        setCustomAudioName('');
+                      }}
+                      className="p-2 rounded-xl border border-line hover:border-rose-500/50 text-content-muted hover:text-rose-400 text-xs transition-colors cursor-pointer shrink-0"
+                      title="Usuń nagranie"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                {customAudioUrl && (
+                  <div className="mt-2 p-2.5 rounded-xl bg-purple-950/25 border border-purple-500/30 space-y-1.5">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-purple-200">
+                      <Music size={13} className="text-purple-400 shrink-0" />
+                      <span className="truncate">{customAudioName || 'Nagranie audio'}</span>
+                    </div>
+                    <audio controls src={customAudioUrl} className="w-full h-8 rounded-lg accent-primary" />
+                  </div>
+                )}
               </div>
 
               <div>

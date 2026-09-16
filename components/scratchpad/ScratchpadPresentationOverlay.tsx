@@ -12,6 +12,8 @@ import {
   AlertCircle,
   Trophy,
   Zap,
+  Volume2,
+  Music,
 } from 'lucide-react';
 import Button from '../ui/Button';
 import { ScratchpadDocument } from '../../types';
@@ -127,6 +129,8 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
               <span className="text-[11px] font-mono uppercase bg-primary/20 text-primary border border-primary/30 px-2.5 py-0.5 rounded-full font-bold">
                 {presentation.type === 'wheel_of_fortune'
                   ? '🎡 Koło Fortuny Live'
+                  : presentation.type === 'listening'
+                  ? '🎧 Słuchanie & Audio Live'
                   : isInteractive
                   ? '⚡ Interaktywne Ćwiczenie Live'
                   : 'Prezentacja Live'}
@@ -218,6 +222,36 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
           </div>
         )}
 
+        {/* Audio Player Banner (jeśli dołączono audioUrl) */}
+        {presentation.audioUrl && (
+          <div className="w-full max-w-2xl p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-purple-950/60 via-base-200 to-purple-950/40 border border-purple-500/40 shadow-[0_0_40px_rgba(168,85,247,0.15)] flex flex-col sm:flex-row items-center justify-between gap-4 animate-fadeIn">
+            <div className="flex items-center gap-3.5 w-full sm:w-auto">
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                <Volume2 size={24} className="animate-pulse" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-mono font-bold text-purple-400 tracking-wider">
+                    Nagranie audio lekcji
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                </div>
+                <h4 className="text-sm sm:text-base font-bold text-white truncate max-w-[280px] sm:max-w-xs" title={presentation.audioName || 'Ścieżka dźwiękowa'}>
+                  {presentation.audioName || 'Ścieżka dźwiękowa do odsłuchania'}
+                </h4>
+              </div>
+            </div>
+            <div className="w-full sm:w-auto flex-1 max-w-md">
+              <audio
+                controls
+                src={presentation.audioUrl}
+                className="w-full h-10 rounded-xl accent-primary shadow-inner"
+                preload="metadata"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Prompt / Question Card */}
         <div className="w-full p-6 sm:p-8 rounded-3xl bg-base-200/90 border border-primary/30 shadow-[0_0_50px_rgba(114,240,180,0.1)] space-y-4 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary text-xs font-bold uppercase tracking-wider">
@@ -227,6 +261,8 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
                 ? 'Ułóż zdanie we właściwej kolejności'
                 : presentation.type === 'error_hunt'
                 ? 'Znajdź i popraw błąd'
+                : presentation.type === 'listening'
+                ? 'Rozumienie ze słuchu (Listening Comprehension)'
                 : 'Pytanie do zadania'}
             </span>
           </div>
