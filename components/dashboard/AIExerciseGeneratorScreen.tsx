@@ -29,6 +29,9 @@ export interface CachedExerciseSet {
 }
 import { getVocabularySetsForStudent, markVocabularySetAsUsed } from '../../services/lessonRecord';
 import { GENERAL_VOCABULARY_SETS, LEVEL_GROUPS } from '../../data/generalVocabulary';
+import { generateFindErrors } from '../../services/homeworkGenerator';
+import { animateDropletTransition } from '../../services/gsapAnimations';
+import HomeworkWarmupScrambler from './HomeworkWarmupScrambler';
 import Card from '../ui/Card';
 import Toast, { useToast } from '../ui/Toast';
 import PuzzleExercise from './PuzzleExercise';
@@ -43,6 +46,8 @@ import {
   Award, 
   Lightbulb, 
   CheckCircle, 
+  Wrench,
+  Copy,
   XCircle, 
   RefreshCw, 
   ArrowRight,
@@ -744,11 +749,11 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [level, setLevel] = useState<string>(user?.level || 'B1');
   const [numSentences, setNumSentences] = useState<number>(5);
   const [practiceMode, setPracticeMode] = useState<'fixed' | 'time'>('fixed');
-  // „Prawdziwe Wyzwanie" (wpisywanie z pamięci) jest domyślne, bo to aktywne
-  // przypomnienie sobie. Układanka pokazuje gotowe klocki, więc sprawdza
-  // rozpoznawanie — trafia do kursanta dopiero jako podpowiedź po dwóch
-  // nieudanych próbach (patrz shouldSuggestPuzzle niżej).
-  const [exerciseFormat, setExerciseFormat] = useState<'typing' | 'puzzle' | 'test' | 'speaking'>('typing');
+  // „Sprawdź Się" (wpisywanie z pamięci) jest domyślne, bo to aktywne
+  // przypomnienie sobie. Dostępne są 4 formaty: Sprawdź Się (tłumaczenia),
+  // Napraw Zdanie (korekta błędów), Fiszki oraz Dopasowanie.
+  const [exerciseFormat, setExerciseFormat] = useState<'typing' | 'puzzle' | 'test' | 'speaking' | 'correction'>('typing');
+  const [warmupPhase, setWarmupPhase] = useState<'invite' | 'scrambler' | 'exercises'>('invite');
   const [isLessonSelectorOpen, setIsLessonSelectorOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [previewVocabSet, setPreviewVocabSet] = useState<VocabularySet | null>(null);
@@ -1004,13 +1009,10 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const practiceCardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (practiceCardRef.current && step === 'practice') {
-      gsap.fromTo(practiceCardRef.current,
-        { opacity: 0, y: 15, scale: 0.98 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: "power2.out" }
-      );
+    if (practiceCardRef.current && step === 'practice' && warmupPhase === 'exercises') {
+      animateDropletTransition(practiceCardRef.current, 'next');
     }
-  }, [activeSentenceIndex, step]);
+  }, [activeSentenceIndex, step, warmupPhase]);
 
   useEffect(() => {
     if (numSentencesRef.current) {
@@ -1576,37 +1578,82 @@ ${learningContext?.briefing || ''}
         .replace(/\$\{userAiPrompt(?: \|\| "[^"]+")?\}/g, userAiPromptStr)
         .replace(/\$\{weaknessesList(?: \|\| "[^"]+")?\}/g, weaknessesListStr);
 
-      addLog('Calling generateTranslationExercises');
-      setLastUsedWords(wordsToUse);
-      const generated = await generateTranslationExercises(
-        // Poziom z krzywej uczenia bierze górę nad ustawionym ręcznie: zna
-        // ostatnie wyniki, a suwak zna tylko to, co kursant kiedyś wybrał.
-        learningContext?.level || level,
-        wordsToUse,
-        resolvedGenPrompt, 
-        lessonContextString, 
-        studentProfileContext, 
-        practiceMode === 'time' ? 10 : numSentences, 
-        pastExercisesContext, 
-        weaknessesListStr,
-        selectedSetId === 'grammar',
-        (model) => setActiveGeneratingModel(model)
-      );
-      
-      addLog('generateTranslationExercises returned ' + (generated ? generated.length : 'null'));
-      if (generated && generated.length > 0) {
-        if (isAppending) {
-           setExercises(prev => [...prev, ...generated]);
-           setStudentAnswers(prev => [...prev, ...new Array(generated.length).fill('')]);
-           setShowHints(prev => [...prev, ...new Array(generated.length).fill(false)]);
+      if (exerciseFormat === 'correction') {
+        addLog('Calling generateFindErrors');
+        setLastUsedWords(wordsToUse);
+        const sourceMaterial = wordsToUse.length > 0 ? wordsToUse.join('\n') : (lessonContextString || 'Brak dodatkowego materiału');
+        const count = practiceMode === 'time' ? 10 : numSentences;
+        const findErrorsResult = await generateFindErrors(
+          {
+            source: { pastedText: sourceMaterial },
+            types: ['find_errors'],
+            perType: count,
+            level: learningContext?.level || level,
+            instruction: additionalInstructions || undefined,
+            studentId: user?.id,
+          },
+          sourceMaterial,
+          learningContext?.briefing
+        );
+        addLog('generateFindErrors returned ' + (findErrorsResult?.items ? findErrorsResult.items.length : 'null'));
+        const mappedItems: TranslationExercise[] = (findErrorsResult?.items || []).map(item => ({
+          polishSentence: item.polishHint || item.incorrectSentence,
+          englishTranslation: item.correctSentence,
+          erroneousSentence: item.incorrectSentence,
+          hint: item.hint || item.explanation,
+          format: 'error_hunt',
+          modelUsed: findErrorsResult.modelUsed
+        }));
+
+        if (mappedItems && mappedItems.length > 0) {
+          if (isAppending) {
+            setExercises(prev => [...prev, ...mappedItems]);
+            setStudentAnswers(prev => [...prev, ...new Array(mappedItems.length).fill('')]);
+            setShowHints(prev => [...prev, ...new Array(mappedItems.length).fill(false)]);
+          } else {
+            setExercises(mappedItems);
+            setStudentAnswers(new Array(mappedItems.length).fill(''));
+            setShowHints(new Array(mappedItems.length).fill(false));
+            setWarmupPhase('invite');
+            setStep('practice');
+          }
         } else {
-           setExercises(generated);
-           setStudentAnswers(new Array(generated.length).fill(''));
-           setShowHints(new Array(generated.length).fill(false));
-           setStep('practice');
+          if (!isAppending) throw new Error('AI returned empty exercises.');
         }
       } else {
-        if (!isAppending) throw new Error('AI returned empty exercises.');
+        addLog('Calling generateTranslationExercises');
+        setLastUsedWords(wordsToUse);
+        const generated = await generateTranslationExercises(
+          // Poziom z krzywej uczenia bierze górę nad ustawionym ręcznie: zna
+          // ostatnie wyniki, a suwak zna tylko to, co kursant kiedyś wybrał.
+          learningContext?.level || level,
+          wordsToUse,
+          resolvedGenPrompt, 
+          lessonContextString, 
+          studentProfileContext, 
+          practiceMode === 'time' ? 10 : numSentences, 
+          pastExercisesContext, 
+          weaknessesListStr,
+          selectedSetId === 'grammar',
+          (model) => setActiveGeneratingModel(model)
+        );
+        
+        addLog('generateTranslationExercises returned ' + (generated ? generated.length : 'null'));
+        if (generated && generated.length > 0) {
+          if (isAppending) {
+             setExercises(prev => [...prev, ...generated]);
+             setStudentAnswers(prev => [...prev, ...new Array(generated.length).fill('')]);
+             setShowHints(prev => [...prev, ...new Array(generated.length).fill(false)]);
+          } else {
+             setExercises(generated);
+             setStudentAnswers(new Array(generated.length).fill(''));
+             setShowHints(new Array(generated.length).fill(false));
+             setWarmupPhase(exerciseFormat === 'typing' ? 'invite' : 'exercises');
+             setStep('practice');
+          }
+        } else {
+          if (!isAppending) throw new Error('AI returned empty exercises.');
+        }
       }
     } catch (err: any) {
       console.error(err);
@@ -1648,6 +1695,36 @@ ${learningContext?.briefing || ''}
     setEvaluationStatuses(prev => ({ ...prev, [currentIdx]: 'evaluating' }));
     setError(null);
     try {
+      if (exerciseFormat === 'correction') {
+        const currentExercise = exercises[currentIdx];
+        const cleanAnswer = answer.trim().toLowerCase().replace(/[.,!?;:'"]/g, '').replace(/\s+/g, ' ');
+        const cleanCorrect = (currentExercise.englishTranslation || '').trim().toLowerCase().replace(/[.,!?;:'"]/g, '').replace(/\s+/g, ' ');
+        
+        if (cleanAnswer === cleanCorrect) {
+          const result: TranslationEvaluationResult = {
+            polishSentence: currentExercise.polishSentence,
+            correctTranslation: currentExercise.englishTranslation,
+            studentAnswer: answer,
+            isCorrect: true,
+            score: 100,
+            explanation: currentExercise.hint ? `Świetnie! Poprawiono zdanie bezbłędnie. (${currentExercise.hint})` : 'Świetnie! Poprawiono zdanie bezbłędnie.',
+            suggested_better_version: currentExercise.englishTranslation,
+            breakdown: {
+              meaning_score: 40,
+              grammar_score: 40,
+              vocabulary_score: 20
+            }
+          };
+          setSingleEvaluationResults(prev => ({ ...prev, [currentIdx]: result }));
+          setEvaluationStatuses(prev => ({ ...prev, [currentIdx]: 'evaluated' }));
+          setConsecutiveMisses(0);
+          if (soundSettings?.autoPlaySentence && result.correctTranslation) {
+            playAudio(result.correctTranslation, soundSettings.ttsAccent || 'en-US');
+          }
+          return;
+        }
+      }
+
       const evalStudentContext = `${user?.firstName ? `Zwracaj się do ucznia po imieniu (${user.firstName}), odmieniając je naturalnie we wszystkich przypadkach w języku polskim zgodnie z regułami języka polskiego.` : ''}`;
       
       let weaknessesListStr = "Brak zidentyfikowanych błędów";
@@ -1658,7 +1735,13 @@ ${learningContext?.briefing || ''}
       let strictnessPrompt = customEvalPrompt
         .replace(/\$\{weaknessesList(?: \|\| "[^"]+")?\}/g, weaknessesListStr);
         
-      if (evaluationStrictness === 'strict') {
+      if (exerciseFormat === 'correction') {
+        strictnessPrompt += `\n\nTO JEST ĆWICZENIE ZNAJDŹ I POPRAW BŁĄD (Spot & fix the error).
+Zdanie wyjściowe z błędem: "${exercises[currentIdx].erroneousSentence || ''}".
+Poprawne zdanie wzorcowe: "${exercises[currentIdx].englishTranslation}".
+Odpowiedź kursanta: "${answer}".
+Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz poprawne gramatycznie i leksykalnie.`;
+      } else if (evaluationStrictness === 'strict') {
         strictnessPrompt += '\n\nOCENIAJ BARDZO RYGORYSTYCZNIE. Każdy drobny błąd w pisowni, czasie lub przedimku (a/an/the) oznacza isCorrect: false.';
       } else if (evaluationStrictness === 'loose') {
         strictnessPrompt += '\n\nOCENIAJ LUŹNO. Akceptuj drobne błędy i literówki. Zwracaj uwagę na ogólny przekaz.';
@@ -1789,6 +1872,29 @@ ${learningContext?.briefing || ''}
       }
     }
 
+    // For error correction, check for direct clean matches first
+    if (exerciseFormat === 'correction') {
+      for (let i = 0; i < exercises.length; i++) {
+        const ans = studentAnswers[i];
+        if (ans?.trim() && !currentEvalResults[i]) {
+          const cleanAnswer = ans.trim().toLowerCase().replace(/[.,!?;:'"]/g, '').replace(/\s+/g, ' ');
+          const cleanCorrect = (exercises[i].englishTranslation || '').trim().toLowerCase().replace(/[.,!?;:'"]/g, '').replace(/\s+/g, ' ');
+          if (cleanAnswer === cleanCorrect) {
+            currentEvalResults[i] = {
+              polishSentence: exercises[i].polishSentence,
+              correctTranslation: exercises[i].englishTranslation,
+              studentAnswer: ans,
+              isCorrect: true,
+              score: 100,
+              explanation: exercises[i].hint ? `Świetnie! Poprawiono zdanie bezbłędnie. (${exercises[i].hint})` : 'Świetnie! Poprawiono zdanie bezbłędnie.',
+              suggested_better_version: exercises[i].englishTranslation,
+              breakdown: { meaning_score: 40, grammar_score: 40, vocabulary_score: 20 }
+            };
+          }
+        }
+      }
+    }
+
     // Find sentences that need evaluation
     const unevaluatedIndices = [];
     for (let i = 0; i < exercises.length; i++) {
@@ -1805,7 +1911,9 @@ ${learningContext?.briefing || ''}
           weaknessesListStr = await getUserWeaknesses(user.id);
         }
         let strictnessPrompt = customEvalPrompt.replace(/\$\{weaknessesList(?: \|\| "[^"]+")?\}/g, weaknessesListStr);
-        if (evaluationStrictness === 'strict') {
+        if (exerciseFormat === 'correction') {
+          strictnessPrompt += '\n\nTO JEST ĆWICZENIE ZNAJDŹ I POPRAW BŁĄD (Spot & fix the error). Oceń, czy kursant poprawnie usunął błąd gramatyczny/leksykalny w każdym zdaniu i czy całe zdanie jest poprawne.';
+        } else if (evaluationStrictness === 'strict') {
           strictnessPrompt += '\n\nOCENIAJ BARDZO RYGORYSTYCZNIE. Każdy drobny błąd w pisowni, czasie lub przedimku (a/an/the) oznacza isCorrect: false.';
         } else if (evaluationStrictness === 'loose') {
           strictnessPrompt += '\n\nOCENIAJ LUŹNO. Akceptuj drobne błędy i literówki. Zwracaj uwagę na ogólny przekaz.';
@@ -1905,14 +2013,14 @@ ${learningContext?.briefing || ''}
       }
 
       const logData: any = {
-        exerciseType: 'ai_translation',
+        exerciseType: exerciseFormat === 'correction' ? 'sentence_correction' : 'ai_translation',
+        exerciseFormat: exerciseFormat === 'correction' ? 'find_errors' : exerciseFormat,
         date: new Date().toISOString(),
         isRevisionMode: false,
         score: score,
         totalWords: results.length,
         exercisesData: exercisesDetails,
         detailedFeedback: detailedFeedback,
-        exerciseFormat: exerciseFormat,
         practiceMode: practiceMode,
         selectedSetId: selectedSetId,
         setDisplayName: setDisplayName,
@@ -1940,7 +2048,7 @@ ${learningContext?.briefing || ''}
             isCorrect: r.isCorrect,
             score: Number.isFinite(Number(r.score)) ? Number(r.score) : 0,
             level: normalizeLevel(user.level),
-            exerciseType: 'translation',
+            exerciseType: exerciseFormat === 'correction' ? 'find_errors' : 'translation',
             date: new Date().toISOString(),
           })),
           user.level
@@ -2393,74 +2501,112 @@ ${learningContext?.briefing || ''}
                           {language === 'pl' ? 'Tryb ćwiczenia' : 'Exercise mode'}
                         </label>
                         <span className="text-xs font-mono text-primary bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full font-semibold">
-                          {language === 'pl' ? '3 formaty' : '3 formats'}
+                          {language === 'pl' ? '4 formaty' : '4 formats'}
                         </span>
                       </div>
 
-                      {/* Primary Format Cards */}
-                      <div className="grid grid-cols-1 gap-3.5">
-                        {/* Karta „Układanka" stała tutaj, z plakietką „Rekomendowane".
-                            Układanka pokazuje gotowe klocki, więc ćwiczy rozpoznawanie,
-                            nie przypominanie sobie. Zgodnie z metodyką pojawia się teraz
-                            wyłącznie jako podpowiedź po dwóch nieudanych próbach
-                            wpisywania — nie jako równoległa opcja na starcie. */}
-                        {/* Card 2: Prawdziwe wyzwanie */}
+                      {/* 4 Exercise Format Cards Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        {/* Card 1: Sprawdź Się (Tłumaczenia) */}
                         <div id="tour-mode-typing" className="relative group">
-                          <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-primary/0 via-primary/40 to-primary/0 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 animate-pulse pointer-events-none" />
                           <button
                             type="button"
                             onClick={() => {
                               setExerciseFormat('typing');
                               setIsConfigModalOpen(true);
                             }}
-                            className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[160px] ${
+                            className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[160px] liquid-glass-tile ${
                               exerciseFormat === 'typing'
-                                ? 'bg-[var(--ink-2)]/90 backdrop-blur-md border-2 border-primary shadow-[0_0_35px_rgba(114, 240, 180,0.45)] scale-[1.01]'
-                                : 'backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-primary/30 hover:border-primary/70 hover:shadow-[0_0_25px_rgba(114, 240, 180,0.25)] hover:-translate-y-0.5'
+                                ? 'border-2 border-primary shadow-[0_0_35px_rgba(114,240,180,0.4)] scale-[1.01]'
+                                : 'hover:border-primary/60 hover:shadow-[0_0_25px_rgba(114,240,180,0.2)]'
                             }`}
                           >
                             <div className="flex items-center justify-between w-full z-10">
-                              <div className={`w-11 h-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover/card:scale-110 transition-transform ${exerciseFormat === 'typing' ? 'text-primary bg-primary/20 border-primary shadow-[0_0_15px_rgba(114, 240, 180,0.5)]' : ''}`}>
-                                <Keyboard className="w-5 h-5 drop-shadow-[0_0_8px_rgba(114, 240, 180,0.8)]" />
+                              <div className={`w-11 h-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover/card:scale-110 transition-transform ${exerciseFormat === 'typing' ? 'text-primary bg-primary/20 border-primary shadow-[0_0_15px_rgba(114,240,180,0.5)]' : ''}`}>
+                                <Keyboard className="w-5 h-5 drop-shadow-[0_0_8px_rgba(114,240,180,0.8)]" />
                               </div>
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold text-primary bg-primary/10 border border-primary/20">
-                                {language === 'pl' ? 'Wpisywanie' : 'Typing'}
+                                {language === 'pl' ? 'Tłumaczenia' : 'Translations'}
                               </span>
                             </div>
 
                             <div className="z-10 mt-3">
                               <h3 className="text-xl font-serif font-bold text-white group-hover/card:text-primary transition-colors flex items-center gap-1.5">
-                                {language === 'pl' ? 'Prawdziwe Wyzwanie' : 'Real Challenge'} <ChevronRight className="w-4 h-4 text-primary group-hover/card:translate-x-1 transition-transform" />
+                                {language === 'pl' ? 'Sprawdź Się' : 'Check Yourself'} <ChevronRight className="w-4 h-4 text-primary group-hover/card:translate-x-1 transition-transform" />
                               </h3>
-                              <p className="text-xs text-text-2 mt-1 leading-relaxed">
-                                {language === 'pl' ? 'Pisanie pełnych zdań z pamięci i natychmiastowa korekta.' : 'Type full sentences with instant feedback.'}
+                              <p className="text-[11px] text-text-2 mt-1 leading-relaxed">
+                                {language === 'pl' ? 'Tłumaczenie pełnych zdań z pamięci i natychmiastowa korekta AI.' : 'Full sentence translation from memory with instant AI grading.'}
                               </p>
+                              <div className="mt-2.5 flex items-center gap-1.5">
+                                <span className="text-[10px] text-primary/90 font-mono bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20 flex items-center gap-1 font-semibold">
+                                  <span>🧩</span> {language === 'pl' ? 'Tryb rozgrzewki' : 'Warm-up mode'}
+                                </span>
+                              </div>
                             </div>
                           </button>
                         </div>
-                      </div>
-                      
-                      {/* Secondary Format Cards */}
-                      <div className="grid grid-cols-2 gap-3.5 pt-1">
+
+                        {/* Card 2: Napraw Zdanie (Korekta) */}
+                        <div id="tour-mode-correction" className="relative group">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExerciseFormat('correction');
+                              setIsConfigModalOpen(true);
+                            }}
+                            className={`w-full group/card relative text-left rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer min-h-[160px] liquid-glass-tile ${
+                              exerciseFormat === 'correction'
+                                ? 'border-2 border-amber-400 shadow-[0_0_35px_rgba(251,191,36,0.4)] scale-[1.01]'
+                                : 'hover:border-amber-400/60 hover:shadow-[0_0_25px_rgba(251,191,36,0.2)]'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between w-full z-10">
+                              <div className={`w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover/card:scale-110 transition-transform ${exerciseFormat === 'correction' ? 'text-amber-400 bg-amber-500/20 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.5)]' : ''}`}>
+                                <Wrench className="w-5 h-5 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
+                              </div>
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20">
+                                {language === 'pl' ? 'Korekta' : 'Correction'}
+                              </span>
+                            </div>
+
+                            <div className="z-10 mt-3">
+                              <h3 className="text-xl font-serif font-bold text-white group-hover/card:text-amber-400 transition-colors flex items-center gap-1.5">
+                                {language === 'pl' ? 'Napraw Zdanie' : 'Fix the Sentence'} <ChevronRight className="w-4 h-4 text-amber-400 group-hover/card:translate-x-1 transition-transform" />
+                              </h3>
+                              <p className="text-[11px] text-text-2 mt-1 leading-relaxed">
+                                {language === 'pl' ? 'Wyszukaj błąd gramatyczny lub leksykalny i wpisz poprawne zdanie.' : 'Spot grammatical or lexical errors and type the corrected sentence.'}
+                              </p>
+                              <div className="mt-2.5 flex items-center gap-1.5">
+                                <span className="text-[10px] text-amber-300/90 font-mono bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 flex items-center gap-1 font-semibold">
+                                  <span>🎯</span> {language === 'pl' ? 'Zadanie z pracy domowej' : 'Homework task'}
+                                </span>
+                              </div>
+                            </div>
+                          </button>
+                        </div>
+
                         {/* Card 3: Fiszki */}
                         <div className="relative group">
                           <button
                             type="button"
                             onClick={() => handleStartOtherPractice('flashcards')}
-                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-primary/30 hover:border-primary/70 hover:shadow-[0_0_20px_rgba(114, 240, 180,0.25)] hover:-translate-y-0.5 text-left min-h-[105px]"
+                            className="w-full group/card relative rounded-3xl p-4 sm:p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer liquid-glass-tile hover:border-primary/70 hover:shadow-[0_0_20px_rgba(114,240,180,0.25)] text-left min-h-[120px]"
                           >
                             <div className="flex items-center justify-between w-full z-10">
-                              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-lg group-hover/card:scale-110 transition-transform">
+                              <div className="w-10 h-10 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-xl group-hover/card:scale-110 transition-transform">
                                 🗂️
                               </div>
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-primary bg-primary/10 border border-primary/20">
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold text-primary bg-primary/10 border border-primary/20">
                                 {language === 'pl' ? 'Nauka' : 'Learn'}
                               </span>
                             </div>
-                            <div className="z-10 mt-2">
-                              <h4 className="text-sm font-serif font-bold text-white group-hover/card:text-primary transition-colors flex items-center gap-1">
-                                {language === 'pl' ? 'Fiszki' : 'Flashcards'} <ChevronRight className="w-3.5 h-3.5 text-primary group-hover/card:translate-x-1 transition-transform" />
+                            <div className="z-10 mt-3">
+                              <h4 className="text-base font-serif font-bold text-white group-hover/card:text-primary transition-colors flex items-center gap-1">
+                                {language === 'pl' ? 'Fiszki' : 'Flashcards'} <ChevronRight className="w-4 h-4 text-primary group-hover/card:translate-x-1 transition-transform" />
                               </h4>
+                              <p className="text-[11px] text-text-2 mt-0.5">
+                                {language === 'pl' ? 'Aktywne przypominanie słownictwa' : 'Active vocabulary recall'}
+                              </p>
                             </div>
                           </button>
                         </div>
@@ -2470,20 +2616,23 @@ ${learningContext?.briefing || ''}
                           <button
                             type="button"
                             onClick={() => handleStartOtherPractice('match')}
-                            className="w-full group/card relative rounded-3xl p-4 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer backdrop-blur-2xl bg-gradient-to-br from-white/10 via-white/5 to-black/50 border border-warn/30 hover:border-warn/70 hover:shadow-[0_0_20px_rgba(224, 168, 58,0.25)] hover:-translate-y-0.5 text-left min-h-[105px]"
+                            className="w-full group/card relative rounded-3xl p-4 sm:p-5 flex flex-col justify-between transition-all duration-300 overflow-hidden cursor-pointer liquid-glass-tile hover:border-warn/70 hover:shadow-[0_0_20px_rgba(224,168,58,0.25)] text-left min-h-[120px]"
                           >
                             <div className="flex items-center justify-between w-full z-10">
-                              <div className="w-9 h-9 rounded-xl bg-warn/10 border border-warn/20 flex items-center justify-center text-warn text-lg group-hover/card:scale-110 transition-transform">
+                              <div className="w-10 h-10 rounded-2xl bg-warn/10 border border-warn/20 flex items-center justify-center text-warn text-xl group-hover/card:scale-110 transition-transform">
                                 🧩
                               </div>
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-warn bg-warn/10 border border-warn/20">
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold text-warn bg-warn/10 border border-warn/20">
                                 {language === 'pl' ? 'Gra' : 'Game'}
                               </span>
                             </div>
-                            <div className="z-10 mt-2">
-                              <h4 className="text-sm font-serif font-bold text-white group-hover/card:text-warn transition-colors flex items-center gap-1">
-                                {language === 'pl' ? 'Dopasowanie' : 'Match'} <ChevronRight className="w-3.5 h-3.5 text-warn group-hover/card:translate-x-1 transition-transform" />
+                            <div className="z-10 mt-3">
+                              <h4 className="text-base font-serif font-bold text-white group-hover/card:text-warn transition-colors flex items-center gap-1">
+                                {language === 'pl' ? 'Dopasowanie' : 'Match'} <ChevronRight className="w-4 h-4 text-warn group-hover/card:translate-x-1 transition-transform" />
                               </h4>
+                              <p className="text-[11px] text-text-2 mt-0.5">
+                                {language === 'pl' ? 'Szybkie łączenie par na czas' : 'Fast-paced word matching'}
+                              </p>
                             </div>
                           </button>
                         </div>
@@ -2657,24 +2806,30 @@ ${learningContext?.briefing || ''}
                           <div className="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
                             <div className="flex items-center gap-3">
                               <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border ${
-                                exerciseFormat === 'puzzle'
-                                  ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(114, 240, 180,0.4)]'
+                                exerciseFormat === 'correction'
+                                  ? 'bg-amber-500/20 border-amber-400 text-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.4)]'
                                   : 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(114, 240, 180,0.4)]'
                               }`}>
-                                {exerciseFormat === 'puzzle' ? (
-                                  <LayoutGrid className="w-5 h-5" />
+                                {exerciseFormat === 'correction' ? (
+                                  <Wrench className="w-5 h-5 text-amber-400" />
+                                ) : exerciseFormat === 'puzzle' ? (
+                                  <LayoutGrid className="w-5 h-5 text-primary" />
                                 ) : (
-                                  <Keyboard className="w-5 h-5" />
+                                  <Keyboard className="w-5 h-5 text-primary" />
                                 )}
                               </div>
                               <div>
                                 <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
-                                  {exerciseFormat === 'puzzle'
-                                    ? (language === 'pl' ? 'Układanka' : 'Puzzle')
-                                    : (language === 'pl' ? 'Prawdziwe Wyzwanie' : 'Real Challenge')}
+                                  {exerciseFormat === 'correction'
+                                    ? (language === 'pl' ? 'Napraw Zdanie' : 'Fix the Sentence')
+                                    : exerciseFormat === 'puzzle'
+                                      ? (language === 'pl' ? 'Układanka' : 'Puzzle')
+                                      : (language === 'pl' ? 'Sprawdź Się' : 'Check Yourself')}
                                 </h3>
                                 <p className="text-xs text-text-2">
-                                  {language === 'pl' ? 'Konfiguracja treningu' : 'Training setup'}
+                                  {exerciseFormat === 'correction'
+                                    ? (language === 'pl' ? 'Wyszukiwanie i poprawa błędów w zdaniach' : 'Spot & fix mistakes in sentences')
+                                    : (language === 'pl' ? 'Tłumaczenie pełnych zdań z pamięci' : 'Sentence translation from memory')}
                                 </p>
                               </div>
                             </div>
@@ -3812,12 +3967,86 @@ ${learningContext?.briefing || ''}
         )
       )}
       {step === 'practice' && exercises.length > 0 && (
-        <div className="max-w-2xl mx-auto space-y-4 pb-28 md:pb-8">
-          {/* Progress header */}
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-mono text-content-muted">
-              {language === 'pl' ? 'Postęp:' : 'Progress:'} {activeSentenceIndex + 1} {practiceMode === 'fixed' ? `/ ${exercises.length}` : ''}
-            </span>
+        warmupPhase === 'invite' && (exerciseFormat === 'typing' || exerciseFormat === 'correction') ? (
+          <div className="max-w-2xl mx-auto space-y-4 pb-28 md:pb-8 animate-fade-in">
+            <div className="liquid-glass-card rounded-3xl p-6 sm:p-8 space-y-6 relative overflow-hidden border border-primary/30 shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+              {/* Glow accent */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="space-y-2 relative z-10">
+                <div className="flex items-center justify-between">
+                  <span className="px-3 py-1 rounded-full text-xs font-mono font-bold text-primary bg-primary/10 border border-primary/25">
+                    {exerciseFormat === 'correction' 
+                      ? (language === 'pl' ? 'Napraw Zdanie' : 'Fix the Sentence') 
+                      : (language === 'pl' ? 'Sprawdź Się' : 'Check Yourself')}
+                  </span>
+                  <span className="text-primary font-bold text-xs font-mono">
+                    {exercises.length} {exercises.length === 1 ? 'zadanie' : exercises.length < 5 ? 'zadania' : 'zadań'}
+                  </span>
+                </div>
+                <h3 className="text-xl font-bold text-white leading-snug">
+                  {exerciseFormat === 'correction'
+                    ? (language === 'pl' ? 'Trening wyszukiwania i korekty błędów' : 'Find & Fix Mistake Training')
+                    : (language === 'pl' ? 'Trening tłumaczenia pełnych zdań z pamięci' : 'Sentence Translation Practice')}
+                </h3>
+                <p className="text-xs text-text-2">
+                  {language === 'pl' 
+                    ? 'Ćwiczenie oparte na wybranym materiale z natychmiastową oceną i podpowiedziami AI.' 
+                    : 'Exercise based on selected material with instant AI grading.'}
+                </p>
+              </div>
+
+              {/* Warm-up Callout */}
+              <div className="bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-emerald-500/5 border border-emerald-500/30 rounded-2xl p-5 space-y-2.5 relative z-10">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🧩</span>
+                  <h4 className="text-base font-bold text-emerald-300">
+                    {language === 'pl' ? 'Czy chcesz zacząć od rozgrzewki?' : 'Would you like to start with a warm-up?'}
+                  </h4>
+                </div>
+                <p className="text-xs sm:text-sm text-text-2 leading-relaxed">
+                  {language === 'pl'
+                    ? 'Krótka układanka klockowa (1–2 min) pomoże Ci płynnie wejść w tryb myślenia po angielsku i rozgrzać pamięć przed głównymi zadaniami. Rozgrzewkę możesz w każdej chwili pominąć.'
+                    : 'A quick scrambler puzzle (1–2 min) helps you transition into English mode and warms up your memory before the main tasks. You can skip it at any time.'}
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3 pt-2 relative z-10">
+                <button
+                  type="button"
+                  onClick={() => setWarmupPhase('scrambler')}
+                  className="w-full min-h-[3.25rem] sm:min-h-[3.5rem] rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm sm:text-base shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                >
+                  <span>🚀 {language === 'pl' ? 'Zacznij od rozgrzewki (Zalecane)' : 'Start with warm-up (Recommended)'}</span>
+                  <ArrowRight size={16} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setWarmupPhase('exercises')}
+                  className="w-full min-h-[3rem] rounded-2xl bg-white/5 hover:bg-white/10 text-text-2 hover:text-white font-semibold text-xs sm:text-sm border border-white/10 transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                >
+                  <span>⚡ {language === 'pl' ? 'Przejdź od razu do zdań' : 'Go directly to sentences'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : warmupPhase === 'scrambler' ? (
+          <div className="max-w-2xl mx-auto pb-28 md:pb-8 animate-fade-in">
+            <HomeworkWarmupScrambler
+              sentences={exercises}
+              onComplete={() => setWarmupPhase('exercises')}
+              onSkip={() => setWarmupPhase('exercises')}
+            />
+          </div>
+        ) : (
+          <div className="max-w-2xl mx-auto space-y-4 pb-28 md:pb-8">
+            {/* Progress header */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-mono text-content-muted">
+                {language === 'pl' ? 'Postęp:' : 'Progress:'} {activeSentenceIndex + 1} {practiceMode === 'fixed' ? `/ ${exercises.length}` : ''}
+              </span>
             {practiceMode === 'time' && timeLeft !== null && (
               <div className={`font-mono text-base font-bold flex items-center gap-1.5 ${timeLeft <= 10 ? 'text-danger animate-pulse' : 'text-primary'}`}>
                 <Clock className="w-4 h-4" />
@@ -3868,43 +4097,110 @@ ${learningContext?.briefing || ''}
                 {i18n.t("Zdanie")} {activeSentenceIndex + 1}
               </div>
 
-              {/* Polish Sentence */}
-              {exerciseFormat !== 'puzzle' && (
-                <div className="w-full bg-[var(--surface-flat)] border border-white/10 rounded-2xl p-5 shadow-[inset_0_2px_15px_rgba(0,0,0,0.5)] mb-2">
-                  <div className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight leading-relaxed text-center">
-                    {exercises[activeSentenceIndex].polishSentence}
-                  </div>
-                </div>
-              )}
+              {/* Exercise prompt */}
+              {exerciseFormat === 'correction' ? (
+                <div className="w-full space-y-3">
+                  <div className="p-4 sm:p-5 rounded-2xl bg-amber-950/25 border border-amber-500/35 text-left space-y-2.5 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold uppercase tracking-wider font-mono">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                        {language === 'pl' ? 'Znajdź i popraw błąd w zdaniu' : 'Spot & fix the error'}
+                      </span>
+                      {exercises[activeSentenceIndex].hint && (
+                        <button
+                          type="button"
+                          onClick={() => toggleHint(activeSentenceIndex)}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
+                        >
+                          <Lightbulb className="w-3.5 h-3.5" />
+                          {showHints[activeSentenceIndex] 
+                            ? (language === 'pl' ? 'Ukryj wskazówkę' : 'Hide hint') 
+                            : (language === 'pl' ? 'Wskazówka' : 'Hint')}
+                        </button>
+                      )}
+                    </div>
 
-              {/* Optional hint toggle */}
-              {exercises[activeSentenceIndex].hint && exerciseFormat !== 'puzzle' && (
-                <div className="w-full">
-                  <button
-                    type="button"
-                    onClick={() => toggleHint(activeSentenceIndex)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-warn hover:opacity-80 transition-colors mx-auto"
-                  >
-                    <Lightbulb className="w-3.5 h-3.5" />
-                    {showHints[activeSentenceIndex] 
-                      ? (language === 'pl' ? 'Ukryj wskazówkę' : 'Hide hint') 
-                      : (language === 'pl' ? 'Pokaż wskazówkę' : 'Show hint')}
-                  </button>
-                  {showHints[activeSentenceIndex] && (
-                    <div className="mt-1.5 mx-auto bg-warn/[0.04] border border-warn/15 rounded-xl p-3 text-xs text-warn animate-fade-in-up max-w-lg">
-                      {exercises[activeSentenceIndex].hint}
+                    <p className="text-lg sm:text-xl font-bold text-white leading-relaxed pt-1">
+                      {exercises[activeSentenceIndex].erroneousSentence || exercises[activeSentenceIndex].polishSentence}
+                    </p>
+
+                    {exercises[activeSentenceIndex].polishSentence && exercises[activeSentenceIndex].polishSentence !== exercises[activeSentenceIndex].erroneousSentence && (
+                      <p className="text-xs text-text-2 pt-2 border-t border-white/10 flex items-center gap-1.5">
+                        <span className="font-semibold text-text-hi">{language === 'pl' ? 'Kontekst / Znaczenie:' : 'Context / Meaning:'}</span>
+                        <span className="italic">{exercises[activeSentenceIndex].polishSentence}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {showHints[activeSentenceIndex] && exercises[activeSentenceIndex].hint && (
+                    <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/35 text-amber-200 text-xs sm:text-sm leading-relaxed text-left flex items-start gap-2.5 animate-in fade-in duration-200">
+                      <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-amber-300 block text-[11px] uppercase tracking-wider mb-0.5">
+                          {language === 'pl' ? 'Wskazówka lektora:' : 'Tutor hint:'}
+                        </span>
+                        <span>{exercises[activeSentenceIndex].hint}</span>
+                      </div>
                     </div>
                   )}
                 </div>
-              )}
+              ) : exerciseFormat !== 'puzzle' ? (
+                <>
+                  <div className="w-full bg-[var(--surface-flat)] border border-white/10 rounded-2xl p-5 shadow-[inset_0_2px_15px_rgba(0,0,0,0.5)] mb-2">
+                    <div className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight leading-relaxed text-center">
+                      {exercises[activeSentenceIndex].polishSentence}
+                    </div>
+                  </div>
+
+                  {/* Optional hint toggle */}
+                  {exercises[activeSentenceIndex].hint && (
+                    <div className="w-full">
+                      <button
+                        type="button"
+                        onClick={() => toggleHint(activeSentenceIndex)}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-warn hover:opacity-80 transition-colors mx-auto cursor-pointer"
+                      >
+                        <Lightbulb className="w-3.5 h-3.5" />
+                        {showHints[activeSentenceIndex] 
+                          ? (language === 'pl' ? 'Ukryj wskazówkę' : 'Hide hint') 
+                          : (language === 'pl' ? 'Pokaż wskazówkę' : 'Show hint')}
+                      </button>
+                      {showHints[activeSentenceIndex] && (
+                        <div className="mt-1.5 mx-auto bg-warn/[0.04] border border-warn/15 rounded-xl p-3 text-xs text-warn animate-fade-in-up max-w-lg">
+                          {exercises[activeSentenceIndex].hint}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : null}
 
               {/* Student answer field */}
               <div className="w-full space-y-3 mt-4 pt-4 border-t border-white/5 flex flex-col items-center">
-                {exerciseFormat !== 'puzzle' && (
+                {exerciseFormat === 'correction' ? (
+                  <div className="flex items-center justify-between w-full">
+                    <label className="text-xs font-bold text-amber-400 uppercase tracking-widest">
+                      {language === 'pl' ? 'Twoja poprawiona wersja:' : 'Your corrected sentence:'}
+                    </label>
+                    {exercises[activeSentenceIndex].erroneousSentence && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const val = exercises[activeSentenceIndex].erroneousSentence || '';
+                          handleAnswerChange(activeSentenceIndex, val);
+                        }}
+                        className="inline-flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300 font-bold transition-colors cursor-pointer"
+                        title={language === 'pl' ? 'Wstaw zdanie z błędem, aby szybko poprawić tylko błąd' : 'Copy sentence to edit'}
+                      >
+                        <Copy className="w-3 h-3" /> {language === 'pl' ? 'Kopiuj zdanie do edycji' : 'Copy sentence to edit'}
+                      </button>
+                    )}
+                  </div>
+                ) : exerciseFormat !== 'puzzle' ? (
                   <label className="block text-sm font-bold text-primary/80 text-center w-full uppercase tracking-widest">
                     {language === 'pl' ? 'Twoje tłumaczenie na angielski:' : 'Your translation to English:'}
                   </label>
-                )}
+                ) : null}
                 
                 {evaluationStatuses[activeSentenceIndex] === 'evaluated' && singleEvaluationResults[activeSentenceIndex] ? (
                   <div className="space-y-3 w-full text-center flex flex-col items-center">
@@ -4065,10 +4361,18 @@ ${learningContext?.briefing || ''}
                   <textarea
                     value={studentAnswers[activeSentenceIndex] || ''}
                     onChange={(e) => handleAnswerChange(activeSentenceIndex, e.target.value)}
-                    placeholder={language === 'pl' ? 'Wpisz swoje tłumaczenie tutaj...' : 'Type your translation here...'}
+                    placeholder={
+                      exerciseFormat === 'correction'
+                        ? (language === 'pl' ? 'Wpisz w pełni poprawione zdanie po angielsku...' : 'Type the fully corrected sentence in English...')
+                        : (language === 'pl' ? 'Wpisz swoje tłumaczenie tutaj...' : 'Type your translation here...')
+                    }
                     rows={2}
                     disabled={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
-                    className="w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner focus:border-primary/40 focus:ring-1 focus:ring-primary/20 rounded-xl p-3 text-sm outline-none transition-all duration-200 text-center"
+                    className={`w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner rounded-xl p-3 text-sm outline-none transition-all duration-200 text-center ${
+                      exerciseFormat === 'correction'
+                        ? 'focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/25'
+                        : 'focus:border-primary/40 focus:ring-1 focus:ring-primary/20'
+                    }`}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -4206,11 +4510,12 @@ ${learningContext?.briefing || ''}
           {studentAnswers.some(ans => !ans?.trim()) && (
             <div className="text-center text-xs text-content-muted">
               {language === 'pl' 
-                ? 'Przetłumacz wszystkie zdania, aby odblokować przycisk oceny.' 
-                : 'Please translate all sentences to enable the submission button.'}
+                ? (exerciseFormat === 'correction' ? 'Popraw wszystkie zdania, aby odblokować przycisk oceny.' : 'Przetłumacz wszystkie zdania, aby odblokować przycisk oceny.') 
+                : 'Please complete all sentences to enable the submission button.'}
             </div>
           )}
         </div>
+        )
       )}
 
       {/* PUZZLE SUCCESS STEP */}

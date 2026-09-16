@@ -6,6 +6,7 @@ interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: string) => string;
+  tText: (pl: string, en: string) => string;
 }
 
 const translations = {
@@ -108,7 +109,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
       setLanguage(savedLang);
       i18n.changeLanguage(savedLang);
     } else {
-      const browserLang = navigator.language.startsWith('pl') ? 'pl' : 'en';
+      const browserLang = typeof navigator !== 'undefined' && navigator.language?.startsWith('pl') ? 'pl' : 'en';
       setLanguage(browserLang);
       i18n.changeLanguage(browserLang);
     }
@@ -131,17 +132,19 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   };
 
   const t = (key: string): string => {
-    const directVal = translations[language][key as keyof typeof translations['en']];
+    const directVal = (translations as any)[language]?.[key];
     if (directVal) return directVal;
     
     const i18nVal = i18n.t(key);
     if (i18nVal && i18nVal !== key) return i18nVal;
     
-    return '';
+    return key;
   };
 
+  const tText = (pl: string, en: string): string => (language === 'pl' ? pl : en);
+
   return (
-    <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage, t }}>
+    <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage, t, tText }}>
       {children}
     </LanguageContext.Provider>
   );

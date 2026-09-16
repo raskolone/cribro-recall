@@ -58,10 +58,15 @@ import {
   PlusCircle,
   MoveUp,
   MoveDown,
+  FilePlus,
   Airplay,
   Compass,
+  Paperclip,
+  Trash2,
+  Target,
+  FileSignature,
 } from 'lucide-react';
-import { ScratchpadDocument, ScratchpadTemplate } from '../../types';
+import { ScratchpadDocument, ScratchpadTemplate, LessonAttachment } from '../../types';
 import {
   buildScratchpadUrl,
   scratchpadContentBytes,
@@ -69,6 +74,8 @@ import {
   updateScratchpadLaser,
   updateScratchpadPresentation,
   updateScratchpadOrientation,
+  revealScratchpadExerciseAnswer,
+  submitStudentExerciseAnswer,
 } from '../../services/scratchpadService';
 import {
   imageFromClipboard,
@@ -81,6 +88,7 @@ import {
   exportScratchpadToWord,
   exportScratchpadToGoogleDocs,
 } from '../../utils/pdfExport';
+import { AIAssistantIcon } from '../ui/AIAssistantIcon';
 import Button from '../ui/Button';
 import MenuDropdown, { MenuChevron } from '../ui/MenuDropdown';
 import CoachMarks from '../ui/CoachMarks';
@@ -88,7 +96,9 @@ import { buildScratchpadCoachSteps } from './scratchpadCoachSteps';
 import ScratchpadTemplateManagerModal from './ScratchpadTemplateManagerModal';
 import { ScratchpadPresentationOverlay, PresentationState } from './ScratchpadPresentationOverlay';
 import { ScratchpadLivePresentationModal } from './ScratchpadLivePresentationModal';
-import { buildLessonTemplate, LESSON_SECTIONS } from '../../utils/lessonTemplate';
+import { ScratchpadTeacherCompanionDrawer } from './ScratchpadTeacherCompanionDrawer';
+import { InteractiveExercise } from '../../services/lessonPlannerMethod';
+import { buildLessonTemplate, highestLessonNumber, LESSON_SECTIONS } from '../../utils/lessonTemplate';
 import { NOTEBOOK_COLORS, NOTEBOOK_INK, NOTEBOOK_SWATCHES } from '../../utils/notebookPalette';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { generateTextWithUnifiedFallback } from '../../services/geminiService';
@@ -235,6 +245,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
   const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
   const [isLivePresentationModalOpen, setIsLivePresentationModalOpen] = useState(false);
+  const [isScenarioDrawerOpen, setIsScenarioDrawerOpen] = useState(false);
 
   // Synchronizacja orientacji z chmury
   useEffect(() => {
@@ -254,6 +265,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     role: 'user' | 'assistant';
     text: string;
     timestamp: string;
+    attachments?: LessonAttachment[];
   }
 
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
@@ -265,9 +277,12 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     return [];
   });
   const [aiChatDraft, setAiChatDraft] = useState('');
+  const [pendingAiAttachments, setPendingAiAttachments] = useState<LessonAttachment[]>([]);
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [copiedAiMsgId, setCopiedAiMsgId] = useState<string | null>(null);
+  const [isAiDraggingOver, setIsAiDraggingOver] = useState(false);
   const aiChatEndRef = useRef<HTMLDivElement>(null);
+  const aiFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try {
@@ -376,11 +391,70 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     }, 250);
   }, [rebuildToc]);
 
-  /** Liczba stron = wysokość kartki podzielona przez wysokość aktualnej orientacji A4. */
+  interface PageMarker {
+    id: string;
+    topPx: number;
+    pageNumber: number;
+    label: string;
+    isVirtual?: boolean;
+  }
+
+  const [pageMarkers, setPageMarkers] = useState<PageMarker[]>([]);
+
+  /** Liczba stron i dokładne pozycje podziałów A4 uwzględniające wymuszone podziały lekcji */
   const measurePages = useCallback(() => {
     const paper = editorRef.current;
     if (!paper) return;
-    setPageCount(Math.max(1, Math.ceil(paper.offsetHeight / activePageHeight)));
+
+    const pageBreaks = Array.from(paper.querySelectorAll<HTMLElement>('.pad-page-break'));
+    const markers: PageMarker[] = [];
+    let currentPage = 1;
+
+    if (pageBreaks.length === 0) {
+      const totalHeight = paper.scrollHeight || paper.offsetHeight;
+      const totalPages = Math.max(1, Math.ceil(totalHeight / activePageHeight));
+      for (let i = 1; i < totalPages; i++) {
+        markers.push({
+          id: `virtual-${i}`,
+          topPx: i * activePageHeight,
+          pageNumber: i + 1,
+          label: `Strona ${i + 1}`,
+          isVirtual: true,
+        });
+      }
+      setPageCount(totalPages);
+      setPageMarkers(markers);
+      return;
+    }
+
+    let sectionStartTop = 0;
+
+    for (let bIdx = 0; bIdx <= pageBreaks.length; bIdx++) {
+      const breakEl = pageBreaks[bIdx];
+      const sectionEndTop = breakEl ? breakEl.offsetTop : (paper.scrollHeight || paper.offsetHeight);
+      const sectionHeight = Math.max(0, sectionEndTop - sectionStartTop);
+      const sectionPages = Math.max(1, Math.ceil(sectionHeight / activePageHeight));
+
+      // Wirtualne linie podziału wewnątrz sekcji, jeśli pojedyncza lekcja przekracza 1 stronę A4
+      for (let p = 1; p < sectionPages; p++) {
+        markers.push({
+          id: `sec-${bIdx}-p-${p}`,
+          topPx: sectionStartTop + p * activePageHeight,
+          pageNumber: currentPage + p,
+          label: `Strona ${currentPage + p}`,
+          isVirtual: true,
+        });
+      }
+
+      currentPage += sectionPages;
+
+      if (breakEl) {
+        sectionStartTop = breakEl.offsetTop + breakEl.offsetHeight;
+      }
+    }
+
+    setPageCount(Math.max(1, currentPage - 1));
+    setPageMarkers(markers);
   }, [activePageHeight]);
 
   measurePagesRef.current = measurePages;
@@ -827,7 +901,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         recallItems,
       });
 
-      editorRef.current.insertAdjacentHTML('beforeend', `<p><br></p>${html}`);
+      editorRef.current.insertAdjacentHTML('beforeend', html);
 
       const headings = editorRef.current.querySelectorAll('h3');
       const firstSection = headings[headings.length - LESSON_SECTIONS.length];
@@ -843,47 +917,175 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       }
 
       handleInput();
+      setTimeout(() => {
+        measurePages();
+      }, 60);
     } finally {
       setIsInsertingLesson(false);
     }
   };
 
+  /** Wstawia wymuszony podział strony A4 (nowa czysta strona) */
+  const handleInsertPageBreak = () => {
+    if (isReadOnly || !editorRef.current) return;
+    const breakHtml = `<div class="pad-page-break" data-page-break="1" contenteditable="false"><span class="pad-page-break-badge">── Strona A4 • Nowa Lekcja ──</span></div><p><br></p>`;
+    window.document.execCommand('insertHTML', false, breakHtml);
+    handleInput();
+    setTimeout(() => {
+      measurePages();
+    }, 60);
+  };
+
+  // ── Przetwarzanie plików i załączników do Asystenta AI Notatnika ──
+  const processAiFiles = async (files: FileList | File[]) => {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    const newAtts: LessonAttachment[] = [];
+
+    for (const file of list) {
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      let detectedType: LessonAttachment['type'] = 'text';
+      if (file.type.startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) {
+        detectedType = 'image';
+      } else if (file.type === 'application/pdf' || ext === 'pdf') {
+        detectedType = 'pdf';
+      } else if (ext === 'md' || ext === 'markdown') {
+        detectedType = 'markdown';
+      } else if (ext === 'html' || ext === 'htm') {
+        detectedType = 'html';
+      } else {
+        detectedType = 'text';
+      }
+
+      try {
+        if (detectedType === 'image' || detectedType === 'pdf') {
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+
+          let textContent: string | undefined;
+          if (detectedType === 'pdf') {
+            try {
+              const pdfjsLib = (window as any).pdfjsLib;
+              if (pdfjsLib) {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = '';
+                for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) {
+                  const page = await pdf.getPage(i);
+                  const tc = await page.getTextContent();
+                  fullText += tc.items.map((item: any) => item.str).join(' ') + '\n';
+                }
+                textContent = fullText;
+              }
+            } catch (pdfErr) {
+              console.warn('PDF text extraction fallback:', pdfErr);
+            }
+          }
+
+          newAtts.push({
+            id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            name: file.name || `plik-${Date.now()}.${ext || 'png'}`,
+            type: detectedType,
+            size: file.size,
+            mimeType: file.type || (detectedType === 'pdf' ? 'application/pdf' : 'image/png'),
+            dataUrl,
+            textContent,
+          });
+        } else {
+          const textContent = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsText(file);
+          });
+
+          newAtts.push({
+            id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            name: file.name,
+            type: detectedType,
+            size: file.size,
+            mimeType: file.type || 'text/plain',
+            textContent,
+          });
+        }
+      } catch (e) {
+        console.warn('Błąd czytania pliku:', e);
+      }
+    }
+    setPendingAiAttachments(prev => [...prev, ...newAtts]);
+  };
+
   // ── Obsługa zapytań do wbudowanego Asystenta AI Notatnika ──
   const handleSendAiChat = async (customPrompt?: string) => {
     const promptToSend = (customPrompt || aiChatDraft).trim();
-    if (!promptToSend || isAiGenerating) return;
+    const attachmentsToSend = [...pendingAiAttachments];
+    if ((!promptToSend && attachmentsToSend.length === 0) || isAiGenerating) return;
 
     const userTurn: ScratchpadChatMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
-      text: promptToSend,
+      text: promptToSend || (attachmentsToSend.length > 0 ? `[Załączono: ${attachmentsToSend.map(a => a.name).join(', ')}]` : ''),
       timestamp: new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
+      attachments: attachmentsToSend.length > 0 ? attachmentsToSend : undefined,
     };
 
     setAiChatMessages(prev => [...prev, userTurn]);
-    if (!customPrompt) setAiChatDraft('');
+    if (!customPrompt) {
+      setAiChatDraft('');
+      setPendingAiAttachments([]);
+    }
     setIsAiGenerating(true);
 
     try {
       const docText = editorRef.current?.innerText || '';
       const selectedText = window.getSelection()?.toString().trim() || '';
 
-      const systemPrompt = `Jesteś inteligentnym asystentem lektora i kursanta CRIBRO ENGLISH wbudowanym bezpośrednio w notatnik lekcyjny.
-Twoim celem jest pomoc w prowadzeniu efektywnej lekcji języka angielskiego, błyskawiczna analiza notatek, generowanie powtórek (Revision), wyjaśnianie zawiłości gramatycznych, parafrazowanie zdań oraz tworzenie ćwiczeń i zdań do tłumaczenia na żywo.
+      const systemPrompt = `Jesteś inteligentnym, wszechstronnym asystentem lektora i kursanta CRIBRO ENGLISH wbudowanym bezpośrednio w notatnik lekcyjny (Notebook / Scratchpad).
+Twoim celem jest:
+1. Prowadzenie i planowanie efektywnej lekcji języka angielskiego.
+2. Błyskawiczna analiza notatek, transkrypcji i załączników (pliki PDF, screenshoty, dokumenty, wklejony tekst).
+3. Wyciąganie kluczowego słownictwa, korekt gramatycznych i tworzenie podsumowań.
+4. Gdy użytkownik prosi o przygotowanie lekcji lub uporządkowanie notatek/materiałów:
+   - Przygotuj przejrzyste opracowanie w czytelnym Markdownie.
+   - Wyróżnij 5 standardowych sekcji lekcji CRIBRO/Notion:
+     • [Revision] (powtórka / 3 kluczowe elementy do poprawy z poprzedniej lekcji)
+     • [Main topic / Practice] (temat główny, zagadnienia, teoria i ćwiczenia)
+     • [Lesson Summary] (streszczenie i najważniejsze punkty lekcji)
+     • [Key Language & Corrections (New words)] (nowe słówka z definicjami i zdania z korektą)
+     • [Homework] (zadanie domowe / słówka do utrwalenia w Recall)
+   - Na końcu odpowiedzi zaproponuj lektorowi/kursantowi opcje:
+     „Czy chcesz wstawić tę lekcję do notatnika zgodnie z domyślnym szablonem lekcji (nagłówek z datą i 5 sekcji), czy dopisać treść na końcu dokumentu?”
 Zasady:
-1. Odpowiadaj zwięźle, konkretnie i w uporządkowanej formie Markdown.
-2. Kluczowe słownictwo i konstrukcje pogrubiaj (**word**).
-3. Gdy tworzysz zdania lub ćwiczenia, numeruj je czytelnie (1., 2., 3.).
-4. Wyjaśnienia twórz po polsku, a przykłady i ćwiczenia po angielsku.`;
+- Odpowiadaj konkretnie i zwięźle. Słownictwo pogrubiaj (**word**).
+- Wyjaśnienia po polsku, przykłady i ćwiczenia po angielsku.`;
 
-      let promptWithContext = `Kontekst dokumentu:
+      let attachmentsContext = '';
+      if (attachmentsToSend.length > 0) {
+        attachmentsContext = '\n\n[ZAŁĄCZNIKI UŻYTKOWNIKA DO ANALIZY]:\n' + attachmentsToSend.map((att, idx) => {
+          let desc = `--- Załącznik ${idx + 1}: ${att.name} (${att.type}) ---\n`;
+          if (att.textContent) {
+            desc += `Treść tekstu / PDF:\n"""${att.textContent.slice(0, 10000)}"""\n`;
+          } else if (att.type === 'image') {
+            desc += `[Obraz: ${att.name}]\n`;
+          }
+          return desc;
+        }).join('\n');
+      }
+
+      let promptWithContext = `Kontekst dokumentu notatnika:
 Tytuł: ${docData.title || 'Notatnik lekcyjny'}
 Kursant: ${docData.studentName || 'Kursant'}
 
-${selectedText ? `Aktualnie zaznaczony przez użytkownika fragment tekstu:\n"""${selectedText}"""\n\n` : ''}Treść dokumentu notatnika:\n"""${docText.slice(0, 14000)}"""
+${selectedText ? `Aktualnie zaznaczony przez użytkownika fragment tekstu:\n"""${selectedText}"""\n\n` : ''}Treść dokumentu notatnika:\n"""${docText.slice(0, 12000)}"""
+${docData.teacherNotes ? `\n\n[PRYWATNE NOTATKI LEKTORA (SIDE NOTES — WIDOCZNE TYLKO DLA CIEBIE I LEKTORA, UWAGI DOTYCZĄCE TRUDNOŚCI KURSANTA I PRZEBIEGU ZAJĘĆ)]:\n"""${docData.teacherNotes.slice(0, 5000)}"""\nWykorzystaj te uwagi lektora przy przygotowywaniu podsumowania, korekt lub zadań domowych!\n` : ''}
+${attachmentsContext}
 
 Polecenie użytkownika:
-${promptToSend}`;
+${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z nich opracowanie lekcji zgodnie ze standardem CRIBRO.'}`;
 
       const aiResponse = await generateTextWithUnifiedFallback(
         promptWithContext,
@@ -918,9 +1120,7 @@ ${promptToSend}`;
     }
   };
 
-  const handleInsertAiMessageToDoc = (text: string) => {
-    if (isReadOnly || !editorRef.current) return;
-
+  const markdownToHtml = (text: string): string => {
     const lines = text.split('\n');
     let html = '';
     let inList = false;
@@ -965,10 +1165,89 @@ ${promptToSend}`;
     }
 
     if (inList) html += '</ul>';
+    return html;
+  };
 
+  const handleInsertAiMessageToDoc = (text: string) => {
+    if (isReadOnly || !editorRef.current) return;
+    const html = markdownToHtml(text);
     editorRef.current.focus();
     window.document.execCommand('insertHTML', false, `<div class="ai-inserted-block" style="border-left: 3px solid #72f0b4; padding-left: 10px; margin: 10px 0;">${html}</div>`);
     handleInput();
+  };
+
+  const handleAppendAiMessageToDoc = (text: string) => {
+    if (isReadOnly || !editorRef.current) return;
+    const innerHtml = markdownToHtml(text);
+    const blockHtml = `<p><br></p><div class="ai-inserted-block" style="border-left: 3px solid #72f0b4; padding-left: 12px; margin: 14px 0;">${innerHtml}</div><p><br></p>`;
+    editorRef.current.insertAdjacentHTML('beforeend', blockHtml);
+    handleInput();
+    setTimeout(() => {
+      editorRef.current?.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 100);
+  };
+
+  const handleInsertAsStructuredLesson = (text: string) => {
+    if (isReadOnly || !editorRef.current) return;
+
+    // Detect date or default to today
+    const dateMatch = text.match(/(?:dnia|z\s*dnia|date:?)\s*(\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\d{4}-\d{2}-\d{2})/i);
+    const lessonDate = dateMatch ? dateMatch[1] : new Date().toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    // Detect topic if present
+    const topicMatch = text.match(/(?:temat|topic|lekcja:?)\s*[:\-—]\s*([^\n\r]+)/i);
+    const topic = topicMatch ? topicMatch[1].trim() : '';
+
+    const nextNum = highestLessonNumber(editorRef.current.innerHTML) + 1;
+
+    // Helper to extract section content
+    const extractSection = (keywords: string[]): string => {
+      const regex = new RegExp(`(?:#{1,4}\\s*)?(?:${keywords.join('|')})[\\s:\\-—]+([\\s\\S]*?)(?=(?:#{1,4}\\s*)?(?:revision|main topic|lesson summary|key language|homework|blok\\s*\\d|$)|\$)`, 'i');
+      const m = text.match(regex);
+      return m && m[1] ? m[1].trim() : '';
+    };
+
+    const revText = extractSection(['revision', 'powtórka', 'korekty', 'błędy']);
+    const topicText = extractSection(['main topic', 'practice', 'ćwiczenia', 'temat główny']);
+    const sumText = extractSection(['lesson summary', 'podsumowanie', 'summary']);
+    const vocabText = extractSection(['key language', 'słownictwo', 'nowe słówka', 'corrections']);
+    const hwText = extractSection(['homework', 'zadanie domowe', 'praca domowa']);
+
+    const hasExistingContent = editorRef.current.innerHTML.trim().length > 0 && editorRef.current.innerText.trim().length > 0;
+    const pageBreakHtml = hasExistingContent
+      ? `<div class="pad-page-break" data-page-break="1" contenteditable="false"><span class="pad-page-break-badge">── Strona A4 • Nowa Lekcja ──</span></div>`
+      : '';
+
+    let fullLessonHtml = `
+      ${pageBreakHtml}
+      <h2 data-toggle="1" data-collapsed="0">
+        <span class="pad-toggle" contenteditable="false" title="Zwiń / rozwiń lekcję">▾</span>
+        Lesson ${nextNum} — ${lessonDate}${topic ? ` • ${topic}` : ''}
+      </h2>
+    `;
+
+    const sections = [
+      { title: 'Revision', color: NOTEBOOK_COLORS.rose, body: revText || '<p>• Przejrzyj korekty i słownictwo z poprzednich zajęć.</p>' },
+      { title: 'Main topic / Practice', color: NOTEBOOK_COLORS.green, body: topicText || (topic ? `<p><strong>Temat:</strong> ${topic}</p>` : '<p><br></p>') },
+      { title: 'Lesson Summary', color: NOTEBOOK_COLORS.blue, body: sumText || (text.length < 500 ? markdownToHtml(text) : '<p><br></p>') },
+      { title: 'Key Language & Corrections (New words)', color: NOTEBOOK_COLORS.orange, body: vocabText || '<p><br></p>' },
+      { title: 'Homework', color: NOTEBOOK_COLORS.violet, body: hwText || '<p>• Utrwalenie słówek w aplikacji Recall (Fiszki / Tłumaczenie zdań).</p>' },
+    ];
+
+    sections.forEach(s => {
+      const bodyHtml = s.body.startsWith('<') ? s.body : markdownToHtml(s.body);
+      fullLessonHtml += `
+        <h3 style="color: ${s.color}">${s.title}</h3>
+        <div>${bodyHtml}</div>
+      `;
+    });
+
+    editorRef.current.insertAdjacentHTML('beforeend', fullLessonHtml);
+    handleInput();
+    setTimeout(() => {
+      measurePages();
+      editorRef.current?.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 100);
   };
 
   const handleCopyAiMessage = (id: string, text: string) => {
@@ -1131,6 +1410,37 @@ ${promptToSend}`;
     }
   };
 
+  const handleLaunchExerciseFromScenario = async (ex: InteractiveExercise) => {
+    if (!docData.id) return;
+    try {
+      const mappedType =
+        ex.type === 'sentence_scramble'
+          ? 'sentence_scramble'
+          : ex.type === 'error_hunt'
+          ? 'error_hunt'
+          : 'interactive_quiz';
+
+      await updateScratchpadPresentation(docData.id, {
+        active: true,
+        title: ex.title || 'Ćwiczenie interaktywne',
+        type: mappedType,
+        question: ex.question,
+        options: ex.options,
+        correctAnswer: ex.correctAnswer,
+        revealedAnswer: false,
+        studentAnswer: null,
+        explanation: ex.explanation,
+      });
+    } catch (err) {
+      console.error('Błąd uruchamiania ćwiczenia ze scenariusza:', err);
+    }
+  };
+
+  const handleTriggerAiFromNotes = (promptText: string) => {
+    setIsAiChatOpen(true);
+    handleSendAiChat(promptText);
+  };
+
   const coachSteps = useMemo(
     () =>
       buildScratchpadCoachSteps({
@@ -1194,6 +1504,26 @@ ${promptToSend}`;
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0 flex-wrap">
+          {/* Pomocnik Lektora: Scenariusz i Side Notes */}
+          {isTeacher && (
+            <button
+              type="button"
+              onClick={() => setIsScenarioDrawerOpen(!isScenarioDrawerOpen)}
+              title="Scenariusz lekcji i prywatne Side Notes lektora"
+              className={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-sm ${
+                isScenarioDrawerOpen
+                  ? 'border-primary bg-primary/20 text-primary'
+                  : 'border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08]'
+              }`}
+            >
+              <Target size={14} />
+              <span className="hidden md:inline">Scenariusz & Notes</span>
+              {docData.teacherNotes && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              )}
+            </button>
+          )}
+
           {/* Tryb Prezentacji (Live Slides) dla lektora */}
           {isTeacher && (
             <button
@@ -1837,8 +2167,15 @@ ${promptToSend}`;
                   : []),
                 {
                   id: 'structure',
-                  label: 'Struktura',
+                  label: 'Struktura dokumentu',
                   items: [
+                    {
+                      id: 'page-break',
+                      label: 'Podział strony A4',
+                      description: 'Rozpocznij nową czystą stronę A4',
+                      icon: <FilePlus size={14} />,
+                      onSelect: handleInsertPageBreak,
+                    },
                     {
                       id: 'checklist',
                       label: 'Lista zadań',
@@ -1861,6 +2198,13 @@ ${promptToSend}`;
                   ],
                 },
               ]}
+            />
+
+            {/* Szybki podział strony A4 */}
+            <FormatButton
+              icon={<FilePlus size={14} />}
+              title="Wstaw podział strony A4 (Nowa czysta strona)"
+              onClick={handleInsertPageBreak}
             />
 
             {/* Szybki szablon dla lektora */}
@@ -2177,15 +2521,15 @@ ${promptToSend}`;
               </div>
             )}
 
-            {/* Podział na strony A4 */}
-            {Array.from({ length: Math.max(0, pageCount - 1) }).map((_, index) => (
+            {/* Wirtualne linie podziału stron A4 */}
+            {pageMarkers.map((marker) => (
               <div
-                key={index}
+                key={marker.id}
                 aria-hidden
                 className="pad-page-rule"
-                style={{ top: `${(index + 1) * activePageHeight}px` }}
+                style={{ top: `${marker.topPx}px` }}
               >
-                <span>Strona {index + 2} ({pageOrientation === 'landscape' ? 'Pozioma' : 'Pionowa'})</span>
+                <span>{marker.label} ({pageOrientation === 'landscape' ? 'Pozioma' : 'Pionowa'})</span>
               </div>
             ))}
           </div>
@@ -2197,9 +2541,7 @@ ${promptToSend}`;
             {/* Header */}
             <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-line-soft bg-base-100/60 sticky top-0 z-10">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-primary/15 text-primary border border-primary/25">
-                  <Bot size={15} />
-                </div>
+                <AIAssistantIcon size="xs" variant="badge" state={isAiGenerating ? 'thinking' : 'online'} glow={false} />
                 <div>
                   <h4 className="text-xs font-bold text-text-hi flex items-center gap-1.5">
                     <span>Asystent Notatnika</span>
@@ -2275,15 +2617,37 @@ ${promptToSend}`;
             </div>
 
             {/* Messages Body */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[14rem]">
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsAiDraggingOver(true);
+              }}
+              onDragLeave={() => setIsAiDraggingOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsAiDraggingOver(false);
+                if (e.dataTransfer.files) {
+                  processAiFiles(e.dataTransfer.files);
+                }
+              }}
+              className={`flex-1 overflow-y-auto p-3 space-y-3 min-h-[14rem] relative ${
+                isAiDraggingOver ? 'bg-primary/10 border-2 border-dashed border-primary rounded-xl' : ''
+              }`}
+            >
+              {isAiDraggingOver && (
+                <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-base-200/90 backdrop-blur-md rounded-xl text-center p-4">
+                  <Paperclip size={24} className="text-primary animate-bounce mb-2" />
+                  <span className="text-xs font-bold text-text-hi">Upuść pliki PDF, obrazy lub notatki tutaj</span>
+                  <span className="text-[10px] text-content-muted">Asystent przeanalizuje ich zawartość</span>
+                </div>
+              )}
+
               {aiChatMessages.length === 0 ? (
                 <div className="py-8 px-4 text-center space-y-2">
-                  <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center mx-auto">
-                    <Sparkles size={18} />
-                  </div>
-                  <h5 className="text-xs font-bold text-text-hi">W czym mogę pomóc?</h5>
+                  <AIAssistantIcon size="md" variant="avatar" state="idle" glow={true} className="mx-auto" />
+                  <h5 className="text-xs font-bold text-text-hi">Inteligentny Asystent Notatnika</h5>
                   <p className="text-[11px] leading-relaxed text-content-muted">
-                    Zadaj pytanie dotyczące treści notatnika, poproś o wyjaśnienie gramatyki lub kliknij jedną z szybkich akcji u góry.
+                    Wklej notatki, przeciągnij plik PDF / screenshot lub wpisz polecenie, aby przeanalizować materiał i wstawić go bezpośrednio do notatnika.
                   </p>
                 </div>
               ) : (
@@ -2296,31 +2660,72 @@ ${promptToSend}`;
                         : 'bg-base-100/85 border border-line-strong text-content mr-2'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1 text-[10px] text-content-muted">
+                    <div className="flex items-center justify-between mb-1.5 text-[10px] text-content-muted">
                       <span className="font-semibold">{msg.role === 'user' ? 'Ty' : 'Asystent AI'}</span>
                       <span>{msg.timestamp}</span>
                     </div>
+
+                    {msg.attachments && msg.attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {msg.attachments.map((att) => (
+                          <span
+                            key={att.id}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-base-100/80 border border-line text-[10px] font-mono text-primary"
+                          >
+                            <Paperclip size={10} />
+                            <span className="truncate max-w-[130px]">{att.name}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     <div className="whitespace-pre-wrap font-sans space-y-1">
                       {msg.text}
                     </div>
+
                     {msg.role === 'assistant' && (
-                      <div className="mt-2 pt-2 border-t border-line-soft flex items-center gap-1.5 justify-end">
-                        <button
-                          type="button"
-                          onClick={() => handleCopyAiMessage(msg.id, msg.text)}
-                          className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 text-[10px] text-content-muted hover:text-text-hi transition-colors flex items-center gap-1 cursor-pointer"
-                        >
-                          <Copy size={11} />
-                          <span>{copiedAiMsgId === msg.id ? 'Skopiowano!' : 'Kopiuj'}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleInsertAiMessageToDoc(msg.text)}
-                          className="px-2 py-0.5 rounded-md bg-primary/20 hover:bg-primary text-[10px] text-primary hover:text-accent-ink font-semibold transition-all flex items-center gap-1 cursor-pointer"
-                        >
-                          <PlusCircle size={11} />
-                          <span>Wstaw do notatnika</span>
-                        </button>
+                      <div className="mt-3 pt-2.5 border-t border-line-soft flex flex-col gap-1.5">
+                        <div className="text-[10px] font-bold text-content-muted uppercase tracking-wider flex items-center gap-1">
+                          <Layers size={11} className="text-primary" />
+                          <span>Opcje wstawienia do notatnika:</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleInsertAsStructuredLesson(msg.text)}
+                            title="Wstaw jako nową lekcję (nagłówek, podział strony i 5 bloków lekcji)"
+                            className="px-2 py-1.5 rounded-lg bg-primary/20 hover:bg-primary text-primary hover:text-accent-ink font-bold text-[10.5px] transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                          >
+                            <Calendar size={12} className="shrink-0" />
+                            <span className="truncate">Wstaw wg szablonu</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAppendAiMessageToDoc(msg.text)}
+                            title="Dopisz tę treść na samym dole dokumentu"
+                            className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-hi hover:text-primary border border-line text-[10.5px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <PlusCircle size={12} className="shrink-0 text-primary" />
+                            <span className="truncate">Dopisz na końcu</span>
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 border-t border-line-soft/60 text-[10px] text-content-muted">
+                          <button
+                            type="button"
+                            onClick={() => handleInsertAiMessageToDoc(msg.text)}
+                            className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer font-medium"
+                          >
+                            <span>Wstaw w miejscu kursora</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyAiMessage(msg.id, msg.text)}
+                            className="hover:text-text-hi transition-colors flex items-center gap-1 cursor-pointer"
+                          >
+                            <Copy size={11} />
+                            <span>{copiedAiMsgId === msg.id ? 'Skopiowano!' : 'Kopiuj'}</span>
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -2331,7 +2736,7 @@ ${promptToSend}`;
                 <div className="rounded-2xl p-3 bg-base-100/85 border border-primary/30 text-content mr-2 flex items-center gap-2.5">
                   <Loader2 size={15} className="animate-spin text-primary shrink-0" />
                   <span className="text-xs text-primary font-medium animate-pulse">
-                    Analizuję notatnik i generuję odpowiedź…
+                    Analizuję materiały i generuję propozycję…
                   </span>
                 </div>
               )}
@@ -2340,33 +2745,84 @@ ${promptToSend}`;
 
             {/* Input Bar */}
             <div className="p-3 border-t border-line-strong bg-base-100/60 space-y-2">
-              <div className="relative flex items-center">
-                <textarea
-                  value={aiChatDraft}
-                  onChange={(e) => setAiChatDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendAiChat();
-                    }
-                  }}
-                  rows={2}
-                  placeholder="Zapytaj o treść notatnika..."
-                  disabled={isAiGenerating}
-                  className="w-full bg-base-100/90 border border-line-strong focus:border-primary rounded-xl px-3 py-2 pr-10 text-[12px] text-text-hi placeholder-content-muted outline-none resize-none transition-all"
-                />
+              {/* Attached files preview */}
+              {pendingAiAttachments.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pb-1 max-h-24 overflow-y-auto">
+                  {pendingAiAttachments.map((att) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-base-100 border border-primary/30 text-[11px] text-text-hi"
+                    >
+                      <Paperclip size={11} className="text-primary shrink-0" />
+                      <span className="truncate max-w-[140px] font-medium">{att.name}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPendingAiAttachments((prev) => prev.filter((a) => a.id !== att.id))
+                        }
+                        className="p-0.5 rounded text-content-muted hover:text-danger transition-colors cursor-pointer"
+                        title="Usuń załącznik"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <input
+                ref={aiFileInputRef}
+                type="file"
+                multiple
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.markdown,.html"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files) {
+                    processAiFiles(e.target.files);
+                    e.target.value = '';
+                  }
+                }}
+              />
+
+              <div className="relative flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => handleSendAiChat()}
-                  disabled={isAiGenerating || !aiChatDraft.trim()}
-                  className="absolute right-2 p-2 rounded-lg bg-primary text-accent-ink hover:brightness-110 transition-all disabled:opacity-30 cursor-pointer shadow-btn"
-                  title="Wyślij (Enter)"
+                  onClick={() => aiFileInputRef.current?.click()}
+                  disabled={isAiGenerating}
+                  className="p-2 rounded-xl border border-line-strong bg-base-100 hover:border-primary/40 text-content-muted hover:text-primary transition-all cursor-pointer shrink-0"
+                  title="Załącz plik (PDF, screenshot, notatki tekstowe)"
                 >
-                  {isAiGenerating ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                  <Paperclip size={15} />
                 </button>
+
+                <div className="relative flex-1 flex items-center">
+                  <textarea
+                    value={aiChatDraft}
+                    onChange={(e) => setAiChatDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendAiChat();
+                      }
+                    }}
+                    rows={2}
+                    placeholder="Wklej notatki lub zapytaj asystenta..."
+                    disabled={isAiGenerating}
+                    className="w-full bg-base-100/90 border border-line-strong focus:border-primary rounded-xl px-3 py-2 pr-10 text-[12px] text-text-hi placeholder-content-muted outline-none resize-none transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleSendAiChat()}
+                    disabled={isAiGenerating || (!aiChatDraft.trim() && pendingAiAttachments.length === 0)}
+                    className="absolute right-2 p-2 rounded-lg bg-primary text-accent-ink hover:brightness-110 transition-all disabled:opacity-30 cursor-pointer shadow-btn"
+                    title="Wyślij (Enter)"
+                  >
+                    {isAiGenerating ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                  </button>
+                </div>
               </div>
               <p className="text-[9px] text-center text-content-muted">
-                Shift + Enter dla nowej linii • Kliknij „Wstaw do notatnika”, aby dodać treść
+                Obsługa załączników PDF/obrazów • Shift + Enter dla nowej linii
               </p>
             </div>
           </aside>
@@ -2452,12 +2908,25 @@ ${promptToSend}`;
         />
       )}
 
+      {/* Pomocnik lektora: Drawer ze scenariuszem i prywatnymi Side Notes */}
+      {isTeacher && (
+        <ScratchpadTeacherCompanionDrawer
+          isOpen={isScenarioDrawerOpen}
+          onClose={() => setIsScenarioDrawerOpen(false)}
+          docData={docData}
+          onLaunchExercise={handleLaunchExerciseFromScenario}
+          onTriggerAiSummary={handleTriggerAiFromNotes}
+        />
+      )}
+
       {/* Nakładka prezentacji live (widoczna u lektora i kursanta, gdy jest aktywna) */}
       {docData.presentationState?.active && (
         <ScratchpadPresentationOverlay
           presentation={docData.presentationState}
           isTeacher={isTeacher}
           onClose={handleStopPresentation}
+          onRevealAnswer={() => docData.id && revealScratchpadExerciseAnswer(docData.id)}
+          onSubmitAnswer={(ans) => docData.id && submitStudentExerciseAnswer(docData.id, ans)}
         />
       )}
     </div>

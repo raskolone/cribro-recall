@@ -175,6 +175,10 @@ export async function saveGeneratedScenario(
     attachments?: LessonAttachment[];
     isTemplate?: boolean;
     category?: string;
+    planJson?: string;
+    format?: string;
+    goal?: string;
+    sourceMaterialDescription?: string;
   }
 ): Promise<GeneratedLessonScenario> {
   const parsed = parseScenarioStages(input.content);
@@ -199,7 +203,11 @@ export async function saveGeneratedScenario(
     sourceFiles: input.sourceFiles || [],
     attachments: input.attachments,
     isTemplate: input.isTemplate || false,
-    category: input.category
+    category: input.category,
+    planJson: input.planJson,
+    format: input.format,
+    goal: input.goal,
+    sourceMaterialDescription: input.sourceMaterialDescription,
   };
 
   // 1. Update local cache first
@@ -268,6 +276,23 @@ export async function getGeneratedScenarios(studentId?: string | null): Promise<
     return localList.filter(s => !s.studentId || s.studentId === studentId);
   }
   return localList;
+}
+
+export async function getScenarioById(id: string): Promise<GeneratedLessonScenario | null> {
+  const localList = getLocalCachedScenarios();
+  const localFound = localList.find(s => s.id === id);
+  if (localFound) return localFound;
+
+  try {
+    const docRef = doc(db, 'lessonScenarios', id);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return { id: snap.id, ...snap.data() } as GeneratedLessonScenario;
+    }
+  } catch (err) {
+    console.warn('Could not fetch scenario by id:', err);
+  }
+  return null;
 }
 
 export const DEFAULT_CURATED_SCENARIOS: GeneratedLessonScenario[] = [

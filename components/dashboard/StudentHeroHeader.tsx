@@ -47,18 +47,21 @@ const getMillis = (val: any): number => {
   return isNaN(t) ? 0 : t;
 };
 
-function formatTaskDate(dateStr?: string): string {
+function formatTaskDate(dateStr?: string, lang: 'pl' | 'en' = 'pl'): string {
   if (!dateStr) return '';
   try {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' });
+    return d.toLocaleDateString(lang === 'pl' ? 'pl-PL' : 'en-US', { day: 'numeric', month: 'long' });
   } catch {
     return dateStr;
   }
 }
 
-function plZadania(n: number): string {
+function plZadania(n: number, lang: 'pl' | 'en' = 'pl'): string {
+  if (lang === 'en') {
+    return n === 1 ? '1 completed task' : `${n} completed tasks`;
+  }
   if (n === 1) return '1 wykonane zadanie';
   const r10 = n % 10;
   const r100 = n % 100;
@@ -68,7 +71,10 @@ function plZadania(n: number): string {
   return `${n} wykonanych zadań`;
 }
 
-function plZdania(n: number): string {
+function plZdania(n: number, lang: 'pl' | 'en' = 'pl'): string {
+  if (lang === 'en') {
+    return n === 1 ? '1 translated sentence' : `${n} translated sentences`;
+  }
   if (n === 1) return '1 przetłumaczone zdanie';
   const r10 = n % 10;
   const r100 = n % 100;
@@ -86,7 +92,7 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
   streakCount = 0,
   streakHidden = false,
 }) => {
-  const { language } = useLanguage();
+  const { language, tText } = useLanguage();
   const { user: currentUser } = useAuth();
 
   const [studentUser, setStudentUser] = useState<User | null>(null);
@@ -111,10 +117,10 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
           setStudentUser({ id: snap.id, ...snap.data() } as User);
         }
       },
-      (err) => console.warn('Błąd odczytu danych kursanta:', err)
+      (err) => console.warn('Błąd odczytu profilu kursanta:', err)
     );
 
-    // 2. Listen to student's tasks (homework)
+    // 2. Listen to student's assigned tasks
     const unsubTasks = onSnapshot(
       studentTasksQuery(targetId),
       (snap) => {
@@ -206,10 +212,10 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
     studentUser?.name ||
     studentUser?.firstName ||
     (currentUser?.id === targetId ? currentUser?.name || currentUser?.displayName : '') ||
-    'Kursant';
+    (language === 'pl' ? 'Kursant' : 'Student');
 
   const firstName = studentRawName.trim().split(' ')[0] || studentRawName;
-  const greeting = formatPolishGreeting(firstName);
+  const greeting = language === 'pl' ? formatPolishGreeting(firstName) : `Hello, ${firstName}!`;
 
   return (
     <header className="relative w-full rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/[0.14] via-base-200/90 to-base-200/95 backdrop-blur-xl p-5 sm:p-7 shadow-2xl overflow-hidden transition-all">
@@ -226,33 +232,35 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
             </span>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/20 border border-primary/30 text-primary font-mono text-[11px] font-bold">
               <Sparkles size={12} />
-              Panel kursanta
+              {tText('Panel kursanta', 'Student Dashboard')}
             </span>
           </div>
 
           <p className="text-sm text-content-muted leading-relaxed max-w-xl">
             {totalTasksDone > 0 || totalSentences > 0 ? (
-              <>
-                Świetna regularność! Masz już na swoim koncie{' '}
-                <strong className="text-text-hi font-bold">{plZadania(totalTasksDone)}</strong> oraz{' '}
-                <strong className="text-primary font-bold">{plZdania(totalSentences)}</strong>.
-              </>
+              language === 'pl' ? (
+                <>
+                  Świetna regularność! Masz już na swoim koncie{' '}
+                  <strong className="text-text-hi font-bold">{plZadania(totalTasksDone, 'pl')}</strong> oraz{' '}
+                  <strong className="text-primary font-bold">{plZdania(totalSentences, 'pl')}</strong>.
+                </>
+              ) : (
+                <>
+                  Great consistency! You already have{' '}
+                  <strong className="text-text-hi font-bold">{plZadania(totalTasksDone, 'en')}</strong> and{' '}
+                  <strong className="text-primary font-bold">{plZdania(totalSentences, 'en')}</strong> under your belt.
+                </>
+              )
             ) : (
-              'Twój panel jest gotowy do pracy! Zacznij od dzisiejszych powtórek lub dodatkowych ćwiczeń.'
+              tText(
+                'Twój panel jest gotowy do pracy! Zacznij od dzisiejszych powtórek lub dodatkowych ćwiczeń.',
+                'Your dashboard is ready! Start with today’s reviews or extra practice.'
+              )
             )}
           </p>
         </div>
 
-        {/* Liczniki.
-
-            Na telefonie w JEDNYM rzędzie, ciaśniejsze: przy trzech
-            pigułkach w rozmiarze desktopowym rząd się zawijał i nagłówek
-            rósł o kolejne 74 px, przez co listwa kafelków spadała pod
-            zgięcie. To one mają być widoczne od razu, nie liczniki. */}
-        {/* `flex-1` na każdym liczniku: dwa czy trzy, zawsze dzielą rząd po
-            równo, więc rząd jest symetryczny niezależnie od tego, czy passa
-            jest widoczna. Bez tego trzeci licznik rozpychał dwa pierwsze
-            i środek rzędu wypadał raz tu, raz tam. */}
+        {/* Liczniki */}
         <div className="flex items-stretch gap-2 sm:gap-3 w-full sm:w-auto shrink-0">
           <div className="glass-tile flex-1 sm:flex-none flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl">
             <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
@@ -263,7 +271,7 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
                 {totalTasksDone}
               </div>
               <div className="text-[10px] uppercase font-bold text-content-muted tracking-wider mt-0.5">
-                Zadania
+                {tText('Zadania', 'Tasks')}
               </div>
             </div>
           </div>
@@ -277,7 +285,7 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
                 {totalSentences}
               </div>
               <div className="text-[10px] uppercase font-bold text-content-muted tracking-wider mt-0.5">
-                Zdania
+                {tText('Zdania', 'Sentences')}
               </div>
             </div>
           </div>
@@ -292,7 +300,7 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
                   {currentStreak}
                 </div>
                 <div className="text-[10px] uppercase font-bold text-amber-300/80 tracking-wider mt-0.5">
-                  Dni passy
+                  {tText('Dni passy', 'Streak days')}
                 </div>
               </div>
             </div>
@@ -311,13 +319,18 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-text-hi">Brak przypisanych zadań</span>
+                  <span className="text-sm font-bold text-text-hi">
+                    {tText('Brak przypisanych zadań', 'No pending tasks')}
+                  </span>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-primary/20 text-primary uppercase tracking-wide">
-                    Na bieżąco
+                    {tText('Na bieżąco', 'Up to date')}
                   </span>
                 </div>
                 <p className="text-xs text-content-muted mt-0.5 leading-relaxed">
-                  Nie masz obecnie żadnych zaległych prac domowych. To doskonały moment na dodatkową praktykę ze słownictwa z lekcji!
+                  {tText(
+                    'Nie masz obecnie żadnych zaległych prac domowych. To doskonały moment na dodatkową praktykę ze słownictwa z lekcji!',
+                    'You currently have no pending homework. This is a great time to do extra practice with your lesson vocabulary!'
+                  )}
                 </p>
               </div>
             </div>
@@ -327,7 +340,7 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
               className="px-4 py-2.5 rounded-xl bg-primary text-accent-ink hover:bg-primary/90 font-bold text-xs flex items-center justify-center gap-2 shadow-btn transition-all shrink-0 cursor-pointer active:scale-95"
             >
               <Sparkles size={15} />
-              <span>Wykonaj dodatkowe ćwiczenia</span>
+              <span>{tText('Wykonaj dodatkowe ćwiczenia', 'Do extra practice')}</span>
             </button>
           </div>
         ) : (
@@ -340,7 +353,7 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-warn"></span>
                 </span>
                 <span className="text-xs font-bold uppercase tracking-wider text-text-hi">
-                  Zadania od lektora ({pendingTasks.length})
+                  {tText('Zadania od lektora', 'Teacher assignments')} ({pendingTasks.length})
                 </span>
               </div>
 
@@ -348,17 +361,11 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
                 onClick={() => onOpenHomework()}
                 className="text-xs font-bold text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer"
               >
-                <span>Wszystkie prace domowe</span>
+                <span>{tText('Wszystkie prace domowe', 'All homework')}</span>
                 <ChevronRight size={14} />
               </button>
             </div>
 
-            {/* Na telefonie JEDNO zadanie, na dużym ekranie dwa.
-
-                Nagłówek ma się zmieścić nad zgięciem razem z listwą
-                kafelków. Drugie zadanie nie znika — stoi w kafelku „Moje
-                zadania" i pod „Wszystkie prace domowe" obok. Tu ma być to,
-                co najbliżej terminu, a nie cała kolejka. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {pendingTasks.slice(0, 2).map((task, position) => (
                 <div
@@ -371,47 +378,49 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <span className="text-[11px] font-bold text-primary truncate">
-                        {task.type === 'fill_in_the_blank' ? 'Znajdź błędy' : 'Tłumaczenie zdań'}
+                        {task.type === 'fill_in_the_blank'
+                          ? tText('Znajdź błędy', 'Find errors')
+                          : tText('Tłumaczenie zdań', 'Sentence translation')}
                       </span>
                       {task.dueDate && (
                         <span className="text-[10px] font-medium text-warn flex items-center gap-1 shrink-0 font-mono">
                           <Clock size={11} />
-                          {formatTaskDate(task.dueDate)}
+                          {formatTaskDate(task.dueDate, language)}
                         </span>
                       )}
                     </div>
                     <h4 className="text-sm font-bold text-text-hi group-hover:text-primary transition-colors line-clamp-1">
-                      {task.title || 'Praca domowa'}
+                      {task.title || tText('Praca domowa', 'Homework')}
                     </h4>
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-line text-[11px] text-content-muted">
                     <span>
                       {Array.isArray(task.sentences) && task.sentences.length > 0
-                        ? `${task.sentences.length} zdań`
-                        : 'Zadanie'}
+                        ? `${task.sentences.length} ${tText('zdań', 'sentences')}`
+                        : tText('Zadanie', 'Task')}
                     </span>
                     <span className="text-primary font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                      Rozwiąż <ArrowRight size={12} />
+                      {tText('Rozwiąż', 'Solve')} <ArrowRight size={12} />
                     </span>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Zachęta do praktyki dodatkowej — tylko na dużym ekranie.
-
-                Na telefonie to trzecie wejście do tego samego miejsca
-                (menu boczne i kafelek już je mają) i kosztowało 60 px
-                nad zgięciem. */}
             <div className="hidden sm:flex items-center justify-between pt-1 px-1 text-xs text-content-muted">
-              <span>Chcesz poćwiczyć więcej zdań poza pracą domową?</span>
+              <span>
+                {tText(
+                  'Chcesz poćwiczyć więcej zdań poza pracą domową?',
+                  'Want to practice more sentences beyond homework?'
+                )}
+              </span>
               <button
                 onClick={onOpenExtraPractice}
                 className="font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <Sparkles size={12} />
-                Praktyka dodatkowa
+                {tText('Praktyka dodatkowa', 'Extra practice')}
               </button>
             </div>
           </div>

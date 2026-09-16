@@ -195,15 +195,223 @@ we dwoje na żywo.
 
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem
-`studentId + id ostatniej lekcji`. Drugi komputer albo tryb prywatny liczy odprawę od nowa — czyli
-płaci za nią jeszcze raz. Jeżeli koszt zacznie mieć znaczenie, bufor powinien przenieść się do
-Firestore obok lekcji.
+### 🚀 Statyczny Liquid Glass z Głębią 3D Przycisku i Kompaktowe Okno Czatu Lektora bez Scrolla (2026-09-16, runda 21)
+
+**1. Usunięcie Animacji Połysku i Statyczny Liquid Glass 3D dla Kafelków (`index.css`):**
+- **Całkowite usunięcie animowanego połysku**: Zlikwidowano pseudo-element `::before` ze skośnym, przesuwającym się pasem światła (`sheen sweep` / `skewX(-24deg)`). Wszystkie kafelki w aplikacji mają teraz czysty, spokojny i w 100% statyczny wygląd.
+- **Fizyczna głębia 3D szklanych przycisków**:
+  - Wprowadzono zaawansowany gradient optyczny imitujący załamanie światła przez taflę szlifowanego szkła (`linear-gradient(180deg, ...)`).
+  - Wieloetapowe cieniowanie wewnętrzne (inner bevel): ostra, rozjaśniona krawędź górna (`inset 0 1px 1px 0 rgba(255,255,255,0.36)`), miękka poświata czaszy (`inset 0 2px 5px 0 rgba(255,255,255,0.08)`) oraz głęboki cień dolnej krawędzi tafli (`inset 0 -2px 4px 0 rgba(0,0,0,0.38)`).
+  - Statyczny refleks soczewki (`::after`): eliptyczny, stały rozbłysk ambientowy na górnej połowie kafelka bez żadnego ruchu.
+  - Dotykowy efekt wciśnięcia (3D button press): kliknięcie kafelka (`:active`) obniża go o `2px` i kompresuje cienie, dając realistyczne wrażenie fizycznego przycisku ze szkła.
+  - Zbalansowany hover: subtelne uniesienie o `2.5px` z pogłębieniem cienia i akcentu neonowego bez przesuwających się pasów światła.
+
+**2. Optymalizacja Okna Czatu na Głównej Stronie Nauczyciela (`TeacherAssistant.tsx`):**
+- **Eliminacja wewnętrznego paska przewijania (scrolla)**: Usunięto sztywne ograniczenie `max-h-[280px]` w stanie początkowym czatu, które powodowało ucinanie kafelków i wymuszało niepotrzebne scrollowanie wewnątrz okna tuż po załadowaniu panelu.
+- **Kompaktowy, elegancki widok powitalny**:
+  - Nowy, horyzontalny nagłówek z awatarem i zwięzłym opisem.
+  - 6 kafelków propozycji ułożonych w symetryczny, kompaktowy układ 3x2 o zredukowanej wysokości z czytelnymi miniaturami ikon, kategorią i tytułem.
+  - Całość (nagłówek, propozycje tematów, pole wprowadzania) idealnie mieści się w jednym oknie o wysokości ~270px bez scrollbara wewnątrz komponentu.
+- **Elastyczna przestrzeń konwersacji**: W trakcie aktywnej rozmowy okno wiadomości płynnie adaptuje się do wysokości do `max-h-[580px]`, zapewniając pełną czytelność odpowiedzi AI i kart akcji Notion bez zbędnego ściskania tekstu.
 
 ---
 
-## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
+### 🚀 4 Formaty Praktyki Dodatkowej: „Sprawdź Się” z Rozgrzewką, „Napraw Zdanie” z Prac Domowych, Fiszki & Dopasowanie oraz Budowanie Krzywej Uczenia (2026-09-16, runda 20)
 
-### 🚀 Strona Główna Panelu Nauczyciela z Centralnym Chatem Asystenta AI, Sugerowanymi Pytaniami, Symetrycznym Rozmieszczeniem Kafelków oraz Kontekstowym Dymkiem Czatu (2026-09-16, runda 14)
+**1. Transformacja i Nowy Podział na 4 Ćwiczenia w Praktyce Dodatkowej (`AIExerciseGeneratorScreen.tsx`):**
+- **Zmiana nazwy „Prawdziwe Wyzwanie” na „Sprawdź Się”**:
+  - Tytuł: `Sprawdź Się` (EN: `Check Yourself`), badge: `Tłumaczenia` (`Translations`).
+  - Drobny opis pomocniczy: `Tłumaczenie pełnych zdań z pamięci i natychmiastowa korekta AI.`
+  - Wskaźnik trybu rozgrzewki: `🧩 Tryb rozgrzewki`.
+- **Wdrożenie nowego ćwiczenia „Napraw Zdanie” (Error Correction)**:
+  - Przeniesiono silnik zadań typu `find_errors` bezpośrednio z generatora prac domowych (`generateFindErrors` w `services/homeworkGenerator.ts`).
+  - Karta wyboru formatu: Tytuł `Napraw Zdanie` (EN: `Fix the Sentence`), badge `Korekta`, opis: `Wyszukaj błąd gramatyczny lub leksykalny i wpisz poprawne zdanie.` oraz wskaźnik `🎯 Zadanie z pracy domowej`.
+  - Dedykowany, przejrzysty interfejs zadania: ekspozycja zdania z błędem w karcie o bursztynowej poświacie (`AlertCircle`), kontekst/znaczenie po polsku, rozwijana wskazówka lektora oraz przycisk `Kopiuj zdanie do edycji` (dzięki któremu kursant może jednym kliknięciem wstawić zdanie i poprawić jedynie wadliwy wyraz bez konieczności przepisywania całego tekstu).
+- **Kompletny 4-kafelkowy grid Liquid Glass**:
+  - Uporządkowany układ 2x2 z estetyką `liquid-glass-tile`, wielopoziomową głębią, refleksami świetlnymi i subtelnym hover liftem.
+  - 1. **Sprawdź Się** (Wpisywanie / Tłumaczenia)
+  - 2. **Napraw Zdanie** (Korekta zdań z błędem)
+  - 3. **Fiszki** (Aktywne przypominanie słownictwa)
+  - 4. **Dopasowanie** (Szybkie łączenie par na czas)
+
+**2. Opcjonalny Tryb Rozgrzewki Klockowej (Warm-up Scrambler) w Treningu Zdań:**
+- Po wygenerowaniu zadań dla trybu tłumaczeń lub korekty zdań kursant widzi elegancki ekran zaproszenia z wyborem:
+  - `🚀 Zacznij od rozgrzewki (Zalecane)` — uruchamia komponent `HomeworkWarmupScrambler` z 3 zdaniami w formie układanki klockowej.
+  - `⚡ Przejdź od razu do zdań` — natychmiastowe przejście do głównych zadań.
+- Zaktualizowano `HomeworkWarmupScrambler.tsx`, aby natywnie obsługiwał pole `item.englishTranslation`, co zapewnia bezbłędną współpracę z generatorem tłumaczeń.
+- Rozgrzewka jest łagodna dla percepcji i zgodna z zasadami ADHD-friendly (brak presji czasowej, możliwość pominięcia w każdej chwili).
+
+**3. Integracja z Historią Sesji i Budowaniem Krzywej Uczenia (Learning Curve):**
+- **Wszystkie 4 ćwiczenia** lądują teraz w historii sesji kursanta (`users/{userId}/practiceLogs`) i zasilają profil adaptacji poziomu (`recordExerciseResults`):
+  - **Sprawdź Się**: zapisuje log `ai_translation` z formatem `typing` i przekazuje wyniki do `recordExerciseResults(..., 'translation')`.
+  - **Napraw Zdanie**: zapisuje log `sentence_correction` z formatem `find_errors`, natychmiast waliduje dokładne dopasowanie tekstu (100% bez zbędnego opóźnienia) lub korzysta z dedykowanego promptu oceniania AI, a następnie zasila profil przez `recordExerciseResults(..., 'find_errors')`.
+  - **Fiszki** i **Dopasowanie**: w `context/FlashcardContext.tsx` po ukończeniu sesji fiszek lub matching automatycznie wywoływana jest funkcja `recordExerciseResults` z typami `'flashcards'` i `'match'`.
+- Zwiększanie licznika ukończonych zadań i aktualizacja passy (`updateUserStreak`).
+
+**4. Nowoczesne Animacje Drops bez Przebodźcowania:**
+- Wprowadzono animację przejść kropelkowych `animateDropletTransition` z `services/gsapAnimations.ts` przy zmianie pytań i przejściach między zadaniami — miękkie, organiczne skalowanie (0.95 -> 1.0) z delikatnym fade-in w 0.38s bez nagłych błysków.
+
+---
+
+### 🚀 Nowa Architektura Liquid Glass dla Kafelków w Całej Aplikacji: Połysk Szkła, Efekt Głębi i Nowoczesna Animacja Hover Sheen (2026-09-16, runda 19)
+
+**1. Receptura Płynnego Szkła (Liquid Glass) i Optyczna Głębia (`index.css`):**
+- **Zunifikowany selektor dla całej aplikacji**: Powiązano klasy `.liquid-glass-tile`, `.glass-tile` oraz `.liquid-glass-card`, gwarantując spójny, ultranowoczesny wygląd wszystkich kafelków w panelu lektora (`AdminPanel.tsx`), panelu kursanta (`StudentToolBar.tsx`, `StudentHeroHeader.tsx`), modułach zadań (`StudentAssignedHomework.tsx`, `AssignedTasks.tsx`, `TeacherQuickAccess.tsx`) i kartach.
+- **Wielowarstwowy gradient o załamaniu optycznym**: Złożony gradient `linear-gradient(140deg, ...)` z akcentem miętowym na ciemnym tle (`color-mix(in srgb, var(--bg-lift) 55%, var(--ink-2) 45%)`) oraz czysty krystaliczny gradient w trybie jasnym (`:root.light`).
+- **Filtr rozmycia i nasycenia**: `backdrop-filter: blur(16px) saturate(140%)` dający wrażenie fizycznego szkła załamującego elementy tła.
+- **Wielopoziomowa głębia cienia (Depth Effect)**:
+  - Cień kontaktowy + głęboki ambientowy cień podłogi (`0 2px 5px -1px rgba(0,0,0,0.35), 0 12px 30px -4px rgba(0,0,0,0.45)`).
+  - Wewnętrzne załamanie krawędzi (specular prism highlight): `inset 0 1px 0 rgba(255,255,255,0.18)` na górze i subtelne domknięcie `inset 0 -1px 0 rgba(0,0,0,0.25)` na dole.
+
+**2. Nowoczesna, Fizyczna Animacja Hover (Sheen Sweep & Spring Micro-Lift):**
+- **Płynne uniesienie 3D (Spring Micro-Lift)**: `transform: translateY(-4px) scale(1.01)` z fizyczną krzywą sprężystości `cubic-bezier(0.34, 1.45, 0.7, 1)`, dającą natychmiastowe, sprężyste i organiczne wrażenie przy najechaniu myszą.
+- **Przejazd aksamitnego refleksu światła (Liquid Sheen Sweep `::before`)**:
+  - Ukryty pod kątem `-24deg` pas połysku (`skewX(-24deg)`), który przy `hover` płynnie i szybko przesuwa się po tafli szkła w 0.65s (`cubic-bezier(0.2, 0.8, 0.25, 1)`).
+  - Aktywuje się wyłącznie przy wejściu kursora (nie zapętla się, nie miga, jest w 100% ADHD-friendly).
+- **Dynamiczna poświata głębi (Aura Glow)**: Rozbłysk cienia pod kafelkiem (`0 20px 38px -6px rgba(0,0,0,0.55), 0 0 28px -2px rgba(114,240,180,0.22)`), rozświetlenie obrysu (`rgba(114,240,180,0.42)`) oraz wzmocnienie górnej linii pryzmatu (`inset 0 1.5px 0.5px rgba(255,255,255,0.30)`).
+- **Wsparcie dla urządzeń dotykowych i Reduced Motion**:
+  - Na ekranach dotykowych (`@media (hover: none)`): lekka redukcja skali (`scale(0.985)`) przy dotknięciu.
+  - Wyłączenie transformacji i połysku przy preferencji `prefers-reduced-motion: reduce`.
+
+---
+
+### 🚀 Dopasowanie Szerokości i Wysokości Asystenta (-30%), Kafelkowe Tło Glassmorphic, Całkowity Reset Notion i Wyszukiwarka Baz Auto-Discovery (2026-09-16, runda 18)
+
+**1. Dopasowanie Układu i Wizualności Asystenta AI (`TeacherAssistant.tsx`, `AdminPanel.tsx`):**
+- **Szerokość idealnie zrównana z kafelkami głównymi**: Kontener asystenta AI został poszerzony do `max-w-5xl mx-auto w-full`, dzięki czemu jego krawędzie lewa i prawa idealnie pokrywają się z siatką głównych modułów lektora w `AdminPanel.tsx`.
+- **Kompaktowa wysokość (-30%)**: Zmniejszono wysokość panelu o ok. 30% w trybie osadzonym, co zapewnia optymalną ergonomię bez przewijania całego ekranu:
+  - Zmniejszono paddingi nagłówka i kompozytora wiadomości.
+  - Skrócono widok historii rozmowy (`min-h-[140px] max-h-[280px]` z płynnym przewijaniem).
+  - Skalowano w dół karty podpowiedzi pytań/promptów na ekranie powitalnym (`p-2.5`, mniejsze ikony i kompaktowy tekst).
+- **Kafelkowe tło Liquid Glassmorphic**: Zastąpiono surowe tło gradientowe sprawdzonym stylem kafelków głównych (`liquid-glass-tile` z subtelnym neonowym gradientem poświaty).
+
+**2. Całkowity Reset i Rozłączenie Połączenia z Notion (`server.ts`, `SettingsScreen.tsx`):**
+- **Wyczyszczenie tokena i ID baz**: Dodano endpoint `POST /api/notion/clear-config`, który usuwa zapisane poświadczenia Notion ze zmiennych środowiskowych i z dokumentu `system/notion` w Firestore.
+- **Usunięcie domyślnych, zahardcodowanych ID baz**: Usunięto stare domyślne identyfikatory baz z `server.ts` i `SettingsScreen.tsx`, pozwalając na czysty start i podłączenie nowej bazy.
+- **Przycisk „Rozłącz i wyczyść Notion”**: W Ustawieniach Administratora (`SettingsScreen.tsx`) dodano czerwony przycisk z ikoną `Unlink`, umożliwiający bezpieczne wyczyszczenie danych przed wprowadzeniem nowego tokena.
+
+**3. Inteligentna Wyszukiwarka Baz Notion (Auto-Discovery) na podstawie Tokena (`server.ts`, `SettingsScreen.tsx`):**
+- **Endpoint `POST /api/notion/search-databases`**: Wywołuje oficjalny endpoint Notion API `/v1/search` z filtrem obiektów bazodanowych (`property: object, value: database`), zwracając listę wszystkich baz udostępnionych integracji.
+- **Karty wykrytych baz danych z 1-klikowym przypisaniem roli**:
+  - Prezentacja tytułu, ikony (emoji/ikona bazy), opisu, linku zewnętrznego oraz właściwości (np. *Data, Kursant, Status, Link*).
+  - Przyciski szybkiego przypisania `[📌 Spotkania]` oraz `[👥 Kursanci]` automatycznie wypełniają odpowiednie identyfikatory w formularzu konfiguracyjnym.
+  - Aktywne odznaki wizualne dla aktualnie wybranych baz.
+
+---
+
+### 🚀 Zintegrowany Planer Lekcji z Notatnikiem, Interaktywne Ćwiczenia Kahoot-Style, Prywatne Side Notes Lektora oraz Baza „Moje Scenariusze” (2026-09-16, runda 18)
+
+**1. Nowy Format Promptu i Struktura Wizualna Planera Lekcji (`services/lessonPlannerMethod.ts`, `components/admin/LessonPlannerStudio.tsx`):**
+- **Wizualna wierność makietom**:
+  - Karta nagłówkowa *Callout*: `🏭 Format` (poziom, czas, typ lekcji), `Cel` (praktyczne mówienie, gramatyka), `Materiał źródłowy` (konkretny bank materiałów i personalizacja pod kursanta).
+  - 6 zwijanych sekcji akordeonowych z etykietami czasowymi i podświetleniem aktywnej sekcji: `1. Revision and Warm Up`, `2. Grammar Review`, `3. Main Topic`, `4. Language Focus`, `5. Practice Enclosure`, `6. Extra Tasks`.
+  - Sekcja 3 (Main Topic): niebieska kapsuła `Topic and Material` (cele i materiał źródłowy), niebieska kapsuła `Lead-in`, bordowo-śliwkowa kapsuła `Thought-Provoking Questions` (notatka banku bezpieczeństwa, wskazówka metodyczna dla kursanta).
+  - Pytania z polami wyboru `[ ]` (checkbox), inline edycją, przenoszeniem w górę/dół, usuwaniem oraz dodawaniem własnych pytań.
+  - Rozwijana **Budka Suflera** (`Teacher's Notes`) pod każdym pytaniem: `• Cel:`, `• Scaffolding:` (kursywa z przyciskiem szybkiego kopiowania podpowiedzi), `• Follow-up:` (złocisty akcent).
+- **Interaktywny czat z AI**: Konwersacyjne wprowadzanie poprawek i rozszerzeń do scenariusza przez asystenta AI bez konieczności zaznaczania elementów; asystent zachowuje zaakceptowane fragmenty i aktualizuje JSON planu.
+- **Baza „Moje scenariusze”**: Każdy wygenerowany scenariusz jest zapisywany w Firestore (`lessonScenarios`) i lokalnej pamięci podręcznej, z możliwością filtrowania, przypisywania do kursantów i ponownego otwierania.
+
+**2. Pomocnik Lektora w Notatniku — Scenariusz i Prywatne Side Notes (`ScratchpadTeacherCompanionDrawer.tsx`, `ScratchpadEditor.tsx`):**
+- **Górny przycisk `[🎯 Scenariusz & Notes]`**: Otwiera wysuwany boczny panel dla lektora podczas lekcji na żywo.
+- **Zakładka Scenariusza**: Lektor śledzi przygotowany plan, odhacza zadane pytania w czasie rzeczywistym (`[ ]` ➔ `[x]`), czyta podpowiedzi z Budki Suflera i uruchamia ćwiczenia dla ucznia jednym kliknięciem.
+- **Zakładka `[📝 Side Notes]` (Prywatne uwagi lektora)**:
+  - 100% prywatna przestrzeń tekstowa lektora (pole `teacherNotes` w Firestore), całkowicie ukryta przed kursantem.
+  - Auto-zapis na bieżąco podczas lekcji.
+  - Integracja z asystentem AI w notatniku: gdy lektor prosi o podsumowanie lekcji lub pracę domową, asystent automatycznie wczytuje `teacherNotes` jako bezcenny kontekst realnych trudności i błędów kursanta.
+
+**3. Interaktywny Tryb Ćwiczeń Prezentacji na Żywo (Kahoot-Style) (`ScratchpadPresentationOverlay.tsx`):**
+- **Doświadczenie Kahoot na żywo**: Gdy lektor uruchomi zadanie z Sekcji 5 (`Practice Enclosure`), notatnik kursanta zostaje płynnie zastąpiony przez interaktywną nakładkę ćwiczenia.
+- **Kolorowe kafelki odpowiedzi (A, B, C, D)** z geometrycznymi symbolami (trójkąt, romb, koło, kwadrat) i dynamicznymi stanami:
+  - Kursant klika swoją odpowiedź, stan synchronizuje się natychmiast u lektora (`studentAnswer`).
+  - Lektor decyduje o momencie odkrycia karty: przycisk `[👁️ Odkryj poprawną odpowiedź]` (`revealedAnswer`).
+  - Efektowna weryfikacja: poprawny kafelek pulsuje na szmaragdowo z checkmarkiem `✓`, błędny wybór kursanta zostaje przekreślony na czerwono `✕`, a poniżej pojawia się karta z regułą językową i wyjaśnieniem (`explanation`).
+  - Po zamknięciu nakładki uczeń natychmiast wraca do edycji notatnika.
+
+**4. Integracja Prezentacji w Planerze i Usunięcie Kafelka z Menu Głównego (`AdminPanel.tsx`):**
+- Usunięto osobny kafelek `Prezentacja` z siatki kafelków lektora w `AdminPanel.tsx`, konsolidując widok slajdów i ćwiczeń bezpośrednio wewnątrz Planera Lekcji i Notatnika.
+- Przejścia z profilu kursanta i asystenta automatycznie kierują do ujednoliconego Planera ze zintegrowanym podglądem prezentacji.
+
+**5. Nowoczesne Animacje GSAP w Całej Aplikacji, Kropelkowe Przejścia (Styl Drops, ADHD-Friendly) i Fala Zmiany Motywu (`services/gsapAnimations.ts`, `components/ui/GSAPModuleTransition.tsx`, `components/dashboard/StudentHomeworkScreen.tsx`, `components/ui/ThemeToggle.tsx`):**
+- **Centralny moduł animacji `gsapAnimations.ts`**:
+  - `animateDropletTransition`: subtelny, organiczny squash & stretch (scale 0.95 ➔ 1.02 ➔ 1.0) przy zmianie ćwiczenia w czasie 380 ms, dający mikrosatysfakcję z postępu bez przebodźcowania i rozpraszania.
+  - `animateProgressBarLiquid`: płynne napełnianie paska postępu jak ciecz w probówce.
+  - `animateModuleEnter` i `animateModuleExit`: aksamitny fade in/out (`GSAPModuleTransition.tsx`) dla otwieranych modułów po kliknięciu kafelków w panelu lektora (`AdminPanel.tsx`), kursanta (`Dashboard.tsx`) oraz na listwie narzędzi (`TodayScreen.tsx`).
+  - `animateThemeRipple`: 60fps radialna fala zmiany motywu rozchodząca się ze współrzędnych przycisku z elastyczną rotacją ikon `Sun` i `Moon`.
+  - Pełna obsługa dostępności i respektowanie systemowej flagi `prefers-reduced-motion`.
+
+---
+
+### 🚀 Nowy Autorski Awatar AI CRIBRO w Całej Aplikacji oraz Wizualna Transformacja Asystenta w Konwersacyjny Chat Copilot (2026-09-16, runda 17)
+
+**1. Nowy Autorski Komponent Awatara / Ikony AI w Całej Aplikacji (`AIAssistantIcon.tsx`):**
+- **Dedykowany symbol inteligencji CRIBRO**: Stworzono elegancki, wielowarstwowy symbol wektorowy `AIAssistantIcon.tsx` łączący geometryczne łuki marki CRIBRO, 4-ramienną gwiazdę inteligencji, synaptyczne węzły i gradient szmaragdowo-miętowy (`#72F0B4` ➔ `#38E196` ➔ `#0D8A5F`) z dynamiczną poświatą neonową (`glow`).
+- **Elastyczne warianty i stany**:
+  - Warianty: `avatar` (szklany kafelek z gradientem), `badge` (ze wskaźnikiem live statusu online), `icon` (sam glif wektorowy).
+  - Stany: `idle`, `thinking` (orbitalny obrót i pulsowanie), `online` (neonowa kropka aktywności).
+  - Rozmiary: od `xs` (14px) do `2xl` (48px) oraz dowolne liczbowe.
+- **Spójność w całej aplikacji**: Wdrożono nowy awatar w Asystencie Lektora (`TeacherAssistant.tsx`), wbudowanym Asystencie Notatnika (`ScratchpadEditor.tsx`), Planerze lekcji (`LessonPlanner.tsx`) oraz Generatorze zadań domowych (`TeacherSpecialTaskModal.tsx`).
+
+**2. Wizualna Transformacja Czatu Asystenta w Nowoczesny Konwersacyjny Chat Copilot (`TeacherAssistant.tsx`):**
+- **Odcięcie od statycznego generatora**: Całkowicie przebudowano wygląd czatu, aby natychmiast komunikował dynamiczne, interaktywne środowisko konwersacyjne (Copilot):
+  - *Górna belka*: Szklany pasek z nowym awatarem AI, live wskaźnikiem `Online`, odznaką `Gemini 2.5 Flash & Workspace` oraz czytelnymi przyciskami *Załącz plik*, *Historia* i *Nowy czat*.
+  - *Ekran powitalny (Copilot Hub)*: Dynamiczny awatar AI, przyjazny nagłówek powitalny oraz siatka tematycznych kart propozycji z mikro-ikonami (*Kursanci & CRM*, *Planowanie lekcji*, *Zaległe zadania*, *Szybka powtórka*, *Analiza materiału*, *Podsumowanie postępów*).
+  - *Strumień wiadomości (Timeline)*: Wyraźnie odróżnione bańki lektora (prawostronne, szmaragdowe szkło z etykietą i załącznikami) oraz asystenta (lewostronne, z awatarem AI, sformatowanym tekstem, podglądem kart Notion AI oraz 1-klikowymi akcjami modułowymi).
+  - *Stan generowania / Myślenie*: Animowany awatar AI w trybie `thinking` z potrójną falą świetlną i statusem analizy bazy.
+  - *Kompozytor wiadomości (Input Bar)*: Nowoczesna kapsuła z obsługą wielowierszowego wpisywania (`Shift+Enter` nowa linia, `Enter` wyślij), szybkim dodawaniem załączników, podpowiedziami skrótów oraz podglądem miniatur plików przed wysłaniem.
+
+---
+
+### 🚀 Domyślny format A4 w Notatniku, Dynamiczne Podziały Stron między Lekcjami, Wymuszenie Nagłówka Lekcji na Górze i Konfiguracja Portu 3001 (2026-09-16, runda 16)
+
+**1. Domyślny format strony A4 bez względu na położenie (`ScratchpadEditor.tsx`, `index.css`):**
+- **Jednolity arkusz A4**: Notatnik we wszystkich widokach (zarówno lektora, jak i kursanta, w oknie aplikacji, na dedykowanej karcie `/scratchpad` oraz na urządzeniach mobilnych) renderuje symetryczną kartkę o proporcjach A4 (`width: 794px`, `min-height: 1123px`, margines `76px` z responsywnym dopasowaniem na wąskich ekranach).
+- **Wskaźnik i licznik stron**: Dokładny licznik łącznej liczby stron A4 w dolnym pasku stanu.
+
+**2. Dynamiczne podziały stron A4 i brak nachodzenia na kolejne lekcje (`ScratchpadEditor.tsx`, `index.css`):**
+- **Sekcyjne przeliczanie stron**: Zastąpiono sztywne, globalne kreski podziału algorytmem uwzględniającym fizyczne podziały `.pad-page-break`. Każda lekcja stanowi osobną stronę A4.
+- **Automatyczne rozszerzanie bez niszczenia kolejnych lekcji**: Gdy treść w danej lekcji przekroczy 1 stronę A4, lekcja płynnie zajmuje kolejną podstronę A4 (np. Strona 2), a kolejna lekcja pozostaje nienaruszona na swoim miejscu, zaczynając się zawsze od nowej strony A4 (np. Strona 3).
+- **Przycisk i funkcja „Podział strony A4”**:
+  - Dedykowany przycisk na pasku narzędzi oraz pozycja w menu *Wstaw ➔ Struktura dokumentu ➔ Podział strony A4*.
+  - Umożliwia 1-klikowe wstawienie czystej strony A4 pomiędzy istniejącymi lekcjami lub w dowolnym miejscu kursora.
+
+**3. Zawsze nagłówek lekcji na samej górze strony (`index.css`, `ScratchpadEditor.tsx`, `lessonTemplate.ts`):**
+- **Żelazna reguła pionowego wyrównania**: Nagłówki lekcji (`h1`, `h2`, `h3` po `.pad-page-break` oraz na samym początku dokumentu) mają `margin-top: 0 !important; padding-top: 0 !important;`.
+- **Brak pustych odstępów**: Usunięto niepotrzebne puste akapity `<p><br></p>` wstawiane przed nagłówkiem nowej lekcji.
+
+**4. Rozwiązanie kolizji portu i stabilne uruchamianie serwera (`server.ts`, `.env`):**
+- **Przeniesienie na port 3001**: Wyeliminowano konflikt z procesem whatsapp-bridge blokującym `127.0.0.1:3000`.
+- **Wdrożenie tras SPA Vite**: Dodano obsługę `app.get('/', ...)` oraz `app.get('{*all}', ...)` zgodną z Express 5.
+
+### 🚀 Wyraziste Neonowe Podświetlenie Aktywnych Kafelków w Panelu Lektora, Multimodalna Analiza Załączników (PDF, Screenshoty, Dokumenty) i Przepływ Akcji Notion AI w Asystencie AI (2026-09-16, runda 15)
+
+**1. Wyraziste, Neonowe Podświetlenie Aktywnego Kafelka we Wszystkich Rzędach (`AdminPanel.tsx`):**
+- **Wyróżniający się stan aktywny**: Każdy zaznaczony kafelek w panelu lektora (Tier 1: *Kursanci*, *Historia lekcji*, *Notatnik*; Tier 2: *Zadania i testy*, *Planer lekcji*, *Mailing*; Tier 3: *Prezentacja*, *Słownictwo*, *Statystyki*) otrzymał wyrazisty, wysokokontrastowy wygląd:
+  - Neonowy pierścień i poświata: `border-primary ring-2 ring-primary/90 ring-offset-2 ring-offset-base-300 shadow-[0_0_35px_rgba(114,240,180,0.38),inset_0_0_22px_rgba(114,240,180,0.14)]`.
+  - Promienisty gradient tła: `bg-gradient-to-br from-primary/[0.18] via-base-200 to-base-200/95 scale-[1.02]`.
+  - Plakietka statusowa: `bg-primary text-accent-ink font-black shadow-[0_0_12px_rgba(114,240,180,0.5)]` z pulsującym punktem i etykietą **„AKTYWNY MODUŁ”**.
+  - Pasek informacyjny: Wskaźnik **„● Przeglądasz ten moduł”** w żywym kolorze `text-primary font-extrabold`.
+  - Animowany punkt aktywności na przyciskach pomocniczych w Tier 2 i Tier 3.
+
+**2. Odczytywanie i Multimodalna Analiza Załączników w Asystencie AI (`TeacherAssistant.tsx`, `teacherAssistant.ts`):**
+- **Obsługa wielu formatów materiałów**: Możliwość załączania plików PDF, obrazów i screenshotów (`.png`, `.jpg`, `.jpeg`, `.webp`), dokumentów Markdown (`.md`), HTML (`.html`) oraz plików tekstowych (`.txt`).
+- **Trzy sposoby dodawania materiałów**:
+  1. *Wybór pliku* za pomocą ikony spinacza (Paperclip) w polu wpisywania.
+  2. *Wklejanie ze schowka* (`Ctrl+V` / `Cmd+V`) bezpośrednio do pola wpisywania dla natychmiastowej analizy screenshotów.
+  3. *Przeciąganie i upuszczanie* (Drag & Drop) na okno chatu.
+- **Pasek oczekujących załączników**: Miniaturki załączonych plików z nazwami, ikonami typu i przyciskiem usuwania przed wysłaniem.
+- **Wizualizacja załączników w historii wiadomości**: Dymki wiadomości pokazują miniatury załączonych grafik oraz plakietki dokumentów.
+- **Multimodalne API Gemini 2.5 Flash**: Bezpośrednie przekazywanie danych binarnych `inlineData` (obrazy, PDF) oraz tekstu do modelu Gemini z automatycznym fallbackiem kaskadowym.
+
+**3. Przepływ Akcji w Stylu Notion AI w Chacie Asystenta (`TeacherAssistant.tsx`, `teacherAssistant.ts`, `AdminPanel.tsx`, `Dashboard.tsx`):**
+- **Generowanie tematu lekcji na polecenie**: Wpisanie w czacie np. *„Przygotuj temat lekcji dla Dariusza”* analizuje historię lekcji danego kursanta w CRM i generuje propozycję tematu, słownictwa z polskimi tłumaczeniami, zagadnień gramatycznych oraz zadania domowego.
+- **Karta podglądu lekcji (Notion AI Card)**: Odpowiedź zawiera estetyczną kartę z podsumowaniem propozycji, oznaczeniem kursanta, słówkami kluczowymi i pracą domową.
+- **Bezpośrednie przyciski wykonania akcji**: Pod odpowiedzią wyświetlają się interaktywne przyciski wykonania:
+  - 🟢 **Utwórz lekcję w Dzienniku** — natychmiast otwiera formularz nowej lekcji ze wstępnie wypełnionymi 4 blokami Notion i przypisanym kursantem.
+  - 🟢 **Dopracuj w Planerze lekcji** — przenosi do studia scenariuszy z załadowanym tematem.
+  - 🟢 **Uruchom w Prezentacji Live** — tworzy i uruchamia interaktywny scenariusz w widoku Prezentacji na żywo.
+  - 🟢 **Zadaj jako Pracę domową** — otwiera generator zadań domowych dla wskazanego kursanta.
+  - 🟢 **Notatnik kursanta** — otwiera dedykowaną kartę notatnika.
+- **Pełna integracja w obu trybach**: Wszystkie akcje i załączniki działają identycznie w trybie centralnym na stronie głównej oraz w trybie pływającego dymka w lewym dolnym rogu.
 
 **1. Nowa Strona Główna Panelu Lektora z Centralnym Asystentem AI (`AdminPanel.tsx`, `TeacherAssistant.tsx`):**
 - **Domyślny widok pulpitu**: Po wejściu do panelu nauczyciela (gdy żaden moduł ani profil kursanta nie jest wybrany) system nie wyświetla już bezpośrednio historii lekcji ani bazy kursantów, lecz prezentuje nowoczesne, centralne okno **Asystenta AI CRIBRO**.

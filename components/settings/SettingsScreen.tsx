@@ -13,7 +13,7 @@ import { FREQUENCIES } from '../../constants';
 import { RevisionFrequency, TTSAccent, VoiceGender, VoiceSpeed, SoundEngine, canUserViewAiMonitor } from '../../types';
 import AiModelsSettings from './AiModelsSettings';
 import AiCouncilSettings from './AiCouncilSettings';
-import { LogOut, Volume2, Play, CheckCircle2, RefreshCw, VolumeX, Sparkles, Sliders, Check, Flame, Mail, Key, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { LogOut, Volume2, Play, CheckCircle2, RefreshCw, VolumeX, Sparkles, Sliders, Check, Flame, Mail, Key, Eye, EyeOff, AlertTriangle, Database, Search, Unlink, ExternalLink, Layers, Table } from 'lucide-react';
 import { playSpeech } from '../../services/ttsService';
 import i18n from "i18next";
 import { useEscapeModal } from '../../hooks/useEscapeModal';
@@ -101,8 +101,8 @@ const SettingsScreen: React.FC = () => {
     // Notion Integration State
     const [notionTokenInput, setNotionTokenInput] = useState<string>('');
     const [showNotionToken, setShowNotionToken] = useState<boolean>(false);
-    const [meetingNotesDbInput, setMeetingNotesDbInput] = useState<string>('5c6d910b-31b7-83b8-810c-0187aa513b51');
-    const [studentsDbInput, setStudentsDbInput] = useState<string>('ca88a293-bd34-4cc7-b09e-f6bd3901ef96');
+    const [meetingNotesDbInput, setMeetingNotesDbInput] = useState<string>('');
+    const [studentsDbInput, setStudentsDbInput] = useState<string>('');
     const [autoFetchEnabledInput, setAutoFetchEnabledInput] = useState<boolean>(false);
     const [autoFetchIntervalInput, setAutoFetchIntervalInput] = useState<number>(30);
     const [notionConfigStatus, setNotionConfigStatus] = useState<{
@@ -135,6 +135,20 @@ const SettingsScreen: React.FC = () => {
         items?: any[];
         message?: string;
     } | null>(null);
+
+    // Auto-discovery & Disconnect state
+    const [isSearchingDatabases, setIsSearchingDatabases] = useState(false);
+    const [discoveredDatabases, setDiscoveredDatabases] = useState<Array<{
+        id: string;
+        title: string;
+        description?: string;
+        icon?: string | null;
+        url?: string;
+        properties?: string[];
+        lastEditedTime?: string | null;
+    }>>([]);
+    const [isClearingNotion, setIsClearingNotion] = useState(false);
+    const [notionClearSuccess, setNotionClearSuccess] = useState(false);
 
     // Fetch Notion config on mount for admin/teacher
     React.useEffect(() => {
@@ -287,6 +301,85 @@ const SettingsScreen: React.FC = () => {
             setNotionError(err?.message || 'Nie udało się pobrać transkrypcji z Notion.');
         } finally {
             setIsFetchingNotion(false);
+        }
+    };
+
+    const handleSearchNotionDatabases = async () => {
+        setIsSearchingDatabases(true);
+        setNotionError(null);
+        try {
+            const token = await auth.currentUser?.getIdToken();
+            if (!token) throw new Error('Brak uprawnień administratora.');
+
+            const res = await fetch('/api/notion/search-databases', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    token: notionTokenInput.trim() || undefined,
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data?.error || 'Nie udało się przeszukać baz w Notion.');
+
+            setDiscoveredDatabases(data.databases || []);
+            if ((data.databases || []).length === 0) {
+                setNotionError('Nie znaleziono żadnych baz danych. Upewnij się, że w Notion udostępniłeś integracji odpowiednie bazy (opcja "Add connections" w menu strony Notion).');
+            }
+        } catch (err: any) {
+            console.error('Błąd wyszukiwania baz Notion:', err);
+            setNotionError(err?.message || 'Błąd podczas wyszukiwania baz Notion.');
+        } finally {
+            setIsSearchingDatabases(false);
+        }
+    };
+
+    const handleClearNotionConfig = async () => {
+        if (!window.confirm(language === 'pl'
+            ? 'Czy na pewno chcesz rozłączyć integrację Notion i wyczyścić zapisane tokeny oraz ID baz danych?'
+            : 'Are you sure you want to disconnect Notion integration and wipe stored tokens and database IDs?')) {
+            return;
+        }
+        setIsClearingNotion(true);
+        setNotionError(null);
+        setNotionTestResult(null);
+        setNotionFetchResult(null);
+        setDiscoveredDatabases([]);
+        try {
+            const token = await auth.currentUser?.getIdToken();
+            if (!token) throw new Error('Brak uprawnień administratora.');
+
+            const res = await fetch('/api/notion/clear-config', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data?.error || 'Błąd rozłączania Notion.');
+
+            setNotionTokenInput('');
+            setMeetingNotesDbInput('');
+            setStudentsDbInput('');
+            setNotionConfigStatus({
+                configured: false,
+                maskedToken: null,
+                meetingNotesDbId: '',
+                studentsDbId: '',
+                autoFetchEnabled: false,
+                lastFetchTime: null,
+                lastFetchStatus: null,
+            });
+            setNotionClearSuccess(true);
+            setTimeout(() => setNotionClearSuccess(false), 5000);
+        } catch (err: any) {
+            console.error('Błąd rozłączania Notion:', err);
+            setNotionError(err?.message || 'Nie udało się rozłączyć konfiguracji Notion.');
+        } finally {
+            setIsClearingNotion(false);
         }
     };
 
@@ -917,13 +1010,13 @@ const SettingsScreen: React.FC = () => {
                                             </span>
                                         ) : (
                                             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider font-bold">
-                                                {language === 'pl' ? 'Wymagana konfiguracja' : 'Setup required'}
+                                                {language === 'pl' ? 'Rozłączono / Wymagana konfiguracja' : 'Disconnected / Setup required'}
                                             </span>
                                         )}
                                     </h2>
                                     <p className="text-xs text-content-muted">
                                         {language === 'pl'
-                                            ? 'Połączenie z workspace Notion do automatycznego i cyklicznego pobierania transkrypcji spotkań AI i bazy kursantów'
+                                            ? 'Połączenie z workspace Notion do automatycznego pobierania transkrypcji spotkań AI i bazy kursantów'
                                             : 'Connect to Notion workspace to fetch meeting transcripts and student database'}
                                     </p>
                                 </div>
@@ -957,11 +1050,136 @@ const SettingsScreen: React.FC = () => {
                                     </button>
                                 </div>
                                 <p className="text-[11px] text-content-muted mt-1">
-                                    Klucz utworzysz na <a href="https://www.notion.so/profile/integrations" target="_blank" rel="noreferrer" className="text-primary underline">notion.so/profile/integrations</a>. Pamiętaj, aby udostępnić integracji odpowiednie strony w Notion.
+                                    Klucz utworzysz na <a href="https://www.notion.so/profile/integrations" target="_blank" rel="noreferrer" className="text-primary underline">notion.so/profile/integrations</a>. Pamiętaj, aby w Notion dodać połączenie (<em>Add connections</em>) do baz danych, które chcesz zsynchronizować.
                                 </p>
                             </div>
 
-                            {/* Database IDs */}
+                            {/* AUTO-DISCOVERY: Wyszukiwarka baz w Notion */}
+                            <div className="p-3.5 rounded-xl bg-black/30 border border-primary/20 space-y-3">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <div>
+                                        <h4 className="text-xs font-bold text-primary flex items-center gap-1.5 uppercase tracking-wider">
+                                            <Search size={14} />
+                                            {language === 'pl' ? 'Automatyczne wykrywanie baz w Notion' : 'Notion Database Auto-Discovery'}
+                                        </h4>
+                                        <p className="text-[11px] text-content-muted">
+                                            {language === 'pl'
+                                                ? 'Wyszukaj bazy udostępnione Twojej integracji i przypisz je jednym kliknięciem bez ręcznego kopiowania ID'
+                                                : 'Search databases shared with your integration and assign them in 1 click'}
+                                        </p>
+                                    </div>
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={handleSearchNotionDatabases}
+                                        isLoading={isSearchingDatabases}
+                                        className="shrink-0 flex items-center gap-1.5 text-xs"
+                                    >
+                                        <Database size={13} className={isSearchingDatabases ? 'animate-pulse' : ''} />
+                                        {language === 'pl' ? 'Wyszukaj bazy w Notion' : 'Discover Databases'}
+                                    </Button>
+                                </div>
+
+                                {discoveredDatabases.length > 0 && (
+                                    <div className="space-y-2 pt-2 border-t border-white/10">
+                                        <p className="text-[11px] font-semibold text-white flex items-center justify-between">
+                                            <span>Znaleziono {discoveredDatabases.length} {discoveredDatabases.length === 1 ? 'bazę' : 'baz(y)'} w Twoim Notion:</span>
+                                            <span className="text-content-muted text-[10px]">Kliknij przycisk, aby przypisać rolę bazy</span>
+                                        </p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
+                                            {discoveredDatabases.map((db) => {
+                                                const isMeetingSelected = meetingNotesDbInput === db.id;
+                                                const isStudentsSelected = studentsDbInput === db.id;
+
+                                                return (
+                                                    <div
+                                                        key={db.id}
+                                                        className={`p-3 rounded-xl border transition-all ${
+                                                            isMeetingSelected || isStudentsSelected
+                                                                ? 'bg-primary/10 border-primary/40 shadow-sm'
+                                                                : 'bg-black/50 border-white/10 hover:border-white/20'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div className="min-w-0">
+                                                                <h5 className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
+                                                                    {db.icon ? (
+                                                                        <span className="text-sm">{db.icon}</span>
+                                                                    ) : (
+                                                                        <Table size={13} className="text-primary shrink-0" />
+                                                                    )}
+                                                                    <span className="truncate">{db.title}</span>
+                                                                </h5>
+                                                                {db.description && (
+                                                                    <p className="text-[10px] text-content-muted truncate mt-0.5">{db.description}</p>
+                                                                )}
+                                                                <p className="text-[9px] font-mono text-content-muted truncate mt-1">
+                                                                    ID: {db.id}
+                                                                </p>
+                                                            </div>
+                                                            {db.url && (
+                                                                <a
+                                                                    href={db.url}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                    className="text-content-muted hover:text-white shrink-0 p-1"
+                                                                    title="Otwórz w Notion"
+                                                                >
+                                                                    <ExternalLink size={12} />
+                                                                </a>
+                                                            )}
+                                                        </div>
+
+                                                        {Array.isArray(db.properties) && db.properties.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                                {db.properties.slice(0, 4).map((prop, idx) => (
+                                                                    <span key={idx} className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-content-muted font-mono">
+                                                                        {prop}
+                                                                    </span>
+                                                                ))}
+                                                                {db.properties.length > 4 && (
+                                                                    <span className="text-[9px] px-1 py-0.5 text-content-muted font-mono">
+                                                                        +{db.properties.length - 4}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        <div className="grid grid-cols-2 gap-1.5 mt-2.5 pt-2 border-t border-white/5">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setMeetingNotesDbInput(db.id)}
+                                                                className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all text-center flex items-center justify-center gap-1 ${
+                                                                    isMeetingSelected
+                                                                        ? 'bg-primary text-black font-bold shadow-xs'
+                                                                        : 'bg-white/5 hover:bg-white/10 text-content border border-white/10 hover:text-white'
+                                                                }`}
+                                                            >
+                                                                {isMeetingSelected && <Check size={11} />}
+                                                                {isMeetingSelected ? 'Baza Spotkań ✓' : '📌 Spotkania'}
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setStudentsDbInput(db.id)}
+                                                                className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all text-center flex items-center justify-center gap-1 ${
+                                                                    isStudentsSelected
+                                                                        ? 'bg-primary text-black font-bold shadow-xs'
+                                                                        : 'bg-white/5 hover:bg-white/10 text-content border border-white/10 hover:text-white'
+                                                                }`}
+                                                            >
+                                                                {isStudentsSelected && <Check size={11} />}
+                                                                {isStudentsSelected ? 'Baza Kursantów ✓' : '👥 Kursanci'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Database IDs (Manual tweak / Auto-filled) */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-xs font-semibold text-content uppercase tracking-wider mb-1.5">
@@ -971,7 +1189,7 @@ const SettingsScreen: React.FC = () => {
                                         type="text"
                                         value={meetingNotesDbInput}
                                         onChange={(e) => setMeetingNotesDbInput(e.target.value)}
-                                        placeholder="5c6d910b-31b7-83b8-810c-0187aa513b51"
+                                        placeholder="Wklej ID lub wybierz z bazy powyżej..."
                                         className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary"
                                     />
                                 </div>
@@ -983,7 +1201,7 @@ const SettingsScreen: React.FC = () => {
                                         type="text"
                                         value={studentsDbInput}
                                         onChange={(e) => setStudentsDbInput(e.target.value)}
-                                        placeholder="ca88a293-bd34-4cc7-b09e-f6bd3901ef96"
+                                        placeholder="Wklej ID lub wybierz z bazy powyżej..."
                                         className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary"
                                     />
                                 </div>
@@ -1057,6 +1275,16 @@ const SettingsScreen: React.FC = () => {
                                     <RefreshCw size={14} className={isFetchingNotion ? 'animate-spin' : ''} />
                                     {language === 'pl' ? 'Pobierz transkrypcje teraz' : 'Fetch Transcripts Now'}
                                 </Button>
+
+                                <Button
+                                    variant="danger"
+                                    onClick={handleClearNotionConfig}
+                                    isLoading={isClearingNotion}
+                                    className="shrink-0 flex items-center gap-1.5"
+                                >
+                                    <Unlink size={14} />
+                                    {language === 'pl' ? 'Rozłącz i wyczyść Notion' : 'Disconnect & Reset'}
+                                </Button>
                             </div>
 
                             {/* Error & Success notices */}
@@ -1066,11 +1294,20 @@ const SettingsScreen: React.FC = () => {
                                 </p>
                             )}
 
+                            {notionClearSuccess && (
+                                <p className="text-xs text-emerald-400 font-semibold flex items-center gap-1 mt-1 animate-fade-in">
+                                    <CheckCircle2 size={14} />
+                                    {language === 'pl'
+                                        ? 'Konfiguracja Notion została wyczyszczona. Połączenie zostało przerwane — możesz teraz wkleić nowy token i przypisać bazy.'
+                                        : 'Notion configuration wiped and disconnected successfully.'}
+                                </p>
+                            )}
+
                             {notionSaveSuccess && (
                                 <p className="text-xs text-primary font-semibold flex items-center gap-1 mt-1 animate-fade-in">
                                     <CheckCircle2 size={14} />
                                     {language === 'pl'
-                                        ? 'Konfiguracja Notion została zapisana!'
+                                        ? 'Konfiguracja Notion została pomyślnie zapisana!'
                                         : 'Notion configuration saved!'}
                                 </p>
                             )}
@@ -1089,6 +1326,11 @@ const SettingsScreen: React.FC = () => {
                                     {notionTestResult.meetingDbTitle && (
                                         <p className="text-content-muted mt-0.5">
                                             Baza spotkań: <strong className="text-white">{notionTestResult.meetingDbTitle}</strong>
+                                        </p>
+                                    )}
+                                    {notionTestResult.studentsDbTitle && (
+                                        <p className="text-content-muted mt-0.5">
+                                            Baza kursantów: <strong className="text-white">{notionTestResult.studentsDbTitle}</strong>
                                         </p>
                                     )}
                                 </div>

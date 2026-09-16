@@ -39,6 +39,7 @@ import Markdown from 'react-markdown';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import { animateDropletTransition, animateProgressBarLiquid } from '../../services/gsapAnimations';
 
 /**
  * Praca domowa kursanta.
@@ -241,8 +242,27 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
   const [tests, setTests] = useState<StudentTest[]>([]);
   const [activeTest, setActiveTest] = useState<StudentTest | null>(null);
   const [feedbackTest, setFeedbackTest] = useState<StudentTest | null>(null);
-
   useEscapeModal(Boolean(feedbackTest), () => setFeedbackTest(null));
+
+  const exerciseCardRef = React.useRef<HTMLDivElement>(null);
+  const progressBarRef = React.useRef<HTMLDivElement>(null);
+  const prevIndexRef = React.useRef<number>(0);
+
+  useEffect(() => {
+    if (activeTask && exerciseCardRef.current) {
+      const dir = index > prevIndexRef.current ? 'next' : index < prevIndexRef.current ? 'prev' : 'init';
+      animateDropletTransition(exerciseCardRef.current, dir);
+      prevIndexRef.current = index;
+    }
+  }, [index, activeTask]);
+
+  useEffect(() => {
+    if (progressBarRef.current && activeTask?.sentences?.length) {
+      const total = activeTask.sentences.length;
+      const pct = ((index + 1) / Math.max(total, 1)) * 100;
+      animateProgressBarLiquid(progressBarRef.current, pct);
+    }
+  }, [index, activeTask]);
 
   useEffect(() => {
     if (!targetId) {
@@ -1260,9 +1280,10 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           >
             <ArrowLeft size={18} />
           </button>
-          <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+          <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden shadow-inner p-0.5">
             <div
-              className="h-full bg-primary transition-all duration-300"
+              ref={progressBarRef}
+              className="h-full bg-gradient-to-r from-primary to-emerald-400 rounded-full shadow-[0_0_12px_rgba(114,240,180,0.4)]"
               style={{ width: `${((index + 1) / Math.max(items.length, 1)) * 100}%` }}
             />
           </div>
@@ -1337,7 +1358,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           </div>
         )}
 
-        <div className="rounded-2xl border border-white/10 bg-base-200/50 p-4 sm:p-6">
+        <div ref={exerciseCardRef} className="rounded-2xl border border-white/10 bg-base-200/50 p-4 sm:p-6 shadow-xl relative overflow-hidden backdrop-blur-sm">
           <HomeworkExercise
             type={type}
             item={items[index]}

@@ -1,109 +1,325 @@
-import React from 'react';
-import { Airplay, CheckCircle2, HelpCircle, Image as ImageIcon, Lightbulb, MessageSquare, Sparkles, X } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  Airplay,
+  CheckCircle2,
+  HelpCircle,
+  Image as ImageIcon,
+  Lightbulb,
+  Sparkles,
+  X,
+  Eye,
+  Check,
+  AlertCircle,
+  Trophy,
+  Zap,
+} from 'lucide-react';
 import Button from '../ui/Button';
+import { ScratchpadDocument } from '../../types';
 
-export interface PresentationState {
-  active: boolean;
-  title: string;
-  type: 'image_prompt' | 'slide' | 'scenario_item';
-  imageUrl?: string;
-  prompt?: string;
-  hints?: string[];
-  question?: string;
-  slideIndex?: number;
-  totalSlides?: number;
-}
+export type PresentationState = NonNullable<ScratchpadDocument['presentationState']>;
 
 interface ScratchpadPresentationOverlayProps {
   presentation: PresentationState;
   isTeacher: boolean;
   onClose: () => void;
-  onNextSlide?: () => void;
-  onPrevSlide?: () => void;
+  onRevealAnswer?: () => void;
+  onSubmitAnswer?: (answer: string) => void;
 }
+
+const OPTION_THEMES = [
+  {
+    letter: 'A',
+    symbol: '▲',
+    cardBg: 'bg-rose-500/10 hover:bg-rose-500/20 border-rose-500/30 text-rose-200',
+    badgeBg: 'bg-rose-500 text-white',
+    ringColor: 'ring-rose-400',
+  },
+  {
+    letter: 'B',
+    symbol: '◆',
+    cardBg: 'bg-sky-500/10 hover:bg-sky-500/20 border-sky-500/30 text-sky-200',
+    badgeBg: 'bg-sky-500 text-white',
+    ringColor: 'ring-sky-400',
+  },
+  {
+    letter: 'C',
+    symbol: '●',
+    cardBg: 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-200',
+    badgeBg: 'bg-amber-500 text-ink-base font-bold',
+    ringColor: 'ring-amber-400',
+  },
+  {
+    letter: 'D',
+    symbol: '■',
+    cardBg: 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-200',
+    badgeBg: 'bg-emerald-500 text-ink-base font-bold',
+    ringColor: 'ring-emerald-400',
+  },
+];
 
 export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverlayProps> = ({
   presentation,
   isTeacher,
   onClose,
+  onRevealAnswer,
+  onSubmitAnswer,
 }) => {
-  const [showHints, setShowHints] = React.useState(false);
+  const [showHints, setShowHints] = useState(false);
+  const [localInputAnswer, setLocalInputAnswer] = useState('');
 
   if (!presentation.active) return null;
 
+  const isInteractive =
+    presentation.type === 'interactive_quiz' ||
+    presentation.type === 'sentence_scramble' ||
+    presentation.type === 'error_hunt' ||
+    Boolean(presentation.options && presentation.options.length > 0);
+
+  const isAnswerRevealed = Boolean(presentation.revealedAnswer);
+  const currentAnswer = presentation.studentAnswer != null ? String(presentation.studentAnswer) : null;
+  const correctAnswerStr = presentation.correctAnswer != null ? String(presentation.correctAnswer) : '';
+
+  const handleSelectOption = (opt: string) => {
+    if (isAnswerRevealed) return; // locked once revealed
+    if (onSubmitAnswer) {
+      onSubmitAnswer(opt);
+    }
+  };
+
+  const handleCustomSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!localInputAnswer.trim() || isAnswerRevealed) return;
+    if (onSubmitAnswer) {
+      onSubmitAnswer(localInputAnswer.trim());
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-ink-1/95 backdrop-blur-xl animate-in fade-in duration-300 text-text-hi select-none overflow-y-auto p-4 sm:p-8">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#0b0f17]/95 backdrop-blur-2xl animate-in fade-in duration-300 text-text-hi select-none overflow-y-auto p-4 sm:p-8">
       {/* Top Bar */}
-      <div className="flex items-center justify-between pb-4 border-b border-line-strong max-w-5xl mx-auto w-full">
+      <div className="flex items-center justify-between pb-4 border-b border-white/10 max-w-5xl mx-auto w-full">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary animate-pulse">
-            <Airplay size={20} />
+          <div className="w-10 h-10 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary shadow-[0_0_20px_rgba(114,240,180,0.25)] animate-pulse">
+            <Zap size={22} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono uppercase bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-bold">
-                Prezentacja Live (Prototyp)
+              <span className="text-[11px] font-mono uppercase bg-primary/20 text-primary border border-primary/30 px-2.5 py-0.5 rounded-full font-bold">
+                {isInteractive ? '⚡ Interaktywne Ćwiczenie Live' : 'Prezentacja Live'}
               </span>
-              <span className="text-xs text-content-muted">Widok kursanta</span>
+              <span className="text-xs text-content-muted">
+                {isTeacher ? 'Widok lektora (sterowanie)' : 'Twój widok na żywo'}
+              </span>
             </div>
-            <h2 className="text-lg sm:text-xl font-extrabold text-text-hi mt-0.5">
-              {presentation.title || 'Ćwiczenie interaktywne'}
+            <h2 className="text-lg sm:text-xl font-extrabold text-white mt-0.5">
+              {presentation.title || 'Ćwiczenie z lektorem'}
             </h2>
           </div>
         </div>
 
-        {isTeacher ? (
-          <Button
-            size="sm"
-            onClick={onClose}
-            className="text-xs font-bold py-2 px-4 bg-line-soft hover:bg-rose-500/20 text-text-hi hover:text-rose-300 border border-line-strong hover:border-rose-500/40 flex items-center gap-1.5 transition-all cursor-pointer"
-          >
-            <X size={14} />
-            Zakończ i wróć do notatnika
-          </Button>
-        ) : (
-          <span className="text-xs text-content-muted flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            Lektor prowadzi prezentację
-          </span>
-        )}
+        <div className="flex items-center gap-2.5">
+          {/* Teacher Action: Reveal Answer */}
+          {isTeacher && isInteractive && !isAnswerRevealed && onRevealAnswer && (
+            <button
+              type="button"
+              onClick={onRevealAnswer}
+              className="text-xs font-bold py-2 px-3.5 rounded-xl bg-primary hover:bg-primary-hover text-ink-base flex items-center gap-1.5 shadow-lg shadow-primary/25 transition-all cursor-pointer"
+            >
+              <Eye size={15} />
+              Odkryj poprawną odpowiedź
+            </button>
+          )}
+
+          {isTeacher ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-xs font-bold py-2 px-4 rounded-xl bg-white/10 hover:bg-rose-500/20 text-text-hi hover:text-rose-300 border border-white/15 hover:border-rose-500/40 flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <X size={15} />
+              Zakończ i wróć do notatnika
+            </button>
+          ) : (
+            <span className="text-xs text-content-muted flex items-center gap-1.5 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              Lektor prowadzi ćwiczenie
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Main Slide Content */}
-      <div className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto w-full my-6 sm:my-10 space-y-6">
+      {/* Main Container */}
+      <div className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto w-full my-6 sm:my-8 space-y-6">
         {/* Optional Image */}
         {presentation.imageUrl && (
-          <div className="relative group max-h-[42vh] rounded-2xl overflow-hidden border border-line-strong bg-base-300 shadow-2xl">
+          <div className="relative group max-h-[36vh] rounded-2xl overflow-hidden border border-white/10 bg-base-300 shadow-2xl">
             <img
               src={presentation.imageUrl}
               alt={presentation.title}
-              className="w-full h-full object-contain max-h-[42vh] rounded-2xl"
+              className="w-full h-full object-contain max-h-[36vh] rounded-2xl"
             />
           </div>
         )}
 
         {/* Prompt / Question Card */}
-        <div className="w-full p-6 sm:p-8 rounded-3xl bg-base-200/80 border border-primary/30 shadow-[0_0_40px_rgba(114,240,180,0.12)] space-y-4 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary text-xs font-bold">
+        <div className="w-full p-6 sm:p-8 rounded-3xl bg-base-200/90 border border-primary/30 shadow-[0_0_50px_rgba(114,240,180,0.1)] space-y-4 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary text-xs font-bold uppercase tracking-wider">
             <Sparkles size={13} />
-            <span>Zadanie dla kursanta</span>
+            <span>
+              {presentation.type === 'sentence_scramble'
+                ? 'Ułóż zdanie we właściwej kolejności'
+                : presentation.type === 'error_hunt'
+                ? 'Znajdź i popraw błąd'
+                : 'Pytanie do zadania'}
+            </span>
           </div>
 
           {presentation.question && (
-            <h3 className="text-xl sm:text-2xl font-black text-text-hi leading-tight tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-black text-white leading-tight tracking-tight max-w-3xl mx-auto">
               {presentation.question}
             </h3>
           )}
 
           {presentation.prompt && (
-            <p className="text-sm sm:text-base text-content-muted leading-relaxed max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base text-content-muted leading-relaxed max-w-2xl mx-auto font-medium">
               {presentation.prompt}
             </p>
           )}
 
+          {/* Multiple Choice Options (Kahoot-Style) */}
+          {presentation.options && presentation.options.length > 0 && (
+            <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-w-3xl mx-auto w-full">
+              {presentation.options.map((opt, idx) => {
+                const theme = OPTION_THEMES[idx % OPTION_THEMES.length];
+                const isSelected = currentAnswer === opt || currentAnswer === String(idx);
+                const isCorrect =
+                  correctAnswerStr === opt ||
+                  correctAnswerStr === String(idx) ||
+                  correctAnswerStr.toLowerCase().trim() === opt.toLowerCase().trim();
+
+                let cardStyle = `${theme.cardBg} border`;
+                if (isAnswerRevealed) {
+                  if (isCorrect) {
+                    cardStyle =
+                      'bg-emerald-600/35 border-emerald-400 text-emerald-100 ring-4 ring-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.3)] scale-[1.02]';
+                  } else if (isSelected && !isCorrect) {
+                    cardStyle = 'bg-rose-600/30 border-rose-400 text-rose-200 line-through opacity-80';
+                  } else {
+                    cardStyle = 'bg-white/5 border-white/5 text-content-muted opacity-40';
+                  }
+                } else if (isSelected) {
+                  cardStyle = `bg-primary/20 border-primary text-white ring-4 ring-primary/40 shadow-[0_0_25px_rgba(114,240,180,0.3)] scale-[1.02]`;
+                }
+
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    disabled={isAnswerRevealed}
+                    onClick={() => handleSelectOption(opt)}
+                    className={`p-4 sm:p-5 rounded-2xl flex items-center justify-between gap-3 text-left transition-all duration-200 cursor-pointer disabled:cursor-default ${cardStyle}`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${theme.badgeBg}`}
+                      >
+                        {theme.letter}
+                      </span>
+                      <span className="font-semibold text-sm sm:text-base leading-snug break-words">
+                        {opt}
+                      </span>
+                    </div>
+
+                    {/* Status icon */}
+                    <div className="shrink-0">
+                      {isAnswerRevealed && isCorrect && (
+                        <div className="w-7 h-7 rounded-full bg-emerald-500 text-ink-base flex items-center justify-center font-bold">
+                          <Check size={18} strokeWidth={3} />
+                        </div>
+                      )}
+                      {isAnswerRevealed && isSelected && !isCorrect && (
+                        <div className="w-7 h-7 rounded-full bg-rose-500 text-white flex items-center justify-center font-bold">
+                          <X size={18} strokeWidth={3} />
+                        </div>
+                      )}
+                      {!isAnswerRevealed && isSelected && (
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-primary text-ink-base uppercase">
+                          Wybrano
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Text input / non-multiple-choice interactive answers */}
+          {(!presentation.options || presentation.options.length === 0) && isInteractive && (
+            <div className="pt-3 max-w-xl mx-auto w-full space-y-3">
+              {!isAnswerRevealed ? (
+                <form onSubmit={handleCustomSubmit} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={localInputAnswer || currentAnswer || ''}
+                    onChange={(e) => setLocalInputAnswer(e.target.value)}
+                    placeholder="Wpisz swoją odpowiedź..."
+                    className="flex-1 px-4 py-3 rounded-xl bg-ink-2/80 border border-white/15 text-white placeholder:text-content-muted focus:outline-none focus:border-primary text-sm font-medium"
+                  />
+                  <button
+                    type="submit"
+                    className="px-5 py-3 rounded-xl bg-primary hover:bg-primary-hover text-ink-base font-bold text-sm shadow-md transition-all cursor-pointer"
+                  >
+                    Wyślij
+                  </button>
+                </form>
+              ) : (
+                <div className="p-4 rounded-xl bg-ink-2/90 border border-emerald-400/40 text-left space-y-1">
+                  <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle2 size={14} />
+                    Poprawne rozwiązanie:
+                  </div>
+                  <div className="text-base font-bold text-white font-mono">{correctAnswerStr}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Status info bar for student or teacher */}
+          <div className="pt-2 flex items-center justify-center gap-2 text-xs font-medium">
+            {currentAnswer ? (
+              <span className="text-primary flex items-center gap-1">
+                <CheckCircle2 size={13} />
+                {isTeacher
+                  ? `Kursant wybrał: "${currentAnswer}"`
+                  : isAnswerRevealed
+                  ? 'Ćwiczenie rozwiązane!'
+                  : 'Twoja odpowiedź została zarejestrowana. Czekaj na lektora.'}
+              </span>
+            ) : (
+              <span className="text-content-muted flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                {isTeacher ? 'Oczekiwanie na wybór kursanta...' : 'Wybierz jedną z opcji powyżej'}
+              </span>
+            )}
+          </div>
+
+          {/* Answer Revealed Explanation Callout */}
+          {isAnswerRevealed && presentation.explanation && (
+            <div className="mt-4 p-4 sm:p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-left space-y-1.5 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                <Trophy size={15} />
+                <span>Wyjaśnienie i reguła językowa</span>
+              </div>
+              <p className="text-sm text-text-hi leading-relaxed font-medium">
+                {presentation.explanation}
+              </p>
+            </div>
+          )}
+
           {/* Hints / Keywords */}
           {presentation.hints && presentation.hints.length > 0 && (
-            <div className="pt-4 border-t border-line-strong/60 space-y-3">
+            <div className="pt-4 border-t border-white/10 space-y-3">
               <button
                 type="button"
                 onClick={() => setShowHints(!showHints)}
@@ -118,7 +334,7 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
                   {presentation.hints.map((hint, idx) => (
                     <span
                       key={idx}
-                      className="px-3 py-1.5 rounded-xl bg-line-soft border border-line-strong text-text-hi text-xs font-medium shadow-sm"
+                      className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-text-hi text-xs font-medium shadow-sm"
                     >
                       {hint}
                     </span>
@@ -130,10 +346,10 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
         </div>
       </div>
 
-      {/* Footer Instructions */}
-      <div className="border-t border-line-strong/60 pt-4 max-w-5xl mx-auto w-full text-center text-xs text-content-muted flex items-center justify-between">
-        <span>CRIBRO Recall Live Classroom</span>
-        <span>Gdy lektor zamknie prezentację, widok automatycznie powróci do notatnika.</span>
+      {/* Footer */}
+      <div className="border-t border-white/10 pt-4 max-w-5xl mx-auto w-full text-center text-xs text-content-muted flex items-center justify-between">
+        <span className="font-mono">CRIBRO Recall Live Classroom</span>
+        <span>Po zamknięciu ćwiczenia przez lektora nastąpi natychmiastowy powrót do notatnika.</span>
       </div>
     </div>
   );

@@ -1464,3 +1464,189 @@ Weryfikacja i stan:
 - `npm test` — 320/320 testów jednostkowych zaliczonych (100%).
 - `npm run build` — poprawna kompilacja bundle frontend + service worker + backend.
 
+---
+
+2026-09-16 — Antigravity / Gemini 3.7 Flash (runda 15)
+
+Zadanie:
+1. Neonowe, wyraziste podświetlenie aktywnego kafelka w panelu lektora (`AdminPanel.tsx`): ring neonowy, radialny gradient, animowany wskaźnik i etykieta „AKTYWNY MODUŁ”.
+2. Odczytywanie i multimodalna analiza załączników w Asystencie AI (`TeacherAssistant.tsx`, `teacherAssistant.ts`): obsługa plików PDF, obrazów i screenshotów (`.png`, `.jpg`, `.jpeg`, `.webp`), dokumentów Markdown (`.md`), HTML (`.html`) oraz plików tekstowych (`.txt`).
+3. Przepływ akcji Notion AI w Asystencie AI (`TeacherAssistant.tsx`, `teacherAssistant.ts`, `AdminPanel.tsx`, `Dashboard.tsx`): generowanie propozycji lekcji `lesson_json`, karta Notion AI z podsumowaniem i 1-klikowe przyciski akcji: Utwórz lekcję w Dzienniku, Dopracuj w Planerze lekcji, Uruchom w Prezentacji Live, Zadaj jako Pracę domową, Otwórz Notatnik.
+4. Rozszerzenie notatnika (`ScratchpadEditor.tsx`): dodawanie załączników w asystencie edytora, wstawianie wygenerowanych treści według szablonu lub na końcu dokumentu.
+5. Usprawnienia internacjonalizacji i wielojęzyczności (`LanguageContext.tsx`, `StudentHeroHeader.tsx`, `TodayScreen.tsx`).
+
+Zrobione:
+- `components/admin/AdminPanel.tsx`: neonowe poświaty dla kafelków Tier 1/2/3, obsługa akcji z asystenta (`onCreateLessonRecord`, `onOpenInPresentation`), obsługa `initialLessonDraft`.
+- `components/admin/TeacherAssistant.tsx`: obsługa załączników (przycisk spinacza, przeciąganie drag&drop, wklejanie ze schowka Ctrl+V/Cmd+V), karty propozycji lekcji Notion AI i przyciski akcji.
+- `services/teacherAssistant.ts`: multimodalne wywołanie Gemini 2.5 Flash dla załączników PDF i grafik, parsowanie bloku `lesson_json`, wzbogacony prompt systemowy.
+- `components/dashboard/Dashboard.tsx`: mostkowanie akcji asystenta AI do Dziennika lekcji i Prezentacji live (`adminLessonDraft`).
+- `components/scratchpad/ScratchpadEditor.tsx`: obsługa załączników w czacie asystenta notatnika, przyciski „Wstaw wg szablonu” i „Dopisz na końcu”.
+- `context/LanguageContext.tsx`: dodanie pomocnika `tText(pl, en)`.
+- `components/dashboard/StudentHeroHeader.tsx` & `TodayScreen.tsx`: wdrożenie `tText` dla pełnej dwujęzyczności panelu ucznia.
+
+Decyzje architektoniczne:
+- Zachowanie bezpieczeństwa: brak kluczy API po stronie klienta, bezpośrednie multimodalne przekazywanie `inlineData` do Gemini 2.5 Flash na backendzie / autoryzowanym kliencie.
+- Pełna symetria i zgodność w obu trybach asystenta: centralny na pulpicie lektora oraz pływający dymek w lewym dolnym rogu.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 320/320 zdanych testów (100%).
+- `npm run build` — poprawna kompilacja całego pakietu.
+
+---
+
+2026-09-16 — Antigravity / Gemini 3.7 Flash (runda 16)
+
+Zadanie:
+1. Notatnik: domyślny format strony A4 bez względu na położenie (`width: 794px`, `min-height: 1123px`, margines 76px, responsywne skalowanie).
+2. Dynamiczne, sekcyjne podziały stron A4: po zapełnieniu strony A4 danej lekcji treść płynnie przechodzi na kolejną podstronę bez naruszania kolejnych lekcji; kolejna lekcja zawsze zaczyna się od nowej strony A4 z nagłówkiem na samej górze.
+3. Przycisk i menu „Podział strony A4”: wstawianie czystej strony A4 między lekcjami lub w miejscu kursora.
+4. Zawsze nagłówek lekcji na górze (`margin-top: 0 !important`, brak zbędnych pustych linii).
+5. Naprawa działania lokalnego serwera deweloperskiego (przełączenie na port 3001 w celu uniknięcia kolizji z procesem whatsapp-bridge na 3000 + wdrożenie SPA routingu Express 5).
+
+Zrobione:
+- `index.css`: formatowanie A4, `.pad-page-break`, reguły `margin-top: 0 !important` dla nagłówków po podziale strony, responsywność i tryb druku.
+- `components/scratchpad/ScratchpadEditor.tsx`: algorytm pomiaru stron `measurePages` z `PageMarker`, przycisk „Podział strony A4” w menu i na pasku narzędzi, funkcja `handleInsertPageBreak`, poprawione wstawianie szablonów lekcji.
+- `server.ts` & `.env`: ustawienie `PORT=3001`, naprawa routingu HTML SPA w trybie dev dla Express 5.
+- `CHANGELOG.md` & `AGENT_LOG.md`: dokumentacja zmian.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów typowania.
+- `npm test` — 320/320 testów jednostkowych zaliczonych (100%).
+- `npm run build` — poprawny build produkcyjny.
+- Serwer działa stabilnie na `http://localhost:3001`.
+
+---
+
+2026-09-16 — Antigravity / Gemini 3.7 Flash (runda 17)
+
+Zadanie:
+1. Poprawa wizualna czatu Asystenta Lektora (`TeacherAssistant.tsx`), aby był spójny z motywem CRIBRO, ale wyraźnie odróżniał się jako nowoczesny, konwersacyjny chat stream (Copilot), a nie statyczny generator.
+2. Stworzenie nowego, eleganckiego i uniwersalnego komponentu ikony/awatara asystenta AI (`AIAssistantIcon.tsx`) i wdrożenie go w całej aplikacji.
+
+Zrobione:
+- `components/ui/AIAssistantIcon.tsx` (nowy plik):
+  - Autorski glif wektorowy łączący motywy marki CRIBRO (geometryczne łuki, centralna gwiazda inteligencji, orbitalne pierścienie, synaptyczne węzły, gradient szmaragdowo-miętowy `#72F0B4` ➔ `#38E196` ➔ `#0D8A5F` oraz neonowy glow).
+  - Obsługa wariantów (`avatar`, `badge` ze statusem online, `icon`, `floating`), stanów (`idle`, `thinking`, `online`) oraz dynamicznego skalowania rozmiaru.
+- `components/admin/TeacherAssistant.tsx`:
+  - Pełna metamorfoza czatu na nowoczesne środowisko konwersacyjne (Copilot).
+  - Szklany nagłówek z nowym awatarem, live statusem i przyciskami zarządzania sesjami.
+  - Nowy ekran powitalny (Copilot Hub) z siatką tematycznych kart propozycji (Kursanci, Planowanie, Zadania domowe, Powtórka, Multimodalne AI, Postępy).
+  - Czytelny timeline wiadomości: wyróżnione dymki lektora (prawostronne ze szmaragdowym szkłem) i asystenta (lewostronne z awatarem AI, kartami Notion AI i 1-klikowymi akcjami).
+  - Płynny stan generowania `thinking` z animowanym awatarem AI i potrójnym wskaźnikiem pulsu.
+  - Nowy kompozytor z obsługą wielowierszowego tekstu (`Enter` wyślij, `Shift+Enter` nowa linia), wklejaniem schowka i załącznikami.
+  - Spójny lifting pływającego dymka czatu w lewym dolnym rogu.
+- `components/scratchpad/ScratchpadEditor.tsx`:
+  - Wdrożenie nowego `AIAssistantIcon` w nagłówku, ekranie powitalnym i wiadomościach wbudowanego asystenta notatnika.
+- `components/admin/LessonPlanner.tsx` & `TeacherSpecialTaskModal.tsx`:
+  - Zastąpienie generycznych ikon `Bot` nowym komponentem `AIAssistantIcon`.
+- `CHANGELOG.md` & `AGENT_LOG.md`:
+  - Aktualizacja dokumentacji zmian.
+
+2026-09-16 — Antigravity / Gemini 3.7 Flash (runda 18)
+
+Zadanie:
+1. Dopasowanie szerokości asystenta do głównych kafelków (`max-w-5xl`) oraz obniżenie jego wysokości o ~30% w trybie osadzonym.
+2. Zastosowanie spójnego tła szklano-kafelkowego (`liquid-glass-tile`) nawiązującego do kafelków kursantów.
+3. Skalowanie w dół kart podpowiedzi/promptów.
+4. Całkowite wyczyszczenie danych i tokenów Notion (przerwanie połączenia, reset bazy) w celu umożliwienia wklejenia nowego tokena i ID baz.
+5. Implementacja wyszukiwarki i automatycznego wykrywania baz Notion (Auto-discovery) na podstawie tokena po dodaniu integracji do stron w Notion.
+
+Zrobione:
+- `components/admin/AdminPanel.tsx` & `components/admin/TeacherAssistant.tsx`:
+  - Rozszerzono kontener asystenta do `max-w-5xl mx-auto w-full`, uzyskując idealną spójność krawędzi z siatką kafelków głównych.
+  - Zastosowano tło kafelkowe `liquid-glass-tile` z subtelną szmaragdową poświatą neonową.
+  - Zredukowano wysokość panelu o ~30% (kompaktowy nagłówek, zmniejszona wysokość okna wiadomości `min-h-[140px] max-h-[280px]`, kompaktowy kompozytor wiadomości).
+  - Skalowano w dół karty promptów początkowych (`p-2.5`, mniejsze ikony, mniejsza typografia).
+- `server.ts`:
+  - Usunięto stare zahardcodowane domyślne identyfikatory baz Notion.
+  - Dodano endpoint `POST /api/notion/clear-config` do pełnego resetu zmiennych środowiskowych i dokumentu Firestore `system/notion`.
+  - Dodano endpoint `POST /api/notion/search-databases` odpytujący Notion API `/v1/search` pod kątem baz danych udostępnionych integracji.
+- `components/settings/SettingsScreen.tsx`:
+  - Wyzerowano domyślne identyfikatory baz w polach formularza.
+  - Dodano przycisk „Rozłącz i wyczyść Notion” z potwierdzeniem `window.confirm` i bezpiecznym czyszczeniem stanu.
+  - Dodano sekcję „Automatyczne wykrywanie baz w Notion (Auto-Discovery)” z przyciskiem wyszukiwania oraz siatką kart wykrytych baz danych z 1-klikowym przypisaniem bazy spotkań i bazy kursantów.
+2026-09-16 — Antigravity / Gemini 3.7 Flash (runda 19)
+
+Zadanie:
+1. Wdrożenie architektury Liquid Glass dla kafelków w całej aplikacji: połysk szkła, efekt głębi (depth effect) i nowoczesna animacja hover z refleksami świetlnymi (sheen sweep).
+2. Płynne animacje i przejścia GSAP w całej aplikacji (moduły, motyw dzienny/nocny, kropelkowe przejścia pytań).
+
+Zrobione:
+- `index.css`:
+  - Utworzenie klas `.liquid-glass-tile`, `.glass-tile` oraz `.liquid-glass-card`.
+  - Wdrożenie wielowarstwowego załamania optycznego, `backdrop-filter: blur(16px) saturate(140%)`.
+  - Specular hairline highlight (`::after`) oraz ruchomy promień połysku tafli szkła (`::before` pod kątem `-24deg`).
+- `services/gsapAnimations.ts`:
+  - Dodanie biblioteki animacji: `animateDropletTransition`, `animateTilePop`, `animateThemeTransition`, `animateModalPresence`.
+- `context/FlashcardContext.tsx`:
+  - Podpięcie `recordExerciseResults` dla sesji fiszek i dopasowania (matching) w celu ciągłego budowania profilu krzywej uczenia.
+- Weryfikacja: `npm test` 320/320 testów pass, `npm run build` pass.
+
+---
+
+2026-09-16 — Antigravity / Gemini 3.7 Flash (runda 20)
+
+Zadanie:
+1. Zmiana nazwy „Prawdziwe Wyzwanie” na „Sprawdź Się” z drobną czcionką wyjaśniającą, że są to tłumaczenia pełnych zdań.
+2. Dodanie opcjonalnego trybu rozgrzewki klockowej (Warm-up Scrambler) przed rozpoczęciem tłumaczeń/zadań (wzorowany na pracach domowych).
+3. Dodanie ćwiczenia „Napraw Zdanie” opartego o silnik `generateFindErrors` z prac domowych.
+4. Łącznie 4 ćwiczenia do praktyki dodatkowej: Tłumaczenie zdań („Sprawdź Się”), Korekta zdań („Napraw Zdanie”), Fiszki oraz Dopasowanie w przejrzystym gridzie 2x2 Liquid Glass.
+5. Zapisywanie każdego ćwiczenia do historii sesji (`practiceLogs`) oraz budowanie krzywej uczenia (`recordExerciseResults`).
+6. Nowoczesne, przyjemne dla oka animacje Drops bez przebodźcowania (ADHD-friendly).
+
+Zrobione:
+- `components/dashboard/AIExerciseGeneratorScreen.tsx`:
+  - Przeprojektowanie sekcji formatów na elegancką siatkę 2x2 z kaflami Liquid Glass i wskaźnikami:
+    1. **Sprawdź Się** (`typing`): badge `Tłumaczenia`, opis tłumaczenia z pamięci, tag `🧩 Tryb rozgrzewki`.
+    2. **Napraw Zdanie** (`correction`): badge `Korekta`, opis wykrywania i poprawiania błędów, tag `🎯 Zadanie z pracy domowej`.
+    3. **Fiszki** (`flashcards`): badge `Nauka`.
+    4. **Dopasowanie** (`match`): badge `Gra`.
+  - Wdrożenie ekranu zaproszenia do rozgrzewki (`warmupPhase === 'invite'`) z opcjami `[🚀 Zacznij od rozgrzewki (Zalecane)]` oraz `[⚡ Przejdź od razu do zdań]`.
+  - Integracja `HomeworkWarmupScrambler` dla rozgrzewki klockowej.
+  - Wdrożenie generowania `generateFindErrors` dla ćwiczenia „Napraw Zdanie”, z podaniem kontekstu i briefingów z krzywej uczenia.
+  - Wdrożenie interfejsu zadania „Napraw Zdanie”: bursztynowy kafelek z wyeksponowanym zdaniem z błędem, polskie znaczenie, wskazówka lektora i przycisk `Kopiuj zdanie do edycji`.
+  - Natychmiastowa ewaluacja czystego dopasowania (100% bez zbędnego czekania) oraz inteligentny prompt AI dla odpowiedzi alternatywnych.
+  - Zapis do `practiceLogs` z `sentence_correction` / `find_errors` oraz wywołanie `recordExerciseResults(..., 'find_errors')`.
+  - Dodanie animacji kropelkowej `animateDropletTransition` przy przejściach między zdaniami.
+- `components/dashboard/HomeworkWarmupScrambler.tsx`:
+  - Rozszerzenie `extractWarmupItems` o bezpośrednią obsługę `item.englishTranslation`.
+- `context/FlashcardContext.tsx`:
+  - Zapewnienie wywoływania `recordExerciseResults` po ukończeniu powtórki fiszek i gry matching.
+
+Weryfikacja:
+- `npm test` — 320/320 testów zaliczonych pomyślnie.
+- `npm run build` — produkcyjny build Vite, Service Worker i server/serverless zakończony kodem 0.
+
+---
+
+2026-09-16 — Antigravity / Gemini 3.7 Flash (runda 21)
+
+Zadanie:
+1. Usunięcie animowanego efektu połysku (sheen sweep) na wszystkich kafelkach w całej aplikacji.
+2. Stworzenie statycznego efektu Liquid Glass o wyraźnej głębi 3D, aby kafelki wyglądały na fizyczne przyciski zrobione ze szkła.
+3. Poprawa okna czatu na głównej stronie nauczyciela (`TeacherAssistant.tsx` w `AdminPanel.tsx`), aby wszystko mieściło się w jednym oknie bez konieczności przewijania (scrolla) wewnątrz czatu.
+
+Zrobione:
+- `index.css`:
+  - Usunięcie animacji `sheen-sweep` oraz pseudo-elementu `::before` z kątem `-24deg` dla kafelków (`.liquid-glass-tile`, `.glass-tile`).
+  - Przebudowa `.liquid-glass-tile`, `.glass-tile` oraz `.liquid-glass-card` na statyczny styl szklanego przycisku 3D:
+    - Optyczny gradient szkła `linear-gradient(180deg, ...)`,
+    - Wewnętrzne ścięcia krawędzi (inner bevel: ostra krawędź górna `inset 0 1px 1px`, miękkie rozświetlenie časzy `inset 0 2px 5px`, wewnętrzny cień dolny `inset 0 -2px 4px`),
+    - Wielowarstwowy cień kontaktowy i ambientowy (`0 1px 2px`, `0 6px 15px`, `0 16px 34px`),
+    - Statyczny refleks soczewki (`::after` z eliptycznym rozmyciem),
+    - Fizyczny efekt wciśnięcia przycisku ze szkła przy kliknięciu (`:active` -> `translateY(2px)`, kompresja cieni),
+    - Subtelny hover lift o `2.5px` z pogłębieniem cienia bez przesuwających się pasów światła.
+- `components/admin/TeacherAssistant.tsx`:
+  - Usunięcie sztywnego ograniczenia `max-h-[280px]` w stanie początkowym czatu, które powodowało wewnętrzny scrollbar tuż po otwarciu strony lektora.
+  - Wprowadzenie kompaktowego, horyzontalnego nagłówka powitalnego oraz odświeżonego układu 3x2 kafelków promptów startowych o wysokości ~50px.
+  - Całe okno czatu (nagłówek, propozycje, kompozytor wiadomości) mieści się w jednym zwartym kadrze bez scrolla.
+  - W widoku aktywnej rozmowy okno wiadomości płynnie korzysta z `max-h-[580px]`, gwarantując czytelność dłuższych odpowiedzi AI i propozycji Notion.
+
+Weryfikacja:
+- `npm test` — 320/320 testów zaliczonych pomyślnie.
+- `npm run build` — kod 0, poprawnie zbudowano bundle produkcyjny i skrypty serwera.
+
+
+
+

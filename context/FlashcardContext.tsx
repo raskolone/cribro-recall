@@ -5,6 +5,8 @@ import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, write
 import { useAuth } from './AuthContext';
 import { GENERAL_VOCABULARY_SETS } from '../data/generalVocabulary';
 import { logMistakesToFirebase, generateFlashcardsFromTopicWithGPT } from '../services/geminiService';
+import { recordExerciseResults } from '../services/learningProfile';
+import { normalizeLevel } from '../utils/learningCurve';
 
 interface FlashcardContextType {
   sets: FlashcardSet[];
@@ -642,6 +644,23 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
         } catch (mErr) {
           console.warn("Could not log flashcard mistakes to weaknesses:", mErr);
         }
+      }
+
+      if (results.length > 0) {
+        recordExerciseResults(
+          userId,
+          results.map((r) => ({
+            prompt: r.term || r.flashcardId || 'Fiszka',
+            expected: 'Znajomość słowa',
+            given: r.isCorrect ? 'Znam' : 'Do powtórki',
+            isCorrect: Boolean(r.isCorrect),
+            score: r.isCorrect ? 100 : 0,
+            level: normalizeLevel(user?.level),
+            exerciseType: sessionData.mode === 'matching' ? 'matching' : 'flashcards',
+            date: new Date().toISOString(),
+          })),
+          user?.level
+        ).catch(console.error);
       }
 
       if (updateUserStreak) {

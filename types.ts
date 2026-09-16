@@ -260,6 +260,10 @@ export interface TranslationExercise {
   hint?: string;
   puzzleChunks?: string[];
   modelUsed?: string;
+  format?: 'translation' | 'error_hunt' | 'gap_fill' | 'puzzle';
+  erroneousSentence?: string;
+  gapSentence?: string;
+  targetAnswer?: string;
 }
 
 export interface TranslationEvaluationResult {
@@ -320,6 +324,10 @@ export interface GeneratedLessonScenario {
   category?: string;
   sourceFiles?: string[];
   attachments?: LessonAttachment[];
+  planJson?: string;
+  format?: string;
+  goal?: string;
+  sourceMaterialDescription?: string;
 }
 
 export interface LessonBlocks {
@@ -1004,15 +1012,24 @@ export interface ScratchpadDocument {
     user?: string;
     updatedAt?: number;
   };
+  /** Prywatne notatki lektora (Side Notes) — widoczne WYŁĄCZNIE dla lektora, niewidoczne dla kursanta. */
+  teacherNotes?: string;
+  /** Przypisany identyfikator scenariusza lekcji, aby lektor mógł go śledzić podczas zajęć. */
+  activeScenarioId?: string;
   /** Stan aktywnego slajdu/ćwiczenia prezentacji wyświetlanego kursantowi zamiast notatnika. */
   presentationState?: {
     active: boolean;
     title: string;
-    type: 'image_prompt' | 'slide' | 'scenario_item';
+    type: 'image_prompt' | 'slide' | 'scenario_item' | 'interactive_quiz' | 'sentence_scramble' | 'error_hunt';
     imageUrl?: string;
     prompt?: string;
     hints?: string[];
     question?: string;
+    options?: string[];
+    correctAnswer?: string | number;
+    revealedAnswer?: boolean;
+    studentAnswer?: string | number | null;
+    explanation?: string;
     slideIndex?: number;
     totalSlides?: number;
   };

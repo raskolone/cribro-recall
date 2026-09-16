@@ -787,18 +787,23 @@ export async function updateScratchpadLaser(
 }
 
 /**
- * Aktualizacja stanu aktywnej prezentacji w notatniku.
+ * Aktualizacja stanu aktywnej prezentacji / interaktywnego ćwiczenia w notatniku.
  */
 export async function updateScratchpadPresentation(
   id: string,
   presentation: {
     active: boolean;
     title: string;
-    type: 'image_prompt' | 'slide' | 'scenario_item';
+    type: 'image_prompt' | 'slide' | 'scenario_item' | 'interactive_quiz' | 'sentence_scramble' | 'error_hunt';
     imageUrl?: string;
     prompt?: string;
     hints?: string[];
     question?: string;
+    options?: string[];
+    correctAnswer?: string | number;
+    revealedAnswer?: boolean;
+    studentAnswer?: string | number | null;
+    explanation?: string;
     slideIndex?: number;
     totalSlides?: number;
   } | null
@@ -820,6 +825,106 @@ export async function updateScratchpadPresentation(
     });
   } catch (err) {
     console.warn('[Scratchpad Presentation Sync error]:', err);
+  }
+}
+
+/**
+ * Ujawnienie poprawnej odpowiedzi w interaktywnym ćwiczeniu live (dla lektora).
+ */
+export async function revealScratchpadExerciseAnswer(id: string): Promise<void> {
+  if (!id) return;
+  const local = getLocalScratchpad(id);
+  if (local?.presentationState) {
+    const updated = {
+      ...local,
+      presentationState: {
+        ...local.presentationState,
+        revealedAnswer: true,
+      },
+    };
+    saveLocalScratchpad(updated);
+  }
+
+  try {
+    const ref = scratchpadDocRef(id);
+    await updateDoc(ref, {
+      'presentationState.revealedAnswer': true,
+    });
+  } catch (err) {
+    console.warn('[Scratchpad Reveal Answer error]:', err);
+  }
+}
+
+/**
+ * Zapis odpowiedzi kursanta w interaktywnym ćwiczeniu live.
+ */
+export async function submitStudentExerciseAnswer(
+  id: string,
+  answer: string | number
+): Promise<void> {
+  if (!id) return;
+  const local = getLocalScratchpad(id);
+  if (local?.presentationState) {
+    const updated = {
+      ...local,
+      presentationState: {
+        ...local.presentationState,
+        studentAnswer: answer,
+      },
+    };
+    saveLocalScratchpad(updated);
+  }
+
+  try {
+    const ref = scratchpadDocRef(id);
+    await updateDoc(ref, {
+      'presentationState.studentAnswer': answer,
+    });
+  } catch (err) {
+    console.warn('[Scratchpad Submit Answer error]:', err);
+  }
+}
+
+/**
+ * Zapis prywatnych notatek lektora (Side Notes) w notatniku.
+ * Niewidoczne dla kursanta — służą do śledzenia uwag i zasilania AI.
+ */
+export async function updateScratchpadTeacherNotes(
+  id: string,
+  notes: string
+): Promise<void> {
+  if (!id) return;
+  const local = getLocalScratchpad(id);
+  if (local) {
+    saveLocalScratchpad({ ...local, teacherNotes: notes });
+  }
+
+  try {
+    const ref = scratchpadDocRef(id);
+    await updateDoc(ref, { teacherNotes: notes });
+  } catch (err) {
+    console.warn('[Scratchpad Teacher Notes Sync error]:', err);
+  }
+}
+
+/**
+ * Przypisanie aktywnego scenariusza lekcji do notatnika.
+ */
+export async function updateScratchpadActiveScenario(
+  id: string,
+  scenarioId: string | null
+): Promise<void> {
+  if (!id) return;
+  const local = getLocalScratchpad(id);
+  if (local) {
+    saveLocalScratchpad({ ...local, activeScenarioId: scenarioId || undefined });
+  }
+
+  try {
+    const ref = scratchpadDocRef(id);
+    await updateDoc(ref, { activeScenarioId: scenarioId || null });
+  } catch (err) {
+    console.warn('[Scratchpad Active Scenario Sync error]:', err);
   }
 }
 

@@ -27,6 +27,7 @@ import StudentTestsPanelSection from './StudentTestsPanelSection';
 import PracticeSessionsSection from './PracticeSessionsSection';
 import StudentHeroHeader from './StudentHeroHeader';
 import StudentToolBar, { StudentTool } from './StudentToolBar';
+import GSAPModuleTransition from '../ui/GSAPModuleTransition';
 
 /**
  * Panel kursanta — domyślne wejście po zalogowaniu.
@@ -457,7 +458,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
     if (phase === 'ready' && items.length > 0) {
       const minutes = Math.max(3, Math.round(items.length * 0.6));
       return (
-        <section className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/[0.12] via-base-200/60 to-base-200/60 p-4 sm:p-5">
+        <section className="liquid-glass-card border-primary/30 p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
               <Sparkles className="w-4.5 h-4.5 text-primary" />
@@ -483,7 +484,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
     if (phase === 'done') {
       const confident = results.filter((r) => r === 'confident').length;
       return (
-        <section className="rounded-2xl border border-primary/25 bg-primary/[0.06] p-4 sm:p-5">
+        <section className="liquid-glass-card border-primary/25 p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
               <Check className="w-4.5 h-4.5 text-primary" />
@@ -634,47 +635,49 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
             i NICZYM, co by mówiło, na co patrzy — a po przewinięciu kafelek
             z podpisem był już poza ekranem. Pasek mówi to raz i daje wyjście
             w tym samym miejscu, w którym kończy się czytanie. */}
-        {openTool && (
-          <div className="rounded-2xl border border-line-strong bg-base-200/40 overflow-hidden">
-            <div className="px-4 py-2.5 flex items-center justify-between gap-3 border-b border-line-soft bg-base-300/40">
-              <span className="min-w-0 flex items-center gap-2 text-sm font-bold text-text-hi truncate">
-                {tools.find((tool) => tool.id === openTool)?.icon}
-                {tools.find((tool) => tool.id === openTool)?.label}
-              </span>
-              <button
-                type="button"
-                onClick={() => setOpenTool(null)}
-                className="shrink-0 h-8 px-2.5 rounded-lg border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] text-[11px] font-semibold transition-colors cursor-pointer"
-              >
-                Zwiń
-              </button>
+        <GSAPModuleTransition activeKey={openTool || 'none'}>
+          {openTool && (
+            <div className="rounded-2xl border border-line-strong bg-base-200/40 overflow-hidden">
+              <div className="px-4 py-2.5 flex items-center justify-between gap-3 border-b border-line-soft bg-base-300/40">
+                <span className="min-w-0 flex items-center gap-2 text-sm font-bold text-text-hi truncate">
+                  {tools.find((tool) => tool.id === openTool)?.icon}
+                  {tools.find((tool) => tool.id === openTool)?.label}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setOpenTool(null)}
+                  className="shrink-0 h-8 px-2.5 rounded-lg border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] text-[11px] font-semibold transition-colors cursor-pointer"
+                >
+                  {language === 'pl' ? 'Zwiń' : 'Collapse'}
+                </button>
+              </div>
+              {openTool === 'homework' && (
+                <StudentHomeworkPanelSection
+                  headless
+                  studentId={targetId}
+                  onOpenHomework={onOpenHomework || (() => {})}
+                />
+              )}
+              {openTool === 'tests' && (
+                <StudentTestsPanelSection
+                  headless
+                  studentId={targetId}
+                  onOpenTests={onOpenTests || (() => {})}
+                />
+              )}
+              {openTool === 'lessons' && (
+                <StudentLessonPanel
+                  headless
+                  only="earlier"
+                  studentId={targetId}
+                  onStudySet={onStudySet}
+                  onPracticeAI={onPracticeAI}
+                />
+              )}
+              {openTool === 'practice' && <PracticeSessionsSection headless studentId={targetId} />}
             </div>
-            {openTool === 'homework' && (
-              <StudentHomeworkPanelSection
-                headless
-                studentId={targetId}
-                onOpenHomework={onOpenHomework || (() => {})}
-              />
-            )}
-            {openTool === 'tests' && (
-              <StudentTestsPanelSection
-                headless
-                studentId={targetId}
-                onOpenTests={onOpenTests || (() => {})}
-              />
-            )}
-            {openTool === 'lessons' && (
-              <StudentLessonPanel
-                headless
-                only="earlier"
-                studentId={targetId}
-                onStudySet={onStudySet}
-                onPracticeAI={onPracticeAI}
-              />
-            )}
-            {openTool === 'practice' && <PracticeSessionsSection headless studentId={targetId} />}
-          </div>
-        )}
+          )}
+        </GSAPModuleTransition>
 
         {/* Ostatnia lekcja zostaje poza listwą: to jedyna rzecz z historii, do
             której kursant wraca codziennie, i ma być widoczna bez dotknięcia. */}

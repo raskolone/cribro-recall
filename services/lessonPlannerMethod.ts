@@ -149,6 +149,71 @@ Zwróć WYŁĄCZNIE poprawny JSON:
    kawałku — element musi mieć własny identyfikator już w chwili powstania.
    ═══════════════════════════════════════════════════════════════════════ */
 
+export interface InteractiveExercise {
+  id: string;
+  title?: string;
+  type: 'quiz' | 'sentence_scramble' | 'error_hunt' | 'vocab_match' | 'interactive_quiz';
+  question: string;
+  options?: string[];
+  correctAnswer: string | number;
+  explanation?: string;
+  scrambledWords?: string[];
+}
+
+export type PlanItemKind =
+  | 'question'
+  | 'text'
+  | 'vocab'
+  | 'correction'
+  | 'task'
+  | 'answerKey'
+  | 'note'
+  | 'topic_material'
+  | 'lead_in'
+  | 'thought_provoking_questions'
+  | 'interactive';
+
+export interface PlanItemTeacherNotes {
+  goal?: string;
+  scaffolding?: string;
+  followUp?: string;
+}
+
+export interface PlanItem {
+  id: string;
+  kind: PlanItemKind;
+  text: string;
+  notes?: string;
+  checked?: boolean;
+  checkable?: boolean;
+  safetyBankNote?: string;
+  methodologyNote?: string;
+  teacherNotes?: PlanItemTeacherNotes;
+  exercise?: InteractiveExercise;
+}
+
+export interface PlanSection {
+  id: string;
+  title: string;
+  minutes?: string;
+  duration?: string;
+  items: PlanItem[];
+  topicMaterialDescription?: string;
+  thoughtProvokingDescription?: string;
+  methodologicalTip?: string;
+  interactiveExercises?: InteractiveExercise[];
+}
+
+export interface LessonPlan {
+  title: string;
+  summary: string;
+  format?: string;
+  goal?: string;
+  sourceMaterialDescription?: string;
+  sections: PlanSection[];
+  interactiveExercises?: InteractiveExercise[];
+}
+
 export const buildScenarioPrompt = (
   brief: LessonBrief,
   chosenTopic: { title: string; angle?: string; material?: string }
@@ -160,64 +225,97 @@ WYBRANY TEMAT (zatwierdzony przez lektora — trzymaj się go):
 ${chosenTopic.angle ? `- Kąt: ${chosenTopic.angle}` : ''}
 ${chosenTopic.material ? `- Materiał: ${chosenTopic.material}` : ''}
 
-ZADANIE: ułóż pełny scenariusz 60-minutowej lekcji według struktury Cribro.
+ZADANIE: ułóż pełny scenariusz 60-minutowej lekcji według struktury i metody Cribro, kropka w kropkę w formacie wymaganym przez system.
 
-STRUKTURA I TWARDE LICZBY (nie wolno ich zmieniać):
-1. Revision and Warm Up (5–10 min)
-   - DOKŁADNIE 5 pytań check-in. ${brief.mode === 'grupa' ? 'Dla grupy: wspólne pytania, pierwsze działa jak icebreaker, reszta jako zapas.' : 'Spersonalizowane pod tego kursanta na podstawie historii.'}
-   - Revision Translation: 3–5 zdań PL→EN WYŁĄCZNIE z poprzedniej lekcji, razem z kluczem odpowiedzi.
-   - Older Lesson Refresh: 1 pytanie albo słówko z wcześniejszej historii.
-${brief.grammarTopic?.trim() ? `2. Grammar Review (5–10 min) — temat: ${brief.grammarTopic.trim()}. Krótkie wyjaśnienie (3–4 zdania po polsku, przykłady po angielsku), 3–4 zdania przykładowe, jeden blok szybkiej praktyki ustnej.` : ''}
-${brief.grammarTopic?.trim() ? '3' : '2'}. Main Topic (${brief.grammarTopic?.trim() ? '20–25' : '20–30'} min)
-   - Topic and Material: wprowadzenie 2–3 zdania PO ANGIELSKU, do przeczytania kursantowi wprost. Bez polskich komentarzy metodycznych w tym miejscu.
-   - Lead-in: krótkie wprowadzenie po angielsku.
-   - DOKŁADNIE 10 otwartych pytań dyskusyjnych. Każde z własnymi Teacher's Notes.
-   - Bank ma być RÓŻNORODNY: osobiste doświadczenie, konkretna sytuacja, realny wybór, rozwiązywanie problemu, scenariusz przyszły lub hipotetyczny. Bez powtórzeń i sztucznej złożoności.
-${brief.grammarTopic?.trim() ? '4' : '3'}. Language Focus (10 min)
-   - Delayed Correction: 3–5 typowych błędów powiązanych z tematem (błędna wersja → poprawna).
-   - Key Vocabulary: DOKŁADNIE 5 pozycji, priorytet dla słownictwa obecnego w materiale źródłowym.
-${brief.grammarTopic?.trim() ? '5' : '4'}. Practice Enclosure — ZOSTAW PUSTE. Nie generuj role-play, pracy w parach, mini-debaty, gap-fillu ani żadnego innego ćwiczenia. Taka jest obowiązująca decyzja lektora.
-${brief.grammarTopic?.trim() ? '6' : '5'}. Extra Tasks — DOKŁADNIE 4 różne zadania oparte na dzisiejszej lekcji:
-   - Task 1 — Translation PL→EN: dokładnie 4 naturalne zdania po polsku do przetłumaczenia.
-   - Task 2 — Correct the Mistake: dokładnie 4 zdania po angielsku, każde z JEDNYM wyraźnym, zamierzonym błędem z dzisiejszej lekcji. Bez pytań-pułapek i dwuznacznych poprawek.
-   - Task 3 — Finish the Response: dokładnie 4 krótkie, realistyczne sytuacje albo mini-dialogi do dokończenia naturalną odpowiedzią.
-   - Task 4 — Build a Natural Sentence: dokładnie 4 zestawy po 2–3 elementy (fraza docelowa, sytuacja, wskazówka gramatyczna) do połączenia w jedno naturalne zdanie. To NIE jest układanka z kolejności słów — nie podawaj słów w kolejności oczekiwanego zdania.
-   - Cztery zadania mają się od siebie RÓŻNIĆ. Nie sprawdzaj czterokrotnie tego samego zdania ani tej samej konstrukcji.
-   - Nie generuj gap-fillu ani Word Banku.
+METADANE LEKCJI (wypełnij precyzyjnie w JSON na samej górze):
+- "format": np. "indywidualna lekcja General English, 60 minut, poziom ${brief.level}"
+- "goal": konkretny cel komunikacyjny i gramatyczny (np. "praktyczne mówienie o pracy, osobach i sprzęcie z użyciem ${brief.grammarTopic || 'docelowych struktur'}")
+- "sourceMaterialDescription": dokładny opis adaptacji banku materiałów (np. "I-TESL-J — ESL Conversation Questions... adaptacja zawęża materiał do kontekstu ${brief.audience} i poziomu ${brief.level}.")
 
-TEACHER'S NOTES (BUDKA SUFLERA):
-Przy KAŻDYM z 10 pytań dyskusyjnych w Main Topic (oraz kluczowych pytaniach w Warm-up) pole "notes" MUSI zawierać zwięzłe, użyteczne wskazówki dla lektora w 3 stałych punktach:
-• Cel: [cel dydaktyczny pytania po polsku — wejście w temat, zebranie argumentu, proste uzasadnienie]
-• Scaffolding: [początki zdań, sugerowane odpowiedzi i zwroty pomocnicze po angielsku w kursywie, np. I work as a... / I am responsible for...]
-• Follow-up: [jedno celne, naturalne pytanie pogłębiające po angielsku, np. What is one important task in your job?]
-Nie rób z nich drugiego scenariusza lekcji — mają służyć jako błyskawiczna „budka suflera” rozwijana pod każdym pytaniem.
+STRUKTURA SEKCJI I TWARDE LICZBY:
+1. Revision and Warm Up (10 min)
+   - DOKŁADNIE 5 pytań check-in (kind: "question"). ${brief.mode === 'grupa' ? 'Wspólne pytania z icebreakerem.' : `Spersonalizowane pod ${brief.audience} na podstawie historii.`}
+   - Revision Translation: 3–5 zdań PL→EN z poprzedniej lekcji wraz z kluczem odpowiedzi.
+   - Older Lesson Refresh: 1 pytanie lub słówko z wcześniejszych zajęć.
+
+${brief.grammarTopic?.trim() ? `2. Grammar Review — ${brief.grammarTopic.trim()} (10 min)
+   - Krótkie wyjaśnienie (3–4 zdania po polsku), 3–4 zdania przykładowe z angielskim, szybka praktyka ustna.` : ''}
+
+${brief.grammarTopic?.trim() ? '3' : '2'}. Main Topic — ${chosenTopic.title} (${brief.grammarTopic?.trim() ? '28 min' : '30 min'})
+   - Sekcja ma zawierać dedykowane opisy:
+     * topicMaterialDescription: zwięzły opis adaptacji źródła do środowiska kursanta.
+     * thoughtProvokingDescription: "Pytania są bankiem bezpieczeństwa. Nie musisz wykorzystać wszystkich; wybierz te, które naturalnie pasują do kierunku rozmowy."
+     * methodologicalTip: konkretna wskazówka metodyczna dla lektora (np. "${brief.audience} potrzebuje krótkich pytań i czasu na znalezienie słów. Najpierw zaakceptuj prostą odpowiedź, potem dodaj jeden follow-up.")
+   - W sekcji umieść następujące pozycje ("items"):
+     * 2–3 punkty z celami do przeczytania kursantowi na głos (kind: "topic_material", np. "Today we will talk about your job.")
+     * 1 punkt zadania wprowadzającego (kind: "lead_in", np. "Tell me three simple facts about...")
+     * DOKŁADNIE 10 pytań dyskusyjnych (kind: "question").
+     * Przy KAŻDYM z 10 pytań pole "notes" MUSI zawierać zwięzłą Budkę Suflera w 3 stałych punktach:
+       • Cel: [cel dydaktyczny pytania po polsku]
+       • Scaffolding: [początki zdań i zwroty pomocnicze po angielsku w kursywie, np. I work as a... / I am responsible for...]
+       • Follow-up: [jedno naturalne pytanie pogłębiające po angielsku, np. What is one important task in your job?]
+
+${brief.grammarTopic?.trim() ? '4' : '3'}. Language Focus (12 min)
+   - Delayed Correction: 3–5 typowych błędów powiązanych z tematem (kind: "correction", błędna wersja → poprawna).
+   - Key Vocabulary: DOKŁADNIE 5 pozycji kluczowych (kind: "vocab", format: "english phrase - polskie tłumaczenie").
+
+${brief.grammarTopic?.trim() ? '5' : '4'}. Practice Enclosure (10 min) — ĆWICZENIA INTERAKTYWNE LIVE (Kahoot-style do wyświetlenia kursantowi):
+   - Przygotuj DOKŁADNIE 3–4 interaktywne zadania (kind: "interactive").
+   - Każde zadanie wyposaż w obiekt "exercise" z polami:
+     * "id": unikalny id (np. "quiz-1")
+     * "type": "quiz" (wybór 1 z 4 opcji), "sentence_scramble" (układanie klocków), lub "error_hunt" (znajdź błąd)
+     * "question": treść zadania dla kursanta po angielsku
+     * "options": 4 opcje do wyboru (dla quizu) lub lista klocków słownych (dla scramble)
+     * "correctAnswer": poprawna odpowiedź (indeks opcji 0..3 lub poprawne zdanie)
+     * "explanation": zwięzłe wyjaśnienie po polsku dlaczego ta odpowiedź jest poprawna
+
+${brief.grammarTopic?.trim() ? '6' : '5'}. Extra Tasks — DOKŁADNIE 4 różne zadania utrwalające:
+   - Task 1 — Translation PL→EN: 4 naturalne zdania po polsku.
+   - Task 2 — Correct the Mistake: 4 zdania z jednym zamierzonym błędem.
+   - Task 3 — Finish the Response: 4 sytuacje / mini-dialogi do dokończenia.
+   - Task 4 — Build a Natural Sentence: 4 zestawy po 2–3 elementy do połączenia.
 
 Zwróć WYŁĄCZNIE poprawny JSON o strukturze:
 {
-  "title": "Temat lekcji, bez daty",
-  "summary": "2–3 zdania po polsku dla lektora: o czym jest ta lekcja i czego dotyczy jej oś",
+  "title": "${chosenTopic.title}",
+  "summary": "2–3 zdania po polsku dla lektora: o czym jest ta lekcja",
+  "format": "indywidualna lekcja General English, 60 minut, poziom ${brief.level}",
+  "goal": "Praktyczne mówienie o...",
+  "sourceMaterialDescription": "I-TESL-J — ESL Conversation Questions...",
   "sections": [
     {
       "id": "warmup",
-      "title": "1. Revision and Warm Up (5–10 min)",
-      "minutes": "5–10 min",
+      "title": "1. Revision and Warm Up (10 min)",
+      "minutes": "10 min",
       "items": [
         {
           "id": "warmup-q1",
           "kind": "question",
-          "text": "Treść pytania PO ANGIELSKU",
-          "notes": "• Cel: krótki icebreaker wprowadzający w temat.\n• Scaffolding: In my opinion... / Usually I prefer...\n• Follow-up: Why is that important to you?"
+          "text": "What did you usually check first at work today?",
+          "notes": "• Cel: wejście w temat dnia.\n• Scaffolding: First I checked... / Usually I start with...\n• Follow-up: Did anything surprise you today?"
+        }
+      ]
+    },
+    {
+      "id": "maintopic",
+      "title": "3. Main Topic — ${chosenTopic.title} (28 min)",
+      "minutes": "28 min",
+      "topicMaterialDescription": "Materiał źródłowy: bank pytań adaptowany pod kontekst kursanta.",
+      "thoughtProvokingDescription": "Pytania są bankiem bezpieczeństwa. Nie musisz wykorzystać wszystkich; wybierz te, które naturalnie pasują do kierunku rozmowy.",
+      "methodologicalTip": "Kursant potrzebuje krótkich pytań i czasu na znalezienie słów. Najpierw zaakceptuj prostą odpowiedź, potem dodaj follow-up.",
+      "items": [
+        { "id": "main-tm-1", "kind": "topic_material", "text": "Today we will talk about your job." },
+        { "id": "main-lead-1", "kind": "lead_in", "text": "Tell me three simple facts about your work." },
+        {
+          "id": "main-q1",
+          "kind": "question",
+          "text": "What do you do at work?",
+          "notes": "• Cel: wejście w temat przez znaną informację o stanowisku.\n• Scaffolding: I work as a... / I am responsible for...\n• Follow-up: What is one important task in your job?"
         }
       ]
     }
   ]
 }
-
-Dozwolone wartości "kind": "question" (pytanie do kursanta), "text" (blok tekstu, np. Topic and Material albo Lead-in), "vocab" (pozycja słownictwa w formacie "english - polski"), "correction" (błąd → poprawna wersja), "task" (treść zadania), "answerKey" (klucz odpowiedzi do zadania bezpośrednio nad nim), "note" (komentarz metodyczny dla lektora).
-
-Każdy element MUSI mieć własne, unikalne "id" złożone z małych liter, cyfr i myślników. Identyfikatory służą lektorowi do zaznaczania pojedynczych elementów i proszenia o ich poprawkę — muszą być stabilne i opisowe (np. "main-q7", "vocab-3", "task2-s4").
-
-Sekcja Practice Enclosure ma mieć pustą tablicę "items".
 `.trim();
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -237,24 +335,52 @@ export const buildRevisionPrompt = (
 ): string => `
 ${briefBlock(brief)}
 
-AKTUALNY SCENARIUSZ (pełny kontekst — po to, żebyś wiedział, w co wpisujesz poprawkę):
+AKTUALNY SCENARIUSZ (pełny kontekst JSON):
 ${scenarioJson}
 
-ELEMENTY ZAZNACZONE PRZEZ LEKTORA DO ZMIANY (identyfikatory):
-${selectedIds.map(id => `- ${id}`).join('\n')}
+${
+  selectedIds.length > 0
+    ? `ELEMENTY ZAZNACZONE PRZEZ LEKTORA DO ZMIANY (identyfikatory):\n${selectedIds.map(id => `- ${id}`).join('\n')}\n\nTWARDE OGRANICZENIE: Lektor wskazał konkretne elementy. Zmień przede wszystkim te elementy, zachowując spójność reszty scenariusza.`
+    : 'Lektor prosi o modyfikację / uzupełnienie w czacie bez wskazywania konkretnych identyfikatorów.'
+}
 
 POLECENIE LEKTORA:
 ${instruction.trim()}
 
-TWARDE OGRANICZENIE: wolno ci zmienić WYŁĄCZNIE elementy o wymienionych wyżej identyfikatorach. Nie ruszaj żadnego innego elementu, nie dodawaj nowych, nie usuwaj istniejących i nie zmieniaj identyfikatorów. Liczba pytań w każdej sekcji ma zostać taka sama.
+ZASADY:
+- Każdy zmieniony lub dodany element musi przejść Test naturalności pytań i być dopasowany do poziomu ${brief.level}.
+- Zachowaj format Teacher's Notes w 3 punktach: Cel, Scaffolding, Follow-up.
+- Jeśli polecenie dotyczy ćwiczenia interaktywnego, wygeneruj obiekt "exercise" (quiz z options, correctAnswer, explanation).
 
-Każdy poprawiony element nadal musi przejść Test naturalności i trzymać się poziomu ${brief.level}.
-
-Zwróć WYŁĄCZNIE poprawny JSON zawierający TYLKO zmienione elementy:
+Zwróć WYŁĄCZNIE poprawny JSON zawierający zmodyfikowane elementy lub dodane elementy:
 {
   "updates": [
-    { "id": "identyfikator", "text": "nowa treść", "notes": "nowe Teacher's Notes albo pusty string" }
+    {
+      "id": "istniejący-id",
+      "text": "zaktualizowana treść",
+      "notes": "zaktualizowane Teacher's Notes albo pusty string",
+      "exercise": {
+        "id": "quiz-id",
+        "type": "quiz",
+        "question": "pytanie",
+        "options": ["A", "B", "C", "D"],
+        "correctAnswer": 0,
+        "explanation": "wyjaśnienie"
+      }
+    }
   ],
+  "addedItems": [
+    {
+      "sectionId": "maintopic",
+      "item": {
+        "id": "new-item-1",
+        "kind": "question",
+        "text": "Nowe pytanie",
+        "notes": "• Cel: ...\n• Scaffolding: ...\n• Follow-up: ..."
+      }
+    }
+  ],
+  "deletedIds": [],
   "comment": "Jedno–dwa zdania po polsku: co zmieniłeś i dlaczego"
 }
 `.trim();

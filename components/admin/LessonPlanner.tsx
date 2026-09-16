@@ -26,6 +26,7 @@ import { GeneratedScenariosSection } from './GeneratedScenariosSection';
 import { saveGeneratedScenario, parseScenarioStages } from '../../services/scenarioService';
 import { LessonFileUploader } from './LessonFileUploader';
 import { ChooseScenarioModal } from './ChooseScenarioModal';
+import { AIAssistantIcon } from '../ui/AIAssistantIcon';
 
 interface UserWithId extends User {
   id: string;
@@ -809,9 +810,7 @@ ${rawPrompt || 'Dostosuj powyższy scenariusz pod profil wybranego kursanta, zac
                 className={`flex gap-3 sm:gap-4 ${isUser ? 'justify-end' : 'justify-start'}`}
               >
                 {!isUser && (
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-primary/20 border border-primary/40 text-primary flex items-center justify-center shrink-0 mt-1 shadow-[0_0_12px_rgba(114,240,180,0.3)]">
-                    <Bot size={20} />
-                  </div>
+                  <AIAssistantIcon size="sm" variant="avatar" state="online" glow={false} className="mt-1" />
                 )}
 
                 <div className={`max-w-4xl ${isUser ? 'w-auto' : 'w-full'}`}>
@@ -923,9 +922,7 @@ ${rawPrompt || 'Dostosuj powyższy scenariusz pod profil wybranego kursanta, zac
           {/* Loading Indicator */}
           {isLoading && (
             <div className="flex gap-3 sm:gap-4 justify-start items-center">
-              <div className="w-10 h-10 rounded-2xl bg-primary/20 border border-primary/40 text-primary flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(114,240,180,0.3)]">
-                <Bot size={20} className="animate-spin-slow" />
-              </div>
+              <AIAssistantIcon size="sm" variant="avatar" state="thinking" glow={true} />
               <div className="rounded-2xl bg-base-100 border border-primary/40 p-4 text-xs font-bold text-primary flex items-center gap-3 shadow-[0_0_20px_rgba(114,240,180,0.25)] animate-pulse">
                 <Sparkles size={16} />
                 <span>AI analizuje historię, załączniki i tworzy konspekt lekcji...</span>

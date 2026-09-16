@@ -33,6 +33,7 @@ import TeacherWorkScreen from './TeacherWorkScreen';
 import CoachMarks from '../ui/CoachMarks';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import TeacherAssistant from '../admin/TeacherAssistant';
+import { LessonDraftProposal } from '../../services/teacherAssistant';
 import { buildStudentTourSteps, buildTeacherTourSteps } from './tourSteps';
 
 import TodayScreen from './TodayScreen';
@@ -55,6 +56,7 @@ import TeacherHomeworkNotification from './TeacherHomeworkNotification';
 import StudentHomeworkGradedModal from './StudentHomeworkGradedModal';
 import PasswordChangeSuggestion from './PasswordChangeSuggestion';
 import { createPresentationFromScenario, savePresentationToStorage } from '../../services/presentationService';
+import GSAPModuleTransition from '../ui/GSAPModuleTransition';
 
 /**
  * Podstrona przeżywa F5. `sessionStorage` (nie `localStorage`) celowo — stan
@@ -172,6 +174,7 @@ const Dashboard: React.FC = () => {
   // tego przełączenie się między kafelkami zerowałoby wybór za każdym razem.
   const [adminSelectedUserId, setAdminSelectedUserId] = useState<string | null>(restoredPanelState.adminSelectedUserId ?? null);
   const [adminActiveTab, setAdminActiveTab] = useState<string | null>(restoredPanelState.adminActiveTab ?? null);
+  const [adminLessonDraft, setAdminLessonDraft] = useState<LessonDraftProposal | null>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(restoredPanelState.activeTaskId ?? null);
   const [activeTestId, setActiveTestId] = useState<string | null>(restoredPanelState.activeTestId ?? null);
   const [homeworkFilterStatus, setHomeworkFilterStatus] = useState<string | null>(restoredPanelState.homeworkFilterStatus ?? null);
@@ -229,6 +232,12 @@ const Dashboard: React.FC = () => {
     }
     if (extra && extra.tab) {
       setAdminActiveTab(extra.tab);
+    }
+
+    if (extra && extra.createLessonDraft) {
+      setAdminLessonDraft(extra.createLessonDraft);
+    } else {
+      setAdminLessonDraft(null);
     }
 
     if (extra && extra.taskId) {
@@ -556,6 +565,7 @@ const Dashboard: React.FC = () => {
         <AdminPanel
           initialTab={tabFromView}
           initialSelectedUserId={adminSelectedUserId}
+          initialLessonDraft={adminLessonDraft}
           onUserSelect={(id) => {
             setAdminSelectedUserId(id);
           }}
@@ -589,6 +599,7 @@ const Dashboard: React.FC = () => {
           <AdminPanel
             initialTab={adminActiveTab || null}
             initialSelectedUserId={adminSelectedUserId}
+            initialLessonDraft={adminLessonDraft}
             onUserSelect={(id) => {
               setAdminSelectedUserId(id);
             }}
@@ -748,7 +759,11 @@ const Dashboard: React.FC = () => {
           }}
           title={isTeacher ? 'Przewodnik po panelu lektora' : 'Przewodnik po panelu'}
         />
-        <div className="flex-1 min-h-0 flex flex-col">{renderContent()}</div>
+        <div className="flex-1 min-h-0 flex flex-col">
+          <GSAPModuleTransition activeKey={view} className="flex-1 min-h-0 flex flex-col">
+            {renderContent()}
+          </GSAPModuleTransition>
+        </div>
       </main>
       {/* Asystent — pływający w lewym dolnym rogu. Ukryty na stronie głównej panelu lektora (tam jest wbudowany na środku), widoczny w każdej innej sekcji i module */}
       {isTeacher && (
@@ -759,6 +774,29 @@ const Dashboard: React.FC = () => {
           onSelectStudent={(sId) => {
             setAdminSelectedUserId(sId);
             handleNavigate('admin', { studentId: sId });
+          }}
+          onCreateLessonRecord={(draft) => {
+            setAdminSelectedUserId(draft.studentId || null);
+            handleNavigate('admin', { createLessonDraft: draft, studentId: draft.studentId });
+          }}
+          onOpenInPresentation={async (scenarioData, studentId, studentName) => {
+            try {
+              const scenario = {
+                id: `scen_${Date.now()}`,
+                topic: scenarioData.topic || 'Temat lekcji',
+                summary: scenarioData.summary || '',
+                vocabulary: scenarioData.vocabulary || '',
+                grammar: scenarioData.grammar || '',
+                homework: scenarioData.homework || '',
+              };
+              const pres = createPresentationFromScenario(scenario as any, studentId, studentName);
+              await savePresentationToStorage(pres);
+              setAdminSelectedUserId(studentId || null);
+              setAdminActiveTab('presentation');
+              handleNavigate('admin', { tab: 'presentation', studentId });
+            } catch (e) {
+              console.error('Błąd otwierania prezentacji:', e);
+            }
           }}
         />
       )}

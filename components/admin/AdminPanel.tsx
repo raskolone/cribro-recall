@@ -38,6 +38,9 @@ import TeacherDashboardStats from './TeacherDashboardStats';
 import TeacherSpecialTaskModal from './TeacherSpecialTaskModal';
 import AssignVocabularyModal from './AssignVocabularyModal';
 import HomeworkScreen from '../dashboard/HomeworkScreen';
+import TeacherWorkScreen from '../dashboard/TeacherWorkScreen';
+import FlashcardSetsScreen from '../flashcards/FlashcardSetsScreen';
+import AdminStatsScreen from './AdminStatsScreen';
 import { isTaskForStudent } from '../../utils/homework';
 import TeacherOverview from './TeacherOverview';
 import LessonPlannerStudio from './LessonPlannerStudio';
@@ -59,6 +62,8 @@ import TeacherAttentionBanner from './TeacherAttentionBanner';
 import TeacherLessonHistoryView from './TeacherLessonHistoryView';
 import { StandaloneStudentDatabaseScreen } from './StandaloneStudentDatabaseScreen';
 import TeacherAssistant from './TeacherAssistant';
+import { LessonDraftProposal } from '../../services/teacherAssistant';
+import GSAPModuleTransition from '../ui/GSAPModuleTransition';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
@@ -81,6 +86,7 @@ interface AdminPanelProps {
   initialTab?: string | null; 
   onViewChange?: (view: any, extra?: any) => void; 
   initialSelectedUserId?: string | null; 
+  initialLessonDraft?: LessonDraftProposal | null;
   onUserSelect?: (userId: string | null) => void; 
   onTabChange?: (tab: string | null) => void;
 }
@@ -97,7 +103,7 @@ interface AdminPanelProps {
  */
 const SHOW_LEGACY_PANEL_TOOLS = false;
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId, onUserSelect, onTabChange }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId, initialLessonDraft, onUserSelect, onTabChange }) => {
   const { sets: adminSets, getFlashcards } = useFlashcards();
   const { language } = useLanguage();
   const { connectGoogleDrive, connectGoogleWorkspace } = useAuth();
@@ -291,45 +297,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   };
 
   const handleTileClick = (tabId: string) => {
-    if (tabId === 'students') {
-      setActiveTab((prev) => (prev === 'students' ? null : 'students'));
-      return;
-    }
-    if (tabId === 'lesson-history' || tabId === 'history') {
-      setActiveTab((prev) => (prev === 'lesson-history' || prev === 'history' ? null : 'lesson-history'));
-      return;
-    }
-    if (tabId === 'mailing') {
-      setActiveTab((prev) => (prev === 'mailing' ? null : 'mailing'));
-      return;
-    }
     if (tabId === 'notatnik') {
-      /*
-       * Notatnik otwiera się w OSOBNEJ KARCIE przeglądarki — uzasadnienie
-       * w nagłówku `ScratchpadPage`. Pusty i bez pytania „z kim dzisiaj":
-       * lektor zaczyna pisać, zanim to pytanie jest istotne, a kursanta
-       * przypisuje w trakcie, paskiem nad kartką.
-       */
       openScratchpadTab();
       return;
     }
-    // Moduły ogólne (niezwiązane z profilem) — przełączane bezpośrednio
-    if (tabId === 'lesson-planner' || tabId === 'presentation') {
-      setActiveTab((prev) => (prev === tabId ? null : tabId));
-      setTimeout(() => {
-        tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 150);
-      return;
-    }
-    if (!selectedUser) {
-      setTargetTabAfterSelect(tabId);
-      setIsStudentPickerOpen(true);
-    } else {
-      setActiveTab((prev) => (prev === tabId ? null : tabId));
-      setTimeout(() => {
-        tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 150);
-    }
+    const mappedTab = tabId === 'history' ? 'lesson-history' : tabId;
+    setActiveTab((prev) => (prev === mappedTab || (mappedTab === 'lesson-history' && prev === 'history') ? null : mappedTab));
+    setTimeout(() => {
+      tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
   };
 
   const handleSaveProfile = async (silent = false, formState = profileForm) => {
@@ -1822,6 +1798,27 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     setActiveTab(initialTab || null);
   }, [initialTab]);
 
+  useEffect(() => {
+    if (initialLessonDraft) {
+      setEditingRecordId(null);
+      setViewingRecord(null);
+      const sId = initialLessonDraft.studentId || selectedUser?.id || '';
+      setLessonFormStudentId(sId);
+      setLessonFormStudentIds(sId ? [sId] : []);
+      setLessonFormDate(new Date().toISOString().split('T')[0]);
+      setLessonFormTopic(initialLessonDraft.topic || '');
+      setLessonFormSummary(initialLessonDraft.summary || '');
+      setLessonFormWords(initialLessonDraft.vocabulary || '');
+      setLessonFormThingsToImprove(initialLessonDraft.grammar || '');
+      setLessonFormSuggestedFollowUp(initialLessonDraft.homework || '');
+      setLessonFormStudentSpeaking('');
+      setLessonFormScenarioId('');
+      setLessonFormScenarioTopic(initialLessonDraft.topic || '');
+      setLessonFormScenarioContent(initialLessonDraft.summary || '');
+      openLessonRecordModal('edit', undefined, true);
+    }
+  }, [initialLessonDraft]);
+
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
   };
@@ -2025,21 +2022,21 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     ? onViewChange?.((tile as any).route)
                     : handleTileClick(tile.id)
                 }
-                className={`p-4.5 sm:p-5 cursor-pointer flex flex-col justify-between liquid-glass-tile select-none transition-all rounded-2xl relative overflow-hidden ${
+                className={`p-4.5 sm:p-5 cursor-pointer flex flex-col justify-between select-none transition-all duration-300 rounded-2xl relative overflow-hidden ${
                   hasNotification
                     ? 'border-amber-400/80 bg-gradient-to-br from-amber-500/[0.08] via-base-200/80 to-base-200 shadow-[0_0_30px_rgba(245,158,11,0.22)] ring-1 ring-amber-400/50 hover:border-amber-300'
                     : isActive
-                      ? 'border-primary/80 shadow-[0_0_24px_rgba(114,240,180,0.25)] ring-1 ring-primary/40 bg-ink-2 z-10'
-                      : 'hover:border-primary/50'
+                      ? 'border-primary ring-2 ring-primary/90 ring-offset-2 ring-offset-base-300 shadow-[0_0_35px_rgba(114,240,180,0.38),inset_0_0_22px_rgba(114,240,180,0.14)] bg-gradient-to-br from-primary/[0.18] via-base-200 to-base-200/95 scale-[1.02] z-10'
+                      : 'liquid-glass-tile'
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <div className={`p-2.5 rounded-xl transition-colors relative ${
+                    <div className={`p-2.5 rounded-xl transition-all relative ${
                       hasNotification
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.3)]'
                         : isActive
-                          ? 'bg-primary text-accent-ink shadow-[0_0_14px_rgba(114,240,180,0.4)]'
+                          ? 'bg-primary text-accent-ink shadow-[0_0_18px_rgba(114,240,180,0.6)] ring-2 ring-primary/50'
                           : 'bg-ink/72 text-primary border border-line-strong group-hover:border-primary/40'
                     }`}>
                       <IconComp size={20} />
@@ -2050,18 +2047,27 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                         </span>
                       )}
                     </div>
-                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md border font-mono ${
+                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md border font-mono transition-all ${
                       hasNotification
                         ? 'bg-amber-500/25 text-amber-300 border-amber-500/50 animate-pulse font-extrabold shadow-sm'
                         : isActive
-                          ? 'bg-primary/20 text-primary border-primary/40'
+                          ? 'bg-primary text-accent-ink border-primary font-black shadow-[0_0_12px_rgba(114,240,180,0.5)] flex items-center gap-1.5'
                           : 'bg-base-100/70 text-content-muted border-line'
                     }`}>
-                      {hasNotification ? `${notificationCount} NOWYCH` : (isActive ? 'Aktywny moduł' : tile.badge)}
+                      {hasNotification ? (
+                        `${notificationCount} NOWYCH`
+                      ) : isActive ? (
+                        <>
+                          <span className="w-1.5 h-1.5 rounded-full bg-accent-ink animate-pulse" />
+                          AKTYWNY MODUŁ
+                        </>
+                      ) : (
+                        tile.badge
+                      )}
                     </span>
                   </div>
                   <h3 className={`font-extrabold text-base sm:text-lg transition-colors truncate ${
-                    hasNotification ? 'text-amber-200 group-hover:text-amber-100' : 'text-text-hi group-hover:text-primary'
+                    hasNotification ? 'text-amber-200 group-hover:text-amber-100' : isActive ? 'text-primary font-black' : 'text-text-hi group-hover:text-primary'
                   }`}>
                     {tile.title}
                   </h3>
@@ -2070,9 +2076,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </p>
                 </div>
 
-                <div className="mt-4 pt-2.5 border-t border-line flex items-center justify-between text-xs font-semibold">
-                  <span className={hasNotification ? 'text-amber-400 font-bold' : (isActive ? 'text-primary font-bold' : 'text-content-muted')}>
-                    {hasNotification ? `Otwórz skrzynkę (${notificationCount})` : (isActive ? 'Przeglądasz ten moduł' : 'Otwórz moduł')}
+                <div className={`mt-4 pt-2.5 border-t flex items-center justify-between text-xs font-semibold transition-colors ${
+                  isActive ? 'border-primary/30' : 'border-line'
+                }`}>
+                  <span className={hasNotification ? 'text-amber-400 font-bold' : (isActive ? 'text-primary font-extrabold flex items-center gap-1.5' : 'text-content-muted')}>
+                    {hasNotification ? `Otwórz skrzynkę (${notificationCount})` : (isActive ? '● Przeglądasz ten moduł' : 'Otwórz moduł')}
                   </span>
                   <ChevronRight size={14} className={`transition-transform group-hover:translate-x-0.5 ${
                     hasNotification ? 'text-amber-400' : (isActive ? 'text-primary' : 'text-content-muted')
@@ -2086,7 +2094,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         {/* 2. Trzy narzędzia pomocnicze (Zadania i testy, Planer lekcji, Mailing) - symetryczne, wyśrodkowane */}
         <div data-coach="tour-teacher-work" className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 max-w-5xl mx-auto w-full justify-center">
           {[
-            { id: 'homework', title: 'Zadania i testy', icon: ClipboardList, isRoute: true },
+            { id: 'homework', title: 'Zadania i testy', icon: ClipboardList },
             { id: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
             {
               id: 'mailing',
@@ -2100,13 +2108,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             return (
               <button
                 key={item.id}
-                onClick={() => ((item as any).isRoute ? onViewChange?.(item.id) : handleTileClick(item.id))}
-                className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                onClick={() => handleTileClick(item.id)}
+                className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
                   item.badge
                     ? 'border-amber-400/60 bg-amber-500/10 text-amber-200'
                     : isActive
-                    ? 'border-primary/60 bg-primary/15 text-primary'
-                    : 'border-line-strong bg-line-soft/40 text-content-muted hover:text-text-hi hover:border-primary/40'
+                    ? 'border-primary ring-2 ring-primary/80 ring-offset-1 ring-offset-base-300 shadow-[0_0_25px_rgba(114,240,180,0.35)] bg-gradient-to-br from-primary/[0.22] via-primary/[0.08] to-base-200 text-primary scale-[1.02] font-black'
+                    : 'liquid-glass-tile text-content-muted hover:text-text-hi'
                 }`}
               >
                 {item.badge && (
@@ -2114,7 +2122,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     {item.badge}
                   </span>
                 )}
-                <IconComp size={18} />
+                {isActive && (
+                  <span className="absolute top-2 right-2 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                  </span>
+                )}
+                <IconComp size={18} className={isActive ? 'text-primary' : ''} />
                 <span>{item.title}</span>
               </button>
             );
@@ -2133,29 +2147,30 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </button>
 
           {showMoreTools && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-5xl mx-auto w-full justify-center">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-5xl mx-auto w-full justify-center">
               {[
-                { tab: 'presentation', title: 'Prezentacja', icon: Airplay },
-                { view: 'flashcard-sets', title: 'Słownictwo', icon: BookMarked },
-                { view: 'admin-stats', title: 'Statystyki', icon: BarChart2 },
+                { tab: 'flashcard-sets', title: 'Słownictwo', icon: BookMarked },
+                { tab: 'admin-stats', title: 'Statystyki', icon: BarChart2 },
               ].map((item) => {
                 const IconComp = item.icon;
-                const isActive = activeTab === (item as any).tab;
+                const isActive = activeTab === item.tab;
                 return (
                   <button
-                    key={(item as any).view || (item as any).tab}
-                    onClick={() =>
-                      (item as any).tab
-                        ? handleTileClick((item as any).tab)
-                        : onViewChange?.((item as any).view)
-                    }
-                    className={`flex flex-col items-center justify-center gap-1.5 min-h-[4.5rem] py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-colors text-center cursor-pointer ${
+                    key={item.tab}
+                    onClick={() => handleTileClick(item.tab)}
+                    className={`relative flex flex-col items-center justify-center gap-1.5 min-h-[4.5rem] py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-all duration-200 text-center cursor-pointer ${
                       isActive
-                        ? 'border-primary/60 bg-primary/15 text-primary'
-                        : 'border-line-strong bg-line-soft/40 text-content-muted hover:text-text-hi hover:border-primary/40'
+                        ? 'border-primary ring-2 ring-primary/80 ring-offset-1 ring-offset-base-300 shadow-[0_0_25px_rgba(114,240,180,0.35)] bg-gradient-to-br from-primary/[0.22] via-primary/[0.08] to-base-200 text-primary scale-[1.02] font-black'
+                        : 'liquid-glass-tile text-content-muted hover:text-text-hi'
                     }`}
                   >
-                    <IconComp size={18} />
+                    {isActive && (
+                      <span className="absolute top-2 right-2 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                      </span>
+                    )}
+                    <IconComp size={18} className={isActive ? 'text-primary' : ''} />
                     <span className="leading-tight">{item.title}</span>
                   </button>
                 );
@@ -2166,9 +2181,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       </div>
       </div>
 
-      {/* GŁÓWNY WIDOK: MODUŁ MAILING / PLANER / PREZENTACJA / KURSANCI / HISTORIA LEKCJI LUB STRONA GŁÓWNA (CHAT) */}
+      {/* GŁÓWNY WIDOK: MODUŁ MAILING / PLANER / PREZENTACJA / KURSANCI / HISTORIA LEKCJI / ZADANIA / SŁOWNICTWO / STATYSTYKI LUB STRONA GŁÓWNA (CHAT) */}
       <div className="w-full max-w-[1640px] mx-auto px-3 sm:px-6 lg:px-8">
-      {activeTab === 'students' ? (
+        <GSAPModuleTransition activeKey={activeTab || 'home'}>
+          {activeTab === 'students' ? (
         <div className="space-y-4 animate-in fade-in duration-200 mt-2">
           <StandaloneStudentDatabaseScreen
             onSelectUser={(uId, targetTab) => {
@@ -2200,13 +2216,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             onOpenHomework={(student, lesson) => {
               if (student.id) {
                 handleSelectUser(student as UserWithId, 'homework');
-                onViewChange?.('homework');
+                setActiveTab('homework');
               }
             }}
             onOpenPresentation={async (lesson, student) => {
               if (student?.id) {
-                handleSelectUser(student as UserWithId, 'presentation');
-                setActiveTab('presentation');
+                handleSelectUser(student as UserWithId, 'lesson-planner');
+                setActiveTab('lesson-planner');
               }
             }}
             onDeleteLesson={async (studentId, lesson) => {
@@ -2229,6 +2245,69 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       ) : activeTab === 'mailing' ? (
         <div className="space-y-4 animate-in fade-in duration-200 mt-4">
           <AdminMailingScreen onBack={() => setActiveTab(null)} />
+        </div>
+      ) : activeTab === 'homework' ? (
+        <div className="space-y-4 animate-in fade-in duration-200 mt-4">
+          <div className="flex items-center justify-between pb-3 border-b border-line-strong">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+              <h2 className="text-base sm:text-lg font-bold text-text-hi flex items-center gap-2">
+                Zadania i testy (Centrum sprawdzania prac)
+              </h2>
+            </div>
+            <button
+              onClick={() => setActiveTab(null)}
+              className="px-3 py-1.5 rounded-xl bg-line-soft hover:bg-line-soft text-content-muted hover:text-text-hi text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-line-strong"
+            >
+              <X size={14} />
+              Wróć do strony głównej
+            </button>
+          </div>
+          <TeacherWorkScreen onBack={() => setActiveTab(null)} />
+        </div>
+      ) : activeTab === 'flashcard-sets' ? (
+        <div className="space-y-4 animate-in fade-in duration-200 mt-4">
+          <div className="flex items-center justify-between pb-3 border-b border-line-strong">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+              <h2 className="text-base sm:text-lg font-bold text-text-hi flex items-center gap-2">
+                Baza słownictwa i zestawy fiszek
+              </h2>
+            </div>
+            <button
+              onClick={() => setActiveTab(null)}
+              className="px-3 py-1.5 rounded-xl bg-line-soft hover:bg-line-soft text-content-muted hover:text-text-hi text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-line-strong"
+            >
+              <X size={14} />
+              Wróć do strony głównej
+            </button>
+          </div>
+          <FlashcardSetsScreen
+            onStudySet={(setId) => onViewChange?.('flashcard-study', { setId })}
+            onEditSet={(setId) => onViewChange?.('flashcard-edit', { setId })}
+            onStatsSet={(setId) => onViewChange?.('flashcard-stats', { setId })}
+            onPresentSet={(setId) => onViewChange?.('flashcard-study', { setId, mode: 'presentation' })}
+            onNavigate={onViewChange}
+          />
+        </div>
+      ) : activeTab === 'admin-stats' ? (
+        <div className="space-y-4 animate-in fade-in duration-200 mt-4">
+          <div className="flex items-center justify-between pb-3 border-b border-line-strong">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+              <h2 className="text-base sm:text-lg font-bold text-text-hi flex items-center gap-2">
+                Statystyki i analityka platformy
+              </h2>
+            </div>
+            <button
+              onClick={() => setActiveTab(null)}
+              className="px-3 py-1.5 rounded-xl bg-line-soft hover:bg-line-soft text-content-muted hover:text-text-hi text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-line-strong"
+            >
+              <X size={14} />
+              Wróć do strony głównej
+            </button>
+          </div>
+          <AdminStatsScreen />
         </div>
       ) : activeTab && ['lesson-planner', 'presentation'].includes(activeTab) ? (
         <div className="p-4 sm:p-5 rounded-2xl bg-base-200/60 border border-primary/40 shadow-[0_0_30px_rgba(114,240,180,0.1)] space-y-4 mt-4">
@@ -2360,14 +2439,21 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         </div>
       ) : (
         /* activeTab === null: Strona główna panelu lektora - centralny Asystent AI / Chat */
-        <div className="mt-4 max-w-4xl mx-auto w-full animate-in fade-in duration-200">
+        <div className="mt-4 max-w-5xl mx-auto w-full animate-in fade-in duration-200">
           <TeacherAssistant
             mode="embedded"
             onNavigateToModule={(mod, extra) => {
               if (mod === 'scratchpad') {
                 openScratchpadTab(extra?.studentId ? `sp_${extra.studentId}` : undefined);
-              } else if (mod === 'students' || mod === 'lesson-history' || mod === 'mailing' || mod === 'lesson-planner' || mod === 'presentation') {
+              } else if (mod === 'students' || mod === 'lesson-history' || mod === 'mailing' || mod === 'lesson-planner') {
                 setActiveTab(mod);
+                if (extra?.studentId) {
+                  const u = users.find((x) => x.id === extra.studentId);
+                  if (u) setSelectedUser(u as UserWithId);
+                }
+                setTimeout(() => {
+                  tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 150);
               } else if (onViewChange) {
                 onViewChange(mod, extra);
               }
@@ -2376,9 +2462,61 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               const u = users.find((x) => x.id === studentId);
               if (u) handleSelectUser(u as UserWithId, 'profile');
             }}
+            onCreateLessonRecord={(lessonDraft) => {
+              setEditingRecordId(null);
+              setViewingRecord(null);
+              const targetStudent = (lessonDraft.studentId ? users.find((x) => x.id === lessonDraft.studentId) : null) || selectedUser;
+              if (targetStudent) {
+                setSelectedUser(targetStudent as UserWithId);
+              }
+              const sId = targetStudent?.id || '';
+              setLessonFormStudentId(sId);
+              setLessonFormStudentIds(sId ? [sId] : []);
+              setLessonFormDate(new Date().toISOString().split('T')[0]);
+              setLessonFormTopic(lessonDraft.topic || '');
+              setLessonFormSummary(lessonDraft.summary || '');
+              setLessonFormWords(lessonDraft.vocabulary || '');
+              setLessonFormThingsToImprove(lessonDraft.grammar || '');
+              setLessonFormSuggestedFollowUp(lessonDraft.homework || '');
+              setLessonFormStudentSpeaking('');
+              setLessonFormScenarioId('');
+              setLessonFormScenarioTopic(lessonDraft.topic || '');
+              setLessonFormScenarioContent(lessonDraft.summary || '');
+              openLessonRecordModal('edit', undefined, true);
+              showToast('Przeniesiono propozycję lekcji z Asystenta AI do Dziennika!');
+            }}
+            onOpenInPresentation={async (scenarioData, studentId, studentName) => {
+              try {
+                const targetStudent = studentId ? users.find((x) => x.id === studentId) : selectedUser;
+                if (targetStudent) {
+                  setSelectedUser(targetStudent as UserWithId);
+                }
+                const sName = studentName || (targetStudent ? (targetStudent.firstName ? `${targetStudent.firstName} ${targetStudent.lastName || ''}`.trim() : targetStudent.username) : null);
+                const scenario = {
+                  id: `scen_${Date.now()}`,
+                  topic: scenarioData.topic || 'Temat lekcji',
+                  summary: scenarioData.summary || '',
+                  vocabulary: scenarioData.vocabulary || '',
+                  grammar: scenarioData.grammar || '',
+                  homework: scenarioData.homework || '',
+                  level: targetStudent?.level || 'A2-B1',
+                };
+                const pres = createPresentationFromScenario(scenario as any, targetStudent?.id, sName);
+                await savePresentationToStorage(pres);
+                setActiveTab('presentation');
+                showToast('Lekcja z Asystenta AI załadowana do Prezentacji Live!');
+                setTimeout(() => {
+                  tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 150);
+              } catch (e) {
+                console.error('Błąd uruchamiania w prezentacji:', e);
+                showToast('Nie udało się załadować scenariusza do prezentacji.');
+              }
+            }}
           />
         </div>
       )}
+        </GSAPModuleTransition>
       </div>
         </>
       )}

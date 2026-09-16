@@ -1,49 +1,35 @@
 import { collection, getDocs, query } from 'firebase/firestore';
 import { db } from '../firebase';
-import { LessonRecord } from '../types';
+import { LessonRecord, LessonAttachment } from '../types';
 import { getLessonRecordsForStudent } from './lessonRecord';
 import { extractLessonBlocks } from '../utils/lessonBlocks';
-import { generateTextWithUnifiedFallback } from './geminiService';
+import { generateTextWithUnifiedFallback, getAI, PREFERRED_AI_MODELS, formatAIModelName } from './geminiService';
 
-/**
- * Asystent lektora — PROTOTYP.
- *
- * ══ CO TO JEST ══
- *
- * Okno, w którym można zapytać o własnych kursantów zwykłym zdaniem:
- * „co ostatnio robiłem z Bartkiem", „kto nie miał lekcji od dwóch tygodni",
- * „jakie słownictwo przerabiałem z Moniką". Odpowiedź powstaje z notatek
- * lekcyjnych, które i tak są w bazie.
- *
- * ══ JAK WYBIERA, O KIM MÓWIĆ ══
- *
- * Nie wysyłamy modelowi wszystkich lekcji wszystkich kursantów — to byłyby
- * setki tysięcy znaków przy każdym pytaniu. Zamiast tego imiona kursantów są
- * dopasowywane do treści pytania TUTAJ, w przeglądarce, a do modelu jadą
- * lekcje tylko tych osób, o które faktycznie zapytano. Gdy w pytaniu nie ma
- * żadnego nazwiska, model dostaje sam spis kursantów z datą ostatniej lekcji —
- * to wystarcza na pytania typu „kto dawno nie miał zajęć", a nie kosztuje
- * jednego pytania za całą bazę.
- *
- * ══ CZEGO TO NIE ROBI ══
- *
- * Nie ma dostępu do prac domowych, testów ani statystyk; nie zmienia niczego
- * w bazie. Czyta notatki z lekcji i tyle. To jest świadomy zakres prototypu,
- * a nie brak do nadrobienia po cichu.
- */
+export interface LessonDraftProposal {
+  topic: string;
+  summary: string;
+  vocabulary: string;
+  grammar?: string;
+  homework?: string;
+  studentId?: string;
+  studentName?: string;
+}
 
 export interface AssistantAction {
-  type: 'homework' | 'planner' | 'scratchpad' | 'mailing' | 'profile';
+  type: 'insert_lesson' | 'planner' | 'presentation' | 'homework' | 'scratchpad' | 'mailing' | 'profile';
   label: string;
   studentId?: string;
   studentName?: string;
   topic?: string;
+  lessonDraft?: LessonDraftProposal;
 }
 
 export interface AssistantMessage {
   role: 'user' | 'assistant';
   text: string;
+  attachments?: LessonAttachment[];
   actions?: AssistantAction[];
+  lessonDraft?: LessonDraftProposal;
   timestamp?: number;
 }
 
@@ -77,10 +63,6 @@ const fold = (value: string): string =>
 
 /**
  * Spis kursantów z datą ostatniej lekcji.
- *
- * Buduje się raz na otwarcie okna: jedno zapytanie o konta i po jednym
- * o lekcje każdego kursanta. Przy kilkunastu kontach to kilkanaście odczytów,
- * czyli tyle, co jedno wejście w bazę kursantów.
  */
 export const buildStudentIndex = async (): Promise<StudentIndexEntry[]> => {
   const snapshot = await getDocs(query(collection(db, 'users')));
@@ -128,7 +110,6 @@ export const matchStudents = (
   return index.filter(entry =>
     entry.aliases.some(alias => {
       const needle = fold(alias);
-      // Krótsze niż trzy znaki dopasowywałyby się do przypadkowych sylab.
       return needle.length >= 3 && haystack.includes(needle);
     })
   );
@@ -151,29 +132,49 @@ const lessonToPrompt = (lesson: LessonRecord): string => {
     .join('\n');
 };
 
-const SYSTEM_INSTRUCTION = `Jesteś asystentem lektora języka angielskiego. Odpowiadasz na pytania o jego własnych kursantów na podstawie NOTATEK Z LEKCJI, które dostajesz w kontekście.
+const SYSTEM_INSTRUCTION = `Jesteś zaawansowanym Asystentem Lektora Języka Angielskiego i Workspace AI (w stylu Notion AI) platformy CRIBRO ENGLISH.
 
-ZASADY:
-- Odpowiadasz PO POLSKU, krótko i konkretnie. Kilka zdań albo lista punktów — nigdy esej.
-- Opierasz się WYŁĄCZNIE na przekazanych danych. Jeżeli czegoś w nich nie ma, mówisz wprost: „Tego nie ma w notatkach".
-- Nie zmyślasz dat, tematów ani słownictwa.
-- Gdy pytanie dotyczy konkretnej osoby, a jej danych nie ma w kontekście, mówisz, że nie znalazłeś takiego kursanta.
-- Terminy angielskie zostawiasz po angielsku.
-- Nie doradzasz metodyki, o którą nikt nie pytał.`;
+Twoje możliwości:
+1. Odpowiadanie na pytania o kursantów na podstawie ich historii lekcji, poziomu i notatek w CRM.
+2. Analiza załączonych materiałów: screenshotów, zdjęć zadań, plików PDF, artykułów i dokumentów.
+3. PRZYGOTOWYWANIE TEMATÓW LEKCJI, SCENARIUSZY I POWTÓREK dla kursantów.
+
+ZASADY ODPOWIADANIA:
+- Odpowiadasz PO POLSKU, nowocześnie, przejrzyście i profesjonalnie. Terminy angielskie, zwroty i przykłady zostawiasz po angielsku.
+- Gdy lektor prosi o przygotowanie tematu lekcji, powtórki lub scenariusza (np. „Przygotuj temat lekcji dla Dariusza”, „Zaplanuj lekcję na podstawie załączonego PDF-a / zdjęcia”):
+  1. Zaproponuj chwytliwy temat i poziom.
+  2. Wskaż cel i kluczowe słownictwo (angielski + polskie znaczenie w formacie „słowo - znaczenie”).
+  3. Opisz przebieg / ćwiczenia konwersacyjne i gramatyczne.
+  4. Zaproponuj zwięzłe zadanie domowe.
+  5. NA SAMYM KOŃCU odpowiedzi dołącz blok maszynowy w formacie JSON w tagach \`\`\`lesson_json ... \`\`\`:
+\`\`\`lesson_json
+{
+  "topic": "Tytuł lekcji",
+  "summary": "Zwięzłe podsumowanie i przebieg lekcji",
+  "vocabulary": "word 1 - znaczenie 1\\nword 2 - znaczenie 2",
+  "grammar": "Zagadnienie gramatyczne / do poprawy",
+  "homework": "Zadanie domowe"
+}
+\`\`\`
+- Gdy pytanie dotyczy wyłącznie faktów z bazy („z kim była ostatnia lekcja”, „kto nie miał zajęć”), odpowiedz krótko i zwięźle (kilka zdań lub punkty), bez bloku lesson_json.
+- Nie zmyślasz faktów z przeszłości. Jeśli czegoś nie ma w historii, mówisz wprost: „Tego nie ma w notatkach”.`;
 
 /**
- * Odpowiedź na jedno pytanie. `history` to poprzednie tury tej rozmowy —
- * dzięki nim działa „a co z nią dalej?" bez powtarzania imienia.
+ * Odpowiedź asystenta lektora z obsługą kontekstu bazy CRM, załączników multimedialnych oraz automatycznych akcji Notion AI.
  */
 export const askTeacherAssistant = async (
   question: string,
   index: StudentIndexEntry[],
-  history: AssistantMessage[]
-): Promise<{ text: string; usedStudents: string[]; actions: AssistantAction[] }> => {
+  history: AssistantMessage[],
+  attachments?: LessonAttachment[]
+): Promise<{
+  text: string;
+  usedStudents: string[];
+  actions: AssistantAction[];
+  lessonDraft?: LessonDraftProposal;
+}> => {
   const mentioned = matchStudents(question, index);
 
-  // Gdy w pytaniu nie padło imię, patrzymy wstecz w rozmowę — „a co dalej?"
-  // dotyczy osoby z poprzedniej tury.
   const fallback =
     mentioned.length === 0
       ? history
@@ -215,25 +216,149 @@ export const askTeacherAssistant = async (
     .map(message => `${message.role === 'user' ? 'LEKTOR' : 'ASYSTENT'}: ${message.text}`)
     .join('\n');
 
-  const prompt = `DANE Z BAZY:
-${context}
+  let prompt = `DANE Z BAZY CRM KURRO:\n${context}\n\n`;
 
-${conversation ? `WCZEŚNIEJSZA ROZMOWA:\n${conversation}\n` : ''}
-PYTANIE LEKTORA: ${question}`;
+  if (conversation) {
+    prompt += `WCZEŚNIEJSZA ROZMOWA:\n${conversation}\n\n`;
+  }
 
-  const { text } = await generateTextWithUnifiedFallback(
-    prompt,
-    SYSTEM_INSTRUCTION,
-    undefined,
-    undefined,
-    undefined,
-    { taskName: 'Asystent lektora', category: 'general' }
+  // Dołącz materiały tekstowe/dokumenty
+  if (attachments && attachments.length > 0) {
+    const textAttachments = attachments.filter(a => a.textContent && a.textContent.trim().length > 0);
+    if (textAttachments.length > 0) {
+      prompt += `=== DOŁĄCZONE MATERIAŁY I DOKUMENTY LEKTORA ===\n`;
+      textAttachments.forEach((att, idx) => {
+        prompt += `\n--- Załącznik ${idx + 1}: ${att.name} (${att.type.toUpperCase()}) ---\n${att.textContent}\n`;
+      });
+      prompt += `=== KONIEC DOŁĄCZONYCH MATERIAŁÓW ===\n\n`;
+    }
+  }
+
+  prompt += `PYTANIE / POLECENIE LEKTORA: ${question}`;
+
+  // Przygotuj części multimodalne dla Gemini (zdjęcia, screenshoty, pliki PDF z dataUrl)
+  const mediaAttachments = (attachments || []).filter(
+    a => a.dataUrl && (a.type === 'image' || a.type === 'pdf')
   );
 
-  // Generuj inteligentne przyciski akcji przenoszące bezpośrednio do modułów
+  let rawResponseText = '';
+
+  if (mediaAttachments.length > 0) {
+    try {
+      const geminiParts: any[] = [{ text: prompt }];
+      mediaAttachments.forEach(att => {
+        const base64Data = att.dataUrl!.includes(',') ? att.dataUrl!.split(',')[1] : att.dataUrl!;
+        geminiParts.push({
+          inlineData: {
+            mimeType: att.mimeType || (att.type === 'pdf' ? 'application/pdf' : 'image/png'),
+            data: base64Data,
+          },
+        });
+      });
+
+      const res = await getAI().models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: geminiParts,
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+        },
+      });
+
+      rawResponseText = res?.text || '';
+    } catch (multimodalErr) {
+      console.warn('[TeacherAssistant] Multimodal generation fallback to text:', multimodalErr);
+      const fallbackRes = await generateTextWithUnifiedFallback(
+        prompt,
+        SYSTEM_INSTRUCTION,
+        undefined,
+        undefined,
+        undefined,
+        { taskName: 'Asystent lektora (Multimodal fallback)', category: 'general' }
+      );
+      rawResponseText = fallbackRes.text;
+    }
+  } else {
+    const { text } = await generateTextWithUnifiedFallback(
+      prompt,
+      SYSTEM_INSTRUCTION,
+      undefined,
+      undefined,
+      undefined,
+      { taskName: 'Asystent lektora', category: 'general' }
+    );
+    rawResponseText = text;
+  }
+
+  // Rozpoznaj blok lesson_json
+  let lessonDraft: LessonDraftProposal | undefined;
+  let cleanText = rawResponseText;
+  const jsonMatch = rawResponseText.match(/```lesson_json\s*([\s\S]*?)\s*```/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[1]);
+      if (parsed && (parsed.topic || parsed.summary || parsed.vocabulary)) {
+        lessonDraft = {
+          topic: parsed.topic || 'Temat lekcji',
+          summary: parsed.summary || '',
+          vocabulary: parsed.vocabulary || '',
+          grammar: parsed.grammar || '',
+          homework: parsed.homework || '',
+          studentId: fallback[0]?.id,
+          studentName: fallback[0]?.name,
+        };
+      }
+    } catch (e) {
+      console.warn('Could not parse lesson_json from assistant:', e);
+    }
+    cleanText = rawResponseText.replace(/```lesson_json[\s\S]*?```/g, '').trim();
+  }
+
+  // Generuj inteligentne przyciski akcji (Notion AI style)
   const actions: AssistantAction[] = [];
-  if (fallback.length > 0) {
-    const primaryStudent = fallback[0];
+  const primaryStudent = fallback[0];
+
+  if (lessonDraft) {
+    actions.push({
+      type: 'insert_lesson',
+      label: 'Utwórz lekcję w Dzienniku',
+      studentId: primaryStudent?.id,
+      studentName: primaryStudent?.name,
+      topic: lessonDraft.topic,
+      lessonDraft,
+    });
+    actions.push({
+      type: 'planner',
+      label: 'Dopracuj w Planerze lekcji',
+      studentId: primaryStudent?.id,
+      studentName: primaryStudent?.name,
+      topic: lessonDraft.topic,
+      lessonDraft,
+    });
+    actions.push({
+      type: 'presentation',
+      label: 'Uruchom w Prezentacji Live',
+      studentId: primaryStudent?.id,
+      studentName: primaryStudent?.name,
+      topic: lessonDraft.topic,
+      lessonDraft,
+    });
+    actions.push({
+      type: 'homework',
+      label: 'Zadaj jako Pracę domową',
+      studentId: primaryStudent?.id,
+      studentName: primaryStudent?.name,
+      topic: lessonDraft.topic,
+      lessonDraft,
+    });
+    if (primaryStudent) {
+      actions.push({
+        type: 'scratchpad',
+        label: `Notatnik (${primaryStudent.name})`,
+        studentId: primaryStudent.id,
+        studentName: primaryStudent.name,
+      });
+    }
+  } else if (primaryStudent) {
     actions.push({
       type: 'homework',
       label: `Zadaj pracę domową (${primaryStudent.name})`,
@@ -265,5 +390,11 @@ PYTANIE LEKTORA: ${question}`;
     actions.push({ type: 'mailing', label: 'Otwórz Mailing' });
   }
 
-  return { text: text.trim(), usedStudents: fallback.map(entry => entry.name), actions };
+  return {
+    text: cleanText.trim(),
+    usedStudents: fallback.map(entry => entry.name),
+    actions,
+    lessonDraft,
+  };
 };
+

@@ -48,8 +48,8 @@ function extractWarmupItems(rawSentences: any[]): WarmupSentenceItem[] {
     let prompt = '';
     let hint = item.hint || item.hintSmall || '';
 
-    if (item.correctTranslation || item.englishSentence || item.modelAnswer || item.targetSentence) {
-      target = item.correctTranslation || item.englishSentence || item.modelAnswer || item.targetSentence;
+    if (item.correctTranslation || item.englishTranslation || item.englishSentence || item.modelAnswer || item.targetSentence) {
+      target = item.correctTranslation || item.englishTranslation || item.englishSentence || item.modelAnswer || item.targetSentence;
       prompt = item.polishSentence || item.prompt || item.instruction || 'Przetłumacz na angielski:';
     } else if (item.correctSentence) {
       target = item.correctSentence;

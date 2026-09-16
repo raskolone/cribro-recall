@@ -1904,8 +1904,8 @@ export function createApp() {
      NOTION API INTEGRATION & TRANSCRIPTS FETCHER
      ═══════════════════════════════════════════════════════════════════ */
 
-  const DEFAULT_NOTION_LESSONS_DB = '5c6d910b-31b7-83b8-810c-0187aa513b51';
-  const DEFAULT_NOTION_STUDENTS_DB = 'ca88a293-bd34-4cc7-b09e-f6bd3901ef96';
+  const DEFAULT_NOTION_LESSONS_DB = '';
+  const DEFAULT_NOTION_STUDENTS_DB = '';
 
   async function getNotionConfig() {
     let token = process.env.NOTION_API_KEY || process.env.NOTION_TOKEN || '';
@@ -1922,9 +1922,9 @@ export function createApp() {
         const notionDoc = await adminDb.collection('system').doc('notion').get();
         if (notionDoc.exists) {
           const data = notionDoc.data() || {};
-          if (data.token) token = String(data.token).trim();
-          if (data.meetingNotesDbId) meetingNotesDbId = String(data.meetingNotesDbId).trim();
-          if (data.studentsDbId) studentsDbId = String(data.studentsDbId).trim();
+          token = typeof data.token === 'string' ? data.token.trim() : token;
+          meetingNotesDbId = typeof data.meetingNotesDbId === 'string' ? data.meetingNotesDbId.trim() : meetingNotesDbId;
+          studentsDbId = typeof data.studentsDbId === 'string' ? data.studentsDbId.trim() : studentsDbId;
           if (typeof data.autoFetchEnabled === 'boolean') autoFetchEnabled = data.autoFetchEnabled;
           if (typeof data.autoFetchIntervalMinutes === 'number') autoFetchIntervalMinutes = data.autoFetchIntervalMinutes;
           if (data.lastFetchTime) lastFetchTime = String(data.lastFetchTime);
@@ -2007,16 +2007,16 @@ export function createApp() {
       const { token, meetingNotesDbId, studentsDbId, autoFetchEnabled, autoFetchIntervalMinutes } = req.body;
       const updates: Record<string, any> = { updatedAt: new Date().toISOString() };
 
-      if (typeof token === 'string' && token.trim()) {
+      if (typeof token === 'string') {
         const cleanToken = token.trim();
         updates.token = cleanToken;
         process.env.NOTION_API_KEY = cleanToken;
       }
-      if (typeof meetingNotesDbId === 'string' && meetingNotesDbId.trim()) {
+      if (typeof meetingNotesDbId === 'string') {
         updates.meetingNotesDbId = meetingNotesDbId.trim();
         process.env.NOTION_LESSONS_DB = meetingNotesDbId.trim();
       }
-      if (typeof studentsDbId === 'string' && studentsDbId.trim()) {
+      if (typeof studentsDbId === 'string') {
         updates.studentsDbId = studentsDbId.trim();
         process.env.NOTION_STUDENTS_DB = studentsDbId.trim();
       }
@@ -2041,6 +2041,103 @@ export function createApp() {
         studentsDbId: cfg.studentsDbId,
         autoFetchEnabled: cfg.autoFetchEnabled,
         autoFetchIntervalMinutes: cfg.autoFetchIntervalMinutes,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
+
+  // 2b. POST /api/notion/clear-config (Rozłączenie i wyczyszczenie danych)
+  app.post('/api/notion/clear-config', requireFirebaseAdmin, async (_req, res) => {
+    try {
+      process.env.NOTION_API_KEY = '';
+      process.env.NOTION_TOKEN = '';
+      process.env.NOTION_LESSONS_DB = '';
+      process.env.NOTION_STUDENTS_DB = '';
+
+      if (adminApp) {
+        const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+        await adminDb.collection('system').doc('notion').set({
+          token: '',
+          meetingNotesDbId: '',
+          studentsDbId: '',
+          autoFetchEnabled: false,
+          lastFetchTime: null,
+          lastFetchStatus: null,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      return res.json({
+        ok: true,
+        message: 'Konfiguracja Notion została całkowicie wyczyszczona, a połączenie przerwane.',
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
+
+  // 2c. POST /api/notion/search-databases (Automatyczne wyszukiwanie baz w Notion)
+  app.post('/api/notion/search-databases', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const cfg = await getNotionConfig();
+      const token = (typeof req.body?.token === 'string' && req.body.token.trim()) || cfg.token;
+
+      if (!token) {
+        return res.status(400).json({
+          error: 'Brak tokena Notion API. Wprowadź token integracji (np. "secret_..."), aby przeszukać udostępnione bazy.',
+        });
+      }
+
+      const NOTION_API = 'https://api.notion.com/v1';
+      const NOTION_VERSION = '2022-06-28';
+
+      const searchRes = await fetch(`${NOTION_API}/search`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Notion-Version': NOTION_VERSION,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filter: {
+            value: 'database',
+            property: 'object',
+          },
+          page_size: 50,
+        }),
+      });
+
+      if (!searchRes.ok) {
+        const errText = await searchRes.text();
+        return res.status(searchRes.status).json({
+          error: `Błąd Notion API (${searchRes.status}): ${errText.slice(0, 250)}`,
+        });
+      }
+
+      const searchData: any = await searchRes.json();
+      const rawResults = searchData.results || [];
+
+      const databases = rawResults.map((db: any) => {
+        const title = (db.title || []).map((t: any) => t.plain_text || '').join('').trim() || 'Baza bez tytułu';
+        const description = (db.description || []).map((d: any) => d.plain_text || '').join('').trim();
+        const icon = db.icon?.emoji || db.icon?.external?.url || null;
+        const properties = Object.keys(db.properties || {});
+        return {
+          id: db.id,
+          title,
+          description,
+          icon,
+          url: db.url || `https://notion.so/${db.id.replace(/-/g, '')}`,
+          lastEditedTime: db.last_edited_time || db.created_time || null,
+          properties,
+        };
+      });
+
+      return res.json({
+        ok: true,
+        count: databases.length,
+        databases,
       });
     } catch (err: any) {
       return res.status(500).json({ error: formatErrorString(err) });
@@ -3902,10 +3999,29 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
+    const handleDevHtml = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+      if (req.originalUrl.startsWith('/api')) {
+        return next();
+      }
+      try {
+        const indexPath = path.resolve(process.cwd(), 'index.html');
+        let template = fs.readFileSync(indexPath, 'utf-8');
+        template = await vite.transformIndexHtml(req.originalUrl, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e) {
+        vite?.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    };
+    app.get('/', handleDevHtml);
+    app.get('{*all}', handleDevHtml);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*all', (req, res) => {
+    app.get('/', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+    app.get('{*all}', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

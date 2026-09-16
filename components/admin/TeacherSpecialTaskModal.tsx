@@ -12,6 +12,7 @@ import { LessonSelectionModal } from '../dashboard/LessonSelectionModal';
 import { taskOwnerFields } from '../../utils/homework';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 import HomeworkEmailConfirmationModal from './HomeworkEmailConfirmationModal';
+import { AIAssistantIcon } from '../ui/AIAssistantIcon';
 
 interface TeacherSpecialTaskModalProps {
   user: User;
@@ -628,15 +629,13 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
                 key={turn.id}
                 className={`flex gap-3 max-w-3xl ${turn.role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
               >
-                <div
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs ${
-                    turn.role === 'user'
-                      ? 'bg-primary text-accent-ink font-bold'
-                      : 'bg-info/30 border border-info/30 text-info'
-                  }`}
-                >
-                  {turn.role === 'user' ? <UserIcon className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-                </div>
+                {turn.role === 'user' ? (
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs bg-primary text-accent-ink font-bold">
+                    <UserIcon className="w-4 h-4" />
+                  </div>
+                ) : (
+                  <AIAssistantIcon size="xs" variant="avatar" state="online" glow={false} />
+                )}
 
                 <div
                   className={`flex flex-col space-y-2 max-w-[85%] ${

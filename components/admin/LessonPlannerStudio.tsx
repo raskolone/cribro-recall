@@ -1,9 +1,10 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Check,
   CheckCheck,
   ChevronDown,
+  ChevronRight,
   Copy,
   GraduationCap,
   Lightbulb,
@@ -14,6 +15,26 @@ import {
   Users,
   Wand2,
   X,
+  Edit3,
+  Trash2,
+  Plus,
+  ArrowUp,
+  ArrowDown,
+  BookOpen,
+  Folder,
+  Play,
+  Airplay,
+  Rocket,
+  CheckSquare,
+  Square,
+  RefreshCw,
+  Send,
+  Layers,
+  ExternalLink,
+  SlidersHorizontal,
+  FileText,
+  Eye,
+  HelpCircle,
 } from 'lucide-react';
 import { GeneratedLessonScenario, LessonAttachment, LessonRecord, User } from '../../types';
 import { LessonFileUploader } from './LessonFileUploader';
@@ -24,10 +45,27 @@ import {
   buildRevisionPrompt,
   buildScenarioPrompt,
   buildTopicProposalPrompt,
+  PlanItem,
+  PlanSection,
+  LessonPlan,
+  InteractiveExercise,
+  PlanItemKind,
 } from '../../services/lessonPlannerMethod';
 import { CouncilEvent, DEFAULT_COUNCIL, runCouncil } from '../../services/aiCouncil';
 import { getAiConfig, peekCouncil } from '../../services/aiConfigService';
-import { saveGeneratedScenario } from '../../services/scenarioService';
+import {
+  saveGeneratedScenario,
+  getGeneratedScenarios,
+  deleteGeneratedScenario,
+} from '../../services/scenarioService';
+import {
+  updateScratchpadPresentation,
+} from '../../services/scratchpadService';
+import {
+  createPresentationFromScenario,
+  savePresentationToStorage,
+} from '../../services/presentationService';
+import { LessonPresentationView } from './presentation/LessonPresentationView';
 import { formatAIModelName } from '../../services/geminiService';
 import { extractLessonBlocks } from '../../utils/lessonBlocks';
 
@@ -74,65 +112,8 @@ const parseTeacherNotes = (raw: string): ParsedTeacherNotes => {
   return { goal, scaffolding, followUp, otherLines };
 };
 
-/**
- * PLANER LEKCJI — potężne narzędzie w prostej obudowie.
- *
- * ══ CO BYŁO NIE TAK ══
- *
- * Poprzedni planer pokazywał CAŁY swój mechanizm na wejściu: konfigurację
- * modułów lekcji, presety, ustawienia metodyki, wybór odmiany angielskiego,
- * liczbę słówek, styl wyjaśnień, załączniki, wybór scenariusza bazowego
- * i okno czatu — wszystko naraz, zanim padło pierwsze pytanie o to, czego
- * lekcja ma dotyczyć. Narzędzie było mocne, ale jego obudowa wyglądała jak
- * panel sterowania, a nie jak miejsce, w którym układa się lekcję.
- *
- * ══ CO JEST TERAZ ══
- *
- * TRZY KROKI, JEDEN NA EKRAN, i nic poza tym, co w danym kroku potrzebne:
- *
- *   1. USTALENIA — pięć pól, które i tak trzeba podać (bramka Kroku 0
- *      z metody Cribro: tryb, kursant, data). Reszta jest opcjonalna
- *      i zwinięta.
- *   2. TEMAT — AI pyta o sugestie i o to, ile wariantów przygotować,
- *      dokładnie tak, jak robi to człowiek, któremu zlecono lekcję.
- *      Warianty przychodzą jako karty do wyboru, nie jako ściana tekstu.
- *   3. SCENARIUSZ — gotowa lekcja w sekcjach. Każdy element da się
- *      ZAZNACZYĆ i kazać go przerobić w czacie.
- *
- * Mózg — narada modeli, wytyczne metody, kaskady zapasowe — siedzi pod
- * jednym zwiniętym paskiem na dole. Jest dostępny, kiedy coś pójdzie nie
- * tak, i nie zabiera miejsca, kiedy wszystko idzie dobrze.
- *
- * ══ DLACZEGO SCENARIUSZ TO SEKCJE I ELEMENTY, A NIE TEKST ══
- *
- * Bo lektor ma móc wskazać JEDNO pytanie i kazać je poprawić. W jednym
- * bloku markdown nie da się niczego wskazać — element musi mieć własny
- * identyfikator już w chwili powstania, więc model dostaje go do nadania
- * razem z treścią.
- */
-
 interface UserWithId extends User {
   id: string;
-}
-
-interface PlanItem {
-  id: string;
-  kind: 'question' | 'text' | 'vocab' | 'correction' | 'task' | 'answerKey' | 'note';
-  text: string;
-  notes?: string;
-}
-
-interface PlanSection {
-  id: string;
-  title: string;
-  minutes?: string;
-  items: PlanItem[];
-}
-
-interface LessonPlan {
-  title: string;
-  summary: string;
-  sections: PlanSection[];
 }
 
 interface TopicVariant {
@@ -147,7 +128,6 @@ interface ChatTurn {
   id: string;
   role: 'teacher' | 'planner';
   text: string;
-  /** Identyfikatory, których dotyczyła prośba — pokazywane przy wpisie. */
   targets?: string[];
 }
 
@@ -168,7 +148,7 @@ interface LessonPlannerStudioProps {
   onOpenInPresentation?: (scenario: GeneratedLessonScenario) => void;
 }
 
-const KIND_LABEL: Record<PlanItem['kind'], string> = {
+const KIND_LABEL: Record<PlanItemKind, string> = {
   question: 'Pytanie',
   text: 'Tekst',
   vocab: 'Słownictwo',
@@ -176,29 +156,51 @@ const KIND_LABEL: Record<PlanItem['kind'], string> = {
   task: 'Zadanie',
   answerKey: 'Klucz',
   note: 'Notatka',
+  topic_material: 'Cel lekcji',
+  lead_in: 'Lead-in',
+  thought_provoking_questions: 'Pytania rozwijające (Safety Bank)',
+  interactive: 'Ćwiczenie live',
 };
 
-/** Zamiana planu na markdown — format, w którym scenariusze już są zapisywane. */
+/** Zamiana planu na markdown do eksportu i zapisu. */
 const planToMarkdown = (plan: LessonPlan): string => {
   const lines: string[] = [`# ${plan.title}`, ''];
+  if (plan.format) lines.push(`**Format:** ${plan.format}`, '');
+  if (plan.goal) lines.push(`**Cel:** ${plan.goal}`, '');
+  if (plan.sourceMaterialDescription) lines.push(`**Materiał źródłowy:** ${plan.sourceMaterialDescription}`, '');
   if (plan.summary) lines.push(plan.summary, '');
 
   for (const section of plan.sections) {
     lines.push(`## ${section.title}`, '');
+    if (section.topicMaterialDescription) {
+      lines.push(`_${section.topicMaterialDescription}_`, '');
+    }
+    if (section.thoughtProvokingDescription) {
+      lines.push(`_${section.thoughtProvokingDescription}_`, '');
+    }
+    if (section.methodologicalTip) {
+      lines.push(`> **Metodycznie:** ${section.methodologicalTip}`, '');
+    }
+
     if (section.items.length === 0) {
       lines.push('_Sekcja celowo pusta._', '');
       continue;
     }
     for (const item of section.items) {
-      if (item.kind === 'question') {
-        lines.push(`- [ ] ${item.text}`);
+      if (item.kind === 'question' || item.kind === 'topic_material' || item.kind === 'lead_in') {
+        lines.push(`- [${item.checked ? 'x' : ' '}] ${item.text}`);
         if (item.notes) lines.push('', `  > **Teacher's Notes:** ${item.notes}`, '');
       } else if (item.kind === 'vocab' || item.kind === 'correction') {
         lines.push(`- ${item.text}`);
       } else if (item.kind === 'answerKey') {
         lines.push('', '**Answer Key**', '', '```markdown', item.text, '```', '');
       } else if (item.kind === 'task') {
-        lines.push('', '```markdown', item.text, '```', '');
+        lines.push('', `### ${item.text}`, '');
+      } else if (item.kind === 'interactive' && item.exercise) {
+        lines.push(`- [ ] **Quiz:** ${item.exercise.question}`);
+        if (item.exercise.options) {
+          item.exercise.options.forEach((opt, idx) => lines.push(`    ${idx + 1}. ${opt}`));
+        }
       } else {
         lines.push(item.text, '');
       }
@@ -206,18 +208,21 @@ const planToMarkdown = (plan: LessonPlan): string => {
     lines.push('');
   }
 
-  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return lines.join('\n');
 };
 
-/** Słownictwo z planu — do wstawienia w notatkę z lekcji. */
-const planVocabulary = (plan: LessonPlan): string =>
-  plan.sections
-    .flatMap(section => section.items)
-    .filter(item => item.kind === 'vocab')
-    .map(item => item.text)
-    .join('\n');
+/** Wyciąga słownictwo do wklejenia w notatkę z lekcji. */
+const planVocabulary = (plan: LessonPlan): string => {
+  const lines: string[] = [];
+  for (const section of plan.sections) {
+    for (const item of section.items) {
+      if (item.kind === 'vocab') lines.push(item.text);
+    }
+  }
+  return lines.join('\n');
+};
 
-const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
+export const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
   selectedUser,
   users,
   onSelectUser,
@@ -227,27 +232,23 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
 }) => {
   const [step, setStep] = useState<'brief' | 'topics' | 'plan'>('brief');
 
+  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
   const [brief, setBrief] = useState<LessonBrief>({
     mode: '1:1',
-    audience: selectedUser
-      ? `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.username
-      : '',
-    date: new Date().toISOString().split('T')[0],
+    audience: selectedUser?.firstName
+      ? `${selectedUser.firstName} ${selectedUser.lastName || ''}`.trim()
+      : selectedUser?.username || '',
+    date: todayStr,
     level: selectedUser?.level || 'B2',
     grammarTopic: '',
     sourceMaterial: '',
+    history: '',
     notes: '',
   });
   const [showOptional, setShowOptional] = useState(false);
 
-  /*
-   * Załączniki. Metoda Cribro sprawdza materiał źródłowy w KOLEJNOŚCI:
-   * najpierw załączony plik, dopiero potem opis słowny, a na końcu — gdy nie
-   * ma ani jednego — propozycje AI. Bez wczytywania plików planer pomijał
-   * pierwszy z tych trzech przypadków i kazał wklejać artykuł ręcznie.
-   */
   const [attachments, setAttachments] = useState<LessonAttachment[]>([]);
-
   const [suggestion, setSuggestion] = useState('');
   const [variantCount, setVariantCount] = useState(3);
   const [variants, setVariants] = useState<TopicVariant[]>([]);
@@ -255,26 +256,82 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
 
   const [plan, setPlan] = useState<LessonPlan | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
+  // Accordion collapsed state per section (section 3 open by default)
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
+    warmup: true,
+    grammar: true,
+    maintopic: false,
+    focus: true,
+    practice: false,
+    extra: true,
+  });
+
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
   const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
   const [chat, setChat] = useState<ChatTurn[]>([]);
   const [chatDraft, setChatDraft] = useState('');
+
+  // Inline edit state
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+  const [editingNotes, setEditingNotes] = useState('');
+
+  // Library modal (Moje scenariusze)
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [savedScenariosList, setSavedScenariosList] = useState<GeneratedLessonScenario[]>([]);
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
+  const [libraryFilter, setLibraryFilter] = useState<'all' | 'student'>('all');
+
+  // Presentation View embedded
+  const [showPresentationView, setShowPresentationView] = useState(false);
+  const [launchFeedback, setLaunchFeedback] = useState<string | null>(null);
+
+  const [transcript, setTranscript] = useState<CouncilEvent[]>([]);
+  const [showTranscript, setShowTranscript] = useState(false);
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+  const [savedScenarioId, setSavedScenarioId] = useState('');
+
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Sync user change into brief
+  useEffect(() => {
+    if (selectedUser) {
+      setBrief(prev => ({
+        ...prev,
+        audience: selectedUser.firstName
+          ? `${selectedUser.firstName} ${selectedUser.lastName || ''}`.trim()
+          : selectedUser.username,
+        level: selectedUser.level || prev.level,
+      }));
+    }
+  }, [selectedUser]);
 
   const toggleNote = (itemId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setExpandedNotes(prev => ({ ...prev, [itemId]: !prev[itemId] }));
   };
 
-  const toggleAllNotesInSection = (section: PlanSection, e: React.MouseEvent) => {
+  const toggleSectionCollapse = (sectionId: string) => {
+    setCollapsedSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
+  };
+
+  const toggleItemCheck = (sectionId: string, itemId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const itemsWithNotes = section.items.filter(it => Boolean(it.notes));
-    const allOpen = itemsWithNotes.length > 0 && itemsWithNotes.every(it => expandedNotes[it.id]);
-    setExpandedNotes(prev => {
-      const next = { ...prev };
-      itemsWithNotes.forEach(it => {
-        next[it.id] = !allOpen;
-      });
-      return next;
+    if (!plan) return;
+    setPlan(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        sections: prev.sections.map(sec => {
+          if (sec.id !== sectionId) return sec;
+          return {
+            ...sec,
+            items: sec.items.map(it => (it.id === itemId ? { ...it, checked: !it.checked } : it)),
+          };
+        }),
+      };
     });
   };
 
@@ -285,20 +342,232 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
     setTimeout(() => setCopiedNoteId(null), 2000);
   };
 
-  const [transcript, setTranscript] = useState<CouncilEvent[]>([]);
-  const [showTranscript, setShowTranscript] = useState(false);
-  const [busy, setBusy] = useState('');
-  const [error, setError] = useState('');
-  const [savedScenarioId, setSavedScenarioId] = useState('');
+  // Inline editing handlers
+  const handleStartEdit = (item: PlanItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingItemId(item.id);
+    setEditingText(item.text);
+    setEditingNotes(item.notes || '');
+  };
 
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const handleSaveEdit = (sectionId: string, itemId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!plan) return;
+    setPlan(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        sections: prev.sections.map(sec => {
+          if (sec.id !== sectionId) return sec;
+          return {
+            ...sec,
+            items: sec.items.map(it => {
+              if (it.id !== itemId) return it;
+              return {
+                ...it,
+                text: editingText.trim() || it.text,
+                notes: editingNotes.trim() ? editingNotes.trim() : undefined,
+              };
+            }),
+          };
+        }),
+      };
+    });
+    setEditingItemId(null);
+  };
 
-  /*
-   * Historia lekcji jest podstawą Revision Translation, ale model nie
-   * potrzebuje dwudziestu lekcji wstecz — metoda mówi wprost, że powtórka
-   * idzie WYŁĄCZNIE z ostatnich zajęć. Trzy wpisy dają jeszcze kontekst
-   * wcześniejszych wątków i nie zalewają promptu.
-   */
+  const handleCancelEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingItemId(null);
+  };
+
+  const handleDeleteItem = (sectionId: string, itemId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!plan) return;
+    setPlan(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        sections: prev.sections.map(sec => {
+          if (sec.id !== sectionId) return sec;
+          return {
+            ...sec,
+            items: sec.items.filter(it => it.id !== itemId),
+          };
+        }),
+      };
+    });
+    setSelectedIds(prev => prev.filter(id => id !== itemId));
+  };
+
+  const handleMoveItem = (sectionId: string, itemId: string, direction: 'up' | 'down', e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!plan) return;
+    setPlan(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        sections: prev.sections.map(sec => {
+          if (sec.id !== sectionId) return sec;
+          const idx = sec.items.findIndex(it => it.id === itemId);
+          if (idx < 0) return sec;
+          if (direction === 'up' && idx === 0) return sec;
+          if (direction === 'down' && idx === sec.items.length - 1) return sec;
+
+          const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+          const newItems = [...sec.items];
+          const temp = newItems[idx];
+          newItems[idx] = newItems[targetIdx];
+          newItems[targetIdx] = temp;
+
+          return { ...sec, items: newItems };
+        }),
+      };
+    });
+  };
+
+  const handleAddItem = (sectionId: string, kind: PlanItemKind = 'question') => {
+    if (!plan) return;
+    const newItemId = `${sectionId}-${Date.now().toString(36)}`;
+    const newItem: PlanItem = {
+      id: newItemId,
+      kind,
+      text: kind === 'question' ? 'Nowe pytanie dyskusyjne...' : 'Nowa treść...',
+      notes: kind === 'question' ? '• Cel: ...\n• Scaffolding: ...\n• Follow-up: ...' : undefined,
+      checked: false,
+    };
+
+    setPlan(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        sections: prev.sections.map(sec => {
+          if (sec.id !== sectionId) return sec;
+          return { ...sec, items: [...sec.items, newItem] };
+        }),
+      };
+    });
+
+    setEditingItemId(newItemId);
+    setEditingText(newItem.text);
+    setEditingNotes(newItem.notes || '');
+  };
+
+  // Launch interactive exercise live for student scratchpad
+  const handleLaunchExerciseLive = async (exercise: InteractiveExercise, sectionTitle: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!selectedUser?.id) {
+      setLaunchFeedback('Wybierz najpierw kursanta w nagłówku, aby uruchomić dla niego ćwiczenie na żywo.');
+      setTimeout(() => setLaunchFeedback(null), 4000);
+      return;
+    }
+
+    const scratchpadId = `sp_${selectedUser.id}`;
+    try {
+      await updateScratchpadPresentation(scratchpadId, {
+        active: true,
+        title: exercise.question || sectionTitle,
+        type:
+          exercise.type === 'quiz'
+            ? 'interactive_quiz'
+            : exercise.type === 'sentence_scramble'
+            ? 'sentence_scramble'
+            : 'error_hunt',
+        question: exercise.question,
+        options: exercise.options,
+        correctAnswer: exercise.correctAnswer,
+        revealedAnswer: false,
+        studentAnswer: null,
+        explanation: exercise.explanation,
+      });
+
+      setLaunchFeedback(`🚀 Uruchomiono ćwiczenie dla ${selectedUser.firstName || selectedUser.username}! Kursant widzi teraz interaktywny quiz zamiast notatnika.`);
+      setTimeout(() => setLaunchFeedback(null), 5000);
+    } catch (err: any) {
+      setLaunchFeedback(`Błąd uruchamiania ćwiczenia: ${err?.message || 'Spróbuj ponownie'}`);
+      setTimeout(() => setLaunchFeedback(null), 4000);
+    }
+  };
+
+  // Open / fetch scenarios library
+  const handleOpenLibrary = async () => {
+    setIsLibraryOpen(true);
+    setIsLoadingLibrary(true);
+    try {
+      const list = await getGeneratedScenarios();
+      setSavedScenariosList(list);
+    } catch (err) {
+      console.warn('Błąd wczytywania biblioteki scenariuszy:', err);
+    } finally {
+      setIsLoadingLibrary(false);
+    }
+  };
+
+  const handleLoadScenarioFromLibrary = (scenario: GeneratedLessonScenario) => {
+    if (scenario.planJson) {
+      try {
+        const parsed = JSON.parse(scenario.planJson);
+        setPlan(parsed);
+      } catch {
+        // Fallback to basic structure
+        setPlan({
+          title: scenario.title,
+          summary: scenario.topic,
+          format: scenario.format,
+          goal: scenario.goal,
+          sourceMaterialDescription: scenario.sourceMaterialDescription,
+          sections: [],
+        });
+      }
+    }
+    setSavedScenarioId(scenario.id);
+    setIsLibraryOpen(false);
+    setStep('plan');
+  };
+
+  const handleDeleteScenario = async (scenarioId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm('Czy na pewno chcesz usunąć ten scenariusz z bazy?')) return;
+    try {
+      await deleteGeneratedScenario(scenarioId);
+      setSavedScenariosList(prev => prev.filter(s => s.id !== scenarioId));
+    } catch (err) {
+      console.error('Błąd usuwania scenariusza:', err);
+    }
+  };
+
+  // Launch embedded presentation view
+  const handleOpenPresentationMode = async () => {
+    if (!plan) return;
+    try {
+      const sName = selectedUser?.firstName
+        ? `${selectedUser.firstName} ${selectedUser.lastName || ''}`.trim()
+        : brief.audience;
+
+      const pres = createPresentationFromScenario(
+        {
+          id: savedScenarioId || `scenario-pres-${Date.now()}`,
+          title: plan.title,
+          topic: plan.title,
+          content: planToMarkdown(plan),
+          targetLevel: brief.level,
+          createdAt: new Date().toISOString(),
+          format: plan.format,
+          goal: plan.goal,
+          sourceMaterialDescription: plan.sourceMaterialDescription,
+        },
+        selectedUser?.id,
+        sName
+      );
+
+      await savePresentationToStorage(pres);
+      setShowPresentationView(true);
+    } catch (err) {
+      console.error('Błąd generowania prezentacji:', err);
+      setShowPresentationView(true);
+    }
+  };
+
   const historyDigest = useMemo(() => {
     const forStudent = selectedUser
       ? recentLessons.filter(record => record.studentId === selectedUser.id)
@@ -318,53 +587,39 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
       .join('\n\n');
   }, [recentLessons, selectedUser]);
 
-  /**
-   * Materiał źródłowy w kolejności wymaganej przez metodę: treść załączonych
-   * plików przed opisem słownym. Pliki bez odczytanego tekstu (obrazy, PDF-y
-   * bez warstwy tekstowej) są WYMIENIANE z nazwy zamiast pomijane — inaczej
-   * lektor widzi załącznik na liście i nie wie, że model go nie przeczytał.
-   */
-  const materialForPrompt = (): string => {
-    const parts: string[] = [];
+  const fullBrief = (): LessonBrief => {
+    const attachmentDigest = attachments
+      .map(att => {
+        const title = (att as any).fileName || att.name || 'Załącznik';
+        const body = att.textContent ? att.textContent.slice(0, 2000) : '';
+        return `[${title}]\n${body}`.trim();
+      })
+      .filter(Boolean)
+      .join('\n\n');
 
-    const withText = attachments.filter(a => a.textContent?.trim());
-    for (const file of withText) {
-      parts.push(`--- ZAŁĄCZNIK: ${file.name} ---\n${file.textContent!.trim()}`);
-    }
+    const combinedSource = [attachmentDigest, brief.sourceMaterial?.trim()]
+      .filter(Boolean)
+      .join('\n\n');
 
-    const withoutText = attachments.filter(a => !a.textContent?.trim());
-    if (withoutText.length > 0) {
-      parts.push(
-        `--- ZAŁĄCZNIKI BEZ ODCZYTANEJ TREŚCI (nie znasz ich zawartości, nie zgaduj jej): ${withoutText
-          .map(f => f.name)
-          .join(', ')} ---`
-      );
-    }
-
-    if (brief.sourceMaterial?.trim()) parts.push(brief.sourceMaterial.trim());
-    return parts.join('\n\n');
+    return {
+      ...brief,
+      sourceMaterial: combinedSource || undefined,
+      history: brief.history?.trim() || historyDigest || undefined,
+    };
   };
 
-  const fullBrief = (): LessonBrief => ({
-    ...brief,
-    sourceMaterial: materialForPrompt(),
-    history: historyDigest,
-  });
-
-  /** Jedno wejście do narady — wszystkie trzy kroki wołają to samo. */
-  const ask = async <T,>(prompt: string, phase: string): Promise<T> => {
-    setBusy(phase);
+  const ask = async <T,>(prompt: string, busyLabel: string, isJson: boolean = true): Promise<T> => {
+    setBusy(busyLabel);
     setError('');
-    setTranscript([]);
     try {
-      await getAiConfig();
-      const council = peekCouncil() || DEFAULT_COUNCIL;
+      const councilConfig = peekCouncil() ?? (await getAiConfig()).council ?? DEFAULT_COUNCIL;
       const result = await runCouncil<T>({
-        config: council,
+        config: councilConfig,
         systemInstruction: CRIBRO_METHOD_SYSTEM,
         prompt,
-        onEvent: event => setTranscript(prev => [...prev, event]),
+        expectJson: isJson,
       });
+      setTranscript(result.transcript);
       return result.data;
     } finally {
       setBusy('');
@@ -374,9 +629,10 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
   const handleProposeTopics = async () => {
     const missing = briefGate(brief);
     if (missing.length > 0) {
-      setError(`Zanim planer ruszy, uzupełnij: ${missing.join(', ')}.`);
+      setError(`Uzupełnij brakujące dane: ${missing.join(', ')}.`);
       return;
     }
+
     try {
       const data = await ask<{ variants: TopicVariant[] }>(
         buildTopicProposalPrompt(fullBrief(), variantCount, suggestion),
@@ -405,7 +661,7 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
         {
           id: `turn-${Date.now()}`,
           role: 'planner',
-          text: `Scenariusz gotowy. Zaznacz elementy, które mam przerobić, i napisz, co z nimi zrobić.`,
+          text: `Scenariusz lekcji gotowy! Możesz edytować dowolny element w locie, usuwać, przestawiać lub napisać w czacie co mam poprawić.`,
         },
       ]);
       setSavedScenarioId('');
@@ -415,24 +671,12 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
     }
   };
 
-  const toggleItem = (id: string) =>
+  const toggleItemSelect = (id: string) =>
     setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
-
-  const toggleSection = (section: PlanSection) => {
-    const ids = section.items.map(item => item.id);
-    const allSelected = ids.length > 0 && ids.every(id => selectedIds.includes(id));
-    setSelectedIds(prev =>
-      allSelected ? prev.filter(id => !ids.includes(id)) : Array.from(new Set([...prev, ...ids]))
-    );
-  };
 
   const handleRevise = async () => {
     const instruction = chatDraft.trim();
     if (!instruction || !plan) return;
-    if (selectedIds.length === 0) {
-      setError('Zaznacz najpierw elementy, których ma dotyczyć poprawka.');
-      return;
-    }
 
     const targets = [...selectedIds];
     setChat(prev => [
@@ -442,63 +686,67 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
     setChatDraft('');
 
     try {
-      const data = await ask<{ updates: { id: string; text: string; notes?: string }[]; comment?: string }>(
+      const data = await ask<{
+        updates?: { id: string; text: string; notes?: string; exercise?: InteractiveExercise }[];
+        addedItems?: { sectionId: string; item: PlanItem }[];
+        deletedIds?: string[];
+        comment?: string;
+      }>(
         buildRevisionPrompt(fullBrief(), JSON.stringify(plan), targets, instruction),
-        `Przerabiam ${targets.length} ${targets.length === 1 ? 'element' : 'elementy'}…`
+        targets.length > 0 ? `Przerabiam ${targets.length} ${targets.length === 1 ? 'element' : 'elementy'}…` : 'Wprowadzam zmiany w scenariuszu…'
       );
 
       const updates = Array.isArray(data?.updates) ? data.updates : [];
-      /*
-       * Wstawiamy WYŁĄCZNIE elementy o zaznaczonych identyfikatorach.
-       * Model bywa nadgorliwy i dorzuca poprawki do rzeczy, o które nikt
-       * nie prosił — a lektor już je zaakceptował i nie ma powodu ich
-       * tracić przy okazji poprawiania czegoś innego.
-       */
-      const allowed = new Set(targets);
-      const applied = updates.filter(update => allowed.has(update.id));
+      const added = Array.isArray(data?.addedItems) ? data.addedItems : [];
+      const deleted = Array.isArray(data?.deletedIds) ? data.deletedIds : [];
 
-      setPlan(prev =>
-        prev
-          ? {
-              ...prev,
-              sections: prev.sections.map(section => ({
-                ...section,
-                items: section.items.map(item => {
-                  const update = applied.find(u => u.id === item.id);
-                  return update
-                    ? { ...item, text: update.text ?? item.text, notes: update.notes ?? item.notes }
-                    : item;
-                }),
-              })),
-            }
-          : prev
-      );
+      setPlan(prev => {
+        if (!prev) return prev;
+        const updatesMap = new Map(updates.map(u => [u.id, u]));
 
-      const ignored = updates.length - applied.length;
+        let updatedSections = prev.sections.map(section => {
+          let items = section.items
+            .filter(it => !deleted.includes(it.id))
+            .map(item => {
+              const u = updatesMap.get(item.id);
+              if (!u) return item;
+              return {
+                ...item,
+                text: u.text || item.text,
+                notes: typeof u.notes === 'string' ? u.notes : item.notes,
+                exercise: u.exercise || item.exercise,
+              };
+            });
+
+          // Add newly created items for this section if any
+          const toAdd = added.filter(a => a.sectionId === section.id).map(a => a.item);
+          if (toAdd.length > 0) {
+            items = [...items, ...toAdd];
+          }
+
+          return { ...section, items };
+        });
+
+        return { ...prev, sections: updatedSections };
+      });
+
       setChat(prev => [
         ...prev,
         {
-          id: `turn-${Date.now()}-r`,
+          id: `turn-${Date.now()}`,
           role: 'planner',
-          text:
-            applied.length === 0
-              ? 'Nie dostałem poprawki do żadnego z zaznaczonych elementów. Spróbuj napisać dokładniej, co ma się zmienić.'
-              : `${data?.comment || 'Gotowe.'} Zmieniono ${applied.length} ${
-                  applied.length === 1 ? 'element' : 'elementy'
-                }.${ignored > 0 ? ` Pominięto ${ignored} zmian poza zaznaczeniem.` : ''}`,
+          text: data?.comment || (updates.length > 0 ? `Zaktualizowano ${updates.length} elementów.` : 'Wprowadzono modyfikacje zgodnie z poleceniem.'),
         },
       ]);
       setSelectedIds([]);
-      setSavedScenarioId('');
-      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
     } catch (err: any) {
-      setError(err?.message || 'Nie udało się nanieść poprawki.');
+      setError(err?.message || 'Nie udało się przerobić zaznaczonych pytań.');
     }
   };
 
   const handleSave = async () => {
     if (!plan) return;
-    setBusy('Zapisuję scenariusz…');
+    setBusy('Zapisuję scenariusz w bazie…');
     setError('');
     try {
       const saved = await saveGeneratedScenario({
@@ -512,8 +760,14 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
         lessonType: brief.mode === 'grupa' ? 'Grupa 2–4 os.' : 'Konwersacje 1:1',
         vocabularyText: planVocabulary(plan),
         tags: brief.grammarTopic?.trim() ? ['gramatyka', brief.grammarTopic.trim()] : [],
+        planJson: JSON.stringify(plan),
+        format: plan.format,
+        goal: plan.goal,
+        sourceMaterialDescription: plan.sourceMaterialDescription,
       });
       setSavedScenarioId(saved.id);
+      setLaunchFeedback('Scenariusz został pomyślnie zapisany w bazie „Moje scenariusze”!');
+      setTimeout(() => setLaunchFeedback(null), 4000);
     } catch (err: any) {
       setError(err?.message || 'Nie udało się zapisać scenariusza.');
     } finally {
@@ -531,7 +785,39 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
     setError('');
   };
 
-  /* ── Wspólne kawałki obudowy ── */
+  /* ── Widok wbudowanej Prezentacji ── */
+  if (showPresentationView && plan) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-line max-w-5xl mx-auto w-full">
+          <button
+            type="button"
+            onClick={() => setShowPresentationView(false)}
+            className="px-3.5 py-2 rounded-xl bg-base-100/60 border border-line-strong text-xs font-bold text-text-hi hover:border-primary/50 transition-all flex items-center gap-2 cursor-pointer shadow-ambient-sm"
+          >
+            <ArrowLeft size={14} /> Wróć do edycji scenariusza lekcji
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono uppercase bg-primary/20 text-primary border border-primary/30 px-2.5 py-0.5 rounded-full font-bold">
+              Tryb Prezentacji
+            </span>
+            <span className="text-xs text-content-muted truncate max-w-xs">{plan.title}</span>
+          </div>
+        </div>
+
+        <LessonPresentationView
+          selectedUser={selectedUser}
+          lessonRecords={recentLessons}
+          onOpenLessonFormWithData={onInsertLessonRecord ? (data) => onInsertLessonRecord({
+            topic: data.topic,
+            summary: data.summary,
+            vocabulary: data.words,
+            followUp: data.followUp,
+          }) : undefined}
+        />
+      </div>
+    );
+  }
 
   const StepBar = () => (
     <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider">
@@ -564,13 +850,13 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
 
   const BusyOverlay = () =>
     busy ? (
-      <div className="rounded-xl border border-primary/30 bg-primary/8 px-4 py-3 flex items-center gap-2.5">
+      <div className="rounded-xl border border-primary/30 bg-primary/8 px-4 py-3 flex items-center gap-2.5 animate-fadeIn">
         <Loader2 size={16} className="text-primary animate-spin shrink-0" />
         <span className="text-sm font-semibold text-text-hi">{busy}</span>
       </div>
     ) : null;
 
-  /* ── Pasek narady: mózg narzędzia, domyślnie zwinięty ── */
+  /* ── Pasek narady ── */
   const CouncilStrip = () => {
     if (transcript.length === 0) return null;
     const seats = Array.from(new Set(transcript.map(event => event.model)));
@@ -598,23 +884,14 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
         </button>
 
         {showTranscript && (
-          <div className="px-3.5 pb-3.5 space-y-2.5 border-t border-line pt-3">
-            {transcript.map((event, index) => (
-              <div key={`${event.seatId}-${index}`} className="text-[11px]">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-bold text-text-hi">{formatAIModelName(event.model)}</span>
-                  <span className="px-1.5 py-0.5 rounded-md bg-line-soft border border-line text-content-muted font-mono">
-                    {event.phase === 'draft'
-                      ? 'pisze'
-                      : event.phase === 'review'
-                      ? 'recenzuje'
-                      : 'poprawia'}
-                  </span>
-                  <span className="text-content-muted font-mono">{event.seconds.toFixed(1)} s</span>
+          <div className="p-3 space-y-2 border-t border-line bg-base-200/40 text-[11px]">
+            {transcript.map((event, idx) => (
+              <div key={idx} className="p-2.5 rounded-lg bg-black/40 border border-white/5 space-y-1">
+                <div className="flex items-center justify-between text-content-muted text-[10px]">
+                  <span className="font-bold text-white">{formatAIModelName(event.model)} ({event.role})</span>
+                  <span>{event.seconds.toFixed(1)} s</span>
                 </div>
-                <pre className="whitespace-pre-wrap font-sans text-content-muted leading-relaxed max-h-40 overflow-y-auto">
-                  {event.phase === 'review' ? event.text : `${event.text.slice(0, 600)}…`}
-                </pre>
+                <p className="text-content whitespace-pre-wrap">{event.text}</p>
               </div>
             ))}
           </div>
@@ -627,176 +904,135 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
   if (step === 'brief') {
     return (
       <div className="max-w-3xl space-y-4">
-        <StepBar />
+        <div className="flex items-center justify-between gap-3">
+          <StepBar />
+          <button
+            type="button"
+            onClick={handleOpenLibrary}
+            className="px-3 py-1.5 rounded-xl border border-line-strong bg-base-100/50 text-xs font-bold text-text-hi hover:border-primary/50 transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <BookOpen size={13} className="text-primary" /> Moje scenariusze
+          </button>
+        </div>
 
         <div className="rounded-2xl border border-line-strong bg-base-200/60 p-5 space-y-4 shadow-ambient-sm">
-          <div>
-            <h3 className="text-base font-bold text-text-hi">Ustalenia</h3>
-            <p className="text-[11px] text-content-muted mt-0.5">
-              Trzy rzeczy, bez których planer nie rusza. Resztę dopowiesz albo zostawisz AI.
-            </p>
+          <div className="flex items-center justify-between gap-2 border-b border-line pb-3">
+            <h3 className="text-base font-bold text-text-hi flex items-center gap-2">
+              <Sparkles size={16} className="text-primary" /> Ustalenia lekcji
+            </h3>
+            <span className="text-xs text-content-muted font-mono">Krok 1 / 3</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="block">
-              <span className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-1.5">
-                Tryb
-              </span>
-              <div className="flex gap-1.5">
-                {(['1:1', 'grupa'] as const).map(mode => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setBrief(prev => ({ ...prev, mode }))}
-                    className={`flex-1 px-3 py-2.5 rounded-xl border text-sm font-bold transition-colors cursor-pointer ${
-                      brief.mode === mode
-                        ? 'border-primary/60 bg-primary/12 text-primary'
-                        : 'border-line-strong bg-base-100/40 text-content-muted hover:border-primary/35'
-                    }`}
-                  >
-                    {mode === '1:1' ? 'Lekcja 1:1' : 'Grupa 2–4'}
-                  </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-1.5">
+                Kursant / Grupa
+              </label>
+              <input
+                type="text"
+                value={brief.audience}
+                onChange={e => setBrief(prev => ({ ...prev, audience: e.target.value }))}
+                placeholder="np. Tomasz, Grupa DSV B2..."
+                className="w-full bg-base-100/60 border border-line-strong rounded-xl px-3.5 py-2.5 text-sm text-text-hi outline-none focus:border-primary font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-1.5">
+                Poziom CEFR
+              </label>
+              <select
+                value={brief.level}
+                onChange={e => setBrief(prev => ({ ...prev, level: e.target.value }))}
+                className="w-full bg-base-100/60 border border-line-strong rounded-xl px-3.5 py-2.5 text-sm text-text-hi outline-none focus:border-primary font-medium"
+              >
+                {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(lvl => (
+                  <option key={lvl} value={lvl}>
+                    Poziom {lvl}
+                  </option>
                 ))}
-              </div>
-            </label>
+              </select>
+            </div>
 
-            <label className="block">
-              <span className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-1.5">
-                {brief.mode === 'grupa' ? 'Nazwa grupy' : 'Kursant'}
-              </span>
-              {brief.mode === '1:1' ? (
-                <select
-                  value={selectedUser?.id || ''}
-                  onChange={e => {
-                    const picked = users.find(u => u.id === e.target.value) || null;
-                    onSelectUser?.(picked);
-                    if (picked) {
-                      setBrief(prev => ({
-                        ...prev,
-                        audience:
-                          `${picked.firstName || ''} ${picked.lastName || ''}`.trim() || picked.username,
-                        level: picked.level || prev.level,
-                      }));
-                    }
-                  }}
-                  className="w-full bg-base-100/50 border border-line-strong rounded-xl px-3 py-2.5 text-sm text-text-hi outline-none focus:border-primary cursor-pointer"
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-1.5">
+                Tryb zajęć
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBrief(prev => ({ ...prev, mode: '1:1' }))}
+                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    brief.mode === '1:1'
+                      ? 'bg-primary text-black border-primary shadow-xs'
+                      : 'bg-base-100/50 border-line-strong text-content hover:text-white'
+                  }`}
                 >
-                  <option value="">Wybierz kursanta…</option>
-                  {users
-                    .filter(u => u.role !== 'admin')
-                    .map(u => (
-                      <option key={u.id} value={u.id}>
-                        {`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username}
-                      </option>
-                    ))}
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  value={brief.audience}
-                  onChange={e => setBrief(prev => ({ ...prev, audience: e.target.value }))}
-                  placeholder="np. Grupa środowa B1"
-                  className="w-full bg-base-100/50 border border-line-strong rounded-xl px-3 py-2.5 text-sm text-text-hi outline-none focus:border-primary"
-                />
-              )}
-            </label>
+                  Lekcja 1:1
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBrief(prev => ({ ...prev, mode: 'grupa' }))}
+                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    brief.mode === 'grupa'
+                      ? 'bg-primary text-black border-primary shadow-xs'
+                      : 'bg-base-100/50 border-line-strong text-content hover:text-white'
+                  }`}
+                >
+                  Grupa (2–4 os.)
+                </button>
+              </div>
+            </div>
 
-            <label className="block">
-              <span className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-1.5">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-1.5">
                 Data lekcji
-              </span>
+              </label>
               <input
                 type="date"
                 value={brief.date}
                 onChange={e => setBrief(prev => ({ ...prev, date: e.target.value }))}
-                className="w-full bg-base-100/50 border border-line-strong rounded-xl px-3 py-2.5 text-sm text-text-hi outline-none focus:border-primary"
+                className="w-full bg-base-100/60 border border-line-strong rounded-xl px-3.5 py-2 text-sm text-text-hi outline-none focus:border-primary font-mono"
               />
-            </label>
-
-            <label className="block">
-              <span className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-1.5">
-                Poziom
-              </span>
-              <select
-                value={brief.level}
-                onChange={e => setBrief(prev => ({ ...prev, level: e.target.value }))}
-                className="w-full bg-base-100/50 border border-line-strong rounded-xl px-3 py-2.5 text-sm text-text-hi outline-none focus:border-primary cursor-pointer"
-              >
-                {['A1', 'A2', 'B1', 'B1+', 'B2', 'B2+', 'C1'].map(level => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </select>
-            </label>
+            </div>
           </div>
 
-          {/* Rzadziej używane — zwinięte, bo w większości lekcji zostaje puste. */}
-          <button
-            type="button"
-            onClick={() => setShowOptional(prev => !prev)}
-            className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-content-muted hover:text-text-hi transition-colors cursor-pointer"
-          >
-            <ChevronDown size={13} className={showOptional ? 'rotate-180' : ''} />
-            Gramatyka i materiał źródłowy
-          </button>
-
-          {showOptional && (
-            <div className="space-y-3 pt-1">
-              <label className="block">
-                <span className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-1.5">
-                  Temat gramatyczny — puste znaczy „sama rozmowa"
-                </span>
-                <input
-                  type="text"
-                  value={brief.grammarTopic}
-                  onChange={e => setBrief(prev => ({ ...prev, grammarTopic: e.target.value }))}
-                  placeholder="np. present perfect vs past simple"
-                  className="w-full bg-base-100/50 border border-line-strong rounded-xl px-3 py-2.5 text-sm text-text-hi outline-none focus:border-primary"
-                />
+          {/* Opcjonalna gramatyka i materiał źródłowy */}
+          <div className="pt-2 border-t border-line space-y-3">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-1.5">
+                Temat gramatyczny (opcjonalny — dodaje sekcję Grammar Review)
               </label>
-
-              <div>
-                <span className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-1.5">
-                  Pliki źródłowe
-                </span>
-                <LessonFileUploader
-                  attachments={attachments}
-                  onAttachmentsChange={setAttachments}
-                  maxFiles={4}
-                />
-              </div>
-
-              <label className="block">
-                <span className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-1.5">
-                  Albo wklej tekst / opisz temat
-                </span>
-                <textarea
-                  value={brief.sourceMaterial}
-                  onChange={e => setBrief(prev => ({ ...prev, sourceMaterial: e.target.value }))}
-                  rows={4}
-                  placeholder="Artykuł, transkrypcja, link, opis tematu… Puste znaczy, że AI zaproponuje materiał samo."
-                  className="w-full bg-base-100/50 border border-line-strong rounded-xl px-3 py-2.5 text-sm text-text-hi outline-none focus:border-primary resize-y"
-                />
-              </label>
-
-              <label className="block">
-                <span className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-1.5">
-                  Uwagi dla planera
-                </span>
-                <input
-                  type="text"
-                  value={brief.notes}
-                  onChange={e => setBrief(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="np. unikaj tematów o pracy, kursant właśnie zmienia branżę"
-                  className="w-full bg-base-100/50 border border-line-strong rounded-xl px-3 py-2.5 text-sm text-text-hi outline-none focus:border-primary"
-                />
-              </label>
+              <input
+                type="text"
+                value={brief.grammarTopic || ''}
+                onChange={e => setBrief(prev => ({ ...prev, grammarTopic: e.target.value }))}
+                placeholder="np. There is / There are, Present Perfect, Conditionals..."
+                className="w-full bg-base-100/60 border border-line-strong rounded-xl px-3.5 py-2.5 text-sm text-text-hi outline-none focus:border-primary"
+              />
             </div>
-          )}
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-1.5">
+                Wklej artykuł / materiał źródłowy (opcjonalnie)
+              </label>
+              <textarea
+                value={brief.sourceMaterial || ''}
+                onChange={e => setBrief(prev => ({ ...prev, sourceMaterial: e.target.value }))}
+                rows={2}
+                placeholder="Wklej tekst, fragment artykułu lub opis sytuacji zawodowej..."
+                className="w-full bg-base-100/60 border border-line-strong rounded-xl px-3.5 py-2 text-xs text-text-hi outline-none focus:border-primary resize-none"
+              />
+            </div>
+
+            <LessonFileUploader
+              attachments={attachments}
+              onAttachmentsChange={setAttachments}
+            />
+          </div>
         </div>
 
-        {/* PYTANIE OD AI — tak, jak zadałby je człowiek, któremu zlecono lekcję. */}
+        {/* Propozycje tematów */}
         <div className="rounded-2xl border border-primary/35 bg-primary/8 p-5 space-y-3.5">
           <div className="flex items-start gap-2.5">
             <span className="p-1.5 rounded-lg bg-primary/15 text-primary border border-primary/30 shrink-0">
@@ -828,7 +1064,7 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
                   onClick={() => setVariantCount(count)}
                   className={`w-9 h-9 rounded-xl border text-sm font-bold transition-colors cursor-pointer ${
                     variantCount === count
-                      ? 'border-primary/60 bg-primary text-accent-ink'
+                      ? 'border-primary/60 bg-primary text-black font-bold'
                       : 'border-line-strong bg-base-100/40 text-content-muted hover:border-primary/35'
                   }`}
                 >
@@ -841,7 +1077,7 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
               type="button"
               onClick={handleProposeTopics}
               disabled={Boolean(busy)}
-              className="px-4 py-2.5 rounded-xl bg-primary text-accent-ink text-sm font-bold hover:brightness-110 transition-all flex items-center gap-2 cursor-pointer shadow-btn disabled:opacity-50"
+              className="px-4 py-2.5 rounded-xl bg-primary text-black font-bold text-sm hover:brightness-110 transition-all flex items-center gap-2 cursor-pointer shadow-btn disabled:opacity-50"
             >
               {busy ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
               Zaproponuj tematy
@@ -856,6 +1092,110 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
           </p>
         )}
         <CouncilStrip />
+
+        {/* Modal Biblioteki Scenariuszy */}
+        {isLibraryOpen && (
+          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-base-200 border border-primary/30 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <div className="flex items-center gap-2.5">
+                  <BookOpen size={18} className="text-primary" />
+                  <h3 className="text-lg font-bold text-white">Baza „Moje scenariusze”</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsLibraryOpen(false)}
+                  className="p-1.5 rounded-lg text-content-muted hover:text-white"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLibraryFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    libraryFilter === 'all'
+                      ? 'bg-primary text-black'
+                      : 'bg-white/5 text-content-muted hover:text-white'
+                  }`}
+                >
+                  Wszystkie scenariusze ({savedScenariosList.length})
+                </button>
+                {selectedUser && (
+                  <button
+                    type="button"
+                    onClick={() => setLibraryFilter('student')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      libraryFilter === 'student'
+                        ? 'bg-primary text-black'
+                        : 'bg-white/5 text-content-muted hover:text-white'
+                    }`}
+                  >
+                    Dla: {selectedUser.firstName || selectedUser.username}
+                  </button>
+                )}
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                {isLoadingLibrary ? (
+                  <div className="py-8 text-center text-xs text-content-muted">Wczytuję scenariusze...</div>
+                ) : savedScenariosList.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-content-muted">Brak zapisanych scenariuszy. Wygeneruj i zapisz pierwszy!</div>
+                ) : (
+                  savedScenariosList
+                    .filter(s => (libraryFilter === 'student' && selectedUser ? s.studentId === selectedUser.id : true))
+                    .map(scenario => (
+                      <div
+                        key={scenario.id}
+                        className="p-4 rounded-2xl bg-black/40 border border-white/10 hover:border-primary/40 transition-all space-y-2"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h4 className="text-sm font-bold text-white">{scenario.title}</h4>
+                            <p className="text-[11px] text-content-muted mt-0.5">{scenario.topic}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 font-bold">
+                              {scenario.targetLevel || 'B2'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteScenario(scenario.id, e)}
+                              className="p-1.5 text-content-muted hover:text-rose-400"
+                              title="Usuń scenariusz"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {scenario.goal && (
+                          <p className="text-[11px] text-content leading-relaxed">
+                            <strong>Cel:</strong> {scenario.goal}
+                          </p>
+                        )}
+
+                        <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                          <span className="text-[10px] text-content-muted">
+                            Kursant: <strong className="text-white">{scenario.studentName || 'Wszyscy'}</strong>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleLoadScenarioFromLibrary(scenario)}
+                            className="px-3 py-1 rounded-xl bg-primary text-black text-xs font-bold hover:brightness-110 transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            <Play size={11} /> Wczytaj do lekcji
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -925,12 +1265,13 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
     );
   }
 
-  /* ═══ KROK 3 — SCENARIUSZ ═══ */
+  /* ═══ KROK 3 — SCENARIUSZ ZE ZRZUTÓW EKRANU ═══ */
   return (
     <div className="space-y-4">
+      {/* Pasek akcji u góry */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <StepBar />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setStep('topics')}
@@ -940,31 +1281,27 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
           </button>
           <button
             type="button"
+            onClick={handleOpenLibrary}
+            className="px-3 py-1.5 rounded-xl border border-line-strong bg-base-100/50 text-xs font-bold text-text-hi hover:border-primary/40 transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <BookOpen size={13} className="text-primary" /> Moje scenariusze
+          </button>
+          <button
+            type="button"
             onClick={handleSave}
             disabled={Boolean(busy)}
             className="px-3 py-1.5 rounded-xl border border-line-strong bg-base-100/50 text-xs font-bold text-text-hi hover:border-primary/40 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
             {savedScenarioId ? <Check size={13} className="text-primary" /> : <Save size={13} />}
-            {savedScenarioId ? 'Zapisany' : 'Zapisz scenariusz'}
+            {savedScenarioId ? 'Zapisany ✓' : 'Zapisz scenariusz'}
           </button>
-          {onOpenInPresentation && plan && (
-            <button
-              type="button"
-              onClick={() =>
-                onOpenInPresentation({
-                  id: savedScenarioId || `scenario-draft-${Date.now()}`,
-                  title: plan.title,
-                  topic: plan.title,
-                  content: planToMarkdown(plan),
-                  targetLevel: brief.level,
-                  createdAt: new Date().toISOString(),
-                })
-              }
-              className="px-3 py-1.5 rounded-xl border border-line-strong bg-base-100/50 text-xs font-bold text-text-hi hover:border-primary/40 transition-colors cursor-pointer"
-            >
-              W prezentacji
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleOpenPresentationMode}
+            className="px-3 py-1.5 rounded-xl bg-primary/15 border border-primary/35 text-xs font-bold text-primary hover:bg-primary/25 transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Airplay size={13} /> Tryb Prezentacji
+          </button>
           {onInsertLessonRecord && plan && (
             <button
               type="button"
@@ -987,211 +1324,512 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
         </div>
       </div>
 
+      {launchFeedback && (
+        <div className="p-3 rounded-xl bg-primary/15 border border-primary/40 text-primary text-xs font-bold flex items-center gap-2 animate-fadeIn">
+          <Sparkles size={14} />
+          <span>{launchFeedback}</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem] gap-4 items-start">
-        {/* ── Scenariusz ── */}
-        <div className="space-y-3 min-w-0">
-          <div className="rounded-2xl border border-line-strong bg-base-200/60 p-4 shadow-ambient-sm">
-            <h3 className="text-base font-bold text-text-hi">{plan?.title}</h3>
-            {plan?.summary && (
-              <p className="text-[11px] text-content-muted mt-1 leading-relaxed">{plan.summary}</p>
-            )}
+        {/* ── Główny widok Scenariusza ── */}
+        <div className="space-y-4 min-w-0">
+          {/* KARTA WSTĘPNA LEKCJI — Format, Cel, Materiał źródłowy (Zrzut ekranu 1) */}
+          <div className="rounded-2xl border border-white/10 bg-base-200/90 p-5 space-y-4 shadow-xl">
+            <div className="flex items-start gap-2.5 text-sm">
+              <span className="text-base select-none">🏭</span>
+              <div>
+                <strong className="text-white font-bold">Format: </strong>
+                <span className="text-content font-medium">
+                  {plan?.format || `indywidualna lekcja General English, 60 minut, poziom ${brief.level} Medium.`}
+                </span>
+              </div>
+            </div>
+
+            <div className="text-sm">
+              <strong className="text-white font-bold">Cel: </strong>
+              <span className="text-content">
+                {plan?.goal || plan?.summary}
+              </span>
+            </div>
+
+            <div className="text-sm leading-relaxed">
+              <strong className="text-white font-bold">Materiał źródłowy: </strong>
+              <span className="text-content">
+                {plan?.sourceMaterialDescription || chosenVariant?.material || 'ESL Conversation Questions. Zachowujemy konwersacyjny format pytań o pracę.'}
+              </span>
+            </div>
           </div>
 
-          {plan?.sections.map(section => {
-            const ids = section.items.map(item => item.id);
-            const allSelected = ids.length > 0 && ids.every(id => selectedIds.includes(id));
+          {/* 6 ZWIJANYCH SEKCJI AKORDEONU (Zrzuty ekranu 1 i 2) */}
+          <div className="space-y-2.5">
+            {plan?.sections.map((section, sIndex) => {
+              const isCollapsed = collapsedSections[section.id] ?? false;
+              const isMainTopic = section.id === 'maintopic' || section.id === 'main-topic' || sIndex === 2;
+              const isPractice = section.id === 'practice' || section.id === 'practice-enclosure' || sIndex === 4;
 
-            return (
-              <section
-                key={section.id}
-                className="rounded-2xl border border-line-strong bg-base-200/60 overflow-hidden shadow-ambient-sm"
-              >
-                <header className="px-4 py-3 border-b border-line-strong bg-base-100/40 flex items-center justify-between gap-3">
-                  <h4 className="text-sm font-bold text-text-hi truncate">{section.title}</h4>
-                  <div className="flex items-center gap-3 shrink-0">
-                    {section.items.some(item => Boolean(item.notes)) && (
+              return (
+                <div
+                  key={section.id}
+                  className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
+                    !isCollapsed && isMainTopic
+                      ? 'border-primary/50 ring-2 ring-primary/40 bg-base-200/90 shadow-xl'
+                      : 'border-white/10 bg-base-200/60'
+                  }`}
+                >
+                  {/* Wiersz nagłówka sekcji akordeonu */}
+                  <header
+                    onClick={() => toggleSectionCollapse(section.id)}
+                    className="px-4 py-3.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-base-100/40 transition-colors select-none"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="text-content-muted">
+                        {isCollapsed ? <ChevronRight size={15} /> : <ChevronDown size={15} />}
+                      </span>
+                      <h4 className="text-sm font-bold text-white truncate">
+                        {section.title}
+                      </h4>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
-                        onClick={(e) => toggleAllNotesInSection(section, e)}
-                        className="text-[10px] font-bold uppercase tracking-wider text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddItem(section.id);
+                        }}
+                        className="p-1 rounded-lg text-content-muted hover:text-primary hover:bg-white/5 transition-colors"
+                        title="Dodaj punkt do sekcji"
                       >
-                        <GraduationCap size={12} />
-                        <span>
-                          {section.items.filter(it => Boolean(it.notes)).every(it => expandedNotes[it.id])
-                            ? "Zwiń Teacher's Notes"
-                            : "Rozwiń Teacher's Notes"}
-                        </span>
+                        <Plus size={13} />
                       </button>
-                    )}
-                    {ids.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => toggleSection(section)}
-                        className="text-[10px] font-bold uppercase tracking-wider text-content-muted hover:text-primary shrink-0 cursor-pointer transition-colors"
-                      >
-                        {allSelected ? 'Odznacz' : 'Zaznacz całość'}
-                      </button>
-                    )}
-                  </div>
-                </header>
+                    </div>
+                  </header>
 
-                <div className="p-2 space-y-1">
-                  {section.items.length === 0 && (
-                    <p className="px-2.5 py-3 text-[11px] text-content-muted italic">
-                      Sekcja celowo pusta — taka jest decyzja w metodzie.
-                    </p>
-                  )}
-
-                  {section.items.map(item => {
-                    const isSelected = selectedIds.includes(item.id);
-                    const isNoteOpen = expandedNotes[item.id] ?? false;
-
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => toggleItem(item.id)}
-                        className={`rounded-xl px-3 py-2.5 cursor-pointer transition-colors border ${
-                          isSelected
-                            ? 'border-primary/50 bg-primary/10'
-                            : 'border-transparent hover:bg-base-100/40'
-                        }`}
-                      >
-                        <div className="flex items-start gap-2.5">
-                          <span
-                            className={`mt-0.5 w-4 h-4 rounded-md border flex items-center justify-center shrink-0 ${
-                              isSelected
-                                ? 'border-primary bg-primary text-accent-ink'
-                                : 'border-line-strong'
-                            }`}
-                          >
-                            {isSelected && <Check size={11} />}
-                          </span>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <span className="text-[9px] font-mono uppercase tracking-wider text-content-muted">
-                                {KIND_LABEL[item.kind] || item.kind}
-                              </span>
+                  {/* Zawartość sekcji po rozwinięciu */}
+                  {!isCollapsed && (
+                    <div className="p-4 pt-1 space-y-4 border-t border-white/5">
+                      {/* Sub-bloki dla Main Topic: Topic and Material, Lead-in, Thought-Provoking Questions */}
+                      {isMainTopic ? (
+                        <div className="space-y-4">
+                          {/* 1. TOPIC AND MATERIAL */}
+                          <div className="space-y-2">
+                            <div className="inline-block px-3 py-1 rounded-lg bg-sky-950/80 border border-sky-500/40 text-sky-300 text-xs font-bold tracking-wide">
+                              Topic and Material
                             </div>
-                            <p className="text-sm text-text-hi whitespace-pre-wrap leading-relaxed">
-                              {item.text}
-                            </p>
 
-                            {item.notes && (
-                              <div className="pt-1.5" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  type="button"
-                                  onClick={(e) => toggleNote(item.id, e)}
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border ${
-                                    isNoteOpen
-                                      ? 'bg-purple-500/20 border-purple-500/40 text-purple-300 shadow-sm'
-                                      : 'bg-purple-500/10 border-purple-500/25 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300'
-                                  }`}
-                                >
-                                  <ChevronDown
-                                    size={13}
-                                    className={`transition-transform duration-200 ${
-                                      isNoteOpen ? 'rotate-180' : '-rotate-90'
-                                    }`}
-                                  />
-                                  <GraduationCap size={13} className="text-purple-400" />
-                                  <span>{isNoteOpen ? "Ukryj Teacher's Notes" : "Teacher's Notes"}</span>
-                                </button>
+                            <div className="space-y-1.5 pl-1">
+                              {section.items
+                                .filter(it => it.kind === 'topic_material')
+                                .map(item => (
+                                  <div
+                                    key={item.id}
+                                    onClick={(e) => toggleItemCheck(section.id, item.id, e)}
+                                    className="flex items-start gap-2.5 text-xs text-content cursor-pointer hover:text-white py-1 group"
+                                  >
+                                    <span className="mt-0.5 text-content-muted group-hover:text-primary shrink-0">
+                                      {item.checked ? <CheckSquare size={14} className="text-primary" /> : <Square size={14} />}
+                                    </span>
+                                    <span className={item.checked ? 'line-through text-content-muted' : ''}>
+                                      {item.text}
+                                    </span>
+                                  </div>
+                                ))}
+                            </div>
 
-                                {isNoteOpen && (() => {
-                                  const parsed = parseTeacherNotes(item.notes);
+                            {section.topicMaterialDescription && (
+                              <p className="text-[11px] text-content-muted italic leading-relaxed pt-1">
+                                {section.topicMaterialDescription}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* 2. LEAD-IN */}
+                          <div className="space-y-2 pt-2 border-t border-white/5">
+                            <div className="inline-block px-3 py-1 rounded-lg bg-sky-950/80 border border-sky-500/40 text-sky-300 text-xs font-bold tracking-wide">
+                              Lead-in
+                            </div>
+
+                            <div className="space-y-1.5 pl-1">
+                              {section.items
+                                .filter(it => it.kind === 'lead_in')
+                                .map(item => (
+                                  <div
+                                    key={item.id}
+                                    onClick={(e) => toggleItemCheck(section.id, item.id, e)}
+                                    className="flex items-start gap-2.5 text-xs text-content cursor-pointer hover:text-white py-1 group"
+                                  >
+                                    <span className="mt-0.5 text-content-muted group-hover:text-primary shrink-0">
+                                      {item.checked ? <CheckSquare size={14} className="text-primary" /> : <Square size={14} />}
+                                    </span>
+                                    <span className={item.checked ? 'line-through text-content-muted' : ''}>
+                                      {item.text}
+                                    </span>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+
+                          {/* 3. THOUGHT-PROVOKING QUESTIONS */}
+                          <div className="space-y-2 pt-2 border-t border-white/5">
+                            <div className="inline-block px-3 py-1 rounded-lg bg-[#3b1933] border border-purple-500/40 text-purple-300 text-xs font-bold tracking-wide">
+                              Thought-Provoking Questions
+                            </div>
+
+                            {section.thoughtProvokingDescription && (
+                              <p className="text-[11px] text-content-muted leading-relaxed">
+                                {section.thoughtProvokingDescription}
+                              </p>
+                            )}
+
+                            {section.methodologicalTip && (
+                              <p className="text-[11px] text-content leading-relaxed">
+                                <strong className="text-white">Metodycznie: </strong>
+                                {section.methodologicalTip}
+                              </p>
+                            )}
+
+                            {/* Pytania z checkboxami i Teacher's Notes */}
+                            <div className="space-y-3 pt-2">
+                              {section.items
+                                .filter(it => it.kind === 'question' || it.kind === 'text')
+                                .map(item => {
+                                  const isNoteOpen = expandedNotes[item.id] ?? false;
+                                  const isEditing = editingItemId === item.id;
+                                  const isSelected = selectedIds.includes(item.id);
+
+                                  if (isEditing) {
+                                    return (
+                                      <div key={item.id} className="p-3 rounded-xl bg-black/60 border border-primary/50 space-y-2">
+                                        <textarea
+                                          value={editingText}
+                                          onChange={e => setEditingText(e.target.value)}
+                                          rows={2}
+                                          className="w-full bg-base-100/70 border border-line-strong rounded-lg p-2 text-xs text-white outline-none focus:border-primary"
+                                        />
+                                        <textarea
+                                          value={editingNotes}
+                                          onChange={e => setEditingNotes(e.target.value)}
+                                          rows={3}
+                                          placeholder="Teacher's Notes (Cel, Scaffolding, Follow-up)..."
+                                          className="w-full bg-base-100/70 border border-line-strong rounded-lg p-2 text-[11px] text-purple-300 outline-none focus:border-purple-500"
+                                        />
+                                        <div className="flex justify-end gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={handleCancelEdit}
+                                            className="px-2.5 py-1 rounded-lg bg-white/10 text-xs text-content hover:text-white"
+                                          >
+                                            Anuluj
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => handleSaveEdit(section.id, item.id, e)}
+                                            className="px-3 py-1 rounded-lg bg-primary text-black text-xs font-bold"
+                                          >
+                                            Zapisz
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
                                   return (
-                                    <div className="mt-2 p-3.5 sm:p-4 rounded-xl bg-gradient-to-br from-purple-950/35 via-base-200/90 to-base-200/70 border border-purple-500/35 shadow-lg shadow-purple-950/20 space-y-2.5 text-xs animate-in fade-in duration-200">
-                                      <div className="flex items-center justify-between gap-2 border-b border-purple-500/20 pb-2">
-                                        <span className="text-[11px] font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5 font-mono">
-                                          <GraduationCap size={14} className="text-purple-400" />
-                                          <span>Teacher's Notes · Budka suflera</span>
-                                        </span>
+                                    <div key={item.id} className="space-y-1.5">
+                                      <div className="flex items-start justify-between gap-2 group">
+                                        <div
+                                          onClick={(e) => toggleItemCheck(section.id, item.id, e)}
+                                          className="flex items-start gap-2.5 text-xs text-white font-medium cursor-pointer flex-1"
+                                        >
+                                          <span className="mt-0.5 text-content-muted group-hover:text-primary shrink-0">
+                                            {item.checked ? <CheckSquare size={14} className="text-primary" /> : <Square size={14} />}
+                                          </span>
+                                          <span className={item.checked ? 'line-through text-content-muted' : ''}>
+                                            {item.text}
+                                          </span>
+                                        </div>
+
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                          <button
+                                            type="button"
+                                            onClick={() => toggleItemSelect(item.id)}
+                                            className={`p-1 rounded text-[10px] ${isSelected ? 'text-primary font-bold' : 'text-content-muted'}`}
+                                            title="Zaznacz do modyfikacji AI"
+                                          >
+                                            {isSelected ? '✓' : 'Zaznacz'}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => handleMoveItem(section.id, item.id, 'up', e)}
+                                            className="p-1 text-content-muted hover:text-white"
+                                            title="W górę"
+                                          >
+                                            <ArrowUp size={11} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => handleMoveItem(section.id, item.id, 'down', e)}
+                                            className="p-1 text-content-muted hover:text-white"
+                                            title="W dół"
+                                          >
+                                            <ArrowDown size={11} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => handleStartEdit(item, e)}
+                                            className="p-1 text-content-muted hover:text-primary"
+                                            title="Edytuj"
+                                          >
+                                            <Edit3 size={11} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => handleDeleteItem(section.id, item.id, e)}
+                                            className="p-1 text-content-muted hover:text-rose-400"
+                                            title="Usuń"
+                                          >
+                                            <Trash2 size={11} />
+                                          </button>
+                                        </div>
                                       </div>
 
-                                      {parsed.goal && (
-                                        <div className="flex items-start gap-2">
-                                          <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[10px] font-bold font-mono uppercase tracking-wider shrink-0 mt-0.5">
-                                            Cel
-                                          </span>
-                                          <p className="text-content leading-relaxed font-sans">{parsed.goal}</p>
-                                        </div>
-                                      )}
+                                      {/* Budka Suflera (Teacher's Notes) */}
+                                      {item.notes && (
+                                        <div className="pl-6">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => toggleNote(item.id, e)}
+                                            className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer transition-colors"
+                                          >
+                                            {isNoteOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                                            <span>Teacher's Notes</span>
+                                          </button>
 
-                                      {parsed.scaffolding && (
-                                        <div className="flex items-start gap-2">
-                                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold font-mono uppercase tracking-wider shrink-0 mt-0.5">
-                                            Scaffolding
-                                          </span>
-                                          <div className="flex-1 flex items-center justify-between gap-2 bg-white/[0.04] px-2.5 py-1.5 rounded-lg border border-white/10">
-                                            <p className="text-white italic font-medium leading-relaxed font-mono text-[12px]">
-                                              {parsed.scaffolding}
-                                            </p>
-                                            <button
-                                              type="button"
-                                              onClick={(e) => handleCopyNoteScaffolding(item.id, parsed.scaffolding!, e)}
-                                              className="p-1 text-content-muted hover:text-white transition-colors shrink-0 cursor-pointer"
-                                              title="Kopiuj do schowka"
-                                            >
-                                              {copiedNoteId === item.id ? (
-                                                <CheckCheck size={12} className="text-primary" />
-                                              ) : (
-                                                <Copy size={12} />
-                                              )}
-                                            </button>
-                                          </div>
-                                        </div>
-                                      )}
+                                          {isNoteOpen && (() => {
+                                            const parsed = parseTeacherNotes(item.notes);
+                                            return (
+                                              <div className="mt-1.5 p-3.5 rounded-xl bg-[#2b162e]/90 border border-purple-500/35 shadow-lg space-y-2 text-xs animate-fadeIn">
+                                                {parsed.goal && (
+                                                  <div className="flex items-start gap-2">
+                                                    <span className="text-content-muted font-bold shrink-0">• Cel:</span>
+                                                    <p className="text-content">{parsed.goal}</p>
+                                                  </div>
+                                                )}
 
-                                      {parsed.followUp && (
-                                        <div className="flex items-start gap-2">
-                                          <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold font-mono uppercase tracking-wider shrink-0 mt-0.5">
-                                            Follow-up
-                                          </span>
-                                          <p className="text-amber-200 font-semibold leading-relaxed font-sans">
-                                            {parsed.followUp}
-                                          </p>
-                                        </div>
-                                      )}
+                                                {parsed.scaffolding && (
+                                                  <div className="flex items-start gap-2">
+                                                    <span className="text-content-muted font-bold shrink-0">• Scaffolding:</span>
+                                                    <p className="text-white italic flex-1">{parsed.scaffolding}</p>
+                                                    <button
+                                                      type="button"
+                                                      onClick={(e) => handleCopyNoteScaffolding(item.id, parsed.scaffolding!, e)}
+                                                      className="p-1 text-content-muted hover:text-white"
+                                                      title="Kopiuj do schowka"
+                                                    >
+                                                      {copiedNoteId === item.id ? <CheckCheck size={12} className="text-primary" /> : <Copy size={12} />}
+                                                    </button>
+                                                  </div>
+                                                )}
 
-                                      {parsed.otherLines.length > 0 && (
-                                        <div className="space-y-1 pt-1 border-t border-purple-500/20">
-                                          {parsed.otherLines.map((l, li) => (
-                                            <p key={li} className="text-content-muted leading-relaxed pl-2 border-l border-purple-500/30 font-sans">
-                                              {l}
-                                            </p>
-                                          ))}
+                                                {parsed.followUp && (
+                                                  <div className="flex items-start gap-2">
+                                                    <span className="text-content-muted font-bold shrink-0">• Follow-up:</span>
+                                                    <p className="text-amber-400 font-semibold">{parsed.followUp}</p>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })()}
                                         </div>
                                       )}
                                     </div>
                                   );
-                                })()}
-                              </div>
-                            )}
+                                })}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      ) : isPractice ? (
+                        /* SEKCJA 5: PRACTICE ENCLOSURE — ĆWICZENIA INTERAKTYWNE LIVE */
+                        <div className="space-y-3">
+                          <p className="text-xs text-content-muted leading-relaxed">
+                            Ćwiczenia interaktywne możesz uruchomić dla kursanta 1 kliknięciem. Kursantowi na chwilę pojawi się interaktywny quiz zamiast notatnika, a po zakończeniu płynnie wróci do notatek.
+                          </p>
+
+                          <div className="grid grid-cols-1 gap-2.5">
+                            {section.items
+                              .filter(it => it.kind === 'interactive' && it.exercise)
+                              .map(item => {
+                                const ex = item.exercise!;
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className="p-4 rounded-xl bg-black/40 border border-primary/30 space-y-2.5 shadow-md"
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div>
+                                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 uppercase font-bold">
+                                          {ex.type === 'quiz' ? 'Quiz jednokrotnego wyboru' : ex.type === 'sentence_scramble' ? 'Układanie zdania' : 'Polowanie na błąd'}
+                                        </span>
+                                        <h5 className="text-sm font-bold text-white mt-1">{ex.question}</h5>
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={(e) => handleLaunchExerciseLive(ex, section.title, e)}
+                                        className="px-3 py-1.5 rounded-xl bg-primary text-black text-xs font-bold hover:brightness-110 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-sm"
+                                      >
+                                        <Rocket size={12} /> Uruchom dla kursanta
+                                      </button>
+                                    </div>
+
+                                    {Array.isArray(ex.options) && ex.options.length > 0 && (
+                                      <div className="grid grid-cols-2 gap-1.5 pt-1">
+                                        {ex.options.map((opt, oIdx) => (
+                                          <div
+                                            key={oIdx}
+                                            className={`p-2 rounded-lg text-xs font-medium border ${
+                                              ex.correctAnswer === oIdx || ex.correctAnswer === opt
+                                                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                                                : 'bg-white/5 border-white/10 text-content'
+                                            }`}
+                                          >
+                                            <span className="text-content-muted font-bold mr-1.5">{oIdx + 1}.</span>
+                                            {opt}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {ex.explanation && (
+                                      <p className="text-[11px] text-content-muted pt-1 border-t border-white/5">
+                                        💡 {ex.explanation}
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      ) : (
+                        /* INNE STANDARDOWE SEKCJE (Warm-up, Grammar, Language Focus, Extra Tasks) */
+                        <div className="space-y-2">
+                          {section.items.map(item => {
+                            const isEditing = editingItemId === item.id;
+                            const isNoteOpen = expandedNotes[item.id] ?? false;
+
+                            if (isEditing) {
+                              return (
+                                <div key={item.id} className="p-3 rounded-xl bg-black/60 border border-primary/50 space-y-2">
+                                  <textarea
+                                    value={editingText}
+                                    onChange={e => setEditingText(e.target.value)}
+                                    rows={2}
+                                    className="w-full bg-base-100/70 border border-line-strong rounded-lg p-2 text-xs text-white outline-none focus:border-primary"
+                                  />
+                                  <div className="flex justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={handleCancelEdit}
+                                      className="px-2.5 py-1 rounded-lg bg-white/10 text-xs text-content hover:text-white"
+                                    >
+                                      Anuluj
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleSaveEdit(section.id, item.id, e)}
+                                      className="px-3 py-1 rounded-lg bg-primary text-black text-xs font-bold"
+                                    >
+                                      Zapisz
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div key={item.id} className="p-2 rounded-xl bg-black/20 hover:bg-black/40 transition-colors group">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div
+                                    onClick={(e) => toggleItemCheck(section.id, item.id, e)}
+                                    className="flex items-start gap-2.5 text-xs text-content cursor-pointer flex-1"
+                                  >
+                                    <span className="mt-0.5 text-content-muted group-hover:text-primary shrink-0">
+                                      {item.checked ? <CheckSquare size={13} className="text-primary" /> : <Square size={13} />}
+                                    </span>
+                                    <span className={item.checked ? 'line-through text-content-muted' : 'text-text-hi'}>
+                                      {item.text}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleStartEdit(item, e)}
+                                      className="p-1 text-content-muted hover:text-primary"
+                                    >
+                                      <Edit3 size={11} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleDeleteItem(section.id, item.id, e)}
+                                      className="p-1 text-content-muted hover:text-rose-400"
+                                    >
+                                      <Trash2 size={11} />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {item.notes && (
+                                  <div className="pl-6 pt-1">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => toggleNote(item.id, e)}
+                                      className="text-[10px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1"
+                                    >
+                                      {isNoteOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                                      Teacher's Notes
+                                    </button>
+                                    {isNoteOpen && (
+                                      <p className="text-[11px] text-content-muted italic bg-black/30 p-2 rounded-lg mt-1 whitespace-pre-wrap">
+                                        {item.notes}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleAddItem(section.id)}
+                        className="w-full py-1.5 rounded-xl border border-dashed border-white/15 text-xs text-content-muted hover:text-primary hover:border-primary/40 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Plus size={12} /> Dodaj element do sekcji
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </section>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
 
-        {/* ── Czat poprawek ── */}
+        {/* ── Czat interaktywny AI w Planerze ── */}
         <div className="lg:sticky lg:top-4 space-y-3">
-          <div className="rounded-2xl border border-line-strong bg-base-200/60 overflow-hidden shadow-ambient-sm flex flex-col max-h-[36rem]">
-            <header className="px-4 py-3 border-b border-line-strong bg-base-100/40 flex items-center gap-2.5">
-              <span className="p-1.5 rounded-lg bg-primary/12 text-primary border border-primary/25">
+          <div className="rounded-2xl border border-line-strong bg-base-200/90 overflow-hidden shadow-ambient-sm flex flex-col max-h-[38rem]">
+            <header className="px-4 py-3 border-b border-line-strong bg-base-100/60 flex items-center gap-2.5">
+              <span className="p-1.5 rounded-lg bg-primary/15 text-primary border border-primary/25">
                 <MessageSquare size={14} />
               </span>
               <div className="min-w-0">
-                <h4 className="text-sm font-bold text-text-hi">Poprawki</h4>
-                <p className="text-[10px] text-content-muted">
+                <h4 className="text-sm font-bold text-text-hi">Asystent Scenariusza</h4>
+                <p className="text-[10px] text-content-muted truncate">
                   {selectedIds.length > 0
-                    ? `Zaznaczono ${selectedIds.length} ${selectedIds.length === 1 ? 'element' : 'elementy'}`
-                    : 'Zaznacz elementy w scenariuszu'}
+                    ? `Zaznaczono ${selectedIds.length} element(y)`
+                    : 'Napisz, co zmienić lub dodać w scenariuszu'}
                 </p>
               </div>
               {selectedIds.length > 0 && (
@@ -1206,14 +1844,14 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
               )}
             </header>
 
-            <div className="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-[10rem]">
+            <div className="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-[12rem]">
               {chat.map(turn => (
                 <div
                   key={turn.id}
                   className={`rounded-xl px-3 py-2 text-[12px] leading-relaxed ${
                     turn.role === 'teacher'
-                      ? 'bg-primary/10 border border-primary/25 text-text-hi'
-                      : 'bg-base-100/45 border border-line-strong text-content-muted'
+                      ? 'bg-primary/15 border border-primary/30 text-white'
+                      : 'bg-base-100/50 border border-line-strong text-content'
                   }`}
                 >
                   {turn.targets && turn.targets.length > 0 && (
@@ -1227,7 +1865,7 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
               <div ref={chatEndRef} />
             </div>
 
-            <div className="p-3 border-t border-line-strong bg-base-100/25 space-y-2">
+            <div className="p-3 border-t border-line-strong bg-base-100/40 space-y-2">
               <textarea
                 value={chatDraft}
                 onChange={e => setChatDraft(e.target.value)}
@@ -1235,17 +1873,17 @@ const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
                   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleRevise();
                 }}
                 rows={3}
-                placeholder="Co zrobić z zaznaczonymi elementami? np. „za trudne na B1, uprość i oprzyj o codzienne sytuacje”"
-                className="w-full bg-base-100/60 border border-line-strong rounded-xl px-3 py-2.5 text-[12px] text-text-hi outline-none focus:border-primary resize-none"
+                placeholder="Napisz polecenie dla AI: np. „uprość pytania w sekcji 3 dla A2”, „dodaj zadanie o wózkach widłowych”..."
+                className="w-full bg-base-100/80 border border-line-strong rounded-xl px-3 py-2.5 text-[12px] text-text-hi outline-none focus:border-primary resize-none"
               />
               <button
                 type="button"
                 onClick={handleRevise}
-                disabled={Boolean(busy) || !chatDraft.trim() || selectedIds.length === 0}
-                className="w-full px-3 py-2.5 rounded-xl bg-primary text-accent-ink text-sm font-bold hover:brightness-110 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-btn disabled:opacity-40"
+                disabled={Boolean(busy) || !chatDraft.trim()}
+                className="w-full px-3 py-2.5 rounded-xl bg-primary text-black text-xs font-bold hover:brightness-110 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-btn disabled:opacity-40"
               >
-                {busy ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />}
-                Przerób zaznaczone
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                Wprowadź zmiany przez AI
               </button>
             </div>
           </div>
