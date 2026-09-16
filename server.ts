@@ -2287,13 +2287,14 @@ export function createApp() {
 
       // Utwórz rekord lekcji z transkrypcją (oczekuje na zatwierdzenie lektora)
       const newLessonRef = adminDb.collection('lessonRecords').doc();
-      await newLessonRef.set({
+      const lessonPayload = {
         studentId,
         studentIds: matchedUser?.isGroup && matchedUser.memberIds?.length ? matchedUser.memberIds : [studentId],
         studentName,
         date: dateStr,
         topic: title,
         rawTranscript: transcriptText,
+        liveTranscript: transcriptText,
         notionPageId: page.id,
         source: 'notion',
         isGroupLesson: Boolean(matchedUser?.isGroup),
@@ -2303,7 +2304,18 @@ export function createApp() {
         pendingReason: matchedUser ? 'Zaimportowano nową transkrypcję z Notion' : 'Wymaga przypisania kursanta i zatwierdzenia',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      });
+      };
+
+      await newLessonRef.set(lessonPayload);
+
+      // Zapisz również do podkolekcji kursanta, aby lekcja była natychmiast widoczna w historii
+      if (matchedUser?.id && matchedUser.id !== 'unassigned') {
+        try {
+          await adminDb.collection('users').doc(studentId).collection('lessonRecords').doc(newLessonRef.id).set(lessonPayload, { merge: true });
+        } catch (subErr) {
+          console.warn(`[Notion Sync] Nie udało się zapisać do users/${studentId}/lessonRecords:`, subErr);
+        }
+      }
 
       processedItems.push({
         id: page.id,

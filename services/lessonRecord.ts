@@ -149,6 +149,10 @@ export async function createLessonRecordWithVocabularySet(input: {
   homeworkText?: string;
   homeworkAnswerKey?: string;
   nextLessonPlan?: string;
+  studentInsights?: string;
+  questionUsageLogs?: any[];
+  processingRunId?: string;
+  analysisVersion?: string;
   scenarioId?: string;
   scenarioTopic?: string;
   scenarioContent?: string;
@@ -204,12 +208,16 @@ export async function createLessonRecordWithVocabularySet(input: {
     vocabularyText: input.vocabularyText,
     lessonSummary: input.lessonSummary,
     studentSpeaking: input.studentSpeaking,
+    studentInsights: input.studentInsights,
     thingsToImprove: input.thingsToImprove,
     suggestedFollowUp: input.suggestedFollowUp,
     corrections: input.corrections,
     homeworkText: input.homeworkText,
     homeworkAnswerKey: input.homeworkAnswerKey,
     nextLessonPlan: input.nextLessonPlan,
+    questionUsageLogs: input.questionUsageLogs,
+    processingRunId: input.processingRunId,
+    analysisVersion: input.analysisVersion,
     vocabularySetId: vocabularySetId,
     scenarioId: input.scenarioId,
     scenarioTopic: input.scenarioTopic,

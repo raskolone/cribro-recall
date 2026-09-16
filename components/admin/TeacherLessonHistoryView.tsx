@@ -2,9 +2,11 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { User, LessonRecord } from '../../types';
 import { extractLessonBlocks, isLessonPendingConfirmation } from '../../utils/lessonBlocks';
 import { openScratchpadTab } from '../../services/scratchpadService';
+import { auth } from '../../firebase';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import TTSButtons from '../flashcards/TTSButtons';
+import Markdown from 'react-markdown';
 import {
   BookOpen,
   Clock,
@@ -33,7 +35,10 @@ import {
   ArrowUpDown,
   Tag,
   KeyRound,
-  Trash2
+  Trash2,
+  Database,
+  Target,
+  Activity
 } from 'lucide-react';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 
@@ -72,6 +77,41 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
   const [previewLesson, setPreviewLesson] = useState<LessonRecord | null>(null);
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [isAnswerKeyOpen, setIsAnswerKeyOpen] = useState(false);
+  const [isCheckingNotion, setIsCheckingNotion] = useState(false);
+  const [notionCheckMsg, setNotionCheckMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleCheckNotion = async () => {
+    setIsCheckingNotion(true);
+    setNotionCheckMsg(null);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/notion/fetch-transcripts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Nie udało się sprawdzić transkrypcji w Notion');
+      }
+      setNotionCheckMsg({
+        type: 'success',
+        text: `Sprawdzono Notion: znaleziono ${data.found || 0} stron, przetworzono/zaimportowano ${data.processed || 0}`,
+      });
+      if (onRefresh) onRefresh();
+      setTimeout(() => setNotionCheckMsg(null), 6000);
+    } catch (e: any) {
+      setNotionCheckMsg({
+        type: 'error',
+        text: `Błąd sprawdzania Notion: ${e.message || String(e)}`,
+      });
+      setTimeout(() => setNotionCheckMsg(null), 7000);
+    } finally {
+      setIsCheckingNotion(false);
+    }
+  };
 
   useEscapeModal(Boolean(previewLesson), () => setPreviewLesson(null), 10);
 
@@ -223,6 +263,18 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
 
         {/* Action buttons */}
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleCheckNotion}
+            isLoading={isCheckingNotion}
+            className="text-xs flex items-center gap-1.5 py-1.5 px-3 border-line-strong hover:border-amber-400/40 text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 font-semibold"
+            title="Sprawdź manualnie czy w skonfigurowanej bazie Notion pojawiły się nowe transkrypcje"
+          >
+            <Database size={13} className={isCheckingNotion ? 'animate-spin' : ''} />
+            Sprawdź transkrypcje w Notion
+          </Button>
+
           {onRefresh && (
             <Button
               variant="secondary"
@@ -248,6 +300,28 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
           )}
         </div>
       </div>
+
+      {/* Komunikat ze sprawdzania transkrypcji w Notion */}
+      {notionCheckMsg && (
+        <div
+          className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-2 animate-in fade-in duration-200 ${
+            notionCheckMsg.type === 'success'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+              : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {notionCheckMsg.type === 'success' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+            <span>{notionCheckMsg.text}</span>
+          </div>
+          <button
+            onClick={() => setNotionCheckMsg(null)}
+            className="p-1 hover:bg-white/10 rounded text-content-muted hover:text-text-hi"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
 
       {/* Notion Student / Group Horizontal Filter Tabs */}
       <div className="relative border-b border-line-strong pb-2">
@@ -695,151 +769,238 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
               </button>
             </div>
 
-            {/* Modal Body: 4 Notion Blocks */}
-            <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1 divide-y divide-line-soft">
-              {/* Blok 1: Słownictwo (Words & Phrases) */}
-              <div className="space-y-2.5 pt-2 first:pt-0">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                    <BookOpen size={14} />
-                    Blok 1: Words & Phrases (Słownictwo)
-                  </h4>
-                  {previewBlocks.vocabulary && (
-                    <button
-                      type="button"
-                      onClick={() => handleCopyText(previewBlocks.vocabulary || '', 'vocab')}
-                      className="text-[11px] text-content-muted hover:text-primary flex items-center gap-1 transition-colors"
-                    >
-                      {copiedSection === 'vocab' ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                      {copiedSection === 'vocab' ? 'Skopiowano' : 'Kopiuj listę'}
-                    </button>
+            {/* Modal Body: Two Distinct Aesthetic Blocks (1. Scenario / Plan vs 2. Realized Summary & 4 Notion Blocks) */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
+              {/* ═══ BLOK 1: SCENARIUSZ I ZAŁOŻENIA LEKCJI (PLAN) ═══ */}
+              <div className="rounded-2xl border border-purple-500/25 bg-gradient-to-br from-purple-950/20 via-base-300/40 to-base-300/60 p-4 sm:p-5 space-y-3 shadow-sm">
+                <div className="flex items-center justify-between pb-2.5 border-b border-purple-500/20">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                      <Target size={15} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-purple-200">
+                        1. Scenariusz i założenia lekcji (Plan)
+                      </h4>
+                      <p className="text-[11px] text-content-muted">
+                        Zaplanowany temat, pytania przewodnie i cele dydaktyczne
+                      </p>
+                    </div>
+                  </div>
+                  {previewLesson.scenarioTopic && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                      {previewLesson.scenarioTopic}
+                    </span>
                   )}
                 </div>
 
-                {previewBlocks.vocabulary ? (
-                  <div className="space-y-1.5">
-                    {previewBlocks.vocabulary
-                      .split('\n')
-                      .map((l) => l.trim())
-                      .filter(Boolean)
-                      .map((line, idx) => {
-                        const parts = line.split(/[-–—:=]/);
-                        const term = parts[0]?.trim() || line;
-                        const def = parts.slice(1).join(' - ').trim();
-
-                        return (
-                          <div
-                            key={idx}
-                            className="p-2 rounded-xl bg-base-300/50 border border-line-strong flex items-center justify-between gap-2 hover:border-primary/30 transition-colors"
-                          >
-                            <div className="flex items-baseline gap-2">
-                              <span className="font-bold text-text-hi text-xs">{term}</span>
-                              {def && <span className="text-xs text-content-muted">— {def}</span>}
-                            </div>
-                            <TTSButtons text={term} size="sm" />
-                          </div>
-                        );
-                      })}
+                {previewLesson.scenarioContent ? (
+                  <div className="text-xs text-text-hi whitespace-pre-wrap leading-relaxed bg-black/20 p-3.5 rounded-xl border border-white/5 font-sans">
+                    <Markdown>{previewLesson.scenarioContent}</Markdown>
+                  </div>
+                ) : previewLesson.scenarioTopic ? (
+                  <div className="text-xs text-text-hi leading-relaxed bg-black/20 p-3.5 rounded-xl border border-white/5">
+                    <span className="text-content-muted">Temat scenariusza: </span>
+                    <span className="font-semibold text-text-hi">{previewLesson.scenarioTopic}</span>
                   </div>
                 ) : (
-                  <p className="text-xs text-content-muted/60 italic">Brak zapisanego słownictwa.</p>
+                  <div className="p-3 rounded-xl bg-black/15 border border-white/5 text-xs text-content-muted/80 italic">
+                    Brak przypisanego scenariusza przed lekcją (lekcja prowadzona w trybie swobodnym lub zaimportowana z transkrypcji).
+                  </div>
                 )}
               </div>
 
-              {/* Blok 2: Korekty językowe i wymowa (Corrections & Pronunciation) */}
-              {previewBlocks.corrections && (
-                <div className="space-y-2.5 pt-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
-                      <Sparkles size={14} />
-                      Blok 2: Corrections & Pronunciation (Korekty i wymowa)
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyText(previewBlocks.corrections || '', 'grammar')}
-                      className="text-[11px] text-content-muted hover:text-sky-300 flex items-center gap-1 transition-colors"
-                    >
-                      {copiedSection === 'grammar' ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                      {copiedSection === 'grammar' ? 'Skopiowano' : 'Kopiuj'}
-                    </button>
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-sky-500/[0.04] border border-sky-500/20 text-xs text-text-hi whitespace-pre-wrap leading-relaxed">
-                    {previewBlocks.corrections}
+              {/* ═══ BLOK 2: PODSUMOWANIE I REALIZACJA LEKCJI (4 BLOKI NOTION) ═══ */}
+              <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-emerald-950/15 via-base-300/40 to-base-300/60 p-4 sm:p-5 space-y-5 shadow-sm">
+                <div className="flex items-center justify-between pb-2.5 border-b border-primary/20">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-primary/20 text-primary border border-primary/30">
+                      <Sparkles size={15} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-primary">
+                        2. Podsumowanie lekcji i 4 Bloki Notion (Realizacja)
+                      </h4>
+                      <p className="text-[11px] text-content-muted">
+                        Faktyczny przebieg, słownictwo, korekty, zadania domowe i wnioski
+                      </p>
+                    </div>
                   </div>
                 </div>
-              )}
 
-              {/* Blok 3: Zadanie Domowe (Homework) */}
-              {(previewBlocks.homework || previewLesson.homeworkText) && (
-                <div className="space-y-2.5 pt-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
-                      <ClipboardList size={14} />
-                      Blok 3: Homework (Zadanie domowe)
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleCopyText(
-                          previewBlocks.homework || previewLesson.homeworkText || '',
-                          'hw'
-                        )
-                      }
-                      className="text-[11px] text-content-muted hover:text-purple-300 flex items-center gap-1 transition-colors"
-                    >
-                      {copiedSection === 'hw' ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                      {copiedSection === 'hw' ? 'Skopiowano' : 'Kopiuj'}
-                    </button>
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-purple-500/[0.04] border border-purple-500/20 text-xs text-text-hi whitespace-pre-wrap leading-relaxed">
-                    {previewBlocks.homework || previewLesson.homeworkText}
+                <div className="space-y-4 divide-y divide-line-soft">
+                  {/* Podsumowanie ogólne (Lesson Summary) */}
+                  {(previewBlocks.summary || previewLesson.lessonSummary) && (
+                    <div className="space-y-1.5 pt-1 first:pt-0">
+                      <h5 className="text-xs font-extrabold uppercase tracking-wider text-text-hi flex items-center gap-1.5">
+                        <FileText size={13} className="text-primary" />
+                        Podsumowanie lekcji (2-3 zdania)
+                      </h5>
+                      <div className="text-xs text-content leading-relaxed bg-black/20 p-3.5 rounded-xl border border-white/5 whitespace-pre-wrap">
+                        <Markdown>{previewBlocks.summary || previewLesson.lessonSummary}</Markdown>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Wypowiedzi kursanta & Obserwacje lektora (Student Speaking & Insights) */}
+                  {(previewLesson.studentSpeaking || previewLesson.studentInsights) && (
+                    <div className="space-y-1.5 pt-4">
+                      <h5 className="text-xs font-extrabold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+                        <Activity size={13} />
+                        Wypowiedzi kursanta & Obserwacje profilowe (Notatka lektora)
+                      </h5>
+                      <div className="text-xs text-content leading-relaxed bg-sky-500/[0.04] p-3.5 rounded-xl border border-sky-500/20 whitespace-pre-wrap">
+                        <Markdown>{previewLesson.studentInsights || previewLesson.studentSpeaking}</Markdown>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Blok 1: Słownictwo (Words & Phrases) */}
+                  <div className="space-y-2.5 pt-4">
+                    <div className="flex items-center justify-between">
+                      <h5 className="text-xs font-extrabold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                        <BookOpen size={13} />
+                        Blok 1: Words & Phrases (Słownictwo)
+                      </h5>
+                      {previewBlocks.vocabulary && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyText(previewBlocks.vocabulary || '', 'vocab')}
+                          className="text-[11px] text-content-muted hover:text-primary flex items-center gap-1 transition-colors"
+                        >
+                          {copiedSection === 'vocab' ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                          {copiedSection === 'vocab' ? 'Skopiowano' : 'Kopiuj listę'}
+                        </button>
+                      )}
+                    </div>
+
+                    {previewBlocks.vocabulary ? (
+                      <div className="space-y-1.5">
+                        {previewBlocks.vocabulary
+                          .split('\n')
+                          .map((l) => l.trim())
+                          .filter(Boolean)
+                          .map((line, idx) => {
+                            const parts = line.split(/[-–—:=]/);
+                            const term = parts[0]?.trim() || line;
+                            const def = parts.slice(1).join(' - ').trim();
+
+                            return (
+                              <div
+                                key={idx}
+                                className="p-2 rounded-xl bg-base-300/50 border border-line-strong flex items-center justify-between gap-2 hover:border-primary/30 transition-colors"
+                              >
+                                <div className="flex items-baseline gap-2">
+                                  <span className="font-bold text-text-hi text-xs">{term}</span>
+                                  {def && <span className="text-xs text-content-muted">— {def}</span>}
+                                </div>
+                                <TTSButtons text={term} size="sm" />
+                              </div>
+                            );
+                          })}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-content-muted/60 italic">Brak zapisanego słownictwa.</p>
+                    )}
                   </div>
 
-                  {/* Answer key toggle if available */}
-                  {(previewBlocks.answerKey || previewLesson.homeworkAnswerKey) && (
-                    <div className="mt-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsAnswerKeyOpen(!isAnswerKeyOpen)}
-                        className="text-xs text-content-muted hover:text-purple-300 flex items-center gap-1.5 font-semibold transition-colors"
-                      >
-                        <KeyRound size={12} />
-                        <span>{isAnswerKeyOpen ? 'Ukryj klucz odpowiedzi' : 'Pokaż klucz odpowiedzi (Answer Key)'}</span>
-                      </button>
-                      {isAnswerKeyOpen && (
-                        <div className="mt-2 p-3 rounded-xl bg-base-300/80 border border-line-strong text-xs text-content-muted font-mono whitespace-pre-wrap">
-                          {previewBlocks.answerKey || previewLesson.homeworkAnswerKey}
+                  {/* Blok 2: Korekty językowe i wymowa (Corrections & Pronunciation) */}
+                  {previewBlocks.corrections && (
+                    <div className="space-y-2.5 pt-4">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-xs font-extrabold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+                          <Sparkles size={13} />
+                          Blok 2: Corrections & Pronunciation (Korekty i wymowa)
+                        </h5>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyText(previewBlocks.corrections || '', 'grammar')}
+                          className="text-[11px] text-content-muted hover:text-sky-300 flex items-center gap-1 transition-colors"
+                        >
+                          {copiedSection === 'grammar' ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                          {copiedSection === 'grammar' ? 'Skopiowano' : 'Kopiuj'}
+                        </button>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-sky-500/[0.04] border border-sky-500/20 text-xs text-text-hi whitespace-pre-wrap leading-relaxed">
+                        <Markdown>{previewBlocks.corrections}</Markdown>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Blok 3: Zadanie Domowe (Homework) */}
+                  {(previewBlocks.homework || previewLesson.homeworkText) && (
+                    <div className="space-y-2.5 pt-4">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-xs font-extrabold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                          <ClipboardList size={13} />
+                          Blok 3: Homework (Zadanie domowe)
+                        </h5>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCopyText(
+                              previewBlocks.homework || previewLesson.homeworkText || '',
+                              'hw'
+                            )
+                          }
+                          className="text-[11px] text-content-muted hover:text-purple-300 flex items-center gap-1 transition-colors"
+                        >
+                          {copiedSection === 'hw' ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                          {copiedSection === 'hw' ? 'Skopiowano' : 'Kopiuj'}
+                        </button>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-purple-500/[0.04] border border-purple-500/20 text-xs text-text-hi whitespace-pre-wrap leading-relaxed">
+                        <Markdown>{previewBlocks.homework || previewLesson.homeworkText}</Markdown>
+                      </div>
+
+                      {/* Answer key toggle if available */}
+                      {(previewBlocks.answerKey || previewLesson.homeworkAnswerKey) && (
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            onClick={() => setIsAnswerKeyOpen(!isAnswerKeyOpen)}
+                            className="text-xs text-content-muted hover:text-purple-300 flex items-center gap-1.5 font-semibold transition-colors"
+                          >
+                            <KeyRound size={12} />
+                            <span>{isAnswerKeyOpen ? 'Ukryj klucz odpowiedzi' : 'Pokaż klucz odpowiedzi (Answer Key)'}</span>
+                          </button>
+                          {isAnswerKeyOpen && (
+                            <div className="mt-2 p-3 rounded-xl bg-base-300/80 border border-line-strong text-xs text-content-muted font-mono whitespace-pre-wrap">
+                              {previewBlocks.answerKey || previewLesson.homeworkAnswerKey}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* Blok 4: Plan na kolejną lekcję (Next Lesson Plan) */}
-              {(previewBlocks.nextLesson || previewLesson.nextLessonPlan) && (
-                <div className="space-y-2.5 pt-4">
-                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                    <Sparkles size={14} />
-                    Blok 4: Next Lesson Plan (Plan na kolejną lekcję)
-                  </h4>
-                  <div className="p-3.5 rounded-xl bg-emerald-500/[0.04] border border-emerald-500/20 text-xs text-text-hi whitespace-pre-wrap leading-relaxed">
-                    {previewBlocks.nextLesson || previewLesson.nextLessonPlan}
-                  </div>
-                </div>
-              )}
+                  {/* Blok 4: Plan na kolejną lekcję (Next Lesson Plan) */}
+                  {(previewBlocks.nextLesson || previewLesson.nextLessonPlan) && (
+                    <div className="space-y-2.5 pt-4">
+                      <h5 className="text-xs font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                        <Sparkles size={13} />
+                        Blok 4: Next Lesson Plan (Plan na kolejną lekcję)
+                      </h5>
+                      <div className="p-3.5 rounded-xl bg-emerald-500/[0.04] border border-emerald-500/20 text-xs text-text-hi whitespace-pre-wrap leading-relaxed">
+                        <Markdown>{previewBlocks.nextLesson || previewLesson.nextLessonPlan}</Markdown>
+                      </div>
+                    </div>
+                  )}
 
-              {/* Podsumowanie / Notatki */}
-              {(previewBlocks.summary || previewLesson.lessonSummary) && (
-                <div className="space-y-2 pt-4">
-                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-content-muted flex items-center gap-1.5">
-                    Podsumowanie lekcji
-                  </h4>
-                  <p className="text-xs text-content-muted leading-relaxed">
-                    {previewBlocks.summary || previewLesson.lessonSummary}
-                  </p>
+                  {/* Learning Curve */}
+                  {previewBlocks.learningCurve && (
+                    <div className="space-y-1.5 pt-4">
+                      <h5 className="text-xs font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                        <Activity size={13} />
+                        Learning Curve & Analiza pytań
+                      </h5>
+                      <div className="text-xs text-content leading-relaxed bg-amber-500/[0.04] p-3.5 rounded-xl border border-amber-500/20 whitespace-pre-wrap">
+                        <Markdown>{previewBlocks.learningCurve}</Markdown>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Modal Footer Actions */}

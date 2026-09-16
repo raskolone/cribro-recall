@@ -1,4 +1,4 @@
-import { LessonRecord } from '../types';
+import { LessonRecord, QuestionUsageLog } from '../types';
 import {
   buildTranscriptLessonPrompt,
   parseTranscriptLesson,
@@ -7,6 +7,8 @@ import {
   type TranscriptLessonInput,
 } from '../utils/transcriptLesson';
 import { extractJSON, generateTextWithUnifiedFallback } from './geminiService';
+import { db } from '../firebase';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
 
 /**
  * Wywołanie modelu dla lekcji z transkrypcji.
@@ -40,7 +42,53 @@ export async function generateLessonFromTranscript(
    * odpowiedź na kilka kończyła się błędem składni na treści, która była
    * poprawna.
    */
-  return parseTranscriptLesson(extractJSON(text));
+  const parsed = parseTranscriptLesson(extractJSON(text), {
+    lessonId: input.lessonId,
+    studentId: input.studentId,
+    date: input.date,
+  });
+
+  return parsed;
+}
+
+/**
+ * Zapisuje ukryte logi pytań (lesson_question_logs) w Firestore.
+ */
+export async function persistQuestionUsageLogs(
+  studentId: string,
+  lessonId: string,
+  logs: QuestionUsageLog[]
+): Promise<void> {
+  if (!logs || logs.length === 0) return;
+  try {
+    for (const log of logs) {
+      const docId = log.questionLogId || `ql_${lessonId}_${log.sequence}`;
+      const logRef = doc(db, `users/${studentId}/lesson_question_logs/${docId}`);
+      await setDoc(logRef, log, { merge: true });
+    }
+  } catch (err) {
+    console.warn('[Question Logs] Nie udało się zapisać pytań:', err);
+  }
+}
+
+/**
+ * Aktualizuje profil kursanta w users/{studentId} o trwałe obserwacje z transkrypcji.
+ */
+export async function updateStudentInsightsProfile(
+  studentId: string,
+  insights: string
+): Promise<void> {
+  if (!studentId || !insights || !insights.trim()) return;
+  try {
+    const userRef = doc(db, 'users', studentId);
+    await updateDoc(userRef, {
+      studentInsights: insights.trim(),
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('[Student Insights] Nie udało się zaktualizować profilu kursanta:', err);
+  }
 }
 
 export { TranscriptLessonError };
+

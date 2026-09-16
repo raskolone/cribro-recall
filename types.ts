@@ -92,6 +92,8 @@ export interface User {
   lessonType?: 'Individual' | 'Group';
   recordType?: 'Kursant' | 'Grupa';
   statusWspolpracy?: 'Aktywny' | 'Nieaktywny';
+  /** Trwałe obserwacje i profil kursanta z transkrypcji lekcji (Etap B workflow). */
+  studentInsights?: string;
 }
 
 export interface EmailTemplate {
@@ -337,15 +339,43 @@ export interface LessonBlocks {
   learningCurve?: string;
 }
 
+export interface QuestionUsageLog {
+  questionLogId: string;
+  lessonId: string;
+  studentId: string;
+  lessonDate: string;
+  sequence: number;
+  actualQuestion: string;
+  plannedQuestion?: string;
+  origin: 'planned' | 'adapted' | 'spontaneous';
+  section: 'warm_up' | 'main_topic' | 'follow_up' | 'spontaneous';
+  questionFunction: 'experience' | 'opinion' | 'explanation' | 'story' | 'clarification' | 'preference';
+  cefrLevel: string;
+  anonymousPattern: string;
+  studentResponse: 'expanded' | 'natural' | 'short' | 'no_response';
+  questionQuality: 'natural_and_relevant' | 'natural_but_misaligned' | 'robotic' | 'unclear' | 'too_difficult' | 'insufficient_data';
+  conversationDirection?: string;
+  conversationTopic?: string;
+  signal?: string;
+  plannerInsight?: string;
+  sourceTurnId?: string;
+  createdAt: string;
+  analysisVersion?: string;
+}
+
 export interface LessonRecord {
   id: string;
   studentId: string;
   studentIds?: string[];
+  studentName?: string;
   date: string;
   topic: string;
   vocabularyText: string;
   lessonSummary?: string;
+  /** BLOK 1b: Najważniejsze informacje z wypowiedzi kursanta (Notatka lektora) */
   studentSpeaking?: string;
+  /** Trwałe obserwacje i profil kursanta z transkrypcji lekcji */
+  studentInsights?: string;
   thingsToImprove?: string;
   suggestedFollowUp?: string;
   vocabularySetId?: string;
@@ -360,6 +390,11 @@ export interface LessonRecord {
   homeworkAnswerKey?: string;
   /** BLOK 4: Wyodrębniony plan na kolejną lekcję */
   nextLessonPlan?: string;
+  /** Ukryta baza pytań lektora do analizy i trenowania plannera */
+  questionUsageLogs?: QuestionUsageLog[];
+  /** Identyfikator przetwarzania i wersja analizy transkrypcji */
+  processingRunId?: string;
+  analysisVersion?: string;
   /** Elastyczny obiekt bloków ułatwiający renderowanie i eksport */
   structuredBlocks?: LessonBlocks;
   /** Status weryfikacji lekcji: 'confirmed' (widoczna dla ucznia) | 'pending_confirmation' (wymaga zatwierdzenia przez lektora) | 'rejected' (odrzucona) */

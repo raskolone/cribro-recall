@@ -203,6 +203,39 @@ Firestore obok lekcji.
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
+### 🚀 Refaktoryzacja Modułów Lektora, Integracja Transkrypcji z Notion i Zaawansowany Silnik Analizy Lekcji wg Nowego Standardu (2026-09-16, runda 12)
+
+**1. Refaktoryzacja Głównych Kafelków Panelu Lektora (`AdminPanel.tsx`):**
+- **Kafelek 1: "Kursanci"** — bezpośrednie wejście do bazy CRM (`students-database`), zarządza profilami, lekcjami, zadaniami domowymi i materiałami.
+- **Kafelek 2: "Historia lekcji"** — bezpośredni przełącznik do globalnej bazy lekcji Notion-style (`TeacherLessonHistoryView`).
+- **Kafelek 3: "Notatnik"** — natychmiastowe otwarcie wspólnego notatnika na żywo.
+- **Usunięcie kafelka "Kontekst przed lekcją"** — całkowicie usunięto stary modal pre-lesson context oraz pickery z kodu panelu lektora (zgodnie z wytycznymi kontekst zostanie wdrożony jako funkcja asystenta AI chat).
+- **Czyste przełączanie modułów**: Kliknięcie w dowolny moduł (Planer lekcji, Mailing, Prezentacja) otwiera pełnoekranowy widok danego narzędzia z przyciskiem "Wróć do historii", zastępując główny strumień lekcji.
+
+**2. Synchronizacja i Manualny Import Transkrypcji z Notion (`TeacherLessonHistoryView.tsx`, `server.ts`):**
+- **Przycisk "Sprawdź transkrypcje w Notion"**: Umieszczony na górnym pasku widoku Historii Lekcji. Umożliwia lektorowi manualne odpytanie bazy Notion o nowe transkrypcje w zdefiniowanej karcie.
+- **Natychmiastowy import i powiadomienie**: System sprawdza endpoint `/api/notion/fetch-transcripts`, zapisuje nowe transkrypcje bezpośrednio w `users/${studentId}/lessonRecords/${docId}` z flagą `isInStaging: true`, informuje lektora o liczbie zaimportowanych lekcji i natychmiast odświeża listę lekcji.
+
+**3. Silnik Zaawansowanej Analizy Transkrypcji Lekcji (`utils/transcriptLesson.ts`, `services/transcriptLesson.ts`, `types.ts`):**
+- Wdrożenie pełnego kontraktu ze specyfikacji *Lesson Processing Workflow*:
+  - **Hierarchia faktów**: Transkrypcja stanowi jedyne i nadrzędne źródło faktów (strict factual consistency).
+  - **Rozróżnienie wypowiedzi**: System ściśle odseparowuje wypowiedzi kursanta od instrukcji, wyjaśnień i parafraz lektora.
+  - **Trwały profil i postępy (`studentInsights`)**: Ekstrakcja 3–6 zwięzłych zdań o sytuacji zawodowej, celach, preferencjach i priorytetach językowych kursanta, z automatyczną aktualizacją profilu w bazie (`users/${studentId}`).
+  - **4 Bloki Notion**:
+    - `lessonSummary`: 2–3 zdania podsumowania merytorycznego.
+    - `vocabulary`: kategoryzacja na nowe słownictwo (`new`) i wymagające utrwalenia (`needs_practice`).
+    - `corrections`: max 3 najważniejsze błędy w formacie `❌ [Błąd] → ✅ [Korekta] — [Krótkie wyjaśnienie]`.
+    - `homework`: 4 ustrukturyzowane mechanizmy (tłumaczenie, korekta błędu, dokończenie odpowiedzi, ułożenie zdania) wraz z kluczem odpowiedzi (`answerKey`).
+    - `nextLesson`: max 3 konkretne rekomendacje na kolejne zajęcia.
+  - **Niejawny rejestr pytań lektora (`lesson_question_logs`)**: Zapis pytań merytorycznych z transkrypcji (origin, questionQuality, anonymousPattern, studentResponse, plannerInsight) do dedykowanej kolekcji analitycznej.
+  - **Idempotentność i wersjonowanie**: Śledzenie `processingRunId` oraz `analysisVersion`.
+
+**4. Dwublokowy Podgląd Lekcji dla Nauczyciela (`TeacherLessonHistoryView.tsx`):**
+- Wyraźny podział podglądu lekcji na dwie estetyczne sekcje:
+  - **Sekcja 1: Scenariusz i założenia lekcji (Plan)** — temat, materiały, pytania planowane przed lekcją.
+  - **Sekcja 2: Podsumowanie lekcji i 4 Bloki Notion (Realizacja)** — zrealizowana treść, wnioski z wypowiedzi ucznia (`studentInsights`), słownictwo z TTS, korekty, zadania domowe z kluczem i krzywa uczenia się (Learning Curve).
+- **Bezpieczeństwo widoku kursanta**: Potwierdzenie, że panel kursanta (`StudentLessonHistory.tsx`) wyświetla wyłącznie bezpieczne, zatwierdzone bloki (Summary, Vocabulary, Corrections), bez notatek lektora i bez danych scenariusza.
+
 ### 🚀 Unifikacja CRM Kursantów i Grup w „Profile kursantów” oraz nowy widok „Historia Lekcji” w stylu Notion na ekranie głównym lektora (2026-09-16, runda 11)
 
 **1. Nowy panel „Historia Lekcji” na Ekranie Głównym Lektora (`TeacherLessonHistoryView.tsx`).**

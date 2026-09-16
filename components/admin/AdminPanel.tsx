@@ -10,8 +10,6 @@ import {
   confirmPendingLesson
 } from '../../services/lessonRecord';
 
-import PreLessonContextModal from './PreLessonContextModal';
-import { BriefingScope } from '../../services/preLessonBriefing';
 import VocabularyApproval from './VocabularyApproval';
 import RecallItemsReview, { ReviewedCandidate } from './RecallItemsReview';
 import { saveRecallReview } from '../../services/recallItems';
@@ -285,19 +283,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   };
 
   const handleTileClick = (tabId: string) => {
-    if (tabId === 'mailing') {
-      setActiveTab('mailing');
+    if (tabId === 'students') {
+      onViewChange?.('students-database');
       return;
     }
-    if (tabId === 'context') {
-      /*
-       * Kontekst ZAWSZE pyta „o kogo chodzi", nawet gdy w panelu stoi
-       * otwarty profil. Lektor otwiera go przed lekcją z konkretną osobą,
-       * a ta osoba rzadko jest tą, której profil został na ekranie po
-       * poprzedniej czynności — ciche użycie `selectedUser` pokazywałoby
-       * kontekst kogoś innego bez ostrzeżenia.
-       */
-      setShowContextPicker(true);
+    if (tabId === 'lesson-history' || tabId === 'history') {
+      setActiveTab('lesson-history');
+      return;
+    }
+    if (tabId === 'mailing') {
+      setActiveTab('mailing');
       return;
     }
     if (tabId === 'notatnik') {
@@ -1425,19 +1420,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
 
 
-  const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
-
-  /** Notatnik otwierany z kafelka/listwy — najpierw wybór kursanta, potem dokument. */
-  /* Kontekst przed lekcją — kafelek pulpitu, własny wybór kursanta.
-     Świadomie NIE korzysta z `selectedUser`: kontekst czyta się o kimś
-     konkretnym tuż przed zajęciami i to nie musi być osoba, której profil
-     akurat stoi otwarty w panelu. */
-  const [showContextPicker, setShowContextPicker] = useState(false);
-  const [contextStudent, setContextStudent] = useState<{ id: string; name: string } | null>(null);
-  /* Zakres odprawy. Domyślnie jedna lekcja: przed cotygodniowymi zajęciami to
-     jest właściwa odpowiedź, a trzy lekcje domyślnie znaczyłyby w najczęstszym
-     przypadku trzy razy więcej tekstu, niż trzeba. */
-  const [contextScope, setContextScope] = useState<BriefingScope>(1);
+   const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
   const [newStudentUsername, setNewStudentUsername] = useState('');
   const [newStudentEmail, setNewStudentEmail] = useState('');
   const [createdStudentEmail, setCreatedStudentEmail] = useState('');
@@ -1975,51 +1958,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         </>
       )}
 
-      <ScratchpadStudentPicker
-        isOpen={showContextPicker}
-        onClose={() => setShowContextPicker(false)}
-        students={activeUsers}
-        title="Kontekst przed lekcją"
-        subtitle="Wybierz kursanta i zakres, z którego ma powstać odprawa"
-        icon={<CalendarClock size={16} />}
-        headerExtra={
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-content-muted">
-              Kontekst z
-            </span>
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-base-300/50 border border-line">
-              {([1, 2, 3] as BriefingScope[]).map(value => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setContextScope(value)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
-                    contextScope === value
-                      ? 'bg-primary text-accent-ink'
-                      : 'text-content-muted hover:text-text-hi'
-                  }`}
-                >
-                  {value === 1 ? 'Ostatniej lekcji' : value === 2 ? '2 ostatnich' : '3 ostatnich'}
-                </button>
-              ))}
-            </div>
-          </div>
-        }
-        onPick={student => {
-          setContextStudent(student);
-          setShowContextPicker(false);
-        }}
-      />
-
-      <PreLessonContextModal
-        isOpen={!!contextStudent}
-        onClose={() => setContextStudent(null)}
-        student={contextStudent}
-        teacherName={currentUser?.firstName || currentUser?.username || 'Lektorze'}
-        scope={contextScope}
-        onScopeChange={setContextScope}
-      />
-
       {!selectedUser && (
         <>
       {SHOW_LEGACY_PANEL_TOOLS && <TeacherOverview students={activeUsers} language={language} />}
@@ -2053,51 +1991,30 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         >
           {[
             {
-              id: 'profile',
-              title: 'Profil kursantów',
-              badge: 'Kursanci',
-              /*
-               * Prowadzi PROSTO do bazy kursantów.
-               *
-               * Wcześniej ten kafelek otwierał własną, skróconą listę kursantów
-               * pod spodem, a pełna baza była osobną pozycją obok. Dwa spisy
-               * tych samych ludzi, dwa miejsca do szukania i dwa miejsca do
-               * poprawiania. Baza kursantów sama prowadzi do profilu (wybór
-               * kursanta wraca tu z otwartą zakładką profilu), więc skrót
-               * niczego nie skracał.
-               */
-              desc: 'Baza kursantów — wybierz kursanta, żeby wejść w jego historię lekcji, prace domowe i statystyki',
+              id: 'students',
+              title: 'Kursanci',
+              badge: 'Baza CRM',
+              desc: 'Baza kursantów — wybierz kursanta, aby zarządzać profilami, lekcjami, pracami domowymi i materiałami',
               icon: Users,
               route: 'students-database',
             },
             {
-              /*
-               * Kontekst przed lekcją zajmuje miejsce Prezentacji.
-               *
-               * Prezentację włącza się na część lekcji i nie na każdej;
-               * kontekst otwiera się przed KAŻDĄ, na minutę, żeby wiedzieć,
-               * na czym się skończyło. Prezentacja schodzi do listwy niżej —
-               * nie znika, przestaje tylko zajmować jedno z trzech miejsc
-               * zarezerwowanych dla rzeczy używanych za każdym razem.
-               */
-              id: 'context',
-              title: 'Kontekst przed lekcją',
-              badge: 'Przed każdą lekcją',
-              desc: 'Ostatnia lekcja, zatwierdzone słownictwo i elementy niestabilne — wybierz kursanta',
-              icon: CalendarClock
+              id: 'lesson-history',
+              title: 'Historia lekcji',
+              badge: 'Wszystkie lekcje',
+              desc: 'Globalna baza wszystkich zrealizowanych lekcji, transkrypcji i 4 bloków Notion',
+              icon: BookOpen,
             },
             {
               id: 'notatnik',
               title: 'Notatnik',
               badge: 'Na każdej lekcji',
               desc: 'Wspólny notatnik na żywo — treść widzi i edytuje kursant razem z Tobą',
-              icon: FileEdit
+              icon: FileEdit,
             }
           ].map((tile) => {
             const IconComp = tile.icon;
-            // Notatnik jest osobnym ekranem, więc nigdy nie jest „aktywnym
-            // modułem" w obrębie panelu — z panelu się do niego WYCHODZI.
-            const isActive = activeTab === tile.id;
+            const isActive = activeTab === tile.id || (tile.id === 'lesson-history' && (activeTab === null || activeTab === 'lesson-history' || activeTab === 'history'));
             const hasNotification = Boolean((tile as any).hasNotification);
             const notificationCount = Number((tile as any).notificationCount || 0);
 
@@ -2300,65 +2217,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         )}
       </div>
 
-      {/* Widok Historii Lekcji Notion-style na ekranie głównym */}
-      <TeacherLessonHistoryView
-        lessons={allTeacherLessons}
-        students={users}
-        isLoading={isLoadingAllLessons}
-        onRefresh={() => fetchAllLessons(users)}
-        onSelectStudent={(student, targetTab) => {
-          if (student.id) {
-            handleSelectUser(student as UserWithId, targetTab || 'profile');
-          }
-        }}
-        onOpenNotebook={(student) => {
-          if (student.id) {
-            handleSelectUser(student as UserWithId, 'scratchpad');
-            openScratchpadTab(`sp_${student.id}`);
-          }
-        }}
-        onOpenHomework={(student, lesson) => {
-          if (student.id) {
-            handleSelectUser(student as UserWithId, 'homework');
-            onViewChange?.('homework');
-          }
-        }}
-        onOpenPresentation={async (lesson, student) => {
-          if (student?.id) {
-            handleSelectUser(student as UserWithId, 'presentation');
-            setActiveTab('presentation');
-          }
-        }}
-        onDeleteLesson={async (studentId, lesson) => {
-          try {
-            await deleteLessonRecord(studentId, lesson);
-            showToast("Lekcja została usunięta.");
-            if (selectedUser && selectedUser.id === studentId) {
-              fetchUserLogsAndStats(studentId);
-            }
-            fetchAllLessons(users);
-          } catch (e: any) {
-            alert("Błąd podczas usuwania lekcji: " + (e.message || String(e)));
-          }
-        }}
-        onAddNewLesson={() => {
-          handleTileClick('lesson-planner');
-        }}
-      />
-
-        </>
-      )}
-
-      {/* JEŚLI AKTYWNY JEST MODUŁ MAILING */}
-      {activeTab === 'mailing' && (
-        <div className="space-y-4 animate-in fade-in duration-200">
-          <AdminMailingScreen onBack={() => setActiveTab(selectedUser ? 'profile' : null)} />
+      {/* GŁÓWNY WIDOK: MODUŁ MAILING / PLANER / PREZENTACJA LUB HISTORIA LEKCJI */}
+      {activeTab === 'mailing' ? (
+        <div className="space-y-4 animate-in fade-in duration-200 mt-4">
+          <AdminMailingScreen onBack={() => setActiveTab(null)} />
         </div>
-      )}
-
-      {/* JEŚLI AKTYWNY JEST MODUŁ OGÓLNY (Planer, Prezentacja) */}
-      {activeTab && ['lesson-planner', 'presentation'].includes(activeTab) && (
-        <div className="p-4 sm:p-5 rounded-2xl bg-base-200/60 border border-primary/40 shadow-[0_0_30px_rgba(114,240,180,0.1)] space-y-4">
+      ) : activeTab && ['lesson-planner', 'presentation'].includes(activeTab) ? (
+        <div className="p-4 sm:p-5 rounded-2xl bg-base-200/60 border border-primary/40 shadow-[0_0_30px_rgba(114,240,180,0.1)] space-y-4 mt-4">
           <div className="flex items-center justify-between pb-3 border-b border-line-strong">
             <div className="flex items-center gap-2.5">
               <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
@@ -2368,11 +2233,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </h2>
             </div>
             <button
-              onClick={() => setActiveTab(selectedUser ? 'profile' : null)}
+              onClick={() => setActiveTab(null)}
               className="px-3 py-1.5 rounded-xl bg-line-soft hover:bg-line-soft text-content-muted hover:text-text-hi text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-line-strong"
             >
               <X size={14} />
-              {selectedUser ? 'Wróć do profilu kursanta' : 'Zamknij moduł'}
+              Wróć do historii
             </button>
           </div>
 
@@ -2401,18 +2266,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             )}
             {activeTab === 'lesson-planner' && (
               <>
-                {/* Baza scenariuszy jako część Planera, nie pozycja obok.
-
-                    Scenariusz jest materiałem, z którego powstaje lekcja —
-                    zaczyna się tu albo z gotowego, albo od zera, i to jest
-                    jedna decyzja w jednym miejscu. Dotąd wybór „nowy czy
-                    z bazy" wymagał wyjścia do innego ekranu w menu. */}
-                {/* Dwie bazy schowane w jednym menu.
-
-                    Były dwoma przyciskami i zdaniem wyjaśniającym, co robią —
-                    razem trzy elementy nad narzędziem, zanim padło pytanie
-                    o to, czego lekcja ma dotyczyć. Do baz sięga się RAZ na
-                    kilka lekcji, a planer otwiera się przed każdą. */}
                 <div className="flex items-center justify-end gap-2 mb-4">
                   <MenuDropdown
                     align="end"
@@ -2450,53 +2303,101 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     ]}
                   />
                 </div>
-              <LessonPlannerStudio
-                selectedUser={selectedUser}
-                users={users}
-                onSelectUser={(u) => {
-                  if (u) {
-                    handleSelectUser(u, 'lesson-planner');
-                  } else {
-                    setSelectedUser(null);
-                  }
-                }}
-                recentLessons={lessonRecords}
-                onInsertLessonRecord={(data) => {
-                  setEditingRecordId(null);
-                  setViewingRecord(null);
-                  const sId = selectedUser?.id || '';
-                  setLessonFormStudentId(sId);
-                  setLessonFormStudentIds(sId ? [sId] : []);
-                  setLessonFormDate(new Date().toISOString().split('T')[0]);
-                  setLessonFormTopic(data.topic || '');
-                  setLessonFormSummary(data.summary || '');
-                  setLessonFormWords(data.vocabulary || '');
-                  setLessonFormSuggestedFollowUp(data.followUp || '');
-                  setLessonFormThingsToImprove('');
-                  setLessonFormStudentSpeaking('');
-                  setLessonFormScenarioId(data.scenarioId || '');
-                  setLessonFormScenarioTopic(data.scenarioTopic || data.topic || '');
-                  setLessonFormScenarioContent(data.scenarioContent || '');
-                  openLessonRecordModal('edit', undefined, true);
-                  showToast('Przeniesiono scenariusz do nowej notatki z lekcji!');
-                }}
-                onOpenInPresentation={async (scenario) => {
-                  try {
-                    const sName = selectedUser ? (selectedUser.firstName ? `${selectedUser.firstName} ${selectedUser.lastName || ''}`.trim() : selectedUser.username) : null;
-                    const pres = createPresentationFromScenario(scenario, selectedUser?.id, sName);
-                    await savePresentationToStorage(pres);
-                    setActiveTab('presentation');
-                    showToast('Scenariusz załadowany do Prezentacji & Notatnika Live!');
-                  } catch (e) {
-                    console.error('Błąd uruchamiania w prezentacji:', e);
-                    showToast('Nie udało się załadować scenariusza do prezentacji.');
-                  }
-                }}
-              />
+                <LessonPlannerStudio
+                  selectedUser={selectedUser}
+                  users={users}
+                  onSelectUser={(u) => {
+                    if (u) {
+                      handleSelectUser(u, 'lesson-planner');
+                    } else {
+                      setSelectedUser(null);
+                    }
+                  }}
+                  recentLessons={lessonRecords}
+                  onInsertLessonRecord={(data) => {
+                    setEditingRecordId(null);
+                    setViewingRecord(null);
+                    const sId = selectedUser?.id || '';
+                    setLessonFormStudentId(sId);
+                    setLessonFormStudentIds(sId ? [sId] : []);
+                    setLessonFormDate(new Date().toISOString().split('T')[0]);
+                    setLessonFormTopic(data.topic || '');
+                    setLessonFormSummary(data.summary || '');
+                    setLessonFormWords(data.vocabulary || '');
+                    setLessonFormSuggestedFollowUp(data.followUp || '');
+                    setLessonFormThingsToImprove('');
+                    setLessonFormStudentSpeaking('');
+                    setLessonFormScenarioId(data.scenarioId || '');
+                    setLessonFormScenarioTopic(data.scenarioTopic || data.topic || '');
+                    setLessonFormScenarioContent(data.scenarioContent || '');
+                    openLessonRecordModal('edit', undefined, true);
+                    showToast('Przeniesiono scenariusz do nowej notatki z lekcji!');
+                  }}
+                  onOpenInPresentation={async (scenario) => {
+                    try {
+                      const sName = selectedUser ? (selectedUser.firstName ? `${selectedUser.firstName} ${selectedUser.lastName || ''}`.trim() : selectedUser.username) : null;
+                      const pres = createPresentationFromScenario(scenario, selectedUser?.id, sName);
+                      await savePresentationToStorage(pres);
+                      setActiveTab('presentation');
+                      showToast('Scenariusz załadowany do Prezentacji & Notatnika Live!');
+                    } catch (e) {
+                      console.error('Błąd uruchamiania w prezentacji:', e);
+                      showToast('Nie udało się załadować scenariusza do prezentacji.');
+                    }
+                  }}
+                />
               </>
             )}
           </div>
         </div>
+      ) : (
+        /* Widok Historii Lekcji Notion-style na ekranie głównym */
+        <TeacherLessonHistoryView
+          lessons={allTeacherLessons}
+          students={users}
+          isLoading={isLoadingAllLessons}
+          onRefresh={() => fetchAllLessons(users)}
+          onSelectStudent={(student, targetTab) => {
+            if (student.id) {
+              handleSelectUser(student as UserWithId, targetTab || 'profile');
+            }
+          }}
+          onOpenNotebook={(student) => {
+            if (student.id) {
+              handleSelectUser(student as UserWithId, 'scratchpad');
+              openScratchpadTab(`sp_${student.id}`);
+            }
+          }}
+          onOpenHomework={(student, lesson) => {
+            if (student.id) {
+              handleSelectUser(student as UserWithId, 'homework');
+              onViewChange?.('homework');
+            }
+          }}
+          onOpenPresentation={async (lesson, student) => {
+            if (student?.id) {
+              handleSelectUser(student as UserWithId, 'presentation');
+              setActiveTab('presentation');
+            }
+          }}
+          onDeleteLesson={async (studentId, lesson) => {
+            try {
+              await deleteLessonRecord(studentId, lesson);
+              showToast("Lekcja została usunięta.");
+              if (selectedUser && selectedUser.id === studentId) {
+                fetchUserLogsAndStats(studentId);
+              }
+              fetchAllLessons(users);
+            } catch (e: any) {
+              alert("Błąd podczas usuwania lekcji: " + (e.message || String(e)));
+            }
+          }}
+          onAddNewLesson={() => {
+            handleTileClick('lesson-planner');
+          }}
+        />
+      )}
+        </>
       )}
 
       {/* SEKCJA KURSANTA (ZAKŁADKI NA GÓRZE I DANE PROFILOWE)

@@ -3372,13 +3372,14 @@ RESEND_API_KEY=${cleanKey}
       const studentId = matchedUser?.id || "unassigned";
       const studentName = matchedUser?.name || title.split(/[\-\–—:]/)[0].trim() || "Nieprzypisany";
       const newLessonRef = adminDb.collection("lessonRecords").doc();
-      await newLessonRef.set({
+      const lessonPayload = {
         studentId,
         studentIds: matchedUser?.isGroup && matchedUser.memberIds?.length ? matchedUser.memberIds : [studentId],
         studentName,
         date: dateStr,
         topic: title,
         rawTranscript: transcriptText,
+        liveTranscript: transcriptText,
         notionPageId: page.id,
         source: "notion",
         isGroupLesson: Boolean(matchedUser?.isGroup),
@@ -3388,7 +3389,15 @@ RESEND_API_KEY=${cleanKey}
         pendingReason: matchedUser ? "Zaimportowano now\u0105 transkrypcj\u0119 z Notion" : "Wymaga przypisania kursanta i zatwierdzenia",
         createdAt: (/* @__PURE__ */ new Date()).toISOString(),
         updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-      });
+      };
+      await newLessonRef.set(lessonPayload);
+      if (matchedUser?.id && matchedUser.id !== "unassigned") {
+        try {
+          await adminDb.collection("users").doc(studentId).collection("lessonRecords").doc(newLessonRef.id).set(lessonPayload, { merge: true });
+        } catch (subErr) {
+          console.warn(`[Notion Sync] Nie uda\u0142o si\u0119 zapisa\u0107 do users/${studentId}/lessonRecords:`, subErr);
+        }
+      }
       processedItems.push({
         id: page.id,
         title,
