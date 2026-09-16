@@ -756,3 +756,91 @@ export async function adoptScratchpadForStudent(
     contentText: stripHtmlToText(mergedHtml),
   };
 }
+
+/**
+ * Aktualizacja współrzędnych lasera w czasie rzeczywistym.
+ * Zapisywana w Firestore oraz stanie lokalnym z bezpieczną obsługą błędów.
+ */
+export async function updateScratchpadLaser(
+  id: string,
+  laser: { xPercent?: number; yPercent?: number; active: boolean; user?: string } | null
+): Promise<void> {
+  if (!id) return;
+  const local = getLocalScratchpad(id);
+  if (local) {
+    const updated = {
+      ...local,
+      laserPointer: laser ? { ...laser, updatedAt: Date.now() } : undefined,
+    };
+    saveLocalScratchpad(updated);
+  }
+
+  try {
+    const ref = scratchpadDocRef(id);
+    await updateDoc(ref, {
+      laserPointer: laser ? { ...laser, updatedAt: Date.now() } : null,
+    });
+  } catch (err) {
+    // Nie wywalaj UI przy throttling/błędzie sieci
+    // console.debug('[Scratchpad Laser Sync error]:', err);
+  }
+}
+
+/**
+ * Aktualizacja stanu aktywnej prezentacji w notatniku.
+ */
+export async function updateScratchpadPresentation(
+  id: string,
+  presentation: {
+    active: boolean;
+    title: string;
+    type: 'image_prompt' | 'slide' | 'scenario_item';
+    imageUrl?: string;
+    prompt?: string;
+    hints?: string[];
+    question?: string;
+    slideIndex?: number;
+    totalSlides?: number;
+  } | null
+): Promise<void> {
+  if (!id) return;
+  const local = getLocalScratchpad(id);
+  if (local) {
+    const updated = {
+      ...local,
+      presentationState: presentation || undefined,
+    };
+    saveLocalScratchpad(updated);
+  }
+
+  try {
+    const ref = scratchpadDocRef(id);
+    await updateDoc(ref, {
+      presentationState: presentation || null,
+    });
+  } catch (err) {
+    console.warn('[Scratchpad Presentation Sync error]:', err);
+  }
+}
+
+/**
+ * Zapis orientacji strony A4 (portrait / landscape).
+ */
+export async function updateScratchpadOrientation(
+  id: string,
+  orientation: 'portrait' | 'landscape'
+): Promise<void> {
+  if (!id) return;
+  const local = getLocalScratchpad(id);
+  if (local) {
+    saveLocalScratchpad({ ...local, pageOrientation: orientation });
+  }
+
+  try {
+    const ref = scratchpadDocRef(id);
+    await updateDoc(ref, { pageOrientation: orientation });
+  } catch (err) {
+    console.warn('[Scratchpad Orientation Sync error]:', err);
+  }
+}
+

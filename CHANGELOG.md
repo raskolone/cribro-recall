@@ -203,6 +203,45 @@ Firestore obok lekcji.
 
 ## 4. Szczegółowy Rejestr Zmian z Ostatnich 24 Godzin
 
+### 🚀 Filtrowanie spotkań spoza lekcji w Notion, Jednolity CRM i Historia pod kafelkami ze skalowaniem i strzałkami "Pokaż więcej", Wskaźnik Laserowy na żywo, Orientacja A4, Spis Treści H1/H2 i Prototyp Prezentacji w Notatniku (2026-09-16, runda 13)
+
+**1. Inteligentne filtrowanie i popup dla transkrypcji Notion (`server.ts`, `NotionUnmatchedTranscriptsModal.tsx`, `TeacherLessonHistoryView.tsx`):**
+- **Weryfikacja spotkań lekcyjnych**: W trakcie zaczytywania transkrypcji ze spotkań z Notion, system analizuje tytuł, uczestników i treść. Jeśli spotkanie nie dotyczy lekcji języka angielskiego ani nie pasuje do żadnego kursanta w bazie CRM, jest bezpiecznie ignorowane (nie tworzy niepotrzebnych, pustych lekcji w stagingu).
+- **Wyskakujący raport (Pop-up)**: Po synchronizacji lektor otrzymuje szczegółowy modal `NotionUnmatchedTranscriptsModal` z listą zignorowanych spotkań (data, tytuł, fragment transkrypcji, powód odrzucenia) oraz liczbą zaimportowanych właściwych lekcji.
+
+**2. Jednolity widok Kursantów i Historii lekcji pod kafelkami ze skalowaniem ekranu (`AdminPanel.tsx`):**
+- **Identyczne zachowanie kafelków**: Kliknięcie w kafelek **"Kursanci"** lub **"Historia lekcji"** natychmiast rozwija właściwy moduł bezpośrednio pod kafelkami w tym samym, spójnym kontenerze.
+- **Odrębne, responsywne skalowanie kontenera**: Zwiększono szerokość dolnego modułu na większych ekranach (`max-w-[1640px]`), zachowując estetyczne marginesy boczne — tabela historii lekcji i baza CRM pokazują więcej kolumn bez ucinania szerokości do małego kontenera.
+
+**3. Limity rekordów i strzałki "Pokaż więcej / Zwiń" (`TeacherLessonHistoryView.tsx`, `StandaloneStudentDatabaseScreen.tsx`):**
+- **Historia lekcji**: Domyślnie wyświetla 6 najnowszych rekordów. Na dole tabeli umieszczono estetyczny przycisk ze strzałką Chevron: *„Pokaż wszystkie (X lekcji)”* / *„Zwiń do 6 ostatnich”*.
+- **Baza kursantów**: Domyślny limit wierszy dopasowany do ekranu (10 kursantów) z dolnym przyciskiem ze strzałką: *„Pokaż wszystkich kursantów (X)”* / *„Zwiń listę”*.
+
+**4. Notatnik / Scratchpad — Spis treści H1/H2, Nagłówki zwijane i szablony lekcji (`ScratchpadEditor.tsx`, `types.ts`, `services/scratchpadService.ts`):**
+- **Czyste nagłówki standardowe**: Usunięto automatycznie dodawane strzałki zwijania przy zwykłych nagłówkach w dokumencie.
+- **Opcjonalne nagłówki zwijane**: W menu Styl dodano dedykowane opcje: *Zwijany Nagłówek 1* oraz *Zwijany Nagłówek 2* — tylko wtedy nagłówek zyskuje strzałkę zwijania.
+- **Spis treści (TOC)**:
+  - **Nagłówek 1 (H1)** — nagłówek nadrzędny (lekcja), który w spisie treści posiada strzałkę do zwijania/rozwijania swoich podrozdziałów H2.
+  - **Nagłówek 2 (H2)** — rozdziały w lekcji, wyświetlane z wcięciem pod H1 w spisie treści.
+  - **Nagłówek 3 (H3)** — sekcje szczegółowe, celowo **nie** pojawiają się w spisie treści.
+- **Szablony lekcji (Templates)**: Dedykowany przycisk *„Szablony”* w pasku narzędzi lektora z możliwością wstawiania szablonu, tworzenia nowych, edycji oraz ustawiania szablonu domyślnego (`ScratchpadTemplateManagerModal`).
+
+**5. Zsynchronizowany na żywo Wskaźnik Laserowy (`ScratchpadEditor.tsx`, `index.css`):**
+- **Synchronizacja Real-time**: Włączenie wskaźnika laserowego przez lektora transmituje współrzędne kursora w obrębie kartki A4 (z throttlingiem ~50ms).
+- **Widok kursanta**: Kursant widzi płynnie poruszający się, świecący czerwony punkt laserowy z pulsującym pierścieniem i etykietą *„🔴 Lektor”* dokładnie w miejscu wskazywanym przez nauczyciela.
+
+**6. Przesuwanie i zmiana rozmiaru obrazów oraz screenshotów (`ScratchpadEditor.tsx`):**
+- **Wklejanie i wgrywanie**: Błyskawiczne wklejanie screenshotów (Ctrl+V) oraz opcja wyboru pliku z dysku w menu Wstaw.
+- **Pływający pasek akcji**: Po kliknięciu w obraz pojawia się pasek z opcjami: *25%*, *50%*, *75%*, *100%*, przyciski *„Wyżej”* / *„Niżej”* (przesuwające obraz między blokami/sekcjami) oraz *„Usuń”*. Obrazy posiadają również atrybut `draggable="true"`.
+
+**7. Orientacja arkusza A4 — Pionowa i Pozioma (`ScratchpadEditor.tsx`, `index.css`):**
+- **Przełącznik orientacji**: Przycisk w nagłówku *„A4 Pion / A4 Poziom”* przełącza proporcje kartki (794x1123px vs 1123x794px), przelicza podział stron i zapisuje preferencję w dokumencie.
+
+**8. Prototyp Trybu Prezentacji Live w Notatniku (`ScratchpadPresentationOverlay.tsx`, `ScratchpadLivePresentationModal.tsx`):**
+- **Przycisk „Prezentacja” w notatniku**: Lektor może w dowolnym momencie uruchomić tryb prezentacji, wybierając gotowe ćwiczenie (np. *Opisanie obrazka / Describe the picture*, *Pytanie dyskusyjne*, *Wyzwanie językowe*) lub wpisując własny materiał/zdjęcie.
+- **Ekran kursanta**: Zamiast notatnika na ekranie kursanta pojawia się pełnoekranowy, estetyczny slajd z pytaniem, zadaniem i opcjonalnymi podpowiedziami (Hints).
+- **Zakończenie i powrót**: Lektor jednym kliknięciem zamyka prezentację i natychmiast przywraca widok notatnika.
+
 ### 🚀 Refaktoryzacja Modułów Lektora, Integracja Transkrypcji z Notion i Zaawansowany Silnik Analizy Lekcji wg Nowego Standardu (2026-09-16, runda 12)
 
 **1. Refaktoryzacja Głównych Kafelków Panelu Lektora (`AdminPanel.tsx`):**

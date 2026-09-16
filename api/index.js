@@ -3254,7 +3254,7 @@ RESEND_API_KEY=${cleanKey}
     const token = cfg.token;
     const meetingNotesDbId = cfg.meetingNotesDbId;
     if (!token || !meetingNotesDbId || !adminApp) {
-      return { found: 0, processed: 0, items: [], lastFetchTime: (/* @__PURE__ */ new Date()).toISOString() };
+      return { found: 0, processed: 0, importedCount: 0, items: [], unmatchedTranscripts: [], lastFetchTime: (/* @__PURE__ */ new Date()).toISOString() };
     }
     const NOTION_API = "https://api.notion.com/v1";
     const NOTION_VERSION = "2022-06-28";
@@ -3288,6 +3288,7 @@ RESEND_API_KEY=${cleanKey}
     const queryData = await queryRes.json();
     const pages = queryData.results || [];
     const processedItems = [];
+    const unmatchedTranscripts = [];
     for (const page of pages) {
       const props = page.properties || {};
       let title = "";
@@ -3369,12 +3370,29 @@ RESEND_API_KEY=${cleanKey}
           }
         }
       }
-      const studentId = matchedUser?.id || "unassigned";
-      const studentName = matchedUser?.name || title.split(/[\-\–—:]/)[0].trim() || "Nieprzypisany";
+      if (!matchedUser) {
+        unmatchedTranscripts.push({
+          id: page.id,
+          title,
+          date: dateStr,
+          snippet: transcriptText.slice(0, 200).replace(/\s+/g, " ").trim(),
+          reason: "Nie dopasowano do \u017Cadnego kursanta ani grupy w bazie (spotkanie poza zaj\u0119ciami)"
+        });
+        processedItems.push({
+          id: page.id,
+          title,
+          studentName: "Brak dopasowania (zignorowano)",
+          date: dateStr,
+          status: "zignorowano (brak powi\u0105zania z kursantem)"
+        });
+        continue;
+      }
+      const studentId = matchedUser.id;
+      const studentName = matchedUser.name || title.split(/[\-\–—:]/)[0].trim() || "Kursant";
       const newLessonRef = adminDb.collection("lessonRecords").doc();
       const lessonPayload = {
         studentId,
-        studentIds: matchedUser?.isGroup && matchedUser.memberIds?.length ? matchedUser.memberIds : [studentId],
+        studentIds: matchedUser.isGroup && matchedUser.memberIds?.length ? matchedUser.memberIds : [studentId],
         studentName,
         date: dateStr,
         topic: title,
@@ -3382,39 +3400,39 @@ RESEND_API_KEY=${cleanKey}
         liveTranscript: transcriptText,
         notionPageId: page.id,
         source: "notion",
-        isGroupLesson: Boolean(matchedUser?.isGroup),
+        isGroupLesson: Boolean(matchedUser.isGroup),
         sessionStatus: "draft",
         status: "pending",
         isPendingConfirmation: true,
-        pendingReason: matchedUser ? "Zaimportowano now\u0105 transkrypcj\u0119 z Notion" : "Wymaga przypisania kursanta i zatwierdzenia",
+        pendingReason: "Zaimportowano now\u0105 transkrypcj\u0119 z Notion",
         createdAt: (/* @__PURE__ */ new Date()).toISOString(),
         updatedAt: (/* @__PURE__ */ new Date()).toISOString()
       };
       await newLessonRef.set(lessonPayload);
-      if (matchedUser?.id && matchedUser.id !== "unassigned") {
-        try {
-          await adminDb.collection("users").doc(studentId).collection("lessonRecords").doc(newLessonRef.id).set(lessonPayload, { merge: true });
-        } catch (subErr) {
-          console.warn(`[Notion Sync] Nie uda\u0142o si\u0119 zapisa\u0107 do users/${studentId}/lessonRecords:`, subErr);
-        }
+      try {
+        await adminDb.collection("users").doc(studentId).collection("lessonRecords").doc(newLessonRef.id).set(lessonPayload, { merge: true });
+      } catch (subErr) {
+        console.warn(`[Notion Sync] Nie uda\u0142o si\u0119 zapisa\u0107 do users/${studentId}/lessonRecords:`, subErr);
       }
       processedItems.push({
         id: page.id,
         title,
         studentName,
         date: dateStr,
-        status: matchedUser ? "zaimportowano" : "zaimportowano (wymaga przypisania)"
+        status: "zaimportowano"
       });
     }
     const nowIso = (/* @__PURE__ */ new Date()).toISOString();
     await adminDb.collection("system").doc("notion").set({
       lastFetchTime: nowIso,
-      lastFetchStatus: `Przetworzono ${processedItems.length} stron z Notion`
+      lastFetchStatus: `Przetworzono ${processedItems.length} stron z Notion (${unmatchedTranscripts.length} zignorowano)`
     }, { merge: true });
     return {
       found: pages.length,
       processed: processedItems.length,
+      importedCount: processedItems.filter((p) => p.status === "zaimportowano").length,
       items: processedItems,
+      unmatchedTranscripts,
       lastFetchTime: nowIso
     };
   }

@@ -38,9 +38,12 @@ import {
   Trash2,
   Database,
   Target,
-  Activity
+  Activity,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
+import { NotionUnmatchedTranscriptsModal, UnmatchedTranscriptItem } from './NotionUnmatchedTranscriptsModal';
 
 interface TeacherLessonHistoryViewProps {
   lessons: LessonRecord[];
@@ -79,6 +82,10 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
   const [isAnswerKeyOpen, setIsAnswerKeyOpen] = useState(false);
   const [isCheckingNotion, setIsCheckingNotion] = useState(false);
   const [notionCheckMsg, setNotionCheckMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [unmatchedList, setUnmatchedList] = useState<UnmatchedTranscriptItem[]>([]);
+  const [isUnmatchedModalOpen, setIsUnmatchedModalOpen] = useState(false);
+  const [lastImportedCount, setLastImportedCount] = useState(0);
 
   const handleCheckNotion = async () => {
     setIsCheckingNotion(true);
@@ -96,9 +103,18 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
       if (!res.ok) {
         throw new Error(data.error || 'Nie udało się sprawdzić transkrypcji w Notion');
       }
+      
+      const imported = Number(data.importedCount || data.processed || 0);
+      setLastImportedCount(imported);
+      
+      if (data.unmatchedTranscripts && data.unmatchedTranscripts.length > 0) {
+        setUnmatchedList(data.unmatchedTranscripts);
+        setIsUnmatchedModalOpen(true);
+      }
+
       setNotionCheckMsg({
         type: 'success',
-        text: `Sprawdzono Notion: znaleziono ${data.found || 0} stron, przetworzono/zaimportowano ${data.processed || 0}`,
+        text: `Sprawdzono Notion: znaleziono ${data.found || 0} stron, zaimportowano ${imported}${data.unmatchedTranscripts?.length ? ` (pominięto ${data.unmatchedTranscripts.length} niedotyczących lekcji)` : ''}`,
       });
       if (onRefresh) onRefresh();
       setTimeout(() => setNotionCheckMsg(null), 6000);
@@ -490,7 +506,7 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
                   </td>
                 </tr>
               ) : (
-                filteredLessons.map((lesson) => {
+                (isExpanded ? filteredLessons : filteredLessons.slice(0, 6)).map((lesson) => {
                   const student = getStudentForLesson(lesson);
                   const isGrp = Boolean(student?.isGroup || student?.lessonType === 'Group');
                   const sName =
@@ -724,6 +740,28 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
             </tbody>
           </table>
         </div>
+
+        {/* Pasek rozwijania / limit 6 ostatnich lekcji */}
+        {filteredLessons.length > 6 && (
+          <div className="p-3.5 border-t border-line-strong/60 bg-base-100/50 flex items-center justify-center">
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="px-4 py-2 rounded-xl bg-line-soft hover:bg-line-soft/80 border border-line-strong text-xs font-bold text-content-muted hover:text-text-hi transition-all flex items-center gap-2 cursor-pointer shadow-sm hover:border-primary/40"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp size={15} className="text-primary" />
+                  <span>Zwiń listę do 6 ostatnich lekcji</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown size={15} className="text-primary" />
+                  <span>Pokaż wszystkie lekcje (pokazano 6 z {filteredLessons.length})</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Slide-over Drawer / Modal Podglądu 4 Bloków Lekcji */}
@@ -1072,6 +1110,14 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
           </div>
         </div>
       )}
+
+      {/* Modal powiadomienia o zignorowanych spotkaniach z Notion */}
+      <NotionUnmatchedTranscriptsModal
+        isOpen={isUnmatchedModalOpen}
+        onClose={() => setIsUnmatchedModalOpen(false)}
+        unmatched={unmatchedList}
+        importedCount={lastImportedCount}
+      />
     </div>
   );
 };

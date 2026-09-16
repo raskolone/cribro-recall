@@ -994,6 +994,28 @@ export interface ScratchpadDocument {
    * pusty.
    */
   cloudBlockedReason?: string;
+  /** Orientacja strony A4 (pionowa domyślnie, pozioma na żądanie). */
+  pageOrientation?: 'portrait' | 'landscape';
+  /** Wskaźnik laserowy synchronizowany w czasie rzeczywistym między lektorem a kursantem. */
+  laserPointer?: {
+    xPercent?: number;
+    yPercent?: number;
+    active: boolean;
+    user?: string;
+    updatedAt?: number;
+  };
+  /** Stan aktywnego slajdu/ćwiczenia prezentacji wyświetlanego kursantowi zamiast notatnika. */
+  presentationState?: {
+    active: boolean;
+    title: string;
+    type: 'image_prompt' | 'slide' | 'scenario_item';
+    imageUrl?: string;
+    prompt?: string;
+    hints?: string[];
+    question?: string;
+    slideIndex?: number;
+    totalSlides?: number;
+  };
   /** Do pięciu ostatnich migawek treści. Najnowsza pierwsza. */
   revisions?: ScratchpadRevision[];
 }

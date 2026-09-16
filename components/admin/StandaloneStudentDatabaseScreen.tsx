@@ -47,7 +47,9 @@ import {
   CheckSquare,
   Square,
   MinusSquare,
-  AlertTriangle
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 
@@ -71,6 +73,8 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
   const [activeTab, setActiveTab] = useState<TabFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [pageSize, setPageSize] = useState<number | 'all'>(10);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Modals state
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
@@ -692,7 +696,7 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((student) => {
+                (isExpanded || pageSize === 'all' ? filteredUsers : filteredUsers.slice(0, typeof pageSize === 'number' ? pageSize : 10)).map((student) => {
                   const sId = student.id || student.username;
                   const sName =
                     student.displayName ||
@@ -989,6 +993,28 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
             </tbody>
           </table>
         </div>
+
+        {/* Pasek rozwijania / limit kursantów */}
+        {filteredUsers.length > (typeof pageSize === 'number' ? pageSize : 10) && (
+          <div className="p-3.5 border-t border-line-strong/60 bg-base-100/50 flex items-center justify-center">
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="px-4 py-2 rounded-xl bg-line-soft hover:bg-line-soft/80 border border-line-strong text-xs font-bold text-content-muted hover:text-text-hi transition-all flex items-center gap-2 cursor-pointer shadow-sm hover:border-primary/40"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp size={15} className="text-primary" />
+                  <span>Zwiń listę kursantów</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown size={15} className="text-primary" />
+                  <span>Pokaż wszystkich kursantów (pokazano {typeof pageSize === 'number' ? pageSize : 10} z {filteredUsers.length})</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Modal: Nowa / Edytuj grupę */}

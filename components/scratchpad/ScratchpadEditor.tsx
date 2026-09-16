@@ -43,6 +43,7 @@ import {
   CheckSquare,
   ListTree,
   ChevronRight,
+  ChevronDown,
   ChevronsDownUp,
   Sun,
   Moon,
@@ -55,15 +56,19 @@ import {
   Loader2,
   Copy,
   PlusCircle,
-  MessageSquare,
-  Lightbulb,
-  Wand2,
+  MoveUp,
+  MoveDown,
+  Airplay,
+  Compass,
 } from 'lucide-react';
 import { ScratchpadDocument, ScratchpadTemplate } from '../../types';
 import {
   buildScratchpadUrl,
   scratchpadContentBytes,
   SCRATCHPAD_MAX_CONTENT_BYTES,
+  updateScratchpadLaser,
+  updateScratchpadPresentation,
+  updateScratchpadOrientation,
 } from '../../services/scratchpadService';
 import {
   imageFromClipboard,
@@ -81,6 +86,8 @@ import MenuDropdown, { MenuChevron } from '../ui/MenuDropdown';
 import CoachMarks from '../ui/CoachMarks';
 import { buildScratchpadCoachSteps } from './scratchpadCoachSteps';
 import ScratchpadTemplateManagerModal from './ScratchpadTemplateManagerModal';
+import { ScratchpadPresentationOverlay, PresentationState } from './ScratchpadPresentationOverlay';
+import { ScratchpadLivePresentationModal } from './ScratchpadLivePresentationModal';
 import { buildLessonTemplate, LESSON_SECTIONS } from '../../utils/lessonTemplate';
 import { NOTEBOOK_COLORS, NOTEBOOK_INK, NOTEBOOK_SWATCHES } from '../../utils/notebookPalette';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
@@ -88,30 +95,24 @@ import { generateTextWithUnifiedFallback } from '../../services/geminiService';
 
 /**
  * Wysokość strony A4 przy 96 dpi (297 mm) minus margines dolny, w pikselach.
- * Kartka jest jednym ciągłym polem edycji — kreski podziału rysuje warstwa nad
- * nią, co `PAGE_HEIGHT_PX` pikseli. Wartość jest przybliżeniem: dokument i tak
- * nie jest drukowany z tego widoku, a chodzi o poczucie długości („to już
- * trzecia strona"), nie o zgodność co do milimetra.
  */
 const PAGE_HEIGHT_PX = 1123;
 
 /**
- * Szerokość arkusza A4 przy 96 dpi (210 mm). Kartka ma tyle DOKŁADNIE, a nie
- * „mniej więcej tyle, co kolumna tekstu": dokument, który ma się drukować
- * i eksportować do PDF-a, musi mieć proporcje kartki już na ekranie —
- * inaczej lektor układa akapity w innej szerokości, niż potem wyjdą.
+ * Szerokość arkusza A4 przy 96 dpi (210 mm).
  */
 const PAGE_WIDTH_PX = 794;
 
 /** Margines dokumentu — 2 cm, czyli standard Worda i Google Docs. */
 const PAGE_MARGIN_PX = 76;
 
-/** Pozycja w spisie treści — jeden nagłówek kartki. */
+/** Pozycja w spisie treści — H1 (nadrzędny/lekcja) lub H2 (rozdział/sekcja). H3 nie trafia do spisu. */
 interface TocEntry {
   id: string;
-  level: 1 | 2 | 3;
+  level: 1 | 2;
   text: string;
   collapsed: boolean;
+  parentId?: string;
 }
 
 /** Przycisk paska formatowania — jeden kształt dla wszystkich narzędzi edytora. */
@@ -126,8 +127,6 @@ const FormatButton: React.FC<{
     title={title}
     aria-label={title}
     data-coach={coachId}
-    // Bez tego kliknięcie zabiera fokus polu edycji i `execCommand` traci
-    // zaznaczenie, na którym ma zadziałać.
     onMouseDown={event => event.preventDefault()}
     onClick={onClick}
     className="h-8 w-8 rounded-lg flex items-center justify-center text-text-2 hover:text-content hover:bg-white/[0.08] transition-colors cursor-pointer"
@@ -181,9 +180,11 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const isReadOnly = explicitReadOnly || (!isTeacher && !docData.allowStudentEdit);
 
   const editorRef = useRef<HTMLDivElement>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
   const isUserTypingRef = useRef(false);
   const typingResetTimeoutRef = useRef<any>(null);
   const saveTimeoutRef = useRef<any>(null);
+  const lastLaserSendRef = useRef<number>(0);
 
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'synced' | 'local_only'>('saved');
   const [copiedLink, setCopiedLink] = useState(false);
@@ -197,18 +198,23 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const [isCoachOpen, setIsCoachOpen] = useState(false);
   /** Komunikat po wysłaniu do Google Docs — znika sam po kilku sekundach. */
   const [googleDocsHint, setGoogleDocsHint] = useState<'copied' | 'manual' | null>(null);
-  /** Wskaźnik laserowy — światełko przy kursorze do prowadzenia wzroku kursanta. */
+  /** Wskaźnik laserowy — światełko przy kursorze synchronizowane w czasie rzeczywistym. */
   const [isLaserOn, setIsLaserOn] = useState(false);
-  /** Obraz zaznaczony kliknięciem — do zmiany rozmiaru. */
+  /** Orientacja arkusza A4 — pionowa (portrait) lub pozioma (landscape). */
+  const [pageOrientation, setPageOrientation] = useState<'portrait' | 'landscape'>(
+    (docData.pageOrientation as 'portrait' | 'landscape') || 'portrait'
+  );
+
+  /** Obraz zaznaczony kliknięciem — do zmiany rozmiaru lub przesuwania. */
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
   /** Komunikat o wklejonym obrazie (za duży, nie wszedł). */
   const [imageNotice, setImageNotice] = useState<string | null>(null);
   /** Ile zajmuje dokument — licznik w stopce, ostrzeżenie przed limitem. */
   const [contentBytes, setContentBytes] = useState(0);
 
-  /* Spis treści, podział na strony i motyw kartki — patrz komentarze przy
-     `rebuildToc`, `pageRules` i przełączniku motywu w nagłówku. */
+  /* Spis treści, podział na strony i motyw kartki */
   const [toc, setToc] = useState<TocEntry[]>([]);
+  const [collapsedTocLessons, setCollapsedTocLessons] = useState<Record<string, boolean>>({});
   const [isTocOpen, setIsTocOpen] = useState(true);
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState(1);
@@ -223,12 +229,24 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const paperWrapRef = useRef<HTMLDivElement>(null);
   const structureTimeoutRef = useRef<any>(null);
   const measurePagesRef = useRef<(() => void) | null>(null);
-  /** Podpis ostatnio zbudowanego spisu — patrz `rebuildToc`. */
   const tocSignatureRef = useRef<string>('');
 
   const [templates, setTemplates] = useState<ScratchpadTemplate[]>([]);
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
   const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
+  const [isLivePresentationModalOpen, setIsLivePresentationModalOpen] = useState(false);
+
+  // Synchronizacja orientacji z chmury
+  useEffect(() => {
+    if (docData.pageOrientation && docData.pageOrientation !== pageOrientation) {
+      setPageOrientation(docData.pageOrientation as 'portrait' | 'landscape');
+    }
+  }, [docData.pageOrientation]);
+
+  // Wymiary kartki w zależności od orientacji
+  const isLandscape = pageOrientation === 'landscape';
+  const activePageWidth = isLandscape ? PAGE_HEIGHT_PX : PAGE_WIDTH_PX;
+  const activePageHeight = isLandscape ? PAGE_WIDTH_PX : PAGE_HEIGHT_PX;
 
   // ── Asystent AI w dokumencie ──
   interface ScratchpadChatMessage {
@@ -304,17 +322,11 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     [isReadOnly, onSaveContent]
   );
 
-
   /* ═══════════════════════════════════════════════════════════════════
      SPIS TREŚCI, NAGŁÓWKI ZWIJANE I PODZIAŁ NA STRONY
-
-     Wszystkie trzy czytają z JEDNEGO źródła — z HTML-a leżącego w polu
-     edycji. Notatnik nie ma modelu dokumentu (treść to `innerHTML`
-     zapisywany w Firestore), więc dokładanie równoległej struktury
-     w Reakcie znaczyłoby utrzymywanie dwóch prawd o tym samym tekście.
-     Zamiast tego po każdej zmianie przechodzimy po nagłówkach i budujemy
-     spis od zera; to setki elementów, nie tysiące, więc koszt jest niższy
-     niż koszt rozjechania się dwóch struktur.
+     - Nagłówek 1 (H1) = nadrzędny (lekcja), w spisie treści zwija swoje H2
+     - Nagłówek 2 (H2) = rozdziały w lekcji
+     - Nagłówek 3 (H3) = sekcja szczegółowa, NIE pojawia się w spisie treści
      ═══════════════════════════════════════════════════════════════════ */
 
   /** Nadaje nagłówkowi trwały identyfikator, jeśli jeszcze go nie ma. */
@@ -329,12 +341,16 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const rebuildToc = useCallback(() => {
     const root = editorRef.current;
     if (!root) return;
-    const headings = Array.from(root.querySelectorAll('h1, h2, h3')) as HTMLElement[];
+    // Spis treści budujemy TYLKO z H1 i H2 — H3 celowo pomijamy!
+    const headings = Array.from(root.querySelectorAll('h1, h2')) as HTMLElement[];
+    let currentH1Id: string | undefined = undefined;
+
     const entries: TocEntry[] = headings.map((heading, index) => {
       const id = ensureHeadingId(heading, index);
-      const level = Number(heading.tagName.charAt(1)) as 1 | 2 | 3;
-      // Strzałka zwijania jest dzieckiem nagłówka, więc `textContent` wciągnąłby
-      // jej znak do tytułu rozdziału.
+      const level = Number(heading.tagName.charAt(1)) as 1 | 2;
+      if (level === 1) {
+        currentH1Id = id;
+      }
       const clone = heading.cloneNode(true) as HTMLElement;
       clone.querySelectorAll('.pad-toggle').forEach(el => el.remove());
       return {
@@ -342,30 +358,16 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         level,
         text: (clone.textContent || '').trim() || 'Bez tytułu',
         collapsed: heading.getAttribute('data-collapsed') === '1',
+        parentId: level === 2 ? currentH1Id : undefined,
       };
     });
 
-    /* Bez tego porównania spis przebudowywał się przy KAŻDYM naciśnięciu
-       klawisza: `setToc` z nową tablicą to nowa referencja, czyli przerysowanie
-       całego edytora — przy dłuższym dokumencie widać to jako zacinanie się
-       przewijania w trakcie pisania. Struktura dokumentu zmienia się raz na
-       kilkadziesiąt znaków, więc porównanie podpisu odcina 99% tych przebudów. */
-    const signature = entries.map(e => `${e.level}|${e.id}|${e.text}|${e.collapsed}`).join('\n');
+    const signature = entries.map(e => `${e.level}|${e.id}|${e.text}|${e.collapsed}|${e.parentId}`).join('\n');
     if (signature === tocSignatureRef.current) return;
     tocSignatureRef.current = signature;
     setToc(entries);
   }, []);
 
-  /**
-   * Odświeżenie spisu i liczby stron — ZAWSZE przez ten uchwyt, nigdy wprost
-   * z `handleInput`.
-   *
-   * Obie operacje chodzą po DOM-ie kartki. Wołane przy każdym znaku robiły
-   * z pisania serię pełnych przerysowań edytora, a to widać wprost: kursor
-   * zostaje w tyle za klawiaturą, a przewijanie szarpie. 250 ms to próg,
-   * poniżej którego człowiek i tak nie zauważy, że spis doszedł chwilę po
-   * literze — a powyżej którego zaczyna się zastanawiać, czy doszedł w ogóle.
-   */
   const scheduleStructureRefresh = useCallback(() => {
     if (structureTimeoutRef.current) clearTimeout(structureTimeoutRef.current);
     structureTimeoutRef.current = setTimeout(() => {
@@ -374,12 +376,12 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     }, 250);
   }, [rebuildToc]);
 
-  /** Liczba stron = wysokość kartki podzielona przez wysokość A4. */
+  /** Liczba stron = wysokość kartki podzielona przez wysokość aktualnej orientacji A4. */
   const measurePages = useCallback(() => {
     const paper = editorRef.current;
     if (!paper) return;
-    setPageCount(Math.max(1, Math.ceil(paper.offsetHeight / PAGE_HEIGHT_PX)));
-  }, []);
+    setPageCount(Math.max(1, Math.ceil(paper.offsetHeight / activePageHeight)));
+  }, [activePageHeight]);
 
   measurePagesRef.current = measurePages;
 
@@ -387,14 +389,9 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     if (structureTimeoutRef.current) clearTimeout(structureTimeoutRef.current);
   }, []);
 
-  // Kartka rośnie przy pisaniu, a nie tylko przy zapisie — `ResizeObserver`
-  // łapie też wklejenie, zwinięcie rozdziału i zmianę szerokości okna.
   useEffect(() => {
     const paper = editorRef.current;
     if (!paper || typeof ResizeObserver === 'undefined') return;
-    // Obserwator odpala się przy każdym wierszu, który zmienia wysokość
-    // kartki — czyli w trakcie pisania stale. `requestAnimationFrame` scala
-    // te wywołania do jednego na klatkę.
     let frame = 0;
     const observer = new ResizeObserver(() => {
       if (frame) return;
@@ -411,10 +408,9 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   }, [measurePages]);
 
   /**
-   * Zwinięcie rozdziału: chowamy wszystko od nagłówka do następnego nagłówka
-   * tego samego lub wyższego stopnia. Stan zapisuje się w atrybutach i w stylu
-   * elementów, czyli w samym HTML-u dokumentu — dzięki temu przeżywa zapis
-   * i widzi go druga osoba po drugiej stronie linku.
+   * Zwinięcie rozdziału w treści dokumentu:
+   * H1 zwija wszystko do następnego H1.
+   * H2 zwija wszystko do następnego H2 lub H1.
    */
   const setSectionCollapsed = useCallback(
     (heading: HTMLElement, collapsed: boolean) => {
@@ -431,7 +427,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     []
   );
 
-  /** Kliknięcie strzałki w nagłówku — delegacja z całej kartki. */
+  /** Kliknięcie w kartkę — zaznaczanie obrazu i strzałki zwijania */
   const handlePaperClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
 
@@ -460,14 +456,9 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   };
 
   /**
-   * Zamiana bloku z kursorem w nagłówek zwijany (i z powrotem).
-   *
-   * Nie ma tu `execCommand`: przełącznik działa na nagłówku, w którym stoi
-   * kursor, i jedyne, co zmienia, to obecność strzałki. Jeżeli kursor stoi
-   * w zwykłym akapicie, blok najpierw staje się nagłówkiem drugiego stopnia —
-   * „zwijany akapit" nie znaczyłby nic.
+   * Utworzenie nagłówka zwijanego (H1 lub H2) z wyraźną strzałką zwijania.
    */
-  const handleToggleHeading = () => {
+  const handleToggleHeading = (tag: 'h1' | 'h2') => {
     if (isReadOnly || !editorRef.current) return;
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
@@ -476,8 +467,8 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     if (node && node.nodeType === 3) node = node.parentElement;
     let heading = node?.closest?.('h1, h2, h3') as HTMLElement | null;
 
-    if (!heading) {
-      window.document.execCommand('formatBlock', false, '<h2>');
+    if (!heading || heading.tagName.toLowerCase() !== tag) {
+      window.document.execCommand('formatBlock', false, `<${tag}>`);
       let refreshed = window.getSelection()?.getRangeAt(0).startContainer as HTMLElement | null;
       if (refreshed && refreshed.nodeType === 3) refreshed = refreshed.parentElement;
       heading = refreshed?.closest?.('h1, h2, h3') as HTMLElement | null;
@@ -503,7 +494,27 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     handleInput();
   };
 
-  /** Zwinięcie albo rozwinięcie wszystkich rozdziałów zwijanych naraz. */
+  /** Standardowy format bloku (p, h1, h2, h3) bez automatycznych strzałek */
+  const handleFormatBlock = (tag: string) => {
+    if (isReadOnly) return;
+    window.document.execCommand('formatBlock', false, `<${tag}>`);
+    if (editorRef.current) {
+      // Usuń ewentualne pozostałości pad-toggle z poprzedniego stanu
+      const selection = window.getSelection();
+      let node = selection?.getRangeAt(0).startContainer as HTMLElement | null;
+      if (node && node.nodeType === 3) node = node.parentElement;
+      const block = node?.closest?.('h1, h2, h3, p, div') as HTMLElement | null;
+      if (block) {
+        block.querySelector('.pad-toggle')?.remove();
+        block.removeAttribute('data-toggle');
+        block.removeAttribute('data-collapsed');
+      }
+      editorRef.current.focus();
+      handleInput();
+    }
+  };
+
+  /** Zwinięcie albo rozwinięcie wszystkich rozdziałów zwijanych w dokumencie */
   const handleCollapseAll = (collapsed: boolean) => {
     const root = editorRef.current;
     if (!root) return;
@@ -515,7 +526,15 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     if (!isReadOnly) triggerDebouncedSave(root.innerHTML);
   };
 
-  /** Przejście do rozdziału ze spisu treści. */
+  /** Przełączenie zwinięcia lekcji (H1) w samym spisie treści */
+  const toggleTocLesson = (h1Id: string) => {
+    setCollapsedTocLessons(prev => ({
+      ...prev,
+      [h1Id]: !prev[h1Id],
+    }));
+  };
+
+  /** Przejście do nagłówka ze spisu treści */
   const handleJumpToHeading = (id: string) => {
     const heading = editorRef.current?.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
     if (!heading) return;
@@ -531,13 +550,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   useEffect(() => {
     try {
       window.localStorage.setItem('scratchpad_paper_theme', paperTheme);
-    } catch {
-      /* tryb prywatny przeglądarki — motyw zostaje na czas tej sesji */
-    }
-    /* Osobna strona notatnika przebiera CAŁE okno pod motyw kartki — jasna
-       kartka w ciemnym oknie to dwa różne programy na jednym ekranie. Zdarzenie
-       zamiast propsa, bo edytor jest używany w kilku miejscach i tylko jedno
-       z nich (`ScratchpadPage`) ma prawo ruszać motyw całej strony. */
+    } catch {}
     window.dispatchEvent(new CustomEvent('scratchpad-paper-theme', { detail: paperTheme }));
   }, [paperTheme]);
 
@@ -545,7 +558,6 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   useEffect(() => {
     if (!editorRef.current) return;
 
-    // Aktualizuj tylko, gdy użytkownik aktualnie sam nie pisze
     if (!isUserTypingRef.current) {
       if (editorRef.current.innerHTML !== docData.contentHtml) {
         editorRef.current.innerHTML = docData.contentHtml || '';
@@ -559,20 +571,11 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     }
   }, [docData.contentHtml, docData.version, rebuildToc, measurePages]);
 
-
   /* ═══════════════════════════════════════════════════════════════════
-     OBRAZY, WSKAŹNIK LASEROWY I ROZMIAR DOKUMENTU
+     OBRAZY, WSKAŹNIK LASEROWY I ORIENTACJA STRONY
      ═══════════════════════════════════════════════════════════════════ */
 
-  /**
-   * Wklejenie obrazu ze schowka — zrzut ekranu, wycinek, zdjęcie tablicy.
-   *
-   * Obraz jest zmniejszany i przekodowywany PRZED wstawieniem (patrz
-   * `utils/scratchpadImages.ts`), a potem sprawdzany wobec limitu dokumentu.
-   * Odmowa pada TU, zanim obraz wejdzie do treści: wklejony i dopiero potem
-   * odrzucony przy zapisie znaczyłby notatnik, który wygląda dobrze i cicho
-   * przestał się zapisywać.
-   */
+  /** Wklejenie obrazu ze schowka */
   const handlePaste = async (event: React.ClipboardEvent<HTMLDivElement>) => {
     if (isReadOnly) return;
     const file = imageFromClipboard(event.clipboardData);
@@ -584,7 +587,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     try {
       const paperWidth = editorRef.current
         ? Math.max(280, editorRef.current.clientWidth - PAGE_MARGIN_PX * 2)
-        : PAGE_WIDTH_PX - PAGE_MARGIN_PX * 2;
+        : activePageWidth - PAGE_MARGIN_PX * 2;
       const prepared = await prepareImageForScratchpad(file, paperWidth);
 
       const currentBytes = scratchpadContentBytes(editorRef.current?.innerHTML || '');
@@ -599,7 +602,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       window.document.execCommand(
         'insertHTML',
         false,
-        `<img class="pad-img" src="${prepared.dataUrl}" style="width:${prepared.width}px" alt="" />`
+        `<img class="pad-img" draggable="true" src="${prepared.dataUrl}" style="width:${prepared.width}px" alt="" />`
       );
       setImageNotice(null);
       handleInput();
@@ -609,21 +612,75 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     }
   };
 
-  /**
-   * Zmiana rozmiaru wklejonego obrazu.
-   *
-   * Uchwyt do ciągnięcia w `contentEditable` jest zawodny: przeglądarka
-   * przechwytuje przeciąganie obrazu jako przenoszenie go w tekście, więc
-   * połowa pociągnięć kończy się przeniesieniem obrazu zamiast zmianą
-   * rozmiaru. Dlatego zamiast uchwytu są cztery ustalone szerokości — to jest
-   * decyzja, którą podejmuje się raz na obraz i nie wymaga precyzji.
-   */
+  /** Wstawienie pliku graficznego z dysku */
+  const handleImageFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || isReadOnly) return;
+    setImageNotice('Wgrywam zdjęcie…');
+
+    try {
+      const paperWidth = editorRef.current
+        ? Math.max(280, editorRef.current.clientWidth - PAGE_MARGIN_PX * 2)
+        : activePageWidth - PAGE_MARGIN_PX * 2;
+      const prepared = await prepareImageForScratchpad(file, paperWidth);
+
+      const currentBytes = scratchpadContentBytes(editorRef.current?.innerHTML || '');
+      if (currentBytes + prepared.bytes > SCRATCHPAD_MAX_CONTENT_BYTES) {
+        setImageNotice('Plik obrazu przekracza dopuszczalny limit rozmiaru dokumentu.');
+        return;
+      }
+
+      window.document.execCommand(
+        'insertHTML',
+        false,
+        `<img class="pad-img" draggable="true" src="${prepared.dataUrl}" style="width:${prepared.width}px" alt="" />`
+      );
+      setImageNotice(null);
+      handleInput();
+    } catch (err: any) {
+      setImageNotice(err?.message || 'Nie udało się wgrać obrazu.');
+    } finally {
+      if (imageFileInputRef.current) imageFileInputRef.current.value = '';
+    }
+  };
+
+  /** Zmiana rozmiaru wklejonego obrazu */
   const resizeSelectedImage = (fraction: number) => {
     if (!selectedImage || !editorRef.current) return;
     const paperWidth = Math.max(280, editorRef.current.clientWidth - PAGE_MARGIN_PX * 2);
     selectedImage.style.width = `${Math.round(paperWidth * fraction)}px`;
     selectedImage.style.height = 'auto';
     handleInput();
+  };
+
+  /** Przesuwanie obrazu wyżej w strukturze sekcji */
+  const moveSelectedImageUp = () => {
+    if (!selectedImage || !editorRef.current) return;
+    let target: HTMLElement = selectedImage;
+    if (selectedImage.parentElement && selectedImage.parentElement !== editorRef.current) {
+      target = selectedImage.parentElement;
+    }
+    const prev = target.previousElementSibling;
+    if (prev && editorRef.current) {
+      editorRef.current.insertBefore(target, prev);
+      target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      handleInput();
+    }
+  };
+
+  /** Przesuwanie obrazu niżej w strukturze sekcji */
+  const moveSelectedImageDown = () => {
+    if (!selectedImage || !editorRef.current) return;
+    let target: HTMLElement = selectedImage;
+    if (selectedImage.parentElement && selectedImage.parentElement !== editorRef.current) {
+      target = selectedImage.parentElement;
+    }
+    const next = target.nextElementSibling;
+    if (next && editorRef.current) {
+      editorRef.current.insertBefore(target, next.nextElementSibling);
+      target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      handleInput();
+    }
   };
 
   const removeSelectedImage = () => {
@@ -633,22 +690,49 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     handleInput();
   };
 
-  /** Światełko przy kursorze — tylko nad kartką i tylko przy włączonym laserze. */
-  useEffect(() => {
-    if (!isLaserOn) return;
-    const dot = window.document.createElement('div');
-    dot.className = 'pad-laser';
-    window.document.body.appendChild(dot);
+  /** Synchronizowany wskaźnik laserowy na żywo */
+  const handleLaserMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!isLaserOn || !editorRef.current || !docData.id || !isTeacher) return;
+    const now = Date.now();
+    if (now - lastLaserSendRef.current < 50) return; // Throttling 50ms
+    lastLaserSendRef.current = now;
 
-    const move = (event: MouseEvent) => {
-      dot.style.transform = `translate(${event.clientX}px, ${event.clientY}px)`;
-    };
-    window.addEventListener('mousemove', move);
-    return () => {
-      window.removeEventListener('mousemove', move);
-      dot.remove();
-    };
-  }, [isLaserOn]);
+    const rect = editorRef.current.getBoundingClientRect();
+    const xPercent = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100));
+    const yPercent = Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100));
+
+    updateScratchpadLaser(docData.id, {
+      active: true,
+      xPercent,
+      yPercent,
+      user: currentUser?.name || 'Lektor',
+    });
+  };
+
+  const handleLaserMouseLeave = () => {
+    if (!isLaserOn || !docData.id || !isTeacher) return;
+    updateScratchpadLaser(docData.id, { active: false });
+  };
+
+  useEffect(() => {
+    if (!isLaserOn && docData.id && isTeacher) {
+      updateScratchpadLaser(docData.id, { active: false });
+    }
+  }, [isLaserOn, docData.id, isTeacher]);
+
+  /** Zmiana orientacji arkusza (Pionowa / Pozioma) */
+  const handleToggleOrientation = async () => {
+    const nextOrientation = pageOrientation === 'portrait' ? 'landscape' : 'portrait';
+    setPageOrientation(nextOrientation);
+    if (isTeacher && docData.id) {
+      try {
+        await updateScratchpadOrientation(docData.id, nextOrientation);
+      } catch (err) {
+        console.error('Błąd zapisu orientacji:', err);
+      }
+    }
+    measurePages();
+  };
 
   const handleInput = () => {
     if (!editorRef.current || isReadOnly) return;
@@ -659,9 +743,6 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       isUserTypingRef.current = false;
     }, 1500);
 
-    // Zaznaczenie obrazu jest stanem interfejsu, nie treścią dokumentu —
-    // gdyby weszło do zapisu, kursant zobaczyłby obrys wokół obrazu, którego
-    // nie zaznaczał.
     const html = editorRef.current.innerHTML.replace(/ class="pad-img is-selected"/g, ' class="pad-img"');
     const txt = extractText(html);
     setWordCount(txt.trim() ? txt.trim().split(/\s+/).length : 0);
@@ -681,25 +762,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     }
   };
 
-  const handleFormatBlock = (tag: string) => {
-    if (isReadOnly) return;
-    window.document.execCommand('formatBlock', false, `<${tag}>`);
-    if (editorRef.current) {
-      editorRef.current.focus();
-      handleInput();
-    }
-  };
-
-  /**
-   * Nowa lekcja w notatniku — nagłówek z NUMEREM i pięć sekcji.
-   *
-   * Jeśli dokument jest przypisany do konkretnego kursanta (`docData.studentId`),
-   * system automatycznie zaczytuje ostatnią lekcję i generuje w sekcji `Revision`:
-   * - 3 elementy do poprawy / zdania do przetłumaczenia,
-   * - 5 słówek do sprawdzenia znajomości.
-   *
-   * Nowa lekcja zaczyna się od nowej strony A4 (`pad-page-break`).
-   */
+  /** Wstawianie nowej lekcji z nagłówkiem H1 i sekcjami H2/H3 */
   const [isInsertingLesson, setIsInsertingLesson] = useState(false);
 
   const handleInsertLesson = async () => {
@@ -713,7 +776,6 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       try {
         const records = await getLessonRecordsForStudent(studentId);
         if (records && records.length > 0) {
-          // Sortowanie malejąco po dacie
           const sorted = [...records].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
           const latest = sorted[0];
 
@@ -767,7 +829,6 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
       editorRef.current.insertAdjacentHTML('beforeend', `<p><br></p>${html}`);
 
-      // Kursor ląduje w pierwszej sekcji nowej lekcji — tam zaczyna się pisanie.
       const headings = editorRef.current.querySelectorAll('h3');
       const firstSection = headings[headings.length - LESSON_SECTIONS.length];
       const target = firstSection?.nextElementSibling as HTMLElement | null;
@@ -860,7 +921,6 @@ ${promptToSend}`;
   const handleInsertAiMessageToDoc = (text: string) => {
     if (isReadOnly || !editorRef.current) return;
 
-    // Konwersja prostego markdown do HTML dla edytora
     const lines = text.split('\n');
     let html = '';
     let inList = false;
@@ -917,16 +977,13 @@ ${promptToSend}`;
     setTimeout(() => setCopiedAiMsgId(null), 2000);
   };
 
-  // Wstawienie zapisanego szablonu lektora (kolekcja `scratchpadTemplates`)
+  // Wstawienie szablonu lektora
   const handleInsertTemplate = (html: string) => {
     if (isReadOnly) return;
     window.document.execCommand('insertHTML', false, html);
     handleInput();
   };
 
-  // Lista szablonów widzi wyłącznie lektor/admin — reguła `isAdmin()` na
-  // `scratchpadTemplates` odmówi kursantowi nawet próby odczytu, więc nie ma
-  // sensu jej wołać poza rolą lektora.
   const refreshTemplates = useCallback(async () => {
     if (!isTeacher) return;
     try {
@@ -941,17 +998,7 @@ ${promptToSend}`;
     refreshTemplates();
   }, [refreshTemplates]);
 
-  // Szybkie kolorowanie pod błędy / poprawki
-  /**
-   * Zakreślenie fragmentu.
-   *
-   * Kolor tła i tekstu ląduje W TREŚCI dokumentu (styl na `span`), więc motyw
-   * nie ma jak go potem przestawić — obowiązuje ta sama zasada, co dla całej
-   * palety notatnika (`utils/notebookPalette.ts`): jedna wartość ma być
-   * czytelna na jasnym papierze I na ciemnej kartce. Poprzednie pastele
-   * (#fca5a5, #6ee7b7, #fcd34d) były dobrane pod ciemną kartkę i na jasnym
-   * papierze ginęły w tle zakreślenia.
-   */
+  // Zakreślacze lektorskie
   const handleHighlight = (bgColor: string, textColor: string) => {
     if (isReadOnly) return;
     const selection = window.getSelection();
@@ -975,9 +1022,7 @@ ${promptToSend}`;
     }
   };
 
-  // Wstawienie linku — `execCommand('createLink', ...)` wymaga zaznaczenia;
-  // bez niego wstawiamy sam adres jako klikalny tekst, żeby przycisk nie
-  // robił po cichu nic.
+  // Wstawienie linku
   const handleInsertLink = () => {
     if (isReadOnly) return;
     const url = window.prompt('Adres linku (https://…)');
@@ -995,8 +1040,7 @@ ${promptToSend}`;
     }
   };
 
-  // Lista zadań — zwykły checkbox HTML, natywnie klikalny nawet w
-  // contentEditable. Bez śledzenia stanu w Reakcie (dokument to tylko HTML).
+  // Lista zadań
   const handleInsertChecklist = () => {
     if (isReadOnly) return;
     window.document.execCommand(
@@ -1008,12 +1052,6 @@ ${promptToSend}`;
   };
 
   // Kopiowanie linku lub kodu PIN
-  //
-  // PIN trafia do linku zawsze, nie tylko gdy `requirePin` jest włączone: ID
-  // dokumentu jest już "sekretem" samym w sobie (`allow get: if true` w
-  // firestore.rules — link niewidzialny), więc PIN w URL nie osłabia niczego,
-  // a bez niego przycisk "Kopiuj link" dawał martwy PIN — kursant musiałby
-  // wpisywać go ręcznie mimo posiadania linku jednym kliknięciem.
   const handleCopyLink = () => {
     const url = buildScratchpadUrl(docData.id, docData.pin ? { pin: docData.pin } : undefined);
     navigator.clipboard.writeText(url);
@@ -1034,7 +1072,6 @@ ${promptToSend}`;
     const rawText = docData.contentText || (editorRef.current ? extractText(editorRef.current.innerHTML) : '');
     const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
 
-    // Prosta automatyczna ekstrakcja linii
     const vocabLines: string[] = [];
     const correctionLines: string[] = [];
     const generalLines: string[] = [];
@@ -1074,6 +1111,26 @@ ${promptToSend}`;
     });
   };
 
+  // Obsługa rozpoczęcia prezentacji na żywo
+  const handleStartPresentation = async (pres: PresentationState) => {
+    setIsLivePresentationModalOpen(false);
+    if (!docData.id) return;
+    try {
+      await updateScratchpadPresentation(docData.id, pres);
+    } catch (err) {
+      console.error('Błąd uruchamiania prezentacji:', err);
+    }
+  };
+
+  const handleStopPresentation = async () => {
+    if (!docData.id) return;
+    try {
+      await updateScratchpadPresentation(docData.id, null);
+    } catch (err) {
+      console.error('Błąd zamykania prezentacji:', err);
+    }
+  };
+
   const coachSteps = useMemo(
     () =>
       buildScratchpadCoachSteps({
@@ -1089,7 +1146,7 @@ ${promptToSend}`;
 
   return (
     <div className={`pad-shell flex flex-col overflow-hidden ${standalone ? 'is-standalone' : ''} ${className}`}>
-      {/* 1. JEDNOLITY NAGŁÓWEK DOKUMENTU (GOOGLE DOCS STYLE) */}
+      {/* 1. JEDNOLITY NAGŁÓWEK DOKUMENTU */}
       <header className="px-4 py-2.5 pad-bar border-b border-line-strong flex items-center justify-between gap-3 select-none flex-wrap sm:flex-nowrap">
         <div className="flex items-center gap-3 min-w-0" data-coach="pad-identity">
           <div className="p-2 rounded-xl bg-accent/12 text-accent border border-accent/25 shrink-0">
@@ -1136,7 +1193,45 @@ ${promptToSend}`;
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0 flex-wrap">
+          {/* Tryb Prezentacji (Live Slides) dla lektora */}
+          {isTeacher && (
+            <button
+              type="button"
+              onClick={() => setIsLivePresentationModalOpen(true)}
+              title="Uruchom tryb prezentacji (wyświetla kursantowi ćwiczenia/slajdy zamiast notatnika)"
+              className="h-8 px-2.5 rounded-lg border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-sm"
+            >
+              <Airplay size={14} />
+              <span className="hidden md:inline">Prezentacja</span>
+            </button>
+          )}
+
+          {/* Szablony lekcji dla lektora */}
+          {isTeacher && (
+            <button
+              type="button"
+              onClick={() => setIsTemplateManagerOpen(true)}
+              title="Wzory lekcji i szablony notatnika (możliwość ustawienia domyślnego)"
+              className="h-8 px-2 rounded-lg border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] flex items-center gap-1 text-xs font-medium transition-colors cursor-pointer"
+            >
+              <LayoutTemplate size={14} />
+              <span className="hidden lg:inline">Szablony</span>
+            </button>
+          )}
+
+          {/* Orientacja arkusza A4 (Pionowa / Pozioma) */}
+          <button
+            type="button"
+            onClick={handleToggleOrientation}
+            title={pageOrientation === 'portrait' ? 'Układ: Pionowy A4 (kliknij, aby zmienić na poziomy)' : 'Układ: Poziomy A4 (kliknij, aby zmienić na pionowy)'}
+            aria-label="Układ strony A4"
+            className="h-8 px-2 rounded-lg border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] flex items-center gap-1.5 text-xs font-medium transition-colors cursor-pointer"
+          >
+            <Compass size={14} />
+            <span className="hidden xl:inline">{pageOrientation === 'portrait' ? 'A4 Pion' : 'A4 Poziom'}</span>
+          </button>
+
           {/* Udostępnij dla lektora */}
           {isTeacher && (
             <MenuDropdown
@@ -1303,15 +1398,15 @@ ${promptToSend}`;
             </Button>
           )}
 
-          {/* Wskaźnik laserowy */}
+          {/* Wskaźnik laserowy z synchronizacją na żywo */}
           <button
             type="button"
             onClick={() => setIsLaserOn(v => !v)}
-            title={isLaserOn ? 'Wyłącz wskaźnik laserowy' : 'Wskaźnik laserowy przy kursorze'}
+            title={isLaserOn ? 'Wyłącz wskaźnik laserowy' : 'Wskaźnik laserowy przy kursorze (widoczny również dla kursanta)'}
             aria-pressed={isLaserOn}
             className={`h-8 w-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer ${
               isLaserOn
-                ? 'border-danger/50 bg-danger/15 text-danger'
+                ? 'border-danger/50 bg-danger/15 text-danger animate-pulse shadow-sm shadow-danger/30'
                 : 'border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08]'
             }`}
           >
@@ -1358,6 +1453,7 @@ ${promptToSend}`;
         </div>
       </header>
 
+      {/* Komunikaty */}
       {googleDocsHint && (
         <div className="px-4 py-2.5 bg-primary/[0.08] border-b border-primary/25 flex items-center gap-2.5 text-xs animate-fadeIn">
           <ExternalLink size={14} className="text-primary shrink-0" />
@@ -1399,8 +1495,17 @@ ${promptToSend}`;
         </div>
       )}
 
-      {/* 2. PASEK FORMATOWANIA (GOOGLE DOCS TOOLBAR RIBBON) */}
+      {/* 2. PASEK FORMATOWANIA */}
       <div className="px-3 py-1.5 pad-bar border-b border-line-strong flex items-center gap-1 overflow-x-auto no-scrollbar select-none sticky top-0 z-30 flex-nowrap sm:flex-wrap">
+        {/* Ukryty input dla plików graficznych */}
+        <input
+          ref={imageFileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageFileSelected}
+        />
+
         {/* Historia / Drukuj */}
         <div className="flex items-center gap-0.5 shrink-0" data-coach="pad-history">
           {!isReadOnly && (
@@ -1433,7 +1538,7 @@ ${promptToSend}`;
               open={isStyleMenuOpen}
               onOpenChange={setIsStyleMenuOpen}
               preserveSelection
-              width={252}
+              width={268}
               align="start"
               aria-label="Styl tekstu"
               coachId="pad-style"
@@ -1452,8 +1557,8 @@ ${promptToSend}`;
               }
               sections={[
                 {
-                  id: 'blocks',
-                  label: 'Blok tekstu',
+                  id: 'standard-blocks',
+                  label: 'Podstawowe style tekstu',
                   items: [
                     {
                       id: 'p',
@@ -1463,31 +1568,44 @@ ${promptToSend}`;
                     },
                     {
                       id: 'h1',
-                      label: 'Nagłówek 1',
-                      description: 'Tytuł dokumentu',
+                      label: 'Nagłówek 1 (Lekcja)',
+                      description: 'Główny nagłówek nadrzędny w spisie',
                       icon: <Heading1 size={14} />,
                       onSelect: () => handleFormatBlock('h1'),
                     },
                     {
                       id: 'h2',
-                      label: 'Nagłówek 2',
-                      description: 'Data lekcji',
+                      label: 'Nagłówek 2 (Rozdział)',
+                      description: 'Rozdział widoczny pod lekcją w spisie',
                       icon: <Heading2 size={14} />,
                       onSelect: () => handleFormatBlock('h2'),
                     },
                     {
                       id: 'h3',
-                      label: 'Nagłówek 3',
-                      description: 'Sekcja w lekcji',
+                      label: 'Nagłówek 3 (Sekcja wewnątrz)',
+                      description: 'Nagłówek sekcji — nie trafia do spisu',
                       icon: <Heading3 size={14} />,
                       onSelect: () => handleFormatBlock('h3'),
                     },
+                  ],
+                },
+                {
+                  id: 'toggle-headings',
+                  label: 'Nagłówki zwijane (Opcjonalne)',
+                  items: [
                     {
-                      id: 'toggle-heading',
-                      label: 'Nagłówek zwijany',
-                      description: 'Chowa cały rozdział pod strzałką',
+                      id: 'toggle-h1',
+                      label: 'Zwijany Nagłówek 1',
+                      description: 'Nagłówek nadrzędny ze strzałką do zwijania',
                       icon: <ChevronRight size={14} />,
-                      onSelect: handleToggleHeading,
+                      onSelect: () => handleToggleHeading('h1'),
+                    },
+                    {
+                      id: 'toggle-h2',
+                      label: 'Zwijany Nagłówek 2',
+                      description: 'Rozdział ze strzałką do zwijania treści',
+                      icon: <ChevronRight size={14} />,
+                      onSelect: () => handleToggleHeading('h2'),
                     },
                   ],
                 },
@@ -1671,6 +1789,13 @@ ${promptToSend}`;
                       icon: <Calendar size={14} />,
                       onSelect: handleInsertLesson,
                     },
+                    {
+                      id: 'upload-image',
+                      label: 'Wstaw zdjęcie z dysku',
+                      description: 'PNG, JPG lub WebP (możesz też wklejać Ctrl+V)',
+                      icon: <ImageIcon size={14} />,
+                      onSelect: () => imageFileInputRef.current?.click(),
+                    },
                   ],
                 },
                 ...(isTeacher
@@ -1821,7 +1946,7 @@ ${promptToSend}`;
           </button>
           <FormatButton
             icon={<ChevronsDownUp size={14} />}
-            title="Zwiń / Rozwiń rozdziały"
+            title="Zwiń / Rozwiń rozdziały w dokumencie"
             onClick={() => handleCollapseAll(true)}
           />
         </div>
@@ -1831,7 +1956,7 @@ ${promptToSend}`;
       <div className="flex-1 min-h-0 flex flex-row overflow-hidden relative w-full h-full">
         {/* SPIS TREŚCI PRZYPIĘTY DO LEWEJ STRONY */}
         {isTocOpen && (
-          <aside className="w-60 md:w-64 shrink-0 border-r border-line-strong pad-bar overflow-y-auto flex flex-col z-20 select-none animate-fadeIn">
+          <aside className="w-64 md:w-72 shrink-0 border-r border-line-strong pad-bar overflow-y-auto flex flex-col z-20 select-none animate-fadeIn">
             <div className="px-3.5 py-2.5 flex items-center justify-between gap-2 border-b border-line-soft sticky top-0 pad-bar backdrop-blur-md">
               <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-text-2">
                 <ListTree size={13} className="text-primary" />
@@ -1840,11 +1965,23 @@ ${promptToSend}`;
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => handleCollapseAll(false)}
-                  title="Rozwiń wszystkie rozdziały"
+                  onClick={() => setCollapsedTocLessons({})}
+                  title="Rozwiń wszystkie lekcje w spisie"
                   className="px-1.5 py-0.5 rounded text-[10px] font-semibold text-text-2 hover:text-content hover:bg-white/[0.08] transition-colors cursor-pointer"
                 >
                   Rozwiń
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allH1: Record<string, boolean> = {};
+                    toc.filter(t => t.level === 1).forEach(h1 => { allH1[h1.id] = true; });
+                    setCollapsedTocLessons(allH1);
+                  }}
+                  title="Zwiń wszystkie lekcje w spisie"
+                  className="px-1.5 py-0.5 rounded text-[10px] font-semibold text-text-2 hover:text-content hover:bg-white/[0.08] transition-colors cursor-pointer"
+                >
+                  Zwiń
                 </button>
                 <button
                   type="button"
@@ -1859,37 +1996,70 @@ ${promptToSend}`;
 
             {toc.length === 0 ? (
               <p className="px-4 py-6 text-xs leading-relaxed text-text-faint text-center">
-                Spis treści zbuduje się automatycznie z nagłówków w dokumencie. Zaznacz tekst i wybierz Styl → Nagłówek.
+                Spis treści zbuduje się automatycznie z nagłówków w dokumencie. Użyj Styl → Nagłówek 1 (Lekcja) i Nagłówek 2 (Rozdział).
               </p>
             ) : (
-              <nav className="py-2">
-                {toc.map(entry => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    onClick={() => handleJumpToHeading(entry.id)}
-                    title={entry.text}
-                    className={`w-full text-left px-3.5 py-1.5 flex items-center gap-1.5 text-[12px] leading-snug transition-colors cursor-pointer hover:bg-white/[0.06] ${
-                      activeHeadingId === entry.id
-                        ? 'text-primary font-bold bg-primary/10 border-l-2 border-primary'
-                        : entry.level === 1
-                        ? 'text-content font-bold'
-                        : entry.level === 2
-                        ? 'text-text-2 font-medium'
-                        : 'text-text-faint text-[11px]'
-                    }`}
-                    style={{ paddingLeft: `${14 + (entry.level - 1) * 12}px` }}
-                  >
-                    {entry.collapsed && <ChevronRight size={11} className="shrink-0 opacity-60" />}
-                    <span className="truncate">{entry.text}</span>
-                  </button>
-                ))}
+              <nav className="py-2 px-1.5 space-y-0.5">
+                {toc.map(entry => {
+                  if (entry.level === 1) {
+                    const isLessonCollapsed = !!collapsedTocLessons[entry.id];
+                    return (
+                      <div key={entry.id} className="group/toc flex items-center w-full rounded-lg hover:bg-white/[0.05] transition-colors">
+                        <button
+                          type="button"
+                          onClick={() => toggleTocLesson(entry.id)}
+                          title={isLessonCollapsed ? 'Rozwiń sekcje tej lekcji' : 'Zwiń sekcje tej lekcji'}
+                          className="p-1.5 text-text-faint hover:text-text-hi transition-transform cursor-pointer"
+                        >
+                          <ChevronRight
+                            size={12}
+                            className={`transition-transform duration-150 ${isLessonCollapsed ? '' : 'rotate-90 text-primary'}`}
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleJumpToHeading(entry.id)}
+                          title={entry.text}
+                          className={`flex-1 text-left py-1.5 pr-2 text-[12px] font-bold leading-snug truncate transition-colors cursor-pointer ${
+                            activeHeadingId === entry.id
+                              ? 'text-primary font-extrabold'
+                              : 'text-content'
+                          }`}
+                        >
+                          {entry.text}
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  // Nagłówek 2 (H2) — podrzędny pod H1
+                  if (entry.parentId && collapsedTocLessons[entry.parentId]) {
+                    return null; // Ukryty, gdy nadrzędna lekcja H1 jest zwinięta w spisie treści
+                  }
+
+                  return (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      onClick={() => handleJumpToHeading(entry.id)}
+                      title={entry.text}
+                      className={`w-full text-left pl-7 pr-2 py-1 flex items-center gap-1.5 text-[11px] leading-snug rounded-md transition-colors cursor-pointer hover:bg-white/[0.06] ${
+                        activeHeadingId === entry.id
+                          ? 'text-primary font-bold bg-primary/10'
+                          : 'text-text-2 font-medium'
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-line-strong shrink-0" />
+                      <span className="truncate">{entry.text}</span>
+                    </button>
+                  );
+                })}
               </nav>
             )}
           </aside>
         )}
 
-        {/* ZAKŁADKA DO ROZWINIĘCIA SPISU TREŚCI GDY JEST ZWINIĘTY */}
+        {/* ZAKŁADKA DO ROZWINIĘCIA SPISU TREŚCI */}
         {!isTocOpen && (
           <button
             type="button"
@@ -1905,9 +2075,29 @@ ${promptToSend}`;
         {/* KANWA Z SYMETRYCZNIE WYŚRODKOWANĄ KARTKĄ A4 */}
         <div
           ref={paperWrapRef}
-          className="pad-canvas flex-1 min-w-0 h-full overflow-y-auto p-3 sm:p-6 md:p-10 flex justify-center items-start"
+          onMouseMove={handleLaserMouseMove}
+          onMouseLeave={handleLaserMouseLeave}
+          className="pad-canvas flex-1 min-w-0 h-full overflow-y-auto p-3 sm:p-6 md:p-10 flex justify-center items-start relative"
         >
-          <div className="relative mx-auto w-full flex flex-col items-center" style={{ maxWidth: PAGE_WIDTH_PX }}>
+          <div
+            className="relative mx-auto w-full flex flex-col items-center transition-all duration-300"
+            style={{ maxWidth: activePageWidth }}
+          >
+            {/* Zdalny wskaźnik laserowy lektora widziany przez kursanta */}
+            {docData.laserPointer?.active && (!isLaserOn || docData.laserPointer.user !== (currentUser?.name || 'Lektor')) && (
+              <div
+                className="pad-laser-remote"
+                style={{
+                  left: `${docData.laserPointer.xPercent}%`,
+                  top: `${docData.laserPointer.yPercent}%`,
+                }}
+              >
+                <div className="pad-laser-dot" />
+                <div className="pad-laser-ring" />
+                <div className="pad-laser-label">{docData.laserPointer.user || 'Lektor'}</div>
+              </div>
+            )}
+
             <div
               ref={editorRef}
               data-coach="pad-editor"
@@ -1917,22 +2107,22 @@ ${promptToSend}`;
               onClick={handlePaperClick}
               onPaste={handlePaste}
               suppressContentEditableWarning
-              className={`pad-paper pad-sheet focus:outline-none transition-shadow font-sans selection:bg-primary/30 w-full ${
-                isReadOnly ? 'cursor-default' : 'cursor-text'
-              }`}
+              className={`pad-paper pad-sheet focus:outline-none transition-shadow font-sans selection:bg-primary/30 w-full relative ${
+                isLandscape ? 'is-landscape' : ''
+              } ${isReadOnly ? 'cursor-default' : 'cursor-text'}`}
               style={{
                 wordBreak: 'break-word',
                 boxShadow: 'var(--pad-shadow)',
-                minHeight: PAGE_HEIGHT_PX,
+                minHeight: activePageHeight,
                 padding: `${PAGE_MARGIN_PX}px`,
                 boxSizing: 'border-box',
               }}
             />
 
-            {/* Zaznaczony obraz — pasek zmiany rozmiaru */}
+            {/* Zaznaczony obraz — pływający pasek zmiany rozmiaru i przesuwania */}
             {selectedImage && (
-              <div className="sticky top-2 z-20 mb-2 flex justify-center">
-                <div className="flex items-center gap-1 px-1.5 py-1.5 rounded-xl bg-ink-2/95 border border-line-strong shadow-[var(--shadow-md)] backdrop-blur-xl">
+              <div className="sticky top-2 z-30 mb-2 flex justify-center animate-fadeIn">
+                <div className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-ink-2/95 border border-line-strong shadow-2xl backdrop-blur-xl">
                   <span className="px-1.5 text-[10px] font-bold uppercase tracking-wider text-text-faint">
                     Obraz
                   </span>
@@ -1956,8 +2146,29 @@ ${promptToSend}`;
                   <button
                     type="button"
                     onMouseDown={event => event.preventDefault()}
+                    onClick={moveSelectedImageUp}
+                    title="Przesuń obraz wyżej w dokumencie"
+                    className="h-7 px-2 rounded-lg text-[11px] font-bold text-text-2 hover:text-content hover:bg-white/[0.08] flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <MoveUp size={12} />
+                    <span className="hidden sm:inline">Wyżej</span>
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={event => event.preventDefault()}
+                    onClick={moveSelectedImageDown}
+                    title="Przesuń obraz niżej w dokumencie"
+                    className="h-7 px-2 rounded-lg text-[11px] font-bold text-text-2 hover:text-content hover:bg-white/[0.08] flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <MoveDown size={12} />
+                    <span className="hidden sm:inline">Niżej</span>
+                  </button>
+                  <span className="w-px h-5 bg-line-strong mx-0.5" aria-hidden />
+                  <button
+                    type="button"
+                    onMouseDown={event => event.preventDefault()}
                     onClick={removeSelectedImage}
-                    title="Usuń obraz"
+                    title="Usuń zaznaczony obraz"
                     className="h-7 w-7 rounded-lg flex items-center justify-center text-danger hover:bg-danger/15 transition-colors cursor-pointer"
                   >
                     <X size={14} />
@@ -1972,9 +2183,9 @@ ${promptToSend}`;
                 key={index}
                 aria-hidden
                 className="pad-page-rule"
-                style={{ top: `${(index + 1) * PAGE_HEIGHT_PX}px` }}
+                style={{ top: `${(index + 1) * activePageHeight}px` }}
               >
-                <span>Strona {index + 2}</span>
+                <span>Strona {index + 2} ({pageOrientation === 'landscape' ? 'Pozioma' : 'Pionowa'})</span>
               </div>
             ))}
           </div>
@@ -2169,6 +2380,8 @@ ${promptToSend}`;
           <span>•</span>
           <span>Strony: <strong className="text-text-hi">{pageCount}</strong></span>
           <span>•</span>
+          <span>Układ: <strong className="text-text-hi">{pageOrientation === 'landscape' ? 'Poziomy A4' : 'Pionowy A4'}</strong></span>
+          <span>•</span>
           {contentBytes > SCRATCHPAD_MAX_CONTENT_BYTES / 2 && (
             <>
               <span
@@ -2219,6 +2432,7 @@ ${promptToSend}`;
         title="Samouczek notatnika"
       />
 
+      {/* Modal zarządzania szablonami */}
       {isTeacher && (
         <ScratchpadTemplateManagerModal
           isOpen={isTemplateManagerOpen}
@@ -2226,6 +2440,24 @@ ${promptToSend}`;
           currentUser={{ uid: currentUser?.uid || 'teacher', name: currentUser?.name || 'Lektor' }}
           currentContentHtml={docData.contentHtml}
           onTemplatesChanged={refreshTemplates}
+        />
+      )}
+
+      {/* Modal wyboru aktywności do prezentacji live */}
+      {isTeacher && (
+        <ScratchpadLivePresentationModal
+          isOpen={isLivePresentationModalOpen}
+          onClose={() => setIsLivePresentationModalOpen(false)}
+          onStartPresentation={handleStartPresentation}
+        />
+      )}
+
+      {/* Nakładka prezentacji live (widoczna u lektora i kursanta, gdy jest aktywna) */}
+      {docData.presentationState?.active && (
+        <ScratchpadPresentationOverlay
+          presentation={docData.presentationState}
+          isTeacher={isTeacher}
+          onClose={handleStopPresentation}
         />
       )}
     </div>

@@ -57,6 +57,7 @@ import ScratchpadStudentPicker from '../scratchpad/ScratchpadStudentPicker';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import TeacherAttentionBanner from './TeacherAttentionBanner';
 import TeacherLessonHistoryView from './TeacherLessonHistoryView';
+import { StandaloneStudentDatabaseScreen } from './StandaloneStudentDatabaseScreen';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   Trash2, Download, Printer, FileText, CheckCircle2, AlertCircle,
@@ -284,7 +285,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
 
   const handleTileClick = (tabId: string) => {
     if (tabId === 'students') {
-      onViewChange?.('students-database');
+      setActiveTab('students');
       return;
     }
     if (tabId === 'lesson-history' || tabId === 'history') {
@@ -1895,19 +1896,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full pb-28 min-w-0">
-      {/* PANEL LEKTORA — widoczny WYŁĄCZNIE, gdy nikt nie jest wybrany.
-
-          Wejście w profil kursanta jest wejściem do środka, a nie dołożeniem
-          sekcji na dole pulpitu. Wcześniej panel lektora zostawał nad
-          profilem w całości: nagłówek, baner, trzy kafelki, listwa i „więcej
-          narzędzi" — czyli sześć ekranów treści nad tym, po co się tu
-          przyszło, i konieczność przewinięcia ich przy każdym kliknięciu
-          zakładki. Teraz widok kursanta zajmuje ekran sam, a jedynym
-          wyjściem jest „Panel lektora" w jego nagłówku. */}
+    <div className="w-full pb-28 min-w-0 space-y-6">
       {!selectedUser && (
         <>
-      {/* Top Header */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+          {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1 sm:pt-0 pl-7 sm:pl-0">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-text-hi flex items-center gap-3">
@@ -1955,11 +1948,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         onOpenHomework={(filterStatus) => onViewChange?.('homework', { filterStatus })}
       />
 
-        </>
-      )}
-
-      {!selectedUser && (
-        <>
       {SHOW_LEGACY_PANEL_TOOLS && <TeacherOverview students={activeUsers} language={language} />}
 
       {/* GŁÓWNE KAFELKI LEKTORA — trzy najczęściej używane narzędzia.
@@ -1996,7 +1984,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               badge: 'Baza CRM',
               desc: 'Baza kursantów — wybierz kursanta, aby zarządzać profilami, lekcjami, pracami domowymi i materiałami',
               icon: Users,
-              route: 'students-database',
             },
             {
               id: 'lesson-history',
@@ -2216,9 +2203,22 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </div>
         )}
       </div>
+      </div>
 
-      {/* GŁÓWNY WIDOK: MODUŁ MAILING / PLANER / PREZENTACJA LUB HISTORIA LEKCJI */}
-      {activeTab === 'mailing' ? (
+      {/* GŁÓWNY WIDOK: MODUŁ MAILING / PLANER / PREZENTACJA / KURSANCI LUB HISTORIA LEKCJI */}
+      <div className="w-full max-w-[1640px] mx-auto px-3 sm:px-6 lg:px-8">
+      {activeTab === 'students' ? (
+        <div className="space-y-4 animate-in fade-in duration-200 mt-2">
+          <StandaloneStudentDatabaseScreen
+            onSelectUser={(uId, targetTab) => {
+              const u = users.find((x) => x.id === uId);
+              if (u) handleSelectUser(u as UserWithId, targetTab || 'profile');
+            }}
+            onOpenMailing={() => setActiveTab('mailing')}
+            onBack={() => setActiveTab(null)}
+          />
+        </div>
+      ) : activeTab === 'mailing' ? (
         <div className="space-y-4 animate-in fade-in duration-200 mt-4">
           <AdminMailingScreen onBack={() => setActiveTab(null)} />
         </div>
@@ -2397,20 +2397,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           }}
         />
       )}
+      </div>
         </>
       )}
 
-      {/* SEKCJA KURSANTA (ZAKŁADKI NA GÓRZE I DANE PROFILOWE)
-
-          Gdy nikt nie jest wybrany, nie ma tu NICZEGO.
-
-          Stała była tu belka „Profil i moduły kursanta" z przyciskiem „Wybierz
-          kursanta z listy" — czyli trzecie wejście do tego samego miejsca, do
-          którego prowadzi kafelek „Profil kursantów" na samej górze i baza
-          kursantów pod nim. Zajmowała 96 px pod kafelkami po to, żeby powtórzyć
-          zdanie, które kafelek mówi lepiej i wyżej. */}
+      {/* SEKCJA KURSANTA (ZAKŁADKI NA GÓRZE I DANE PROFILOWE) */}
       {!selectedUser ? null : (
-        <div ref={profileContainerRef}        className="space-y-4 pt-1">
+        <div ref={profileContainerRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 pt-1">
           {/* NAGŁÓWEK KURSANTA — patrz components/admin/StudentProfileHeader.tsx */}
           <StudentProfileHeader
             student={selectedUser}

@@ -2137,13 +2137,13 @@ export function createApp() {
   });
 
   // Reusable Notion sync function
-  async function syncNotionTranscriptsFromApi(): Promise<{ found: number; processed: number; items: any[]; lastFetchTime: string }> {
+  async function syncNotionTranscriptsFromApi(): Promise<{ found: number; processed: number; importedCount?: number; items: any[]; unmatchedTranscripts?: any[]; lastFetchTime: string }> {
     const cfg = await getNotionConfig();
     const token = cfg.token;
     const meetingNotesDbId = cfg.meetingNotesDbId;
 
     if (!token || !meetingNotesDbId || !adminApp) {
-      return { found: 0, processed: 0, items: [], lastFetchTime: new Date().toISOString() };
+      return { found: 0, processed: 0, importedCount: 0, items: [], unmatchedTranscripts: [], lastFetchTime: new Date().toISOString() };
     }
 
     const NOTION_API = 'https://api.notion.com/v1';
@@ -2184,6 +2184,7 @@ export function createApp() {
     const queryData: any = await queryRes.json();
     const pages = queryData.results || [];
     const processedItems: Array<{ id: string; title: string; studentName: string; date: string; status: string }> = [];
+    const unmatchedTranscripts: Array<{ id: string; title: string; date: string; snippet: string; reason: string }> = [];
 
     for (const page of pages) {
       const props = page.properties || {};
@@ -2282,14 +2283,33 @@ export function createApp() {
         }
       }
 
-      const studentId = matchedUser?.id || 'unassigned';
-      const studentName = matchedUser?.name || title.split(/[\-\–—:]/)[0].trim() || 'Nieprzypisany';
+      // Jeśli transkrypcja nie pasuje do żadnego kursanta w bazie (np. spotkanie prywatne/inne):
+      if (!matchedUser) {
+        unmatchedTranscripts.push({
+          id: page.id,
+          title,
+          date: dateStr,
+          snippet: transcriptText.slice(0, 200).replace(/\s+/g, ' ').trim(),
+          reason: 'Nie dopasowano do żadnego kursanta ani grupy w bazie (spotkanie poza zajęciami)',
+        });
+        processedItems.push({
+          id: page.id,
+          title,
+          studentName: 'Brak dopasowania (zignorowano)',
+          date: dateStr,
+          status: 'zignorowano (brak powiązania z kursantem)',
+        });
+        continue;
+      }
+
+      const studentId = matchedUser.id;
+      const studentName = matchedUser.name || title.split(/[\-\–—:]/)[0].trim() || 'Kursant';
 
       // Utwórz rekord lekcji z transkrypcją (oczekuje na zatwierdzenie lektora)
       const newLessonRef = adminDb.collection('lessonRecords').doc();
       const lessonPayload = {
         studentId,
-        studentIds: matchedUser?.isGroup && matchedUser.memberIds?.length ? matchedUser.memberIds : [studentId],
+        studentIds: matchedUser.isGroup && matchedUser.memberIds?.length ? matchedUser.memberIds : [studentId],
         studentName,
         date: dateStr,
         topic: title,
@@ -2297,11 +2317,11 @@ export function createApp() {
         liveTranscript: transcriptText,
         notionPageId: page.id,
         source: 'notion',
-        isGroupLesson: Boolean(matchedUser?.isGroup),
+        isGroupLesson: Boolean(matchedUser.isGroup),
         sessionStatus: 'draft',
         status: 'pending',
         isPendingConfirmation: true,
-        pendingReason: matchedUser ? 'Zaimportowano nową transkrypcję z Notion' : 'Wymaga przypisania kursanta i zatwierdzenia',
+        pendingReason: 'Zaimportowano nową transkrypcję z Notion',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -2309,12 +2329,10 @@ export function createApp() {
       await newLessonRef.set(lessonPayload);
 
       // Zapisz również do podkolekcji kursanta, aby lekcja była natychmiast widoczna w historii
-      if (matchedUser?.id && matchedUser.id !== 'unassigned') {
-        try {
-          await adminDb.collection('users').doc(studentId).collection('lessonRecords').doc(newLessonRef.id).set(lessonPayload, { merge: true });
-        } catch (subErr) {
-          console.warn(`[Notion Sync] Nie udało się zapisać do users/${studentId}/lessonRecords:`, subErr);
-        }
+      try {
+        await adminDb.collection('users').doc(studentId).collection('lessonRecords').doc(newLessonRef.id).set(lessonPayload, { merge: true });
+      } catch (subErr) {
+        console.warn(`[Notion Sync] Nie udało się zapisać do users/${studentId}/lessonRecords:`, subErr);
       }
 
       processedItems.push({
@@ -2322,20 +2340,22 @@ export function createApp() {
         title,
         studentName,
         date: dateStr,
-        status: matchedUser ? 'zaimportowano' : 'zaimportowano (wymaga przypisania)',
+        status: 'zaimportowano',
       });
     }
 
     const nowIso = new Date().toISOString();
     await adminDb.collection('system').doc('notion').set({
       lastFetchTime: nowIso,
-      lastFetchStatus: `Przetworzono ${processedItems.length} stron z Notion`,
+      lastFetchStatus: `Przetworzono ${processedItems.length} stron z Notion (${unmatchedTranscripts.length} zignorowano)`,
     }, { merge: true });
 
     return {
       found: pages.length,
       processed: processedItems.length,
+      importedCount: processedItems.filter(p => p.status === 'zaimportowano').length,
       items: processedItems,
+      unmatchedTranscripts,
       lastFetchTime: nowIso,
     };
   }
