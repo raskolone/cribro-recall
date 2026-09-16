@@ -13,10 +13,21 @@ import { FREQUENCIES } from '../../constants';
 import { RevisionFrequency, TTSAccent, VoiceGender, VoiceSpeed, SoundEngine, canUserViewAiMonitor } from '../../types';
 import AiModelsSettings from './AiModelsSettings';
 import AiCouncilSettings from './AiCouncilSettings';
-import { LogOut, Volume2, Play, CheckCircle2, RefreshCw, VolumeX, Sparkles, Sliders, Check, Flame, Mail, Key, Eye, EyeOff, AlertTriangle, Database, Search, Unlink, ExternalLink, Layers, Table } from 'lucide-react';
+import { LogOut, Volume2, Play, CheckCircle2, RefreshCw, VolumeX, Sparkles, Sliders, Check, Flame, Mail, Key, Eye, EyeOff, AlertTriangle, Database, Search, Unlink, ExternalLink, Layers, Table, ClipboardPaste, X } from 'lucide-react';
 import { playSpeech } from '../../services/ttsService';
 import i18n from "i18next";
 import { useEscapeModal } from '../../hooks/useEscapeModal';
+
+function cleanNotionId(val: string): string {
+    if (!val || typeof val !== 'string') return '';
+    const trimmed = val.trim();
+    const match = trimmed.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|[a-f0-9]{32})/i);
+    if (match) {
+        const clean = match[1].replace(/-/g, '').toLowerCase();
+        return `${clean.slice(0, 8)}-${clean.slice(8, 12)}-${clean.slice(12, 16)}-${clean.slice(16, 20)}-${clean.slice(20)}`;
+    }
+    return trimmed;
+}
 
 const SettingsScreen: React.FC = () => {
     const { frequency, setFrequency, deleteAllWords, words } = useVocabulary();
@@ -175,6 +186,26 @@ const SettingsScreen: React.FC = () => {
         fetchNotionStatus();
     }, [isTeacherOrAdmin]);
 
+    const hasUnsavedNotionChanges = Boolean(
+        (notionTokenInput.trim() !== '') ||
+        (cleanNotionId(meetingNotesDbInput) !== cleanNotionId(notionConfigStatus.meetingNotesDbId || '')) ||
+        (cleanNotionId(studentsDbInput) !== cleanNotionId(notionConfigStatus.studentsDbId || '')) ||
+        (autoFetchEnabledInput !== Boolean(notionConfigStatus.autoFetchEnabled)) ||
+        (autoFetchIntervalInput !== (notionConfigStatus.autoFetchIntervalMinutes || 30))
+    );
+
+    const handlePasteNotionToken = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text) {
+                setNotionTokenInput(text.trim().replace(/["']/g, ''));
+                setNotionError(null);
+            }
+        } catch (e) {
+            console.warn('Nie udało się odczytać ze schowka:', e);
+        }
+    };
+
     const handleSaveNotionConfig = async () => {
         setIsSavingNotion(true);
         setNotionError(null);
@@ -183,6 +214,10 @@ const SettingsScreen: React.FC = () => {
             const token = await auth.currentUser?.getIdToken();
             if (!token) throw new Error('Brak uprawnień administratora.');
 
+            const cleanToken = notionTokenInput.trim().replace(/["']/g, '');
+            const cleanMeetingId = cleanNotionId(meetingNotesDbInput);
+            const cleanStudentsId = cleanNotionId(studentsDbInput);
+
             const res = await fetch('/api/notion/save-config', {
                 method: 'POST',
                 headers: {
@@ -190,9 +225,9 @@ const SettingsScreen: React.FC = () => {
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    token: notionTokenInput.trim() || undefined,
-                    meetingNotesDbId: meetingNotesDbInput.trim() || undefined,
-                    studentsDbId: studentsDbInput.trim() || undefined,
+                    token: cleanToken || undefined,
+                    meetingNotesDbId: cleanMeetingId || undefined,
+                    studentsDbId: cleanStudentsId || undefined,
                     autoFetchEnabled: autoFetchEnabledInput,
                     autoFetchIntervalMinutes: autoFetchIntervalInput,
                 }),
@@ -203,14 +238,16 @@ const SettingsScreen: React.FC = () => {
 
             setNotionConfigStatus({
                 configured: true,
-                maskedToken: data.maskedToken || (notionTokenInput ? `${notionTokenInput.slice(0, 8)}••••` : notionConfigStatus.maskedToken),
-                meetingNotesDbId: data.meetingNotesDbId || meetingNotesDbInput,
-                studentsDbId: data.studentsDbId || studentsDbInput,
+                maskedToken: data.maskedToken || (cleanToken ? `${cleanToken.slice(0, 8)}••••` : notionConfigStatus.maskedToken),
+                meetingNotesDbId: data.meetingNotesDbId || cleanMeetingId,
+                studentsDbId: data.studentsDbId || cleanStudentsId,
                 autoFetchEnabled: data.autoFetchEnabled,
                 autoFetchIntervalMinutes: data.autoFetchIntervalMinutes,
                 lastFetchTime: notionConfigStatus.lastFetchTime,
                 lastFetchStatus: notionConfigStatus.lastFetchStatus,
             });
+            if (data.meetingNotesDbId) setMeetingNotesDbInput(data.meetingNotesDbId);
+            if (data.studentsDbId) setStudentsDbInput(data.studentsDbId);
             setNotionSaveSuccess(true);
             setNotionTokenInput('');
             setTimeout(() => setNotionSaveSuccess(false), 4000);
@@ -230,6 +267,10 @@ const SettingsScreen: React.FC = () => {
             const token = await auth.currentUser?.getIdToken();
             if (!token) throw new Error('Brak uprawnień administratora.');
 
+            const cleanToken = notionTokenInput.trim().replace(/["']/g, '');
+            const cleanMeetingId = cleanNotionId(meetingNotesDbInput);
+            const cleanStudentsId = cleanNotionId(studentsDbInput);
+
             const res = await fetch('/api/notion/test-connection', {
                 method: 'POST',
                 headers: {
@@ -237,9 +278,9 @@ const SettingsScreen: React.FC = () => {
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    token: notionTokenInput.trim() || undefined,
-                    meetingNotesDbId: meetingNotesDbInput.trim() || undefined,
-                    studentsDbId: studentsDbInput.trim() || undefined,
+                    token: cleanToken || undefined,
+                    meetingNotesDbId: cleanMeetingId || undefined,
+                    studentsDbId: cleanStudentsId || undefined,
                 }),
             });
 
@@ -311,6 +352,7 @@ const SettingsScreen: React.FC = () => {
             const token = await auth.currentUser?.getIdToken();
             if (!token) throw new Error('Brak uprawnień administratora.');
 
+            const cleanToken = notionTokenInput.trim().replace(/["']/g, '');
             const res = await fetch('/api/notion/search-databases', {
                 method: 'POST',
                 headers: {
@@ -318,7 +360,7 @@ const SettingsScreen: React.FC = () => {
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    token: notionTokenInput.trim() || undefined,
+                    token: cleanToken || undefined,
                 }),
             });
 
@@ -327,7 +369,7 @@ const SettingsScreen: React.FC = () => {
 
             setDiscoveredDatabases(data.databases || []);
             if ((data.databases || []).length === 0) {
-                setNotionError('Nie znaleziono żadnych baz danych. Upewnij się, że w Notion udostępniłeś integracji odpowiednie bazy (opcja "Add connections" w menu strony Notion).');
+                setNotionError('Nie znaleziono żadnych baz danych. Upewnij się, że w Notion udostępniłeś integracji odpowiednie bazy (opcja "Add connections" w menu bazy w Notion).');
             }
         } catch (err: any) {
             console.error('Błąd wyszukiwania baz Notion:', err);
@@ -1026,31 +1068,100 @@ const SettingsScreen: React.FC = () => {
                         <div className="space-y-4">
                             {/* Token */}
                             <div>
-                                <label className="block text-xs font-semibold text-content uppercase tracking-wider mb-1.5">
-                                    {language === 'pl' ? 'Klucz / Token Integracji Notion (API Secret)' : 'Notion Integration Token (API Secret)'}
-                                </label>
-                                <div className="relative">
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="text-xs font-semibold text-content uppercase tracking-wider">
+                                        {language === 'pl' ? 'Klucz / Token Integracji Notion (API Secret)' : 'Notion Integration Token (API Secret)'}
+                                    </label>
+                                    {notionConfigStatus.configured && (
+                                        <span className="text-[11px] text-primary flex items-center gap-1 font-mono">
+                                            <CheckCircle2 size={12} />
+                                            {language === 'pl' ? 'Zapisany:' : 'Stored:'} {notionConfigStatus.maskedToken}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {notionConfigStatus.configured && !notionTokenInput && (
+                                    <div className="flex items-center justify-between text-[11px] px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary mb-2">
+                                        <span className="flex items-center gap-1.5 font-medium">
+                                            <CheckCircle2 size={13} />
+                                            {language === 'pl' ? 'W systemie działa aktywny token Notion' : 'Active Notion token configured'}
+                                            <strong className="font-mono text-white tracking-wider">({notionConfigStatus.maskedToken})</strong>
+                                        </span>
+                                        <span className="text-[10px] text-content-muted">
+                                            {language === 'pl' ? 'Wpisz poniżej nowy klucz tylko, jeśli chcesz go zmienić' : 'Enter a new key below only to update'}
+                                        </span>
+                                    </div>
+                                )}
+
+                                <div className="relative flex items-center">
                                     <input
                                         type={showNotionToken ? 'text' : 'password'}
+                                        name="notion_secret_token_override"
+                                        autoComplete="new-password"
+                                        data-1p-ignore="true"
+                                        data-lpignore="true"
+                                        autoCapitalize="off"
+                                        autoCorrect="off"
+                                        spellCheck="false"
                                         value={notionTokenInput}
                                         onChange={(e) => {
-                                            setNotionTokenInput(e.target.value);
+                                            setNotionTokenInput(e.target.value.replace(/["']/g, ''));
                                             setNotionError(null);
                                         }}
-                                        placeholder={notionConfigStatus.maskedToken || "secret_123456789abcdef..."}
-                                        className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary pr-10"
+                                        placeholder={notionConfigStatus.configured ? (language === 'pl' ? "Pozostaw puste, aby zachować aktywny token..." : "Leave blank to keep active token...") : "ntn_... lub secret_..."}
+                                        className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary pr-24"
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowNotionToken(!showNotionToken)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-white"
-                                        title={showNotionToken ? 'Ukryj' : 'Pokaż'}
-                                    >
-                                        {showNotionToken ? <EyeOff size={15} /> : <Eye size={15} />}
-                                    </button>
+                                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                        {notionTokenInput ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setNotionTokenInput('')}
+                                                className="p-1 text-content-muted hover:text-white rounded hover:bg-white/10"
+                                                title={language === 'pl' ? 'Wyczyść pole' : 'Clear'}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={handlePasteNotionToken}
+                                                className="p-1 text-primary hover:text-primary-hover rounded hover:bg-primary/10 flex items-center gap-1 text-[10px] font-semibold"
+                                                title={language === 'pl' ? 'Wklej ze schowka' : 'Paste from clipboard'}
+                                            >
+                                                <ClipboardPaste size={13} />
+                                                <span className="hidden sm:inline">{language === 'pl' ? 'Wklej' : 'Paste'}</span>
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowNotionToken(!showNotionToken)}
+                                            className="p-1 text-content-muted hover:text-white rounded hover:bg-white/10"
+                                            title={showNotionToken ? 'Ukryj' : 'Pokaż'}
+                                        >
+                                            {showNotionToken ? <EyeOff size={15} /> : <Eye size={15} />}
+                                        </button>
+                                    </div>
                                 </div>
-                                <p className="text-[11px] text-content-muted mt-1">
-                                    Klucz utworzysz na <a href="https://www.notion.so/profile/integrations" target="_blank" rel="noreferrer" className="text-primary underline">notion.so/profile/integrations</a>. Pamiętaj, aby w Notion dodać połączenie (<em>Add connections</em>) do baz danych, które chcesz zsynchronizować.
+
+                                {notionTokenInput.trim() && (
+                                    <div className="flex items-center justify-between text-[11px] px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 mt-2 animate-fade-in">
+                                        <span className="flex items-center gap-1.5 font-medium">
+                                            <Sparkles size={13} />
+                                            {language === 'pl' ? 'Wprowadzono nowy token (niezapisany)' : 'New unsaved token entered'}
+                                            <span className="font-mono text-[10px] text-white/80">({notionTokenInput.trim().length} zn.)</span>
+                                        </span>
+                                        <span className="text-[10px] text-amber-200/90">
+                                            {language === 'pl' ? 'Możesz teraz wyszukać bazy lub zapisać konfigurację' : 'You can now discover databases or save'}
+                                        </span>
+                                    </div>
+                                )}
+
+                                <p className="text-[11px] text-content-muted mt-1.5">
+                                    {language === 'pl' ? (
+                                        <>Klucz utworzysz na <a href="https://www.notion.so/profile/integrations" target="_blank" rel="noreferrer" className="text-primary underline">notion.so/profile/integrations</a> (zaczyna się od <code className="text-white font-mono">ntn_</code> lub <code className="text-white font-mono">secret_</code>). Pamiętaj, aby w Notion dodać połączenie (<em>Add connections</em>) do baz danych, które chcesz zsynchronizować.</>
+                                    ) : (
+                                        <>Create token at <a href="https://www.notion.so/profile/integrations" target="_blank" rel="noreferrer" className="text-primary underline">notion.so/profile/integrations</a> (starts with <code className="text-white font-mono">ntn_</code> or <code className="text-white font-mono">secret_</code>). Make sure to share target databases via <em>Add connections</em> in Notion.</>
+                                    )}
                                 </p>
                             </div>
 
@@ -1082,34 +1193,52 @@ const SettingsScreen: React.FC = () => {
 
                                 {discoveredDatabases.length > 0 && (
                                     <div className="space-y-2 pt-2 border-t border-white/10">
-                                        <p className="text-[11px] font-semibold text-white flex items-center justify-between">
-                                            <span>Znaleziono {discoveredDatabases.length} {discoveredDatabases.length === 1 ? 'bazę' : 'baz(y)'} w Twoim Notion:</span>
-                                            <span className="text-content-muted text-[10px]">Kliknij przycisk, aby przypisać rolę bazy</span>
-                                        </p>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                                            <p className="text-[11px] font-semibold text-white">
+                                                Znaleziono {discoveredDatabases.length} {discoveredDatabases.length === 1 ? 'bazę' : 'baz(y)'} w Twoim Notion:
+                                            </p>
+                                            <span className="text-[10px] text-content-muted">Kliknij przycisk na kafelku bazy, aby przypisać jej rolę</span>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1">
                                             {discoveredDatabases.map((db) => {
-                                                const isMeetingSelected = meetingNotesDbInput === db.id;
-                                                const isStudentsSelected = studentsDbInput === db.id;
+                                                const isMeetingSelected = cleanNotionId(meetingNotesDbInput) === cleanNotionId(db.id);
+                                                const isStudentsSelected = cleanNotionId(studentsDbInput) === cleanNotionId(db.id);
 
                                                 return (
                                                     <div
                                                         key={db.id}
                                                         className={`p-3 rounded-xl border transition-all ${
-                                                            isMeetingSelected || isStudentsSelected
-                                                                ? 'bg-primary/10 border-primary/40 shadow-sm'
-                                                                : 'bg-black/50 border-white/10 hover:border-white/20'
+                                                            isMeetingSelected && isStudentsSelected
+                                                                ? 'bg-primary/15 border-primary shadow-md'
+                                                                : isMeetingSelected
+                                                                    ? 'bg-emerald-500/10 border-emerald-500/40 shadow-sm'
+                                                                    : isStudentsSelected
+                                                                        ? 'bg-cyan-500/10 border-cyan-500/40 shadow-sm'
+                                                                        : 'bg-black/50 border-white/10 hover:border-white/20'
                                                         }`}
                                                     >
                                                         <div className="flex items-start justify-between gap-2">
-                                                            <div className="min-w-0">
-                                                                <h5 className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
-                                                                    {db.icon ? (
-                                                                        <span className="text-sm">{db.icon}</span>
-                                                                    ) : (
-                                                                        <Table size={13} className="text-primary shrink-0" />
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                                    <h5 className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
+                                                                        {db.icon ? (
+                                                                            <span className="text-sm">{db.icon}</span>
+                                                                        ) : (
+                                                                            <Table size={13} className="text-primary shrink-0" />
+                                                                        )}
+                                                                        <span className="truncate">{db.title}</span>
+                                                                    </h5>
+                                                                    {isMeetingSelected && (
+                                                                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold uppercase tracking-wider">
+                                                                            🎯 Transkrypcje
+                                                                        </span>
                                                                     )}
-                                                                    <span className="truncate">{db.title}</span>
-                                                                </h5>
+                                                                    {isStudentsSelected && (
+                                                                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold uppercase tracking-wider">
+                                                                            👥 Kursanci
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                                 {db.description && (
                                                                     <p className="text-[10px] text-content-muted truncate mt-0.5">{db.description}</p>
                                                                 )}
@@ -1148,27 +1277,33 @@ const SettingsScreen: React.FC = () => {
                                                         <div className="grid grid-cols-2 gap-1.5 mt-2.5 pt-2 border-t border-white/5">
                                                             <button
                                                                 type="button"
-                                                                onClick={() => setMeetingNotesDbInput(db.id)}
-                                                                className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all text-center flex items-center justify-center gap-1 ${
+                                                                onClick={() => {
+                                                                    setMeetingNotesDbInput(db.id);
+                                                                    setNotionError(null);
+                                                                }}
+                                                                className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${
                                                                     isMeetingSelected
-                                                                        ? 'bg-primary text-black font-bold shadow-xs'
-                                                                        : 'bg-white/5 hover:bg-white/10 text-content border border-white/10 hover:text-white'
+                                                                        ? 'bg-emerald-500 text-black font-bold shadow-xs'
+                                                                        : 'bg-white/5 hover:bg-emerald-500/20 text-content border border-white/10 hover:text-white hover:border-emerald-500/30'
                                                                 }`}
                                                             >
-                                                                {isMeetingSelected && <Check size={11} />}
-                                                                {isMeetingSelected ? 'Baza Spotkań ✓' : '📌 Spotkania'}
+                                                                {isMeetingSelected ? <Check size={11} /> : <span>🎯</span>}
+                                                                {isMeetingSelected ? 'Baza Spotkań ✓' : '🎯 Do transkrypcji'}
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => setStudentsDbInput(db.id)}
-                                                                className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all text-center flex items-center justify-center gap-1 ${
+                                                                onClick={() => {
+                                                                    setStudentsDbInput(db.id);
+                                                                    setNotionError(null);
+                                                                }}
+                                                                className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${
                                                                     isStudentsSelected
-                                                                        ? 'bg-primary text-black font-bold shadow-xs'
-                                                                        : 'bg-white/5 hover:bg-white/10 text-content border border-white/10 hover:text-white'
+                                                                        ? 'bg-cyan-500 text-black font-bold shadow-xs'
+                                                                        : 'bg-white/5 hover:bg-cyan-500/20 text-content border border-white/10 hover:text-white hover:border-cyan-500/30'
                                                                 }`}
                                                             >
-                                                                {isStudentsSelected && <Check size={11} />}
-                                                                {isStudentsSelected ? 'Baza Kursantów ✓' : '👥 Kursanci'}
+                                                                {isStudentsSelected ? <Check size={11} /> : <span>👥</span>}
+                                                                {isStudentsSelected ? 'Baza Kursantów ✓' : '👥 Baza kursantów'}
                                                             </button>
                                                         </div>
                                                     </div>
@@ -1179,31 +1314,96 @@ const SettingsScreen: React.FC = () => {
                                 )}
                             </div>
 
-                            {/* Database IDs (Manual tweak / Auto-filled) */}
+                            {/* Database IDs (Quick Dropdown from Discovered or Manual/Paste) */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-semibold text-content uppercase tracking-wider mb-1.5">
-                                        {language === 'pl' ? 'ID Bazy Spotkań & Transkrypcji' : 'Meeting Notes Database ID'}
-                                    </label>
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <label className="block text-xs font-semibold text-content uppercase tracking-wider">
+                                            {language === 'pl' ? 'ID Bazy Spotkań & Transkrypcji' : 'Meeting Notes Database ID'}
+                                        </label>
+                                        {meetingNotesDbInput && (
+                                            <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-0.5">
+                                                <Check size={10} /> {language === 'pl' ? 'Ustawiona' : 'Set'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {discoveredDatabases.length > 0 && (
+                                        <select
+                                            value={discoveredDatabases.some(d => cleanNotionId(d.id) === cleanNotionId(meetingNotesDbInput)) ? cleanNotionId(meetingNotesDbInput) : ''}
+                                            onChange={(e) => {
+                                                if (e.target.value) {
+                                                    setMeetingNotesDbInput(e.target.value);
+                                                    setNotionError(null);
+                                                }
+                                            }}
+                                            className="w-full px-3 py-2 rounded-xl bg-black/70 border border-emerald-500/30 text-white text-xs focus:outline-none focus:border-emerald-500 mb-1"
+                                        >
+                                            <option value="">-- Wybierz z wykrytych baz w Notion ({discoveredDatabases.length}) --</option>
+                                            {discoveredDatabases.map(d => (
+                                                <option key={d.id} value={cleanNotionId(d.id)}>
+                                                    {d.icon ? `${d.icon} ` : ''}{d.title} ({d.id.slice(0, 8)}...)
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
                                     <input
                                         type="text"
                                         value={meetingNotesDbInput}
-                                        onChange={(e) => setMeetingNotesDbInput(e.target.value)}
-                                        placeholder="Wklej ID lub wybierz z bazy powyżej..."
+                                        onChange={(e) => {
+                                            setMeetingNotesDbInput(cleanNotionId(e.target.value));
+                                            setNotionError(null);
+                                        }}
+                                        placeholder="Wklej ID lub link do bazy spotkań w Notion..."
                                         className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary"
                                     />
+                                    <p className="text-[10px] text-content-muted">
+                                        {language === 'pl' ? 'Baza ze spotkaniami i transkrypcjami AI z lekcji.' : 'Database with meeting notes and AI transcripts.'}
+                                    </p>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-content uppercase tracking-wider mb-1.5">
-                                        {language === 'pl' ? 'ID Bazy Kursantów i Grup' : 'Students & Groups Database ID'}
-                                    </label>
+
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <label className="block text-xs font-semibold text-content uppercase tracking-wider">
+                                            {language === 'pl' ? 'ID Bazy Kursantów i Grup' : 'Students & Groups Database ID'}
+                                        </label>
+                                        {studentsDbInput && (
+                                            <span className="text-[10px] text-cyan-400 font-mono flex items-center gap-0.5">
+                                                <Check size={10} /> {language === 'pl' ? 'Ustawiona' : 'Set'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {discoveredDatabases.length > 0 && (
+                                        <select
+                                            value={discoveredDatabases.some(d => cleanNotionId(d.id) === cleanNotionId(studentsDbInput)) ? cleanNotionId(studentsDbInput) : ''}
+                                            onChange={(e) => {
+                                                if (e.target.value) {
+                                                    setStudentsDbInput(e.target.value);
+                                                    setNotionError(null);
+                                                }
+                                            }}
+                                            className="w-full px-3 py-2 rounded-xl bg-black/70 border border-cyan-500/30 text-white text-xs focus:outline-none focus:border-cyan-500 mb-1"
+                                        >
+                                            <option value="">-- Wybierz z wykrytych baz w Notion ({discoveredDatabases.length}) --</option>
+                                            {discoveredDatabases.map(d => (
+                                                <option key={d.id} value={cleanNotionId(d.id)}>
+                                                    {d.icon ? `${d.icon} ` : ''}{d.title} ({d.id.slice(0, 8)}...)
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
                                     <input
                                         type="text"
                                         value={studentsDbInput}
-                                        onChange={(e) => setStudentsDbInput(e.target.value)}
-                                        placeholder="Wklej ID lub wybierz z bazy powyżej..."
+                                        onChange={(e) => {
+                                            setStudentsDbInput(cleanNotionId(e.target.value));
+                                            setNotionError(null);
+                                        }}
+                                        placeholder="Wklej ID lub link do bazy kursantów w Notion..."
                                         className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary"
                                     />
+                                    <p className="text-[10px] text-content-muted">
+                                        {language === 'pl' ? 'Baza z profilami kursantów, grupami i adresami e-mail.' : 'Database with students, groups and emails.'}
+                                    </p>
                                 </div>
                             </div>
 
@@ -1247,12 +1447,24 @@ const SettingsScreen: React.FC = () => {
                                 )}
                             </div>
 
+                            {/* Unsaved changes alert */}
+                            {hasUnsavedNotionChanges && (
+                                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-2 animate-fade-in">
+                                    <span className="flex items-center gap-1.5 font-medium">
+                                        <Sparkles size={14} className="text-amber-400 shrink-0" />
+                                        {language === 'pl'
+                                            ? 'Masz niezapisane zmiany konfiguracji Notion (token lub bazy). Kliknij "Zapisz konfigurację Notion", aby je zastosować.'
+                                            : 'You have unsaved Notion changes. Click "Save Notion Config" to apply.'}
+                                    </span>
+                                </div>
+                            )}
+
                             {/* Action Buttons */}
                             <div className="flex flex-wrap items-center gap-2 pt-1">
                                 <Button
                                     onClick={handleSaveNotionConfig}
                                     isLoading={isSavingNotion}
-                                    className="shrink-0"
+                                    className={`shrink-0 ${hasUnsavedNotionChanges ? 'ring-2 ring-primary ring-offset-2 ring-offset-base-200' : ''}`}
                                 >
                                     {language === 'pl' ? 'Zapisz konfigurację Notion' : 'Save Notion Config'}
                                 </Button>

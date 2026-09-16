@@ -3277,10 +3277,20 @@ RESEND_API_KEY=${cleanKey}
   });
   const DEFAULT_NOTION_LESSONS_DB = "";
   const DEFAULT_NOTION_STUDENTS_DB = "";
+  function normalizeNotionId(input) {
+    if (!input || typeof input !== "string") return "";
+    const trimmed = input.trim();
+    const match = trimmed.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|[a-f0-9]{32})/i);
+    if (match) {
+      const clean = match[1].replace(/-/g, "").toLowerCase();
+      return `${clean.slice(0, 8)}-${clean.slice(8, 12)}-${clean.slice(12, 16)}-${clean.slice(16, 20)}-${clean.slice(20)}`;
+    }
+    return trimmed;
+  }
   async function getNotionConfig() {
     let token = process.env.NOTION_API_KEY || process.env.NOTION_TOKEN || "";
-    let meetingNotesDbId = process.env.NOTION_LESSONS_DB || DEFAULT_NOTION_LESSONS_DB;
-    let studentsDbId = process.env.NOTION_STUDENTS_DB || DEFAULT_NOTION_STUDENTS_DB;
+    let meetingNotesDbId = normalizeNotionId(process.env.NOTION_LESSONS_DB || DEFAULT_NOTION_LESSONS_DB);
+    let studentsDbId = normalizeNotionId(process.env.NOTION_STUDENTS_DB || DEFAULT_NOTION_STUDENTS_DB);
     let autoFetchEnabled = false;
     let autoFetchIntervalMinutes = 30;
     let lastFetchTime = null;
@@ -3292,8 +3302,8 @@ RESEND_API_KEY=${cleanKey}
         if (notionDoc.exists) {
           const data = notionDoc.data() || {};
           token = typeof data.token === "string" ? data.token.trim() : token;
-          meetingNotesDbId = typeof data.meetingNotesDbId === "string" ? data.meetingNotesDbId.trim() : meetingNotesDbId;
-          studentsDbId = typeof data.studentsDbId === "string" ? data.studentsDbId.trim() : studentsDbId;
+          meetingNotesDbId = typeof data.meetingNotesDbId === "string" ? normalizeNotionId(data.meetingNotesDbId) : meetingNotesDbId;
+          studentsDbId = typeof data.studentsDbId === "string" ? normalizeNotionId(data.studentsDbId) : studentsDbId;
           if (typeof data.autoFetchEnabled === "boolean") autoFetchEnabled = data.autoFetchEnabled;
           if (typeof data.autoFetchIntervalMinutes === "number") autoFetchIntervalMinutes = data.autoFetchIntervalMinutes;
           if (data.lastFetchTime) lastFetchTime = String(data.lastFetchTime);
@@ -3367,18 +3377,20 @@ RESEND_API_KEY=${cleanKey}
     try {
       const { token, meetingNotesDbId, studentsDbId, autoFetchEnabled, autoFetchIntervalMinutes } = req.body;
       const updates = { updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
-      if (typeof token === "string") {
-        const cleanToken = token.trim();
+      if (typeof token === "string" && token.trim() !== "") {
+        const cleanToken = token.trim().replace(/["']/g, "");
         updates.token = cleanToken;
         process.env.NOTION_API_KEY = cleanToken;
       }
       if (typeof meetingNotesDbId === "string") {
-        updates.meetingNotesDbId = meetingNotesDbId.trim();
-        process.env.NOTION_LESSONS_DB = meetingNotesDbId.trim();
+        const cleanMeeting = normalizeNotionId(meetingNotesDbId);
+        updates.meetingNotesDbId = cleanMeeting;
+        process.env.NOTION_LESSONS_DB = cleanMeeting;
       }
       if (typeof studentsDbId === "string") {
-        updates.studentsDbId = studentsDbId.trim();
-        process.env.NOTION_STUDENTS_DB = studentsDbId.trim();
+        const cleanStudents = normalizeNotionId(studentsDbId);
+        updates.studentsDbId = cleanStudents;
+        process.env.NOTION_STUDENTS_DB = cleanStudents;
       }
       if (typeof autoFetchEnabled === "boolean") {
         updates.autoFetchEnabled = autoFetchEnabled;
@@ -3387,8 +3399,51 @@ RESEND_API_KEY=${cleanKey}
         updates.autoFetchIntervalMinutes = autoFetchIntervalMinutes;
       }
       if (adminApp) {
-        const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
-        await adminDb.collection("system").doc("notion").set(updates, { merge: true });
+        try {
+          const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
+          await adminDb.collection("system").doc("notion").set(updates, { merge: true });
+        } catch (e) {
+          console.warn("[Notion] Nie uda\u0142o si\u0119 zapisa\u0107 do Firestore (brak uprawnie\u0144 us\u0142ugi / fallback lokalny):", e);
+        }
+      }
+      try {
+        const envPath = path.resolve(process.cwd(), ".env");
+        if (fs.existsSync(envPath)) {
+          let content = fs.readFileSync(envPath, "utf8");
+          if (updates.token) {
+            if (content.includes("NOTION_API_KEY=")) {
+              content = content.replace(/NOTION_API_KEY=.*(\r?\n|$)/, `NOTION_API_KEY=${updates.token}
+`);
+            } else {
+              content += `
+NOTION_API_KEY=${updates.token}
+`;
+            }
+          }
+          if (updates.meetingNotesDbId) {
+            if (content.includes("NOTION_LESSONS_DB=")) {
+              content = content.replace(/NOTION_LESSONS_DB=.*(\r?\n|$)/, `NOTION_LESSONS_DB=${updates.meetingNotesDbId}
+`);
+            } else {
+              content += `
+NOTION_LESSONS_DB=${updates.meetingNotesDbId}
+`;
+            }
+          }
+          if (updates.studentsDbId) {
+            if (content.includes("NOTION_STUDENTS_DB=")) {
+              content = content.replace(/NOTION_STUDENTS_DB=.*(\r?\n|$)/, `NOTION_STUDENTS_DB=${updates.studentsDbId}
+`);
+            } else {
+              content += `
+NOTION_STUDENTS_DB=${updates.studentsDbId}
+`;
+            }
+          }
+          fs.writeFileSync(envPath, content, "utf8");
+        }
+      } catch (e) {
+        console.warn("[Notion] Nie uda\u0142o si\u0119 zapisa\u0107 konfiguracji do .env:", e);
       }
       const cfg = await getNotionConfig();
       return res.json({
@@ -3411,16 +3466,34 @@ RESEND_API_KEY=${cleanKey}
       process.env.NOTION_LESSONS_DB = "";
       process.env.NOTION_STUDENTS_DB = "";
       if (adminApp) {
-        const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
-        await adminDb.collection("system").doc("notion").set({
-          token: "",
-          meetingNotesDbId: "",
-          studentsDbId: "",
-          autoFetchEnabled: false,
-          lastFetchTime: null,
-          lastFetchStatus: null,
-          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-        });
+        try {
+          const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
+          await adminDb.collection("system").doc("notion").set({
+            token: "",
+            meetingNotesDbId: "",
+            studentsDbId: "",
+            autoFetchEnabled: false,
+            lastFetchTime: null,
+            lastFetchStatus: null,
+            updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+          });
+        } catch (e) {
+          console.warn("[Notion] Nie uda\u0142o si\u0119 wyczy\u015Bci\u0107 Firestore:", e);
+        }
+      }
+      try {
+        const envPath = path.resolve(process.cwd(), ".env");
+        if (fs.existsSync(envPath)) {
+          let content = fs.readFileSync(envPath, "utf8");
+          content = content.replace(/NOTION_API_KEY=.*(\r?\n|$)/, `NOTION_API_KEY=
+`);
+          content = content.replace(/NOTION_LESSONS_DB=.*(\r?\n|$)/, `NOTION_LESSONS_DB=
+`);
+          content = content.replace(/NOTION_STUDENTS_DB=.*(\r?\n|$)/, `NOTION_STUDENTS_DB=
+`);
+          fs.writeFileSync(envPath, content, "utf8");
+        }
+      } catch {
       }
       return res.json({
         ok: true,
@@ -3433,56 +3506,79 @@ RESEND_API_KEY=${cleanKey}
   app2.post("/api/notion/search-databases", requireFirebaseAdmin, async (req, res) => {
     try {
       const cfg = await getNotionConfig();
-      const token = typeof req.body?.token === "string" && req.body.token.trim() || cfg.token;
+      let rawToken = typeof req.body?.token === "string" ? req.body.token.trim() : "";
+      if (rawToken) {
+        rawToken = rawToken.replace(/["']/g, "").trim();
+      }
+      const token = rawToken || cfg.token;
       if (!token) {
         return res.status(400).json({
-          error: 'Brak tokena Notion API. Wprowad\u017A token integracji (np. "secret_..."), aby przeszuka\u0107 udost\u0119pnione bazy.'
+          error: 'Brak tokena Notion API. Wprowad\u017A token integracji (zaczynaj\u0105cy si\u0119 od "ntn_" lub "secret_"), aby przeszuka\u0107 udost\u0119pnione bazy.'
         });
       }
       const NOTION_API = "https://api.notion.com/v1";
       const NOTION_VERSION = "2022-06-28";
-      const searchRes = await fetch(`${NOTION_API}/search`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Notion-Version": NOTION_VERSION,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
+      const allDatabases = [];
+      let cursor = void 0;
+      let hasMore = true;
+      let iterations = 0;
+      while (hasMore && iterations < 3) {
+        iterations++;
+        const requestBody = {
           filter: {
             value: "database",
             property: "object"
           },
-          page_size: 50
-        })
-      });
-      if (!searchRes.ok) {
-        const errText = await searchRes.text();
-        return res.status(searchRes.status).json({
-          error: `B\u0142\u0105d Notion API (${searchRes.status}): ${errText.slice(0, 250)}`
-        });
-      }
-      const searchData = await searchRes.json();
-      const rawResults = searchData.results || [];
-      const databases = rawResults.map((db) => {
-        const title = (db.title || []).map((t) => t.plain_text || "").join("").trim() || "Baza bez tytu\u0142u";
-        const description = (db.description || []).map((d) => d.plain_text || "").join("").trim();
-        const icon = db.icon?.emoji || db.icon?.external?.url || null;
-        const properties = Object.keys(db.properties || {});
-        return {
-          id: db.id,
-          title,
-          description,
-          icon,
-          url: db.url || `https://notion.so/${db.id.replace(/-/g, "")}`,
-          lastEditedTime: db.last_edited_time || db.created_time || null,
-          properties
+          page_size: 100
         };
-      });
+        if (cursor) {
+          requestBody.start_cursor = cursor;
+        }
+        const searchRes = await fetch(`${NOTION_API}/search`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Notion-Version": NOTION_VERSION,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(requestBody)
+        });
+        if (!searchRes.ok) {
+          const errText = await searchRes.text();
+          let userMsg = `B\u0142\u0105d Notion API (${searchRes.status})`;
+          if (searchRes.status === 401) {
+            userMsg = "Nieprawid\u0142owy token Notion (Unauthorized). Upewnij si\u0119, \u017Ce token jest poprawny i nie zosta\u0142 uniewa\u017Cniony w panelu integracji Notion.";
+          } else if (searchRes.status === 403) {
+            userMsg = "Brak uprawnie\u0144 do przestrzeni roboczej Notion (Forbidden). Sprawd\u017A uprawnienia integracji.";
+          } else {
+            userMsg += `: ${errText.slice(0, 200)}`;
+          }
+          return res.status(searchRes.status).json({ error: userMsg });
+        }
+        const searchData = await searchRes.json();
+        const rawResults = searchData.results || [];
+        for (const db of rawResults) {
+          const title = (db.title || []).map((t) => t.plain_text || "").join("").trim() || "Baza bez tytu\u0142u";
+          const description = (db.description || []).map((d) => d.plain_text || "").join("").trim();
+          const icon = db.icon?.emoji || db.icon?.external?.url || null;
+          const properties = Object.keys(db.properties || {});
+          allDatabases.push({
+            id: db.id,
+            title,
+            description,
+            icon,
+            url: db.url || `https://notion.so/${db.id.replace(/-/g, "")}`,
+            lastEditedTime: db.last_edited_time || db.created_time || null,
+            properties
+          });
+        }
+        hasMore = Boolean(searchData.has_more && searchData.next_cursor);
+        cursor = searchData.next_cursor;
+      }
       return res.json({
         ok: true,
-        count: databases.length,
-        databases
+        count: allDatabases.length,
+        databases: allDatabases
       });
     } catch (err) {
       return res.status(500).json({ error: formatErrorString(err) });
@@ -3491,11 +3587,15 @@ RESEND_API_KEY=${cleanKey}
   app2.post("/api/notion/test-connection", requireFirebaseAdmin, async (req, res) => {
     try {
       const cfg = await getNotionConfig();
-      const token = typeof req.body?.token === "string" && req.body.token.trim() || cfg.token;
-      const meetingNotesDbId = typeof req.body?.meetingNotesDbId === "string" && req.body.meetingNotesDbId.trim() || cfg.meetingNotesDbId;
-      const studentsDbId = typeof req.body?.studentsDbId === "string" && req.body.studentsDbId.trim() || cfg.studentsDbId;
+      let rawToken = typeof req.body?.token === "string" ? req.body.token.trim() : "";
+      if (rawToken) {
+        rawToken = rawToken.replace(/["']/g, "").trim();
+      }
+      const token = rawToken || cfg.token;
+      const meetingNotesDbId = normalizeNotionId(typeof req.body?.meetingNotesDbId === "string" && req.body.meetingNotesDbId.trim() || cfg.meetingNotesDbId);
+      const studentsDbId = normalizeNotionId(typeof req.body?.studentsDbId === "string" && req.body.studentsDbId.trim() || cfg.studentsDbId);
       if (!token) {
-        return res.status(400).json({ error: 'Brak tokena Notion API. Wprowad\u017A token integracji (zaczynaj\u0105cy si\u0119 od "secret_").' });
+        return res.status(400).json({ error: 'Brak tokena Notion API. Wprowad\u017A token integracji (np. zaczynaj\u0105cy si\u0119 od "ntn_" lub "secret_").' });
       }
       const NOTION_API = "https://api.notion.com/v1";
       const NOTION_VERSION = "2022-06-28";
@@ -3514,7 +3614,7 @@ RESEND_API_KEY=${cleanKey}
       const botData = await userRes.json();
       const botName = botData?.name || "Cribro Notion Integration";
       const workspaceName = botData?.bot?.owner?.workspace_name || "Notion Workspace";
-      let meetingDbTitle = "Nie sprawdzono";
+      let meetingDbTitle = "Nie skonfigurowano";
       if (meetingNotesDbId) {
         try {
           const dbRes = await fetch(`${NOTION_API}/databases/${meetingNotesDbId}`, {
@@ -3533,7 +3633,7 @@ RESEND_API_KEY=${cleanKey}
           meetingDbTitle = `B\u0142\u0105d zapytania bazy: ${e.message}`;
         }
       }
-      let studentsDbTitle = "Nie sprawdzono";
+      let studentsDbTitle = "Nie skonfigurowano";
       if (studentsDbId) {
         try {
           const sdbRes = await fetch(`${NOTION_API}/databases/${studentsDbId}`, {
@@ -3567,7 +3667,7 @@ RESEND_API_KEY=${cleanKey}
   async function syncNotionTranscriptsFromApi() {
     const cfg = await getNotionConfig();
     const token = cfg.token;
-    const meetingNotesDbId = cfg.meetingNotesDbId;
+    const meetingNotesDbId = normalizeNotionId(cfg.meetingNotesDbId);
     if (!token || !meetingNotesDbId || !adminApp) {
       return { found: 0, processed: 0, importedCount: 0, items: [], unmatchedTranscripts: [], lastFetchTime: (/* @__PURE__ */ new Date()).toISOString() };
     }

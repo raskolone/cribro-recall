@@ -1941,10 +1941,22 @@ export function createApp() {
   const DEFAULT_NOTION_LESSONS_DB = '';
   const DEFAULT_NOTION_STUDENTS_DB = '';
 
+  function normalizeNotionId(input?: string | null): string {
+    if (!input || typeof input !== 'string') return '';
+    const trimmed = input.trim();
+    // Match 36-char hyphenated UUID or 32-char hex string from raw ID or full Notion URL
+    const match = trimmed.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|[a-f0-9]{32})/i);
+    if (match) {
+      const clean = match[1].replace(/-/g, '').toLowerCase();
+      return `${clean.slice(0, 8)}-${clean.slice(8, 12)}-${clean.slice(12, 16)}-${clean.slice(16, 20)}-${clean.slice(20)}`;
+    }
+    return trimmed;
+  }
+
   async function getNotionConfig() {
     let token = process.env.NOTION_API_KEY || process.env.NOTION_TOKEN || '';
-    let meetingNotesDbId = process.env.NOTION_LESSONS_DB || DEFAULT_NOTION_LESSONS_DB;
-    let studentsDbId = process.env.NOTION_STUDENTS_DB || DEFAULT_NOTION_STUDENTS_DB;
+    let meetingNotesDbId = normalizeNotionId(process.env.NOTION_LESSONS_DB || DEFAULT_NOTION_LESSONS_DB);
+    let studentsDbId = normalizeNotionId(process.env.NOTION_STUDENTS_DB || DEFAULT_NOTION_STUDENTS_DB);
     let autoFetchEnabled = false;
     let autoFetchIntervalMinutes = 30;
     let lastFetchTime: string | null = null;
@@ -1957,8 +1969,8 @@ export function createApp() {
         if (notionDoc.exists) {
           const data = notionDoc.data() || {};
           token = typeof data.token === 'string' ? data.token.trim() : token;
-          meetingNotesDbId = typeof data.meetingNotesDbId === 'string' ? data.meetingNotesDbId.trim() : meetingNotesDbId;
-          studentsDbId = typeof data.studentsDbId === 'string' ? data.studentsDbId.trim() : studentsDbId;
+          meetingNotesDbId = typeof data.meetingNotesDbId === 'string' ? normalizeNotionId(data.meetingNotesDbId) : meetingNotesDbId;
+          studentsDbId = typeof data.studentsDbId === 'string' ? normalizeNotionId(data.studentsDbId) : studentsDbId;
           if (typeof data.autoFetchEnabled === 'boolean') autoFetchEnabled = data.autoFetchEnabled;
           if (typeof data.autoFetchIntervalMinutes === 'number') autoFetchIntervalMinutes = data.autoFetchIntervalMinutes;
           if (data.lastFetchTime) lastFetchTime = String(data.lastFetchTime);
@@ -2041,18 +2053,20 @@ export function createApp() {
       const { token, meetingNotesDbId, studentsDbId, autoFetchEnabled, autoFetchIntervalMinutes } = req.body;
       const updates: Record<string, any> = { updatedAt: new Date().toISOString() };
 
-      if (typeof token === 'string') {
-        const cleanToken = token.trim();
+      if (typeof token === 'string' && token.trim() !== '') {
+        const cleanToken = token.trim().replace(/["']/g, '');
         updates.token = cleanToken;
         process.env.NOTION_API_KEY = cleanToken;
       }
       if (typeof meetingNotesDbId === 'string') {
-        updates.meetingNotesDbId = meetingNotesDbId.trim();
-        process.env.NOTION_LESSONS_DB = meetingNotesDbId.trim();
+        const cleanMeeting = normalizeNotionId(meetingNotesDbId);
+        updates.meetingNotesDbId = cleanMeeting;
+        process.env.NOTION_LESSONS_DB = cleanMeeting;
       }
       if (typeof studentsDbId === 'string') {
-        updates.studentsDbId = studentsDbId.trim();
-        process.env.NOTION_STUDENTS_DB = studentsDbId.trim();
+        const cleanStudents = normalizeNotionId(studentsDbId);
+        updates.studentsDbId = cleanStudents;
+        process.env.NOTION_STUDENTS_DB = cleanStudents;
       }
       if (typeof autoFetchEnabled === 'boolean') {
         updates.autoFetchEnabled = autoFetchEnabled;
@@ -2062,8 +2076,44 @@ export function createApp() {
       }
 
       if (adminApp) {
-        const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
-        await adminDb.collection('system').doc('notion').set(updates, { merge: true });
+        try {
+          const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+          await adminDb.collection('system').doc('notion').set(updates, { merge: true });
+        } catch (e) {
+          console.warn('[Notion] Nie udało się zapisać do Firestore (brak uprawnień usługi / fallback lokalny):', e);
+        }
+      }
+
+      // Persist to local .env file if it exists
+      try {
+        const envPath = path.resolve(process.cwd(), '.env');
+        if (fs.existsSync(envPath)) {
+          let content = fs.readFileSync(envPath, 'utf8');
+          if (updates.token) {
+            if (content.includes('NOTION_API_KEY=')) {
+              content = content.replace(/NOTION_API_KEY=.*(\r?\n|$)/, `NOTION_API_KEY=${updates.token}\n`);
+            } else {
+              content += `\nNOTION_API_KEY=${updates.token}\n`;
+            }
+          }
+          if (updates.meetingNotesDbId) {
+            if (content.includes('NOTION_LESSONS_DB=')) {
+              content = content.replace(/NOTION_LESSONS_DB=.*(\r?\n|$)/, `NOTION_LESSONS_DB=${updates.meetingNotesDbId}\n`);
+            } else {
+              content += `\nNOTION_LESSONS_DB=${updates.meetingNotesDbId}\n`;
+            }
+          }
+          if (updates.studentsDbId) {
+            if (content.includes('NOTION_STUDENTS_DB=')) {
+              content = content.replace(/NOTION_STUDENTS_DB=.*(\r?\n|$)/, `NOTION_STUDENTS_DB=${updates.studentsDbId}\n`);
+            } else {
+              content += `\nNOTION_STUDENTS_DB=${updates.studentsDbId}\n`;
+            }
+          }
+          fs.writeFileSync(envPath, content, 'utf8');
+        }
+      } catch (e) {
+        console.warn('[Notion] Nie udało się zapisać konfiguracji do .env:', e);
       }
 
       const cfg = await getNotionConfig();
@@ -2090,17 +2140,32 @@ export function createApp() {
       process.env.NOTION_STUDENTS_DB = '';
 
       if (adminApp) {
-        const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
-        await adminDb.collection('system').doc('notion').set({
-          token: '',
-          meetingNotesDbId: '',
-          studentsDbId: '',
-          autoFetchEnabled: false,
-          lastFetchTime: null,
-          lastFetchStatus: null,
-          updatedAt: new Date().toISOString(),
-        });
+        try {
+          const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+          await adminDb.collection('system').doc('notion').set({
+            token: '',
+            meetingNotesDbId: '',
+            studentsDbId: '',
+            autoFetchEnabled: false,
+            lastFetchTime: null,
+            lastFetchStatus: null,
+            updatedAt: new Date().toISOString(),
+          });
+        } catch (e) {
+          console.warn('[Notion] Nie udało się wyczyścić Firestore:', e);
+        }
       }
+
+      try {
+        const envPath = path.resolve(process.cwd(), '.env');
+        if (fs.existsSync(envPath)) {
+          let content = fs.readFileSync(envPath, 'utf8');
+          content = content.replace(/NOTION_API_KEY=.*(\r?\n|$)/, `NOTION_API_KEY=\n`);
+          content = content.replace(/NOTION_LESSONS_DB=.*(\r?\n|$)/, `NOTION_LESSONS_DB=\n`);
+          content = content.replace(/NOTION_STUDENTS_DB=.*(\r?\n|$)/, `NOTION_STUDENTS_DB=\n`);
+          fs.writeFileSync(envPath, content, 'utf8');
+        }
+      } catch {}
 
       return res.json({
         ok: true,
@@ -2115,63 +2180,89 @@ export function createApp() {
   app.post('/api/notion/search-databases', requireFirebaseAdmin, async (req, res) => {
     try {
       const cfg = await getNotionConfig();
-      const token = (typeof req.body?.token === 'string' && req.body.token.trim()) || cfg.token;
+      let rawToken = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+      if (rawToken) {
+        rawToken = rawToken.replace(/["']/g, '').trim();
+      }
+      const token = rawToken || cfg.token;
 
       if (!token) {
         return res.status(400).json({
-          error: 'Brak tokena Notion API. Wprowadź token integracji (np. "secret_..."), aby przeszukać udostępnione bazy.',
+          error: 'Brak tokena Notion API. Wprowadź token integracji (zaczynający się od "ntn_" lub "secret_"), aby przeszukać udostępnione bazy.',
         });
       }
 
       const NOTION_API = 'https://api.notion.com/v1';
       const NOTION_VERSION = '2022-06-28';
 
-      const searchRes = await fetch(`${NOTION_API}/search`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Notion-Version': NOTION_VERSION,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const allDatabases: any[] = [];
+      let cursor: string | undefined = undefined;
+      let hasMore = true;
+      let iterations = 0;
+
+      while (hasMore && iterations < 3) {
+        iterations++;
+        const requestBody: any = {
           filter: {
             value: 'database',
             property: 'object',
           },
-          page_size: 50,
-        }),
-      });
-
-      if (!searchRes.ok) {
-        const errText = await searchRes.text();
-        return res.status(searchRes.status).json({
-          error: `Błąd Notion API (${searchRes.status}): ${errText.slice(0, 250)}`,
-        });
-      }
-
-      const searchData: any = await searchRes.json();
-      const rawResults = searchData.results || [];
-
-      const databases = rawResults.map((db: any) => {
-        const title = (db.title || []).map((t: any) => t.plain_text || '').join('').trim() || 'Baza bez tytułu';
-        const description = (db.description || []).map((d: any) => d.plain_text || '').join('').trim();
-        const icon = db.icon?.emoji || db.icon?.external?.url || null;
-        const properties = Object.keys(db.properties || {});
-        return {
-          id: db.id,
-          title,
-          description,
-          icon,
-          url: db.url || `https://notion.so/${db.id.replace(/-/g, '')}`,
-          lastEditedTime: db.last_edited_time || db.created_time || null,
-          properties,
+          page_size: 100,
         };
-      });
+        if (cursor) {
+          requestBody.start_cursor = cursor;
+        }
+
+        const searchRes = await fetch(`${NOTION_API}/search`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Notion-Version': NOTION_VERSION,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!searchRes.ok) {
+          const errText = await searchRes.text();
+          let userMsg = `Błąd Notion API (${searchRes.status})`;
+          if (searchRes.status === 401) {
+            userMsg = 'Nieprawidłowy token Notion (Unauthorized). Upewnij się, że token jest poprawny i nie został unieważniony w panelu integracji Notion.';
+          } else if (searchRes.status === 403) {
+            userMsg = 'Brak uprawnień do przestrzeni roboczej Notion (Forbidden). Sprawdź uprawnienia integracji.';
+          } else {
+            userMsg += `: ${errText.slice(0, 200)}`;
+          }
+          return res.status(searchRes.status).json({ error: userMsg });
+        }
+
+        const searchData: any = await searchRes.json();
+        const rawResults = searchData.results || [];
+
+        for (const db of rawResults) {
+          const title = (db.title || []).map((t: any) => t.plain_text || '').join('').trim() || 'Baza bez tytułu';
+          const description = (db.description || []).map((d: any) => d.plain_text || '').join('').trim();
+          const icon = db.icon?.emoji || db.icon?.external?.url || null;
+          const properties = Object.keys(db.properties || {});
+          allDatabases.push({
+            id: db.id,
+            title,
+            description,
+            icon,
+            url: db.url || `https://notion.so/${db.id.replace(/-/g, '')}`,
+            lastEditedTime: db.last_edited_time || db.created_time || null,
+            properties,
+          });
+        }
+
+        hasMore = Boolean(searchData.has_more && searchData.next_cursor);
+        cursor = searchData.next_cursor;
+      }
 
       return res.json({
         ok: true,
-        count: databases.length,
-        databases,
+        count: allDatabases.length,
+        databases: allDatabases,
       });
     } catch (err: any) {
       return res.status(500).json({ error: formatErrorString(err) });
@@ -2182,12 +2273,16 @@ export function createApp() {
   app.post('/api/notion/test-connection', requireFirebaseAdmin, async (req, res) => {
     try {
       const cfg = await getNotionConfig();
-      const token = (typeof req.body?.token === 'string' && req.body.token.trim()) || cfg.token;
-      const meetingNotesDbId = (typeof req.body?.meetingNotesDbId === 'string' && req.body.meetingNotesDbId.trim()) || cfg.meetingNotesDbId;
-      const studentsDbId = (typeof req.body?.studentsDbId === 'string' && req.body.studentsDbId.trim()) || cfg.studentsDbId;
+      let rawToken = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+      if (rawToken) {
+        rawToken = rawToken.replace(/["']/g, '').trim();
+      }
+      const token = rawToken || cfg.token;
+      const meetingNotesDbId = normalizeNotionId((typeof req.body?.meetingNotesDbId === 'string' && req.body.meetingNotesDbId.trim()) || cfg.meetingNotesDbId);
+      const studentsDbId = normalizeNotionId((typeof req.body?.studentsDbId === 'string' && req.body.studentsDbId.trim()) || cfg.studentsDbId);
 
       if (!token) {
-        return res.status(400).json({ error: 'Brak tokena Notion API. Wprowadź token integracji (zaczynający się od "secret_").' });
+        return res.status(400).json({ error: 'Brak tokena Notion API. Wprowadź token integracji (np. zaczynający się od "ntn_" lub "secret_").' });
       }
 
       const NOTION_API = 'https://api.notion.com/v1';
@@ -2213,7 +2308,7 @@ export function createApp() {
       const workspaceName = botData?.bot?.owner?.workspace_name || 'Notion Workspace';
 
       // 2. Sprawdź dostęp do bazy transkrypcji spotkań
-      let meetingDbTitle = 'Nie sprawdzono';
+      let meetingDbTitle = 'Nie skonfigurowano';
       if (meetingNotesDbId) {
         try {
           const dbRes = await fetch(`${NOTION_API}/databases/${meetingNotesDbId}`, {
@@ -2234,7 +2329,7 @@ export function createApp() {
       }
 
       // 3. Sprawdź dostęp do bazy kursantów
-      let studentsDbTitle = 'Nie sprawdzono';
+      let studentsDbTitle = 'Nie skonfigurowano';
       if (studentsDbId) {
         try {
           const sdbRes = await fetch(`${NOTION_API}/databases/${studentsDbId}`, {
@@ -2271,7 +2366,7 @@ export function createApp() {
   async function syncNotionTranscriptsFromApi(): Promise<{ found: number; processed: number; importedCount?: number; items: any[]; unmatchedTranscripts?: any[]; lastFetchTime: string }> {
     const cfg = await getNotionConfig();
     const token = cfg.token;
-    const meetingNotesDbId = cfg.meetingNotesDbId;
+    const meetingNotesDbId = normalizeNotionId(cfg.meetingNotesDbId);
 
     if (!token || !meetingNotesDbId || !adminApp) {
       return { found: 0, processed: 0, importedCount: 0, items: [], unmatchedTranscripts: [], lastFetchTime: new Date().toISOString() };
