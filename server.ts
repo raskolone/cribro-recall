@@ -188,6 +188,13 @@ import { getRecentMistakes } from "./functions/src/homeworkV2/learningProfile";
 import { SCHEMA_VERSION } from "./functions/src/homeworkV2/contracts";
 import { buildV2TaskPayload, newHomeworkSetId, selectSendableExercises } from "./functions/src/homeworkV2/assignment";
 import { buildGradedHomeworkEmail } from "./services/homeworkEmail";
+import {
+  ingestAttempts,
+  serializeLearningProfile,
+  createProfile,
+  normalizeLevel,
+  deserializeLearningProfile
+} from "./utils/learningCurve";
 let pdfParse: any;
 try {
   const loadedPdf = typeof require !== "undefined" ? require("pdf-parse") : null;
@@ -1048,6 +1055,33 @@ export function createApp() {
             lastHomeworkSubmittedAt: nowIso,
             lastActivity: nowIso
           }).catch(() => {});
+
+          // Zasil profil krzywej uczenia (learningCurve) kursanta
+          try {
+            const profileDocRef = adminDb.collection('users').doc(studentUid).collection('profile').doc('learningCurve');
+            const [profileSnap, userSnap] = await Promise.all([
+              profileDocRef.get(),
+              adminDb.collection('users').doc(studentUid).get(),
+            ]);
+            const baseLevel = normalizeLevel(userSnap.data()?.level);
+            const currentProfile = profileSnap.exists
+              ? deserializeLearningProfile(studentUid, profileSnap.data() || {}, baseLevel)
+              : createProfile(studentUid, baseLevel, nowIso);
+            const attempts = rows.map((r, idx) => ({
+              prompt: r.polishSentence || items[idx]?.polishSentence || '',
+              expected: r.correctTranslation || items[idx]?.englishTranslation || '',
+              given: r.studentAnswer || '',
+              isCorrect: r.isCorrect,
+              score: r.score,
+              level: baseLevel,
+              exerciseType: items[idx]?.type || taskData.type || 'homework',
+              date: nowIso,
+            }));
+            const { profile } = ingestAttempts(currentProfile, attempts, nowIso);
+            await profileDocRef.set(serializeLearningProfile(profile, currentProfile.createdAt || nowIso));
+          } catch (lcErr) {
+            console.warn('[Direct Homework] Błąd aktualizacji profilu krzywej uczenia:', lcErr);
+          }
         } catch (dbErr) {
           console.warn('[Direct Homework] Błąd zapisu do profilu kursanta:', dbErr);
         }

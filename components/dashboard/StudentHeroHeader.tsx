@@ -187,7 +187,15 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
   }, [practiceLogs]);
 
   const totalSentences = Math.max(studentUser?.translatedSentencesCount || 0, sentencesFromLogs);
-  const totalTasksDone = completedHomeworkTasks.length + completedTestsCount + practiceLogs.length;
+
+  // Total non-homework and non-test practice sessions (to prevent double-counting)
+  const standaloneExercisesCount = useMemo(() => {
+    return practiceLogs.filter(
+      (l) => (l.exerciseType as string) !== 'homework' && (l.exerciseType as string) !== 'test'
+    ).length;
+  }, [practiceLogs]);
+
+  const totalTasksDone = completedHomeworkTasks.length + completedTestsCount + standaloneExercisesCount;
   const currentStreak = studentUser?.streakCount ?? streakCount;
 
   // Sync statistics back to Firestore so every student document is guaranteed to be up-to-date in DB

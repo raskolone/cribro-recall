@@ -82,6 +82,22 @@ export interface User {
   lastInviteSentAt?: string;
   /** Adres lektora, który wysłał zaproszenie. */
   inviteSentBy?: string;
+  /** Czy zaproszenie zostało wysłane do kursanta (manualnie lub automatycznie). */
+  invitationSent?: boolean;
+  /** Data wysłania zaproszenia do kursanta. */
+  invitationSentAt?: string;
+  /** Czy konto zostało aktywowane przez pierwsze zalogowanie się kursanta. */
+  isActivated?: boolean;
+  /** Data i godzina pierwszego logowania kursanta. */
+  firstLoginAt?: string;
+  /** Czy kursant zmienił hasło na własne. */
+  hasCustomPassword?: boolean;
+  /** Data zmiany hasła na własne. */
+  passwordChangedAt?: string;
+  /** Dostawca uwierzytelniania (np. 'password', 'google'). */
+  authProvider?: string;
+  /** Czy konto zostało połączone z kontem Google. */
+  isGoogleLinked?: boolean;
   /** Flaga oznaczająca grupę (np. Para, Trójka, Grupa firmowa). */
   isGroup?: boolean;
   groupType?: 'pair' | 'triplet' | 'group';
@@ -771,10 +787,11 @@ export type PresentationSlideType =
   | 'title' 
   | 'toc'
   | 'warmup' 
+  | 'wheel_of_fortune'
   | 'vocabulary' 
   | 'grammar' 
   | 'speaking' 
-  | 'listening'
+  | 'listening' 
   | 'practice' 
   | 'enclosure' 
   | 'correction' 
@@ -829,6 +846,8 @@ export interface PresentationSlide {
   quickCheck?: Array<{ question: string; answer: string; hint?: string }>;
   exitTicketChallenge?: string;
   aiModelUsed?: string;
+  // Wheel of Fortune
+  wheelQuestions?: Array<{ id: string; question: string; source?: 'scenario' | 'past_lessons' | 'custom' }>;
 }
 
 export interface LiveCorrectionItem {

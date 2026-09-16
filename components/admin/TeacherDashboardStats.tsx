@@ -48,6 +48,7 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
           const logsQ = query(collection(db, `users/${selectedUserId}/practiceLogs`));
           const snap = await getDocs(logsQ);
           const logs = snap.docs.map(d => d.data() as PracticeLog);
+          logs.sort((a, b) => (new Date(a.date).getTime() || 0) - (new Date(b.date).getTime() || 0));
           setUserLogs(logs);
         } catch(e) {
           console.error(e);
@@ -66,17 +67,16 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
   // Process logs for the selected user
   const userPerformanceData = userLogs.map(log => {
     const totalVal = Number(log.totalWords);
-    const total = isNaN(totalVal) ? 0 : totalVal;
-    
-    // In practiceLogs, score is stored as percentage (0-100), but if it's test, totalWords is number of questions, etc.
-    // Let's compute actual correct and incorrect count.
+    let total = isNaN(totalVal) || totalVal <= 0 ? (Array.isArray(log.sentences) ? log.sentences.length : 0) : totalVal;
     const scoreVal = Number(log.score);
-    const scorePct = isNaN(scoreVal) ? 0 : scoreVal;
-    
-    // If score is stored as percentage, correct count is round(total * scorePct / 100)
-    // If total is 0, let's treat it as scorePct
-    const correct = total > 0 ? Math.round((total * scorePct) / 100) : scorePct;
-    const errors = total - correct > 0 ? total - correct : 0;
+    const scorePct = isNaN(scoreVal) ? 0 : Math.min(100, Math.max(0, scoreVal));
+
+    if (total === 0) {
+      total = 1;
+    }
+
+    const correct = Math.round((total * scorePct) / 100);
+    const errors = Math.max(0, total - correct);
     
     const rawDate = new Date(log.date);
     const dateStr = isNaN(rawDate.getTime()) ? 'Brak daty' : rawDate.toLocaleDateString();
@@ -87,7 +87,7 @@ const TeacherDashboardStats: React.FC<StatsProps> = ({ users }) => {
       błędy: errors,
       razem: total
     };
-  }).slice(-10); // last 10 sessions
+  }).slice(-10); // last 10 chronological sessions
 
   return (
     <div className="bg-base-200/50 rounded-2xl border border-white/5 overflow-hidden transition-all duration-300">

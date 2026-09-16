@@ -5,9 +5,10 @@ import {
   Layers, MessageSquare, ArrowRight, Check, X, Music, Maximize2
 } from 'lucide-react';
 import Markdown from 'react-markdown';
-import { PresentationSlide, PresentationSlideItem } from '../../../types';
+import { PresentationSlide, PresentationSlideItem, LessonRecord } from '../../../types';
 import TTSButtons from '../../flashcards/TTSButtons';
 import Button from '../../ui/Button';
+import { WheelOfFortune } from '../../presentation/WheelOfFortune';
 
 /**
  * Stan interakcji na slajdzie: co jest odkryte i co podświetlone.
@@ -21,12 +22,22 @@ export interface SlideInteraction {
   revealedAnswers: Record<string, boolean>;
   highlightedItemId: string | null;
   randomQuestionIndex: number | null;
+  wheelRotation?: number;
+  isWheelSpinning?: boolean;
+  drawnQuestionId?: string | null;
+  drawnQuestionText?: string | null;
+  questionSource?: 'scenario' | 'past_lessons';
 }
 
 export const EMPTY_SLIDE_INTERACTION: SlideInteraction = {
   revealedAnswers: {},
   highlightedItemId: null,
   randomQuestionIndex: null,
+  wheelRotation: 0,
+  isWheelSpinning: false,
+  drawnQuestionId: null,
+  drawnQuestionText: null,
+  questionSource: 'scenario',
 };
 
 interface SlideCardProps {
@@ -43,6 +54,10 @@ interface SlideCardProps {
    */
   interaction?: SlideInteraction;
   onInteractionChange?: (next: SlideInteraction) => void;
+  lessonRecords?: LessonRecord[];
+  studentName?: string | null;
+  isStudent?: boolean;
+  onAddToNotes?: (text: string) => void;
 }
 
 export const SlideCard: React.FC<SlideCardProps> = ({
@@ -53,10 +68,15 @@ export const SlideCard: React.FC<SlideCardProps> = ({
   onUpdateSlideItem,
   onJumpToSlide,
   interaction,
-  onInteractionChange
+  onInteractionChange,
+  lessonRecords = [],
+  studentName,
+  isStudent = false,
+  onAddToNotes
 }) => {
   const [localInteraction, setLocalInteraction] = useState<SlideInteraction>(EMPTY_SLIDE_INTERACTION);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [showWarmupAsWheel, setShowWarmupAsWheel] = useState(false);
 
   const isControlled = Boolean(interaction && onInteractionChange);
   const state = isControlled ? (interaction as SlideInteraction) : localInteraction;
@@ -122,6 +142,7 @@ export const SlideCard: React.FC<SlideCardProps> = ({
             slide.type === 'toc' ? 'bg-indigo-400/20 text-indigo-300 border-indigo-400/30' :
             slide.type === 'warmup' ? 'bg-amber-400/20 text-amber-300 border-amber-400/30' :
             slide.type === 'vocabulary' ? 'bg-sky-400/20 text-sky-300 border-sky-400/30' :
+            slide.type === 'wheel_of_fortune' ? 'bg-amber-400/20 text-amber-300 border-amber-400/30' :
             slide.type === 'grammar' ? 'bg-purple-400/20 text-purple-300 border-purple-400/30' :
             slide.type === 'listening' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
             slide.type === 'practice' ? 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30' :
@@ -130,6 +151,7 @@ export const SlideCard: React.FC<SlideCardProps> = ({
             'bg-white/10 text-content-muted border-white/10'
           }`}>
             {slide.type === 'title' && 'Wprowadzenie'}
+            {slide.type === 'wheel_of_fortune' && 'Koło Fortuny (Rozgrzewka)'}
             {slide.type === 'toc' && 'Plan lekcji & Agenda'}
             {slide.type === 'warmup' && 'Warm-up / Rozgrzewka'}
             {slide.type === 'vocabulary' && 'Słownictwo & Wymowa'}
@@ -156,7 +178,21 @@ export const SlideCard: React.FC<SlideCardProps> = ({
               <span>Sugerowany czas: {slide.timerMinutes} min</span>
             </div>
           )}
-          {slide.type === 'warmup' && slide.items && slide.items.length > 1 && (
+          {slide.type === 'warmup' && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setShowWarmupAsWheel(prev => !prev)}
+              className={`text-xs font-bold flex items-center gap-1.5 ${
+                showWarmupAsWheel
+                  ? 'bg-primary/20 text-primary border-primary/30'
+                  : 'bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30'
+              }`}
+            >
+              <Sparkles size={14} /> {showWarmupAsWheel ? 'Pokaż karty pytań' : 'Koło Fortuny'}
+            </Button>
+          )}
+          {slide.type === 'warmup' && !showWarmupAsWheel && slide.items && slide.items.length > 1 && (
             <Button
               size="sm"
               variant="secondary"
@@ -264,7 +300,7 @@ export const SlideCard: React.FC<SlideCardProps> = ({
             {slide.items && slide.items.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-2">
                 {slide.items.map((item, tIdx) => {
-                  const targetSlideIndex = tIdx + 2; // Slide 0 = Title, Slide 1 = TOC, Slide 2+ = stages
+                  const targetSlideIndex = slideIndex + 1 + tIdx; // Skok do właściwego modułu za spisem treści
                   return (
                     <div
                       key={item.id || tIdx}
@@ -349,8 +385,22 @@ export const SlideCard: React.FC<SlideCardProps> = ({
           </div>
         )}
 
+        {/* WHEEL OF FORTUNE WARMUP GAME */}
+        {(slide.type === 'wheel_of_fortune' || (slide.type === 'warmup' && showWarmupAsWheel)) && (
+          <WheelOfFortune
+            slide={slide}
+            lessonRecords={lessonRecords}
+            studentName={studentName}
+            isFullscreen={isFullscreen}
+            interaction={state}
+            onInteractionChange={applyInteraction}
+            onAddToNotes={onAddToNotes}
+            isStudent={isStudent}
+          />
+        )}
+
         {/* WARMUP / QUESTIONS */}
-        {(slide.type === 'warmup' || slide.type === 'speaking') && slide.items && (
+        {((slide.type === 'warmup' && !showWarmupAsWheel) || slide.type === 'speaking') && slide.items && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {slide.items.map((item, qIdx) => {
               const isSelected = highlightedItemId === item.id;

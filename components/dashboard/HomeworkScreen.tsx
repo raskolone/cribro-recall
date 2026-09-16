@@ -19,6 +19,8 @@ import { HOMEWORK_ENGINE_V2 } from '../../config/featureFlags';
 import HomeworkEmailConfirmationModal from '../admin/HomeworkEmailConfirmationModal';
 import { TestPreviewModal } from '../admin/TestPreviewModal';
 import { exportTestToPDF } from '../../utils/pdfExport';
+import { recordExerciseResults } from '../../services/learningProfile';
+import { normalizeLevel } from '../../utils/learningCurve';
 import { FillInTheBlankTask } from '../practice/FillInTheBlankTask';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 import { useIsDesktop } from '../../hooks/useMediaQuery';
@@ -1165,6 +1167,20 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
           updateDoc(doc(db, 'users', user.id), {
             translatedSentencesCount: currentCount + sentencesCount
           }).catch(console.error);
+
+          const attempts = (evalResults || []).map((res: any, idx: number) => ({
+            prompt: res.polishSentence || activeTask.sentences?.[idx]?.polishSentence || '',
+            expected: res.correctTranslation || activeTask.sentences?.[idx]?.englishTranslation || '',
+            given: res.studentAnswer || studentAnswers[idx] || '',
+            isCorrect: res.isCorrect ?? (Number(res.score) >= 70),
+            score: Number(res.score) || 0,
+            level: normalizeLevel(user.level),
+            exerciseType: activeTask.type || 'homework',
+            date: new Date().toISOString(),
+          }));
+          recordExerciseResults(user.id, attempts, user.level).catch((lcErr) =>
+            console.warn('Could not record homework in learning profile:', lcErr)
+          );
         }
       } catch (e) {
         console.warn('Could not save homework practice log:', e);

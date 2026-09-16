@@ -17,6 +17,7 @@ import {
   buildSingleSlidePrompt,
   buildEnhanceSlidePrompt
 } from './presentationGuidelines';
+import { extractQuestionsFromScenario } from './wheelQuestionService';
 
 const LOCAL_STORAGE_PRESENTATIONS_KEY = 'cribro_saved_presentations_v1';
 
@@ -38,9 +39,23 @@ export const getDefaultPresentation = (
     },
     {
       id: 'slide-2',
-      type: 'warmup',
-      title: 'Warm-up & Icebreaker',
-      subtitle: 'Krótka rozgrzewka konwersacyjna (5-8 min)',
+      type: 'wheel_of_fortune',
+      title: 'Warm-up: Koło Fortuny',
+      subtitle: 'Zakręć kołem i wylosuj pytanie rozgrzewkowe na start lekcji (5-8 min)',
+      content: 'Wybierz źródło pytań (scenariusz lub historia lekcji) i zakręć kołem, aby wylosować pierwsze pytanie do rozmowy.',
+      timerMinutes: 8,
+      speakerNotes: 'Rozpocznij lekcję od rozgrzewki kołem fortuny. Zachęć kursanta do podania konkretnego przykładu z życia zawodowego.',
+      bgTheme: 'emerald',
+      wheelQuestions: [
+        { id: 'wq-1', question: 'How do you handle situations when you completely disagree with a colleague or client without creating tension?', source: 'scenario' },
+        { id: 'wq-2', question: 'Have you ever had to soften bad news in a professional meeting? What phrases did you use?', source: 'scenario' },
+        { id: 'wq-3', question: 'Which is more important in leadership: radical candour (100% directness) or diplomatic tact?', source: 'scenario' },
+        { id: 'wq-4', question: 'What is the most interesting professional challenge you tackled this week?', source: 'scenario' },
+        { id: 'wq-5', question: 'If you could change one communication habit in your team, what would it be?', source: 'scenario' },
+        { id: 'wq-6', question: 'What phrase in English do you find yourself using almost every single day?', source: 'scenario' },
+        { id: 'wq-7', question: 'How do you prepare mentally before an important presentation in English?', source: 'scenario' },
+        { id: 'wq-8', question: 'Describe a moment when choosing the right word made all the difference.', source: 'scenario' }
+      ],
       items: [
         {
           id: 'q-1',
@@ -54,10 +69,7 @@ export const getDefaultPresentation = (
           id: 'q-3',
           question: 'Which is more important in leadership: radical candour (100% directness) or diplomatic tact?'
         }
-      ],
-      timerMinutes: 8,
-      speakerNotes: 'Zachęć kursanta do podania konkretnego przykładu z życia zawodowego.',
-      bgTheme: 'dark'
+      ]
     },
     {
       id: 'slide-3',
@@ -229,7 +241,29 @@ export const createPresentationFromScenario = (
     bgTheme: 'emerald'
   });
 
-  // 2. Table of Contents / Lesson Plan Slide (Spis treści i plan lekcji)
+  // 2. Wheel of Fortune Warm-up Game (Pierwszy element interaktywny rozgrzewki)
+  const initialWheelQuestions = extractQuestionsFromScenario(null, scenario);
+  slides.push({
+    id: `slide-wheel-${Date.now()}`,
+    type: 'wheel_of_fortune',
+    title: 'Koło Fortuny: Rozgrzewka językowa',
+    subtitle: 'Zakręć kołem i wylosuj pytanie rozgrzewkowe na start lekcji (5-8 min)',
+    content: 'Wybierz źródło pytań (aktualny scenariusz lub poprzednie lekcje kursanta) i zakręć kołem, aby wylosować pierwsze pytanie do dyskusji.',
+    timerMinutes: 8,
+    speakerNotes: 'Wybierz źródło pytań (scenariusz vs historia lekcji). Poproś kursanta o kliknięcie i zakręcenie kołem.',
+    bgTheme: 'emerald',
+    wheelQuestions: initialWheelQuestions.map(q => ({
+      id: q.id,
+      question: q.question,
+      source: q.category || 'scenario'
+    })),
+    items: initialWheelQuestions.map(q => ({
+      id: q.id,
+      question: q.question
+    }))
+  });
+
+  // 3. Table of Contents / Lesson Plan Slide (Spis treści i plan lekcji)
   if (scenario.stages && scenario.stages.length > 0) {
     slides.push({
       id: `slide-toc-${Date.now()}`,

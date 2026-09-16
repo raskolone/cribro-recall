@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, ChevronDown, Download, Loader2, RefreshCw, Sparkles, X } from 'lucide-react';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { doc, onSnapshot, collection, getDocs, query, where, updateDoc } from 'firebase/firestore';
+import { db, auth } from '../../firebase';
 import NotionSyncResultModal from './NotionSyncResultModal';
+import { buildWelcomeEmail } from '../../services/homeworkEmail';
 import {
   ImportReport,
   MatchReason,
@@ -64,6 +65,7 @@ const NotionSyncButton: React.FC<Props> = ({ onImported }) => {
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const [createAccounts, setCreateAccounts] = useState<Set<string>>(new Set());
+  const [sendWelcomeEmails, setSendWelcomeEmails] = useState<Set<string>>(new Set());
   const [report, setReport] = useState<ImportReport | null>(null);
   const [busy, setBusy] = useState<'preview' | 'import' | null>(null);
   const [error, setError] = useState('');
@@ -87,6 +89,7 @@ const NotionSyncButton: React.FC<Props> = ({ onImported }) => {
         )
       );
       setCreateAccounts(new Set());
+      setSendWelcomeEmails(new Set());
     } catch (e: any) {
       setError(e?.message || 'Nie udało się odczytać danych z Notion.');
     } finally {
@@ -113,6 +116,60 @@ const NotionSyncButton: React.FC<Props> = ({ onImported }) => {
           createAccount: createAccounts.has(notionId),
         }))
       );
+
+      // Opcjonalne wysłanie e-maili powitalnych z hasłem startowym
+      if (result.accountsCreated && result.accountsCreated.length > 0) {
+        try {
+          const token = await auth.currentUser?.getIdToken();
+          for (const acc of result.accountsCreated) {
+            const studentPrev = preview?.students.find(
+              (s) => s.emails.includes(acc.email) || s.name === acc.name
+            );
+            if (studentPrev && sendWelcomeEmails.has(studentPrev.notionId)) {
+              try {
+                const emailPayload = buildWelcomeEmail({
+                  studentName: acc.name,
+                  username: acc.name,
+                  tempPassword: acc.tempPassword,
+                  appUrl: window.location.origin,
+                });
+                if (token) {
+                  await fetch('/api/mailing/test-send', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                      to: acc.email,
+                      from: 'Maciej Wyrozumski <wyrozumski@maciej.pro>',
+                      subject: emailPayload.subject,
+                      html: emailPayload.html,
+                      text: emailPayload.text,
+                    }),
+                  });
+                }
+                const nowIso = new Date().toISOString();
+                const userDocs = await getDocs(
+                  query(collection(db, 'users'), where('email', '==', acc.email))
+                );
+                if (!userDocs.empty) {
+                  await updateDoc(userDocs.docs[0].ref, {
+                    invitationSent: true,
+                    invitationSentAt: nowIso,
+                    lastInviteSentAt: nowIso,
+                  });
+                }
+              } catch (mailErr) {
+                console.warn(`Nie udało się wysłać powitalnego e-maila do ${acc.email}:`, mailErr);
+              }
+            }
+          }
+        } catch (authErr) {
+          console.warn('Błąd pobierania tokenu do wysyłki powitalnych e-maili:', authErr);
+        }
+      }
+
       setReport(result);
       onImported?.();
       // Po imporcie podgląd jest nieaktualny: konta powstały, adresy się zmieniły.
@@ -298,18 +355,47 @@ const NotionSyncButton: React.FC<Props> = ({ onImported }) => {
                   {/* Zakładanie konta wymaga osobnej zgody — zaznaczenie kursanta
                       do importu lekcji nie może tworzyć mu konta po cichu. */}
                   {!s.uid && picked && (
-                    <label className="flex items-center gap-2 mt-2 ml-7 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={createAccounts.has(s.notionId)}
-                        disabled={busy !== null || !s.emails.some((e) => e.includes('@'))}
-                        onChange={() => setCreateAccounts((prev) => toggle(prev, s.notionId))}
-                        className="w-3.5 h-3.5 accent-warn"
-                      />
-                      <span className="text-[11px] text-warn font-bold">
-                        Załóż konto i wyślij hasło startowe
-                      </span>
-                    </label>
+                    <div className="mt-2 ml-7 space-y-1.5">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={createAccounts.has(s.notionId)}
+                          disabled={busy !== null || !s.emails.some((e) => e.includes('@'))}
+                          onChange={() => {
+                            setCreateAccounts((prev) => {
+                              const next = toggle(prev, s.notionId);
+                              if (!next.has(s.notionId)) {
+                                setSendWelcomeEmails((w) => {
+                                  const nw = new Set(w);
+                                  nw.delete(s.notionId);
+                                  return nw;
+                                });
+                              }
+                              return next;
+                            });
+                          }}
+                          className="w-3.5 h-3.5 accent-warn"
+                        />
+                        <span className="text-[11px] text-warn font-bold">
+                          Załóż konto w aplikacji
+                        </span>
+                      </label>
+
+                      {createAccounts.has(s.notionId) && (
+                        <label className="flex items-center gap-2 ml-5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={sendWelcomeEmails.has(s.notionId)}
+                            disabled={busy !== null}
+                            onChange={() => setSendWelcomeEmails((prev) => toggle(prev, s.notionId))}
+                            className="w-3.5 h-3.5 accent-primary"
+                          />
+                          <span className="text-[11px] text-text-hi font-medium">
+                            Wyślij e-mail powitalny z danymi logowania <span className="text-content-muted text-[10px]">(opcjonalnie)</span>
+                          </span>
+                        </label>
+                      )}
+                    </div>
                   )}
                 </li>
               );

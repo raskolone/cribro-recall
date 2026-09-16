@@ -34,6 +34,8 @@ import {
   FileEdit
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { User } from '../../types';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
@@ -144,6 +146,39 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
   // App Invite Modal State
   const [inviteStudent, setInviteStudent] = useState<User | null>(null);
   const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
+  const [copiedPasswordId, setCopiedPasswordId] = useState<string | null>(null);
+  const [togglingInviteId, setTogglingInviteId] = useState<string | null>(null);
+
+  const handleCopyPassword = (userId: string, pass: string) => {
+    navigator.clipboard.writeText(pass);
+    setCopiedPasswordId(userId);
+    setTimeout(() => setCopiedPasswordId(null), 2000);
+  };
+
+  const handleToggleInvitation = async (u: User) => {
+    setTogglingInviteId(u.id);
+    const isSent = Boolean(u.invitationSent || u.lastInviteSentAt);
+    const newStatus = !isSent;
+    const nowIso = new Date().toISOString();
+    try {
+      await updateDoc(doc(db, 'users', u.id), {
+        invitationSent: newStatus,
+        ...(newStatus ? { invitationSentAt: nowIso } : {}),
+      });
+      u.invitationSent = newStatus;
+      if (newStatus) u.invitationSentAt = nowIso;
+      if (onBulkUpdateUsers) {
+        onBulkUpdateUsers([u.id], {
+          invitationSent: newStatus,
+          ...(newStatus ? { invitationSentAt: nowIso } : {}),
+        });
+      }
+    } catch (err) {
+      console.error('Failed to toggle invitation:', err);
+    } finally {
+      setTogglingInviteId(null);
+    }
+  };
 
   // Single user deletion state
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
@@ -821,6 +856,11 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                     <ArrowUpDown size={12} className={sortField === 'logins' ? 'text-primary' : 'opacity-40'} />
                   </div>
                 </th>
+                <th className="py-3 px-4 min-w-[160px]">
+                  <div className="flex items-center gap-1.5">
+                    <span>📬 Zaproszenie & Aktywacja</span>
+                  </div>
+                </th>
                 <th className="py-3 px-4 text-right">
                   <span>⚡ Szybkie akcje & Narzędzia</span>
                 </th>
@@ -831,7 +871,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
             <tbody className="divide-y divide-white/5">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-content-muted">
+                  <td colSpan={8} className="text-center py-12 text-content-muted">
                     <Database className="w-12 h-12 mx-auto mb-2 opacity-20" />
                     <p className="font-semibold text-sm text-white">Brak rekordów spełniających kryteria</p>
                     <p className="text-xs text-content-muted mt-0.5">Zmień frazę w wyszukiwarce lub zresetuj filtry.</p>
@@ -928,6 +968,23 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                                 </span>
                               )}
                             </div>
+                            <div className="mt-1 flex items-center gap-1.5">
+                              {user.tempPassword ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyPassword(user.id, user.tempPassword!)}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-warn/15 hover:bg-warn/25 text-warn font-mono text-[10px] font-bold border border-warn/30 transition-colors cursor-pointer"
+                                  title="Hasło startowe kursanta — kliknij, aby skopiować"
+                                >
+                                  <Lock size={10} />
+                                  <span>{copiedPasswordId === user.id ? 'Skopiowano!' : 'Kopiuj hasło'}</span>
+                                </button>
+                              ) : user.isGoogleLinked || user.authProvider === 'google' ? (
+                                <span className="text-[10px] text-sky-300/80 font-mono">🌐 Google</span>
+                              ) : (
+                                <span className="text-[10px] text-content-muted/60 font-mono">🔒 Własne</span>
+                              )}
+                            </div>
                           </div>
 
                           <button
@@ -986,6 +1043,87 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                             {user.lastLoginDate
                               ? new Date(user.lastLoginDate).toLocaleDateString('pl-PL')
                               : 'Brak'}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Zaproszenie & Aktywacja Column */}
+                      <td className="py-3.5 px-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                                user.invitationSent || user.lastInviteSentAt
+                                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                  : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                              }`}
+                              title={
+                                user.invitationSentAt
+                                  ? `Wysłano: ${new Date(user.invitationSentAt).toLocaleDateString('pl-PL')}`
+                                  : user.lastInviteSentAt
+                                  ? `Wysłano: ${new Date(user.lastInviteSentAt).toLocaleDateString('pl-PL')}`
+                                  : 'Zaproszenie nie zostało wysłane'
+                              }
+                            >
+                              {user.invitationSent || user.lastInviteSentAt ? (
+                                <CheckCircle2 size={10} />
+                              ) : (
+                                <AlertTriangle size={10} />
+                              )}
+                              <span>
+                                {user.invitationSent || user.lastInviteSentAt ? 'Zaproszono' : 'Brak'}
+                              </span>
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => handleToggleInvitation(user)}
+                              disabled={togglingInviteId === user.id}
+                              className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-content-muted hover:text-text-hi transition-colors cursor-pointer"
+                              title={
+                                user.invitationSent || user.lastInviteSentAt
+                                  ? 'Cofnij oznaczenie zaproszenia'
+                                  : 'Oznacz manualnie jako wysłane'
+                              }
+                            >
+                              {togglingInviteId === user.id ? (
+                                <RefreshCw size={9} className="animate-spin" />
+                              ) : user.invitationSent || user.lastInviteSentAt ? (
+                                'Cofnij'
+                              ) : (
+                                'Oznacz'
+                              )}
+                            </button>
+                          </div>
+
+                          <div>
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                user.isActivated || (user.loginCount && user.loginCount > 0)
+                                  ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                                  : 'text-content-muted/70 bg-white/5 border border-white/10'
+                              }`}
+                              title={
+                                user.firstLoginAt
+                                  ? `Pierwsze logowanie: ${new Date(user.firstLoginAt).toLocaleDateString('pl-PL')}`
+                                  : user.lastLoginDate
+                                  ? `Ostatnie logowanie: ${new Date(user.lastLoginDate).toLocaleDateString('pl-PL')}`
+                                  : 'Konto oczekuje na pierwsze logowanie'
+                              }
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  user.isActivated || (user.loginCount && user.loginCount > 0)
+                                    ? 'bg-emerald-400'
+                                    : 'bg-content-muted/40'
+                                }`}
+                              />
+                              <span>
+                                {user.isActivated || (user.loginCount && user.loginCount > 0)
+                                  ? 'Aktywowane'
+                                  : 'Oczekuje'}
+                              </span>
+                            </span>
                           </div>
                         </div>
                       </td>

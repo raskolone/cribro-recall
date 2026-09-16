@@ -246,6 +246,8 @@ export const StudentInviteEmailModal: React.FC<StudentInviteEmailModalProps> = (
       const profileUpdates: Partial<User> = {
         lastInviteSentAt: new Date().toISOString(),
         inviteSentBy: fromAddressToUse,
+        invitationSent: true,
+        invitationSentAt: new Date().toISOString(),
       };
 
       // 1. Zapis nowego/zaktualizowanego hasła

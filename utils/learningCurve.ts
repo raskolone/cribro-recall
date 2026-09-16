@@ -467,3 +467,32 @@ export function serializeLearningProfile(profile: LearningProfile, createdAt?: s
     createdAt: profile.createdAt || createdAt || profile.updatedAt || now,
   };
 }
+
+export function deserializeLearningProfile(
+  studentId: string,
+  stored: Partial<LearningProfile>,
+  baseLevel?: string
+): LearningProfile {
+  const fallbackLevel = normalizeLevel(baseLevel);
+  const now = new Date().toISOString();
+  const profile = createProfile(
+    studentId,
+    fallbackLevel,
+    stored.lastUpdated || stored.updatedAt || now
+  );
+  return {
+    ...profile,
+    ...stored,
+    studentId,
+    baseLevel: fallbackLevel,
+    currentLevel: normalizeLevel(stored.currentLevel, fallbackLevel),
+    byLevel: stored.byLevel || {},
+    byExerciseType: stored.byExerciseType || {},
+    recentOutcomes: stored.recentOutcomes || [],
+    recentMistakes: stored.recentMistakes || [],
+    levelHistory: stored.levelHistory || [],
+    lastUpdated: stored.lastUpdated || stored.updatedAt || now,
+    createdAt: stored.createdAt || now,
+  };
+}
+

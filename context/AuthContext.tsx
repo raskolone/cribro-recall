@@ -12,7 +12,7 @@ import {
   signInAnonymously,
   linkWithPopup
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, onSnapshot, deleteField } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -128,11 +128,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               const email = firebaseUser.email || '';
               const role = email === 'maciej.wyrozumski@gmail.com' ? 'admin' : 'user';
               
+              const isGoogle = firebaseUser.providerData.some((p) => p.providerId === 'google.com');
+              const nowIso = new Date().toISOString();
               const newUser: any = {
                 id: firebaseUser.uid,
                 username: defaultName,
                 email: email,
-                role: role
+                role: role,
+                isActivated: true,
+                firstLoginAt: nowIso,
+                ...(isGoogle ? { isGoogleLinked: true, authProvider: 'google' } : {})
               };
               if (firebaseUser.photoURL) newUser.photoURL = firebaseUser.photoURL;
               
@@ -184,6 +189,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
+      try {
+        const userRef = doc(db, 'users', result.user.uid);
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          const updates: Record<string, any> = {
+            isGoogleLinked: true,
+            authProvider: 'google',
+            isActivated: true,
+          };
+          if (!data.firstLoginAt) {
+            updates.firstLoginAt = new Date().toISOString();
+          }
+          if (data.tempPassword) {
+            updates.tempPassword = deleteField();
+          }
+          await updateDoc(userRef, updates);
+        }
+      } catch (err) {
+        console.warn('Could not update user Google profile status:', err);
+      }
       await updateLoginStats(result.user.uid, true);
     } catch (error: any) {
       if (error?.code !== 'auth/popup-closed-by-user' && error?.code !== 'auth/cancelled-popup-request') {
@@ -220,11 +246,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const userData = userDoc.data();
         const currentCount = typeof userData.loginCount === 'number' ? userData.loginCount : 0;
         const nowIso = new Date().toISOString();
-        await updateDoc(userRef, {
+        const updates: Record<string, any> = {
           loginCount: currentCount + 1,
           lastLoginDate: nowIso,
+          isActivated: true,
+          ...(userData.firstLoginAt ? {} : { firstLoginAt: nowIso }),
           ...(userData.requirePasswordChange ? { tempPasswordLogins: (userData.tempPasswordLogins || 0) + 1 } : {})
-        });
+        };
+        await updateDoc(userRef, updates);
       }
     } catch (error) {
       console.error('Failed to update login stats:', error);
@@ -244,12 +273,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       provider.addScope('https://www.googleapis.com/auth/drive.readonly');
       provider.addScope('https://www.googleapis.com/auth/documents.readonly');
       const result = await linkWithPopup(auth.currentUser, provider);
-      if (result.user && result.user.photoURL) {
+      if (result.user) {
         const userDocRef = doc(db, 'users', result.user.uid);
+        const updates: Record<string, any> = {
+          isGoogleLinked: true,
+          authProvider: 'google',
+          tempPassword: deleteField(),
+        };
         if (result.user.photoURL !== undefined) {
-          await updateDoc(userDocRef, { photoURL: result.user.photoURL });
+          updates.photoURL = result.user.photoURL;
         }
-        setUser(prev => prev ? { ...prev, photoURL: result.user.photoURL } : null);
+        await updateDoc(userDocRef, updates);
+        setUser(prev => prev ? {
+          ...prev,
+          isGoogleLinked: true,
+          authProvider: 'google',
+          tempPassword: undefined,
+          photoURL: result.user.photoURL || prev.photoURL
+        } : null);
       }
     } catch (error) {
       console.error('Failed to link Google account:', error);

@@ -90,6 +90,36 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
   const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string } | null>(null);
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
   const [copiedCreds, setCopiedCreds] = useState(false);
+  const [copiedPasswordId, setCopiedPasswordId] = useState<string | null>(null);
+  const [isUpdatingInviteId, setIsUpdatingInviteId] = useState<string | null>(null);
+
+  const handleCopyPassword = (studentId: string, pass: string) => {
+    navigator.clipboard.writeText(pass);
+    setCopiedPasswordId(studentId);
+    setTimeout(() => setCopiedPasswordId(null), 2000);
+  };
+
+  const handleToggleInvitation = async (student: User) => {
+    if (!student.id) return;
+    const isSent = Boolean(student.invitationSent || student.lastInviteSentAt);
+    const newStatus = !isSent;
+    const nowIso = new Date().toISOString();
+    const updates: Partial<User> = {
+      invitationSent: newStatus,
+      ...(newStatus ? { invitationSentAt: nowIso } : {}),
+    };
+    setIsUpdatingInviteId(student.id);
+    try {
+      await updateDoc(doc(db, 'users', student.id), updates as any);
+      setUsers((prev) =>
+        prev.map((u) => (u.id === student.id ? { ...u, ...updates } : u))
+      );
+    } catch (err) {
+      console.error('Failed to toggle invitation:', err);
+    } finally {
+      setIsUpdatingInviteId(null);
+    }
+  };
 
   // Bulk actions dropdown state
   const [bulkLevel, setBulkLevel] = useState<string>('');
@@ -675,7 +705,8 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
                 <th className="py-3 px-4 min-w-[200px]">Nazwa</th>
                 <th className="py-3 px-3 min-w-[90px]">Typ</th>
                 <th className="py-3 px-3 min-w-[150px]">Poziom / Profil</th>
-                <th className="py-3 px-3 min-w-[180px]">Adresy e-mail</th>
+                <th className="py-3 px-3 min-w-[180px]">Adresy e-mail & Hasło</th>
+                <th className="py-3 px-3 min-w-[170px]">Zaproszenie & Aktywacja</th>
                 <th className="py-3 px-3 min-w-[95px]">Kontraktor</th>
                 <th className="py-3 px-3 min-w-[120px]">Gdzie pracuje</th>
                 <th className="py-3 px-3 min-w-[170px]">Ostatnia Lekcja</th>
@@ -687,7 +718,7 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
             <tbody className="divide-y divide-line-soft/40">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-12 text-center text-content-muted">
+                  <td colSpan={12} className="py-12 text-center text-content-muted">
                     <Users size={30} className="mx-auto mb-2 opacity-30 text-content-muted" />
                     <p className="font-semibold text-text-hi text-sm">Nie znaleziono kursantów ani grup</p>
                     <p className="text-xs text-content-muted/80 mt-1">
@@ -798,7 +829,7 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
                         </span>
                       </td>
 
-                      {/* Adresy E-mail */}
+                      {/* Adresy E-mail & Hasło */}
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-1.5">
                           <span
@@ -812,7 +843,7 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
                               type="button"
                               onClick={() => handleCopyEmail(student.email)}
                               title="Kopiuj adres e-mail"
-                              className="p-1 rounded text-content-muted hover:text-primary transition-colors shrink-0"
+                              className="p-1 rounded text-content-muted hover:text-primary transition-colors shrink-0 cursor-pointer"
                             >
                               {copiedEmail === student.email ? (
                                 <Check size={11} className="text-emerald-400" />
@@ -821,6 +852,104 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
                               )}
                             </button>
                           )}
+                        </div>
+                        <div className="mt-1">
+                          {student.tempPassword ? (
+                            <button
+                              type="button"
+                              onClick={() => handleCopyPassword(student.id || student.username, student.tempPassword!)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-warn/15 hover:bg-warn/25 text-warn font-mono text-[10px] font-bold border border-warn/30 transition-colors cursor-pointer"
+                              title="Hasło startowe — kliknij, aby skopiować"
+                            >
+                              <Key size={10} />
+                              <span>{copiedPasswordId === (student.id || student.username) ? 'Skopiowano!' : 'Kopiuj hasło'}</span>
+                            </button>
+                          ) : student.isGoogleLinked || student.authProvider === 'google' ? (
+                            <span className="text-[10px] text-sky-300/80 font-mono">🌐 Google</span>
+                          ) : (
+                            <span className="text-[10px] text-content-muted/60 font-mono">🔒 Własne</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Zaproszenie & Aktywacja */}
+                      <td className="py-3 px-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
+                                student.invitationSent || student.lastInviteSentAt
+                                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                  : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                              }`}
+                              title={
+                                student.invitationSentAt
+                                  ? `Wysłano: ${new Date(student.invitationSentAt).toLocaleDateString('pl-PL')}`
+                                  : student.lastInviteSentAt
+                                  ? `Wysłano: ${new Date(student.lastInviteSentAt).toLocaleDateString('pl-PL')}`
+                                  : 'Zaproszenie nie zostało wysłane'
+                              }
+                            >
+                              {student.invitationSent || student.lastInviteSentAt ? (
+                                <CheckCircle2 size={10} />
+                              ) : (
+                                <Clock size={10} />
+                              )}
+                              <span>
+                                {student.invitationSent || student.lastInviteSentAt ? 'Zaproszono' : 'Brak'}
+                              </span>
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => handleToggleInvitation(student)}
+                              disabled={isUpdatingInviteId === student.id}
+                              className="px-1.5 py-0.5 rounded bg-line-soft hover:bg-base-100 text-[10px] text-content-muted hover:text-text-hi transition-colors cursor-pointer"
+                              title={
+                                student.invitationSent || student.lastInviteSentAt
+                                  ? 'Cofnij oznaczenie zaproszenia'
+                                  : 'Oznacz manualnie jako wysłane'
+                              }
+                            >
+                              {isUpdatingInviteId === student.id ? (
+                                <RefreshCw size={9} className="animate-spin" />
+                              ) : student.invitationSent || student.lastInviteSentAt ? (
+                                'Cofnij'
+                              ) : (
+                                'Oznacz'
+                              )}
+                            </button>
+                          </div>
+
+                          <div>
+                            <span
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                student.isActivated || (student.loginCount && student.loginCount > 0)
+                                  ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                                  : 'text-content-muted/70 bg-base-100 border border-line-strong'
+                              }`}
+                              title={
+                                student.firstLoginAt
+                                  ? `Pierwsze logowanie: ${new Date(student.firstLoginAt).toLocaleDateString('pl-PL')}`
+                                  : student.lastLoginDate
+                                  ? `Ostatnie logowanie: ${new Date(student.lastLoginDate).toLocaleDateString('pl-PL')}`
+                                  : 'Konto oczekuje na pierwsze logowanie'
+                              }
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  student.isActivated || (student.loginCount && student.loginCount > 0)
+                                    ? 'bg-emerald-400'
+                                    : 'bg-content-muted/40'
+                                }`}
+                              />
+                              <span>
+                                {student.isActivated || (student.loginCount && student.loginCount > 0)
+                                  ? 'Aktywowane'
+                                  : 'Oczekuje'}
+                              </span>
+                            </span>
+                          </div>
                         </div>
                       </td>
 

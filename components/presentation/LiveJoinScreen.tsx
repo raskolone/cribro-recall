@@ -9,7 +9,8 @@ import {
   getLiveSession, 
   joinLiveSession, 
   subscribeLiveSession, 
-  heartbeatLiveSession 
+  heartbeatLiveSession,
+  updateLiveSessionState
 } from '../../services/liveSessionService';
 import { 
   normalizeAccessCode, 
@@ -365,7 +366,15 @@ export const LiveJoinScreen: React.FC = () => {
               totalSlides={session.totalSlides}
               isFullscreen
               interaction={session.interaction || EMPTY_SLIDE_INTERACTION}
-              onInteractionChange={() => {}}
+              onInteractionChange={(next) => {
+                if (joinedPin) {
+                  updateLiveSessionState(joinedPin, { interaction: next }).catch((err) => {
+                    console.warn('Nie udało się zsynchronizować interakcji ze slajdem:', err);
+                  });
+                }
+              }}
+              studentName={studentName}
+              isStudent={true}
             />
 
             {/* Warstwa rysunku z tablicy lektora */}

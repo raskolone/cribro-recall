@@ -2550,6 +2550,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }, 150);
             }}
+            onToggleInvitationSent={(sent) => {
+              const nowIso = new Date().toISOString();
+              setSelectedUser(prev => prev ? { ...prev, invitationSent: sent, ...(sent ? { invitationSentAt: nowIso } : {}) } : null);
+              setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, invitationSent: sent, ...(sent ? { invitationSentAt: nowIso } : {}) } : u));
+            }}
           />
 
           {/* PASEK ZAKŁADEK NA SAMEJ GÓRZE PROFILU KURSANTA */}
@@ -4065,19 +4070,23 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       {i18n.t("Zmień hasło")}
                     </Button>
 
-                    {selectedUser?.tempPassword && (
+                    {selectedUser?.tempPassword ? (
                       <Button
                         variant="secondary"
                         size="sm"
                         className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 cursor-pointer text-xs"
                         onClick={() => {
                           navigator.clipboard.writeText(selectedUser.tempPassword || '');
-                          showToast('Hasło zostało skopiowane do schowka.');
+                          showToast('Hasło początkowe zostało skopiowane do schowka.');
                         }}
                       >
                         <Copy size={13} className="mr-1" />
-                        {i18n.t("Skopiuj aktualne hasło")}
+                        {i18n.t("Skopiuj hasło startowe")}
                       </Button>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-base-200/80 border border-line-strong text-content-muted text-xs font-medium">
+                        🔒 {selectedUser?.isGoogleLinked || selectedUser?.authProvider === 'google' ? 'Konto połączone z Google' : 'Hasło własne kursanta (chronione)'}
+                      </span>
                     )}
 
                     <Button 

@@ -151,6 +151,18 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const handleAddToLiveNotes = useCallback((text: string) => {
+    setCurrentDeck(prev => {
+      const currentNotes = prev.liveNotes || '';
+      const addition = `\n- 🎯 Rozgrzewka (Koło Fortuny): ${text}`;
+      return {
+        ...prev,
+        liveNotes: currentNotes ? `${currentNotes}${addition}` : `## Notatki ze wspólnej lekcji${addition}`
+      };
+    });
+    showToast('Dodano pytanie do notatnika lekcji');
+  }, []);
+
   // Load Saved Decks
   const refreshSavedDecks = useCallback(async () => {
     try {
@@ -692,6 +704,9 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
               interaction={slideInteraction}
               onInteractionChange={setSlideInteraction}
               onJumpToSlide={setActiveSlideIndex}
+              lessonRecords={lessonRecords}
+              studentName={studentName}
+              onAddToNotes={handleAddToLiveNotes}
             />
           )}
 
@@ -919,6 +934,9 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
                   interaction={slideInteraction}
                   onInteractionChange={() => {}}
                   onJumpToSlide={setActiveSlideIndex}
+                  lessonRecords={lessonRecords}
+                  studentName={studentName}
+                  onAddToNotes={handleAddToLiveNotes}
                 />
               </div>
             ) : undefined

@@ -194,7 +194,89 @@ po drugiej stronie linku. Zamierzone (dokument ma wyglądać tak samo u obu stro
 we dwoje na żywo.
 
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
-`services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem
+`services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
+
+---
+
+### 🚀 Zarządzanie Kontami Kursantów, Bezpieczeństwo Haseł, Opcjonalny Mailing Notion, Weryfikacja Statystyk & Zasilanie Learning Curve ze Wszystkich Źródeł (2026-09-16, runda 23)
+
+**1. Bezpieczeństwo Haseł Kursantów i Kopiowanie Hasła dla Admina (`StudentProfileHeader.tsx`, `StandaloneStudentDatabaseScreen.tsx`, `StudentDatabaseScreen.tsx`, `AuthContext.tsx`, `ForcePasswordChangeScreen.tsx`, `PasswordChangeSuggestion.tsx`):**
+- **Szybkie kopiowanie hasła startowego**:
+  - Administrator i lektor mają możliwość skopiowania hasła początkowego kursanta jednym kliknięciem (`[📋 Kopiuj hasło startowe]` w profilu kursanta oraz `[📋 Kopiuj hasło]` w bazie kursantów) z czytelnym komunikatem feedbacku (`✓ Skopiowano!`).
+- **Trwałe usuwanie hasła po aktywacji/zmianie**:
+  - Hasło startowe (`tempPassword`) jest trwale kasowane (`deleteField()`) z dokumentu Firestore w momencie, gdy kursant:
+    1. Zmieni hasło na własne (w formularzu wymuszonej zmiany `ForcePasswordChangeScreen` lub w sugerowanej zmianie `PasswordChangeSuggestion`) — ustawiane są flagi `hasCustomPassword: true`, `passwordChangedAt: nowIso`.
+    2. Zaloguje się przez Google lub połączy konto z Google (`linkGoogleAccount`) — ustawiane są flagi `isGoogleLinked: true`, `authProvider: 'google'`.
+- **Bezpieczny stan chroniony w interfejsie**:
+  - Po usunięciu hasła początkowego panel administratora/lektora nie próbuje go wyświetlać ani zgadywać, lecz czytelnie prezentuje bezpieczny status: `🔒 Hasło własne kursanta (chronione)` lub `🌐 Połączono z Google`.
+
+**2. Opcjonalny E-mail Powitalny przy Imporcie Kursantów z Notion (`NotionSyncButton.tsx`):**
+- **Rozdzielenie tworzenia konta od wysyłki maila**:
+  - W oknie potwierdzenia synchronizacji z Notion dodano podrzędny checkbox: `[ ] Wyślij e-mail powitalny z danymi logowania (opcjonalnie)`.
+  - Jeśli lektor odznaczy tę opcję, konto w Firebase i profil kursanta powstają z bezpiecznym hasłem tymczasowym, ale żaden e-mail nie jest wysyłany.
+  - Wygenerowane hasło jest czytelnie prezentowane lektorowi w oknie podsumowania importu (`NotionSyncResultModal`), aby mógł przekazać je kursantowi osobiście.
+  - W przypadku zaznaczenia opcji, mail powitalny jest wysyłany automatycznie, a pole `invitationSent: true` zostaje natychmiast odnotowane w bazie.
+
+**3. Status Zaproszenia i Aktywacji Konta (`types.ts`, `firestore.rules`, `StudentProfileHeader.tsx`, `StudentDatabaseScreen.tsx`, `StandaloneStudentDatabaseScreen.tsx`, `StudentInviteEmailModal.tsx`):**
+- **Rozszerzenie modelu `User` i reguł Firestore**:
+  - Dodano dozwolone pola: `invitationSent`, `invitationSentAt`, `isActivated`, `firstLoginAt`, `hasCustomPassword`, `passwordChangedAt`, `authProvider`, `isGoogleLinked`, `completedTasksCount`.
+- **Wskaźnik zaproszenia i manualne oznaczanie**:
+  - Plakietka stanu: `✅ Zaproszenie: Wysłano (data)` vs `⏳ Zaproszenie: Nie wysłano`.
+  - Przycisk szybkiej akcji `[Oznacz jako wysłane]` / `[Cofnij]` z bezpośrednim zapisem w Firestore w profilu kursanta i w tabeli bazy kursantów.
+  - Automatyczne oznaczanie `invitationSent: true` po wysłaniu maila z modala `StudentInviteEmailModal`.
+- **Wskaźnik pierwszej aktywacji**:
+  - Wskaźnik `🟢 Konto aktywowane (data)` vs `⚪ Oczekuje na 1. logowanie`.
+  - Automatyczne wykrywanie pierwszego udanego logowania kursanta w `AuthContext.updateLoginStats` i utrwalenie znacznika czasu w `firstLoginAt`.
+
+**4. Weryfikacja i Poprawa Statystyk (Admin, Nauczyciel, Kursant) (`StudentHeroHeader.tsx`, `TeacherDashboardStats.tsx`, `TeacherDashboardActivity.tsx`):**
+- **Eliminacja podwójnego zliczania ukończonych zadań**:
+  - W `StudentHeroHeader.tsx` naprawiono sumowanie: wyodrębniono `standaloneExercisesCount` (tylko sesje z `practiceLogs` inne niż `'homework'` i `'test'`), eliminując podwójne liczenie zadań domowych i testów.
+- **Precyzyjna chronologia aktywności lektora**:
+  - W `TeacherDashboardStats.tsx` wprowadzono jawne sortowanie chronologiczne przed wycięciem ostatnich 10 sesji (`logs.sort(...)`) oraz zabezpieczenie przed dzieleniem przez zero przy pustej historii.
+- **Czytelne formatowanie wskaźnika poprawności**:
+  - W `TeacherDashboardActivity.tsx` naprawiono formatowanie wyniku z mylącego `${data.score}/${data.totalWords}` (np. `85/5`) na jednoznaczne `${data.score}% (${data.totalWords} zadań)`.
+
+**5. Pełna Integracja Historii Sesji i Krzywej Uczenia (`learningCurve.ts`, `TakeTestScreen.tsx`, `HomeworkScreen.tsx`, `server.ts`):**
+- **Zasilanie profilu `learningCurve` z każdego rodzaju zadań**:
+  - Dodano i wyeksportowano `deserializeLearningProfile` w `utils/learningCurve.ts`.
+  - Zintegrowano `recordExerciseResults` w `TakeTestScreen.tsx` przy zatwierdzaniu testu okresowego/diagnostycznego.
+  - Zintegrowano `recordExerciseResults` w `HomeworkScreen.tsx` przy nadsyłaniu pracy domowej w aplikacji.
+  - Wdrożono aktualizację profilu ucznia w Firebase Admin SDK w backendzie Express (`/api/homework/direct-submit` w `server.ts`) dla prac domowych oddawanych przez bezpośrednie linki e-mail.
+  - Wszystkie zadania tworzą ustrukturyzowany wpis w `practiceLogs`, a profil krzywej uczenia dostosowuje wagi słownictwa i trudność kolejnych ćwiczeń adaptacyjnych.
+
+---
+
+### 🚀 Koło Fortuny (Wheel of Fortune) jako Pierwszy Element Trybu Prezentacji — Płynna Fizyka GSAP, ADHD-Friendly & Dwukierunkowa Synchronizacja Live (2026-09-16, runda 22)
+
+**1. Interaktywne Koło Fortuny na Start Prezentacji (`WheelOfFortune.tsx`, `SlideCard.tsx`, `types.ts`):**
+- **Pierwszy element interaktywny lekcji**:
+  - Dodano nowy typ slajdu `wheel_of_fortune` do `PresentationSlideType`.
+  - W `getDefaultPresentation` oraz `createPresentationFromScenario` slajd rozgrzewkowy z Kołem Fortuny pojawia się od razu jako slajd nr 2 (tuż po slajdzie tytułowym), wprowadzając dynamiczny, angażujący icebreaker na sam początek zajęć.
+  - Na klasycznych slajdach typu `warmup` dodano przycisk szybkiego przełącznika `[ 🎡 Koło Fortuny ]` / `[ 📋 Pokaż karty pytań ]`, umożliwiając lektorowi natychmiastowe zamienienie dowolnej listy pytań w koło fortuny.
+- **Wybór źródła pytań (Scenariusz vs Poprzednie Lekcje Kursanta)**:
+  - Przełącznik źródeł pytań w nagłówku koła:
+    - `🎯 Aktualny scenariusz`: pytania wyciągane bezpośrednio z zagadnień scenariusza, pytań do dyskusji (`thoughtProvokingQuestions`) lub modułów rozgrzewkowych.
+    - `🔄 Z poprzednich lekcji`: inteligentny ekstraktor `extractQuestionsFromPastLessons` analizujący historię spotkań kursanta (`LessonRecord`) i przekształcający notatki lektora (`suggestedFollowUp`), słownictwo z lekcji (`vocabularyText`), trudniejsze zagadnienia (`thingsToImprove`) oraz tematy w personalizowane wyzwania konwersacyjne.
+  - Generator pytań AI na żądanie (`Gemini 2.5 Flash`) tworzący 8 unikalnych tematów dostosowanych do profilu ucznia.
+  - Zestaw 8 starannie dobranych, bezpiecznych pytań zapasowych (fallback).
+
+**2. Płynna Fizyka Animacji w GSAP i Doświadczenie ADHD-Friendly (`WheelOfFortune.tsx`):**
+- **Zaawansowana fizyka obrotu koła w GSAP**:
+  - Obrót koła napędzany przez `gsap.to` z krzywą spowolnienia `power4.out` o czasie trwania `4.4s`, wykonujący od 5 do 7 pełnych obrotów i miękko lądujący na docelowym wycinku.
+  - Sprężyste odchylenie iglicy wskaźnika (`needleRef`) przy każdym kontakcie z obwodowymi kołkami koła (`gsap.fromTo(..., { rotation: -18 }, { rotation: 0, ease: 'back.out(2)' })`).
+  - Poszanowanie preferencji dostępności `prefers-reduced-motion` z natychmiastowym wskazaniem wyniku bez wywoływania zawrotów głowy.
+- **Estetyka Liquid Glass i ADHD-Friendly UX**:
+  - 8-sektorowe koło SVG z harmonijną, stonowaną paletą HSL i subtelnymi szklanymi refleksami.
+  - Centralny przycisk z realistyczną głębią szklaną 3D (`ZAKRĘĆ`), reagujący na kliknięcie fizycznym wgnieceniem tafli.
+  - Spokojne tempo, brak stroboskopowych błysków, neonowych mrugań czy gwałtownych dźwięków.
+  - Karta wylosowanego pytania z dużą, czytelną typografią, wymową audio TTS, wbudowanym stoperem 60 sekund na odpowiedź (z pauzą i resetem), przyciskami: `Dodaj do notatek lekcji`, `Oznacz jako omówione` oraz delikatnym efektem `canvas-confetti`.
+
+**3. Dwukierunkowa Synchronizacja w Czasie Rzeczywistym (Real-time Live Sync):**
+- Rozbudowano interfejs `SlideInteraction` o parametry obrotu: `wheelRotation`, `isWheelSpinning`, `drawnQuestionId`, `drawnQuestionText`, `questionSource`.
+- Zapewniono pełną dwukierunkową synchronizację: gdy kursant lub lektor kręci kołem w oknie `LiveJoinScreen` (lub `LessonPresentationView`), zmiana natychmiast propaguje się przez Firestore `liveSessions/{pin}` oraz `BroadcastChannel` do drugiego urządzenia — obaj uczestnicy widzą dokładnie ten sam obrót i wylosowane pytanie w tym samym ułamku sekundy.
+
+---
+
 ### 🚀 Statyczny Liquid Glass z Głębią 3D Przycisku i Kompaktowe Okno Czatu Lektora bez Scrolla (2026-09-16, runda 21)
 
 **1. Usunięcie Animacji Połysku i Statyczny Liquid Glass 3D dla Kafelków (`index.css`):**

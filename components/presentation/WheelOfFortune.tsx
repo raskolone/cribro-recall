@@ -1,0 +1,796 @@
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import gsap from 'gsap';
+import confetti from 'canvas-confetti';
+import { 
+  Sparkles, RotateCcw, Volume2, CheckCircle2, Clock, 
+  HelpCircle, ChevronRight, Plus, Shuffle, Copy, Check,
+  BookOpen, History, MessageSquare, Award, ArrowRight, Play, Pause
+} from 'lucide-react';
+import { PresentationSlide, LessonRecord } from '../../types';
+import { SlideInteraction } from '../admin/presentation/SlideCard';
+import TTSButtons from '../flashcards/TTSButtons';
+import Button from '../ui/Button';
+import { 
+  WheelQuestionItem, 
+  extractQuestionsFromScenario, 
+  extractQuestionsFromPastLessons, 
+  generateWheelQuestionsAI 
+} from '../../services/wheelQuestionService';
+import { animateDropletSuccess, prefersReducedMotion } from '../../services/gsapAnimations';
+
+interface WheelOfFortuneProps {
+  slide?: PresentationSlide;
+  lessonRecords?: LessonRecord[];
+  studentName?: string | null;
+  isFullscreen?: boolean;
+  interaction?: SlideInteraction;
+  onInteractionChange?: (next: SlideInteraction) => void;
+  onAddToNotes?: (text: string) => void;
+  isStudent?: boolean;
+}
+
+// Stonowana, elegancka paleta HSL dla sektorów koła (Liquid Glass aesthetic, ADHD-friendly)
+const SECTOR_PALETTE = [
+  { fill: 'rgba(16, 185, 129, 0.28)', stroke: '#10b981', text: '#6ee7b7', name: 'Emerald' },
+  { fill: 'rgba(14, 165, 233, 0.28)', stroke: '#0ea5e9', text: '#7dd3fc', name: 'Sky' },
+  { fill: 'rgba(245, 158, 11, 0.28)', stroke: '#f59e0b', text: '#fcd34d', name: 'Amber' },
+  { fill: 'rgba(139, 92, 246, 0.28)', stroke: '#8b5cf6', text: '#c4b5fd', name: 'Violet' },
+  { fill: 'rgba(236, 72, 153, 0.28)', stroke: '#ec4899', text: '#f472b6', name: 'Rose' },
+  { fill: 'rgba(20, 184, 166, 0.28)', stroke: '#14b8a6', text: '#5eead4', name: 'Teal' },
+  { fill: 'rgba(99, 102, 241, 0.28)', stroke: '#6366f1', text: '#a5b4fc', name: 'Indigo' },
+  { fill: 'rgba(249, 115, 22, 0.28)', stroke: '#f97316', text: '#fdba74', name: 'Orange' },
+];
+
+export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
+  slide,
+  lessonRecords = [],
+  studentName,
+  isFullscreen = false,
+  interaction,
+  onInteractionChange,
+  onAddToNotes,
+  isStudent = false,
+}) => {
+  // Wybór źródła pytań (scenariusz vs poprzednie lekcje)
+  const [questionSource, setQuestionSource] = useState<'scenario' | 'past_lessons'>('scenario');
+
+  // Pula pytań dla obu źródeł
+  const scenarioQuestions = useMemo(() => {
+    return extractQuestionsFromScenario(slide, null);
+  }, [slide]);
+
+  const pastLessonQuestions = useMemo(() => {
+    return extractQuestionsFromPastLessons(lessonRecords, studentName);
+  }, [lessonRecords, studentName]);
+
+  // Aktywna lista pytań
+  const [activeQuestions, setActiveQuestions] = useState<WheelQuestionItem[]>(scenarioQuestions);
+  const [discussedQuestionIds, setDiscussedQuestionIds] = useState<Set<string>>(new Set());
+  const [isSpinning, setIsSpinning] = useState<boolean>(false);
+  const [drawnQuestion, setDrawnQuestion] = useState<WheelQuestionItem | null>(null);
+  const [showQuestionPool, setShowQuestionPool] = useState<boolean>(false);
+  const [copiedQuestion, setCopiedQuestion] = useState<boolean>(false);
+  const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
+
+  // Stoper wypowiedzi (60 sekund dla kursanta)
+  const [timerSeconds, setTimerSeconds] = useState<number>(60);
+  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
+
+  // Referencje DOM i animacji GSAP
+  const wheelSvgRef = useRef<SVGSVGElement | null>(null);
+  const wheelGroupRef = useRef<SVGGElement | null>(null);
+  const needleRef = useRef<SVGSVGElement | null>(null);
+  const resultCardRef = useRef<HTMLDivElement | null>(null);
+  const rotationRef = useRef<number>(0);
+  const lastPegIndexRef = useRef<number>(-1);
+
+  // Synchronizacja źródła pytań
+  useEffect(() => {
+    if (questionSource === 'scenario') {
+      setActiveQuestions(scenarioQuestions);
+    } else {
+      setActiveQuestions(pastLessonQuestions);
+    }
+  }, [questionSource, scenarioQuestions, pastLessonQuestions]);
+
+  // Synchronizacja zewnętrzna (z LiveSession przez interaction)
+  useEffect(() => {
+    if (!interaction) return;
+
+    if (interaction.questionSource && interaction.questionSource !== questionSource) {
+      setQuestionSource(interaction.questionSource);
+    }
+
+    if (
+      interaction.wheelRotation != null &&
+      interaction.wheelRotation !== rotationRef.current &&
+      !isSpinning
+    ) {
+      // Zewnętrzny trigger obrotu koła (np. lektor zakręcił, kursant odbiera ruch)
+      performWheelSpin(interaction.wheelRotation, interaction.drawnQuestionId);
+    }
+  }, [interaction]);
+
+  // Obsługa stopera
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (isTimerRunning && timerSeconds > 0) {
+      interval = setInterval(() => {
+        setTimerSeconds(prev => prev - 1);
+      }, 1000);
+    } else if (timerSeconds === 0) {
+      setIsTimerRunning(false);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isTimerRunning, timerSeconds]);
+
+  // Liczba sektorów i kąt pojedynczego wycinka
+  const questionsCount = Math.max(1, activeQuestions.length);
+  const sliceAngle = 360 / questionsCount;
+  const wheelRadius = 175;
+  const centerCoord = 200;
+
+  // Główna funkcja wykonująca obrót koła z fizyką GSAP
+  const performWheelSpin = (targetRotation: number, forcedWinnerId?: string | null) => {
+    if (!wheelGroupRef.current) return;
+
+    setIsSpinning(true);
+    setIsTimerRunning(false);
+    setTimerSeconds(60);
+
+    // Dźwięk/haczenie iglicy (tick)
+    lastPegIndexRef.current = -1;
+
+    if (prefersReducedMotion()) {
+      rotationRef.current = targetRotation;
+      gsap.set(wheelGroupRef.current, { rotation: targetRotation });
+      setIsSpinning(false);
+      finishSpin(targetRotation, forcedWinnerId);
+      return;
+    }
+
+    gsap.killTweensOf(wheelGroupRef.current);
+    gsap.killTweensOf(needleRef.current);
+
+    gsap.to(wheelGroupRef.current, {
+      rotation: targetRotation,
+      duration: 4.4,
+      ease: 'power4.out',
+      onUpdate: () => {
+        if (!wheelGroupRef.current) return;
+        const currentRot = gsap.getProperty(wheelGroupRef.current, 'rotation') as number;
+        // Oblicz który kołek przechodzi pod wskaźnikiem na godzinie 12
+        const normalizedRot = ((currentRot % 360) + 360) % 360;
+        const currentPeg = Math.floor(normalizedRot / sliceAngle);
+
+        if (currentPeg !== lastPegIndexRef.current && needleRef.current) {
+          lastPegIndexRef.current = currentPeg;
+          // Odchylenie iglicy przy uderzeniu o kołek
+          gsap.fromTo(
+            needleRef.current,
+            { rotation: -18 },
+            { rotation: 0, duration: 0.12, ease: 'back.out(2)' }
+          );
+        }
+      },
+      onComplete: () => {
+        rotationRef.current = targetRotation;
+        setIsSpinning(false);
+        finishSpin(targetRotation, forcedWinnerId);
+      }
+    });
+  };
+
+  // Zakończenie obrotu, wyznaczenie wylosowanego pytania
+  const finishSpin = (finalRotation: number, forcedWinnerId?: string | null) => {
+    // Wskaźnik znajduje się na samej górze koła (270 stopni w układzie współrzędnych SVG / 12:00)
+    const normalizedRotation = ((finalRotation % 360) + 360) % 360;
+    // Kąt wskaźnika to 270 deg (godzina 12:00)
+    const pointerAngle = (360 - normalizedRotation + 270) % 360;
+    const winningIndex = Math.floor(pointerAngle / sliceAngle) % questionsCount;
+
+    let winner = activeQuestions[winningIndex];
+    if (forcedWinnerId) {
+      const found = activeQuestions.find(q => q.id === forcedWinnerId);
+      if (found) winner = found;
+    }
+
+    setDrawnQuestion(winner || null);
+
+    if (resultCardRef.current) {
+      animateDropletSuccess(resultCardRef.current);
+    }
+
+    // Subtelne konfetti świętujące wylosowanie pytania
+    try {
+      confetti({
+        particleCount: 28,
+        spread: 55,
+        origin: { y: 0.7 },
+        colors: ['#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6'],
+        disableForReducedMotion: true
+      });
+    } catch {}
+  };
+
+  // Wywołanie zakręcenia przez użytkownika
+  const handleSpinClick = () => {
+    if (isSpinning || activeQuestions.length === 0) return;
+
+    // Wybierz losowy indeks pytania z dostępnych (preferuj te jeszcze nie omówione)
+    const undiscussedIndices = activeQuestions
+      .map((q, idx) => ({ q, idx }))
+      .filter(({ q }) => !discussedQuestionIds.has(q.id));
+
+    const poolToChooseFrom = undiscussedIndices.length > 0
+      ? undiscussedIndices
+      : activeQuestions.map((q, idx) => ({ q, idx }));
+
+    const randomPick = poolToChooseFrom[Math.floor(Math.random() * poolToChooseFrom.length)];
+    const chosenIndex = randomPick.idx;
+    const chosenQuestion = randomPick.q;
+
+    // Kąt środka wybranego wycinka (przy rotation = 0)
+    const sliceCenterAngle = chosenIndex * sliceAngle + sliceAngle / 2;
+    // Aby wycinek znalazł się na godzinie 12:00 (270°), musimy obrócić koło tak,
+    // by sliceCenterAngle pokrył się z 270°.
+    const targetAngleAtPointer = (270 - sliceCenterAngle + 360) % 360;
+
+    // Dodaj 5 do 7 pełnych obrotów dla spektakularnego ruchu
+    const extraSpins = (5 + Math.floor(Math.random() * 3)) * 360;
+    const currentRot = rotationRef.current;
+    const currentModulo = ((currentRot % 360) + 360) % 360;
+    const angleDelta = ((targetAngleAtPointer - currentModulo) + 360) % 360;
+
+    const finalTargetRotation = currentRot + extraSpins + angleDelta;
+
+    // Powiadom partnera / zaktualizuj stan live
+    if (onInteractionChange) {
+      onInteractionChange({
+        revealedAnswers: interaction?.revealedAnswers || {},
+        highlightedItemId: chosenQuestion.id,
+        randomQuestionIndex: chosenIndex,
+        wheelRotation: finalTargetRotation,
+        isWheelSpinning: true,
+        drawnQuestionId: chosenQuestion.id,
+        drawnQuestionText: chosenQuestion.question,
+        questionSource
+      });
+    }
+
+    performWheelSpin(finalTargetRotation, chosenQuestion.id);
+  };
+
+  // Oznaczenie pytania jako omówionego
+  const toggleQuestionDiscussed = (id: string) => {
+    setDiscussedQuestionIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Kopiowanie do schowka / notatek
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedQuestion(true);
+    setTimeout(() => setCopiedQuestion(false), 2000);
+    if (onAddToNotes) {
+      onAddToNotes(text);
+    }
+  };
+
+  // Generowanie pytań przez AI
+  const handleGenerateAiQuestions = async () => {
+    setIsAiGenerating(true);
+    try {
+      const topic = slide?.title || 'Everyday and Business English';
+      const level = 'B2';
+      const aiQuestions = await generateWheelQuestionsAI(topic, level);
+      if (aiQuestions && aiQuestions.length > 0) {
+        setActiveQuestions(aiQuestions);
+        setDiscussedQuestionIds(new Set());
+        setDrawnQuestion(null);
+      }
+    } catch (e) {
+      console.error('Błąd generowania pytań AI do koła:', e);
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
+  return (
+    <div className="w-full space-y-5 animate-in fade-in duration-300 select-none">
+      {/* ─── GÓRNY PASEK WYBORU ŹRÓDŁA I AKCJI LEKTORA ─── */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-2xl liquid-glass-card border border-white/10 shadow-md">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[11px] font-mono uppercase font-bold text-content-muted flex items-center gap-1.5 mr-1">
+            <Sparkles size={13} className="text-primary" /> Źródło pytań:
+          </span>
+
+          {/* Przełącznik: Aktualny Scenariusz */}
+          <button
+            type="button"
+            disabled={isSpinning}
+            onClick={() => {
+              setQuestionSource('scenario');
+              if (onInteractionChange) {
+                onInteractionChange({
+                  revealedAnswers: interaction?.revealedAnswers || {},
+                  highlightedItemId: interaction?.highlightedItemId || null,
+                  randomQuestionIndex: interaction?.randomQuestionIndex || null,
+                  questionSource: 'scenario'
+                });
+              }
+            }}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              questionSource === 'scenario'
+                ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(114,240,180,0.25)] ring-1 ring-primary/40'
+                : 'border-white/10 bg-white/[0.03] text-content-muted hover:text-white hover:bg-white/[0.08]'
+            }`}
+          >
+            <BookOpen size={13} />
+            <span>Aktualny scenariusz</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-white/10 text-white font-bold">
+              {scenarioQuestions.length}
+            </span>
+          </button>
+
+          {/* Przełącznik: Poprzednie Lekcje Kursanta */}
+          <button
+            type="button"
+            disabled={isSpinning}
+            onClick={() => {
+              setQuestionSource('past_lessons');
+              if (onInteractionChange) {
+                onInteractionChange({
+                  revealedAnswers: interaction?.revealedAnswers || {},
+                  highlightedItemId: interaction?.highlightedItemId || null,
+                  randomQuestionIndex: interaction?.randomQuestionIndex || null,
+                  questionSource: 'past_lessons'
+                });
+              }
+            }}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              questionSource === 'past_lessons'
+                ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.25)] ring-1 ring-amber-400/40'
+                : 'border-white/10 bg-white/[0.03] text-content-muted hover:text-white hover:bg-white/[0.08]'
+            }`}
+          >
+            <History size={13} />
+            <span>Z poprzednich lekcji</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-white/10 text-white font-bold">
+              {pastLessonQuestions.length}
+            </span>
+          </button>
+        </div>
+
+        {/* Akcje pomocnicze */}
+        <div className="flex items-center gap-2 ml-auto">
+          {!isStudent && (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={isSpinning || isAiGenerating}
+              onClick={handleGenerateAiQuestions}
+              className="h-8 px-2.5 text-xs text-primary font-bold flex items-center gap-1.5 border-primary/30 bg-primary/10 hover:bg-primary/20"
+              title="Wygeneruj 8 świeżych pytań rozgrzewkowych przez AI"
+            >
+              <Sparkles size={12} className={isAiGenerating ? 'animate-spin' : ''} />
+              <span className="hidden sm:inline">Nowe pytania AI</span>
+            </Button>
+          )}
+
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setShowQuestionPool(!showQuestionPool)}
+            className="h-8 px-2.5 text-xs text-content-muted hover:text-white flex items-center gap-1"
+          >
+            <HelpCircle size={13} />
+            <span>{showQuestionPool ? 'Ukryj listę' : 'Pokaż pytania'}</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* ─── PODGLĄD LISTY PYTAŃ (JEŚLI ROZWINIĘTA) ─── */}
+      {showQuestionPool && (
+        <div className="p-4 rounded-2xl bg-base-300/80 border border-white/10 space-y-2.5 animate-fadeIn">
+          <div className="flex items-center justify-between pb-2 border-b border-white/10">
+            <span className="text-xs font-bold uppercase tracking-wider text-content-muted flex items-center gap-1.5">
+              <span>🎯</span> Pula pytań na kole ({activeQuestions.length}):
+            </span>
+            <span className="text-[11px] font-mono text-primary">
+              Omówione: {discussedQuestionIds.size} / {activeQuestions.length}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[220px] overflow-y-auto pr-1">
+            {activeQuestions.map((q, idx) => {
+              const isDiscussed = discussedQuestionIds.has(q.id);
+              const isCurrent = drawnQuestion?.id === q.id;
+              return (
+                <div
+                  key={q.id}
+                  onClick={() => toggleQuestionDiscussed(q.id)}
+                  className={`p-2.5 rounded-xl border text-xs flex items-start justify-between gap-2.5 cursor-pointer transition-all ${
+                    isCurrent
+                      ? 'bg-primary/20 border-primary text-white ring-1 ring-primary/40'
+                      : isDiscussed
+                      ? 'bg-base-200/40 border-white/5 text-content-muted line-through opacity-60'
+                      : 'bg-base-200/80 border-white/10 text-text-hi hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-start gap-2 min-w-0">
+                    <span className="w-5 h-5 rounded-md bg-white/10 font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
+                      {idx + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{q.question}</p>
+                      {q.sourceTag && (
+                        <span className="text-[9px] font-mono text-content-muted">{q.sourceTag}</span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className={`p-1 rounded-md transition-colors ${
+                      isDiscussed ? 'text-primary' : 'text-content-muted hover:text-white'
+                    }`}
+                  >
+                    <CheckCircle2 size={14} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ─── CENTRALNY OBSZAR: KOŁO FORTUNY + WYNIK ROZGRZEWKI ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        {/* LEWA STRONA / ŚRODEK: ANIMOWANE KOŁO W GSAP */}
+        <div className="lg:col-span-6 flex flex-col items-center justify-center relative py-2">
+          {/* Pojemnik Koła */}
+          <div className="relative w-[340px] h-[340px] sm:w-[380px] sm:h-[380px] flex items-center justify-center">
+            {/* Optyczna poświata tła */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary/15 via-info/10 to-purple-500/10 blur-2xl pointer-events-none" />
+
+            {/* Wskaźnik iglicy na godzinie 12:00 */}
+            <div className="absolute -top-3 z-30 flex flex-col items-center pointer-events-none">
+              <svg
+                ref={needleRef}
+                width="34"
+                height="44"
+                viewBox="0 0 34 44"
+                fill="none"
+                className="drop-shadow-[0_4px_10px_rgba(0,0,0,0.6)] origin-top"
+              >
+                <path
+                  d="M17 44L4 12C2.5 8 5.5 2 10 2H24C28.5 2 31.5 8 30 12L17 44Z"
+                  fill="url(#needle-gradient)"
+                  stroke="#ffffff"
+                  strokeWidth="1.5"
+                />
+                <circle cx="17" cy="10" r="4.5" fill="#f59e0b" stroke="#ffffff" strokeWidth="1.2" />
+                <defs>
+                  <linearGradient id="needle-gradient" x1="17" y1="2" x2="17" y2="44" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#f59e0b" />
+                    <stop offset="0.6" stopColor="#d97706" />
+                    <stop offset="1" stopColor="#b45309" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+
+            {/* Główny SVG Koła z wycinkami */}
+            <svg
+              ref={wheelSvgRef}
+              width="380"
+              height="380"
+              viewBox="0 0 400 400"
+              className="w-full h-full max-w-[380px] max-h-[380px] drop-shadow-[0_12px_35px_rgba(0,0,0,0.7)] select-none"
+            >
+              <defs>
+                {/* Gradient zewnętrznej ramki koła */}
+                <radialGradient id="rim-gradient" cx="50%" cy="50%" r="50%">
+                  <stop offset="90%" stopColor="#1e293b" />
+                  <stop offset="97%" stopColor="#334155" />
+                  <stop offset="100%" stopColor="#0f172a" />
+                </radialGradient>
+                {/* Wewnętrzny blask */}
+                <radialGradient id="center-glaze" cx="50%" cy="40%" r="60%">
+                  <stop offset="0%" stopColor="rgba(255,255,255,0.3)" />
+                  <stop offset="70%" stopColor="rgba(255,255,255,0.02)" />
+                  <stop offset="100%" stopColor="transparent" />
+                </radialGradient>
+              </defs>
+
+              {/* Zewnętrzna obwódka */}
+              <circle
+                cx={centerCoord}
+                cy={centerCoord}
+                r={wheelRadius + 14}
+                fill="url(#rim-gradient)"
+                stroke="rgba(255,255,255,0.18)"
+                strokeWidth="3"
+              />
+
+              {/* Obracająca się grupa wycinków koła */}
+              <g ref={wheelGroupRef} className="origin-[200px_200px]">
+                {activeQuestions.map((q, idx) => {
+                  const startAngle = idx * sliceAngle;
+                  const endAngle = startAngle + sliceAngle;
+                  const startRad = (startAngle * Math.PI) / 180;
+                  const endRad = (endAngle * Math.PI) / 180;
+
+                  const x1 = centerCoord + wheelRadius * Math.cos(startRad);
+                  const y1 = centerCoord + wheelRadius * Math.sin(startRad);
+                  const x2 = centerCoord + wheelRadius * Math.cos(endRad);
+                  const y2 = centerCoord + wheelRadius * Math.sin(endRad);
+
+                  const largeArcFlag = sliceAngle > 180 ? 1 : 0;
+                  const pathData = `M ${centerCoord} ${centerCoord} L ${x1} ${y1} A ${wheelRadius} ${wheelRadius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+
+                  const colorInfo = SECTOR_PALETTE[idx % SECTOR_PALETTE.length];
+                  const midAngle = startAngle + sliceAngle / 2;
+                  const isWinner = drawnQuestion?.id === q.id && !isSpinning;
+
+                  // Pozycja tekstu/numeru sektora wewnątrz wycinka
+                  const textRadius = wheelRadius * 0.72;
+                  const textRad = (midAngle * Math.PI) / 180;
+                  const tx = centerCoord + textRadius * Math.cos(textRad);
+                  const ty = centerCoord + textRadius * Math.sin(textRad);
+
+                  return (
+                    <g key={q.id || idx}>
+                      {/* Sektor / Wedge */}
+                      <path
+                        d={pathData}
+                        fill={isWinner ? 'rgba(114, 240, 180, 0.45)' : colorInfo.fill}
+                        stroke={isWinner ? '#72f0b4' : colorInfo.stroke}
+                        strokeWidth={isWinner ? '2.5' : '1.2'}
+                        className="transition-colors duration-200"
+                      />
+
+                      {/* Numer sektora i krótka etykieta */}
+                      <text
+                        x={tx}
+                        y={ty}
+                        fill={isWinner ? '#ffffff' : colorInfo.text}
+                        fontSize="15"
+                        fontWeight="800"
+                        fontFamily="monospace"
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        transform={`rotate(${midAngle + 90}, ${tx}, ${ty})`}
+                        className="pointer-events-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+                      >
+                        #{idx + 1}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Kołki (pegs) na obrzeżu koła */}
+                {activeQuestions.map((_, idx) => {
+                  const angle = idx * sliceAngle;
+                  const rad = (angle * Math.PI) / 180;
+                  const px = centerCoord + (wheelRadius + 6) * Math.cos(rad);
+                  const py = centerCoord + (wheelRadius + 6) * Math.sin(rad);
+                  return (
+                    <circle
+                      key={`peg-${idx}`}
+                      cx={px}
+                      cy={py}
+                      r="3.5"
+                      fill="#ffffff"
+                      stroke="#0f172a"
+                      strokeWidth="1"
+                      className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]"
+                    />
+                  );
+                })}
+              </g>
+
+              {/* Szklana soczewka na całym kole */}
+              <circle
+                cx={centerCoord}
+                cy={centerCoord}
+                r={wheelRadius}
+                fill="url(#center-glaze)"
+                pointerEvents="none"
+              />
+            </svg>
+
+            {/* Środkowy przycisk 3D Liquid Glass (SPIN / ZAKRĘĆ) */}
+            <div className="absolute z-20 flex items-center justify-center">
+              <button
+                type="button"
+                onClick={handleSpinClick}
+                disabled={isSpinning || activeQuestions.length === 0}
+                title="Kliknij, aby zakręcić kołem fortuny"
+                className={`w-24 h-24 sm:w-26 sm:h-26 rounded-full border flex flex-col items-center justify-center cursor-pointer transition-all duration-200 select-none shadow-[0_6px_25px_rgba(0,0,0,0.7),inset_0_2px_4px_rgba(255,255,255,0.4)] ${
+                  isSpinning
+                    ? 'scale-95 bg-primary/25 border-primary text-primary animate-pulse'
+                    : 'bg-gradient-to-b from-slate-800/90 via-slate-900/95 to-black border-white/30 text-white hover:border-primary hover:text-primary hover:scale-105 active:scale-95 active:shadow-inner'
+                }`}
+              >
+                <div className="p-1 rounded-full bg-primary/20 text-primary mb-0.5">
+                  <RotateCcw size={16} className={isSpinning ? 'animate-spin' : ''} />
+                </div>
+                <span className="font-black text-[13px] tracking-wider uppercase">
+                  {isSpinning ? 'LOSUJĘ…' : 'ZAKRĘĆ'}
+                </span>
+                <span className="text-[8px] font-mono text-content-muted opacity-80 uppercase tracking-widest">
+                  SPIN
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-content-muted mt-2 font-mono flex items-center gap-1.5">
+            <span>💡</span> Kliknij środek koła, aby wylosować pytanie do dyskusji
+          </p>
+        </div>
+
+        {/* PRAWA STRONA: WYNIK LOSOWANIA I KARTA ROZGRZEWKI */}
+        <div className="lg:col-span-6 flex flex-col gap-4">
+          <div
+            ref={resultCardRef}
+            className="p-6 rounded-3xl liquid-glass-card border border-primary/30 shadow-[0_12px_40px_rgba(0,0,0,0.45)] relative overflow-hidden flex flex-col justify-between min-h-[300px]"
+          >
+            {/* Tło akcentowe */}
+            <div className="absolute top-0 right-0 w-60 h-60 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 space-y-4">
+              {/* Nagłówek statusu pytania */}
+              <div className="flex items-center justify-between gap-2 flex-wrap border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-primary/20 text-primary border border-primary/30 flex items-center gap-1.5">
+                    <Award size={13} />
+                    {drawnQuestion ? 'Wylosowane pytanie' : 'Gotowy do rozgrzewki'}
+                  </span>
+                  {drawnQuestion?.sourceTag && (
+                    <span className="text-[10px] font-mono text-content-muted px-2 py-0.5 rounded bg-white/5 border border-white/10">
+                      {drawnQuestion.sourceTag}
+                    </span>
+                  )}
+                </div>
+
+                {drawnQuestion && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => toggleQuestionDiscussed(drawnQuestion.id)}
+                      className={`px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
+                        discussedQuestionIds.has(drawnQuestion.id)
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                          : 'bg-white/5 border-white/10 text-content-muted hover:text-white'
+                      }`}
+                      title="Oznacz jako omówione (nie pojawi się w kolejnych losowaniach)"
+                    >
+                      <CheckCircle2 size={13} />
+                      <span>{discussedQuestionIds.has(drawnQuestion.id) ? 'Omówione ✓' : 'Zakończone'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(drawnQuestion.question)}
+                      className="p-1.5 rounded-xl border border-white/10 text-content-muted hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                      title="Kopiuj treść pytania lub dodaj do notatnika"
+                    >
+                      {copiedQuestion ? <Check size={14} className="text-primary" /> : <Copy size={14} />}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Treść wylosowanego pytania */}
+              {drawnQuestion ? (
+                <div className="space-y-3 pt-1 animate-fadeIn">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className={`font-extrabold text-white leading-relaxed tracking-tight ${
+                      isFullscreen ? 'text-xl sm:text-2xl md:text-3xl' : 'text-lg sm:text-xl'
+                    }`}>
+                      "{drawnQuestion.question}"
+                    </h3>
+                    <TTSButtons text={drawnQuestion.question} />
+                  </div>
+
+                  {drawnQuestion.followUpHint && (
+                    <div className="p-3 rounded-xl bg-base-300/70 border border-primary/20 text-xs text-text-2 space-y-1">
+                      <span className="font-bold text-primary flex items-center gap-1 text-[11px] font-mono uppercase">
+                        <Sparkles size={11} /> Wskazówka do odpowiedzi:
+                      </span>
+                      <p>{drawnQuestion.followUpHint}</p>
+                    </div>
+                  )}
+
+                  {drawnQuestion.relatedWord && (
+                    <div className="text-xs text-amber-300/90 font-mono bg-amber-500/10 border border-amber-500/20 p-2 rounded-lg inline-block">
+                      🎯 Słówko kluczowe do użycia: <span className="font-bold underline">{drawnQuestion.relatedWord}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="py-12 text-center space-y-3">
+                  <div className="w-14 h-14 rounded-3xl bg-primary/10 border border-primary/25 text-primary flex items-center justify-center mx-auto text-2xl shadow-inner">
+                    🎯
+                  </div>
+                  <div>
+                    <h4 className="text-base sm:text-lg font-extrabold text-white">
+                      Zakręć kołem fortuny!
+                    </h4>
+                    <p className="text-xs text-content-muted max-w-sm mx-auto mt-1 leading-relaxed">
+                      Wylosuj pierwsze pytanie do rozgrzewki. Wybierz powyżej, czy chcesz pytania ze scenariusza czy z poprzednich lekcji.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ─── DOLNY PASEK: STOPER WYPOWIEDZI & PRZYCISK PONOWNEGO LOSOWANIA ─── */}
+            <div className="relative z-10 pt-4 border-t border-white/10 mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+              {/* Mini-stoper mówienia (Speaking pace) */}
+              <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-base-300/90 border border-white/10 text-xs font-mono font-bold text-white">
+                  <Clock size={13} className={isTimerRunning ? 'text-primary animate-pulse' : 'text-content-muted'} />
+                  <span>{timerSeconds}s</span>
+                </div>
+
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    if (isTimerRunning) {
+                      setIsTimerRunning(false);
+                    } else {
+                      if (timerSeconds === 0) setTimerSeconds(60);
+                      setIsTimerRunning(true);
+                    }
+                  }}
+                  className="h-8 px-2.5 text-xs text-content-muted hover:text-white"
+                >
+                  {isTimerRunning ? <Pause size={12} /> : <Play size={12} />}
+                  <span className="ml-1">{isTimerRunning ? 'Pauza' : 'Start (60s)'}</span>
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setIsTimerRunning(false);
+                    setTimerSeconds(60);
+                  }}
+                  className="h-8 px-2 text-xs text-content-muted hover:text-white"
+                  title="Resetuj stoper"
+                >
+                  <RotateCcw size={12} />
+                </Button>
+              </div>
+
+              {/* Przycisk zakręć ponownie */}
+              <Button
+                size="sm"
+                variant="primary"
+                disabled={isSpinning || activeQuestions.length === 0}
+                onClick={handleSpinClick}
+                className="w-full sm:w-auto text-xs font-extrabold flex items-center justify-center gap-1.5 bg-primary text-accent-ink hover:brightness-110 shadow-[0_0_15px_rgba(114,240,180,0.3)] h-9 px-4 rounded-xl cursor-pointer"
+              >
+                <RotateCcw size={13} className={isSpinning ? 'animate-spin' : ''} />
+                <span>{drawnQuestion ? 'Zakręć ponownie' : 'Zakręć kołem'}</span>
+                <ArrowRight size={13} />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default WheelOfFortune;

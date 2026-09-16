@@ -650,7 +650,7 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
         recordExerciseResults(
           userId,
           results.map((r) => ({
-            prompt: r.term || r.flashcardId || 'Fiszka',
+            prompt: (r as any).term || r.flashcardId || 'Fiszka',
             expected: 'Znajomość słowa',
             given: r.isCorrect ? 'Znam' : 'Do powtórki',
             isCorrect: Boolean(r.isCorrect),

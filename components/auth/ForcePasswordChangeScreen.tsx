@@ -32,7 +32,12 @@ const ForcePasswordChangeScreen: React.FC = () => {
       await updatePassword(auth.currentUser, newPassword);
       
       if (user?.id) {
-        await updateDoc(doc(db, 'users', user.id), { requirePasswordChange: false, tempPassword: deleteField() });
+        await updateDoc(doc(db, 'users', user.id), {
+          requirePasswordChange: false,
+          tempPassword: deleteField(),
+          hasCustomPassword: true,
+          passwordChangedAt: new Date().toISOString()
+        });
         window.location.reload();
       }
     } catch (err: any) {
@@ -53,7 +58,12 @@ const ForcePasswordChangeScreen: React.FC = () => {
     try {
       await linkGoogleAccount();
       if (user?.id) {
-        await updateDoc(doc(db, 'users', user.id), { requirePasswordChange: false, tempPassword: deleteField() });
+        await updateDoc(doc(db, 'users', user.id), {
+          requirePasswordChange: false,
+          tempPassword: deleteField(),
+          isGoogleLinked: true,
+          authProvider: 'google'
+        });
         window.location.reload();
       }
     } catch (err: any) {

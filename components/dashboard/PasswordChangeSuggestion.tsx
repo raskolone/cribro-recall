@@ -65,6 +65,8 @@ export const PasswordChangeSuggestion: React.FC<PasswordChangeSuggestionProps> =
           requirePasswordChange: false,
           passwordChangeDismissed: true,
           tempPassword: deleteField(),
+          hasCustomPassword: true,
+          passwordChangedAt: new Date().toISOString(),
         });
       }
 
@@ -95,6 +97,8 @@ export const PasswordChangeSuggestion: React.FC<PasswordChangeSuggestionProps> =
           requirePasswordChange: false,
           passwordChangeDismissed: true,
           tempPassword: deleteField(),
+          isGoogleLinked: true,
+          authProvider: 'google',
         });
       }
       setSuccess(language === 'pl' ? 'Konto Google zostało pomyślnie połączone! Możesz teraz logować się jednym kliknięciem.' : 'Google account linked successfully! You can now log in with one click.');

@@ -76,9 +76,9 @@ const TeacherDashboardActivity: React.FC<ActivityProps> = ({ users }) => {
                     const isTest = (data.exerciseType as string) === 'test' || Boolean(data.testName?.toLowerCase().includes('test'));
                     const isActivity = (data.exerciseType as string) === 'Aktywność';
                     const actType = isTest ? 'test' : (isActivity ? 'login' : 'practice');
-                    const scoreText = data.score !== undefined && data.totalWords
-                      ? `${data.score}/${data.totalWords}`
-                      : (data.score !== undefined ? `${data.score}%` : undefined);
+                    const scoreText = data.score !== undefined
+                      ? (data.totalWords ? `${data.score}% (${data.totalWords} zadań)` : `${data.score}%`)
+                      : undefined;
 
                     let titleStr = data.testName ? `Test: ${data.testName}` : `Ćwiczenie: ${data.exerciseType || 'Trening słówek'}`;
                     if (isActivity) {

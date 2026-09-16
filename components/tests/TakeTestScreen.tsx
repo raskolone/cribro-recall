@@ -14,6 +14,8 @@ import { exportTestToPDF } from "../../utils/pdfExport";
 import { Download, CheckCircle } from "lucide-react";
 import Markdown from "react-markdown";
 import i18n from "i18next";
+import { recordExerciseResults } from '../../services/learningProfile';
+import { normalizeLevel } from '../../utils/learningCurve';
 
 interface TakeTestScreenProps {
   test: StudentTest;
@@ -111,6 +113,25 @@ const TakeTestScreen: React.FC<TakeTestScreenProps> = ({ test, onBack }) => {
           updateDoc(doc(db, 'users', user.id), {
             translatedSentencesCount: currentCount + qCount
           }).catch(console.error);
+
+          // Feed into learning curve profile
+          const attempts = (test.questions || []).map((q) => {
+            const ans = answers[q.id] || '';
+            const isCorrect = Boolean(scoreToSave >= 60 && ans.trim().length > 0);
+            return {
+              prompt: q.prompt || '',
+              expected: q.correctAnswer || undefined,
+              given: ans,
+              isCorrect,
+              score: scoreToSave,
+              level: normalizeLevel(user.level),
+              exerciseType: q.type || 'test',
+              date: new Date().toISOString(),
+            };
+          });
+          recordExerciseResults(user.id, attempts, user.level).catch((lcErr) =>
+            console.warn('Could not record test in learning profile:', lcErr)
+          );
         }
       } catch (logErr) {
         console.warn("Could not save test to practiceLogs:", logErr);

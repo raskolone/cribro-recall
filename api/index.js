@@ -1526,6 +1526,214 @@ CRIBRO ENGLISH`;
   return { subject, html, text, greeting };
 }
 
+// utils/learningCurve.ts
+var CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"];
+var DECISION_WINDOW = 12;
+var PROMOTE_ACCURACY = 0.85;
+var DEMOTE_ACCURACY = 0.45;
+var MAX_DRIFT_FROM_BASE = 1;
+var MAX_RECENT_MISTAKES = 15;
+var MAX_RECENT_OUTCOMES = DECISION_WINDOW * 2;
+var isCefrLevel = (value) => typeof value === "string" && CEFR_LEVELS.includes(value);
+var normalizeLevel = (raw, fallback = "B1") => {
+  if (isCefrLevel(raw)) return raw;
+  const text = String(raw || "").toUpperCase();
+  const match = text.match(/[ABC][12]/g);
+  if (!match || match.length === 0) return fallback;
+  const found = match.filter(isCefrLevel);
+  if (found.length === 0) return fallback;
+  return found.reduce(
+    (lowest, level) => CEFR_LEVELS.indexOf(level) < CEFR_LEVELS.indexOf(lowest) ? level : lowest
+  );
+};
+var shiftLevel = (level, step) => {
+  const index = CEFR_LEVELS.indexOf(level);
+  const next = Math.min(CEFR_LEVELS.length - 1, Math.max(0, index + step));
+  return CEFR_LEVELS[next];
+};
+var levelDistance = (a, b) => CEFR_LEVELS.indexOf(a) - CEFR_LEVELS.indexOf(b);
+var emptyTally = () => ({ attempts: 0, correct: 0, scoreSum: 0 });
+var addToTally = (tally, attempt) => {
+  const base = tally || emptyTally();
+  return {
+    attempts: base.attempts + 1,
+    correct: base.correct + (attempt.isCorrect ? 1 : 0),
+    scoreSum: base.scoreSum + (Number.isFinite(attempt.score) ? attempt.score : 0)
+  };
+};
+function createProfile(studentId, baseLevel, now) {
+  return {
+    studentId,
+    baseLevel,
+    currentLevel: baseLevel,
+    totalAttempts: 0,
+    totalCorrect: 0,
+    byLevel: {},
+    byExerciseType: {},
+    recentOutcomes: [],
+    attemptsSinceLevelChange: 0,
+    recentMistakes: [],
+    levelHistory: [],
+    updatedAt: now,
+    lastUpdated: now,
+    createdAt: now
+  };
+}
+function recordAttempts(profile, attempts, now) {
+  if (attempts.length === 0) return profile;
+  const next = {
+    ...profile,
+    byLevel: { ...profile.byLevel },
+    byExerciseType: { ...profile.byExerciseType },
+    recentOutcomes: [...profile.recentOutcomes],
+    recentMistakes: [...profile.recentMistakes],
+    levelHistory: [...profile.levelHistory],
+    updatedAt: now,
+    lastUpdated: now
+  };
+  attempts.forEach((attempt) => {
+    next.totalAttempts += 1;
+    if (attempt.isCorrect) next.totalCorrect += 1;
+    next.attemptsSinceLevelChange += 1;
+    next.byLevel[attempt.level] = addToTally(next.byLevel[attempt.level], attempt);
+    next.byExerciseType[attempt.exerciseType] = addToTally(
+      next.byExerciseType[attempt.exerciseType],
+      attempt
+    );
+    next.recentOutcomes.push(attempt.isCorrect);
+    if (!attempt.isCorrect) {
+      next.recentMistakes.push({
+        prompt: attempt.prompt,
+        expected: attempt.expected || "",
+        given: attempt.given || "",
+        exerciseType: attempt.exerciseType,
+        date: attempt.date
+      });
+    }
+  });
+  next.recentOutcomes = next.recentOutcomes.slice(-MAX_RECENT_OUTCOMES);
+  next.recentMistakes = next.recentMistakes.slice(-MAX_RECENT_MISTAKES);
+  return next;
+}
+var windowAccuracy = (profile) => {
+  const window = profile.recentOutcomes.slice(-DECISION_WINDOW);
+  if (window.length === 0) return 0;
+  return window.filter(Boolean).length / window.length;
+};
+function evaluateLevelChange(profile, now) {
+  const window = profile.recentOutcomes.slice(-DECISION_WINDOW);
+  if (window.length < DECISION_WINDOW || profile.attemptsSinceLevelChange < DECISION_WINDOW) {
+    return {
+      level: profile.currentLevel,
+      changed: false,
+      reason: "Za ma\u0142o pr\xF3b od ostatniej zmiany, \u017Ceby rusza\u0107 poziomem."
+    };
+  }
+  const accuracy = windowAccuracy(profile);
+  const percent = Math.round(accuracy * 100);
+  if (accuracy >= PROMOTE_ACCURACY) {
+    const candidate = shiftLevel(profile.currentLevel, 1);
+    if (candidate === profile.currentLevel) {
+      return { level: profile.currentLevel, changed: false, reason: "Najwy\u017Cszy poziom skali." };
+    }
+    if (levelDistance(candidate, profile.baseLevel) > MAX_DRIFT_FROM_BASE) {
+      return {
+        level: profile.currentLevel,
+        changed: false,
+        reason: `Skuteczno\u015B\u0107 ${percent}%, ale wy\u017Cej ni\u017C ${MAX_DRIFT_FROM_BASE} stopie\u0144 ponad poziom od lektora nie schodzimy bez jego decyzji.`
+      };
+    }
+    return {
+      level: candidate,
+      changed: true,
+      reason: `Skuteczno\u015B\u0107 ${percent}% w ostatnich ${DECISION_WINDOW} zadaniach \u2014 podnosimy poziom.`
+    };
+  }
+  if (accuracy <= DEMOTE_ACCURACY) {
+    const candidate = shiftLevel(profile.currentLevel, -1);
+    if (candidate === profile.currentLevel) {
+      return { level: profile.currentLevel, changed: false, reason: "Najni\u017Cszy poziom skali." };
+    }
+    if (levelDistance(profile.baseLevel, candidate) > MAX_DRIFT_FROM_BASE) {
+      return {
+        level: profile.currentLevel,
+        changed: false,
+        reason: `Skuteczno\u015B\u0107 ${percent}%, ale ni\u017Cej ni\u017C ${MAX_DRIFT_FROM_BASE} stopie\u0144 pod poziom od lektora nie schodzimy bez jego decyzji.`
+      };
+    }
+    return {
+      level: candidate,
+      changed: true,
+      reason: `Skuteczno\u015B\u0107 ${percent}% w ostatnich ${DECISION_WINDOW} zadaniach \u2014 obni\u017Camy poziom.`
+    };
+  }
+  return {
+    level: profile.currentLevel,
+    changed: false,
+    reason: `Skuteczno\u015B\u0107 ${percent}% mie\u015Bci si\u0119 w przedziale roboczym \u2014 poziom bez zmian.`
+  };
+}
+function applyLevelDecision(profile, decision, now) {
+  if (!decision.changed) return profile;
+  return {
+    ...profile,
+    currentLevel: decision.level,
+    attemptsSinceLevelChange: 0,
+    levelHistory: [
+      ...profile.levelHistory,
+      { date: now, from: profile.currentLevel, to: decision.level, reason: decision.reason }
+    ].slice(-30),
+    updatedAt: now,
+    lastUpdated: now
+  };
+}
+function ingestAttempts(profile, attempts, now) {
+  const recorded = recordAttempts(profile, attempts, now);
+  const decision = evaluateLevelChange(recorded, now);
+  return { profile: applyLevelDecision(recorded, decision, now), decision };
+}
+function serializeLearningProfile(profile, createdAt) {
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  return {
+    studentId: profile.studentId,
+    baseLevel: profile.baseLevel,
+    currentLevel: profile.currentLevel,
+    totalAttempts: profile.totalAttempts,
+    totalCorrect: profile.totalCorrect,
+    byLevel: profile.byLevel || {},
+    byExerciseType: profile.byExerciseType || {},
+    recentOutcomes: profile.recentOutcomes || [],
+    attemptsSinceLevelChange: profile.attemptsSinceLevelChange || 0,
+    recentMistakes: profile.recentMistakes || [],
+    levelHistory: profile.levelHistory || [],
+    lastUpdated: profile.lastUpdated || profile.updatedAt || now,
+    createdAt: profile.createdAt || createdAt || profile.updatedAt || now
+  };
+}
+function deserializeLearningProfile(studentId, stored, baseLevel) {
+  const fallbackLevel = normalizeLevel(baseLevel);
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const profile = createProfile(
+    studentId,
+    fallbackLevel,
+    stored.lastUpdated || stored.updatedAt || now
+  );
+  return {
+    ...profile,
+    ...stored,
+    studentId,
+    baseLevel: fallbackLevel,
+    currentLevel: normalizeLevel(stored.currentLevel, fallbackLevel),
+    byLevel: stored.byLevel || {},
+    byExerciseType: stored.byExerciseType || {},
+    recentOutcomes: stored.recentOutcomes || [],
+    recentMistakes: stored.recentMistakes || [],
+    levelHistory: stored.levelHistory || [],
+    lastUpdated: stored.lastUpdated || stored.updatedAt || now,
+    createdAt: stored.createdAt || now
+  };
+}
+
 // server.ts
 function mapToActualOpenAIModel2(modelName) {
   const clean = String(modelName || "").replace(/^openai\//, "").trim().toLowerCase();
@@ -2334,6 +2542,29 @@ function createApp() {
             lastActivity: nowIso
           }).catch(() => {
           });
+          try {
+            const profileDocRef = adminDb.collection("users").doc(studentUid).collection("profile").doc("learningCurve");
+            const [profileSnap, userSnap] = await Promise.all([
+              profileDocRef.get(),
+              adminDb.collection("users").doc(studentUid).get()
+            ]);
+            const baseLevel = normalizeLevel(userSnap.data()?.level);
+            const currentProfile = profileSnap.exists ? deserializeLearningProfile(studentUid, profileSnap.data() || {}, baseLevel) : createProfile(studentUid, baseLevel, nowIso);
+            const attempts = rows.map((r, idx) => ({
+              prompt: r.polishSentence || items[idx]?.polishSentence || "",
+              expected: r.correctTranslation || items[idx]?.englishTranslation || "",
+              given: r.studentAnswer || "",
+              isCorrect: r.isCorrect,
+              score: r.score,
+              level: baseLevel,
+              exerciseType: items[idx]?.type || taskData.type || "homework",
+              date: nowIso
+            }));
+            const { profile } = ingestAttempts(currentProfile, attempts, nowIso);
+            await profileDocRef.set(serializeLearningProfile(profile, currentProfile.createdAt || nowIso));
+          } catch (lcErr) {
+            console.warn("[Direct Homework] B\u0142\u0105d aktualizacji profilu krzywej uczenia:", lcErr);
+          }
         } catch (dbErr) {
           console.warn("[Direct Homework] B\u0142\u0105d zapisu do profilu kursanta:", dbErr);
         }

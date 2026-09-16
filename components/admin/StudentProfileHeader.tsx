@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ArrowLeft,
   CalendarClock,
@@ -6,7 +6,16 @@ import {
   Mail,
   MoreHorizontal,
   UserCheck,
+  Copy,
+  Check,
+  Lock,
+  Globe,
+  CheckCircle2,
+  Clock,
+  RefreshCw,
 } from 'lucide-react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { User } from '../../types';
 import MenuDropdown from '../ui/MenuDropdown';
 
@@ -27,18 +36,13 @@ import MenuDropdown from '../ui/MenuDropdown';
  * DWA PIĘTRA O JASNYM PODZIALE PRACY:
  *   1. Kto to jest — awatar, imię, login, znaczniki stanu. Po prawej
  *      wyjście (powrót do panelu) i menu z rzadziej używanym.
- *   2. Co o nim wiadomo — CZTERY RÓWNE KAFELKI w siatce: e-mail, poziom,
+ *   2. Pasek stanu konta & zaproszeń — hasło początkowe (z opcją kopiowania
+ *      dopóki nie zostało zmienione na własne lub połączone z Google),
+ *      status zaproszenia (z możliwością manualnego oznaczenia/cofnięcia)
+ *      oraz status aktywacji konta przez pierwsze logowanie.
+ *   3. Co o nim wiadomo — CZTERY RÓWNE KAFELKI w siatce: e-mail, poziom,
  *      logowania, ostatnia wizyta. Równe, bo są tej samej rangi: to metryka
  *      konta, nie czynności.
- *
- * Siatka zamiast rzędu ma jeszcze jeden skutek: na telefonie kafelki
- * układają się dwa na dwa i nadal są siatką, a nie zawijającą się kaszą.
- *
- * ══ CZEGO TU NIE MA ══
- *
- * Przycisku „Pobierz z Notion". Notion dotyczy WYŁĄCZNIE historii lekcji,
- * więc stoi w zakładce Historia lekcji, w zestawie narzędzi tej zakładki.
- * W nagłówku wisiał nad statystykami i pracą domową, których nie dotyczy.
  */
 
 interface StudentProfileHeaderProps {
@@ -49,6 +53,7 @@ interface StudentProfileHeaderProps {
   /** Kliknięcie w kafelek e-maila prowadzi do edycji danych kontaktowych. */
   onEditContact: () => void;
   onEditLevel: () => void;
+  onToggleInvitationSent?: (sent: boolean) => void;
 }
 
 /** Kafelek metryki — wszystkie cztery mają tę samą budowę i tę samą wysokość. */
@@ -86,7 +91,11 @@ const StudentProfileHeader: React.FC<StudentProfileHeaderProps> = ({
   onChangeStudent,
   onEditContact,
   onEditLevel,
+  onToggleInvitationSent,
 }) => {
+  const [copiedPassword, setCopiedPassword] = useState(false);
+  const [isUpdatingInvite, setIsUpdatingInvite] = useState(false);
+
   const fullName =
     `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.username;
   const initial = (student.firstName || student.username || '?')[0].toUpperCase();
@@ -102,6 +111,54 @@ const StudentProfileHeader: React.FC<StudentProfileHeaderProps> = ({
       : student.role === 'teacher'
       ? 'bg-primary/12 text-primary border-primary/30'
       : 'bg-line-soft text-text-2 border-line-strong';
+
+  const handleCopyPassword = () => {
+    if (!student.tempPassword) return;
+    navigator.clipboard.writeText(student.tempPassword);
+    setCopiedPassword(true);
+    setTimeout(() => setCopiedPassword(false), 2000);
+  };
+
+  const isInviteSent = Boolean(student.invitationSent || student.lastInviteSentAt);
+  const inviteDate = student.invitationSentAt
+    ? new Date(student.invitationSentAt).toLocaleDateString('pl-PL')
+    : student.lastInviteSentAt
+    ? new Date(student.lastInviteSentAt).toLocaleDateString('pl-PL')
+    : null;
+
+  const isAccountActivated = Boolean(
+    student.isActivated || (student.loginCount && student.loginCount > 0)
+  );
+  const activationDate = student.firstLoginAt
+    ? new Date(student.firstLoginAt).toLocaleDateString('pl-PL')
+    : student.lastLoginDate
+    ? new Date(student.lastLoginDate).toLocaleDateString('pl-PL')
+    : null;
+
+  const isGoogleUser = Boolean(
+    student.isGoogleLinked ||
+      student.authProvider === 'google' ||
+      (student.email && !student.tempPassword && !student.requirePasswordChange && !student.hasCustomPassword && student.email.includes('@gmail.com'))
+  );
+
+  const handleToggleInvitation = async () => {
+    setIsUpdatingInvite(true);
+    const newStatus = !isInviteSent;
+    const nowIso = new Date().toISOString();
+    try {
+      await updateDoc(doc(db, 'users', student.id), {
+        invitationSent: newStatus,
+        ...(newStatus ? { invitationSentAt: nowIso } : {}),
+      });
+      student.invitationSent = newStatus;
+      if (newStatus) student.invitationSentAt = nowIso;
+      onToggleInvitationSent?.(newStatus);
+    } catch (err) {
+      console.error('Failed to toggle invitation sent status:', err);
+    } finally {
+      setIsUpdatingInvite(false);
+    }
+  };
 
   return (
     <section className="rounded-2xl border border-line-strong bg-base-200/60 shadow-ambient-sm overflow-hidden">
@@ -141,8 +198,7 @@ const StudentProfileHeader: React.FC<StudentProfileHeaderProps> = ({
           </div>
         </div>
 
-        {/* Wyjście i menu. Zmiana kursanta zeszła do menu: robi się ją raz na
-            wejście w profil, a stała obok powrotu jako równorzędny przycisk. */}
+        {/* Wyjście i menu */}
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
@@ -176,6 +232,110 @@ const StudentProfileHeader: React.FC<StudentProfileHeaderProps> = ({
               },
             ]}
           />
+        </div>
+      </div>
+
+      {/* ── Pasek stanu konta & zaproszeń ── */}
+      <div className="px-4 sm:px-5 py-2.5 bg-base-100/50 border-b border-line-strong flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Hasło startowe / status hasła */}
+          {student.tempPassword ? (
+            <button
+              type="button"
+              onClick={handleCopyPassword}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-warn/15 text-warn border border-warn/30 hover:bg-warn/25 font-mono text-[11px] font-bold transition-colors cursor-pointer shadow-sm"
+              title="Hasło początkowe kursanta — możesz je skopiować dopóki nie zmieni go na własne lub nie połączy z kontem Google"
+            >
+              {copiedPassword ? (
+                <>
+                  <Check size={13} className="text-emerald-400" />
+                  <span className="text-emerald-400">Skopiowano hasło: {student.tempPassword}</span>
+                </>
+              ) : (
+                <>
+                  <KeyRound size={13} />
+                  <span>Kopiuj hasło startowe</span>
+                  <Copy size={11} className="opacity-70 ml-0.5" />
+                </>
+              )}
+            </button>
+          ) : isGoogleUser ? (
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-500/10 text-sky-300 border border-sky-500/25 font-semibold text-[11px]"
+              title="Kursant loguje się za pomocą konta Google"
+            >
+              <Globe size={13} />
+              <span>Połączono z Google</span>
+            </span>
+          ) : (
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 font-semibold text-[11px]"
+              title="Kursant zmienił hasło na własne — hasło początkowe zostało trwale usunięte w celach bezpieczeństwa"
+            >
+              <Lock size={13} />
+              <span>Hasło własne kursanta (chronione)</span>
+            </span>
+          )}
+
+          {/* Status Zaproszenia */}
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${
+                isInviteSent
+                  ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25'
+                  : 'bg-amber-500/10 text-amber-300 border-amber-500/25'
+              }`}
+              title={inviteDate ? `Data wysłania: ${inviteDate}` : undefined}
+            >
+              {isInviteSent ? <CheckCircle2 size={13} /> : <Clock size={13} />}
+              <span>{isInviteSent ? 'Zaproszenie: Wysłano' : 'Zaproszenie: Nie wysłano'}</span>
+              {inviteDate && <span className="text-[10px] opacity-75 font-mono">({inviteDate})</span>}
+            </span>
+
+            <button
+              type="button"
+              onClick={handleToggleInvitation}
+              disabled={isUpdatingInvite}
+              className="px-2 py-1 rounded-lg bg-base-200 hover:bg-base-300 border border-line-strong text-[10px] font-bold text-content-muted hover:text-text-hi transition-colors cursor-pointer"
+              title={
+                isInviteSent
+                  ? 'Cofnij oznaczenie wysłania zaproszenia'
+                  : 'Oznacz manualnie jako wysłane (jeśli wysłano poza aplikacją)'
+              }
+            >
+              {isUpdatingInvite ? (
+                <RefreshCw size={10} className="animate-spin" />
+              ) : isInviteSent ? (
+                'Cofnij'
+              ) : (
+                'Oznacz jako wysłane'
+              )}
+            </button>
+          </div>
+
+          {/* Status Aktywacji */}
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${
+              isAccountActivated
+                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                : 'bg-base-200 text-content-muted border-line-strong'
+            }`}
+            title={
+              activationDate
+                ? `Aktywowano: ${activationDate}`
+                : 'Konto oczekuje na pierwsze logowanie kursanta'
+            }
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isAccountActivated ? 'bg-emerald-400 animate-pulse' : 'bg-content-muted/40'
+              }`}
+            />
+            <span>{isAccountActivated ? 'Konto aktywowane' : 'Oczekuje na 1. logowanie'}</span>
+            {activationDate && (
+              <span className="text-[10px] opacity-75 font-mono">({activationDate})</span>
+            )}
+          </span>
         </div>
       </div>
 
