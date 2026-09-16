@@ -2437,7 +2437,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         </div>
       ) : (
         /* activeTab === null: Strona główna panelu lektora - centralny Asystent AI / Chat */
-        <div className="mt-4 max-w-5xl mx-auto w-full animate-in fade-in duration-200">
+        <div className="mt-3.5 max-w-4xl mx-auto w-full animate-in fade-in duration-200">
           <TeacherAssistant
             mode="embedded"
             onNavigateToModule={(mod, extra) => {

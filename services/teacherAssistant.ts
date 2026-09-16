@@ -3,7 +3,8 @@ import { db } from '../firebase';
 import { LessonRecord, LessonAttachment } from '../types';
 import { getLessonRecordsForStudent } from './lessonRecord';
 import { extractLessonBlocks } from '../utils/lessonBlocks';
-import { generateTextWithUnifiedFallback, getAI, PREFERRED_AI_MODELS, formatAIModelName } from './geminiService';
+import { generateTextWithUnifiedFallback, getAI } from './geminiService';
+import { runCouncil, DEFAULT_COUNCIL } from './aiCouncil';
 
 export interface LessonDraftProposal {
   topic: string;
@@ -31,6 +32,8 @@ export interface AssistantMessage {
   actions?: AssistantAction[];
   lessonDraft?: LessonDraftProposal;
   timestamp?: number;
+  modelUsed?: string;
+  isCouncil?: boolean;
 }
 
 export interface ChatSession {
@@ -52,6 +55,110 @@ export interface StudentIndexEntry {
   lastLessonTopic?: string;
   lessonCount: number;
 }
+
+export interface AssistantSkill {
+  id: string;
+  command: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: 'Planowanie' | 'Analiza' | 'Ćwiczenia' | 'Komunikacja';
+  template: string;
+  badge?: string;
+}
+
+export const ASSISTANT_SKILLS: AssistantSkill[] = [
+  {
+    id: 'konspekt',
+    command: '/konspekt',
+    name: 'Konspekt lekcji',
+    description: 'Przygotuj 4-częściowy scenariusz lekcji z celami i słownictwem Notion',
+    icon: 'book',
+    category: 'Planowanie',
+    template: 'Przygotuj 4-częściowy konspekt lekcji dla ',
+    badge: '4 Bloki',
+  },
+  {
+    id: 'podsumowanie',
+    command: '/podsumowanie',
+    name: 'Podsumowanie kursanta',
+    description: 'Raport postępów, ostatnia lekcja i kluczowe trudności z bazy CRM',
+    icon: 'summary',
+    category: 'Analiza',
+    template: 'Podsumuj postępy, ostatnią lekcję i trudności językowe dla ',
+    badge: 'CRM',
+  },
+  {
+    id: 'zadanie',
+    command: '/zadanie',
+    name: 'Zadanie domowe',
+    description: 'Zaproponuj angażującą i praktyczną pracę domową z kontekstem',
+    icon: 'homework',
+    category: 'Ćwiczenia',
+    template: 'Zaproponuj kreatywne i praktyczne zadanie domowe dopasowane do poziomu dla ',
+    badge: 'Zadania',
+  },
+  {
+    id: 'fiszki',
+    command: '/fiszki',
+    name: 'Zestaw fiszek',
+    description: 'Wygeneruj 8-10 kluczowych słówek i zwrotów z przykładowymi zdaniami',
+    icon: 'flashcards',
+    category: 'Ćwiczenia',
+    template: 'Wygeneruj zestaw 10 kluczowych fiszek (słowo - znaczenie - naturalne zdanie kontekstowe) dla ',
+    badge: 'Słownictwo',
+  },
+  {
+    id: 'slajdy',
+    command: '/slajdy',
+    name: 'Slajdy do Prezentacji Live',
+    description: 'Przygotuj serię slajdów i interaktywnych ćwiczeń do lekcji na żywo',
+    icon: 'slides',
+    category: 'Planowanie',
+    template: 'Utwórz konspekt i interaktywne slajdy do Prezentacji Live na temat ',
+    badge: 'Live',
+  },
+  {
+    id: 'bledy',
+    command: '/bledy',
+    name: 'Analiza błędów & wymowa',
+    description: 'Zestawienie powtarzających się błędów gramatycznych i akcentu',
+    icon: 'grammar',
+    category: 'Analiza',
+    template: 'Przeanalizuj historię błędów, gramatykę i wymowę dla kursanta ',
+    badge: 'Gramatyka',
+  },
+  {
+    id: 'kolo',
+    command: '/kolo',
+    name: 'Koło fortuny & Warm-up',
+    description: 'Zestaw 6-8 pytań rozgrzewkowych do dyskusji na 60-90 sekund',
+    icon: 'wheel',
+    category: 'Ćwiczenia',
+    template: 'Zaproponuj 6 angażujących pytań rozgrzewkowych (Warm-up / Koło Fortuny) dla ',
+    badge: 'Warm-up',
+  },
+  {
+    id: 'email',
+    command: '/email',
+    name: 'E-mail do kursanta',
+    description: 'Szkic eleganckiego podsumowania zajęć lub powiadomienia e-mail',
+    icon: 'mail',
+    category: 'Komunikacja',
+    template: 'Napisz profesjonalny i ciepły e-mail podsumowujący zajęcia dla ',
+    badge: 'Resend',
+  },
+  {
+    id: 'analiza',
+    command: '/analiza',
+    name: 'Analiza załącznika / tekstu',
+    description: 'Ekstrakcja słownictwa, pytań i ćwiczeń z wklejonego tekstu lub PDF',
+    icon: 'analysis',
+    category: 'Analiza',
+    template: 'Przeanalizuj poniższy materiał i stwórz z niego ćwiczenia lekcyjne: ',
+    badge: 'Multimodal',
+  },
+];
 
 /** Normalizacja pod dopasowanie: bez ogonków, bez wielkości liter. */
 const fold = (value: string): string =>
@@ -101,14 +208,34 @@ export const buildStudentIndex = async (): Promise<StudentIndexEntry[]> => {
   return entries.filter(entry => entry.name.length > 0);
 };
 
-/** Kursanci wymienieni w pytaniu — dopasowanie po imieniu, nazwisku lub loginie z uwzględnieniem odmiany w języku polskim. */
+/** Kursanci wymienieni w pytaniu — dopasowanie po wzmiance @, imieniu, nazwisku lub loginie */
 export const matchStudents = (
   question: string,
   index: StudentIndexEntry[]
 ): StudentIndexEntry[] => {
   const haystack = fold(question);
   
-  // Rozbijamy pytanie na tokeny słowne
+  // 1. Sprawdzenie jawnych wzmianek ze znakiem @ (np. @Dariusz, @Jan Kowalski)
+  const mentionMatches = question.match(/@([a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ0-9_\-\.\s]+?)(?=[\s,.;:?!()"']|$)/gi);
+  if (mentionMatches && mentionMatches.length > 0) {
+    const directMatches: StudentIndexEntry[] = [];
+    for (const rawMention of mentionMatches) {
+      const cleanMention = fold(rawMention.replace(/^@/, '').trim());
+      if (cleanMention.length >= 2) {
+        const found = index.find(entry =>
+          entry.aliases.some(alias => fold(alias.trim()).includes(cleanMention) || cleanMention.includes(fold(alias.trim())))
+        );
+        if (found && !directMatches.some(d => d.id === found.id)) {
+          directMatches.push(found);
+        }
+      }
+    }
+    if (directMatches.length > 0) {
+      return directMatches;
+    }
+  }
+
+  // 2. Rozbijamy pytanie na tokeny słowne pod kątem fleksji języka polskiego
   const questionTokens = haystack
     .split(/[\s,.;:?!()"'-]+/)
     .filter(t => t.length >= 3);
@@ -118,10 +245,10 @@ export const matchStudents = (
       const needle = fold(alias.trim());
       if (needle.length < 3) return false;
 
-      // 1. Dokładne lub podciągowe dopasowanie (np. "Dariusz" w "dariusza", "dariuszem")
+      // Dokładne lub podciągowe dopasowanie (np. "Dariusz" w "dariusza", "dariuszem")
       if (haystack.includes(needle)) return true;
 
-      // 2. Rdzeń imienia / fleksja (np. Paweł -> Pawła/Pawłem, Michał -> Michale)
+      // Rdzeń imienia / fleksja (np. Paweł -> Pawła/Pawłem, Michał -> Michale)
       const stem = needle.length > 4 ? needle.slice(0, -1) : needle;
       if (stem.length >= 3 && haystack.includes(stem)) return true;
 
@@ -131,7 +258,7 @@ export const matchStudents = (
       if (needle === 'jan' && (haystack.includes('jan') || haystack.includes('jank') || haystack.includes('jas'))) return true;
       if (needle === 'aleksander' && (haystack.includes('olek') || haystack.includes('aleksandr'))) return true;
 
-      // 3. Sprawdzenie tokenów pytania pod kątem podobieństwa rdzenia
+      // Sprawdzenie tokenów pytania pod kątem podobieństwa rdzenia
       return questionTokens.some(tok => {
         if (tok.startsWith(stem) || needle.startsWith(tok)) return true;
         return false;
@@ -162,27 +289,28 @@ const lessonToPrompt = (lesson: LessonRecord, idx: number): string => {
 };
 
 const SYSTEM_INSTRUCTION = `Jesteś zaawansowanym Asystentem Lektora Języka Angielskiego i Workspace AI (w stylu Notion AI) platformy CRIBRO ENGLISH.
+Działasz w ramach Rady Modeli AI i odpowiadasz na pytania lektora z najwyższą precyzją, naturalnością językową i estetyką.
 
 Twoje możliwości:
-1. Odpowiadanie na pytania o kursantów na podstawie ich historii lekcji, poziomu i notatek w CRM.
+1. Odpowiadanie na pytania o kursantów na podstawie ich historii lekcji, poziomu CEFR i notatek w CRM.
 2. Tworzenie czytelnych, estetycznych podsumowań ostatnich lekcji i analizy postępów językowych.
 3. Analiza załączonych materiałów: screenshotów, zdjęć zadań, plików PDF, artykułów i dokumentów.
 4. PRZYGOTOWYWANIE TEMATÓW LEKCJI, SCENARIUSZY I POWTÓREK dla kursantów.
+5. Obsługa szybkich komend lektora (np. /konspekt, /podsumowanie, /zadanie, /fiszki, /slajdy, /bledy, /kolo, /email, /analiza).
 
 ZASADY ODPOWIADANIA I FORMATOWANIA (BARDZO WAŻNE):
 - Odpowiadasz PO POLSKU, nowocześnie, przejrzyście, z zachowaniem nienagannej estetyki wizualnej.
-- Terminy angielskie, zwroty i przykłady zostawiasz po angielsku z polskim tłumaczeniem lub kontekstem.
-- Gdy lektor pyta o podsumowanie ostatniej lekcji lub postępów kursanta (np. „podsumuj ostatnią lekcję z kursantem X”):
-  • Przedstaw odpowiedź w postaci czytelnych, elegancko sformatowanych sekcji Markdown.
-  • Użyj logicznego układu z nagłówkami i emoji:
+- Terminy angielskie, zwroty i przykłady zostawiasz po angielsku z polskim tłumaczeniem lub naturalnym kontekstem.
+- Dbaj o autentyczność i życiowy kontekst zdań (BEZWZGLĘDNY ZAKAZ sztucznych, nielogicznych zdań czy kalk językowych).
+
+- Gdy lektor prosi o podsumowanie lekcji lub postępów kursanta:
+  • Użyj logicznego układu z nagłówkami Markdown i emoji:
     ### 📅 Lekcja: [Tytuł lekcji] ([Data])
     📖 **Przebieg i omówione zagadnienia**
     🧠 **Kluczowe słownictwo i zwroty** (w punktach: **słówko** — znaczenie)
     ✍️ **Korekty językowe i gramatyka** (wyraźnie wskaż: *Say:* ... zamiast *Not:* ...)
     🏠 **Zadanie domowe**
     🔮 **Rekomendowany follow-up na następne zajęcia**
-  • Dbaj o przejrzyste odstępy, punktory i wyróżnienia (**bold** dla ważnych terminów).
-  • NIGDY nie generuj surowego, zlanego bloku tekstu ze znakami ucieczki (np. \\n, \", ~~~).
 
 - Gdy lektor prosi o przygotowanie tematu lekcji, powtórki lub nowego konspektu:
   1. Zaproponuj chwytliwy temat i poziom.
@@ -200,11 +328,24 @@ ZASADY ODPOWIADANIA I FORMATOWANIA (BARDZO WAŻNE):
 }
 \`\`\`
 
-- Gdy pytanie dotyczy wyłącznie faktów z bazy („z kim była ostatnia lekcja”, „kto ma zaległości”), odpowiedz zwięźle i konkretnie w punktach, bez zbędnego bloku lesson_json.
-- Nie zmyślasz faktów z przeszłości. Jeśli czegoś nie ma w historii, poinformuj o tym wprost.`;
+- Gdy pytanie dotyczy faktów z bazy CRM („z kim była ostatnia lekcja”, „kto ma zaległości”), odpowiedz zwięźle i konkretnie w punktach, bez zbędnego bloku lesson_json.
+- Nie zmyślasz faktów z przeszłości. Jeśli czegoś nie ma w historii kursanta, poinformuj o tym wprost.`;
+
+export const TEACHER_ASSISTANT_REVIEW_SYSTEM = `
+Jesteś starszym metodykiem języka angielskiego w platformie CRIBRO ENGLISH recenzującym odpowiedź Asystenta Lektora.
+Twoim celem jest zagwarantowanie najwyższej jakości merytorycznej, poprawności językowej oraz elegancji formatowania.
+
+Sprawdź w szczególności:
+1. AUTENTYCZNOŚĆ I NATURALNOŚĆ: Wszystkie zdania angielskie i polskie muszą brzmieć w 100% naturalnie dla native speakerów. Bezwzględny zakaz sztucznych zdań czy niegramatycznych kalk językowych.
+2. DOPASOWANIE DO KURSANTA: Czy słownictwo i poziom gramatyki odpowiadają poziomowi CEFR i historii kursanta (jeśli został wskazany)?
+3. FORMATOWANIE: Czy odpowiedź jest czytelnie podzielona na sekcje Markdown z nagłówkami, listami punktowanymi i wytłuszczeniami? Jeśli to propozycja lekcji, czy na końcu znajduje się poprawny blok \`\`\`lesson_json\`\`\`?
+4. DOKŁADNOŚĆ: Czy nie ma zmyślonych faktów o kursancie, które nie wynikają z przekazanej bazy CRM?
+
+Wypisz maksymalnie 4 zwięzłe uwagi do poprawy lub napisz dokładnie: „Brak zastrzeżeń."
+`.trim();
 
 /**
- * Odpowiedź asystenta lektora z obsługą kontekstu bazy CRM, załączników multimedialnych oraz automatycznych akcji Notion AI.
+ * Odpowiedź asystenta lektora z obsługą kontekstu bazy CRM, załączników multimedialnych, komend / oraz Rady Modeli AI.
  */
 export const askTeacherAssistant = async (
   question: string,
@@ -216,6 +357,8 @@ export const askTeacherAssistant = async (
   usedStudents: string[];
   actions: AssistantAction[];
   lessonDraft?: LessonDraftProposal;
+  modelUsed?: string;
+  isCouncil?: boolean;
 }> => {
   const mentioned = matchStudents(question, index);
 
@@ -286,6 +429,8 @@ export const askTeacherAssistant = async (
   );
 
   let rawResponseText = '';
+  let modelUsed = 'Gemini 2.5 Flash';
+  let isCouncil = false;
 
   if (mediaAttachments.length > 0) {
     try {
@@ -309,6 +454,7 @@ export const askTeacherAssistant = async (
       });
 
       rawResponseText = res?.text || '';
+      modelUsed = 'Gemini 2.5 Flash (Multimodal)';
     } catch (multimodalErr) {
       console.warn('[TeacherAssistant] Multimodal generation fallback to text:', multimodalErr);
       const fallbackRes = await generateTextWithUnifiedFallback(
@@ -320,17 +466,35 @@ export const askTeacherAssistant = async (
         { taskName: 'Asystent lektora (Multimodal fallback)', category: 'general' }
       );
       rawResponseText = fallbackRes.text;
+      modelUsed = fallbackRes.modelUsed || 'Gemini 2.5 Flash';
     }
   } else {
-    const { text } = await generateTextWithUnifiedFallback(
-      prompt,
-      SYSTEM_INSTRUCTION,
-      undefined,
-      undefined,
-      undefined,
-      { taskName: 'Asystent lektora', category: 'general' }
-    );
-    rawResponseText = text;
+    // Uruchomienie Rady Modeli AI (Autor + Recenzenci)
+    try {
+      const councilRes = await runCouncil<string>({
+        config: DEFAULT_COUNCIL,
+        systemInstruction: SYSTEM_INSTRUCTION,
+        prompt,
+        reviewerSystemInstruction: TEACHER_ASSISTANT_REVIEW_SYSTEM,
+        expectJson: false,
+      });
+
+      rawResponseText = councilRes.raw || (typeof councilRes.data === 'string' ? councilRes.data : '');
+      modelUsed = councilRes.finalModel || 'Rada Modeli (Gemini + Consensus)';
+      isCouncil = true;
+    } catch (councilErr) {
+      console.warn('[TeacherAssistant] Rada modeli fallback do unified cascade:', councilErr);
+      const { text, modelUsed: singleModel } = await generateTextWithUnifiedFallback(
+        prompt,
+        SYSTEM_INSTRUCTION,
+        undefined,
+        undefined,
+        undefined,
+        { taskName: 'Asystent lektora', category: 'general' }
+      );
+      rawResponseText = text;
+      modelUsed = singleModel || 'Gemini 2.5 Flash';
+    }
   }
 
   // Rozpoznaj blok lesson_json
@@ -445,6 +609,8 @@ export const askTeacherAssistant = async (
     usedStudents: fallback.map(entry => entry.name),
     actions,
     lessonDraft,
+    modelUsed,
+    isCouncil,
   };
 };
 
