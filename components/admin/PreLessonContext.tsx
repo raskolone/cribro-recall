@@ -24,6 +24,8 @@ import {
   getStudentWeaknessItems,
   WeaknessItem,
 } from '../../services/studentContext';
+import { sanitizeBriefingHeadline, toPolishVocative } from '../../utils/polishVocative';
+import { formatStudentFirstName } from '../../utils/studentFormat';
 
 /**
  * Kontekst kursanta przed lekcją — „Co ostatnio robiliśmy i co dalej?".
@@ -431,7 +433,7 @@ const PreLessonContext: React.FC<PreLessonContextProps> = ({
           {/* AKAPIT DO LEKTORA — jedyna rzecz widoczna bez rozwijania. */}
           {briefing.headline && (
             <p className="text-sm sm:text-[15px] text-text-hi leading-relaxed px-0.5">
-              {briefing.headline}
+              {sanitizeBriefingHeadline(briefing.headline, teacherName, studentName)}
             </p>
           )}
 

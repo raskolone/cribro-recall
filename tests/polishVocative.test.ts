@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   toPolishVocative,
+  formatOnlyFirstName,
+  toPolishInstrumental,
+  sanitizeBriefingHeadline,
   formatPolishGreeting,
   detectPolishGender,
   inflectPolishVerb,
@@ -69,3 +72,37 @@ test('inflectByGender poprawnie dobiera formę żeńską lub męską', () => {
   assert.equal(inflectByGender('female', 'Gotowa', 'Gotowy'), 'Gotowa');
   assert.equal(inflectByGender('male', 'Gotowa', 'Gotowy'), 'Gotowy');
 });
+
+test('formatOnlyFirstName wyciąga wyłącznie pierwsze imię z różnych formatów', () => {
+  assert.equal(formatOnlyFirstName('Maciej Wyrozumski'), 'Maciej');
+  assert.equal(formatOnlyFirstName('Milena.Miksa-Matyjasik'), 'Milena');
+  assert.equal(formatOnlyFirstName('anna_nowak'), 'Anna');
+  assert.equal(formatOnlyFirstName('Piotr'), 'Piotr');
+  assert.equal(formatOnlyFirstName(''), '');
+});
+
+test('toPolishInstrumental poprawnie tworzy formę narzędnika (z kim?)', () => {
+  assert.equal(toPolishInstrumental('Anna'), 'Anną');
+  assert.equal(toPolishInstrumental('Milena'), 'Mileną');
+  assert.equal(toPolishInstrumental('Milena Miksa-Matyjasik'), 'Mileną');
+  assert.equal(toPolishInstrumental('Kasia'), 'Kasią');
+  assert.equal(toPolishInstrumental('Maciej'), 'Maciejem');
+  assert.equal(toPolishInstrumental('Maciej Wyrozumski'), 'Maciejem');
+  assert.equal(toPolishInstrumental('Piotr'), 'Piotrem');
+  assert.equal(toPolishInstrumental('Michał'), 'Michałem');
+  assert.equal(toPolishInstrumental('Bartek'), 'Bartkiem');
+  assert.equal(toPolishInstrumental('Paweł'), 'Pawłem');
+});
+
+test('sanitizeBriefingHeadline czyści nagłówek odprawy lektora do wołacza i samego imienia', () => {
+  // Przypadek ze zrzutu ekranu użytkownika
+  const raw1 = 'Maciej Wyrozumski, ostatnio z Mileną Miksa-Matyjasik w opisywaniu problemów, przekazywaniu statusów i reakcji na trudne.';
+  const res1 = sanitizeBriefingHeadline(raw1, 'Maciej Wyrozumski', 'Milena Miksa-Matyjasik');
+  assert.equal(res1, 'Macieju, ostatnio z Mileną w opisywaniu problemów, przekazywaniu statusów i reakcji na trudne.');
+
+  // Przypadek z mianownikiem
+  const raw2 = 'Maciej, ostatnio z Anną przerobiliście Present Perfect.';
+  const res2 = sanitizeBriefingHeadline(raw2, 'Maciej', 'Anna Nowak');
+  assert.equal(res2, 'Macieju, ostatnio z Anną przerobiliście Present Perfect.');
+});
+

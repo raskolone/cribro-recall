@@ -56,3 +56,46 @@ export const formatStudentDisplayName = (
 
   return fallbackDefault;
 };
+
+/**
+ * Zwraca WYŁĄCZNIE samo pierwsze imię kursanta lub lektora (bez nazwiska),
+ * czyszcząc techniczne identyfikatory, prefiksy i separatory.
+ * Np. "Maciej Wyrozumski" -> "Maciej"
+ * "Milena.Miksa-Matyjasik" -> "Milena"
+ * "anna_nowak" -> "Anna"
+ */
+export const formatStudentFirstName = (
+  user?: Partial<User> | null,
+  fallbackName?: string | null,
+  fallbackDefault = 'Kursant'
+): string => {
+  if (user?.firstName) {
+    const fn = user.firstName.trim().split(/\s+/)[0];
+    if (fn && !isRawId(fn)) {
+      return fn.charAt(0).toUpperCase() + fn.slice(1);
+    }
+  }
+
+  const fullName = formatStudentDisplayName(user, fallbackName, fallbackDefault);
+  if (!fullName || fullName === fallbackDefault) return fallbackDefault;
+
+  let clean = fullName.trim();
+  // Rozdzielenie po spacji
+  if (clean.includes(' ')) {
+    clean = clean.split(/\s+/)[0];
+  }
+  // Rozdzielenie po kropce
+  if (clean.includes('.')) {
+    clean = clean.split('.')[0];
+  }
+  // Rozdzielenie po podkreśleniu
+  if (clean.includes('_')) {
+    clean = clean.split('_')[0];
+  }
+
+  clean = clean.replace(/^[,.\s!:]+|[,.\s!:]+$/g, '');
+  if (!clean || isRawId(clean)) return fallbackDefault;
+
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+};
+

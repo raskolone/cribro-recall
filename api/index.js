@@ -1242,11 +1242,26 @@ var buildV2TaskPayload = (input) => ({
 var newHomeworkSetId = () => `hwset_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
 // utils/polishVocative.ts
-function toPolishVocative(rawName) {
+function formatOnlyFirstName(rawName) {
   if (!rawName || typeof rawName !== "string") return "";
-  const trimmed = rawName.trim();
+  let trimmed = rawName.trim();
   if (!trimmed) return "";
-  const name = trimmed.split(/\s+/)[0];
+  trimmed = trimmed.replace(/^[,.\s!:]+|[,.\s!:]+$/g, "");
+  if (trimmed.includes(" ")) {
+    trimmed = trimmed.split(/\s+/)[0];
+  }
+  if (trimmed.includes(".")) {
+    trimmed = trimmed.split(".")[0];
+  }
+  if (trimmed.includes("_")) {
+    trimmed = trimmed.split("_")[0];
+  }
+  if (!trimmed) return "";
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+}
+function toPolishVocative(rawName) {
+  const name = formatOnlyFirstName(rawName);
+  if (!name) return "";
   const irregulars = {
     "anna": "Anno",
     "marta": "Marto",

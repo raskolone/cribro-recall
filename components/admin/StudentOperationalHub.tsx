@@ -36,6 +36,8 @@ import { fetchStudentHubContext } from '../../services/teacherCockpitService';
 import PreLessonContext from './PreLessonContext';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import { extractLessonBlocks } from '../../utils/lessonBlocks';
+import { toPolishVocative } from '../../utils/polishVocative';
+import { formatStudentFirstName } from '../../utils/studentFormat';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 
@@ -68,7 +70,8 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
   const [copiedPassword, setCopiedPassword] = useState(false);
   const [briefingScope, setBriefingScope] = useState<1 | 2 | 3>(1);
 
-  const teacherName = currentUser?.displayName || currentUser?.username || 'Lektorze';
+  const teacherFirstName = formatStudentFirstName(currentUser, currentUser?.displayName || currentUser?.username, 'Maciej');
+  const teacherVocative = toPolishVocative(teacherFirstName) || 'Macieju';
 
   const loadData = async () => {
     setLoading(true);
@@ -340,8 +343,8 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
           <div className="p-6 rounded-3xl bg-base-200/70 border border-line-strong backdrop-blur-md">
             <PreLessonContext
               studentId={studentId}
-              studentName={fullName}
-              teacherName={teacherName}
+              studentName={formatStudentFirstName(student, fullName, 'Kursant')}
+              teacherName={teacherVocative}
               scope={briefingScope}
               onScopeChange={setBriefingScope}
               lessonRecords={hubData?.lastLessons}

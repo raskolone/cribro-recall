@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { isRawId, formatStudentDisplayName } from '../utils/studentFormat';
+import { isRawId, formatStudentDisplayName, formatStudentFirstName } from '../utils/studentFormat';
 
 describe('studentFormat utility', () => {
   it('correctly detects Firebase Auth UID as raw ID', () => {
@@ -43,4 +43,14 @@ describe('studentFormat utility', () => {
   it('formatStudentDisplayName uses clean fallbackName when user is null', () => {
     assert.equal(formatStudentDisplayName(null, 'Anna Nowak'), 'Anna Nowak');
   });
+
+  it('formatStudentFirstName extracts only first name and capitalizes it', () => {
+    assert.equal(formatStudentFirstName({ firstName: 'Jan', lastName: 'Kowalski' }), 'Jan');
+    assert.equal(formatStudentFirstName(null, 'Maciej Wyrozumski'), 'Maciej');
+    assert.equal(formatStudentFirstName(null, 'milena.miksa-matyjasik'), 'Milena');
+    assert.equal(formatStudentFirstName(null, 'anna_nowak'), 'Anna');
+    assert.equal(formatStudentFirstName({ username: 'piotrek' }), 'Piotrek');
+    assert.equal(formatStudentFirstName(null, 'MOojhPA5hhXZmGZtJoyr4JJfvWv2', 'Kursant'), 'Kursant');
+  });
 });
+

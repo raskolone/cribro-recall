@@ -2158,7 +2158,20 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 
 #### 4. Weryfikacja i Testy Jednostkowe
 - Utworzono pakiet testów w [tests/teacherCockpit.test.ts](tests/teacherCockpit.test.ts) testujący funkcje wyznaczania statusu cyklu życia lekcji `deriveLessonWorkflowStatus` oraz formatowania dat `getIsoDateOnly`.
-- Wszystkie 345 testów jednostkowych przechodzi pomyślnie (`npm test`), build produkcyjny (`npm run build`) oraz typowanie TypeScript (`npx tsc --noEmit`) bez błędów.
+- Wszystkie 349 testów jednostkowych przechodzi pomyślnie (`npm test`), build produkcyjny (`npm run build`) oraz typowanie TypeScript (`npx tsc --noEmit`) bez błędów.
+
+#### 5. Globalna Zasada Adresowania Użytkowników: Samo Imię i Zawsze w Odmianie (Wołacz / Narzędnik)
+- **Problem**: W nagłówkach odpraw przedlekcyjnych (`PreLessonContext`), powitaniach oraz promptach AI użytkownicy byli adresowani pełnym imieniem i nazwiskiem (np. *„Maciej Wyrozumski, ostatnio z Mileną Miksa-Matyjasik...”*), co brzmiało sztucznie i nieelegancko.
+- **Rozwiązanie**:
+  - Wdrożono zasadę globalną: **nigdy nie adresujemy użytkownika z nazwiskiem — samo imię w zupełności wystarczy, zawsze odmienione w poprawnym polskim wołaczu lub narzędniku**.
+  - Rozbudowano [utils/polishVocative.ts](utils/polishVocative.ts):
+    - `formatOnlyFirstName`: wyciąga wyłącznie pierwsze imię, czyszcząc nazwiska, znaki interpunkcyjne, podkreślenia i kropki (`Milena.Miksa-Matyjasik` -> `Milena`, `Maciej Wyrozumski` -> `Maciej`).
+    - `toPolishVocative`: zawsze odcina nazwisko i odmienia pierwsze imię w wołaczu (`Macieju`, `Anno`, `Piotrze`, `Kasiu`, `Michale`).
+    - `toPolishInstrumental`: generuje formę narzędnika dla konstrukcji „z [Imię]” (`z Mileną`, `z Maciejem`, `z Anną`, `z Bartkiem`).
+    - `sanitizeBriefingHeadline`: filtruje i czyści nagłówki odpraw AI (również w buforze `localStorage`), konwertując mianownik i nazwiska na naturalny wołacz (*„Macieju, ostatnio z Mileną w...”*).
+  - W [utils/studentFormat.ts](utils/studentFormat.ts) dodano `formatStudentFirstName`.
+  - W [services/preLessonBriefing.ts](services/preLessonBriefing.ts), [services/teacherAssistant.ts](services/teacherAssistant.ts), [services/geminiService.ts](services/geminiService.ts) oraz komponentach UI (`PreLessonContext.tsx`, `StudentOperationalHub.tsx`, `TeacherTodayCockpit.tsx`) wprowadzono ścisłe reguły przekazywania wyłącznie pierwszego imienia i egzekwowania wołacza przez modele AI.
+  - Pokryto nową funkcjonalność kompleksowymi testami jednostkowymi w [tests/polishVocative.test.ts](tests/polishVocative.test.ts) i [tests/studentFormat.test.ts](tests/studentFormat.test.ts).
 
 ### 🚀 2026-09-17 — Czat Lektora: Masowy Import Kursantów (Admin-only), Web Scraping & Research, Renderer HTML i Generator PDF A4, Poprawa Powitań i Nazwisk
 

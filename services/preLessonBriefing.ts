@@ -1,6 +1,8 @@
 import { LessonRecord } from '../types';
 import { extractLessonBlocks } from '../utils/lessonBlocks';
 import { generateTextWithUnifiedFallback, extractJSON } from './geminiService';
+import { toPolishVocative, toPolishInstrumental, sanitizeBriefingHeadline } from '../utils/polishVocative';
+import { formatStudentFirstName } from '../utils/studentFormat';
 
 /**
  * Odprawa przed lekcją — ostatnie lekcje ułożone przez model w to, co lektor
@@ -126,13 +128,16 @@ const lessonToPrompt = (lesson: LessonRecord, index: number): string => {
     .join('\n');
 };
 
-const systemInstruction = (teacherName: string, studentName: string, count: number) => `Jesteś asystentem lektora języka angielskiego. Lektor ma na imię ${teacherName}. Kursant nazywa się ${studentName}. Dostajesz notatki z ${count === 1 ? 'ostatniej lekcji' : `${count} ostatnich lekcji`} i przygotowujesz ODPRAWĘ, którą lektor czyta minutę przed kolejnymi zajęciami.
+const systemInstruction = (teacherVocative: string, studentFirstName: string, studentInstrumental: string, count: number) => `Jesteś asystentem lektora języka angielskiego. Lektor ma na imię ${teacherVocative} (w wołaczu). Kursant ma na imię ${studentFirstName}. Dostajesz notatki z ${count === 1 ? 'ostatniej lekcji' : `${count} ostatnich lekcji`} i przygotowujesz ODPRAWĘ, którą lektor czyta minutę przed kolejnymi zajęciami.
 
 NAJWAŻNIEJSZE: ma być KRÓTKO. To ściągawka, nie raport. Lektor ma ją przeczytać w kilkanaście sekund.
 
 ZASADY:
 - Piszesz PO POLSKU.
-- "headline" to 2-4 ZDANIA skierowane do lektora po imieniu, zaczynające się od jego imienia w wołaczu (np. "${teacherName}, ostatnio z ${studentName} ..."). Mówisz w nim, co się przerobiło i co z tego wynika na dziś. Bez ozdobników, bez chwalenia, bez zapowiadania, co będzie w dalszej części.
+- BARDZO WAŻNE — ZASADA ADRESOWANIA I IMION (BEZWZGLĘDNA):
+  * Do lektora zwracasz się WYŁĄCZNIE po samym imieniu w wołaczu: "${teacherVocative}" (NIGDY nie używaj nazwiska, np. NIE: "Maciej Wyrozumski", tylko: "${teacherVocative}").
+  * O kursancie piszesz WYŁĄCZNIE po samym imieniu (np. "z ${studentInstrumental}", NIGDY nie używaj nazwiska kursanta).
+- "headline" to 2-4 ZDANIA skierowane do lektora po imieniu, zaczynające się dokładnie od: "${teacherVocative}, ostatnio z ${studentInstrumental} ...". Mówisz w nim, co się przerobiło i co z tego wynika na dziś. Bez ozdobników, bez chwalenia, bez zapowiadania, co będzie w dalszej części.
 - Reszta to WYŁĄCZNIE punkty. Każdy punkt to jedno zdanie do ~110 znaków. Żadnych akapitów.
 - Terminy angielskie zostawiasz po angielsku.
 - Opierasz się WYŁĄCZNIE na notatkach. Niczego nie zmyślasz; jeżeli czegoś nie ma, zwracasz pustą listę.
@@ -193,20 +198,30 @@ export const generatePreLessonBriefing = async (
   const studentId = recent[0].studentId;
   const lastLessonId = recent[0].id;
 
+  const cleanTeacherFirst = formatStudentFirstName(null, teacherName, 'Maciej');
+  const teacherVocative = toPolishVocative(cleanTeacherFirst) || 'Macieju';
+  const cleanStudentFirst = formatStudentFirstName(null, studentName, 'Kursant');
+  const studentInstrumental = toPolishInstrumental(cleanStudentFirst) || cleanStudentFirst;
+
   if (!options?.force) {
     const cached = readCachedBriefing(studentId, lastLessonId, scope);
-    if (cached) return cached;
+    if (cached) {
+      return {
+        ...cached,
+        headline: sanitizeBriefingHeadline(cached.headline, cleanTeacherFirst, cleanStudentFirst),
+      };
+    }
   }
 
-  const prompt = `Lektor: ${teacherName}
-Kursant: ${studentName}
+  const prompt = `Lektor: ${cleanTeacherFirst} (w wołaczu: ${teacherVocative})
+Kursant: ${cleanStudentFirst} (w narzędniku: ${studentInstrumental})
 Lekcje w materiale (od najnowszej): ${recent.length}
 
 ${recent.map(lessonToPrompt).join('\n\n')}`;
 
   const { text, modelUsed } = await generateTextWithUnifiedFallback(
     prompt,
-    systemInstruction(teacherName, studentName, recent.length),
+    systemInstruction(teacherVocative, cleanStudentFirst, studentInstrumental, recent.length),
     undefined,
     { responseMimeType: 'application/json' },
     undefined,
@@ -214,9 +229,11 @@ ${recent.map(lessonToPrompt).join('\n\n')}`;
   );
 
   const parsed = JSON.parse(extractJSON(text));
+  const rawHeadline = typeof parsed.headline === 'string' ? parsed.headline.trim() : '';
+  const sanitizedHeadline = sanitizeBriefingHeadline(rawHeadline, cleanTeacherFirst, cleanStudentFirst);
 
   const briefing: PreLessonBriefing = {
-    headline: typeof parsed.headline === 'string' ? parsed.headline.trim() : '',
+    headline: sanitizedHeadline,
     lessons: Array.isArray(parsed.lessons)
       ? parsed.lessons.slice(0, recent.length).map((item: any, index: number) => ({
           // Data i temat wracają z NASZYCH danych, nie z odpowiedzi modelu:
