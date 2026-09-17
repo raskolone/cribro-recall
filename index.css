@@ -16,51 +16,37 @@
    trybu dziennego w `design/theme/tokens.css`. */
 :root[data-theme="light"],
 :root.light {
-  /* Lustrzane odbicie bloku trybu jasnego z design/theme/tokens.css
-     (przepisanego 2026-09-13 — uzasadnienie każdej wartości jest tam).
-     Tutaj te same liczby pod nazwami, których używa Tailwind: nadpisanie
-     `--color-*` przestawia wszystkie ~2700 klas `bg-base-200`,
-     `text-content-muted` itd. bez ruszania komponentów. */
-  --color-primary: #0d8a5f;
-  --color-secondary: #6b7787;
-  /* Tło strony ściemnione z #f2f4f7. Biała karta przy kryciu 50-60% (a tak
-     stoi w setkach miejsc: `bg-base-200/50`) dawała na poprzednim tle
-     różnicę trzech jednostek jasności — czyli kartę, której krawędzi nie
-     było widać. Na #e9edf2 ta sama karta odcina się wyraźnie. */
-  --color-base-100: #e9edf2;
+  --color-primary: #0b7a53;
+  --color-secondary: #475569;
+  --color-base-100: #e5ecf5;
   --color-base-200: #ffffff;
-  --color-base-300: rgba(15, 23, 32, 0.09);
-  --color-content: #263141;
-  /* Kontrast 4,1:1 na starym tle — poniżej progu, a to jest kolor WSZYSTKICH
-     etykiet i podpisów w aplikacji, pisanych do tego wielkością 10-11 px.
-     Ten odcień daje 5,4:1. */
-  --color-content-muted: #5a6676;
+  --color-base-300: rgba(15, 23, 42, 0.14);
+  --color-content: #0f172a;
+  --color-content-muted: #334155;
 
-  --color-accent: #0d8a5f;
-  --color-accent-soft: #0a6b49;
+  --color-accent: #0b7a53;
+  --color-accent-soft: #085e40;
   --color-accent-ink: #ffffff;
 
-  --color-bg: #e9edf2;
+  --color-bg: #e5ecf5;
   --color-bg-lift: #ffffff;
-  --color-ink: #dfe5ec;
+  --color-ink: #d4e0ed;
   --color-ink-2: #ffffff;
   --color-surface-flat: #ffffff;
 
-  --color-text-hi: #0f1720;
-  --color-text-2: #48556a;
-  --color-text-3: #55636f;
-  --color-text-mute: #5a6676;
-  /* Opisy pozycji w menu rozwijanych są pisane tym kolorem — przy 2,3:1
-     nie dało się ich przeczytać. 4,5:1, a nadal wyraźnie lżejsze od reszty. */
-  --color-text-faint: #67727f;
+  --color-text-hi: #020617;
+  --color-text-2: #1e293b;
+  --color-text-3: #334155;
+  --color-text-mute: #334155;
+  --color-text-faint: #475569;
 
   --color-warn: #9a6410;
   --color-danger: #c0342f;
   --color-info: #1f5fb0;
 
-  --color-line: rgba(15, 23, 32, 0.14);
-  --color-line-strong: rgba(15, 23, 32, 0.20);
-  --color-line-soft: rgba(15, 23, 32, 0.07);
+  --color-line: rgba(15, 23, 42, 0.22);
+  --color-line-strong: rgba(15, 23, 42, 0.35);
+  --color-line-soft: rgba(15, 23, 42, 0.12);
 
   /* ══════════════════════════════════════════════════════════════════════
      BIEL, KTÓRA W TRYBIE DZIENNYM ZNACZY „ATRAMENT"
@@ -334,36 +320,34 @@ html, body, #root { min-height: 100vh; }
    --------------------------------------------------------------------------- */
 
 /* .card — podstawowa powierzchnia */
-/* .card — podstawowa powierzchnia szklana z fizyczną głębią 3D */
+/* .card — podstawowa powierzchnia szklana z fizyczną głębią 3D i wyraźnym konturem */
 .liquid-glass-card {
   position: relative;
   overflow: hidden;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.09) 0%,
-    rgba(255, 255, 255, 0.028) 35%,
-    rgba(255, 255, 255, 0.006) 65%,
-    rgba(0, 0, 0, 0.20) 100%
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.04) 50%,
+    rgba(255, 255, 255, 0.01) 100%
   ), var(--surface-gradient);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-top: 1px solid rgba(255, 255, 255, 0.26);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.40);
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  border-top: 1px solid rgba(255, 255, 255, 0.40);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: var(--r-xl);
   box-shadow:
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.30),
-    inset 0 -2px 4px 0 rgba(0, 0, 0, 0.35),
-    0 1px 2px 0 rgba(0, 0, 0, 0.30),
-    0 6px 16px -2px rgba(0, 0, 0, 0.45),
-    0 16px 36px -6px rgba(0, 0, 0, 0.52);
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 2px 8px 0 rgba(0, 0, 0, 0.30),
+    0 12px 28px -4px rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(18px) saturate(145%);
   -webkit-backdrop-filter: blur(18px) saturate(145%);
   isolation: isolate;
-  will-change: transform, box-shadow;
+  will-change: border-color, box-shadow;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   transition:
     transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.18s ease,
+    border-color 0.2s ease,
     box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -371,61 +355,55 @@ html, body, #root { min-height: 100vh; }
 :root[data-theme="light"] .liquid-glass-card {
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.98) 0%,
-    rgba(255, 255, 255, 0.88) 40%,
-    rgba(240, 245, 250, 0.80) 100%
+    rgba(255, 255, 255, 0.99) 0%,
+    rgba(255, 255, 255, 0.92) 40%,
+    rgba(235, 242, 250, 0.88) 100%
   );
-  border: 1px solid rgba(15, 23, 32, 0.12);
-  border-top: 1px solid rgba(255, 255, 255, 0.98);
-  border-bottom: 1px solid rgba(15, 23, 32, 0.20);
+  border: 1px solid rgba(15, 23, 42, 0.22);
+  border-top: 1px solid #ffffff;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.30);
   box-shadow:
     inset 0 1.5px 1px 0 #ffffff,
-    inset 0 -2px 3px 0 rgba(15, 23, 32, 0.05),
     0 1px 3px 0 rgba(16, 24, 40, 0.06),
-    0 8px 20px -3px rgba(16, 24, 40, 0.09),
-    0 16px 32px -6px rgba(16, 24, 40, 0.08);
+    0 8px 20px -3px rgba(16, 24, 40, 0.10);
 }
 
 .liquid-glass-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(114, 240, 180, 0.35);
-  border-top-color: rgba(255, 255, 255, 0.40);
+  transform: translateY(-1px);
+  border-color: rgba(114, 240, 180, 0.50);
+  border-top-color: rgba(255, 255, 255, 0.60);
   box-shadow:
-    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.40),
-    inset 0 -2px 4px 0 rgba(0, 0, 0, 0.40),
-    0 2px 4px 0 rgba(0, 0, 0, 0.35),
-    0 10px 24px -3px rgba(0, 0, 0, 0.55),
-    0 24px 44px -6px rgba(0, 0, 0, 0.65),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.45),
+    0 4px 14px 0 rgba(0, 0, 0, 0.35),
+    0 16px 36px -4px rgba(0, 0, 0, 0.55),
     var(--glow);
 }
 
 :root.light .liquid-glass-card:hover,
 :root[data-theme="light"] .liquid-glass-card:hover {
-  border-color: rgba(13, 138, 95, 0.35);
+  border-color: rgba(11, 122, 83, 0.50);
   border-top-color: #ffffff;
   box-shadow:
     inset 0 1.5px 1px 0 #ffffff,
-    0 2px 5px 0 rgba(16, 24, 40, 0.08),
-    0 10px 24px -3px rgba(16, 24, 40, 0.12),
-    0 20px 38px -6px rgba(16, 24, 40, 0.11),
-    0 0 20px rgba(13, 138, 95, 0.12);
+    0 2px 6px 0 rgba(16, 24, 40, 0.08),
+    0 10px 24px -3px rgba(16, 24, 40, 0.14),
+    0 0 20px rgba(11, 122, 83, 0.18);
 }
 
 /* Panel — ta sama powierzchnia, bez reakcji na hover (kontener, nie cel) */
 .liquid-glass-panel {
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.07) 0%,
-    rgba(255, 255, 255, 0.02) 60%,
-    rgba(0, 0, 0, 0.18) 100%
+    rgba(255, 255, 255, 0.10) 0%,
+    rgba(255, 255, 255, 0.03) 60%,
+    rgba(255, 255, 255, 0.01) 100%
   ), var(--surface-gradient);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-top: 1px solid rgba(255, 255, 255, 0.22);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.32);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--r-xl);
   box-shadow:
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.25),
-    inset 0 -2px 4px 0 rgba(0, 0, 0, 0.30),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.28),
     0 1px 2px 0 rgba(0, 0, 0, 0.30),
     0 6px 16px -2px rgba(0, 0, 0, 0.40),
     0 16px 36px -6px rgba(0, 0, 0, 0.48);
@@ -437,12 +415,12 @@ html, body, #root { min-height: 100vh; }
 :root[data-theme="light"] .liquid-glass-panel {
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.96) 0%,
-    rgba(255, 255, 255, 0.85) 100%
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(255, 255, 255, 0.88) 100%
   );
-  border: 1px solid rgba(15, 23, 32, 0.10);
-  border-top: 1px solid rgba(255, 255, 255, 0.95);
-  border-bottom: 1px solid rgba(15, 23, 32, 0.18);
+  border: 1px solid rgba(15, 23, 42, 0.20);
+  border-top: 1px solid #ffffff;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.28);
   box-shadow:
     inset 0 1.5px 0 #ffffff,
     0 1px 3px 0 rgba(16, 24, 40, 0.05),
@@ -450,7 +428,7 @@ html, body, #root { min-height: 100vh; }
 }
 
 /* Kafel panelu kursanta i lektora (Liquid Glass Tile & Glass Tile)
-   Statyczny Liquid Glass z głębią 3D — wygląd fizycznych przycisków ze szkła */
+   Statyczny Liquid Glass z głębią 3D i czystą krawędzią (BEZ czarnego dołu) */
 .liquid-glass-tile,
 .glass-tile {
   position: relative;
@@ -459,31 +437,28 @@ html, body, #root { min-height: 100vh; }
   background:
     linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.11) 0%,
-      rgba(255, 255, 255, 0.038) 28%,
-      rgba(255, 255, 255, 0.008) 58%,
-      rgba(0, 0, 0, 0.24) 100%
+      rgba(255, 255, 255, 0.14) 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      rgba(255, 255, 255, 0.02) 100%
     ),
-    color-mix(in srgb, var(--bg-lift) 58%, var(--ink-2) 42%);
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  border-top: 1px solid rgba(255, 255, 255, 0.32);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.48);
+    color-mix(in srgb, var(--bg-lift) 75%, var(--ink-2) 25%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-top: 1px solid rgba(255, 255, 255, 0.42);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: var(--r-xl);
   backdrop-filter: blur(20px) saturate(150%);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   box-shadow:
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.36),
-    inset 0 2px 5px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -2px 4px 0 rgba(0, 0, 0, 0.38),
-    0 1px 2px 0 rgba(0, 0, 0, 0.35),
-    0 6px 15px -2px rgba(0, 0, 0, 0.46),
-    0 16px 34px -4px rgba(0, 0, 0, 0.52);
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.38),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 2px 8px 0 rgba(0, 0, 0, 0.35),
+    0 10px 24px -4px rgba(0, 0, 0, 0.48);
   transition:
     transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.18s ease,
+    border-color 0.2s ease,
     box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    background 0.18s ease;
-  will-change: transform, box-shadow;
+    background 0.2s ease;
+  will-change: border-color, box-shadow;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
@@ -499,34 +474,32 @@ html, body, #root { min-height: 100vh; }
   z-index: 1;
   background: radial-gradient(
     ellipse 85% 42% at 50% 0%,
-    rgba(255, 255, 255, 0.15) 0%,
-    rgba(255, 255, 255, 0.02) 65%,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0.03) 65%,
     transparent 100%
   );
-  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.30);
 }
 
-/* Wersja w trybie dziennym (Light mode 3D glass button) */
+/* Wersja w trybie dziennym (Light mode 3D glass button z wysokim kontrastem) */
 :root.light .liquid-glass-tile,
 :root.light .glass-tile,
 :root[data-theme="light"] .liquid-glass-tile,
 :root[data-theme="light"] .glass-tile {
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.98) 0%,
-    rgba(255, 255, 255, 0.88) 35%,
-    rgba(242, 246, 250, 0.80) 100%
+    rgba(255, 255, 255, 0.99) 0%,
+    rgba(255, 255, 255, 0.94) 40%,
+    rgba(230, 238, 248, 0.90) 100%
   );
-  border: 1px solid rgba(15, 23, 32, 0.12);
-  border-top: 1px solid rgba(255, 255, 255, 0.98);
-  border-bottom: 1px solid rgba(15, 23, 32, 0.22);
+  border: 1px solid rgba(15, 23, 42, 0.24);
+  border-top: 1px solid #ffffff;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.35);
   box-shadow:
     inset 0 1.5px 1px 0 #ffffff,
     inset 0 3px 6px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -2px 3px 0 rgba(15, 23, 32, 0.06),
-    0 1px 3px 0 rgba(16, 24, 40, 0.06),
-    0 6px 16px -2px rgba(16, 24, 40, 0.09),
-    0 14px 30px -4px rgba(16, 24, 40, 0.08);
+    0 2px 6px 0 rgba(15, 23, 42, 0.08),
+    0 8px 20px -3px rgba(15, 23, 42, 0.12);
 }
 
 :root.light .liquid-glass-tile::after,
@@ -535,49 +508,45 @@ html, body, #root { min-height: 100vh; }
 :root[data-theme="light"] .glass-tile::after {
   background: radial-gradient(
     ellipse 85% 42% at 50% 0%,
-    rgba(255, 255, 255, 0.6) 0%,
+    rgba(255, 255, 255, 0.7) 0%,
     transparent 100%
   );
   box-shadow: inset 0 1.5px 0.5px rgba(255, 255, 255, 0.95);
 }
 
-/* Statyczny hover 3D: uniesienie przycisku i wzmocnienie głębi szkła (BEZ animacji połysku) */
+/* Płynny hover 3D z uziemionym pozycjonowaniem (eliminacja przeskoków i pętli jittera) */
 @media (hover: hover) and (pointer: fine) {
   .liquid-glass-tile:hover,
   .glass-tile:hover {
-    transform: translateY(-2.5px);
-    border-color: rgba(114, 240, 180, 0.38);
-    border-top-color: rgba(255, 255, 255, 0.46);
+    transform: translateY(-1px);
+    border-color: rgba(114, 240, 180, 0.55);
+    border-top-color: rgba(255, 255, 255, 0.65);
     box-shadow:
-      inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.45),
-      inset 0 2px 6px 0 rgba(255, 255, 255, 0.12),
-      inset 0 -2px 4px 0 rgba(0, 0, 0, 0.42),
-      0 2px 4px 0 rgba(0, 0, 0, 0.35),
-      0 10px 22px -3px rgba(0, 0, 0, 0.56),
-      0 22px 42px -6px rgba(0, 0, 0, 0.65),
-      0 0 22px -2px rgba(114, 240, 180, 0.20);
+      inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.50),
+      inset 0 0 0 1px rgba(114, 240, 180, 0.25),
+      0 4px 16px 0 rgba(0, 0, 0, 0.40),
+      0 14px 32px -4px rgba(0, 0, 0, 0.58),
+      0 0 24px -2px rgba(114, 240, 180, 0.28);
   }
 
   .liquid-glass-tile:hover::after,
   .glass-tile:hover::after {
     box-shadow:
-      inset 0 1.5px 1px rgba(255, 255, 255, 0.38),
-      inset 0 0 0 1px rgba(114, 240, 180, 0.18);
+      inset 0 1.5px 1px rgba(255, 255, 255, 0.45),
+      inset 0 0 0 1px rgba(114, 240, 180, 0.25);
   }
 
   :root.light .liquid-glass-tile:hover,
   :root.light .glass-tile:hover,
   :root[data-theme="light"] .liquid-glass-tile:hover,
   :root[data-theme="light"] .glass-tile:hover {
-    border-color: rgba(13, 138, 95, 0.38);
+    border-color: rgba(11, 122, 83, 0.55);
     border-top-color: #ffffff;
     box-shadow:
       inset 0 1.5px 1px 0 #ffffff,
-      inset 0 -1.5px 2px 0 rgba(15, 23, 32, 0.08),
-      0 2px 6px 0 rgba(16, 24, 40, 0.08),
-      0 10px 24px -4px rgba(16, 24, 40, 0.12),
-      0 20px 36px -6px rgba(16, 24, 40, 0.11),
-      0 0 20px rgba(13, 138, 95, 0.15);
+      0 2px 6px 0 rgba(15, 23, 42, 0.10),
+      0 10px 24px -3px rgba(15, 23, 42, 0.15),
+      0 0 22px rgba(11, 122, 83, 0.20);
   }
 
   :root.light .liquid-glass-tile:hover::after,
@@ -586,7 +555,7 @@ html, body, #root { min-height: 100vh; }
   :root[data-theme="light"] .glass-tile:hover::after {
     box-shadow:
       inset 0 1.5px 0.5px #ffffff,
-      inset 0 0 0 1px rgba(13, 138, 95, 0.22);
+      inset 0 0 0 1px rgba(11, 122, 83, 0.30);
   }
 }
 

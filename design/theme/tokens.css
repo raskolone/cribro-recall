@@ -239,28 +239,24 @@ a:hover { color: var(--accent-soft); }
      Zmienna zostaje, bo kilka miejsc ją czyta — wskazuje teraz na akcent. */
   --accent-2:        #0d8a5f;
 
-  /* Skala szarości chłodna, nie ciepła — pod szare tło, nie pod papier. */
-  --text:            #263141;
-  --text-hi:         #0f1720;
-  --text-2:          #48556a;
-  --text-3:          #55636f;
-  /* Kolor WSZYSTKICH etykiet i podpisów, pisanych wielkością 10-11 px.
-     Poprzedni (#6b7787) dawał 4,1:1 — poniżej progu czytelności. Ten: 5,4:1. */
-  --text-mute:       #5a6676;
-  /* Opisy pozycji w menu rozwijanych. Poprzedni (#9aa5b1) miał 2,3:1. */
-  --text-faint:      #67727f;
+  /* Skala szarości chłodna, głęboki kontrast tekstu i podpisów w trybie dziennym. */
+  --text:            #0f172a;
+  --text-hi:         #020617;
+  --text-2:          #1e293b;
+  --text-3:          #334155;
+  /* Podwyższony kontrast etykiet, opisów kafelków i podpisów (AAA). */
+  --text-mute:       #334155;
+  --text-faint:      #475569;
 
   /* Barwy stanu w nasyceniu, które na bieli utrzymuje kontrast tekstu. */
   --warn:            #9a6410;
   --danger:          #c0342f;
   --info:            #1f5fb0;
 
-  /* Obrys jest tu głównym narzędziem rozdzielania, więc musi być widoczny —
-     ale włosowy. Powyżej tych wartości siatka kart zaczyna wyglądać jak
-     tabela w arkuszu. */
-  --line:            rgba(15, 23, 32, 0.14);
-  --line-strong:     rgba(15, 23, 32, 0.20);
-  --line-soft:       rgba(15, 23, 32, 0.07);
+  /* Wyraźniejsze, wyraziste linie podziału i obrysy w trybie dziennym. */
+  --line:            rgba(15, 23, 42, 0.22);
+  --line-strong:     rgba(15, 23, 42, 0.35);
+  --line-soft:       rgba(15, 23, 42, 0.12);
 
   /* Cienie ledwie obecne. Karta odkleja się od tła różnicą jasności
      (#ffffff na #f2f4f7) i obrysem; cień tylko potwierdza kierunek światła.

@@ -2014,11 +2014,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     ? onViewChange?.((tile as any).route)
                     : handleTileClick(tile.id)
                 }
-                className={`p-4.5 sm:p-5 cursor-pointer flex flex-col justify-between select-none transition-all duration-300 rounded-2xl relative overflow-hidden ${
+                className={`p-4.5 sm:p-5 cursor-pointer flex flex-col justify-between select-none transition-[border-color,box-shadow,background-color] duration-200 rounded-2xl relative overflow-hidden transform-gpu ${
                   hasNotification
                     ? 'border-amber-400/80 bg-gradient-to-br from-amber-500/[0.08] via-base-200/80 to-base-200 shadow-[0_0_30px_rgba(245,158,11,0.22)] ring-1 ring-amber-400/50 hover:border-amber-300'
                     : isActive
-                      ? 'border-primary ring-2 ring-primary/90 ring-offset-2 ring-offset-base-300 shadow-[0_0_35px_rgba(114,240,180,0.38),inset_0_0_22px_rgba(114,240,180,0.14)] bg-gradient-to-br from-primary/[0.18] via-base-200 to-base-200/95 scale-[1.02] z-10'
+                      ? 'border-primary ring-2 ring-primary/90 ring-offset-2 ring-offset-base-300 shadow-[0_0_35px_rgba(114,240,180,0.38),inset_0_0_22px_rgba(114,240,180,0.14)] bg-gradient-to-br from-primary/[0.18] via-base-200 to-base-200/95 z-10'
                       : 'liquid-glass-tile'
                 }`}
               >
@@ -2101,11 +2101,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               <button
                 key={item.id}
                 onClick={() => handleTileClick(item.id)}
-                className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-[border-color,box-shadow,background-color] duration-200 cursor-pointer transform-gpu ${
                   item.badge
                     ? 'border-amber-400/60 bg-amber-500/10 text-amber-200'
                     : isActive
-                    ? 'border-primary ring-2 ring-primary/80 ring-offset-1 ring-offset-base-300 shadow-[0_0_25px_rgba(114,240,180,0.35)] bg-gradient-to-br from-primary/[0.22] via-primary/[0.08] to-base-200 text-primary scale-[1.02] font-black'
+                    ? 'border-primary ring-2 ring-primary/80 ring-offset-1 ring-offset-base-300 shadow-[0_0_25px_rgba(114,240,180,0.35)] bg-gradient-to-br from-primary/[0.22] via-primary/[0.08] to-base-200 text-primary font-black'
                     : 'liquid-glass-tile text-content-muted hover:text-text-hi'
                 }`}
               >
@@ -2150,9 +2150,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   <button
                     key={item.tab}
                     onClick={() => handleTileClick(item.tab)}
-                    className={`relative flex flex-col items-center justify-center gap-1.5 min-h-[4.5rem] py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-all duration-200 text-center cursor-pointer ${
+                    className={`relative flex flex-col items-center justify-center gap-1.5 min-h-[4.5rem] py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-[border-color,box-shadow,background-color] duration-200 text-center cursor-pointer transform-gpu ${
                       isActive
-                        ? 'border-primary ring-2 ring-primary/80 ring-offset-1 ring-offset-base-300 shadow-[0_0_25px_rgba(114,240,180,0.35)] bg-gradient-to-br from-primary/[0.22] via-primary/[0.08] to-base-200 text-primary scale-[1.02] font-black'
+                        ? 'border-primary ring-2 ring-primary/80 ring-offset-1 ring-offset-base-300 shadow-[0_0_25px_rgba(114,240,180,0.35)] bg-gradient-to-br from-primary/[0.22] via-primary/[0.08] to-base-200 text-primary font-black'
                         : 'liquid-glass-tile text-content-muted hover:text-text-hi'
                     }`}
                   >
