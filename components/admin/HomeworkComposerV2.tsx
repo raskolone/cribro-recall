@@ -5,6 +5,7 @@ import { AlertTriangle, ChevronDown, Loader2, Send, Sparkles } from 'lucide-reac
 import { db } from '../../firebase';
 import { LessonRecord, User } from '../../types';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
+import { getAllUsers } from '../../services/userService';
 import { isStudentVisibleLesson } from '../../utils/lessonBlocks';
 import { cleanVocabularyTopic } from '../../utils/vocabulary';
 import {
@@ -81,13 +82,11 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
 
   const student = useMemo(() => students.find((s) => s.id === studentId), [students, studentId]);
 
-  // --- wczytanie kursantów --------------------------------------------------
+  // --- wczytanie kursantów (cache) ------------------------------------------
   useEffect(() => {
-    getDocs(collection(db, 'users'))
-      .then((snap) => {
-        const list = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() } as User))
-          .filter((u) => u.role !== 'admin' && u.role !== 'teacher');
+    getAllUsers()
+      .then((allUsers) => {
+        const list = allUsers.filter((u) => u.role !== 'admin' && u.role !== 'teacher');
         setStudents(list);
       })
       .catch(() => setError('Nie udało się wczytać listy kursantów.'));

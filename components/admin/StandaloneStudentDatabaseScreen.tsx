@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, query, doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { User, LessonRecord } from '../../types';
+import { getAllUsers, updateCachedUser, addCachedUser, removeCachedUser, UserWithId } from '../../services/userService';
 import { useFirebaseAdminApi } from '../../hooks/useFirebaseAdminApi';
 import { useLanguage } from '../../context/LanguageContext';
 import { openScratchpadTab } from '../../services/scratchpadService';
@@ -56,6 +57,9 @@ interface StandaloneStudentDatabaseScreenProps {
   onSelectUser: (userId: string, targetTab?: string) => void;
   onOpenMailing?: () => void;
   onBack: () => void;
+  initialUsers?: User[];
+  initialLessons?: LessonRecord[];
+  onRefreshUsers?: () => Promise<void> | void;
 }
 
 type TabFilter = 'all' | 'active' | 'individual' | 'group' | 'jcl' | 'inspiro' | 'axell' | 'direct';
@@ -64,11 +68,14 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
   onSelectUser,
   onOpenMailing,
   onBack,
+  initialUsers,
+  initialLessons,
+  onRefreshUsers,
 }) => {
   const { language } = useLanguage();
-  const [users, setUsers] = useState<User[]>([]);
-  const [lessons, setLessons] = useState<LessonRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [users, setUsers] = useState<User[]>(initialUsers || []);
+  const [lessons, setLessons] = useState<LessonRecord[]>(initialLessons || []);
+  const [isLoading, setIsLoading] = useState(!initialUsers || initialUsers.length === 0);
   const [activeTab, setActiveTab] = useState<TabFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -110,6 +117,7 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
     setIsUpdatingInviteId(student.id);
     try {
       await updateDoc(doc(db, 'users', student.id), updates as any);
+      updateCachedUser(student.id, updates);
       setUsers((prev) =>
         prev.map((u) => (u.id === student.id ? { ...u, ...updates } : u))
       );
@@ -130,26 +138,15 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
 
   useEscapeModal(showCreateModal, () => setShowCreateModal(false), 5);
 
-  const fetchUsersAndLessons = async () => {
+  const fetchUsersAndLessons = async (force = false) => {
     try {
       setIsLoading(true);
-      const q = query(collection(db, 'users'));
-      const snapshot = await getDocs(q);
-      const list: User[] = snapshot.docs
-        .map((d) => ({ id: d.id, ...d.data() } as User))
-        .filter((u) => u.username !== 'Demo User' && u.username !== 'Demo User (Offline)');
-
-      list.sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      });
-
+      const list = await getAllUsers(force);
       setUsers(list);
 
       // Fetch recent lessons to populate last lesson column
       try {
-        const allLessons = await getAllLessonRecordsForTeacher(list);
+        const allLessons = await getAllLessonRecordsForTeacher(list, force);
         setLessons(allLessons);
       } catch (err) {
         console.warn('Could not fetch lesson records:', err);
@@ -162,8 +159,24 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
   };
 
   useEffect(() => {
+    if (initialUsers && initialUsers.length > 0) {
+      setUsers(initialUsers);
+      if (initialLessons && initialLessons.length > 0) {
+        setLessons(initialLessons);
+      }
+      setIsLoading(false);
+      return;
+    }
     fetchUsersAndLessons();
-  }, []);
+  }, [initialUsers, initialLessons]);
+
+  const handleManualRefresh = async () => {
+    setIsLoading(true);
+    if (onRefreshUsers) {
+      await onRefreshUsers();
+    }
+    await fetchUsersAndLessons(true);
+  };
 
   // Filter users based on active tab and search query
   const filteredUsers = useMemo(() => {
@@ -228,6 +241,7 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
     try {
       for (const userId of selectedUserIds) {
         await updateDoc(doc(db, 'users', userId), { level });
+        updateCachedUser(userId, { level });
       }
       setUsers((prev) =>
         prev.map((u) => (selectedUserIds.includes(u.id) ? { ...u, level } : u))
@@ -247,6 +261,7 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
     try {
       for (const userId of selectedUserIds) {
         await updateDoc(doc(db, 'users', userId), { contractor });
+        updateCachedUser(userId, { contractor });
       }
       setUsers((prev) =>
         prev.map((u) => (selectedUserIds.includes(u.id) ? { ...u, contractor } : u))
@@ -266,14 +281,12 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
     try {
       const isSuspended = statusVal === 'suspended';
       const isArchived = statusVal === 'archived';
-      const statusWspolpracy = statusVal === 'inactive' ? 'Nieaktywny' : 'Aktywny';
+      const statusWspolpracy: 'Aktywny' | 'Nieaktywny' = statusVal === 'inactive' ? 'Nieaktywny' : 'Aktywny';
 
       for (const userId of selectedUserIds) {
-        await updateDoc(doc(db, 'users', userId), {
-          isSuspended,
-          isArchived,
-          statusWspolpracy,
-        });
+        const updates: Partial<User> = { isSuspended, isArchived, statusWspolpracy };
+        await updateDoc(doc(db, 'users', userId), updates);
+        updateCachedUser(userId, updates);
       }
       setUsers((prev) =>
         prev.map((u) =>
@@ -337,6 +350,7 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
           console.warn('Auth delete warning:', err);
         }
         await deleteDoc(doc(db, 'users', user.id));
+        removeCachedUser(user.id);
         setUsers((prev) => prev.filter((u) => u.id !== user.id));
       }
     } catch (e) {
@@ -389,8 +403,10 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
       };
 
       await setDoc(doc(db, 'users', userRecord.uid), newUserDoc);
+      addCachedUser({ id: userRecord.uid, ...newUserDoc } as UserWithId);
       setCreatedCredentials({ email: finalEmail, password: finalPassword });
-      fetchUsersAndLessons();
+      fetchUsersAndLessons(true);
+      onRefreshUsers?.();
     } catch (err: any) {
       setCreateError(err.message || 'Wystąpił błąd podczas tworzenia kursanta.');
     } finally {
@@ -452,6 +468,17 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
 
         {/* Action buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            onClick={handleManualRefresh}
+            disabled={isLoading}
+            className="text-xs flex items-center gap-1.5 py-2 px-3.5 bg-line-soft hover:bg-line text-text-hi font-semibold rounded-xl border border-line-strong transition-colors cursor-pointer"
+            title="Odśwież dane kursantów z bazy"
+          >
+            <RefreshCw size={14} className={isLoading ? "animate-spin text-primary" : "text-primary"} />
+            <span>Odśwież</span>
+          </Button>
+
           <Button
             size="sm"
             onClick={() => {

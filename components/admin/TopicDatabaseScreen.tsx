@@ -13,6 +13,7 @@ import i18n from "i18next";
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc, getDocs, collection, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
+import { getAllUsers } from '../../services/userService';
 import { parseVocabularyText } from './AssignVocabularyModal';
 import { cleanVocabularyTopic } from '../../utils/vocabulary';
 import { GENERAL_VOCABULARY_SETS, LEVEL_GROUPS, GeneralVocabSet } from '../../data/generalVocabulary';
@@ -376,19 +377,17 @@ export default function TopicDatabaseScreen() {
     const usersList: any[] = [];
     let usersDocs: any[] = [];
 
-    // 1. Fetch users
+    // 1. Fetch users (from cache)
     try {
-      console.log("Fetching users...");
-      const usersSnap = await getDocs(collection(db, 'users'));
-      usersDocs = usersSnap.docs;
-      usersDocs.forEach(d => {
-        const uData = d.data();
+      console.log("Fetching users from userService...");
+      const users = await getAllUsers();
+      users.forEach(uData => {
         const name = (uData.firstName || uData.lastName)
           ? `${uData.firstName || ''} ${uData.lastName || ''}`.trim()
           : uData.username || 'Kursant';
-        usersMap[d.id] = name;
+        usersMap[uData.id] = name;
         if(uData.role !== 'admin' && uData.role !== 'teacher') {
-           usersList.push({ id: d.id, name });
+           usersList.push({ id: uData.id, name });
         }
       });
       setAllUsers(usersList);

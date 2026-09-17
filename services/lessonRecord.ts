@@ -278,35 +278,84 @@ export async function createLessonRecordWithVocabularySet(input: {
     );
   }
 
+  // Unieważnij cache dla tego kursanta po zapisaniu nowej/zaktualizowanej lekcji
+  invalidateLessonRecordsCache(input.studentId);
+
   return { lessonRecordId, vocabularySetId };
 }
 
-export async function getLessonRecordsForStudent(studentId: string): Promise<LessonRecord[]> {
-  const recordsRef = collection(db, `users/${studentId}/lessonRecords`);
-  const q = query(recordsRef, orderBy('date', 'desc'));
-  
-  const snapshot = await getDocs(q);
-  const records: LessonRecord[] = [];
-  
-  snapshot.forEach((doc) => {
-    records.push({ id: doc.id, ...doc.data() } as LessonRecord);
-  });
-  
-  return records;
+interface LessonCacheEntry {
+  data: LessonRecord[];
+  timestamp: number;
+}
+
+const lessonRecordsCache = new Map<string, LessonCacheEntry>();
+const inFlightStudentLessonsPromises = new Map<string, Promise<LessonRecord[]>>();
+const LESSON_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minut
+
+/**
+ * Unieważnia pamięć podręczną lekcji dla określonego kursanta lub wszystkich kursantów.
+ */
+export function invalidateLessonRecordsCache(studentId?: string): void {
+  if (studentId) {
+    lessonRecordsCache.delete(studentId);
+  } else {
+    lessonRecordsCache.clear();
+  }
+}
+
+export async function getLessonRecordsForStudent(studentId: string, forceRefresh = false): Promise<LessonRecord[]> {
+  if (!studentId) return [];
+
+  const now = Date.now();
+  const cached = lessonRecordsCache.get(studentId);
+  if (!forceRefresh && cached && now - cached.timestamp < LESSON_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  if (inFlightStudentLessonsPromises.has(studentId)) {
+    return inFlightStudentLessonsPromises.get(studentId)!;
+  }
+
+  const promise = (async () => {
+    try {
+      const recordsRef = collection(db, `users/${studentId}/lessonRecords`);
+      const q = query(recordsRef, orderBy('date', 'desc'));
+      
+      const snapshot = await getDocs(q);
+      const records: LessonRecord[] = [];
+      
+      snapshot.forEach((doc) => {
+        records.push({ id: doc.id, ...doc.data() } as LessonRecord);
+      });
+
+      lessonRecordsCache.set(studentId, { data: records, timestamp: Date.now() });
+      return records;
+    } finally {
+      inFlightStudentLessonsPromises.delete(studentId);
+    }
+  })();
+
+  inFlightStudentLessonsPromises.set(studentId, promise);
+  return promise;
 }
 
 /**
  * Pobiera lekcje dla wszystkich przekazanych kursantów i grup,
  * scalając je w jeden posortowany chronologicznie strumień.
+ * Korzysta z pamięci podręcznej per kursant, aby drastycznie zmniejszyć liczbę odczytów Firestore.
  */
-export async function getAllLessonRecordsForTeacher(students: { id?: string }[]): Promise<LessonRecord[]> {
+export async function getAllLessonRecordsForTeacher(
+  students: { id?: string }[],
+  forceRefresh = false
+): Promise<LessonRecord[]> {
   const validStudents = students.filter((s) => Boolean(s.id));
   if (validStudents.length === 0) return [];
 
   const results = await Promise.all(
     validStudents.map(async (student) => {
       try {
-        return await getLessonRecordsForStudent(student.id!);
+        return await getLessonRecordsForStudent(student.id!, forceRefresh);
       } catch (err) {
         console.warn(`[Lekcje] Błąd pobierania lekcji dla kursanta ${student.id}:`, err);
         return [];
@@ -414,6 +463,8 @@ export async function deleteLessonRecord(studentId: string, lessonRecord: Lesson
   const flashcardSetId = `set-lesson-${recordId}`;
   const flashcardSetRef = doc(db, `sets/${flashcardSetId}`);
   await deleteDoc(flashcardSetRef);
+
+  invalidateLessonRecordsCache(studentId);
 }
 
 /**
@@ -456,6 +507,7 @@ export async function restoreRejectedNotionLesson(
 ): Promise<void> {
   const rejectedRef = doc(db, `users/${studentId}/rejectedNotionLessons/${rejectedId}`);
   await deleteDoc(rejectedRef);
+  invalidateLessonRecordsCache(studentId);
 }
 
 /**
@@ -527,6 +579,8 @@ export async function confirmPendingLesson(
   } catch (e) {
     console.warn('Could not update user notification badge:', e);
   }
+
+  invalidateLessonRecordsCache(studentId);
 }
 
 

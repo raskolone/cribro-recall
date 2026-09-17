@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { db } from '../../firebase';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { User } from '../../types';
+import { addCachedUser, updateCachedUser, UserWithId } from '../../services/userService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { X, Users, UserPlus, Check, Building, ShieldCheck, Award } from 'lucide-react';
@@ -90,10 +91,14 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
     try {
       if (groupToEdit?.id) {
         await updateDoc(doc(db, 'users', groupToEdit.id), payload);
-        onGroupSaved?.({ ...groupToEdit, ...payload } as User);
+        const updated = { ...groupToEdit, ...payload } as User;
+        updateCachedUser(groupToEdit.id, payload);
+        onGroupSaved?.(updated);
       } else {
         const docRef = await addDoc(collection(db, 'users'), payload);
-        onGroupSaved?.({ id: docRef.id, ...payload } as User);
+        const created = { id: docRef.id, ...payload } as UserWithId;
+        addCachedUser(created);
+        onGroupSaved?.(created);
       }
       onClose();
     } catch (err: any) {

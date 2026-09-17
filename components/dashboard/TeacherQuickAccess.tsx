@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../../firebase';
 import { User } from '../../types';
+import { getAllUsers, UserWithId } from '../../services/userService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { BarChart2, History, User as UserIcon, ClipboardList, Search, BookOpen, Database } from 'lucide-react';
 import i18n from "i18next";
-
-interface UserWithId extends User {
-  id: string;
-}
 
 interface TeacherQuickAccessProps {
   onNavigate: (view: string) => void;
@@ -24,10 +19,7 @@ const TeacherQuickAccess: React.FC<TeacherQuickAccessProps> = ({ onNavigate, onS
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const usersSnapshot = await getDocs(collection(db, 'users'));
-        const usersList = usersSnapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as UserWithId))
-          .filter(user => user.username !== 'Demo User' && user.username !== 'Demo User (Offline)');
+        const usersList = await getAllUsers();
         setUsers(usersList);
       } catch (error) {
         console.error("Error fetching users:", error);

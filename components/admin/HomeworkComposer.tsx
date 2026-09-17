@@ -4,6 +4,7 @@ import { AlertTriangle, Check, ChevronDown, ChevronUp, Loader2, Send, Sparkles, 
 import { db } from '../../firebase';
 import { HomeworkType, LessonRecord, User } from '../../types';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
+import { getAllUsers } from '../../services/userService';
 import {
   GeneratedSection,
   HOMEWORK_TYPE_LABELS,
@@ -83,13 +84,9 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
   const student = students.find((s) => s.id === studentId);
 
   useEffect(() => {
-    getDocs(collection(db, 'users'))
-      .then((snap) => {
-        const list: User[] = [];
-        snap.forEach((d) => {
-          const u = { id: d.id, ...d.data() } as User;
-          if (u.role !== 'admin' && u.role !== 'teacher') list.push(u);
-        });
+    getAllUsers()
+      .then((allUsers) => {
+        const list = allUsers.filter((u) => u.role !== 'admin' && u.role !== 'teacher');
         list.sort((a, b) => studentLabel(a).localeCompare(studentLabel(b)));
         setStudents(list);
       })

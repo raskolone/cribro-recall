@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, getDocs, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { StudentTest, User } from '../../types';
+import { getAllUsers } from '../../services/userService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import TestPreviewModal from './TestPreviewModal';
@@ -26,14 +27,11 @@ export const AllTestsTeacherView: React.FC = () => {
   const fetchAllData = async () => {
     setIsLoading(true);
     try {
-      // 1. Fetch all users to map names and emails
-      const usersSnap = await getDocs(collection(db, 'users'));
+      // 1. Fetch all users from cache/userService to map names and emails
+      const usersList = await getAllUsers();
       const map: Record<string, User> = {};
-      const usersList: User[] = [];
-      usersSnap.docs.forEach(d => {
-        const u = { id: d.id, ...d.data() } as User;
-        map[d.id] = u;
-        usersList.push(u);
+      usersList.forEach(u => {
+        map[u.id] = u;
       });
       setUsersMap(map);
 

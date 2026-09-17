@@ -3,6 +3,7 @@ import { collection, getDocs, query } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { ClipboardList, BookOpen, ChevronDown, Globe2, ListChecks, Plus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { getAllUsers } from '../../services/userService';
 import HomeworkScreen from './HomeworkScreen';
 import AdminTestGenerator from '../admin/AdminTestGenerator';
 import AllTestsTeacherView from '../admin/AllTestsTeacherView';
@@ -122,14 +123,10 @@ const TeacherWorkScreen: React.FC<TeacherWorkScreenProps> = ({
   useEffect(() => {
     if (openSection !== 'tests' || users.length > 0) return;
     let active = true;
-    getDocs(query(collection(db, 'users')))
-      .then(snapshot => {
+    getAllUsers()
+      .then(allUsers => {
         if (!active) return;
-        setUsers(
-          snapshot.docs
-            .map(d => ({ id: d.id, ...(d.data() as any) }))
-            .filter(u => u.username !== 'Demo User' && u.username !== 'Demo User (Offline)')
-        );
+        setUsers(allUsers);
       })
       .catch(err => console.warn('[Zadania i testy] Lista kursantów:', err?.message || err));
     return () => {

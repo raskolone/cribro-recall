@@ -2,6 +2,7 @@ import { collection, getDocs, query } from 'firebase/firestore';
 import { db } from '../firebase';
 import { LessonRecord, LessonAttachment } from '../types';
 import { getLessonRecordsForStudent } from './lessonRecord';
+import { getAllUsers } from './userService';
 import { extractLessonBlocks } from '../utils/lessonBlocks';
 import { generateTextWithUnifiedFallback, getAI } from './geminiService';
 import { runCouncil, DEFAULT_COUNCIL } from './aiCouncil';
@@ -182,11 +183,9 @@ const fold = (value: string): string =>
  * Spis kursantów z datą ostatniej lekcji.
  */
 export const buildStudentIndex = async (): Promise<StudentIndexEntry[]> => {
-  const snapshot = await getDocs(query(collection(db, 'users')));
-  const students = snapshot.docs
-    .map(d => ({ id: d.id, ...(d.data() as any) }))
-    .filter(u => !u.isArchived && (!u.role || u.role === 'user'))
-    .filter(u => u.username !== 'Demo User' && u.username !== 'Demo User (Offline)');
+  const allUsers = await getAllUsers();
+  const students = allUsers
+    .filter(u => !u.isArchived && (!u.role || u.role === 'user'));
 
   const entries = await Promise.all(
     students.map(async (student: any) => {

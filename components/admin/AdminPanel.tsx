@@ -9,6 +9,7 @@ import {
   getRejectedNotionLessons,
   confirmPendingLesson
 } from '../../services/lessonRecord';
+import { getAllUsers, invalidateUsersCache, updateCachedUser, removeCachedUser, addCachedUser } from '../../services/userService';
 
 import VocabularyApproval from './VocabularyApproval';
 import RecallItemsReview, { ReviewedCandidate } from './RecallItemsReview';
@@ -139,19 +140,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   >('basic');
   
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (forceRefresh = false) => {
     try {
-      const q = query(collection(db, 'users'));
-      const snapshot = await getDocs(q);
-      const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as UserWithId)
-        .filter(u => u.username !== 'Demo User' && u.username !== 'Demo User (Offline)');
-      usersList.sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      });
+      const usersList = (await getAllUsers(forceRefresh)) as UserWithId[];
       setUsers(usersList);
-      fetchAllLessons(usersList);
+      fetchAllLessons(usersList, forceRefresh);
       setIsLoading(false);
     } catch (e) {
       console.error(e);
@@ -378,6 +371,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     try {
       await deleteUser(uid);
       await deleteDoc(doc(db, 'users', uid));
+      removeCachedUser(uid);
       setUsers(users.filter(u => u.id !== uid));
       if (selectedUser?.id === uid) setSelectedUser(null);
     } catch (e: any) {
@@ -1298,10 +1292,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       };
       
       await setDoc(doc(db, 'users', userRecord.uid), newUserDoc);
+      addCachedUser({ id: userRecord.uid, ...newUserDoc } as UserWithId);
       
       setNewStudentPassword(password);
       setCreatedStudentEmail(email);
-      fetchUsers();
+      fetchUsers(true);
     } catch (e: any) {
       setCreateStudentError(e.message);
     } finally {
@@ -1346,11 +1341,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [selectedSetIdToAssign, setSelectedSetIdToAssign] = useState('');
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
-  const fetchAllLessons = async (userList: UserWithId[] = users) => {
+  const fetchAllLessons = async (userList: UserWithId[] = users, forceRefresh = false) => {
     if (!userList || userList.length === 0) return;
     setIsLoadingAllLessons(true);
     try {
-      const list = await getAllLessonRecordsForTeacher(userList);
+      const list = await getAllLessonRecordsForTeacher(userList, forceRefresh);
       setAllTeacherLessons(list);
     } catch (e) {
       console.warn('Błąd pobierania lekcji dla panelu głównego:', e);
@@ -2184,6 +2179,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           {activeTab === 'students' ? (
         <div className="space-y-4 animate-in fade-in duration-200 mt-2">
           <StandaloneStudentDatabaseScreen
+            initialUsers={users}
+            initialLessons={allTeacherLessons}
+            onRefreshUsers={() => fetchUsers(true)}
             onSelectUser={(uId, targetTab) => {
               const u = users.find((x) => x.id === uId);
               if (u) handleSelectUser(u as UserWithId, targetTab || 'profile');

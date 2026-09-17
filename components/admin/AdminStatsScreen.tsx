@@ -1,19 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../../firebase';
 import TeacherDashboardActivity from './TeacherDashboardActivity';
 import { User } from '../../types';
+import { getAllUsers, UserWithId } from '../../services/userService';
 
 const AdminStatsScreen: React.FC = () => {
-  const [users, setUsers] = useState<(User & { id: string })[]>([]);
+  const [users, setUsers] = useState<UserWithId[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const usersRef = collection(db, 'users');
-        const snap = await getDocs(usersRef);
-        const fetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as (User & { id: string })[];
+        const fetched = await getAllUsers();
         setUsers(fetched);
       } catch(e) {
         console.error(e);

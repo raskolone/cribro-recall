@@ -4,7 +4,9 @@ import { Search, X, Check, CheckSquare, Square, Layers, BookOpen, Users, Plus, S
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { db } from '../../firebase';
-import { collection, getDocs, doc, writeBatch, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
+import { getAllUsers } from '../../services/userService';
+import { getAllLessonRecordsForTeacher } from '../../services/lessonRecord';
 import { cleanVocabularyTopic } from '../../utils/vocabulary';
 import AddResourceModal from './AddResourceModal';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
@@ -86,15 +88,14 @@ export default function AssignVocabularyModal({
     try {
       const allTiles: VocabularyTileOption[] = [];
 
-      // 1. Fetch all users for student names
-      const usersSnap = await getDocs(collection(db, 'users'));
+      // 1. Fetch all users from cache for student names
+      const allUsers = await getAllUsers();
       const usersMap: Record<string, string> = {};
-      usersSnap.docs.forEach(d => {
-        const uData = d.data();
+      allUsers.forEach(uData => {
         const name = (uData.firstName || uData.lastName)
           ? `${uData.firstName || ''} ${uData.lastName || ''}`.trim()
           : uData.username || 'Kursant';
-        usersMap[d.id] = name;
+        usersMap[uData.id] = name;
       });
 
       // 2. Fetch custom flashcard sets from collection('sets')
@@ -126,33 +127,27 @@ export default function AssignVocabularyModal({
         }
       }
 
-      // 3. Fetch lessonRecords for all users
-      for (const userDoc of usersSnap.docs) {
-        const userId = userDoc.id;
-        const studentName = usersMap[userId];
-        const lessonsSnap = await getDocs(collection(db, `users/${userId}/lessonRecords`));
-        
-        lessonsSnap.docs.forEach((lDoc, idx) => {
-          const lData = lDoc.data();
-          if (lData.vocabularyText && lData.vocabularyText.trim().length > 0) {
-            const words = parseVocabularyText(lData.vocabularyText);
-            if (words.length > 0) {
-              const cleanedTopic = cleanVocabularyTopic(lData.topic);
-              const title = cleanedTopic || `Lekcja z dnia ${lData.date || ''}`;
-              
-              allTiles.push({
-                id: `lesson-${lDoc.id}`,
-                title: title,
-                studentName: studentName,
-                studentId: userId,
-                sourceType: 'lesson',
-                words,
-                date: lData.date
-              });
-            }
+      // 3. Fetch lessonRecords for all users (using centralized 5-min cache)
+      const allLessons = await getAllLessonRecordsForTeacher(allUsers);
+      allLessons.forEach((lData) => {
+        if (lData.vocabularyText && lData.vocabularyText.trim().length > 0) {
+          const words = parseVocabularyText(lData.vocabularyText);
+          if (words.length > 0) {
+            const cleanedTopic = cleanVocabularyTopic(lData.topic);
+            const title = cleanedTopic || `Lekcja z dnia ${lData.date || ''}`;
+            const studentName = usersMap[lData.studentId] || 'Kursant';
+            allTiles.push({
+              id: `lesson-${lData.id}`,
+              title: title,
+              studentName: studentName,
+              studentId: lData.studentId,
+              sourceType: 'lesson',
+              words,
+              date: lData.date
+            });
           }
-        });
-      }
+        }
+      });
 
       setTiles(allTiles);
     } catch (err) {

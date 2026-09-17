@@ -4,6 +4,7 @@ import { db } from '../../firebase';
 import { AlertCircle, Loader2, UserPlus, Check } from 'lucide-react';
 import { ScratchpadDocument } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { getAllUsers } from '../../services/userService';
 import {
   adoptScratchpadForStudent,
   getOrCreateStudentScratchpad,
@@ -91,16 +92,15 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
   useEffect(() => {
     if (students) return;
     let isMounted = true;
-    getDocs(query(collection(db, 'users')))
-      .then(snapshot => {
+    getAllUsers()
+      .then(allUsers => {
         if (!isMounted) return;
-        const list = snapshot.docs
-          .map(d => {
-            const data = d.data() as any;
+        const list = allUsers
+          .map(data => {
             if (data.isArchived || data.role === 'admin' || data.role === 'teacher') return null;
             const name =
               `${data.firstName || ''} ${data.lastName || ''}`.trim() || data.username || '';
-            return name ? { id: d.id, name } : null;
+            return name ? { id: data.id, name } : null;
           })
           .filter(Boolean) as { id: string; name: string }[];
         list.sort((a, b) => a.name.localeCompare(b.name, 'pl'));

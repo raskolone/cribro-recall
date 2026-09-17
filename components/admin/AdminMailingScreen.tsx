@@ -35,6 +35,7 @@ import {
 import { collection, query, getDocs, getDoc, doc, updateDoc, setDoc, addDoc, deleteDoc, orderBy, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { User, EmailTemplate, InboundMessage, MailingSettings } from '../../types';
+import { getAllUsers } from '../../services/userService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { useLanguage } from '../../context/LanguageContext';
@@ -524,14 +525,9 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
   const fetchStudents = async () => {
     setIsLoadingStudents(true);
     try {
-      const q = query(collection(db, 'users'));
-      const snap = await getDocs(q);
-      const list = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() } as User))
-        .filter((u) => u.username !== 'Demo User' && u.username !== 'Demo User (Offline)');
-
-      list.sort((a, b) => (a.firstName || a.username || '').localeCompare(b.firstName || b.username || ''));
-      setStudents(list);
+      const list = await getAllUsers();
+      const sorted = [...list].sort((a, b) => (a.firstName || a.username || '').localeCompare(b.firstName || b.username || ''));
+      setStudents(sorted);
     } catch (err) {
       console.error('Błąd pobierania listy kursantów:', err);
     } finally {

@@ -8,6 +8,7 @@ import { generateTranslationExercises, generateFillInTheBlankExercises, evaluate
 import { generateFindErrors } from '../../services/homeworkGenerator';
 import { isTaskForStudent, studentTasksQuery, taskOwnerFields, homeworkItemType } from '../../utils/homework';
 import { backfillTaskOwners } from '../../utils/backfillTaskOwners';
+import { getAllUsers } from '../../services/userService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import ConfirmModal from '../ui/ConfirmModal';
@@ -453,15 +454,9 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
     setIsLoading(true);
     try {
       if (isTeacher) {
-        // Load students
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const studentList: User[] = [];
-        usersSnap.forEach((d) => {
-          const u = { id: d.id, ...d.data() } as User;
-          if (u.role !== 'admin' && u.role !== 'teacher') {
-            studentList.push(u);
-          }
-        });
+        // Load students (from cache/userService)
+        const allUsers = await getAllUsers();
+        const studentList = allUsers.filter((u) => u.role !== 'admin' && u.role !== 'teacher');
         setStudents(studentList);
 
         // Load all tasks
@@ -501,15 +496,9 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
       //    miejsce, z którego migracja może się wykonać sama.
       backfillTaskOwners();
 
-      // 1. Fetch students
-      getDocs(collection(db, 'users')).then(usersSnap => {
-        const studentList: User[] = [];
-        usersSnap.forEach((d) => {
-          const u = { id: d.id, ...d.data() } as User;
-          if (u.role !== 'admin' && u.role !== 'teacher') {
-            studentList.push(u);
-          }
-        });
+      // 1. Fetch students (cached)
+      getAllUsers().then(allUsers => {
+        const studentList = allUsers.filter((u) => u.role !== 'admin' && u.role !== 'teacher');
         setStudents(studentList);
       }).catch(console.error);
 
