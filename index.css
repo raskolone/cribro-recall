@@ -357,10 +357,14 @@ html, body, #root { min-height: 100vh; }
     0 16px 36px -6px rgba(0, 0, 0, 0.52);
   backdrop-filter: blur(18px) saturate(145%);
   -webkit-backdrop-filter: blur(18px) saturate(145%);
+  isolation: isolate;
+  will-change: transform, box-shadow;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   transition:
-    transform 0.25s cubic-bezier(0.34, 1.45, 0.7, 1),
-    border-color 0.22s ease,
-    box-shadow 0.25s cubic-bezier(0.34, 1.45, 0.7, 1);
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.18s ease,
+    box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 :root.light .liquid-glass-card,
@@ -475,10 +479,11 @@ html, body, #root { min-height: 100vh; }
     0 6px 15px -2px rgba(0, 0, 0, 0.46),
     0 16px 34px -4px rgba(0, 0, 0, 0.52);
   transition:
-    transform 0.22s cubic-bezier(0.34, 1.45, 0.7, 1),
-    border-color 0.20s ease,
-    box-shadow 0.22s cubic-bezier(0.34, 1.45, 0.7, 1),
-    background 0.20s ease;
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.18s ease,
+    box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.18s ease;
+  will-change: transform, box-shadow;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }

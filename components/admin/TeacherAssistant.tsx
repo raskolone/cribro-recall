@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom';
 import {
   Loader2,
-  Send,
   Sparkles,
   X,
   Plus,
@@ -22,6 +21,7 @@ import {
   Airplay,
   CheckCircle2,
   ArrowRight,
+  ArrowUp,
   Users,
   Calendar,
   Zap,
@@ -29,8 +29,8 @@ import {
   Command,
   Volume2,
   ShieldCheck,
-  Cpu,
-  Layers,
+  RotateCcw,
+  HelpCircle,
 } from 'lucide-react';
 import {
   askTeacherAssistant,
@@ -42,54 +42,17 @@ import {
   LessonDraftProposal,
   ASSISTANT_SKILLS,
   AssistantSkill,
+  AIAssistantMode,
 } from '../../services/teacherAssistant';
 import { LessonAttachment } from '../../types';
 import { AIAssistantIcon } from '../ui/AIAssistantIcon';
+import { useAuth } from '../../context/AuthContext';
 import Markdown from 'react-markdown';
 
 const STORAGE_KEY = 'cribro_teacher_assistant_sessions_v1';
+const MODE_STORAGE_KEY = 'cribro_teacher_assistant_mode_v1';
 
-/** Zorganizowane tematycznie propozycje konwersacji dla widoku powitalnego */
-const STARTER_PROMPTS = [
-  {
-    icon: Users,
-    category: 'Kursanci & CRM',
-    title: 'Ostatnia lekcja',
-    prompt: 'Z kim i o czym była moja ostatnia lekcja?',
-  },
-  {
-    icon: BookOpen,
-    category: 'Planowanie',
-    title: 'Przygotuj konspekt lekcji',
-    prompt: 'Przygotuj 4-częściowy konspekt lekcji dla Dariusza z powtórką czasów przeszłych',
-  },
-  {
-    icon: ClipboardList,
-    category: 'Zadania',
-    title: 'Zaległe prace domowe',
-    prompt: 'Kto ma obecnie niezrobioną lub zaległą pracę domową?',
-  },
-  {
-    icon: Zap,
-    category: 'Ćwiczenia',
-    title: 'Szybka powtórka',
-    prompt: 'Zaproponuj 5 angażujących pytań do powtórki na dzisiejsze zajęcia',
-  },
-  {
-    icon: Paperclip,
-    category: 'Multimodalne AI',
-    title: 'Analiza materiału / screenshotu',
-    prompt: 'Przeanalizuj załączony materiał i przygotuj z niego ćwiczenia',
-  },
-  {
-    icon: Calendar,
-    category: 'Postępy',
-    title: 'Podsumowanie kursantów',
-    prompt: 'Podsumuj postępy i trudności językowe moich kursantów',
-  },
-];
-
-/** Szybkie follow-up chips w trakcie rozmowy */
+/** Szybkie follow-up chips w trakcie aktywnej rozmowy */
 const QUICK_FOLLOWUPS = [
   'Przygotuj dla niego zestaw 5 zdań do tłumaczenia',
   'Zaproponuj zadanie domowe z tego tematu',
@@ -118,6 +81,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
   onOpenInPresentation,
   className = '',
 }) => {
+  const { user: currentUser } = useAuth();
   const [isOpen, setIsOpen] = useState(mode === 'embedded');
   const [viewMode, setViewMode] = useState<'chat' | 'history'>('chat');
   const [index, setIndex] = useState<StudentIndexEntry[] | null>(null);
@@ -137,7 +101,22 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
   const [error, setError] = useState('');
   const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
-  
+  const [aiMode, setAiMode] = useState<AIAssistantMode>(() => {
+    try {
+      const saved = localStorage.getItem(MODE_STORAGE_KEY);
+      return (saved === 'thinking' ? 'thinking' : 'flash') as AIAssistantMode;
+    } catch {
+      return 'flash';
+    }
+  });
+
+  const handleToggleMode = (newMode: AIAssistantMode) => {
+    setAiMode(newMode);
+    try {
+      localStorage.setItem(MODE_STORAGE_KEY, newMode);
+    } catch {}
+  };
+
   // Autouzupełnianie @ oraz /
   const [showMentionMenu, setShowMentionMenu] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
@@ -151,6 +130,14 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const floatingFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Pobranie imienia lektora do powitania
+  const teacherFirstName = useMemo(() => {
+    if (currentUser?.firstName) return currentUser.firstName;
+    if (currentUser?.displayName) return currentUser.displayName.split(' ')[0];
+    if (currentUser?.username) return currentUser.username;
+    return 'Maciej';
+  }, [currentUser]);
 
   // Zapis sesji w LocalStorage
   const saveSessions = (updatedSessions: ChatSession[]) => {
@@ -181,7 +168,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 130)}px`;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
     }
   }, [draft]);
 
@@ -191,11 +178,12 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
     if (!mentionQuery.trim()) return index.slice(0, 8);
     const q = mentionQuery.toLowerCase().trim();
     return index
-      .filter((s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.aliases.some((a) => a.toLowerCase().includes(q)) ||
-        (s.company && s.company.toLowerCase().includes(q)) ||
-        (s.level && s.level.toLowerCase().includes(q))
+      .filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          s.aliases.some((a) => a.toLowerCase().includes(q)) ||
+          (s.company && s.company.toLowerCase().includes(q)) ||
+          (s.level && s.level.toLowerCase().includes(q))
       )
       .slice(0, 8);
   }, [index, mentionQuery]);
@@ -251,16 +239,11 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
 
     const newBefore = textBeforeCursor.replace(/@[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ0-9_\-\.\s]*$/, `@${student.name} `);
     const newDraft = newBefore + textAfterCursor;
+
     setDraft(newDraft);
     setShowMentionMenu(false);
-
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        const newPos = newBefore.length;
-        textareaRef.current.setSelectionRange(newPos, newPos);
-      }
-    }, 40);
+    setMentionQuery('');
+    textareaRef.current?.focus();
   };
 
   const handleSelectSkillCommand = (skill: AssistantSkill) => {
@@ -268,23 +251,16 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
     const textBeforeCursor = draft.slice(0, cursorPos);
     const textAfterCursor = draft.slice(cursorPos);
 
-    const newBefore = textBeforeCursor.replace(/(?:^|\s)\/[a-zA-Z0-9_\-]*$/, (match) => {
-      const leadingSpace = match.startsWith(' ') ? ' ' : '';
-      return leadingSpace + skill.template;
-    });
-    const newDraft = newBefore + textAfterCursor;
+    const newBefore = textBeforeCursor.replace(/(?:^|\s)\/[a-zA-Z0-9_\-]*$/, ` ${skill.template}`);
+    const newDraft = newBefore.trimStart() + textAfterCursor;
+
     setDraft(newDraft);
     setShowSlashMenu(false);
-
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        const newPos = newBefore.length;
-        textareaRef.current.setSelectionRange(newPos, newPos);
-      }
-    }, 40);
+    setSlashQuery('');
+    textareaRef.current?.focus();
   };
 
+  // Obsługa klawiatury dla menu @ i /
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (showMentionMenu && filteredStudents.length > 0) {
       if (e.key === 'ArrowDown') {
@@ -299,11 +275,11 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
       }
       if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
-        handleSelectStudentMention(filteredStudents[activeMentionIndex]);
+        const selected = filteredStudents[activeMentionIndex];
+        if (selected) handleSelectStudentMention(selected);
         return;
       }
       if (e.key === 'Escape') {
-        e.preventDefault();
         setShowMentionMenu(false);
         return;
       }
@@ -322,11 +298,11 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
       }
       if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
-        handleSelectSkillCommand(filteredSkills[activeSlashIndex]);
+        const selected = filteredSkills[activeSlashIndex];
+        if (selected) handleSelectSkillCommand(selected);
         return;
       }
       if (e.key === 'Escape') {
-        e.preventDefault();
         setShowSlashMenu(false);
         return;
       }
@@ -338,266 +314,240 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
     }
   };
 
-  // Przetwarzanie dodanych plików (obrazy, PDF, dokumenty tekstowe)
+  // Przetwarzanie plików przeciągniętych / dodanych
   const processFiles = useCallback(async (files: FileList | File[]) => {
-    const list = Array.from(files);
-    if (list.length === 0) return;
-
+    const fileArr = Array.from(files);
     const newAttachments: LessonAttachment[] = [];
 
-    for (const file of list) {
-      const ext = file.name.split('.').pop()?.toLowerCase() || '';
-      let detectedType: LessonAttachment['type'] = 'text';
-
-      if (file.type.startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) {
-        detectedType = 'image';
-      } else if (file.type === 'application/pdf' || ext === 'pdf') {
-        detectedType = 'pdf';
-      } else if (ext === 'md' || ext === 'markdown') {
-        detectedType = 'markdown';
-      } else if (ext === 'html' || ext === 'htm') {
-        detectedType = 'html';
+    for (const file of fileArr) {
+      if (file.type.startsWith('image/')) {
+        const dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+        newAttachments.push({
+          id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          name: file.name,
+          type: 'image',
+          mimeType: file.type,
+          dataUrl,
+          size: file.size,
+        });
+      } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+        const dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+        newAttachments.push({
+          id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          name: file.name,
+          type: 'pdf',
+          mimeType: 'application/pdf',
+          dataUrl,
+          size: file.size,
+        });
+      } else if (
+        file.type.startsWith('text/') ||
+        file.name.endsWith('.txt') ||
+        file.name.endsWith('.md') ||
+        file.name.endsWith('.json') ||
+        file.name.endsWith('.csv')
+      ) {
+        const textContent = await file.text();
+        newAttachments.push({
+          id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          name: file.name,
+          type: 'text',
+          mimeType: file.type || 'text/plain',
+          textContent: textContent.slice(0, 15000),
+          size: file.size,
+        });
       } else {
-        detectedType = 'text';
-      }
-
-      try {
-        if (detectedType === 'image' || detectedType === 'pdf') {
-          const dataUrl = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-
-          let textContent: string | undefined;
-          if (detectedType === 'pdf') {
-            try {
-              const pdfjsLib = (window as any).pdfjsLib;
-              if (pdfjsLib) {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                let fullText = '';
-                for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) {
-                  const page = await pdf.getPage(i);
-                  const tc = await page.getTextContent();
-                  fullText += tc.items.map((item: any) => item.str).join(' ') + '\n';
-                }
-                textContent = fullText;
-              }
-            } catch (pdfErr) {
-              console.warn('PDF text extraction fallback:', pdfErr);
-            }
-          }
-
-          newAttachments.push({
-            id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-            name: file.name || `plik-${Date.now()}.${ext || 'png'}`,
-            type: detectedType,
-            size: file.size,
-            mimeType: file.type || (detectedType === 'pdf' ? 'application/pdf' : 'image/png'),
-            dataUrl,
-            textContent,
-          });
-        } else {
-          // Pliki tekstowe
-          const textContent = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsText(file);
-          });
-
-          newAttachments.push({
-            id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-            name: file.name,
-            type: detectedType,
-            size: file.size,
-            mimeType: file.type || 'text/plain',
-            textContent,
-          });
-        }
-      } catch (err) {
-        console.error('Błąd wczytywania pliku:', err);
+        newAttachments.push({
+          id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          name: file.name,
+          type: 'text',
+          mimeType: file.type || 'application/octet-stream',
+          size: file.size,
+        });
       }
     }
 
     setPendingAttachments((prev) => [...prev, ...newAttachments].slice(0, 6));
   }, []);
 
-  const handlePaste = useCallback(
-    (e: React.ClipboardEvent) => {
-      if (e.clipboardData && e.clipboardData.items) {
-        const items = Array.from(e.clipboardData.items);
-        const imageItems = items.filter((item) => item.type.indexOf('image') !== -1);
-        if (imageItems.length > 0) {
-          const files: File[] = [];
-          imageItems.forEach((item) => {
-            const file = item.getAsFile();
-            if (file) files.push(file);
-          });
-          if (files.length > 0) {
-            processFiles(files);
-          }
-        }
-      }
-    },
-    [processFiles]
-  );
-
   const removePendingAttachment = (id: string) => {
     setPendingAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
-  if (hidden) return null;
-
-  const startNewSession = () => {
-    if (messages.length > 0) {
-      const title = messages[0]?.text?.slice(0, 30) || 'Rozmowa z asystentem';
-      const newSession: ChatSession = {
-        id: currentSessionId,
-        title,
-        createdAt: Date.now(),
-        messages,
-      };
-      saveSessions([newSession, ...sessions.filter((s) => s.id !== currentSessionId)]);
-    }
-    setCurrentSessionId(`sess_${Date.now()}`);
-    setMessages([]);
-    setPendingAttachments([]);
-    setViewMode('chat');
-    setError('');
-  };
-
-  const loadSession = (sess: ChatSession) => {
-    setCurrentSessionId(sess.id);
-    setMessages(sess.messages || []);
-    setPendingAttachments([]);
-    setViewMode('chat');
-  };
-
-  const deleteSession = (sessionId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const updated = sessions.filter((s) => s.id !== sessionId);
-    saveSessions(updated);
-    if (currentSessionId === sessionId) {
-      setMessages([]);
-    }
-  };
-
-  const ask = async (question: string) => {
-    const trimmed = question.trim();
-    if ((!trimmed && pendingAttachments.length === 0) || isThinking) return;
-
-    let activeIndex = index;
-    if (!activeIndex) {
-      try {
-        activeIndex = await buildStudentIndex();
-        setIndex(activeIndex);
-      } catch {
-        setError('Brak dostępu do indeksu kursantów.');
-        return;
+  // Obsługa schowka (Ctrl+V screenshot / obrazek)
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        const file = items[i].getAsFile();
+        if (file) files.push(file);
       }
     }
+    if (files.length > 0) {
+      processFiles(files);
+    }
+  };
+
+  const ask = async (userText: string) => {
+    const trimmed = userText.trim();
+    if ((!trimmed && pendingAttachments.length === 0) || isThinking) return;
 
     const currentAttachments = [...pendingAttachments];
-    const userMsg: AssistantMessage = {
-      role: 'user',
-      text: trimmed || (currentAttachments.length > 0 ? `[Załączono ${currentAttachments.length} plik(i/ów)]` : ''),
-      attachments: currentAttachments.length > 0 ? currentAttachments : undefined,
-      timestamp: Date.now(),
-    };
-    const nextHistory = [...messages, userMsg];
-    setMessages(nextHistory);
+    setPendingAttachments([]);
     setDraft('');
     setShowMentionMenu(false);
     setShowSlashMenu(false);
-    setPendingAttachments([]);
-    setIsThinking(true);
     setError('');
 
-    try {
-      const { text, actions, lessonDraft, modelUsed, isCouncil } = await askTeacherAssistant(
-        trimmed || 'Przeanalizuj załączone materiały i zaproponuj ćwiczenia lub podsumowanie.',
-        activeIndex,
-        messages,
-        currentAttachments
-      );
-      const assistantMsg: AssistantMessage = {
-        role: 'assistant',
-        text,
-        actions,
-        lessonDraft,
-        timestamp: Date.now(),
-        modelUsed,
-        isCouncil,
-      };
-      const updatedMessages = [...nextHistory, assistantMsg];
-      setMessages(updatedMessages);
+    const userMessage: AssistantMessage = {
+      role: 'user',
+      text: trimmed || '(Przesłano załączniki do analizy)',
+      attachments: currentAttachments.length > 0 ? currentAttachments : undefined,
+      timestamp: Date.now(),
+    };
 
-      const title = nextHistory[0]?.text?.slice(0, 35) || 'Rozmowa z asystentem';
-      const currentSession: ChatSession = {
-        id: currentSessionId,
-        title,
-        createdAt: Date.now(),
-        messages: updatedMessages,
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
+    setIsThinking(true);
+
+    try {
+      const resp = await askTeacherAssistant(
+        trimmed,
+        index || [],
+        newMessages,
+        currentAttachments,
+        aiMode
+      );
+
+      const assistantMessage: AssistantMessage = {
+        role: 'assistant',
+        text: resp.text,
+        actions: resp.actions,
+        lessonDraft: resp.lessonDraft,
+        timestamp: Date.now(),
+        modelUsed: resp.modelUsed,
+        isCouncil: resp.isCouncil,
       };
-      saveSessions([currentSession, ...sessions.filter((s) => s.id !== currentSessionId)]);
+
+      const finalMessages = [...newMessages, assistantMessage];
+      setMessages(finalMessages);
+
+      // Aktualizacja historii sesji
+      const sessionTitle =
+        messages.length === 0
+          ? trimmed.slice(0, 38) || (currentAttachments[0]?.name ? `Plik: ${currentAttachments[0].name}` : 'Nowa rozmowa')
+          : sessions.find((s) => s.id === currentSessionId)?.title || 'Rozmowa';
+
+      const updatedSessions = [
+        {
+          id: currentSessionId,
+          title: sessionTitle,
+          createdAt: Date.now(),
+          messages: finalMessages,
+        },
+        ...sessions.filter((s) => s.id !== currentSessionId),
+      ];
+      saveSessions(updatedSessions);
     } catch (err: any) {
-      console.error('[Asystent] Odpowiedź nie powstała:', err);
-      setError(err?.message || 'Model nie odpowiedział.');
+      console.error('[TeacherAssistant] Błąd odpowiedzi:', err);
+      setError(err?.message || 'Wystąpił problem z połączeniem z Radą Modeli AI.');
     } finally {
       setIsThinking(false);
     }
   };
 
-  const handleExecuteAction = (action: AssistantAction) => {
-    if (action.studentId && onSelectStudent) {
-      onSelectStudent(action.studentId);
-    }
+  // Załadowanie sesji z historii
+  const loadSession = (session: ChatSession) => {
+    setCurrentSessionId(session.id);
+    setMessages(session.messages || []);
+    setViewMode('chat');
+  };
 
-    if (action.type === 'insert_lesson' && action.lessonDraft) {
-      if (onCreateLessonRecord) {
-        onCreateLessonRecord(action.lessonDraft);
-      } else {
-        onNavigateToModule?.('lesson-history', { lessonDraft: action.lessonDraft });
-      }
-    } else if (action.type === 'presentation') {
-      if (onOpenInPresentation) {
-        onOpenInPresentation(
-          action.lessonDraft || { topic: action.topic },
-          action.studentId,
-          action.studentName
-        );
-      } else {
-        onNavigateToModule?.('presentation', { topic: action.topic, studentId: action.studentId });
-      }
-    } else if (action.type === 'planner') {
-      onNavigateToModule?.('lesson-planner', {
-        studentId: action.studentId,
-        topic: action.topic,
-        lessonDraft: action.lessonDraft,
-      });
-    } else if (action.type === 'homework') {
-      onNavigateToModule?.('homework', {
-        studentId: action.studentId,
-        topic: action.topic,
-      });
-    } else if (action.type === 'scratchpad') {
-      onNavigateToModule?.('scratchpad', { studentId: action.studentId });
-    } else if (action.type === 'mailing') {
-      onNavigateToModule?.('mailing', { studentId: action.studentId });
-    } else if (action.type === 'profile') {
-      onNavigateToModule?.('profile', { studentId: action.studentId });
+  // Nowa czysta rozmowa
+  const startNewSession = () => {
+    setCurrentSessionId(`sess_${Date.now()}`);
+    setMessages([]);
+    setDraft('');
+    setPendingAttachments([]);
+    setError('');
+    setViewMode('chat');
+  };
+
+  // Usunięcie sesji
+  const deleteSession = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const filtered = sessions.filter((s) => s.id !== sessionId);
+    saveSessions(filtered);
+    if (currentSessionId === sessionId) {
+      startNewSession();
     }
   };
 
+  // Kopiowanie treści
   const copyMessage = (idx: number, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedMsgIdx(idx);
     setTimeout(() => setCopiedMsgIdx(null), 2000);
   };
 
+  // Wykonanie akcji 1-klikowej
+  const handleExecuteAction = (action: AssistantAction) => {
+    if (action.type === 'insert_lesson' && action.lessonDraft) {
+      if (onCreateLessonRecord) {
+        onCreateLessonRecord(action.lessonDraft);
+      } else if (onNavigateToModule) {
+        onNavigateToModule('admin', {
+          tab: 'lessons',
+          userId: action.studentId,
+          lessonDraft: action.lessonDraft,
+        });
+      }
+    } else if (action.type === 'presentation') {
+      if (onOpenInPresentation) {
+        onOpenInPresentation(action.lessonDraft, action.studentId, action.studentName);
+      } else if (onNavigateToModule) {
+        onNavigateToModule('presentation', {
+          studentId: action.studentId,
+          studentName: action.studentName,
+          topic: action.topic,
+        });
+      }
+    } else if (action.type === 'profile' && action.studentId) {
+      if (onSelectStudent) {
+        onSelectStudent(action.studentId);
+      } else if (onNavigateToModule) {
+        onNavigateToModule('admin', { tab: 'profile', userId: action.studentId });
+      }
+    } else if (action.type === 'planner') {
+      if (onNavigateToModule) {
+        onNavigateToModule('admin', { tab: 'lesson-planner', userId: action.studentId });
+      }
+    } else if (action.type === 'homework') {
+      if (onNavigateToModule) {
+        onNavigateToModule('homework', { userId: action.studentId });
+      }
+    } else if (action.type === 'mailing') {
+      if (onNavigateToModule) {
+        onNavigateToModule('mailing', { userId: action.studentId });
+      }
+    } else if (action.type === 'scratchpad') {
+      if (onNavigateToModule) {
+        onNavigateToModule('scratchpad', { userId: action.studentId });
+      }
+    }
+  };
+
+  // Odsłuch syntezą mowy
   const speakText = (text: string) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
@@ -612,8 +562,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
   };
 
   /* ═══════════════════════════════════════════════════════════════════
-     TRYB EMBEDDED — CENTRALNY CHAT ASYSTENTA NA STRONIE GŁÓWNEJ
-     (Nieco węższy od kafelków - max-w-4xl z pełną responsywnością)
+     TRYB EMBEDDED — CENTRALNY CHAT SPÓJNY Z NOCTURNE GREEN
      ═══════════════════════════════════════════════════════════════════ */
   if (mode === 'embedded') {
     return (
@@ -629,11 +578,8 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
           if (e.dataTransfer?.files) processFiles(e.dataTransfer.files);
         }}
         onPaste={handlePaste}
-        className={`w-full max-w-4xl mx-auto rounded-3xl border border-primary/35 shadow-[0_12px_45px_rgba(0,0,0,0.45),0_0_25px_rgba(114,240,180,0.14)] liquid-glass-tile backdrop-blur-2xl text-text-hi overflow-hidden transition-all relative flex flex-col ${className}`}
+        className={`w-full max-w-4xl mx-auto flex flex-col relative transition-all ${className}`}
       >
-        {/* Subtelny pasek gradientu na samej górze karty */}
-        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-
         <input
           ref={fileInputRef}
           type="file"
@@ -648,216 +594,154 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
 
         {/* Drag & drop overlay */}
         {isDraggingOver && (
-          <div className="absolute inset-0 z-50 bg-base-300/90 backdrop-blur-md border-2 border-dashed border-primary rounded-3xl flex flex-col items-center justify-center gap-2 p-4 text-center pointer-events-none">
-            <div className="w-12 h-12 rounded-2xl bg-primary/20 text-primary border border-primary/40 flex items-center justify-center animate-bounce shadow-[0_0_24px_rgba(114,240,180,0.35)]">
-              <Paperclip size={24} />
+          <div className="absolute inset-0 z-50 bg-ink-2/95 backdrop-blur-md border-2 border-dashed border-primary rounded-3xl flex flex-col items-center justify-center gap-2 p-6 text-center pointer-events-none shadow-ambient-lg">
+            <div className="w-14 h-14 rounded-2xl bg-primary/20 text-primary border border-primary/40 flex items-center justify-center animate-bounce shadow-[0_0_25px_rgba(114,240,180,0.3)]">
+              <Paperclip size={26} />
             </div>
-            <p className="text-sm font-extrabold text-text-hi">Upuść pliki tutaj, aby dodać je do czatu z AI</p>
-            <p className="text-[11px] text-content-muted">Obsługuje screenshoty, zadania ze zdjęć, pliki PDF oraz pliki tekstowe</p>
+            <p className="text-base font-extrabold text-text-hi">Upuść pliki tutaj, aby dodać je do analizy AI</p>
+            <p className="text-xs text-text-mute">Obsługuje screenshoty, zadania ze zdjęć, pliki PDF oraz dokumenty tekstowe</p>
           </div>
         )}
 
-        {/* ─── HEADER CZATU ─── */}
-        <header className="px-3.5 sm:px-5 py-2.5 sm:py-3 border-b border-line-strong flex items-center justify-between bg-base-100/40 backdrop-blur-md flex-wrap gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <AIAssistantIcon
-              size="sm"
-              variant="badge"
-              state={isThinking ? 'thinking' : 'online'}
-              glow={true}
-            />
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <h3 className="text-xs sm:text-sm md:text-base font-extrabold text-text-hi tracking-tight flex items-center gap-1.5 truncate">
-                  Asystent Lektora CRIBRO
-                </h3>
-                <span className="text-[9px] font-mono uppercase bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block animate-pulse" />
-                  Rada AI: Gemini + Konsensus
-                </span>
-              </div>
-              <p className="text-[10px] sm:text-[11px] text-content-muted truncate mt-0.5">
-                Baza CRM, Notatnik lekcyjny, Slajdy & Komendy (<span className="text-primary font-mono font-bold">@</span> i <span className="text-primary font-mono font-bold">/</span>)
-              </p>
-            </div>
-          </div>
+        {/* ─── 1. WIDOK POWITALNY (SUBTELNY, ELEGANCKI HERO) ─── */}
+        {messages.length === 0 && viewMode === 'chat' && (
+          <div className="flex flex-col items-center text-center space-y-2.5 py-6 sm:py-8 max-w-xl mx-auto animate-fadeIn">
+            {/* Ambient Background Mint Glow */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[85%] max-w-xl h-40 bg-gradient-to-b from-primary/10 via-accent/5 to-transparent blur-3xl pointer-events-none -z-10" />
 
-          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className={`px-2 sm:px-2.5 py-1 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-                pendingAttachments.length > 0
-                  ? 'bg-primary/20 border-primary text-primary shadow-[0_0_12px_rgba(114,240,180,0.25)]'
-                  : 'border-line-strong bg-white/[0.04] hover:bg-primary/15 hover:border-primary/40 text-content-muted hover:text-primary'
-              }`}
-              title="Załącz plik (PDF, screenshot, notatki)"
-            >
-              <Paperclip size={13} />
-              <span className="hidden md:inline text-xs">Załącz</span>
-              {pendingAttachments.length > 0 && (
-                <span className="px-1.5 py-0.2 bg-primary text-accent-ink rounded-full text-[9px] font-bold">
-                  {pendingAttachments.length}
-                </span>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setViewMode(viewMode === 'chat' ? 'history' : 'chat')}
-              className={`px-2 sm:px-2.5 py-1 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-                viewMode === 'history'
-                  ? 'bg-primary/20 text-primary border-primary/40 shadow-[0_0_12px_rgba(114,240,180,0.2)]'
-                  : 'border-line-strong bg-white/[0.04] text-content-muted hover:text-text-hi hover:bg-white/[0.08]'
-              }`}
-              title={viewMode === 'history' ? 'Wróć do aktywnego czatu' : 'Historia poprzednich rozmów'}
-            >
-              <History size={13} />
-              <span className="hidden md:inline text-xs">Historia</span>
-              {sessions.length > 0 && <span className="opacity-70 font-mono text-[10px]">({sessions.length})</span>}
-            </button>
-
-            <button
-              type="button"
-              onClick={startNewSession}
-              className="px-2.5 sm:px-3 py-1 rounded-xl bg-primary text-accent-ink hover:brightness-110 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:scale-[1.02]"
-              title="Rozpocznij nowy wątek rozmowy"
-            >
-              <Plus size={13} className="stroke-[3]" />
-              <span className="hidden sm:inline text-xs">Nowy</span>
-            </button>
-          </div>
-        </header>
-
-        {/* ─── WIDOK: HISTORIA ROZMÓW ─── */}
-        {viewMode === 'history' ? (
-          <div className="p-3 sm:p-4 max-h-[360px] overflow-y-auto space-y-2.5">
-            <div className="flex items-center justify-between pb-1.5 border-b border-line-soft">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted flex items-center gap-1.5">
-                <History size={13} className="text-primary" /> Zapisane sesje rozmów ({sessions.length})
-              </span>
-              <button
-                onClick={startNewSession}
-                className="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <Plus size={12} /> Nowa rozmowa
-              </button>
+            {/* Subtle Badge */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/25 text-primary text-[11px] font-mono font-semibold">
+              <Sparkles size={12} />
+              <span>Asystent Lektora CRIBRO</span>
             </div>
 
-            {sessions.length === 0 ? (
-              <div className="text-center py-10 text-content-muted">
-                <History className="w-9 h-9 mx-auto mb-1.5 opacity-30 text-primary" />
-                <p className="font-semibold text-xs text-text-hi">Brak wcześniejszych rozmów w historii.</p>
-                <p className="text-[11px] mt-0.5">Zadaj pierwsze pytanie asystentowi, a wątek zostanie tu zapisany.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {sessions.map((s) => (
-                  <div
-                    key={s.id}
-                    onClick={() => loadSession(s)}
-                    className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                      currentSessionId === s.id
-                        ? 'bg-primary/15 border-primary/50 text-text-hi shadow-[0_0_16px_rgba(114,240,180,0.15)] ring-1 ring-primary/40'
-                        : 'bg-base-100/70 border-line-strong text-content-muted hover:bg-base-100 hover:text-text-hi hover:border-primary/40'
-                    }`}
-                  >
-                    <div className="min-w-0 pr-2">
-                      <p className="text-xs font-bold text-text-hi truncate">{s.title}</p>
-                      <p className="text-[10px] text-content-muted mt-0.5 flex items-center gap-1.5 font-mono">
-                        <span>{new Date(s.createdAt).toLocaleDateString('pl-PL')}</span>
-                        <span>·</span>
-                        <span>{s.messages?.length || 0} wiadomości</span>
-                      </p>
-                    </div>
-                    <button
-                      onClick={(e) => deleteSession(s.id, e)}
-                      className="p-1.5 text-content-muted hover:text-danger rounded-lg hover:bg-danger/10 transition-colors"
-                      title="Usuń tę rozmowę"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Subtelny slogan */}
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-text-hi">
+              W czym mogę dzisiaj pomóc, {teacherFirstName}?
+            </h1>
+            <p className="text-xs sm:text-sm text-text-3 max-w-md mx-auto leading-relaxed">
+              Konspekty lekcji, zadania domowe, baza kursantów CRM i analiza materiałów.
+            </p>
           </div>
-        ) : (
-          /* ─── WIDOK: CHAT STRUMIEŃ ─── */
-          <div className="flex flex-col flex-1 min-h-[200px]">
-            {/* Okno Wiadomości */}
-            <div
-              ref={scrollRef}
-              className={`p-2.5 sm:p-4 flex-1 ${
-                messages.length === 0
-                  ? 'overflow-visible'
-                  : 'min-h-[160px] max-h-[520px] sm:max-h-[580px] overflow-y-auto scroll-smooth'
-              } space-y-3`}
-            >
-              {/* STAN POWITALNY (COPILOT HUB) */}
-              {messages.length === 0 ? (
-                <div className="py-2 space-y-2.5">
-                  {/* Hero greeting */}
-                  <div className="flex items-center justify-center gap-2.5 text-center sm:text-left max-w-xl mx-auto px-1">
-                    <AIAssistantIcon size="sm" variant="avatar" state="idle" glow={true} className="shrink-0" />
-                    <div>
-                      <h4 className="text-xs sm:text-sm font-extrabold text-text-hi tracking-tight">
-                        W czym mogę Ci dzisiaj pomóc?
-                      </h4>
-                      <p className="text-[10px] sm:text-[11px] text-content-muted leading-tight">
-                        Użyj <span className="text-primary font-mono font-bold">@</span> aby wskazać kursanta lub <span className="text-primary font-mono font-bold">/</span> aby wybrać skill:
-                      </p>
-                    </div>
-                  </div>
+        )}
 
-                  {/* Kafelki propozycji rozmów */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-w-4xl mx-auto">
-                    {STARTER_PROMPTS.map((starter, sIdx) => {
-                      const IconComp = starter.icon;
-                      return (
-                        <button
-                          key={sIdx}
-                          type="button"
-                          onClick={() => ask(starter.prompt)}
-                          disabled={isThinking}
-                          className="group text-left p-2 rounded-xl border border-line-strong bg-base-100/60 hover:bg-primary/[0.08] hover:border-primary/40 transition-all cursor-pointer shadow-sm hover:shadow-[0_2px_14px_rgba(114,240,180,0.1)] hover:-translate-y-0.5 flex items-start gap-2 min-h-[48px]"
-                        >
-                          <div className="p-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
-                            <IconComp size={12} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="text-[9px] font-mono uppercase tracking-wider text-primary font-bold truncate">
-                                {starter.category}
-                              </span>
-                              <ArrowRight size={10} className="text-content-muted group-hover:text-primary group-hover:translate-x-0.5 transition-all opacity-0 group-hover:opacity-100 shrink-0" />
-                            </div>
-                            <p className="text-xs font-bold text-text-hi group-hover:text-primary transition-colors truncate">
-                              {starter.title}
-                            </p>
-                            <p className="text-[10px] text-content-muted line-clamp-1 leading-tight mt-0.5">
-                              {starter.prompt}
-                            </p>
-                          </div>
-                        </button>
-                      );
-                    })}
+        {/* ─── 2. WIDOK: STRUMIEŃ ROZMOWY / HISTORIA ─── */}
+        {(messages.length > 0 || viewMode === 'history') && (
+          <div className="w-full max-w-3xl mx-auto rounded-3xl border border-line-strong bg-ink-2/95 backdrop-blur-2xl shadow-ambient-lg overflow-hidden mb-3.5 flex flex-col">
+            {/* Pasek górny rozmowy */}
+            <header className="px-4 py-3 border-b border-line-strong flex items-center justify-between bg-base-200/60 backdrop-blur-md flex-wrap gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <AIAssistantIcon size="xs" variant="badge" state={isThinking ? 'thinking' : 'online'} glow={true} />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-text-hi truncate">Asystent Lektora CRIBRO</span>
+                    <span className="text-[9px] font-mono uppercase bg-base-100 text-text-2 border border-line px-2 py-0.5 rounded-full font-bold">
+                      Rada AI & CRM
+                    </span>
                   </div>
                 </div>
-              ) : (
-                /* STRUMIEŃ WIADOMOŚCI */
-                messages.map((message, idx) => (
+              </div>
+
+              <div className="flex items-center gap-1.5 ml-auto shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode(viewMode === 'chat' ? 'history' : 'chat')}
+                  className={`px-2.5 py-1 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    viewMode === 'history'
+                      ? 'bg-primary/20 text-primary border-primary/40'
+                      : 'border-line-strong bg-base-100/60 text-text-2 hover:text-text-hi hover:bg-base-100'
+                  }`}
+                  title={viewMode === 'history' ? 'Wróć do rozmowy' : 'Historia poprzednich sesji'}
+                >
+                  <History size={13} />
+                  <span className="hidden sm:inline">Historia</span>
+                  {sessions.length > 0 && <span className="text-[10px] font-mono opacity-70">({sessions.length})</span>}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={startNewSession}
+                  className="px-3 py-1 rounded-xl bg-primary text-accent-ink hover:bg-primary-hover text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:scale-[1.02]"
+                  title="Rozpocznij nowy wątek"
+                >
+                  <Plus size={13} className="stroke-[3]" />
+                  <span>Nowy czat</span>
+                </button>
+              </div>
+            </header>
+
+            {/* Widok: Historia sesji */}
+            {viewMode === 'history' ? (
+              <div className="p-4 max-h-[420px] overflow-y-auto space-y-2.5">
+                <div className="flex items-center justify-between pb-1.5 border-b border-line">
+                  <span className="text-xs font-bold text-text-mute uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                    <History size={13} className="text-primary" /> Zapisane wątki ({sessions.length})
+                  </span>
+                  <button
+                    onClick={startNewSession}
+                    className="text-xs text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus size={12} /> Nowa rozmowa
+                  </button>
+                </div>
+
+                {sessions.length === 0 ? (
+                  <div className="text-center py-12 text-text-mute">
+                    <History className="w-10 h-10 mx-auto mb-2 opacity-30 text-text-mute" />
+                    <p className="font-semibold text-xs text-text-hi">Brak wcześniejszych rozmów w historii.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {sessions.map((s) => (
+                      <div
+                        key={s.id}
+                        onClick={() => loadSession(s)}
+                        className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                          currentSessionId === s.id
+                            ? 'bg-primary/15 border-primary/50 text-text-hi shadow-[0_0_16px_rgba(114,240,180,0.15)]'
+                            : 'bg-base-200/50 border-line text-text-2 hover:bg-base-200 hover:text-text-hi hover:border-line-strong'
+                        }`}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <p className="text-xs font-bold text-text-hi truncate">{s.title}</p>
+                          <p className="text-[10px] text-text-mute mt-0.5 flex items-center gap-1.5 font-mono">
+                            <span>{new Date(s.createdAt).toLocaleDateString('pl-PL')}</span>
+                            <span>·</span>
+                            <span>{s.messages?.length || 0} wiadomości</span>
+                          </p>
+                        </div>
+                        <button
+                          onClick={(e) => deleteSession(s.id, e)}
+                          className="p-1.5 text-text-mute hover:text-danger rounded-lg hover:bg-base-100 transition-colors"
+                          title="Usuń tę rozmowę"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Widok: Wiadomości czatu */
+              <div
+                ref={scrollRef}
+                className="p-3.5 sm:p-5 max-h-[560px] overflow-y-auto scroll-smooth space-y-3.5"
+              >
+                {messages.map((message, idx) => (
                   <div key={idx} className="space-y-1.5 animate-fadeIn">
-                    {/* WIADOMOŚĆ UŻYTKOWNIKA */}
+                    {/* Wiadomość użytkownika */}
                     {message.role === 'user' ? (
                       <div className="flex items-end justify-end gap-2 max-w-[92%] sm:max-w-[82%] ml-auto">
-                        <div className="bg-gradient-to-br from-primary/20 via-primary/15 to-primary/10 border border-primary/35 text-text-hi p-2.5 sm:p-3 rounded-2xl rounded-tr-xs shadow-sm space-y-1.5">
-                          <div className="flex items-center justify-between gap-3 text-[9px] text-primary/80 font-mono">
-                            <span className="font-bold flex items-center gap-1">
+                        <div className="bg-base-200/90 border border-line-strong text-text-hi p-3 sm:p-3.5 rounded-2xl rounded-tr-xs shadow-sm space-y-1.5">
+                          <div className="flex items-center justify-between gap-3 text-[9px] text-text-mute font-mono">
+                            <span className="font-bold flex items-center gap-1 text-primary">
                               <User size={10} /> Lektor
                             </span>
                             {message.timestamp && (
-                              <span className="opacity-70">{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="opacity-70">
+                                {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
                             )}
                           </div>
 
@@ -867,10 +751,10 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                               {message.attachments.map((att, aIdx) => (
                                 <div
                                   key={aIdx}
-                                  className="flex items-center gap-1.5 p-1 px-2 rounded-lg bg-base-100/90 border border-primary/30 text-[11px] font-mono"
+                                  className="flex items-center gap-1.5 p-1 px-2 rounded-lg bg-base-100 border border-line text-[11px] font-mono"
                                 >
                                   {att.type === 'image' && att.dataUrl ? (
-                                    <img src={att.dataUrl} alt={att.name} className="w-5 h-5 rounded object-cover border border-primary/20" />
+                                    <img src={att.dataUrl} alt={att.name} className="w-5 h-5 rounded object-cover border border-line" />
                                   ) : att.type === 'pdf' ? (
                                     <PdfIcon size={12} className="text-danger" />
                                   ) : (
@@ -882,35 +766,37 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                             </div>
                           )}
 
-                          <p className="text-xs sm:text-[13px] leading-relaxed whitespace-pre-wrap font-medium">
+                          <p className="text-xs sm:text-[13px] leading-relaxed whitespace-pre-wrap font-medium text-text">
                             {message.text}
                           </p>
                         </div>
                       </div>
                     ) : (
-                      /* WIADOMOŚĆ ASYSTENTA AI */
-                      <div className="flex items-start gap-2 sm:gap-2.5 max-w-[98%] sm:max-w-[92%] mr-auto">
+                      /* Wiadomość asystenta AI */
+                      <div className="flex items-start gap-2.5 max-w-[98%] sm:max-w-[92%] mr-auto">
                         <AIAssistantIcon size="xs" variant="avatar" state="online" glow={false} className="mt-1 shrink-0" />
 
                         <div className="flex-1 min-w-0 space-y-2">
-                          <div className="bg-base-100/95 border border-line-strong text-content p-3 sm:p-4 rounded-2xl rounded-tl-xs shadow-md space-y-2">
-                            <div className="flex items-center justify-between border-b border-line-soft pb-1.5 text-[10px] text-content-muted font-mono flex-wrap gap-1">
+                          <div className="bg-ink-2/95 border border-line-strong text-text p-3.5 sm:p-4 rounded-2xl rounded-tl-xs shadow-ambient-sm space-y-2.5">
+                            <div className="flex items-center justify-between border-b border-line pb-1.5 text-[10px] text-text-mute font-mono flex-wrap gap-1">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-bold text-primary flex items-center gap-1">
-                                  <Sparkles size={11} /> CRIBRO AI
+                                  <Sparkles size={11} className="text-primary" /> CRIBRO AI
                                 </span>
-                                <span className="text-[8px] bg-primary/15 text-primary border border-primary/30 px-1.5 py-0.2 rounded font-mono font-semibold flex items-center gap-0.5">
-                                  <ShieldCheck size={9} /> {message.modelUsed || 'Rada Modeli AI'}
+                                <span className="text-[8px] bg-base-100 text-text-2 border border-line px-1.5 py-0.5 rounded font-mono font-semibold flex items-center gap-0.5">
+                                  <ShieldCheck size={9} className="text-primary" /> {message.modelUsed || 'Rada Modeli AI'}
                                 </span>
                               </div>
                               <div className="flex items-center gap-2 ml-auto">
                                 {message.timestamp && (
-                                  <span className="opacity-70">{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                  <span className="opacity-70">
+                                    {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
                                 )}
                                 <button
                                   type="button"
                                   onClick={() => speakText(message.text)}
-                                  className="p-1 hover:text-text-hi rounded transition-colors flex items-center gap-1 cursor-pointer text-[9px]"
+                                  className="p-1 hover:text-text-hi text-text-mute rounded transition-colors flex items-center gap-1 cursor-pointer text-[9px]"
                                   title="Odsłuchaj syntezę mowy"
                                 >
                                   <Volume2 size={11} />
@@ -918,10 +804,10 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => copyMessage(idx, message.text)}
-                                  className="p-1 hover:text-text-hi rounded transition-colors flex items-center gap-1 cursor-pointer text-[9px]"
+                                  className="p-1 hover:text-text-hi text-text-mute rounded transition-colors flex items-center gap-1 cursor-pointer text-[9px]"
                                   title="Kopiuj treść odpowiedzi"
                                 >
-                                  {copiedMsgIdx === idx ? <Check size={11} className="text-accent" /> : <Copy size={11} />}
+                                  {copiedMsgIdx === idx ? <Check size={11} className="text-primary" /> : <Copy size={11} />}
                                   <span>{copiedMsgIdx === idx ? 'Skopiowano' : 'Kopiuj'}</span>
                                 </button>
                               </div>
@@ -929,60 +815,60 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
 
                             {/* Podgląd karty lekcji Notion AI */}
                             {message.lessonDraft && (
-                              <div className="p-2.5 sm:p-3 rounded-xl bg-base-300/80 border border-primary/40 text-xs space-y-2 shadow-inner">
-                                <div className="flex items-center justify-between border-b border-primary/20 pb-1.5 flex-wrap gap-1">
-                                  <div className="flex items-center gap-1 font-bold text-primary">
-                                    <Sparkles size={12} />
+                              <div className="p-3 rounded-2xl bg-base-100/60 border border-primary/30 text-xs space-y-2 shadow-inner">
+                                <div className="flex items-center justify-between border-b border-line pb-1.5 flex-wrap gap-1">
+                                  <div className="flex items-center gap-1.5 font-bold text-primary">
+                                    <Sparkles size={13} className="text-primary" />
                                     <span className="uppercase tracking-wider text-[10px]">Karta Lekcji AI (Format 4 Bloków)</span>
                                   </div>
                                   {message.lessonDraft.studentName && (
-                                    <span className="text-[9px] px-2 py-0.2 rounded-full bg-primary/20 text-primary font-mono font-bold border border-primary/30">
+                                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-mono font-bold border border-primary/30">
                                       @{message.lessonDraft.studentName}
                                     </span>
                                   )}
                                 </div>
-                                <div className="font-black text-xs sm:text-sm text-text-hi">{message.lessonDraft.topic}</div>
+                                <div className="font-extrabold text-sm text-text-hi">{message.lessonDraft.topic}</div>
                                 {message.lessonDraft.summary && (
-                                  <div className="text-content-muted leading-relaxed text-[11px]">
+                                  <div className="text-text-2 leading-relaxed text-[11px]">
                                     {message.lessonDraft.summary}
                                   </div>
                                 )}
                                 {message.lessonDraft.vocabulary && (
                                   <div>
-                                    <span className="font-bold text-primary text-[10px] block uppercase tracking-wide mb-0.5">
+                                    <span className="font-bold text-text-mute text-[10px] block uppercase tracking-wide mb-0.5 font-mono">
                                       Kluczowe słownictwo:
                                     </span>
-                                    <div className="text-content text-[11px] font-mono whitespace-pre-line bg-base-100/80 p-2 rounded-lg border border-line-strong">
+                                    <div className="text-text text-[11px] font-mono whitespace-pre-line bg-ink p-2.5 rounded-xl border border-line">
                                       {message.lessonDraft.vocabulary}
                                     </div>
                                   </div>
                                 )}
                                 {message.lessonDraft.grammar && (
-                                  <div className="text-[11px] text-content-muted flex items-start gap-1">
-                                    <span className="font-bold text-amber-300 shrink-0">Gramatyka / Poprawa:</span>
+                                  <div className="text-[11px] text-text-2 flex items-start gap-1">
+                                    <span className="font-bold text-warn shrink-0">Gramatyka / Poprawa:</span>
                                     <span>{message.lessonDraft.grammar}</span>
                                   </div>
                                 )}
                                 {message.lessonDraft.homework && (
-                                  <div className="text-[11px] text-content-muted flex items-start gap-1">
-                                    <span className="font-bold text-accent-light shrink-0">Zadanie domowe:</span>
+                                  <div className="text-[11px] text-text-2 flex items-start gap-1">
+                                    <span className="font-bold text-primary shrink-0">Zadanie domowe:</span>
                                     <span>{message.lessonDraft.homework}</span>
                                   </div>
                                 )}
                               </div>
                             )}
 
-                            {/* Główna treść odpowiedzi tekstowej (bogato sformatowany Markdown) */}
-                            <div className="text-xs sm:text-[13px] leading-relaxed font-normal space-y-2 text-content">
+                            {/* Główna treść odpowiedzi Markdown */}
+                            <div className="text-xs sm:text-[13px] leading-relaxed font-normal space-y-2 text-text">
                               <Markdown
                                 components={{
                                   h1: ({ children }) => (
-                                    <h3 className="text-sm font-black text-text-hi border-b border-line-soft pb-1 mt-2.5 mb-1.5 flex items-center gap-1.5">
+                                    <h3 className="text-sm font-black text-text-hi border-b border-line pb-1 mt-2.5 mb-1.5 flex items-center gap-1.5">
                                       {children}
                                     </h3>
                                   ),
                                   h2: ({ children }) => (
-                                    <h4 className="text-[13px] font-extrabold text-primary border-b border-primary/20 pb-1 mt-2 mb-1 flex items-center gap-1.5">
+                                    <h4 className="text-[13px] font-extrabold text-primary border-b border-line pb-1 mt-2 mb-1 flex items-center gap-1.5">
                                       {children}
                                     </h4>
                                   ),
@@ -992,7 +878,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                                     </h5>
                                   ),
                                   p: ({ children }) => (
-                                    <p className="leading-relaxed mb-1.5 text-content last:mb-0">
+                                    <p className="leading-relaxed mb-1.5 text-text last:mb-0">
                                       {children}
                                     </p>
                                   ),
@@ -1007,22 +893,22 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                                     </ol>
                                   ),
                                   li: ({ children }) => (
-                                    <li className="leading-relaxed pl-0.5 text-content">
+                                    <li className="leading-relaxed pl-0.5 text-text">
                                       {children}
                                     </li>
                                   ),
                                   strong: ({ children }) => (
-                                    <strong className="font-bold text-text-hi bg-primary/10 text-primary px-1 py-0.2 rounded-md">
+                                    <strong className="font-bold text-text-hi bg-primary/10 text-primary px-1 py-0.5 rounded-md border border-primary/20">
                                       {children}
                                     </strong>
                                   ),
                                   blockquote: ({ children }) => (
-                                    <blockquote className="pl-3 border-l-2 border-primary/60 text-content-muted italic my-2 bg-primary/5 py-1.5 pr-2 rounded-r-xl">
+                                    <blockquote className="pl-3 border-l-2 border-primary text-text-2 italic my-2 bg-base-100/50 py-1.5 pr-2 rounded-r-xl">
                                       {children}
                                     </blockquote>
                                   ),
                                   code: ({ children }) => (
-                                    <code className="font-mono text-[11px] bg-base-300/90 text-amber-300 px-1.5 py-0.5 rounded border border-line-strong">
+                                    <code className="font-mono text-[11px] bg-ink text-primary px-1.5 py-0.5 rounded border border-line">
                                       {children}
                                     </code>
                                   ),
@@ -1043,10 +929,10 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                                     key={aIdx}
                                     type="button"
                                     onClick={() => handleExecuteAction(act)}
-                                    className={`flex items-center gap-1 py-1 px-2.5 rounded-lg border text-[11px] font-bold transition-all hover:scale-[1.02] shadow-sm cursor-pointer ${
+                                    className={`flex items-center gap-1.5 py-1 px-3 rounded-xl border text-[11px] font-bold transition-all hover:scale-[1.02] shadow-sm cursor-pointer ${
                                       isPrimary
-                                        ? 'border-primary bg-primary text-accent-ink hover:brightness-110 shadow-[0_0_12px_rgba(114,240,180,0.35)]'
-                                        : 'border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary hover:border-primary/60'
+                                        ? 'border-primary/50 bg-primary text-accent-ink font-extrabold shadow-[0_0_15px_rgba(114,240,180,0.35)] hover:bg-primary-hover'
+                                        : 'border-line-strong bg-base-200/80 hover:bg-base-200 text-text-2 hover:text-text-hi hover:border-primary/40'
                                     }`}
                                   >
                                     {act.type === 'insert_lesson' && <CheckCircle2 size={12} />}
@@ -1067,37 +953,39 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                       </div>
                     )}
                   </div>
-                ))
-              )}
+                ))}
 
-              {/* STAN GENEROWANIA / THINKING (RADA MODELI) */}
-              {isThinking && (
-                <div className="flex items-center gap-2.5 animate-fadeIn">
-                  <AIAssistantIcon size="xs" variant="avatar" state="thinking" glow={true} />
-                  <div className="rounded-xl p-2.5 px-3 bg-base-100/90 border border-primary/40 text-content flex items-center gap-2.5 shadow-md">
-                    <div className="flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary/80 animate-pulse" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary/60" />
+                {/* Stan generowania (Thinking / Flash) */}
+                {isThinking && (
+                  <div className="flex items-center gap-2.5 animate-fadeIn">
+                    <AIAssistantIcon size="xs" variant="avatar" state="thinking" glow={true} />
+                    <div className="rounded-2xl p-2.5 px-3.5 bg-ink-2/95 border border-line-strong text-text-2 flex items-center gap-2.5 shadow-ambient-sm">
+                      <div className="flex items-center gap-1">
+                        <span className={`w-1.5 h-1.5 rounded-full ${aiMode === 'flash' ? 'bg-amber-400' : 'bg-primary'} animate-ping`} />
+                        <span className={`w-1.5 h-1.5 rounded-full ${aiMode === 'flash' ? 'bg-amber-400/80' : 'bg-primary/80'} animate-pulse`} />
+                        <span className={`w-1.5 h-1.5 rounded-full ${aiMode === 'flash' ? 'bg-amber-400/60' : 'bg-primary/60'}`} />
+                      </div>
+                      <span className="text-xs text-text-2 font-medium">
+                        {aiMode === 'flash'
+                          ? '⚡ Gemini Flash generuje błyskawiczną odpowiedź…'
+                          : '🧠 Rada Modeli AI (Autor + Recenzenci) analizuje CRM i myśli nad odpowiedzią…'}
+                      </span>
                     </div>
-                    <span className="text-xs text-primary font-medium">
-                      Rada Modeli AI (Autor + Recenzenci) analizuje CRM i przygotowuje odpowiedź…
-                    </span>
                   </div>
-                </div>
-              )}
+                )}
 
-              {error && (
-                <p className="text-xs text-danger p-2.5 rounded-xl bg-danger/10 border border-danger/25">
-                  {error}
-                </p>
-              )}
-            </div>
+                {error && (
+                  <p className="text-xs text-danger p-3 rounded-2xl bg-danger/10 border border-danger/30">
+                    {error}
+                  </p>
+                )}
+              </div>
+            )}
 
-            {/* SZYBKIE PODPOWIEDZI (FOLLOW-UP) PODCZAS AKTYWNEJ ROZMOWY */}
-            {messages.length > 0 && (
-              <div className="px-3 sm:px-4 py-1.5 border-t border-line-soft bg-base-100/30 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                <span className="text-[9px] uppercase font-bold text-content-muted shrink-0 flex items-center gap-1 font-mono">
+            {/* Szybkie follow-up chips w trakcie rozmowy */}
+            {viewMode === 'chat' && messages.length > 0 && (
+              <div className="px-4 py-2 border-t border-line bg-base-200/40 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                <span className="text-[10px] uppercase font-bold text-text-mute shrink-0 flex items-center gap-1 font-mono">
                   <Sparkles size={10} className="text-primary" /> Zapytaj:
                 </span>
                 {QUICK_FOLLOWUPS.map((followup, fIdx) => (
@@ -1106,241 +994,300 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                     type="button"
                     onClick={() => ask(followup)}
                     disabled={isThinking}
-                    className="shrink-0 px-2 py-0.5 rounded-md border border-line-strong bg-base-100/60 hover:bg-primary/15 hover:border-primary/40 text-[10px] text-text-2 hover:text-primary transition-all cursor-pointer disabled:opacity-50"
+                    className="shrink-0 px-2.5 py-1 rounded-full border border-line bg-base-100/60 hover:bg-base-100 hover:border-primary/40 text-[11px] text-text-2 hover:text-text-hi transition-all cursor-pointer disabled:opacity-50"
                   >
                     {followup}
                   </button>
                 ))}
               </div>
             )}
+          </div>
+        )}
 
-            {/* ZAŁĄCZNIKI OCZEKUJĄCE (CHIPS PREVIEW) */}
-            {pendingAttachments.length > 0 && (
-              <div className="px-3.5 py-1.5 border-t border-line-soft bg-base-200/50 flex flex-wrap gap-1.5 items-center">
-                <span className="text-[10px] font-bold text-primary uppercase font-mono mr-1">
-                  Do analizy ({pendingAttachments.length}):
-                </span>
-                {pendingAttachments.map((att) => (
-                  <div
-                    key={att.id}
-                    className="flex items-center gap-1 py-0.5 px-2 rounded-lg bg-base-100 border border-primary/30 text-[11px] text-text-hi shadow-sm"
-                  >
-                    {att.type === 'image' && att.dataUrl ? (
-                      <img src={att.dataUrl} alt={att.name} className="w-3.5 h-3.5 rounded object-cover" />
-                    ) : att.type === 'pdf' ? (
-                      <PdfIcon size={12} className="text-danger" />
-                    ) : (
-                      <FileCode size={12} className="text-primary" />
-                    )}
-                    <span className="truncate max-w-[110px] font-medium">{att.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => removePendingAttachment(att.id)}
-                      className="p-0.5 text-content-muted hover:text-danger rounded transition-colors cursor-pointer"
-                    >
-                      <X size={11} />
-                    </button>
+        {/* ─── 3. GŁÓWNE POLE CZATU (INPUT CONTAINER) ─── */}
+        {viewMode === 'chat' && (
+          <div className="relative w-full max-w-3xl mx-auto">
+            {/* Ambient Subtle Mint Glow */}
+            <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-primary/15 via-accent/10 to-primary/15 blur-xl opacity-60 pointer-events-none" />
+
+            {/* Menu Autouzupełniania @ Kursant */}
+            {showMentionMenu && (
+              <div className="absolute bottom-full left-2 right-2 mb-2 z-50 bg-ink-2/98 backdrop-blur-2xl border border-line-strong rounded-2xl shadow-ambient-lg p-2 max-h-[260px] overflow-y-auto animate-fadeIn">
+                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-line px-2 text-[10px] font-bold text-text-mute uppercase tracking-wider font-mono">
+                  <span className="flex items-center gap-1 text-primary">
+                    <AtSign size={11} className="text-primary" /> Wskaż kursanta z bazy CRM
+                  </span>
+                  <span className="text-text-mute font-normal">Wybierz [Enter] lub kliknij</span>
+                </div>
+                {filteredStudents.length === 0 ? (
+                  <div className="p-3 text-center text-xs text-text-mute">
+                    Nie znaleziono kursanta pasującego do „{mentionQuery}”
                   </div>
-                ))}
+                ) : (
+                  <div className="space-y-1">
+                    {filteredStudents.map((st, sIdx) => {
+                      const isSelected = sIdx === activeMentionIndex;
+                      return (
+                        <div
+                          key={st.id}
+                          onClick={() => handleSelectStudentMention(st)}
+                          onMouseEnter={() => setActiveMentionIndex(sIdx)}
+                          className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-primary/15 border-primary/40 text-text-hi shadow-[0_0_12px_rgba(114,240,180,0.15)]'
+                              : 'bg-transparent border-transparent text-text-2 hover:bg-base-100 hover:text-text-hi'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-6 h-6 rounded-full bg-base-100 text-primary border border-primary/30 flex items-center justify-center text-[10px] font-bold shrink-0">
+                              {st.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-text-hi truncate">{st.name}</p>
+                              <p className="text-[10px] text-text-mute truncate">
+                                {st.company ? `${st.company} · ` : ''}lekcji: {st.lessonCount}
+                                {st.lastLessonDate ? ` (ost. ${st.lastLessonDate})` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          {st.level && (
+                            <span className="text-[9px] px-2 py-0.5 rounded-md bg-base-100 text-primary font-mono font-bold border border-line shrink-0">
+                              {st.level}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* ─── KOMPOZYTOR / POLE CZATU Z AUTOCOMPLETE @ i / ─── */}
-            <div className="p-2 sm:p-3 border-t border-line-strong bg-base-100/60 backdrop-blur-xl relative">
-              {/* Autouzupełnianie @ Kursant */}
-              {showMentionMenu && (
-                <div className="absolute bottom-full left-2 right-2 sm:left-4 sm:right-4 mb-2 z-50 bg-ink-2/95 backdrop-blur-2xl border border-primary/45 rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.7)] p-2 max-h-[260px] overflow-y-auto animate-in fade-in slide-in-from-bottom-2">
-                  <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-line-strong px-2 text-[10px] font-bold text-primary uppercase tracking-wider font-mono">
-                    <span className="flex items-center gap-1">
-                      <AtSign size={11} /> Wskaż kursanta z bazy CRM
-                    </span>
-                    <span className="text-content-muted font-normal">Wybierz [Enter] lub kliknij</span>
+            {/* Menu Autouzupełniania / Skille */}
+            {showSlashMenu && (
+              <div className="absolute bottom-full left-2 right-2 mb-2 z-50 bg-ink-2/98 backdrop-blur-2xl border border-line-strong rounded-2xl shadow-ambient-lg p-2 max-h-[290px] overflow-y-auto animate-fadeIn">
+                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-line px-2 text-[10px] font-bold text-text-mute uppercase tracking-wider font-mono">
+                  <span className="flex items-center gap-1 text-primary">
+                    <Command size={11} className="text-primary" /> Wybierz skill / szablon asystenta
+                  </span>
+                  <span className="text-text-mute font-normal">Wybierz [Enter] lub kliknij</span>
+                </div>
+                {filteredSkills.length === 0 ? (
+                  <div className="p-3 text-center text-xs text-text-mute">
+                    Nie znaleziono komendy dla „/{slashQuery}”
                   </div>
-                  {filteredStudents.length === 0 ? (
-                    <div className="p-3 text-center text-xs text-content-muted">
-                      Nie znaleziono kursanta pasującego do „{mentionQuery}”
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {filteredStudents.map((st, sIdx) => {
-                        const isSelected = sIdx === activeMentionIndex;
-                        return (
-                          <div
-                            key={st.id}
-                            onClick={() => handleSelectStudentMention(st)}
-                            onMouseEnter={() => setActiveMentionIndex(sIdx)}
-                            className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                              isSelected
-                                ? 'bg-primary/20 border-primary/60 text-text-hi shadow-[0_0_12px_rgba(114,240,180,0.2)]'
-                                : 'bg-base-100/60 border-transparent text-content-muted hover:bg-base-100 hover:text-text-hi'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-6 h-6 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center text-[10px] font-bold shrink-0">
-                                {st.name.charAt(0).toUpperCase()}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold text-text-hi truncate">{st.name}</p>
-                                <p className="text-[10px] text-content-muted truncate">
-                                  {st.company ? `${st.company} · ` : ''}lekcji: {st.lessonCount}
-                                  {st.lastLessonDate ? ` (ost. ${st.lastLessonDate})` : ''}
-                                </p>
-                              </div>
+                ) : (
+                  <div className="space-y-1">
+                    {filteredSkills.map((sk, skIdx) => {
+                      const isSelected = skIdx === activeSlashIndex;
+                      return (
+                        <div
+                          key={sk.id}
+                          onClick={() => handleSelectSkillCommand(sk)}
+                          onMouseEnter={() => setActiveSlashIndex(skIdx)}
+                          className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-primary/15 border-primary/40 text-text-hi shadow-[0_0_12px_rgba(114,240,180,0.15)]'
+                              : 'bg-transparent border-transparent text-text-2 hover:bg-base-100 hover:text-text-hi'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs font-mono font-bold text-primary shrink-0 bg-base-100 px-1.5 py-0.5 rounded border border-line">
+                              {sk.command}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-text-hi truncate">{sk.name}</p>
+                              <p className="text-[10px] text-text-mute truncate">{sk.description}</p>
                             </div>
-                            {st.level && (
-                              <span className="text-[9px] px-2 py-0.5 rounded-md bg-primary/15 text-primary font-mono font-bold border border-primary/30 shrink-0">
-                                {st.level}
-                              </span>
-                            )}
                           </div>
-                        );
-                      })}
+                          {sk.badge && (
+                            <span className="text-[9px] px-2 py-0.5 rounded-md bg-base-100 text-text-2 font-mono font-bold border border-line shrink-0">
+                              {sk.badge}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Główna ramka pola czatu */}
+            <div className="relative rounded-3xl border border-line-strong bg-[#0c1424]/90 backdrop-blur-2xl shadow-ambient-md transition-all focus-within:border-primary/50 focus-within:shadow-[0_0_25px_rgba(114,240,180,0.18)] flex flex-col p-3 sm:p-4">
+              {/* Załączniki oczekujące (Chips) */}
+              {pendingAttachments.length > 0 && (
+                <div className="pb-2.5 mb-2 border-b border-line flex flex-wrap gap-1.5 items-center">
+                  <span className="text-[10px] font-bold text-text-mute uppercase font-mono mr-1">
+                    Załączone pliki ({pendingAttachments.length}):
+                  </span>
+                  {pendingAttachments.map((att) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center gap-1.5 py-1 px-2.5 rounded-xl bg-base-100 border border-line-strong text-[11px] text-text-hi shadow-sm"
+                    >
+                      {att.type === 'image' && att.dataUrl ? (
+                        <img src={att.dataUrl} alt={att.name} className="w-4 h-4 rounded object-cover" />
+                      ) : att.type === 'pdf' ? (
+                        <PdfIcon size={13} className="text-danger" />
+                      ) : (
+                        <FileCode size={13} className="text-primary" />
+                      )}
+                      <span className="truncate max-w-[130px] font-medium">{att.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removePendingAttachment(att.id)}
+                        className="p-0.5 text-text-mute hover:text-danger rounded transition-colors cursor-pointer"
+                      >
+                        <X size={12} />
+                      </button>
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
 
-              {/* Autouzupełnianie / Skille */}
-              {showSlashMenu && (
-                <div className="absolute bottom-full left-2 right-2 sm:left-4 sm:right-4 mb-2 z-50 bg-ink-2/95 backdrop-blur-2xl border border-primary/45 rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.7)] p-2 max-h-[290px] overflow-y-auto animate-in fade-in slide-in-from-bottom-2">
-                  <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-line-strong px-2 text-[10px] font-bold text-primary uppercase tracking-wider font-mono">
-                    <span className="flex items-center gap-1">
-                      <Command size={11} /> Wybierz skill / funkcję asystenta
-                    </span>
-                    <span className="text-content-muted font-normal">Wybierz [Enter] lub kliknij</span>
-                  </div>
-                  {filteredSkills.length === 0 ? (
-                    <div className="p-3 text-center text-xs text-content-muted">
-                      Nie znaleziono komendy dla „/{slashQuery}”
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {filteredSkills.map((sk, skIdx) => {
-                        const isSelected = skIdx === activeSlashIndex;
-                        return (
-                          <div
-                            key={sk.id}
-                            onClick={() => handleSelectSkillCommand(sk)}
-                            onMouseEnter={() => setActiveSlashIndex(skIdx)}
-                            className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                              isSelected
-                                ? 'bg-primary/20 border-primary/60 text-text-hi shadow-[0_0_12px_rgba(114,240,180,0.2)]'
-                                : 'bg-base-100/60 border-transparent text-content-muted hover:bg-base-100 hover:text-text-hi'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-xs font-mono font-bold text-primary shrink-0 bg-primary/10 px-1.5 py-0.5 rounded border border-primary/25">
-                                {sk.command}
-                              </span>
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold text-text-hi truncate">{sk.name}</p>
-                                <p className="text-[10px] text-content-muted truncate">{sk.description}</p>
-                              </div>
-                            </div>
-                            {sk.badge && (
-                              <span className="text-[9px] px-2 py-0.5 rounded-md bg-white/5 text-content-muted font-mono font-bold border border-white/10 shrink-0">
-                                {sk.badge}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  ask(draft);
+              {/* Textarea */}
+              <textarea
+                ref={textareaRef}
+                value={draft}
+                rows={2}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const pos = e.target.selectionStart;
+                  handleDraftChange(val, pos);
                 }}
-                className="relative rounded-2xl border border-line-strong bg-base-200/90 focus-within:border-primary/70 focus-within:ring-2 focus-within:ring-primary/25 shadow-inner transition-all flex flex-col p-1.5 sm:p-2"
-              >
-                <textarea
-                  ref={textareaRef}
-                  value={draft}
-                  rows={1}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const pos = e.target.selectionStart;
-                    handleDraftChange(val, pos);
-                  }}
-                  onKeyDown={handleKeyDown}
-                  placeholder={
-                    pendingAttachments.length > 0
-                      ? `Polecenie dla ${pendingAttachments.length} załącznika(ów) (Enter)…`
-                      : index
-                      ? 'Napisz wiadomość (wpisz @ aby wybrać kursanta, / dla skilli)...'
-                      : 'Ładuję indeks kursantów CRM…'
-                  }
-                  disabled={isThinking}
-                  className="w-full px-2 py-1 bg-transparent text-xs sm:text-sm text-text-hi placeholder:text-content-muted focus:outline-none resize-none min-h-[30px] max-h-[100px] leading-relaxed"
-                />
+                onKeyDown={handleKeyDown}
+                placeholder={
+                  pendingAttachments.length > 0
+                    ? `Wpisz polecenie dla ${pendingAttachments.length} załącznika(ów) (Enter aby wysłać)…`
+                    : index
+                    ? 'Wpisz pytanie lub polecenie (użyj @ kursant, / skille, /help)...'
+                    : 'Ładuję indeks kursantów CRM…'
+                }
+                disabled={isThinking}
+                className="w-full bg-transparent text-sm sm:text-base text-text-hi placeholder:text-text-mute/50 focus:outline-none resize-none min-h-[44px] max-h-[160px] leading-relaxed"
+              />
 
-                <div className="flex items-center justify-between pt-1.5 px-0.5 flex-wrap gap-1">
-                  {/* Przyciski narzędziowe pod textarea */}
-                  <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-                    {/* Szybki przycisk @ Kursant */}
+              {/* Dolny pasek wewnątrz pola tekstowego */}
+              <div className="flex items-center justify-between pt-2.5 mt-1 border-t border-line">
+                {/* Lewa strona: Segmented Switcher (Flash vs Thinking) + Przyciski narzędziowe */}
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  {/* Przełącznik trybu: ⚡ Flash vs 🧠 Thinking */}
+                  <div className="inline-flex p-0.5 rounded-full bg-base-100 border border-line shadow-inner items-center">
                     <button
                       type="button"
-                      onClick={() => {
-                        setShowMentionMenu(true);
-                        setMentionQuery('');
-                        setShowSlashMenu(false);
-                        textareaRef.current?.focus();
-                      }}
-                      className="px-2 py-1 rounded-lg bg-base-100 hover:bg-primary/15 border border-line-strong hover:border-primary/40 text-[11px] font-bold text-primary flex items-center gap-1 cursor-pointer transition-all"
-                      title="Wskaż kursanta (@)"
+                      onClick={() => handleToggleMode('flash')}
+                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                        aiMode === 'flash'
+                          ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-[0_0_10px_rgba(245,158,11,0.4)] font-extrabold scale-[1.02]'
+                          : 'text-text-mute hover:text-text-2'
+                      }`}
+                      title="Tryb Flash: Błyskawiczna odpowiedź w ułamku sekundy (Gemini Flash)"
                     >
-                      <AtSign size={12} />
-                      <span>Kursant</span>
+                      <Zap size={11} className={aiMode === 'flash' ? 'text-slate-950 fill-current' : 'text-amber-400'} />
+                      <span>Flash</span>
                     </button>
 
-                    {/* Szybki przycisk / Skille */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setShowSlashMenu(true);
-                        setSlashQuery('');
-                        setShowMentionMenu(false);
-                        textareaRef.current?.focus();
-                      }}
-                      className="px-2 py-1 rounded-lg bg-base-100 hover:bg-primary/15 border border-line-strong hover:border-primary/40 text-[11px] font-bold text-primary flex items-center gap-1 cursor-pointer transition-all"
-                      title="Wybierz skill (/)"
+                      onClick={() => handleToggleMode('thinking')}
+                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                        aiMode === 'thinking'
+                          ? 'bg-primary text-accent-ink shadow-[0_0_12px_rgba(114,240,180,0.35)] font-extrabold scale-[1.02]'
+                          : 'text-text-mute hover:text-text-2'
+                      }`}
+                      title="Tryb Thinking: Głęboka analiza Rady Modeli AI (Autor + Recenzenci)"
                     >
-                      <Command size={12} />
-                      <span>Skille</span>
-                    </button>
-
-                    {/* Załącz plik */}
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="p-1 px-2 rounded-lg text-content-muted hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-semibold border border-transparent hover:border-primary/20"
-                      title="Załącz plik PDF, screenshot lub notatki"
-                    >
-                      <Paperclip size={12} />
-                      <span className="hidden sm:inline text-[10px]">Załącz</span>
+                      <Sparkles size={11} className={aiMode === 'thinking' ? 'text-accent-ink' : 'text-primary'} />
+                      <span>Thinking</span>
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-2 ml-auto">
-                    <span className="text-[9px] text-content-muted hidden md:inline font-mono opacity-60">
-                      Enter ↵ wyślij
-                    </span>
-                    <button
-                      type="submit"
-                      disabled={(!draft.trim() && pendingAttachments.length === 0) || isThinking}
-                      className="h-7.5 px-3 rounded-xl bg-primary text-accent-ink font-bold flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-default cursor-pointer hover:brightness-110 shadow-[0_0_12px_rgba(114,240,180,0.3)] transition-all text-xs"
-                      title="Wyślij wiadomość"
-                    >
-                      {isThinking ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                      <span>Zapytaj</span>
-                    </button>
-                  </div>
+                  {/* Szybki przycisk @ Kursant */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMentionMenu(true);
+                      setMentionQuery('');
+                      setShowSlashMenu(false);
+                      textareaRef.current?.focus();
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-base-100/60 hover:bg-base-100 border border-line-strong hover:border-primary/40 text-[11px] font-medium text-text-2 hover:text-text-hi flex items-center gap-1 cursor-pointer transition-all"
+                    title="Wskaż kursanta (@)"
+                  >
+                    <AtSign size={12} className="text-primary" />
+                    <span>Kursant</span>
+                  </button>
+
+                  {/* Szybki przycisk / Skille */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSlashMenu(true);
+                      setSlashQuery('');
+                      setShowMentionMenu(false);
+                      textareaRef.current?.focus();
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-base-100/60 hover:bg-base-100 border border-line-strong hover:border-primary/40 text-[11px] font-medium text-text-2 hover:text-text-hi flex items-center gap-1 cursor-pointer transition-all"
+                    title="Wybierz skill (/)"
+                  >
+                    <Command size={12} className="text-primary" />
+                    <span>Skille</span>
+                  </button>
+
+                  {/* Załącz plik */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-2.5 py-1 rounded-xl bg-base-100/60 hover:bg-base-100 border border-line-strong hover:border-primary/40 text-[11px] font-medium text-text-2 hover:text-text-hi flex items-center gap-1 cursor-pointer transition-all"
+                    title="Załącz plik PDF, screenshot lub notatki"
+                  >
+                    <Paperclip size={12} className="text-primary" />
+                    <span className="hidden sm:inline">Załącz</span>
+                  </button>
                 </div>
-              </form>
+
+                {/* Prawa strona: Okrągły przycisk wysyłki ze strzałką w górę */}
+                <div className="flex items-center gap-2 ml-auto">
+                  <span className="text-[10px] text-text-mute hidden md:inline font-mono">
+                    Enter ↵
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => ask(draft)}
+                    disabled={(!draft.trim() && pendingAttachments.length === 0) || isThinking}
+                    className={`h-9 w-9 rounded-2xl flex items-center justify-center transition-all ${
+                      (!draft.trim() && pendingAttachments.length === 0) || isThinking
+                        ? 'bg-base-100/40 text-text-mute/30 cursor-not-allowed border border-line'
+                        : 'bg-primary text-accent-ink hover:bg-primary-hover shadow-[0_0_16px_rgba(114,240,180,0.4)] cursor-pointer hover:scale-105 active:scale-95 border border-primary/40 font-bold'
+                    }`}
+                    title="Wyślij wiadomość"
+                  >
+                    {isThinking ? (
+                      <Loader2 size={16} className="animate-spin text-accent-ink" />
+                    ) : (
+                      <ArrowUp size={16} className="stroke-[2.5]" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Delikatna informacja o /help poniżej okna czatu */}
+            <div className="flex items-center justify-center gap-1.5 text-xs text-text-mute mt-3 flex-wrap">
+              <span>💡 Wpisz</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setDraft('/help');
+                  textareaRef.current?.focus();
+                }}
+                className="px-1.5 py-0.5 rounded-md bg-base-100/80 border border-line-strong hover:border-primary/50 text-primary font-mono text-[11px] font-semibold transition-colors cursor-pointer"
+                title="Kliknij, aby wstawić /help"
+              >
+                /help
+              </button>
+              <span>aby zobaczyć do czego możesz użyć czatu i poznać listę komend</span>
             </div>
           </div>
         )}
@@ -1350,7 +1297,6 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
 
   /* ═══════════════════════════════════════════════════════════════════
      TRYB FLOATING — PŁYWAJĄCY DYMEK W LEWYM DOLNYM ROGU EKRANU
-     (Zoptymalizowany pod widok mobilny i desktopowy)
      ═══════════════════════════════════════════════════════════════════ */
   const panel = (
     <div
@@ -1370,14 +1316,15 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
       />
 
       <div className="pointer-events-auto flex flex-col-reverse items-start">
+        {/* Przycisk aktywacyjny (Launcher) */}
         <button
           type="button"
           onClick={() => setIsOpen((v) => !v)}
           title="Asystent CRIBRO AI — zapytaj o kursantów i moduły"
-          className={`h-11 px-3.5 rounded-2xl border flex items-center gap-2.5 text-xs font-bold shadow-[0_4px_20px_rgba(0,0,0,0.4)] backdrop-blur-xl transition-all cursor-pointer ${
+          className={`h-11 px-3.5 rounded-2xl border flex items-center gap-2.5 text-xs font-bold shadow-ambient-lg backdrop-blur-xl transition-all cursor-pointer ${
             isOpen
               ? 'border-primary/60 bg-primary/20 text-primary ring-2 ring-primary/30 shadow-[0_0_20px_rgba(114,240,180,0.3)]'
-              : 'border-primary/30 bg-ink-2/95 text-text-hi hover:border-primary hover:shadow-[0_0_15px_rgba(114,240,180,0.25)]'
+              : 'border-line-strong bg-ink-2/95 text-text-hi hover:border-primary/50 hover:shadow-[0_0_18px_rgba(114,240,180,0.2)]'
           }`}
         >
           {isOpen ? (
@@ -1388,18 +1335,19 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
           <span>Asystent AI</span>
         </button>
 
+        {/* Okno czatu pływającego */}
         {isOpen && (
           <div
             onPaste={handlePaste}
-            className="mb-2 w-[calc(100vw-1.5rem)] sm:w-[480px] max-h-[80vh] flex flex-col rounded-3xl border border-primary/40 bg-ink-2/95 backdrop-blur-2xl shadow-[0_16px_50px_rgba(0,0,0,0.7)] overflow-hidden animate-fadeIn"
+            className="mb-2 w-[calc(100vw-1.5rem)] sm:w-[480px] max-h-[80vh] flex flex-col rounded-3xl border border-line-strong bg-ink-2/98 backdrop-blur-2xl shadow-ambient-lg overflow-hidden animate-fadeIn"
           >
             {/* Header Floating */}
-            <header className="px-4 py-2.5 border-b border-line-soft flex items-center justify-between bg-base-300/60">
+            <header className="px-4 py-2.5 border-b border-line flex items-center justify-between bg-base-200/60">
               <div className="flex items-center gap-2.5 min-w-0">
                 <AIAssistantIcon size="xs" variant="badge" state={isThinking ? 'thinking' : 'online'} glow={true} />
                 <div className="min-w-0">
-                  <p className="text-xs font-extrabold text-text-hi truncate">Asystent Lektora CRIBRO</p>
-                  <p className="text-[10px] text-content-muted truncate">
+                  <p className="text-xs font-bold text-text-hi truncate">Asystent Lektora CRIBRO</p>
+                  <p className="text-[10px] text-text-mute truncate">
                     Rada Modeli AI · CRM & Komendy (@ i /)
                   </p>
                 </div>
@@ -1409,7 +1357,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                 <button
                   type="button"
                   onClick={() => floatingFileInputRef.current?.click()}
-                  className="p-1.5 rounded-lg border border-white/10 text-content-muted hover:text-primary hover:border-primary/30 transition-colors"
+                  className="p-1.5 rounded-lg border border-line text-text-mute hover:text-text-hi hover:border-primary/40 transition-colors"
                   title="Załącz plik"
                 >
                   <Paperclip size={13} />
@@ -1419,8 +1367,8 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                   onClick={() => setViewMode(viewMode === 'chat' ? 'history' : 'chat')}
                   className={`p-1.5 rounded-lg border text-xs transition-colors ${
                     viewMode === 'history'
-                      ? 'bg-primary/20 text-primary border-primary/40'
-                      : 'border-white/10 text-content-muted hover:text-white'
+                      ? 'bg-primary/20 text-primary border-primary/50'
+                      : 'border-line text-text-mute hover:text-text-hi'
                   }`}
                   title={viewMode === 'history' ? 'Wróć do czatu' : 'Historia rozmów'}
                 >
@@ -1429,7 +1377,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                 <button
                   type="button"
                   onClick={startNewSession}
-                  className="p-1.5 rounded-lg border border-white/10 text-content-muted hover:text-primary hover:border-primary/30 transition-colors"
+                  className="p-1.5 rounded-lg border border-line text-text-mute hover:text-text-hi hover:border-primary/40 transition-colors"
                   title="Nowa rozmowa"
                 >
                   <Plus size={13} />
@@ -1440,8 +1388,8 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
             {/* Widok historii w trybie floating */}
             {viewMode === 'history' ? (
               <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                <div className="flex items-center justify-between pb-1 mb-2 border-b border-white/10">
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                <div className="flex items-center justify-between pb-1 mb-2 border-b border-line">
+                  <span className="text-xs font-bold text-text-hi uppercase tracking-wider font-mono">
                     Historia rozmów ({sessions.length})
                   </span>
                   <button
@@ -1453,7 +1401,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                 </div>
 
                 {sessions.length === 0 ? (
-                  <p className="text-xs text-content-muted text-center py-8">
+                  <p className="text-xs text-text-mute text-center py-8">
                     Brak wcześniejszych rozmów w historii.
                   </p>
                 ) : (
@@ -1463,19 +1411,19 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                       onClick={() => loadSession(s)}
                       className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                         currentSessionId === s.id
-                          ? 'bg-primary/15 border-primary/40 text-white'
-                          : 'bg-white/5 border-white/5 text-content-muted hover:bg-white/10 hover:text-white'
+                          ? 'bg-primary/15 border-primary/50 text-text-hi'
+                          : 'bg-base-200/50 border-line text-text-2 hover:bg-base-200 hover:text-text-hi'
                       }`}
                     >
                       <div className="min-w-0 pr-2">
-                        <p className="text-xs font-semibold truncate">{s.title}</p>
-                        <p className="text-[10px] opacity-60 font-mono">
+                        <p className="text-xs font-semibold truncate text-text-hi">{s.title}</p>
+                        <p className="text-[10px] text-text-mute font-mono">
                           {new Date(s.createdAt).toLocaleDateString()} · {s.messages?.length || 0} wiadomości
                         </p>
                       </div>
                       <button
                         onClick={(e) => deleteSession(s.id, e)}
-                        className="p-1 text-content-muted hover:text-danger rounded hover:bg-white/10"
+                        className="p-1 text-text-mute hover:text-danger rounded hover:bg-base-100"
                         title="Usuń sesję"
                       >
                         <Trash2 size={13} />
@@ -1488,27 +1436,14 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
               /* Widok czatu w trybie floating */
               <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 sm:p-3.5 space-y-3">
                 {messages.length === 0 && (
-                  <div className="space-y-2.5">
-                    <div className="text-center py-2">
-                      <AIAssistantIcon size="md" variant="avatar" state="idle" glow={true} className="mx-auto mb-1.5" />
-                      <p className="text-xs text-content-muted leading-relaxed">
-                        W czym mogę pomóc? Użyj <span className="text-primary font-mono font-bold">@</span> lub <span className="text-primary font-mono font-bold">/</span>:
-                      </p>
-                    </div>
-                    <div className="space-y-1.5">
-                      {STARTER_PROMPTS.slice(0, 4).map((starter, sIdx) => (
-                        <button
-                          key={sIdx}
-                          type="button"
-                          onClick={() => ask(starter.prompt)}
-                          disabled={!index || isThinking}
-                          className="w-full text-left px-3 py-2 rounded-xl border border-line-strong bg-white/[0.03] text-xs text-text-2 hover:text-content hover:bg-white/[0.07] hover:border-primary/30 transition-all cursor-pointer disabled:opacity-40 flex items-center justify-between"
-                        >
-                          <span className="truncate">{starter.title}</span>
-                          <ChevronRight size={12} className="opacity-40" />
-                        </button>
-                      ))}
-                    </div>
+                  <div className="space-y-2.5 text-center py-6">
+                    <AIAssistantIcon size="md" variant="avatar" state="idle" glow={true} className="mx-auto mb-2" />
+                    <p className="text-xs text-text-2 leading-relaxed">
+                      W czym mogę pomóc? Użyj <span className="text-primary font-mono font-bold">@</span> kursanta lub <span className="text-primary font-mono font-bold">/</span> skille.
+                    </p>
+                    <p className="text-[11px] text-text-mute font-mono">
+                      Wpisz <span className="text-primary">/help</span>, aby poznać listę możliwości.
+                    </p>
                   </div>
                 )}
 
@@ -1517,14 +1452,14 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                     <div
                       className={`max-w-[92%] px-3.5 py-2.5 rounded-2xl text-[13px] leading-relaxed whitespace-pre-wrap ${
                         message.role === 'user'
-                          ? 'ml-auto bg-primary/15 border border-primary/30 text-text-hi font-medium rounded-tr-xs'
-                          : 'bg-base-200/90 border border-line text-content shadow-sm rounded-tl-xs'
+                          ? 'ml-auto bg-base-200/90 border border-line-strong text-text-hi font-medium rounded-tr-xs'
+                          : 'bg-ink-2/95 border border-line text-text shadow-sm rounded-tl-xs'
                       }`}
                     >
                       {message.attachments && message.attachments.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mb-1.5 pb-1.5 border-b border-primary/20">
+                        <div className="flex flex-wrap gap-1.5 mb-1.5 pb-1.5 border-b border-line">
                           {message.attachments.map((att, aIdx) => (
-                            <div key={aIdx} className="flex items-center gap-1.5 py-1 px-2 rounded-lg bg-base-100/70 text-[11px]">
+                            <div key={aIdx} className="flex items-center gap-1.5 py-1 px-2 rounded-lg bg-base-100 text-[11px]">
                               {att.type === 'image' && att.dataUrl ? (
                                 <img src={att.dataUrl} alt={att.name} className="w-5 h-5 rounded object-cover" />
                               ) : (
@@ -1538,10 +1473,10 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
 
                       {/* Podgląd karty lekcji w Floating */}
                       {message.lessonDraft && (
-                        <div className="mt-2 p-2.5 rounded-xl bg-base-300/80 border border-primary/40 text-[11px] space-y-1.5 shadow-inner">
-                          <div className="flex items-center justify-between border-b border-primary/20 pb-1.5">
+                        <div className="mt-2 p-2.5 rounded-xl bg-base-100/60 border border-primary/30 text-[11px] space-y-1.5 shadow-inner">
+                          <div className="flex items-center justify-between border-b border-line pb-1.5">
                             <div className="flex items-center gap-1 font-bold text-primary">
-                              <Sparkles size={12} />
+                              <Sparkles size={12} className="text-primary" />
                               <span className="uppercase tracking-wider text-[10px]">Karta lekcji AI</span>
                             </div>
                             {message.lessonDraft.studentName && (
@@ -1552,7 +1487,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                           </div>
                           <div className="font-bold text-xs text-text-hi">{message.lessonDraft.topic}</div>
                           {message.lessonDraft.vocabulary && (
-                            <div className="text-[10px] font-mono whitespace-pre-line bg-base-100/70 p-1.5 rounded border border-line-strong text-content">
+                            <div className="text-[10px] font-mono whitespace-pre-line bg-ink p-1.5 rounded border border-line text-text">
                               {message.lessonDraft.vocabulary}
                             </div>
                           )}
@@ -1572,10 +1507,10 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                               key={aIdx}
                               type="button"
                               onClick={() => handleExecuteAction(act)}
-                              className={`flex items-center gap-1 py-1 px-2 rounded-lg border text-[11px] font-semibold transition-all hover:scale-[1.02] cursor-pointer ${
+                              className={`flex items-center gap-1 py-1 px-2.5 rounded-xl border text-[11px] font-semibold transition-all hover:scale-[1.02] cursor-pointer ${
                                 isPrimary
-                                  ? 'border-primary bg-primary text-accent-ink font-bold'
-                                  : 'border-primary/30 bg-primary/10 hover:bg-primary/25 text-primary'
+                                  ? 'border-primary/50 bg-primary text-accent-ink font-bold'
+                                  : 'border-line bg-base-200/80 hover:bg-base-200 text-text-2'
                               }`}
                             >
                               {act.type === 'insert_lesson' && <CheckCircle2 size={11} />}
@@ -1593,7 +1528,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                 ))}
 
                 {isThinking && (
-                  <div className="flex items-center gap-2 text-xs text-content-muted">
+                  <div className="flex items-center gap-2 text-xs text-text-mute">
                     <Loader2 size={13} className="animate-spin text-primary" /> Rada Modeli AI analizuje dane…
                   </div>
                 )}
@@ -1604,11 +1539,11 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
 
             {/* Załączniki oczekujące (Floating) */}
             {pendingAttachments.length > 0 && (
-              <div className="px-3 py-1.5 border-t border-line-soft bg-base-300/40 flex flex-wrap gap-1.5 items-center">
+              <div className="px-3 py-1.5 border-t border-line bg-base-200/40 flex flex-wrap gap-1.5 items-center">
                 {pendingAttachments.map((att) => (
-                  <div key={att.id} className="flex items-center gap-1 py-0.5 px-2 rounded-lg bg-base-100 border border-primary/30 text-[11px] text-text-hi">
+                  <div key={att.id} className="flex items-center gap-1 py-0.5 px-2 rounded-lg bg-base-100 border border-line text-[11px] text-text-hi">
                     <span className="truncate max-w-[90px]">{att.name}</span>
-                    <button type="button" onClick={() => removePendingAttachment(att.id)} className="text-content-muted hover:text-danger">
+                    <button type="button" onClick={() => removePendingAttachment(att.id)} className="text-text-mute hover:text-danger">
                       <X size={10} />
                     </button>
                   </div>
@@ -1623,12 +1558,12 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                   event.preventDefault();
                   ask(draft);
                 }}
-                className="p-2.5 border-t border-line-soft flex items-center gap-2 bg-base-300/30"
+                className="p-2.5 border-t border-line flex items-center gap-2 bg-ink-2"
               >
                 <button
                   type="button"
                   onClick={() => floatingFileInputRef.current?.click()}
-                  className="p-2 rounded-xl border border-line-strong bg-ink text-content-muted hover:text-primary transition-colors cursor-pointer"
+                  className="p-2 rounded-xl border border-line bg-base-100/60 text-text-mute hover:text-text-hi transition-colors cursor-pointer"
                   title="Załącz plik"
                 >
                   <Paperclip size={14} />
@@ -1641,19 +1576,19 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                     pendingAttachments.length > 0
                       ? `Polecenie do ${pendingAttachments.length} pliku(ów)…`
                       : index
-                      ? 'Wpisz pytanie (np. @Dariusz lub /konspekt)…'
+                      ? 'Wpisz pytanie (np. @Dariusz lub /help)…'
                       : 'Wczytuję listę kursantów…'
                   }
                   disabled={!index || isThinking}
-                  className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-ink border border-line-strong text-[13px] text-content placeholder:text-text-faint focus:outline-none focus:border-primary/55 disabled:opacity-50"
+                  className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-base-100 border border-line text-[13px] text-text-hi placeholder:text-text-mute/50 focus:outline-none focus:border-primary/50 disabled:opacity-50"
                 />
                 <button
                   type="submit"
                   disabled={(!draft.trim() && pendingAttachments.length === 0) || isThinking || !index}
-                  className="shrink-0 h-9 w-9 rounded-xl bg-primary text-accent-ink flex items-center justify-center disabled:opacity-40 disabled:cursor-default cursor-pointer hover:brightness-110 transition-all"
+                  className="shrink-0 h-9 w-9 rounded-xl bg-primary text-accent-ink flex items-center justify-center disabled:opacity-40 disabled:cursor-default cursor-pointer hover:bg-primary-hover shadow-[0_0_15px_rgba(114,240,180,0.35)] transition-all font-bold"
                   aria-label="Wyślij pytanie"
                 >
-                  <Send size={15} />
+                  <ArrowUp size={15} className="stroke-[2.5]" />
                 </button>
               </form>
             )}

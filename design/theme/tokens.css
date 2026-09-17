@@ -112,13 +112,28 @@ html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
-  background: var(--page-gradient) fixed, var(--bg);
+  background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
   font-size: var(--fs-body);
   line-height: var(--lh-body);
   letter-spacing: var(--track-body);
   -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: var(--page-gradient);
+  background-repeat: no-repeat;
+  background-size: cover;
+  pointer-events: none;
+  z-index: 0;
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  will-change: transform;
 }
 
 h1, h2, h3, h4 {

@@ -61,7 +61,7 @@ const ConstellationBackground: React.FC = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -71,26 +71,70 @@ const ConstellationBackground: React.FC = () => {
     let raf: number | null = null;
     let paint = readPaint();
 
-    const seed = () => {
-      width = canvas.clientWidth;
-      height = canvas.clientHeight;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      const count = Math.round(
-        Math.min(CFG.max, Math.max(CFG.min, (width * height) / CFG.density))
+    const getTargetCount = (w: number, h: number) => {
+      return Math.round(
+        Math.min(CFG.max, Math.max(CFG.min, (w * h) / CFG.density))
       );
+    };
 
-      points = [];
+    const initPoints = (w: number, h: number) => {
+      const count = getTargetCount(w, h);
+      const newPoints: Point[] = [];
       for (let i = 0; i < count; i++) {
-        points.push({
-          x: Math.random() * width,
-          y: Math.random() * height,
+        newPoints.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
           vx: (Math.random() - 0.5) * CFG.speed,
           vy: (Math.random() - 0.5) * CFG.speed,
           r: 0.8 + Math.random() * 1.5,
         });
+      }
+      return newPoints;
+    };
+
+    const updateSize = (isInitial = false) => {
+      const newWidth = canvas.clientWidth || window.innerWidth;
+      const newHeight = canvas.clientHeight || window.innerHeight;
+
+      if (!isInitial && Math.abs(newWidth - width) < 3 && Math.abs(newHeight - height) < 3) {
+        return;
+      }
+
+      const oldWidth = width || newWidth;
+      const oldHeight = height || newHeight;
+
+      width = newWidth;
+      height = newHeight;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      if (isInitial || points.length === 0) {
+        points = initPoints(width, height);
+      } else {
+        // Skaluj istniejące punkty zamiast losować od zera — brak nagłego błysku/przeskoku
+        const scaleX = width / oldWidth;
+        const scaleY = height / oldHeight;
+        for (const p of points) {
+          p.x = Math.max(0, Math.min(width, p.x * scaleX));
+          p.y = Math.max(0, Math.min(height, p.y * scaleY));
+        }
+
+        const targetCount = getTargetCount(width, height);
+        if (points.length < targetCount) {
+          const toAdd = targetCount - points.length;
+          for (let i = 0; i < toAdd; i++) {
+            points.push({
+              x: Math.random() * width,
+              y: Math.random() * height,
+              vx: (Math.random() - 0.5) * CFG.speed,
+              vy: (Math.random() - 0.5) * CFG.speed,
+              r: 0.8 + Math.random() * 1.5,
+            });
+          }
+        } else if (points.length > targetCount) {
+          points = points.slice(0, targetCount);
+        }
       }
     };
 
@@ -110,13 +154,22 @@ const ConstellationBackground: React.FC = () => {
       { x: 0.85, y: 0.75, vx: -0.0003, vy: -0.0001, radius: 260, color: 'rgba(190, 240, 230, 0.35)' },
     ];
 
+    const getEdgeAlpha = (p: Point, w: number, h: number) => {
+      const margin = 28;
+      const dx = Math.min(p.x, w - p.x);
+      const dy = Math.min(p.y, h - p.y);
+      const dist = Math.min(dx, dy);
+      if (dist <= 0) return 0;
+      if (dist >= margin) return 1;
+      return dist / margin;
+    };
+
     const draw = () => {
       ctx.clearRect(0, 0, width, height);
       const isLight = isLightMode();
 
       if (isLight) {
         // W TRYBIE JASNYM: Miękkie, płynne plamy światła o błękitno-miętowym odcieniu
-        // Bez ostrych linii, które wyglądały jak popękany ekran!
         for (const orb of orbs) {
           orb.x += orb.vx;
           orb.y += orb.vy;
@@ -143,46 +196,65 @@ const ConstellationBackground: React.FC = () => {
           else if (p.x > width + 20) p.x = -20;
           if (p.y < -20) p.y = height + 20;
           else if (p.y > height + 20) p.y = -20;
-        }
 
-        ctx.fillStyle = 'rgba(56, 128, 175, 0.22)';
-        for (const p of points) {
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, Math.min(p.r, 1.2), 0, Math.PI * 2);
-          ctx.fill();
+          const edgeFade = getEdgeAlpha(p, width, height);
+          if (edgeFade > 0) {
+            ctx.fillStyle = `rgba(56, 128, 175, ${(0.22 * edgeFade).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, Math.min(p.r, 1.2), 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
       } else {
-        // W TRYBIE CIEMNYM: Klasyczna, gwiezdna konstelacja z liniami
-        for (const p of points) {
+        // W TRYBIE CIEMNYM: Stabilna, gwiezdna konstelacja z miękkim wygaszaniem krawędzi
+        const pointAlphas: number[] = new Array(points.length);
+        for (let i = 0; i < points.length; i++) {
+          const p = points[i];
           p.x += p.vx;
           p.y += p.vy;
           if (p.x < -20) p.x = width + 20;
           else if (p.x > width + 20) p.x = -20;
           if (p.y < -20) p.y = height + 20;
           else if (p.y > height + 20) p.y = -20;
+
+          pointAlphas[i] = getEdgeAlpha(p, width, height);
         }
 
         ctx.lineWidth = 1;
         for (let a = 0; a < points.length; a++) {
+          const alphaA = pointAlphas[a];
+          if (alphaA <= 0.01) continue;
+
           for (let b = a + 1; b < points.length; b++) {
+            const alphaB = pointAlphas[b];
+            if (alphaB <= 0.01) continue;
+
             const dx = points[a].x - points[b].x;
             const dy = points[a].y - points[b].y;
             const d = Math.sqrt(dx * dx + dy * dy);
             if (d > CFG.link) continue;
-            const alpha = (paint.lineAlpha * (1 - d / CFG.link)).toFixed(3);
-            ctx.strokeStyle = `rgba(${paint.rgb}, ${alpha})`;
-            ctx.beginPath();
-            ctx.moveTo(points[a].x, points[a].y);
-            ctx.lineTo(points[b].x, points[b].y);
-            ctx.stroke();
+
+            const jointEdge = Math.min(alphaA, alphaB);
+            const lineAlpha = (paint.lineAlpha * (1 - d / CFG.link) * jointEdge).toFixed(3);
+            if (parseFloat(lineAlpha) > 0.005) {
+              ctx.strokeStyle = `rgba(${paint.rgb}, ${lineAlpha})`;
+              ctx.beginPath();
+              ctx.moveTo(points[a].x, points[a].y);
+              ctx.lineTo(points[b].x, points[b].y);
+              ctx.stroke();
+            }
           }
         }
 
-        ctx.fillStyle = `rgba(${paint.rgb}, ${paint.dotAlpha})`;
-        for (const p of points) {
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-          ctx.fill();
+        for (let i = 0; i < points.length; i++) {
+          const p = points[i];
+          const edgeFade = pointAlphas[i];
+          if (edgeFade > 0.01) {
+            ctx.fillStyle = `rgba(${paint.rgb}, ${(paint.dotAlpha * edgeFade).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
       }
 
@@ -196,7 +268,13 @@ const ConstellationBackground: React.FC = () => {
       }
     };
 
-    const handleResize = () => seed();
+    let resizeTimer: number | null = null;
+    const handleResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        updateSize(false);
+      }, 100);
+    };
 
     const handleVisibility = () => {
       if (document.hidden) stop();
@@ -205,18 +283,14 @@ const ConstellationBackground: React.FC = () => {
 
     // Przy prefers-reduced-motion: jedna statyczna klatka, bez pętli.
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      // Jedna statyczna klatka zamiast pętli — ale po zmianie rozmiaru trzeba
-      // ją przerysować, inaczej kanwa zostaje wyczyszczona i tło znika.
       const redrawStatic = () => {
         paint = readPaint();
-        seed();
+        updateSize(true);
         draw();
         stop();
       };
       redrawStatic();
       window.addEventListener('resize', redrawStatic);
-      // Przy wyłączonym ruchu jedna klatka musi się przerysować także po
-      // zmianie motywu — inaczej zostaje w barwach poprzedniego.
       const staticWatcher = new MutationObserver(redrawStatic);
       staticWatcher.observe(document.documentElement, {
         attributes: true,
@@ -228,13 +302,11 @@ const ConstellationBackground: React.FC = () => {
       };
     }
 
-    seed();
+    updateSize(true);
     draw();
     window.addEventListener('resize', handleResize);
     document.addEventListener('visibilitychange', handleVisibility);
 
-    /* Motyw zmienia się bez przeładowania strony — bez tego konstelacja
-       zostawała w barwach poprzedniego trybu do najbliższego odświeżenia. */
     const themeWatcher = new MutationObserver(() => {
       paint = readPaint();
     });
@@ -245,6 +317,7 @@ const ConstellationBackground: React.FC = () => {
 
     return () => {
       stop();
+      if (resizeTimer) clearTimeout(resizeTimer);
       themeWatcher.disconnect();
       window.removeEventListener('resize', handleResize);
       document.removeEventListener('visibilitychange', handleVisibility);
@@ -255,7 +328,12 @@ const ConstellationBackground: React.FC = () => {
     <canvas
       ref={canvasRef}
       aria-hidden="true"
-      className="fixed inset-0 w-full h-full pointer-events-none z-0"
+      className="fixed inset-0 w-full h-full pointer-events-none z-0 transform-gpu"
+      style={{
+        transform: 'translate3d(0,0,0)',
+        willChange: 'transform',
+        backfaceVisibility: 'hidden',
+      }}
     />
   );
 };

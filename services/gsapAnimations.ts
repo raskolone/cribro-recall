@@ -126,14 +126,12 @@ export const animateModuleEnter = (
     element,
     {
       opacity: 0,
-      y: 14,
-      scale: 0.99,
+      y: 8,
     },
     {
       opacity: 1,
       y: 0,
-      scale: 1,
-      duration: 0.32,
+      duration: 0.22,
       ease: 'power2.out',
       clearProps: 'transform,opacity',
       onComplete,
@@ -142,7 +140,7 @@ export const animateModuleEnter = (
 };
 
 /**
- * Płynne wyjście modułu przed zmianą (Fade Out & Soft Shrink).
+ * Płynne wyjście modułu przed zmianą (Fade Out & Soft Slide).
  */
 export const animateModuleExit = (
   element: HTMLElement | null,
@@ -162,9 +160,8 @@ export const animateModuleExit = (
 
   return gsap.to(element, {
     opacity: 0,
-    y: -8,
-    scale: 0.99,
-    duration: 0.2,
+    y: -6,
+    duration: 0.15,
     ease: 'power2.in',
     onComplete,
   });

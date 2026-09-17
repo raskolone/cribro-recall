@@ -69,6 +69,16 @@ export interface AssistantSkill {
 
 export const ASSISTANT_SKILLS: AssistantSkill[] = [
   {
+    id: 'help',
+    command: '/help',
+    name: 'Pomoc i spis możliwości',
+    description: 'Pokaż pełną listę komend, skilli oraz sposoby wykorzystania asystenta',
+    icon: 'help',
+    category: 'Analiza',
+    template: '/help',
+    badge: 'Pomoc',
+  },
+  {
     id: 'konspekt',
     command: '/konspekt',
     name: 'Konspekt lekcji',
@@ -344,14 +354,17 @@ Sprawdź w szczególności:
 Wypisz maksymalnie 4 zwięzłe uwagi do poprawy lub napisz dokładnie: „Brak zastrzeżeń."
 `.trim();
 
+export type AIAssistantMode = 'flash' | 'thinking';
+
 /**
- * Odpowiedź asystenta lektora z obsługą kontekstu bazy CRM, załączników multimedialnych, komend / oraz Rady Modeli AI.
+ * Odpowiedź asystenta lektora z obsługą kontekstu bazy CRM, załączników multimedialnych, komend / oraz trybów Flash (szybki) i Thinking (Rada Modeli AI).
  */
 export const askTeacherAssistant = async (
   question: string,
   index: StudentIndexEntry[],
   history: AssistantMessage[],
-  attachments?: LessonAttachment[]
+  attachments?: LessonAttachment[],
+  aiMode: AIAssistantMode = 'flash'
 ): Promise<{
   text: string;
   usedStudents: string[];
@@ -360,6 +373,34 @@ export const askTeacherAssistant = async (
   modelUsed?: string;
   isCouncil?: boolean;
 }> => {
+  const cleanQ = question.trim().toLowerCase();
+  if (cleanQ === '/help' || cleanQ === 'help' || cleanQ === '/pomoc' || cleanQ === 'pomoc') {
+    return {
+      text: `### 💡 Asystent Lektora CRIBRO — Przewodnik i Możliwości
+
+Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcji oraz modułami platformy CRIBRO.
+
+#### 🎯 Do czego możesz mnie użyć?
+* 📚 **Konspekty lekcji 4-blokowych** (\`/konspekt\`): Generowanie 4-częściowych konspektów Notion (Words, Grammar, Pronunciation, Homework) z natychmiastowym 1-klikowym zapisem.
+* 👥 **Analiza kursantów i CRM** (\`/podsumowanie\` lub *@Kursant*): Szybki dostęp do historii lekcji, poziomu CEFR, notatek i najczęstszych trudności.
+* 🎯 **Zadania domowe i ćwiczenia** (\`/zadanie\`, \`/fiszki\`): Kreatywne prace domowe, zestawy słówek do powtórek i zadania gramatyczne.
+* 🎡 **Warm-up & Koło fortuny** (\`/kolo\`): Angażujące pytania rozgrzewkowe na 60–90 sekund do dyskusji na zajęciach.
+* 📎 **Analiza materiałów (Multimodal)** (\`/analiza\`): Przeciągnij screenshot, zdjęcie zadania lub plik PDF, aby wyodrębnić słówka i ułożyć ćwiczenia.
+* 📺 **Prezentacja Live** (\`/slajdy\`): Scenariusze i interaktywne slajdy do tablicy lekcyjnej na żywo.
+* ✉️ **E-maile do kursantów** (\`/email\`): Profesjonalne i ciepłe podsumowania zajęć dla kursantów.
+
+#### ⚡ Skróty i komendy:
+* **\`@\`** — Wskaż kursanta z bazy CRM (np. *@Dariusz*), aby automatycznie załadować jego kontekst.
+* **\`/\`** — Wybierz gotowy szablon komendy (np. \`/konspekt\`, \`/zadanie\`, \`/fiszki\`).
+* **⚡ Flash** — Błyskawiczna odpowiedź jednomodelowa w ułamku sekundy.
+* **🧠 Thinking** — Głęboka narada Rady Modeli AI (Autor + Recenzenci).`,
+      usedStudents: [],
+      actions: [],
+      modelUsed: 'CRIBRO System',
+      isCouncil: false,
+    };
+  }
+
   const mentioned = matchStudents(question, index);
 
   const fallback =
@@ -429,7 +470,7 @@ export const askTeacherAssistant = async (
   );
 
   let rawResponseText = '';
-  let modelUsed = 'Gemini 2.5 Flash';
+  let modelUsed = aiMode === 'thinking' ? 'Rada Modeli AI (Thinking)' : 'Gemini 2.5 Flash';
   let isCouncil = false;
 
   if (mediaAttachments.length > 0) {
@@ -468,8 +509,8 @@ export const askTeacherAssistant = async (
       rawResponseText = fallbackRes.text;
       modelUsed = fallbackRes.modelUsed || 'Gemini 2.5 Flash';
     }
-  } else {
-    // Uruchomienie Rady Modeli AI (Autor + Recenzenci)
+  } else if (aiMode === 'thinking') {
+    // 🧠 TRYB THINKING: Uruchomienie pełnej deliberacji Rady Modeli AI (Autor + Recenzenci + Konsensus)
     try {
       const councilRes = await runCouncil<string>({
         config: DEFAULT_COUNCIL,
@@ -480,7 +521,7 @@ export const askTeacherAssistant = async (
       });
 
       rawResponseText = councilRes.raw || (typeof councilRes.data === 'string' ? councilRes.data : '');
-      modelUsed = councilRes.finalModel || 'Rada Modeli (Gemini + Consensus)';
+      modelUsed = councilRes.finalModel || 'Rada Modeli AI (Thinking)';
       isCouncil = true;
     } catch (councilErr) {
       console.warn('[TeacherAssistant] Rada modeli fallback do unified cascade:', councilErr);
@@ -490,10 +531,36 @@ export const askTeacherAssistant = async (
         undefined,
         undefined,
         undefined,
-        { taskName: 'Asystent lektora', category: 'general' }
+        { taskName: 'Asystent lektora (Thinking fallback)', category: 'general' }
       );
       rawResponseText = text;
       modelUsed = singleModel || 'Gemini 2.5 Flash';
+    }
+  } else {
+    // ⚡ TRYB FLASH: Błyskawiczna, bezpośrednia generacja (najniższa latencja)
+    try {
+      const { text, modelUsed: singleModel } = await generateTextWithUnifiedFallback(
+        prompt,
+        SYSTEM_INSTRUCTION,
+        undefined,
+        undefined,
+        undefined,
+        { taskName: 'Asystent lektora (Flash Mode)', category: 'general' }
+      );
+      rawResponseText = text;
+      modelUsed = singleModel || 'Gemini 2.5 Flash';
+      isCouncil = false;
+    } catch (flashErr) {
+      console.warn('[TeacherAssistant] Flash mode direct error:', flashErr);
+      const res = await getAI().models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+        },
+      });
+      rawResponseText = res?.text || '';
+      modelUsed = 'Gemini 2.5 Flash';
     }
   }
 

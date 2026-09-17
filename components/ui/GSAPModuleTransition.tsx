@@ -13,28 +13,43 @@ export const GSAPModuleTransition: React.FC<GSAPModuleTransitionProps> = ({
   className = '',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const latestChildrenRef = useRef(children);
+  latestChildrenRef.current = children;
+
   const [displayChildren, setDisplayChildren] = useState(children);
   const [currentKey, setCurrentKey] = useState(activeKey);
+  const isTransitioningRef = useRef(false);
+  const targetKeyRef = useRef(activeKey);
 
   useEffect(() => {
-    if (activeKey !== currentKey) {
-      // Wyjście starego widoku
-      if (containerRef.current) {
-        animateModuleExit(containerRef.current, () => {
-          setCurrentKey(activeKey);
-          setDisplayChildren(children);
-        });
-      } else {
-        setCurrentKey(activeKey);
-        setDisplayChildren(children);
-      }
-    } else {
+    targetKeyRef.current = activeKey;
+
+    if (activeKey === currentKey) {
       setDisplayChildren(children);
+      return;
     }
-  }, [activeKey, children, currentKey]);
+
+    if (isTransitioningRef.current) {
+      return;
+    }
+
+    isTransitioningRef.current = true;
+
+    if (containerRef.current) {
+      animateModuleExit(containerRef.current, () => {
+        const nextKey = targetKeyRef.current;
+        setCurrentKey(nextKey);
+        setDisplayChildren(latestChildrenRef.current);
+        isTransitioningRef.current = false;
+      });
+    } else {
+      setCurrentKey(activeKey);
+      setDisplayChildren(children);
+      isTransitioningRef.current = false;
+    }
+  }, [activeKey, currentKey, children]);
 
   useEffect(() => {
-    // Wejście nowego widoku
     if (containerRef.current) {
       animateModuleEnter(containerRef.current);
     }
@@ -48,3 +63,4 @@ export const GSAPModuleTransition: React.FC<GSAPModuleTransitionProps> = ({
 };
 
 export default GSAPModuleTransition;
+
