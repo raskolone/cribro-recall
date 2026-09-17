@@ -86,6 +86,8 @@ import { LessonPresentationView } from './presentation/LessonPresentationView';
 import { formatAIModelName } from '../../services/geminiService';
 import { extractLessonBlocks } from '../../utils/lessonBlocks';
 import { formatStudentDisplayName } from '../../utils/studentFormat';
+import { LessonPlannerStudio as BlockLessonPlanner } from '../planner/LessonPlannerStudio';
+import { ListOrdered as PlannerBlocksIcon } from 'lucide-react';
 
 interface ParsedTeacherNotes {
   goal?: string;
@@ -171,7 +173,7 @@ export interface LessonPlannerStudioProps {
     words: string[];
     guidelines?: string;
   }) => void;
-  initialStudioMode?: 'scenario' | 'presentation';
+  initialStudioMode?: 'scenario' | 'presentation' | 'blocks';
 }
 
 const PRESET_TOPICS = [
@@ -367,8 +369,8 @@ export const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
   onCreateHomework,
   initialStudioMode = 'scenario',
 }) => {
-  // Główne 2 tryby: Nowy scenariusz vs Nowa prezentacja
-  const [studioMode, setStudioMode] = useState<'scenario' | 'presentation'>(initialStudioMode);
+  // Główne 3 tryby: Konspekt blokowy 2.0 vs Kreator AI vs Nowa prezentacja
+  const [studioMode, setStudioMode] = useState<'scenario' | 'presentation' | 'blocks'>(initialStudioMode);
 
   // Krok kreatora scenariusza
   const [step, setStep] = useState<'brief' | 'topics' | 'plan'>('brief');
@@ -1354,9 +1356,22 @@ Zwróć WYŁĄCZNIE poprawny obiekt JSON:
 
   return (
     <div className="space-y-5">
-      {/* ── GŁÓWNY PRZEŁĄCZNIK TRYBÓW: NOWY SCENARIUSZ vs NOWA PREZENTACJA ── */}
+      {/* ── GŁÓWNY PRZEŁĄCZNIK TRYBÓW: KONSPEKT BLOKOWY 2.0 vs KREATOR AI vs PREZENTACJA ── */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-2 rounded-2xl bg-base-300/60 border border-line-strong shadow-ambient-sm">
         <div className="flex items-center gap-1.5 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setStudioMode('blocks')}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+              studioMode === 'blocks'
+                ? 'bg-primary text-black shadow-md ring-1 ring-primary/40'
+                : 'text-content-muted hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <PlannerBlocksIcon size={15} />
+            <span>Konspekt Blokowy 2.0</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setStudioMode('scenario')}
@@ -1367,7 +1382,7 @@ Zwróć WYŁĄCZNIE poprawny obiekt JSON:
             }`}
           >
             <Sparkles size={15} />
-            <span>Nowy scenariusz lekcji</span>
+            <span>Kreator AI (Scenariusz)</span>
           </button>
 
           <button
@@ -1414,7 +1429,21 @@ Zwróć WYŁĄCZNIE poprawny obiekt JSON:
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          TRYB 1: PLANER SCENARIUSZA LEKCJI
+          TRYB 0: PLANER LEKCJI 2.0 (BLOKOWY KONSPEKT CZASOWY)
+          ═══════════════════════════════════════════════════════════════════ */}
+      {studioMode === 'blocks' && (
+        <div className="animate-fadeIn">
+          <BlockLessonPlanner
+            selectedUser={selectedUser}
+            users={users}
+            onSelectUser={onSelectUser}
+            onOpenPresentationStudio={() => setStudioMode('presentation')}
+          />
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          TRYB 1: PLANER SCENARIUSZA LEKCJI (AI)
           ═══════════════════════════════════════════════════════════════════ */}
       {studioMode === 'scenario' && (
         <>

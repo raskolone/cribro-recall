@@ -65,6 +65,7 @@ import TeacherAssistant from './TeacherAssistant';
 import { LessonDraftProposal } from '../../services/teacherAssistant';
 import TeacherTodayCockpit from './TeacherTodayCockpit';
 import StudentOperationalHub from './StudentOperationalHub';
+import { StudentRecallHub } from '../recall/StudentRecallHub';
 import GSAPModuleTransition from '../ui/GSAPModuleTransition';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
@@ -73,7 +74,7 @@ import {
   BookOpen, BookMarked, UserCheck, Filter, Award, Activity, Calendar, 
   RefreshCw, Plus, Eye, Shield, Target, CalendarClock, Layers, Link as LinkIcon, Airplay, Mail, Database, Wand2,
   AlertTriangle, Edit3, Save, Bell, BellOff, Lock, Copy, Key, Send, Archive, CheckSquare, Square, Edit2, FileEdit, Mic,
-  ClipboardList
+  ClipboardList, Brain
 } from 'lucide-react';
 
 import i18n from "i18next";
@@ -1794,6 +1795,20 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     }
   }, [selectedUser]);
 
+  const prevActiveTabRef = useRef<string | null>(activeTab);
+  const onTabChangeRef = useRef(onTabChange);
+  useEffect(() => {
+    onTabChangeRef.current = onTabChange;
+  }, [onTabChange]);
+
+  useEffect(() => {
+    const prevTab = prevActiveTabRef.current;
+    if (prevTab !== activeTab) {
+      prevActiveTabRef.current = activeTab;
+      onTabChangeRef.current?.(activeTab);
+    }
+  }, [activeTab]);
+
   useEffect(() => {
     if (mainMenuRef.current && mainMenuRef.current.children.length > 0 && activeTab === null) {
       gsap.fromTo(gsap.utils.toArray(mainMenuRef.current.children),
@@ -1801,8 +1816,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         { opacity: 1, y: 0, duration: 0.3, ease: "power2.out", stagger: 0.05, clearProps: "all" }
       );
     }
-    onTabChange?.(activeTab);
-  }, [activeTab, onTabChange]);
+  }, [activeTab]);
 
 
   useEffect(() => {
@@ -2659,6 +2673,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-base-200/90 border border-line-strong backdrop-blur-md overflow-x-auto no-scrollbar shadow-inner select-none">
             {[
               { id: 'hub', label: 'Centrum kursanta (Hub)', icon: Target },
+              { id: 'recall', label: 'Spaced Repetition (Recall)', icon: Brain },
               { id: 'profile', label: 'Profil & Dane', icon: UserIcon },
               { id: 'history', label: 'Historia lekcji', icon: Clock, count: lessonRecords.length },
               { id: 'homework', label: 'Praca domowa', icon: BookOpen, count: specialTasks.length },
@@ -2720,6 +2735,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 setActiveTab('homework');
                 setShowSpecialTaskModal(true);
               }}
+              onOpenRecall={(_sId) => {
+                setActiveTab('recall');
+              }}
               onEditContact={() => {
                 setActiveTab('profile');
                 setProfileSection('basic');
@@ -2729,6 +2747,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 setProfileSection('level');
               }}
             />
+          )}
+
+          {activeTab === 'recall' && (
+            <div className="space-y-5 animate-fade-in">
+              <StudentRecallHub
+                studentId={selectedUser.id}
+                studentName={selectedUser.displayName || selectedUser.firstName || selectedUser.username}
+                onClose={() => setActiveTab('hub')}
+              />
+            </div>
           )}
 
           {activeTab === 'stats' && (

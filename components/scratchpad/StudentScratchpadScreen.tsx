@@ -69,13 +69,27 @@ export const StudentScratchpadScreen: React.FC = () => {
     return () => unsubscribe();
   }, [document?.id]);
 
+  const [saveToast, setSaveToast] = useState<string | null>(null);
+
   const handleSaveContent = async (html: string, text: string) => {
     if (!document?.id || !user) return;
-    return await saveScratchpadContent(document.id, html, text, {
-      uid: user.id,
-      name: studentName,
-      role: 'student',
-    });
+    try {
+      const res = await saveScratchpadContent(document.id, html, text, {
+        uid: user.id,
+        name: studentName,
+        role: 'student',
+      });
+      if (res && res.cloud === false && res.cloudError) {
+        setSaveToast('Zapisano lokalnie (brak synchronizacji z chmurą).');
+        setTimeout(() => setSaveToast(null), 4000);
+      }
+      return res;
+    } catch (err: any) {
+      console.warn('[StudentScratchpad] Błąd zapisu treści:', err);
+      setSaveToast('Błąd synchronizacji zmian z chmurą — sprawdzam połączenie...');
+      setTimeout(() => setSaveToast(null), 4000);
+      return { local: true, cloud: false, cloudError: err?.message };
+    }
   };
 
   const handleCopyLink = () => {
@@ -108,7 +122,13 @@ export const StudentScratchpadScreen: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col p-2 sm:p-4 md:p-6 max-w-7xl mx-auto w-full animate-fadeIn min-h-[720px]">
+    <div className="h-full flex flex-col p-2 sm:p-4 md:p-6 max-w-7xl mx-auto w-full animate-fadeIn min-h-[720px] relative">
+      {saveToast && (
+        <div className="mb-2 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-200 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+          <Info size={14} className="text-amber-400 shrink-0" />
+          <span>{saveToast}</span>
+        </div>
+      )}
       <ScratchpadEditor
         document={document}
         onSaveContent={document.allowStudentEdit ? handleSaveContent : undefined}

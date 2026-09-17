@@ -566,6 +566,29 @@ service cloud.firestore {
     match /lessonScenarios/{scenarioId} {
       allow read, write: if isAdmin();
     }
+
+    // Prywatna przestrzeń lektora: konspekty lekcji (lesson_plans) oraz prezentacje
+    match /teachers/{teacherId} {
+      allow read, write: if isAdmin() || (isAuthenticated() && request.auth.uid == teacherId);
+
+      match /lesson_plans/{planId} {
+        allow read, write: if isAdmin() || (isAuthenticated() && request.auth.uid == teacherId);
+      }
+
+      match /presentations/{presId} {
+        allow read, write: if isAdmin() || (isAuthenticated() && request.auth.uid == teacherId);
+      }
+    }
+
+    // Przestrzeń kursanta: karty powtórek (Spaced Repetition Recall Engine)
+    match /students/{studentId} {
+      allow read, write: if isAdmin() || (isAuthenticated() && request.auth.uid == studentId);
+
+      match /recall_cards/{cardId} {
+        allow read, write: if isAdmin() || (isAuthenticated() && request.auth.uid == studentId);
+      }
+    }
+
     match /inboundMessages/{messageId} {
       allow read, write: if isAdmin();
     }
@@ -648,15 +671,13 @@ service cloud.firestore {
 
       allow create: if isAuthenticated();
 
-      // Trzy drogi zapisu: lektor-właściciel, administrator oraz gość
-      // z linkiem — ale gość wyłącznie wtedy, gdy lektor włączył edycję
-      // i wyłącznie w polach treści. Bez tego ograniczenia kursant mógłby
-      // jednym zapisem nadać sobie uprawnienia, podmienić PIN albo przejąć
-      // dokument, zmieniając `teacherUid`.
+      // Cztery drogi zapisu: administrator, lektor-właściciel, przypisany kursant (studentId),
+      // oraz gość/kursant z linkiem (gdy lektor włączył allowStudentEdit).
+      // Kursant i gość mogą aktualizować wyłącznie pola treści i wersji.
       allow update: if isAdmin()
         || (isAuthenticated() && request.auth.uid == resource.data.teacherUid)
         || (
-             resource.data.allowStudentEdit == true
+             (resource.data.allowStudentEdit == true || (isAuthenticated() && 'studentId' in resource.data && request.auth.uid == resource.data.studentId))
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                   'contentHtml', 'contentText', 'updatedAt', 'version', 'lastEditedBy'
                 ])
@@ -664,6 +685,7 @@ service cloud.firestore {
 
       allow delete: if isAdmin();
     }
+
 
     // Indeks: kod PIN → identyfikator notatnika.
     //

@@ -3,6 +3,7 @@ import { AlertCircle, BookOpen, ChevronDown, KeyRound, ListChecks, Loader2, Spar
 import Markdown from 'react-markdown';
 import { LessonRecord } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 import { getApprovedItemsForLesson } from '../../services/studentContext';
 import { splitVocabularyLines } from '../../utils/vocabulary';
 import { firstSentences } from '../../utils/summary';
@@ -115,13 +116,15 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
           aiSentences: 'Sentence practice',
         };
 
+  const { user } = useAuth();
+  const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
   const summary = firstSentences(blocks.summary, 3);
   const items = vocabulary.map(parseVocabLine).filter((item) => item.word.length > 0);
   const hasAnything =
     Boolean(blocks.summary) ||
     items.length > 0 ||
     Boolean(blocks.corrections) ||
-    Boolean(blocks.homework);
+    (isTeacher && Boolean(blocks.homework));
 
   const headingClass =
     'text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-content-muted';
@@ -218,8 +221,8 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
         </section>
       )}
 
-      {/* BLOK 3: Zadania domowe (Homework — Cribro Habit) */}
-      {blocks.homework && (
+      {/* BLOK 3: Zadania z lekcji (Homework) — widoczne TYLKO dla lektora/admina jako robocze propozycje do wykorzystania w module Homework */}
+      {isTeacher && blocks.homework && (
         <section className="rounded-2xl bg-base-200/60 border border-amber-500/30 p-3.5 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -257,8 +260,8 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
         </section>
       )}
 
-      {/* BLOK 4: Następna lekcja */}
-      {blocks.nextLesson && (
+      {/* BLOK 4: Następna lekcja — widoczne TYLKO dla lektora/admina (notatki operacyjne na kolejną zajęcia) */}
+      {isTeacher && blocks.nextLesson && (
         <section className="rounded-2xl bg-yellow-950/15 border border-yellow-500/20 p-3.5 space-y-1.5">
           <div className="flex items-center gap-2">
             <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">

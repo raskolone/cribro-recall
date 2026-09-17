@@ -198,7 +198,109 @@ we dwoje na żywo.
 
 ---
 
+### 🚀 System Podpowiedzi (ModuleHelpButton) dla Modułów Lesson Planner i Presentation Studio (2026-09-17, runda 32)
+
+**1. Konfiguracja Przewodników Modułów (`config/moduleGuides.ts`):**
+- Nowy plik `config/moduleGuides.ts` definiuje interfejs `ModuleGuide` i słownik `MODULE_GUIDES`.
+- Dwa kompletne wpisy:
+  - `'lesson-planner'`: 4-krokowy przewodnik planowania blokowego, opis sumowania czasu, wskazówka o optymalnym rozkładzie 45-minutowej lekcji (5-10-25-5 min) i kolorowym pasku ostrzegawczym.
+  - `'presentation-studio'`: 4-krokowy przewodnik studia slajdów 16:9, opis generatora AI dual-pass, wskazówka o limicie 1 MB Firestore i kompresji Base64.
+
+**2. Komponent `ModuleHelpButton` (`components/common/ModuleHelpButton.tsx`):**
+- Okrągły przycisk `?` z ikoną `HelpCircle` i **pulsującym efektem ring** (`animate-ping`) widocznym po najechaniu kursorem.
+- Kliknięcie otwiera minimalistyczny modal z pełnym backdrop-blur:
+  - Nagłówek: tytuł modułu + badge (np. `Blokowy Konspekt`).
+  - Sekcja `summary` — opis modułu w jednym akapicie.
+  - Ponumerowane kroki (1–4) w ramkach z opisem każdego etapu.
+  - Blok wskazówki lektorskiej z ikoną `Lightbulb` (amber).
+  - Przycisk `Rozumiem, zamknij` oraz zamykanie przez ESC i kliknięcie w tło.
+- Blokowanie `document.body` scroll gdy modal jest otwarty — pełna dostępność (`role="dialog"`, `aria-modal`).
+- Zero zewnętrznych zależności npm.
+
+**3. Integracja w modułach:**
+- `components/planner/LessonPlannerStudio.tsx`: `<ModuleHelpButton guideId="lesson-planner" />` wstawiony obok badge statusu w nagłówku modułu.
+- `components/presentation/PresentationStudio.tsx`: `<ModuleHelpButton guideId="presentation-studio" />` wstawiony w górnym pasku akcji, za polem edycji tytułu prezentacji.
+
+**Weryfikacja:** `npx tsc --noEmit` — 0 błędów. `npm test` — 359/359 testów ✓.
+
+---
+
+### 🚀 FAZA 4: Spaced Repetition & Recall Engine — Centrum Powtórek Kursanta (2026-09-17, runda 31)
+
+**1. Typy danych (`types/recall.ts`):**
+- `RecallRating`: `'hard' | 'good' | 'easy'`.
+- `RecallHistoryEntry`: `{ date: string; grade: RecallRating }`.
+- `RecallCard`: `id`, `studentId`, `sourceLessonId?`, `term`, `translation`, `contextSentence?`, `phonetic?`, `intervalLevel` (0–5), `nextReviewDate` (YYYY-MM-DD), `reviewHistory`.
+- `DailyReviewSession`: `{ dueCards: RecallCard[]; totalDueCount: number }`.
+
+**2. Serwis Firestore + Algorytm SRS (`services/recallService.ts`):**
+- Ścieżka Firestore: `students/{studentId}/recall_cards/{cardId}`.
+- Mapa interwałów: `{ 0: 0d, 1: 1d, 2: 3d, 3: 7d, 4: 14d, 5: 30d }`.
+- **Algorytm oceny** (`calculateNextInterval`):
+  - `hard` → reset do poziomu 1 (powtórka jutro).
+  - `good` → +1 poziom (maks. 5).
+  - `easy` → +2 poziomy (maks. 5).
+- `getDueCardsForStudent`: query Firestore z `where('nextReviewDate', '<=', today)` + fallback do `localStorage`.
+- `getAllCardsForStudent`: pobiera cały stan bazy kartek do widoku statystyk.
+- `processCardReview`: przelicza interwał, aktualizuje historię, zapisuje przez `updateDoc` (fallback: `setDoc`).
+- `batchAddCardsFromLesson`: masowy import zwrotów przez `writeBatch` + synchronizacja `localStorage`.
+- Cały localStorage cache pod kluczem `cribro_recall_cards_v1_{studentId}`.
+
+**3. Komponent fiszki 3D (`components/recall/RecallFlashcard.tsx`):**
+- Obrót 3D przez CSS `perspective(1000px)` + `rotateY(180deg)` na kliknięcie lub spację.
+- **Awers**: zwrot EN, fonetyka, zdanie kontekstowe, przycisk TTS (`window.speechSynthesis`).
+- **Rewers**: polskie tłumaczenie, zdanie kontekstowe.
+- Trzy przyciski oceny: 🔴 Trudne / 🟡 Dobre / 🟢 Łatwe (z opisem interwału).
+- Klawiszowa obsługa (Spacja/Enter = odwróć).
+
+**4. Hub Sesji Powtórkowej (`components/recall/StudentRecallHub.tsx`):**
+- Nagłówek z etykietą „Faza 4" i powitaniem kursanta.
+- Licznik kart `Do powtórzenia dzisiaj: X`, pasek postępu procentowy.
+- Ekran ukończenia sesji: trofeum `Trophy`, rozkład ocen (hard/good/easy), przyciski powrotu.
+- Siatka statystyk bazy: 6 kolumn poziomów opanowania (0–5), z wyróżnieniem `Opanowane (lvl 5)`.
+
+**5. Integracja w AdminPanel:**
+- `components/admin/StudentOperationalHub.tsx`: dodano `onOpenRecall?: (studentId: string) => void` — przycisk „Rozpocznij dzisiejszy Recall" z ikoną `Brain` i fioletowym akcentem `indigo`.
+- `components/admin/AdminPanel.tsx`: nowa zakładka **„Spaced Repetition (Recall)"** z ikoną `Brain` w pasku profilu kursanta; wstrzyknięcie `<StudentRecallHub>` dla `activeTab === 'recall'`; przycisk wbudowany `onOpenRecall` przełącza zakładkę.
+
+**6. Firestore Rules:**
+- Dodano regułę dla `/students/{studentId}` i `/students/{studentId}/recall_cards/{cardId}`: dostęp dla `isAdmin()` lub `request.auth.uid == studentId`.
+
+**7. Testy jednostkowe (`tests/recallService.test.ts`):**
+- 5 nowych przypadków testowych: progi mapy interwałów, `addDaysToDate`, ocena `hard`, `good` i `easy` na różnych poziomach startowych.
+
+**Weryfikacja:** `npx tsc --noEmit` — 0 błędów. `npm test` — 359/359 testów ✓. `npm run build` — ✓ (6.12s).
+
+---
+
+### 🚀 FAZA 3: Lesson Planner 2.0 — Blokowy Konspekt Lekcji, Presentation Studio i Collaborative Scratchpad (2026-09-17, runda 30)
+
+**1. Typy danych (`types/planner.ts`, `types/presentation.ts`):**
+- `BlockType`: 7 typów (`warmup | recall | input | practice | speaking | feedback | homework`).
+- `LessonBlock`: `id`, `type`, `title`, `durationMinutes`, `content`, `linkedPresentationId?`.
+- `LessonScenario`: `id`, `teacherId`, `studentId`, `date`, `topic`, `mainGoal`, `blocks[]`, `totalDurationMinutes`, `status` (`draft` | `planned`), `createdAt`, `updatedAt`.
+- `Presentation`, `Slide`, `SlideElement` — pełny model danych Studio Slajdów.
+
+**2. Serwis Planera (`services/plannerService.ts`):**
+- `getDefaultScenarioTemplate`: predefiniowany konspekt 45 min (Warm-up 5 → Recall 10 → Speaking 25 → Feedback 5).
+- `saveLessonScenario` / `getLessonPlansForStudent` — CRUD Firestore pod `lessonScenarios/{scenarioId}`.
+- `localStorage` sync pod `cribro_lesson_planner_scenarios_v1`.
+
+**3. Presentation Studio (`components/presentation/PresentationStudio.tsx`, `services/presentationStudioService.ts`):**
+- Płótno slajdów 16:9, panel boczny z zakładkami (Slajdy, Szablony, Multimedia, Generator AI).
+- Generator AI dual-pass (`services/geminiSlideGenerator.ts`): przejście 1 — struktura, przejście 2 — treść każdego slajdu.
+- Kompresja grafik Base64 (`utils/presentationImageCompression.ts`) z limitem dokumentu Firestore (1 MB).
+
+**4. Collaborative Scratchpad (`components/scratchpad/StudentScratchpadScreen.tsx`):**
+- Naprawiony crash po stronie kursanta: blok `try/catch` w funkcji zapisu, obsługa `FirebaseError` permissions bez białego ekranu.
+- Firestore rules zaktualizowane o `allow update` dla kursanta na własnym dokumencie notatnika.
+
+**Weryfikacja:** `npx tsc --noEmit` — 0 błędów. `npm test` — 354/354 testów ✓. `npm run build` — ✓.
+
+---
+
 ### 🚀 Kursy Grupowe & Pary, Wielomodelowa Narada AI (Flash 3.8 + Recenzenci), Uproszczony Mailing i E-Learning w Notatniku (2026-09-16, runda 29)
+
 
 **1. Obsługa Kursów Grupowych, Par i Grup Firmowych (B2B):**
 - **Model danych & Kolekcja Firestore (`types.ts`, `services/groupService.ts`)**:

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import gsap from 'gsap';
 import { auth, db } from '../../firebase';
@@ -175,6 +175,9 @@ const Dashboard: React.FC = () => {
   // tego przełączenie się między kafelkami zerowałoby wybór za każdym razem.
   const [adminSelectedUserId, setAdminSelectedUserId] = useState<string | null>(restoredPanelState.adminSelectedUserId ?? null);
   const [adminActiveTab, setAdminActiveTab] = useState<string | null>(restoredPanelState.adminActiveTab ?? null);
+  const handleTabChange = useCallback((tab: string | null) => {
+    setAdminActiveTab((prev) => (prev === tab ? prev : tab));
+  }, []);
   const [adminLessonDraft, setAdminLessonDraft] = useState<LessonDraftProposal | null>(null);
   const [adminInitialScenario, setAdminInitialScenario] = useState<GeneratedLessonScenario | null>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(restoredPanelState.activeTaskId ?? null);
@@ -578,9 +581,7 @@ const Dashboard: React.FC = () => {
           onUserSelect={(id) => {
             setAdminSelectedUserId(id);
           }}
-          onTabChange={(tab) => {
-            setAdminActiveTab(tab);
-          }}
+          onTabChange={handleTabChange}
           onViewChange={handleNavigate}
         />
       );
@@ -613,9 +614,7 @@ const Dashboard: React.FC = () => {
             onUserSelect={(id) => {
               setAdminSelectedUserId(id);
             }}
-            onTabChange={(tab) => {
-              setAdminActiveTab(tab);
-            }}
+            onTabChange={handleTabChange}
             onViewChange={handleNavigate}
           />
         );

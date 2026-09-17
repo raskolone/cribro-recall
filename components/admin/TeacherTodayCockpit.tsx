@@ -99,6 +99,15 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
     unplannedCount: 0
   };
 
+  if (loading && !data) {
+    return (
+      <div className="w-full max-w-7xl mx-auto p-12 text-center space-y-3">
+        <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
+        <p className="text-sm font-bold text-text-hi">Wczytuję kokpit lektora…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6 animate-fadeIn pb-24">
       {/* ── Top Hero Greeting Banner ── */}
@@ -298,11 +307,11 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
                 <span>Rozkład lekcji (Dzisiaj i nadchodzące)</span>
               </h2>
               <span className="text-xs font-mono text-content-muted">
-                {data?.todayLessons.length || 0} dziś · {data?.upcomingLessons.length || 0} wkrótce
+                {data?.todayLessons?.length || 0} dziś · {data?.upcomingLessons?.length || 0} wkrótce
               </span>
             </div>
 
-            {data?.todayLessons.length === 0 && data?.upcomingLessons.length === 0 ? (
+            {(data?.todayLessons?.length || 0) === 0 && (data?.upcomingLessons?.length || 0) === 0 ? (
               <div className="p-8 rounded-2xl bg-base-200/40 border border-line-strong text-center space-y-2">
                 <Calendar size={28} className="text-content-muted mx-auto opacity-50" />
                 <p className="text-sm font-bold text-text-hi">Brak lekcji w kalendarzu na najbliższe dni</p>
@@ -313,7 +322,7 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Lekcje na dziś */}
-                {data?.todayLessons
+                {(data?.todayLessons || [])
                   .filter(l => !searchQuery || l.studentName.toLowerCase().includes(searchQuery.toLowerCase()) || l.topic.toLowerCase().includes(searchQuery.toLowerCase()))
                   .map(lesson => (
                     <div
@@ -373,7 +382,7 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
                   ))}
 
                 {/* Nadchodzące lekcje (kolejne dni) */}
-                {data?.upcomingLessons
+                {(data?.upcomingLessons || [])
                   .filter(l => !searchQuery || l.studentName.toLowerCase().includes(searchQuery.toLowerCase()) || l.topic.toLowerCase().includes(searchQuery.toLowerCase()))
                   .map(lesson => (
                     <div
@@ -439,18 +448,18 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
                 <span>Lekcje wymagające zamknięcia (Action Required)</span>
               </h2>
               <span className="text-xs font-mono text-amber-400">
-                {data?.requiringCloseout.length || 0} oczekujących
+                {data?.requiringCloseout?.length || 0} oczekujących
               </span>
             </div>
 
-            {data?.requiringCloseout.length === 0 ? (
+            {(data?.requiringCloseout?.length || 0) === 0 ? (
               <div className="p-6 rounded-2xl bg-emerald-500/[0.04] border border-emerald-500/20 flex items-center gap-3 text-emerald-400 text-xs">
                 <CheckCircle2 size={18} className="shrink-0" />
                 <span>Wszystkie odbyte lekcje są zamknięte, a materiały i zadania opublikowane dla kursantów. Doskonała robota!</span>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {data?.requiringCloseout
+                {(data?.requiringCloseout || [])
                   .filter(l => !searchQuery || l.studentName.toLowerCase().includes(searchQuery.toLowerCase()) || l.topic.toLowerCase().includes(searchQuery.toLowerCase()))
                   .map(item => (
                     <div
@@ -510,17 +519,17 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
                 <span>Nadesłane prace domowe do weryfikacji</span>
               </h2>
               <span className="text-xs font-mono text-sky-400">
-                {data?.pendingHomeworkReviews.length || 0} prac
+                {data?.pendingHomeworkReviews?.length || 0} prac
               </span>
             </div>
 
-            {data?.pendingHomeworkReviews.length === 0 ? (
+            {(data?.pendingHomeworkReviews?.length || 0) === 0 ? (
               <div className="p-6 rounded-2xl bg-base-200/40 border border-line-strong text-center text-xs text-content-muted">
                 Brak oczekujących prac domowych do sprawdzenia.
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {data?.pendingHomeworkReviews
+                {(data?.pendingHomeworkReviews || [])
                   .filter(h => !searchQuery || h.studentName.toLowerCase().includes(searchQuery.toLowerCase()) || h.title.toLowerCase().includes(searchQuery.toLowerCase()))
                   .map(task => (
                     <div
@@ -573,17 +582,17 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
                 <span>Aktywni kursanci bez przygotowanego planu</span>
               </h2>
               <span className="text-xs font-mono text-purple-400">
-                {data?.studentsWithoutPlan.length || 0} kursantów
+                {data?.studentsWithoutPlan?.length || 0} kursantów
               </span>
             </div>
 
-            {data?.studentsWithoutPlan.length === 0 ? (
+            {(data?.studentsWithoutPlan?.length || 0) === 0 ? (
               <div className="p-6 rounded-2xl bg-base-200/40 border border-line-strong text-center text-xs text-content-muted">
                 Wszyscy aktywni kursanci mają zaplanowane lekcje.
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-                {data?.studentsWithoutPlan
+                {(data?.studentsWithoutPlan || [])
                   .filter(s => !searchQuery || s.studentName.toLowerCase().includes(searchQuery.toLowerCase()) || (s.company || '').toLowerCase().includes(searchQuery.toLowerCase()))
                   .map(st => (
                     <div

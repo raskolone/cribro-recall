@@ -25,7 +25,9 @@ import {
   ChevronDown,
   RefreshCw,
   ExternalLink,
-  Plus
+  Plus,
+  Brain,
+  RotateCcw
 } from 'lucide-react';
 import {
   StudentOperationalHubData,
@@ -49,6 +51,7 @@ interface StudentOperationalHubProps {
   onOpenPlanner: (studentId: string, lessonId?: string) => void;
   onOpenHistory: (studentId: string, lessonId?: string) => void;
   onOpenHomeworkModal?: (studentId: string) => void;
+  onOpenRecall?: (studentId: string) => void;
   onEditContact?: () => void;
   onEditLevel?: () => void;
 }
@@ -61,6 +64,7 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
   onOpenPlanner,
   onOpenHistory,
   onOpenHomeworkModal,
+  onOpenRecall,
   onEditContact,
   onEditLevel,
 }) => {
@@ -123,7 +127,7 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
         <h2 className="text-lg font-bold text-text-hi">Nie znaleziono kursanta</h2>
         <button
           onClick={onBack}
-          className="px-4 py-2 rounded-xl bg-base-200 border border-line-strong text-xs font-bold"
+          className="px-4 py-2 rounded-xl bg-base-200 border border-line-strong text-xs font-bold cursor-pointer"
         >
           Wróć do listy
         </button>
@@ -222,6 +226,17 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
               <span>Prowadź lekcję</span>
             </button>
 
+            {onOpenRecall && (
+              <button
+                onClick={() => onOpenRecall(studentId)}
+                className="px-4 py-3 rounded-2xl border border-indigo-500/40 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-indigo-200 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-indigo-500/10"
+                title="Przejdź do sesji Spaced Repetition kursanta"
+              >
+                <Brain size={16} className="text-indigo-400" />
+                <span>Rozpocznij dzisiejszy Recall</span>
+              </button>
+            )}
+
             {onOpenHomeworkModal && (
               <button
                 onClick={() => onOpenHomeworkModal(studentId)}
@@ -309,7 +324,7 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
           }`}
         >
           <Calendar size={15} />
-          <span>Ostatnie lekcje & tematy ({hubData?.lastLessons.length || 0})</span>
+          <span>Ostatnie lekcje & tematy ({hubData?.lastLessons?.length || 0})</span>
         </button>
 
         <button
@@ -321,7 +336,7 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
           }`}
         >
           <ClipboardList size={15} />
-          <span>Prace domowe & Recall ({hubData?.currentTasks.length || 0})</span>
+          <span>Prace domowe & Recall ({hubData?.currentTasks?.length || 0})</span>
         </button>
 
         <button
@@ -347,7 +362,7 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
               teacherName={teacherVocative}
               scope={briefingScope}
               onScopeChange={setBriefingScope}
-              lessonRecords={hubData?.lastLessons}
+              lessonRecords={hubData?.lastLessons || []}
               onOpenHistory={() => setActiveTab('lessons')}
             />
           </div>
@@ -372,13 +387,13 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
             </button>
           </div>
 
-          {hubData?.lastLessons.length === 0 ? (
+          {(hubData?.lastLessons?.length || 0) === 0 ? (
             <div className="p-8 rounded-2xl bg-base-200/40 border border-line-strong text-center text-xs text-content-muted">
               Brak zapisanych lekcji dla tego kursanta.
             </div>
           ) : (
             <div className="space-y-4">
-              {hubData?.lastLessons.map((lesson, idx) => {
+              {(hubData?.lastLessons || []).map((lesson, idx) => {
                 const blocks = extractLessonBlocks(lesson);
                 return (
                   <div
@@ -462,13 +477,13 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
                 )}
               </div>
 
-              {hubData?.currentTasks.length === 0 ? (
+              {(hubData?.currentTasks?.length || 0) === 0 ? (
                 <div className="p-8 rounded-2xl bg-base-200/40 border border-line-strong text-center text-xs text-content-muted">
                   Brak przypisanych zadań domowych dla tego kursanta.
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {hubData?.currentTasks.map(task => (
+                  {(hubData?.currentTasks || []).map(task => (
                     <div
                       key={task.id}
                       className="p-4 rounded-2xl bg-base-200/60 border border-line-strong flex items-center justify-between gap-4"
@@ -519,15 +534,15 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-content-muted font-semibold">Słówka w bazie</span>
-                    <span className="font-mono font-bold text-text-hi">{hubData?.recallStats.totalWords || 0}</span>
+                    <span className="font-mono font-bold text-text-hi">{hubData?.recallStats?.totalWords || 0}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-emerald-400 font-semibold">Opanowane</span>
-                    <span className="font-mono font-bold text-emerald-300">{hubData?.recallStats.masteredWords || 0}</span>
+                    <span className="font-mono font-bold text-emerald-300">{hubData?.recallStats?.masteredWords || 0}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-amber-400 font-semibold">W trakcie powtórek</span>
-                    <span className="font-mono font-bold text-amber-300">{hubData?.recallStats.learningWords || 0}</span>
+                    <span className="font-mono font-bold text-amber-300">{hubData?.recallStats?.learningWords || 0}</span>
                   </div>
                 </div>
 
