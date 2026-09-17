@@ -108,10 +108,101 @@ export interface User {
   lessonType?: 'Individual' | 'Group';
   recordType?: 'Kursant' | 'Grupa';
   statusWspolpracy?: 'Aktywny' | 'Nieaktywny';
+  /** Cel edukacyjny / zawodowy kursanta */
+  goals?: string;
+  /** Branża lub kontekst zawodowy */
+  industry?: string;
+  /** Format zajęć (indywidualne, para, grupa) */
+  learningFormat?: 'individual' | 'pair' | 'group';
   /** Trwałe obserwacje i profil kursanta z transkrypcji lekcji (Etap B workflow). */
   studentInsights?: string;
   /** Przypisane grupy, do których należy kursant */
   groupIds?: string[];
+}
+
+/** Cykl życia i status operacyjny lekcji w workflow lektora */
+export type LessonWorkflowStatus =
+  | 'idea'
+  | 'draft'
+  | 'scheduled'
+  | 'in_progress'
+  | 'completed'
+  | 'closed'
+  | 'archived';
+
+export interface ScheduledLessonCard {
+  id: string;
+  studentId: string;
+  studentName: string;
+  date: string;
+  time?: string;
+  topic: string;
+  level?: string;
+  workflowStatus: LessonWorkflowStatus;
+  hasScenario: boolean;
+  scenarioId?: string;
+  hasActiveScratchpad?: boolean;
+  activeScratchpadId?: string;
+}
+
+export interface CloseoutLessonCard {
+  id: string;
+  studentId: string;
+  studentName: string;
+  date: string;
+  topic: string;
+  source?: string;
+  hasSummary: boolean;
+  hasHomework: boolean;
+  hasVocabulary: boolean;
+  createdAt: string;
+}
+
+export interface ReviewHomeworkCard {
+  id: string;
+  studentId: string;
+  studentName: string;
+  title: string;
+  submittedAt?: string;
+  score?: number;
+  maxScore?: number;
+  type?: string;
+}
+
+export interface StudentWithoutPlanCard {
+  studentId: string;
+  studentName: string;
+  level?: string;
+  company?: string;
+  lastLessonDate?: string;
+  lastLessonTopic?: string;
+}
+
+export interface TeacherCockpitData {
+  todayLessons: ScheduledLessonCard[];
+  upcomingLessons: ScheduledLessonCard[];
+  requiringCloseout: CloseoutLessonCard[];
+  pendingHomeworkReviews: ReviewHomeworkCard[];
+  studentsWithoutPlan: StudentWithoutPlanCard[];
+  stats: {
+    todayCount: number;
+    closeoutCount: number;
+    reviewCount: number;
+    unplannedCount: number;
+  };
+}
+
+export interface StudentOperationalHubData {
+  student: User & { id: string };
+  lastLessons: LessonRecord[];
+  recentTopics: Array<{ date: string; topic: string; lessonId: string }>;
+  activeWeaknesses: Array<{ id: string; name: string; frequency?: number; source?: string }>;
+  currentTasks: Array<{ id: string; title: string; status: string; dueDate?: string; score?: number }>;
+  recallStats: {
+    totalWords: number;
+    masteredWords: number;
+    learningWords: number;
+  };
 }
 
 export interface StudentGroup {
@@ -445,6 +536,8 @@ export interface LessonRecord {
   structuredBlocks?: LessonBlocks;
   /** Status weryfikacji lekcji: 'confirmed' (widoczna dla ucznia) | 'pending_confirmation' (wymaga zatwierdzenia przez lektora) | 'rejected' (odrzucona) */
   status?: 'confirmed' | 'pending_confirmation' | 'rejected';
+  /** Status operacyjny w cyklu życia workflow lektora */
+  workflowStatus?: LessonWorkflowStatus;
   /** Flaga oznaczająca lekcję oczekującą na manualny przegląd lektora */
   isPendingConfirmation?: boolean;
   /** Powód wymagania potwierdzenia (np. 'Brak daty spotkania w Notion', 'Wybrakowane podsumowanie') */

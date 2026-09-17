@@ -63,6 +63,8 @@ import TeacherLessonHistoryView from './TeacherLessonHistoryView';
 import { StandaloneStudentDatabaseScreen } from './StandaloneStudentDatabaseScreen';
 import TeacherAssistant from './TeacherAssistant';
 import { LessonDraftProposal } from '../../services/teacherAssistant';
+import TeacherTodayCockpit from './TeacherTodayCockpit';
+import StudentOperationalHub from './StudentOperationalHub';
 import GSAPModuleTransition from '../ui/GSAPModuleTransition';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
@@ -278,8 +280,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     setSelectedUser(user);
     // 'context' zniknął z tej listy razem z zakładką — kontekst przed lekcją
     // jest kafelkiem pulpitu z własnym wyborem kursanta (PreLessonContextModal).
-    const validStudentTabs = ['profile', 'history', 'homework', 'vocabulary', 'tests', 'stats'];
-    const nextTab = targetTab || (activeTab && validStudentTabs.includes(activeTab) ? activeTab : 'profile');
+    const validStudentTabs = ['hub', 'profile', 'history', 'homework', 'vocabulary', 'tests', 'stats'];
+    const nextTab = targetTab || (activeTab && validStudentTabs.includes(activeTab) ? activeTab : 'hub');
     setActiveTab(nextTab);
     if (onUserSelect) onUserSelect(user.id);
     fetchUserLogsAndStats(user.id);
@@ -1986,13 +1988,20 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           )}
         </div>
 
-        {/* 1. Główne 3 kafelki lektora (Kursanci, Historia lekcji, Notatnik) - symetryczne, wyśrodkowane */}
+        {/* 1. Główne 4 kafelki lektora (Dzisiaj/Cockpit, Kursanci, Historia lekcji, Notatnik) */}
         <div
           ref={mainMenuRef}
           data-coach="tour-teacher-main"
-          className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4 max-w-5xl mx-auto w-full justify-center"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 max-w-5xl mx-auto w-full justify-center"
         >
           {[
+            {
+              id: 'today',
+              title: 'Dzisiaj (Cockpit)',
+              badge: 'Centrum dnia',
+              desc: 'Operacyjny widok dnia — rozkład zajęć, zadania do sprawdzenia, lekcje do domknięcia i szybkie planowanie',
+              icon: Calendar,
+            },
             {
               id: 'students',
               title: 'Kursanci',
@@ -2016,7 +2025,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             }
           ].map((tile) => {
             const IconComp = tile.icon;
-            const isActive = activeTab === tile.id || (tile.id === 'lesson-history' && (activeTab === 'lesson-history' || activeTab === 'history'));
+            const isActive = activeTab === tile.id || (tile.id === 'today' && activeTab === 'cockpit') || (tile.id === 'lesson-history' && (activeTab === 'lesson-history' || activeTab === 'history'));
             const hasNotification = Boolean((tile as any).hasNotification);
             const notificationCount = Number((tile as any).notificationCount || 0);
 
@@ -2197,7 +2206,47 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       {/* GŁÓWNY WIDOK: MODUŁ MAILING / PLANER / PREZENTACJA / KURSANCI / HISTORIA LEKCJI / ZADANIA / SŁOWNICTWO / STATYSTYKI LUB STRONA GŁÓWNA (CHAT) */}
       <div className="w-full max-w-[1640px] mx-auto px-3 sm:px-6 lg:px-8">
         <GSAPModuleTransition activeKey={activeTab || 'home'}>
-          {activeTab === 'students' ? (
+          {activeTab === 'today' || activeTab === 'cockpit' ? (
+            <div className="space-y-4 animate-in fade-in duration-200 mt-2">
+              <TeacherTodayCockpit
+                currentUser={currentUser}
+                students={users}
+                lessons={allTeacherLessons}
+                onSelectStudent={(sId, targetTab) => {
+                  const u = users.find((x) => x.id === sId);
+                  if (u) handleSelectUser(u as UserWithId, targetTab || 'hub');
+                }}
+                onOpenPlanner={(sId) => {
+                  if (sId) {
+                    const u = users.find((x) => x.id === sId);
+                    if (u) setSelectedUser(u as UserWithId);
+                  }
+                  handleTileClick('lesson-planner');
+                }}
+                onOpenHistory={(sId, lessonId) => {
+                  if (sId) {
+                    const u = users.find((x) => x.id === sId);
+                    if (u) handleSelectUser(u as UserWithId, 'history');
+                  } else {
+                    handleTileClick('lesson-history');
+                  }
+                }}
+                onOpenHomeworkReview={(taskId, sId) => {
+                  if (sId) {
+                    const u = users.find((x) => x.id === sId);
+                    if (u) handleSelectUser(u as UserWithId, 'homework');
+                  }
+                  setActiveTab('homework');
+                }}
+                onOpenScratchpad={(sId) => {
+                  openScratchpadTab(sId ? `sp_${sId}` : null);
+                }}
+                onOpenTopicDatabase={() => {
+                  handleTileClick('topics');
+                }}
+              />
+            </div>
+          ) : activeTab === 'students' ? (
         <div className="space-y-4 animate-in fade-in duration-200 mt-2">
           <StandaloneStudentDatabaseScreen
             initialUsers={users}
@@ -2598,6 +2647,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           {/* PASEK ZAKŁADEK NA SAMEJ GÓRZE PROFILU KURSANTA */}
           <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-base-200/90 border border-line-strong backdrop-blur-md overflow-x-auto no-scrollbar shadow-inner select-none">
             {[
+              { id: 'hub', label: 'Centrum kursanta (Hub)', icon: Target },
               { id: 'profile', label: 'Profil & Dane', icon: UserIcon },
               { id: 'history', label: 'Historia lekcji', icon: Clock, count: lessonRecords.length },
               { id: 'homework', label: 'Praca domowa', icon: BookOpen, count: specialTasks.length },
@@ -2641,6 +2691,34 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
           {/* ZAWARTOŚĆ ZAKŁADKI KURSANTA */}
           <div ref={tabContentRef} className="pt-2">
+
+          {activeTab === 'hub' && (
+            <StudentOperationalHub
+              studentId={selectedUser.id}
+              cachedStudent={selectedUser}
+              currentUser={currentUser}
+              onBack={() => setSelectedUser(null)}
+              onOpenPlanner={(_sId, _lessonId) => {
+                handleSelectUser(selectedUser as UserWithId, 'lesson-planner');
+                setActiveTab('lesson-planner');
+              }}
+              onOpenHistory={(_sId, _lessonId) => {
+                setActiveTab('history');
+              }}
+              onOpenHomeworkModal={(_sId) => {
+                setActiveTab('homework');
+                setShowSpecialTaskModal(true);
+              }}
+              onEditContact={() => {
+                setActiveTab('profile');
+                setProfileSection('basic');
+              }}
+              onEditLevel={() => {
+                setActiveTab('profile');
+                setProfileSection('level');
+              }}
+            />
+          )}
 
           {activeTab === 'stats' && (
             <div className="space-y-5">

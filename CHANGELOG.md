@@ -2125,6 +2125,41 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 
 ### 4. Rejestr Zmian (Changelog)
 
+### 🚀 2026-09-17 — Faza 1: Cockpit Lektora „Dzisiaj” + Zintegrowana Karta Kursanta (Student Operational Hub)
+
+#### 1. Pulpit Lektora „Dzisiaj” (Teacher Daily Cockpit)
+- **Problem**: Lektor po wejściu do aplikacji musiał przeklikiwać wiele osobnych widoków, aby ustalić, z kim ma dziś lekcje, które lekcje z transkrypcji/Notion wymagają domknięcia i publikacji, czyje prace domowe czekają na sprawdzenie oraz którzy kursanci nie mają zaplanowanych kolejnych spotkań.
+- **Rozwiązanie**:
+  - Wdrożono komponent `TeacherTodayCockpit.tsx` zasilany serwisem `teacherCockpitService.ts` (`fetchTeacherCockpitData`).
+  - **4 kluczowe metryki KPI**: *Lekcje na dziś*, *Lekcje do domknięcia*, *Prace domowe do sprawdzenia*, *Kursanci bez planu*.
+  - **Rozkład dnia**: Lista zaplanowanych lekcji z natychmiastowym przyciskiem *„Prowadź zajęcia”* (otwarcie notatnika Live Scratchpad w nowej karcie), *„Planer”* oraz wglądem w profil ucznia.
+  - **Kolejka do domknięcia**: Natychmiastowa identyfikacja lekcji oczekujących na zatwierdzenie, transkrypcji Sift oraz lekcji bez wprowadzonych 4 bloków z wizualnymi tagami stanu (*Podsumowanie*, *Praca domowa*, *Słownictwo*).
+  - **Prace domowe**: Podgląd nadesłanych prac (`status: 'submitted'`) z natychmiastowym przejściem do weryfikacji oceny AI i feedbacku lektora.
+  - **Kursanci bez planu**: Lista aktywnych uczniów, którzy nie mają zaplanowanej lekcji w nadchodzących 7 dniach, z 1-klikowym wejściem do generowania scenariusza lekcji.
+
+#### 2. Zintegrowana Karta Kursanta (Student Operational Hub)
+- **Problem**: Kontekst kursanta był rozproszony po wielu zakładkach (profil, historia lekcji, zadania domowe, słownictwo, statystyki), co wydłużało czas przygotowania do zajęć.
+- **Rozwiązanie**:
+  - Wdrożono `StudentOperationalHub.tsx` (`fetchStudentHubContext`), agregujący pełen obraz ucznia w jednym miejscu z czasem rekonstrukcji kontekstu <60 sekund.
+  - **Główny pasek CTA**: *„✨ Przygotuj kolejną lekcję”* (bezpośrednie przejście do `LessonPlannerStudio` z załadowanym kontekstem ucznia), *„Prowadź lekcję”* (Live Scratchpad) oraz *„Zadaj pracę domową”*.
+  - **Nagłówek operacyjny**: Poziom CEFR, cel nauki, branża, format nauki, status współpracy, hasło startowe do aplikacji z opcją kopiowania i wysyłką zaproszenia e-mail.
+  - **4 dedykowane zakładki operacyjne**:
+    1. *Briefing & Odprawa AI*: Pamięć słabych punktów `weaknesses`, automatyczny brief przedlekcyjny AI z rekomendowanymi tematami i zagadnieniami gramatycznymi.
+    2. *Oś czasu tematów & 4 bloków*: Chronologiczny podgląd ostatnich 10 tematów z podziałem na *Słownictwo*, *Gramatykę*, *Wymowę* i *Zadania*.
+    3. *Zadania domowe & Recall*: Status nadesłanych prac, wskaźniki ukończenia oraz statystyki bazy fiszek SRS.
+    4. *Cele & Profil*: Szczegółowe dane kontaktowe, uprawnienia i preferencje nauki.
+
+#### 3. Rozszerzenie Modeli Danych i Architektury Typów
+- **Zmiany w [types.ts](types.ts)**:
+  - Dodano `LessonWorkflowStatus` (`'idea' | 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'closed' | 'archived'`).
+  - Rozszerzono model `User` o pola `goals`, `industry`, `learningFormat`.
+  - Rozszerzono `LessonRecord` o `workflowStatus`.
+  - Zdefiniowano interfejsy `TeacherCockpitData`, `ScheduledLessonCard`, `CloseoutLessonCard`, `ReviewHomeworkCard`, `StudentWithoutPlanCard`, `StudentOperationalHubData`.
+
+#### 4. Weryfikacja i Testy Jednostkowe
+- Utworzono pakiet testów w [tests/teacherCockpit.test.ts](tests/teacherCockpit.test.ts) testujący funkcje wyznaczania statusu cyklu życia lekcji `deriveLessonWorkflowStatus` oraz formatowania dat `getIsoDateOnly`.
+- Wszystkie 345 testów jednostkowych przechodzi pomyślnie (`npm test`), build produkcyjny (`npm run build`) oraz typowanie TypeScript (`npx tsc --noEmit`) bez błędów.
+
 ### 🚀 2026-09-17 — Czat Lektora: Masowy Import Kursantów (Admin-only), Web Scraping & Research, Renderer HTML i Generator PDF A4, Poprawa Powitań i Nazwisk
 
 #### 1. Masowy Import Kursantów z Innych Platform przez Czat (Tylko Administrator)
