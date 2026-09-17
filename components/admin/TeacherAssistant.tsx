@@ -47,6 +47,7 @@ import {
 import { LessonAttachment } from '../../types';
 import { AIAssistantIcon } from '../ui/AIAssistantIcon';
 import { useAuth } from '../../context/AuthContext';
+import { toPolishVocative } from '../../utils/polishVocative';
 import Markdown from 'react-markdown';
 
 const STORAGE_KEY = 'cribro_teacher_assistant_sessions_v1';
@@ -131,12 +132,10 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const floatingFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Pobranie imienia lektora do powitania
+  // Pobranie imienia lektora do powitania w wołaczu (np. "Macieju", "Anno")
   const teacherFirstName = useMemo(() => {
-    if (currentUser?.firstName) return currentUser.firstName;
-    if (currentUser?.displayName) return currentUser.displayName.split(' ')[0];
-    if (currentUser?.username) return currentUser.username;
-    return 'Maciej';
+    const raw = currentUser?.firstName || currentUser?.displayName || currentUser?.name || currentUser?.username || 'Maciej';
+    return toPolishVocative(raw) || 'Macieju';
   }, [currentUser]);
 
   // Zapis sesji w LocalStorage

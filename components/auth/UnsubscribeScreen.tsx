@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Mail, CheckCircle2, AlertTriangle, Loader2, ArrowLeft, RotateCcw } from 'lucide-react';
 import BrandLogo from '../ui/BrandLogo';
 import ConstellationBackground from '../ui/ConstellationBackground';
+import { toPolishVocative } from '../../utils/polishVocative';
 
 export const UnsubscribeScreen: React.FC = () => {
   const [phase, setPhase] = useState<'loading' | 'unsubscribed' | 'resubscribed' | 'error'>('loading');
@@ -109,7 +110,7 @@ export const UnsubscribeScreen: React.FC = () => {
                   Powiadomienia e-mail wyłączone
                 </h2>
                 <p className="text-sm text-content-muted mt-2 leading-relaxed">
-                  {userName ? `Cześć ${userName}, ` : ''}dla Twojego konta{' '}
+                  {userName ? `Cześć ${toPolishVocative(userName)}, ` : ''}dla Twojego konta{' '}
                   {userEmail && <strong className="text-white font-mono">({userEmail})</strong>}{' '}
                   wyłączyliśmy e-maile z powiadomieniami o nowych pracach domowych oraz przypomnieniach.
                 </p>

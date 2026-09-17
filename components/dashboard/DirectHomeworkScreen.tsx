@@ -20,6 +20,7 @@ import { HomeworkType } from '../../types';
 import HomeworkExercise from './HomeworkExercise';
 import HomeworkWarmupScrambler from './HomeworkWarmupScrambler';
 import ConstellationBackground from '../ui/ConstellationBackground';
+import { toPolishVocative } from '../../utils/polishVocative';
 
 interface DirectTaskSentence {
   id: string;
@@ -64,6 +65,11 @@ export const DirectHomeworkScreen: React.FC = () => {
   const [answers, setAnswers] = useState<Record<number, any>>({});
   const [finalScore, setFinalScore] = useState<number | null>(null);
   const [evalResults, setEvalResults] = useState<any[]>([]);
+
+  const studentVocative = useMemo(
+    () => (task?.studentName ? toPolishVocative(task.studentName) || task.studentName : 'Kursancie'),
+    [task?.studentName]
+  );
 
   // Wyciągnij token z query (?token=...) lub ze ścieżki (/hw/:token lub /homework-direct/:token)
   useEffect(() => {
@@ -282,7 +288,7 @@ export const DirectHomeworkScreen: React.FC = () => {
           </div>
 
           <p className="text-[15px] text-content-muted leading-relaxed">
-            Cześć, <strong className="text-white">{task.studentName}</strong>! Ta praca domowa została już wcześniej oddana i zapisana w Twoim profilu kursanta.
+            Cześć, <strong className="text-white">{studentVocative}</strong>! Ta praca domowa została już wcześniej oddana i zapisana w Twoim profilu kursanta.
           </p>
 
           {task.submittedAt && (
@@ -495,7 +501,7 @@ export const DirectHomeworkScreen: React.FC = () => {
           </div>
           <div className="space-y-1">
             <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              Cześć, {task.studentName}! 👋
+              Cześć, {studentVocative}! 👋
             </h2>
             <p className="text-sm text-emerald-400/90 font-medium">
               Gratulacje za podjęcie wyzwania! 🎯
@@ -576,7 +582,7 @@ export const DirectHomeworkScreen: React.FC = () => {
       <header className="space-y-2">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-primary">
-            Cześć, {task.studentName}! 👋
+            Cześć, {studentVocative}! 👋
           </span>
           {task.accessExpiresAt && (
             <span className="text-[11px] text-content-muted flex items-center gap-1">
