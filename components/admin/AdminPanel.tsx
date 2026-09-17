@@ -1553,6 +1553,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [bulkSummaryError, setBulkSummaryError] = useState('');
   const [viewingRecord, setViewingRecord] = useState<LessonRecord | null>(null);
   const [specialTaskInitialLesson, setSpecialTaskInitialLesson] = useState<LessonRecord | null>(null);
+  const [specialTaskInitialWords, setSpecialTaskInitialWords] = useState<string[]>([]);
+  const [specialTaskInitialTopic, setSpecialTaskInitialTopic] = useState<string>('');
   const [isSavingLessonRecord, setIsSavingLessonRecord] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -2503,6 +2505,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       console.error('Błąd otwierania prezentacji:', e);
                       showToast('Nie udało się załadować scenariusza do prezentacji.');
                     }
+                  }}
+                  onCreateHomework={(data) => {
+                    if (data.student) {
+                      setSelectedUser(data.student);
+                    }
+                    setSpecialTaskInitialTopic(data.topic);
+                    setSpecialTaskInitialWords(data.words);
+                    setSpecialTaskInitialLesson(null);
+                    setShowSpecialTaskModal(true);
                   }}
                 />
               </>
@@ -4307,13 +4318,19 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         <TeacherSpecialTaskModal
           user={selectedUser}
           initialLesson={specialTaskInitialLesson || undefined}
+          initialWords={specialTaskInitialWords.length > 0 ? specialTaskInitialWords : undefined}
+          initialTopic={specialTaskInitialTopic || undefined}
           onClose={() => {
             setShowSpecialTaskModal(false);
             setSpecialTaskInitialLesson(null);
+            setSpecialTaskInitialWords([]);
+            setSpecialTaskInitialTopic('');
           }}
           onTaskCreated={() => {
             fetchUserLogsAndStats(selectedUser.id);
             setSpecialTaskInitialLesson(null);
+            setSpecialTaskInitialWords([]);
+            setSpecialTaskInitialTopic('');
           }}
         />
       )}

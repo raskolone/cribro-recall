@@ -1647,6 +1647,43 @@ Weryfikacja:
 - `npm test` — 320/320 testów zaliczonych pomyślnie.
 - `npm run build` — kod 0, poprawnie zbudowano bundle produkcyjny i skrypty serwera.
 
+---
+
+2026-09-17 — Antigravity / Gemini (runda 22)
+
+Zadanie:
+1. Przebudowa Planera Lekcji AI (`LessonPlannerStudio.tsx`):
+   - Wyszukiwalny wybór kursanta / grupy z bazy `users` z automatycznym zaczytywaniem poziomu CEFR z profilu kursanta (`brief.level = user.level`).
+   - Układ scenariusza w 6 rozwijanych blokach akordeonowych ze zrzutu ekranu (Warm-up, Grammar Review, Main Topic z podsekcjami Topic & Material, Lead-in, Thought-Provoking Questions i Teacher's Notes, Language Focus, Practice Enclosure, Wrap-up & Homework).
+   - W pełni edytowalne elementy (inline edycja tekstu i Teacher's Notes, dodawanie, usuwanie, zmiana kolejności góra/dół).
+   - Sugerowana praca domowa jako konkretny obszar do przećwiczenia z 1-klikowym przejściem do tworzenia pracy domowej ze zdań (`TeacherSpecialTaskModal`).
+2. Podział wejścia do Planera Lekcji na 2 opcje:
+   - 📝 Nowy scenariusz lekcji (Planer AI).
+   - 📺 Nowa prezentacja & slajdy (Centrum Prezentacji & Slajdów AI jak w notatniku).
+3. Integracja Prezentacji z profilem kursanta:
+   - Generator slajdów AI, gotowe wzorce, szybki wklejacz i własny slajd/audio.
+   - Sekcja „Przypisane Prezentacje kursanta” (`getSavedPresentationsList(studentId)`), automatycznie widoczne w notatniku ucznia (`sp_<uid>`).
+
+Zrobione:
+- `services/lessonPlannerMethod.ts`:
+  - Doprecyzowanie `buildScenarioPrompt` z 6 blokami, w tym sekcją Wrap-up & Homework z sugerowanym obszarem do przećwiczenia.
+  - Dodanie helperów `extractHomeworkTask` oraz `extractVocabularyList`.
+- `components/admin/LessonPlannerStudio.tsx`:
+  - Wdrożenie inteligentnego selektora kursanta z bazy `users` z wyszukiwarką, awatarami i auto-wypełnianiem poziomu CEFR z profilu ucznia.
+  - Dwu-opcyjne menu główne: *Nowy scenariusz lekcji* vs *Nowa prezentacja & slajdy*.
+  - Rozwijana architektura 6 bloków akordeonowych z pełną edycją, Budką Suflera z 1-klikowym kopiowaniem, ćwiczeniami live z transmisją do scratchpada ucznia oraz przyciskiem *„📝 Stwórz pracę domową ze zdań”*.
+  - Centrum Prezentacji & Slajdów AI zintegrowane z notatnikiem (`updateScratchpadPresentation`), generatorem slajdów AI i listą przypisanych prezentacji kursanta (`getSavedPresentationsList`).
+- `components/admin/AdminPanel.tsx`:
+  - Podłączenie callbacku `onCreateHomework` z otwarciem `TeacherSpecialTaskModal` z przekazaniem wygenerowanego słownictwa i tematu.
+- `tests/lessonPlannerStudio.test.ts`:
+  - Pakiet testów jednostkowych dla nowych funkcji planera i ekstrakcji zadań.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów typowania.
+- `npm test` — 354/354 testów zaliczonych pomyślnie.
+- `npm run build` — kod 0, poprawnie zbudowano bundle produkcyjny.
+
+
 
 
 

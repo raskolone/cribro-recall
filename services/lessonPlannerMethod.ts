@@ -259,7 +259,7 @@ ${brief.grammarTopic?.trim() ? '4' : '3'}. Language Focus (12 min)
    - Delayed Correction: 3–5 typowych błędów powiązanych z tematem (kind: "correction", błędna wersja → poprawna).
    - Key Vocabulary: DOKŁADNIE 5 pozycji kluczowych (kind: "vocab", format: "english phrase - polskie tłumaczenie").
 
-${brief.grammarTopic?.trim() ? '5' : '4'}. Practice Enclosure (10 min) — ĆWICZENIA INTERAKTYWNE LIVE (Kahoot-style do wyświetlenia kursantowi):
+${brief.grammarTopic?.trim() ? '6' : '5'}. Practice Enclosure (10 min) — ĆWICZENIA INTERAKTYWNE LIVE (Kahoot-style do wyświetlenia kursantowi):
    - Przygotuj DOKŁADNIE 3–4 interaktywne zadania (kind: "interactive").
    - Każde zadanie wyposaż w obiekt "exercise" z polami:
      * "id": unikalny id (np. "quiz-1")
@@ -269,11 +269,9 @@ ${brief.grammarTopic?.trim() ? '5' : '4'}. Practice Enclosure (10 min) — ĆWIC
      * "correctAnswer": poprawna odpowiedź (indeks opcji 0..3 lub poprawne zdanie)
      * "explanation": zwięzłe wyjaśnienie po polsku dlaczego ta odpowiedź jest poprawna
 
-${brief.grammarTopic?.trim() ? '6' : '5'}. Extra Tasks — DOKŁADNIE 4 różne zadania utrwalające:
-   - Task 1 — Translation PL→EN: 4 naturalne zdania po polsku.
-   - Task 2 — Correct the Mistake: 4 zdania z jednym zamierzonym błędem.
-   - Task 3 — Finish the Response: 4 sytuacje / mini-dialogi do dokończenia.
-   - Task 4 — Build a Natural Sentence: 4 zestawy po 2–3 elementy do połączenia.
+${brief.grammarTopic?.trim() ? '7' : '6'}. Wrap-up & Homework (5 min) — Podsumowanie i Sugerowana Praca Domowa:
+   - 1 punkt podsumowujący główne wnioski z lekcji (kind: "text").
+   - DOKŁADNIE 1 konkretny obszar do przećwiczenia jako praca domowa (kind: "task", np. "Zadanie pisemne / ułożenie 5 zdań: Argumentacja i negocjowanie z użyciem nowych zwrotów i konstrukcji gramatycznych z lekcji.") wraz z zwięzłą wskazówką metodyczną w polu "notes".
 
 Zwróć WYŁĄCZNIE poprawny JSON o strukturze:
 {
@@ -292,7 +290,7 @@ Zwróć WYŁĄCZNIE poprawny JSON o strukturze:
           "id": "warmup-q1",
           "kind": "question",
           "text": "What did you usually check first at work today?",
-          "notes": "• Cel: wejście w temat dnia.\n• Scaffolding: First I checked... / Usually I start with...\n• Follow-up: Did anything surprise you today?"
+          "notes": "• Cel: wejście w temat dnia.\\n• Scaffolding: First I checked... / Usually I start with...\\n• Follow-up: Did anything surprise you today?"
         }
       ]
     },
@@ -310,7 +308,25 @@ Zwróć WYŁĄCZNIE poprawny JSON o strukturze:
           "id": "main-q1",
           "kind": "question",
           "text": "What do you do at work?",
-          "notes": "• Cel: wejście w temat przez znaną informację o stanowisku.\n• Scaffolding: I work as a... / I am responsible for...\n• Follow-up: What is one important task in your job?"
+          "notes": "• Cel: wejście w temat przez znaną informację o stanowisku.\\n• Scaffolding: I work as a... / I am responsible for...\\n• Follow-up: What is one important task in your job?"
+        }
+      ]
+    },
+    {
+      "id": "homework",
+      "title": "6. Wrap-up & Homework (5 min)",
+      "minutes": "5 min",
+      "items": [
+        {
+          "id": "hw-summary",
+          "kind": "text",
+          "text": "Podsumowanie kluczowych wniosków i zastosowania zwrotów w praktyce."
+        },
+        {
+          "id": "hw-task",
+          "kind": "task",
+          "text": "Sugerowana praca domowa: Ułożenie 5 zdań z nowo poznanym słownictwem w kontekście realnych sytuacji z pracy.",
+          "notes": "Obszar do przećwiczenia: Utrwalenie struktur gramatycznych oraz słownictwa z sekcji Language Focus."
         }
       ]
     }
@@ -384,3 +400,43 @@ Zwróć WYŁĄCZNIE poprawny JSON zawierający zmodyfikowane elementy lub dodane
   "comment": "Jedno–dwa zdania po polsku: co zmieniłeś i dlaczego"
 }
 `.trim();
+
+/**
+ * Wyciąga sugerowaną pracę domową z planu lekcji.
+ */
+export const extractHomeworkTask = (
+  plan: LessonPlan
+): { taskText: string; taskNotes?: string } | null => {
+  for (const section of plan.sections) {
+    const isHwSec = section.id.toLowerCase().includes('homework') ||
+      section.id.toLowerCase().includes('wrap') ||
+      section.title.toLowerCase().includes('homework') ||
+      section.title.toLowerCase().includes('praca domowa');
+    
+    for (const item of section.items) {
+      if (item.kind === 'task' || (isHwSec && (item.text.toLowerCase().includes('praca domowa') || item.text.toLowerCase().includes('homework')))) {
+        return {
+          taskText: item.text,
+          taskNotes: item.notes || section.methodologicalTip,
+        };
+      }
+    }
+  }
+  return null;
+};
+
+/**
+ * Wyciąga listę słówek z sekcji Language Focus / słownictwa.
+ */
+export const extractVocabularyList = (plan: LessonPlan): string[] => {
+  const result: string[] = [];
+  for (const section of plan.sections) {
+    for (const item of section.items) {
+      if (item.kind === 'vocab' && item.text.trim()) {
+        result.push(item.text.trim());
+      }
+    }
+  }
+  return result;
+};
+

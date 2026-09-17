@@ -2125,6 +2125,52 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 
 ### 4. Rejestr Zmian (Changelog)
 
+### 🚀 2026-09-17 — Przebudowa Planera Lekcji AI: Wybór Kursanta z Listy, Auto-zaczytywanie Poziomu CEFR, Architektura 6 Bloków ze Zrzutów, 1-klikowe Zadanie Pracy Domowej ze Zdań i Centrum Prezentacji z Przypisanymi Prezentacjami
+
+#### 1. Wybór Kursanta / Grupy z Bazy i Automatyczne Zaczytywanie Poziomu CEFR
+- **Problem**: W kroku 1 planera lekcji (`LessonPlannerStudio.tsx`) pole *Kursant / Grupa* było zwykłym polem tekstowym, a lektor musiał ręcznie wpisywać imię i ustalać poziom CEFR.
+- **Rozwiązanie**:
+  - Wdrożono wyszukiwalny selektor kursanta z bazy `users` z podglądem imienia, nazwiska (`formatStudentDisplayName`), adresu e-mail oraz odznaki poziomu CEFR.
+  - Wybór kursanta automatycznie:
+    1. Ustawia imię kursanta w `brief.audience`,
+    2. Zaczytuje poziom zaawansowania z profilu kursanta (`user.level`) do `brief.level` i generatora slajdów,
+    3. Synchronizuje historię lekcji z profilu ucznia do briefu,
+    4. Umożliwia wpisanie niestandardowej grupy lub ręczną modyfikację poziomu w razie potrzeby.
+
+#### 2. Dwu-opcyjne Menu Główne Planera: Nowy Scenariusz vs Nowa Prezentacja
+- **Nowa funkcjonalność**: Na wejściu do Planera Lekcji lektor ma do wyboru 2 główne tryby pracy:
+  1. 📝 **Nowy scenariusz lekcji** — kreator scenariusza krok po kroku (Ustalenia -> Temat -> Scenariusz w 6 blokach),
+  2. 📺 **Nowa prezentacja & slajdy** — Centrum Prezentacji & Slajdów AI zintegrowane z notatnikiem i bazą slajdów.
+
+#### 3. Architektura 6 Bloków Akordeonowych wg Szablonu
+- **Problem**: Scenariusz wymagał pełnej edytowalności wszystkich elementów, jasnego podziału na bloki ze zrzutów ekranu oraz przejrzystego interfejsu metodycznego.
+- **Rozwiązanie**:
+  - Wdrożono rozwijaną strukturę blokową ze zrzutu ekranu:
+    1. *Karta wstępna lekcji*: Format, Cel, Materiał źródłowy,
+    2. *Karta materiałów audio*: Odtwarzacz MP3/WAV, usuwanie i dodawanie nagrań do lekcji,
+    3. *Revision and Warm Up (10 min)*: 5 pytań check-in, revision translation, older lesson refresh,
+    4. *Grammar Review (10 min)*: Opcjonalne reguły gramatyczne z przykładami,
+    5. *Main Topic & Discussion (28–30 min)*: Sub-bloki *Topic and Material*, *Lead-in* oraz *Thought-Provoking Questions (Safety Bank)* z rozwijaną Budką Suflera (*Teacher's Notes*: • Cel, • Scaffolding z 1-klikowym kopiowaniem, • Follow-up),
+    6. *Language Focus (12 min)*: Delayed Correction i Key Vocabulary z tłumaczeniami,
+    7. *Practice Enclosure (10 min)*: Ćwiczenia interaktywne na żywo (Quiz jednokrotnego wyboru, Sentence Scramble, Polowanie na błąd) z przyciskiem *„🚀 Uruchom dla kursanta”* prosto w notatniku `sp_<uid>`,
+    8. *Wrap-up & Homework (5 min)*: Podsumowanie wniosków oraz **Sugerowana praca domowa — konkretny obszar do przećwiczenia**.
+  - Każdy element szablonu jest w 100% edytowalny (edycja tekstu i Teacher's Notes, dodawanie nowych punktów, usuwanie, zmiana kolejności góra/dół, zaznaczanie checkboxem, zaznaczanie do modyfikacji AI w czacie asystenta).
+
+#### 4. 1-Klikowe Przejście do Tworzenia Pracy Domowej ze Zdań
+- **Nowa funkcjonalność**: W bloku pracy domowej oraz w górnym pasku scenariusza dodano przycisk **„📝 Stwórz pracę domową ze zdań”**.
+- Kliknięcie natychmiast otwiera generator zadań domowych (`TeacherSpecialTaskModal`) dla wybranego kursanta, z automatycznie przekazanym tematem lekcji, wytycznymi metodycznymi z planu oraz słownictwem z sekcji Language Focus (`extractVocabularyList`).
+
+#### 5. Centrum Prezentacji i Slajdów AI z Przypisanymi Prezentacjami Kursanta
+- **Nowa funkcjonalność**:
+  - Kreator slajdów w planerze oferuje ten sam zaawansowany silnik co w notatniku (`ScratchpadLivePresentationModal`): Generator Slajdów AI, 7 interaktywnych wzorców, Szybki Wklejacz, Własny Slajd/Audio.
+  - Dodano dedykowaną zakładkę **„📂 Przypisane Prezentacje dla [Kursant]”**:
+    - Prezentacje zapisywane w planerze lub generowane dla ucznia otrzymują powiązanie `studentId` i automatycznie pojawiają się w notatniku kursanta (`sp_<uid>`) w sekcji gotowych prezentacji.
+    - Lektor może 1 kliknięciem otworzyć prezentację w pełnym trybie prezentera (`LessonPresentationView`), uruchomić transmisję slajdów na żywo do notatnika ucznia lub zarządzać bazą prezentacji.
+
+#### 6. Weryfikacja i Testy
+- Utworzono testy w [tests/lessonPlannerStudio.test.ts](tests/lessonPlannerStudio.test.ts) testujące formatowanie nazw kursantów, generowanie promptów z 6 blokami, ekstrakcję prac domowych (`extractHomeworkTask`) i słownictwa (`extractVocabularyList`).
+- Komplet 354 testów jednostkowych przechodzi pomyślnie (`npm test`), build produkcyjny (`npm run build`) oraz `npx tsc --noEmit` bez żadnych błędów.
+
 ### 🚀 2026-09-17 — Faza 1: Cockpit Lektora „Dzisiaj” + Zintegrowana Karta Kursanta (Student Operational Hub)
 
 #### 1. Pulpit Lektora „Dzisiaj” (Teacher Daily Cockpit)
