@@ -149,6 +149,7 @@ interface LessonPlannerStudioProps {
     scenarioContent?: string;
   }) => void;
   onOpenInPresentation?: (scenario: GeneratedLessonScenario) => void;
+  initialScenario?: GeneratedLessonScenario | null;
 }
 
 const KIND_LABEL: Record<PlanItemKind, string> = {
@@ -232,6 +233,7 @@ export const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
   recentLessons = [],
   onInsertLessonRecord,
   onOpenInPresentation,
+  initialScenario,
 }) => {
   const [step, setStep] = useState<'brief' | 'topics' | 'plan'>('brief');
 
@@ -539,22 +541,52 @@ export const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
   };
 
   const handleLoadScenarioFromLibrary = (scenario: GeneratedLessonScenario) => {
+    let loadedPlan: LessonPlan | null = null;
     if (scenario.planJson) {
       try {
         const parsed = JSON.parse(scenario.planJson);
-        setPlan(parsed);
-      } catch {
-        // Fallback to basic structure
-        setPlan({
-          title: scenario.title,
-          summary: scenario.topic,
+        if (parsed && (parsed.sections?.length > 0 || parsed.title)) {
+          loadedPlan = parsed;
+        }
+      } catch (err) {
+        console.warn('Could not parse scenario planJson:', err);
+      }
+    }
+
+    if (!loadedPlan) {
+      if (scenario.stages && scenario.stages.length > 0) {
+        loadedPlan = {
+          title: scenario.title || scenario.topic || 'Scenariusz lekcji',
+          summary: scenario.topic || scenario.title || '',
+          format: scenario.format || `indywidualna lekcja, ${scenario.lessonDuration || '60 min'}, poziom ${scenario.targetLevel || 'B2'}`,
+          goal: scenario.goal || scenario.topic || '',
+          sourceMaterialDescription: scenario.sourceMaterialDescription || 'Wygenerowano z Asystenta AI',
+          sections: scenario.stages.map((st, sIdx) => ({
+            id: st.id || `sec_${sIdx + 1}`,
+            title: st.title,
+            duration: st.duration,
+            items: [
+              {
+                id: `item_${sIdx + 1}_1`,
+                kind: 'text' as const,
+                text: st.body,
+              },
+            ],
+          })),
+        };
+      } else {
+        loadedPlan = {
+          title: scenario.title || scenario.topic || 'Scenariusz lekcji',
+          summary: scenario.topic || '',
           format: scenario.format,
           goal: scenario.goal,
           sourceMaterialDescription: scenario.sourceMaterialDescription,
           sections: [],
-        });
+        };
       }
     }
+
+    setPlan(loadedPlan);
     setSavedScenarioId(scenario.id);
     if (scenario.attachments && scenario.attachments.length > 0) {
       setAttachments(scenario.attachments);
@@ -564,6 +596,12 @@ export const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
     setIsLibraryOpen(false);
     setStep('plan');
   };
+
+  useEffect(() => {
+    if (initialScenario) {
+      handleLoadScenarioFromLibrary(initialScenario);
+    }
+  }, [initialScenario]);
 
   const handleDeleteScenario = async (scenarioId: string, e: React.MouseEvent) => {
     e.stopPropagation();

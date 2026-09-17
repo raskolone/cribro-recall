@@ -71,7 +71,7 @@ interface StudentToolBarProps {
 const StudentToolBar: React.FC<StudentToolBarProps> = ({ tools, openId, onToggle }) => (
   <nav
     aria-label="Narzędzia kursanta"
-    className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3"
+    className="grid grid-cols-3 gap-2 sm:gap-3.5"
   >
     {tools.map((tool) => {
       const isOpen = openId === tool.id;
@@ -88,38 +88,36 @@ const StudentToolBar: React.FC<StudentToolBarProps> = ({ tools, openId, onToggle
           className={[
             // Wysokość, nie padding: kafelki mają być równe niezależnie od
             // tego, czy narzędzie ma podpis pod nazwą, czy nie.
-            'glass-tile min-h-[6.5rem] p-3.5 rounded-2xl text-left flex-col justify-between gap-2 cursor-pointer',
+            'glass-tile relative min-h-[6.5rem] sm:min-h-[7.25rem] p-2.5 sm:p-3.5 rounded-2xl text-left flex flex-col justify-between gap-1.5 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]',
             tool.desktopOnly ? 'hidden md:flex' : 'flex',
-            isOpen ? 'is-open' : '',
+            isOpen ? 'is-open ring-2 ring-primary/40' : '',
           ].join(' ')}
         >
-          <span
-            className={`shrink-0 ${isOpen ? 'text-primary' : 'text-content-muted'} transition-colors`}
-          >
-            {tool.icon}
-          </span>
-
-          <span className="min-w-0">
+          <div className="flex items-center justify-between w-full">
             <span
-              className={`block text-[13px] sm:text-sm font-bold leading-tight ${
+              className={`shrink-0 ${isOpen ? 'text-primary' : 'text-primary/80'} transition-colors`}
+            >
+              {tool.icon}
+            </span>
+            {tool.highlight && !isOpen && (
+              <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(114,240,180,0.5)]" />
+            )}
+          </div>
+
+          <span className="min-w-0 w-full mt-auto">
+            <span
+              className={`block text-[11px] sm:text-[13px] font-bold leading-snug tracking-tight ${
                 isOpen ? 'text-primary' : 'text-text-hi'
               }`}
             >
               {tool.label}
             </span>
             {tool.meta && (
-              <span className="block text-[11px] font-mono text-content-muted mt-0.5 truncate">
+              <span className="block text-[9px] sm:text-[11px] font-normal text-text-mute mt-0.5 sm:mt-1 leading-snug break-words">
                 {tool.meta}
               </span>
             )}
           </span>
-
-          {/* Kolor jako sygnał stanu: kropka mówi „tu coś na ciebie czeka".
-              Liczba w kółku mówiłaby to samo, tylko drobniej i na telefonie
-              nieczytelnie. */}
-          {tool.highlight && !isOpen && (
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-primary" />
-          )}
         </button>
       );
     })}

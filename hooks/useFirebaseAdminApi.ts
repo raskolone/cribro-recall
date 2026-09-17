@@ -30,7 +30,12 @@ export function useFirebaseAdminApi() {
     return handleResponse(res);
   };
 
-  const createUser = async (email: string, password: string, role: string) => {
+  const createUser = async (
+    email: string,
+    password: string,
+    role: string,
+    extraData?: Record<string, any>
+  ) => {
     const token = await getIdToken();
     const res = await fetch('/api/admin-users/users', {
       method: 'POST',
@@ -38,7 +43,7 @@ export function useFirebaseAdminApi() {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, password, role }),
+      body: JSON.stringify({ email, password, role, ...(extraData || {}) }),
     });
     return handleResponse(res);
   };
@@ -91,5 +96,27 @@ export function useFirebaseAdminApi() {
     return handleResponse(res);
   };
 
-  return { listUsers, createUser, deleteUser, changeUserRole, changeUserPassword, changeUserEmail };
+  const bulkImportUsers = async (students: Array<{
+    firstName?: string;
+    lastName?: string;
+    username?: string;
+    email?: string;
+    password?: string;
+    level?: string;
+    company?: string;
+    notes?: string;
+  }>) => {
+    const token = await getIdToken();
+    const res = await fetch('/api/admin-users/bulk-import', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ students }),
+    });
+    return handleResponse(res);
+  };
+
+  return { listUsers, createUser, deleteUser, changeUserRole, changeUserPassword, changeUserEmail, bulkImportUsers };
 }

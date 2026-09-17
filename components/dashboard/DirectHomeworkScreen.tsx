@@ -21,6 +21,7 @@ import HomeworkExercise from './HomeworkExercise';
 import HomeworkWarmupScrambler from './HomeworkWarmupScrambler';
 import ConstellationBackground from '../ui/ConstellationBackground';
 import { toPolishVocative } from '../../utils/polishVocative';
+import { formatStudentDisplayName, isRawId } from '../../utils/studentFormat';
 
 interface DirectTaskSentence {
   id: string;
@@ -67,7 +68,10 @@ export const DirectHomeworkScreen: React.FC = () => {
   const [evalResults, setEvalResults] = useState<any[]>([]);
 
   const studentVocative = useMemo(
-    () => (task?.studentName ? toPolishVocative(task.studentName) || task.studentName : 'Kursancie'),
+    () => {
+      const cleanName = formatStudentDisplayName(null, task?.studentName);
+      return cleanName && cleanName !== 'Kursant' ? toPolishVocative(cleanName) || cleanName : 'Kursancie';
+    },
     [task?.studentName]
   );
 
@@ -384,7 +388,7 @@ export const DirectHomeworkScreen: React.FC = () => {
               Sukces
             </span>
             <h2 className="text-2xl sm:text-3xl font-black text-white">
-              Świetna robota, {task.studentName}!
+              Świetna robota{formatStudentDisplayName(null, task.studentName) !== 'Kursant' ? `, ${formatStudentDisplayName(null, task.studentName)}` : ''}!
             </h2>
             <p className="text-[15px] text-content-muted max-w-lg mx-auto leading-relaxed">
               Twoja praca domowa została pomyślnie przesłana i zapisana w Twoim profilu kursanta CRIBRO ENGLISH.

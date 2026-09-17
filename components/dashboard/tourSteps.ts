@@ -34,34 +34,20 @@ export const buildStudentTourSteps = (): CoachStep[] => [
     preferredPlacement: 'bottom',
   },
   {
-    coachId: 'tour-homework',
-    group: 'Od lektora',
-    title: 'Moje zadania',
+    coachId: 'tour-resources',
+    group: 'Od lektora i własne',
+    title: 'Moje zasoby',
     description:
-      'Prace domowe przypisane przez lektora. Kropka na kafelku znaczy, że czeka coś nowego albo że Twoja praca została oceniona.',
-    tip: 'Odpowiedzi sprawdzają się od razu — nie musisz czekać na lekcję.',
-  },
-  {
-    coachId: 'tour-tests',
-    group: 'Od lektora',
-    title: 'Moje testy',
-    description:
-      'Testy sprawdzające ułożone z materiału z Twoich lekcji. Znajdziesz tu też wyniki poprzednich podejść.',
-  },
-  {
-    coachId: 'tour-flashcards',
-    group: 'Twoje słownictwo',
-    title: 'Moje słownictwo',
-    description:
-      'Zestawy słówek powstają automatycznie z każdej lekcji. Możesz się ich uczyć fiszkami albo przećwiczyć je w zdaniach.',
-    tip: 'Własne zestawy też możesz tu tworzyć — nikt poza Tobą ich nie widzi.',
+      'Wszystkie Twoje zadania domowe, testy sprawdzające oraz zestawy słownictwa i fiszki zebrane w jednym wygodnym miejscu.',
+    tip: 'Kropka na kafelku oznacza nową lub ocenioną pracę domową.',
   },
   {
     coachId: 'tour-history',
-    group: 'Twoje lekcje',
-    title: 'Wcześniejsze lekcje',
+    group: 'Twoje postępy',
+    title: 'Historia',
     description:
-      'Notatki z odbytych zajęć: o czym rozmawialiście, jakie słowa padły i co było do poprawy.',
+      'Kompletny zapis Twojej nauki: podsumowania wcześniejszych lekcji z notatkami lektora oraz historia zrealizowanych sesji ćwiczeń.',
+    tip: 'Możesz wracać do materiałów z dowolnej wcześniejszej lekcji.',
   },
   {
     coachId: 'tour-scratchpad',

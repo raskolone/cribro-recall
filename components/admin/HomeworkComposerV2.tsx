@@ -7,7 +7,7 @@ import { LessonRecord, User } from '../../types';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { getAllUsers } from '../../services/userService';
 import { isStudentVisibleLesson } from '../../utils/lessonBlocks';
-import { cleanVocabularyTopic } from '../../utils/vocabulary';
+import { cleanVocabularyTopic, splitVocabularyLines } from '../../utils/vocabulary';
 import {
   EXERCISE_TYPES_V2,
   ExerciseContractV2,
@@ -41,10 +41,9 @@ const TYPE_LABELS: Record<ExerciseTypeV2, string> = {
   gap_from_context: 'Uzupełnij',
 };
 
-const studentLabel = (student: User): string => {
-  const name = `${student.firstName || ''} ${student.lastName || ''}`.trim();
-  return name || student.username || student.email || student.id;
-};
+import { formatStudentDisplayName } from '../../utils/studentFormat';
+
+const studentLabel = (student: User): string => formatStudentDisplayName(student);
 
 const todayPlusDays = (days: number): string => {
   const date = new Date();
@@ -188,11 +187,26 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
       const topic = sourceLabel ? cleanVocabularyTopic(sourceLabel.topic) || sourceLabel.topic : '';
       const title = topic ? `Praca domowa: ${topic}` : 'Praca domowa';
 
+      const resolvedStudentName = student ? studentLabel(student) : 'Kursant';
       const result = await assignHomeworkSetV2({
         exercises: sendable,
         studentUids: [studentId],
+        studentNames: { [studentId]: resolvedStudentName },
+        studentEmails: student?.email ? { [studentId]: student.email } : undefined,
+        studentUsernames: student?.username ? { [studentId]: student.username } : undefined,
         title,
         dueDate,
+      });
+
+      const selectedLessons = lessons.filter((l) => selectedLessonIds.includes(l.id));
+      const lessonTopics = selectedLessons
+        .map((l) => cleanVocabularyTopic(l.topic) || l.topic)
+        .filter(Boolean);
+      const vocabLines: string[] = [];
+      selectedLessons.forEach((l) => {
+        if (l.vocabularyText) {
+          vocabLines.push(...splitVocabularyLines(l.vocabularyText));
+        }
       });
 
       // Wysyłkę maila potwierdza lektor w tym samym oknie co w v1.
@@ -206,6 +220,8 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
         title,
         dueDate,
         sentences: sendable,
+        lessonTopics,
+        vocabularySample: vocabLines.slice(0, 10),
       });
       setIsEmailModalOpen(true);
       setExercises([]);

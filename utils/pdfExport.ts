@@ -217,6 +217,178 @@ export const exportScratchpadToPDF = async (title: string, contentHtml: string):
 };
 
 /**
+ * Eksport dowolnego dokumentu / raportu / planu HTML wygenerowanego przez AI do PDF A4.
+ */
+export const exportHtmlToPDF = async (contentHtml: string, title?: string): Promise<boolean> => {
+  const safeTitle = title || 'Dokument CRIBRO';
+
+  const container = document.createElement('div');
+  container.className = 'cribro-html-pdf-export-container';
+  container.style.position = 'fixed';
+  container.style.left = '-9999px';
+  container.style.top = '0';
+  container.style.width = '794px'; // A4 @ 96 DPI
+  container.style.padding = '44px 52px';
+  container.style.backgroundColor = '#ffffff';
+  container.style.color = '#0f172a';
+  container.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  container.style.fontSize = '14px';
+  container.style.lineHeight = '1.65';
+  container.style.boxSizing = 'border-box';
+
+  const tempDoc = document.createElement('div');
+  tempDoc.innerHTML = contentHtml || '<p>(Brak treści)</p>';
+
+  container.innerHTML = `
+    <style>
+      .cribro-html-pdf-export-container * {
+        box-sizing: border-box;
+      }
+      .cribro-html-pdf-export-container h1,
+      .cribro-html-pdf-export-container h2,
+      .cribro-html-pdf-export-container h3,
+      .cribro-html-pdf-export-container h4 {
+        color: #0f172a;
+        font-family: inherit;
+        page-break-after: avoid;
+        break-after: avoid;
+      }
+      .cribro-html-pdf-export-container h1 {
+        font-size: 22px;
+        font-weight: 800;
+        margin: 0 0 12px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #0d9488;
+        color: #0f172a;
+      }
+      .cribro-html-pdf-export-container h2 {
+        font-size: 17px;
+        font-weight: 700;
+        margin: 20px 0 8px;
+        color: #0f172a;
+      }
+      .cribro-html-pdf-export-container h3 {
+        font-size: 14.5px;
+        font-weight: 700;
+        margin: 14px 0 6px;
+      }
+      .cribro-html-pdf-export-container p {
+        margin: 6px 0;
+      }
+      .cribro-html-pdf-export-container ul, .cribro-html-pdf-export-container ol {
+        margin: 6px 0;
+        padding-left: 22px;
+      }
+      .cribro-html-pdf-export-container li {
+        margin: 3px 0;
+      }
+      .cribro-html-pdf-export-container table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 14px 0;
+        page-break-inside: avoid;
+      }
+      .cribro-html-pdf-export-container th {
+        background-color: #f1f5f9;
+        font-weight: 700;
+        text-align: left;
+        border: 1px solid #cbd5e1;
+        padding: 7px 10px;
+        font-size: 13px;
+      }
+      .cribro-html-pdf-export-container td {
+        border: 1px solid #cbd5e1;
+        padding: 7px 10px;
+        font-size: 13px;
+      }
+      .cribro-html-pdf-export-container tr:nth-child(even) td {
+        background-color: #f8fafc;
+      }
+      .cribro-html-pdf-export-container blockquote {
+        margin: 12px 0;
+        padding: 6px 14px;
+        border-left: 3px solid #0d9488;
+        color: #334155;
+        background: #f8fafc;
+        border-radius: 0 4px 4px 0;
+      }
+      .cribro-html-pdf-export-container code {
+        background: #f1f5f9;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 12.5px;
+      }
+      .cribro-html-pdf-export-container pre {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        padding: 10px;
+        border-radius: 6px;
+        font-family: monospace;
+        font-size: 12px;
+        overflow-x: auto;
+        white-space: pre-wrap;
+      }
+      .cribro-html-pdf-export-container hr {
+        border: none;
+        border-top: 1px solid #e2e8f0;
+        margin: 16px 0;
+      }
+      .cribro-html-pdf-export-container .card {
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 12px;
+        margin: 10px 0;
+        background: #ffffff;
+      }
+    </style>
+    <div style="margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #0d9488; padding-bottom: 8px;">
+      <div>
+        <div style="font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: #0d9488; margin-bottom: 3px;">
+          CRIBRO ENGLISH • DOKUMENT & RAPORT
+        </div>
+        <h1 style="margin: 0; padding: 0; border: none; font-size: 20px; font-weight: 800; color: #0f172a;">
+          ${safeTitle}
+        </h1>
+      </div>
+      <div style="text-align: right; font-size: 11px; color: #64748b;">
+        <div>${new Date().toLocaleDateString('pl-PL')}</div>
+        <div style="font-weight: 600; color: #0d9488;">CRIBRO Workspace</div>
+      </div>
+    </div>
+    <div>${tempDoc.innerHTML}</div>
+  `;
+
+  document.body.appendChild(container);
+
+  const opt = {
+    margin: [10, 10, 10, 10] as [number, number, number, number],
+    filename: `${safeTitle.replace(/[/\\?%*:|"<>]/g, '_').replace(/\s+/g, '_')}.pdf`,
+    image: { type: 'jpeg' as const, quality: 0.98 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      scrollY: 0,
+    },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+  };
+
+  try {
+    await html2pdf().set(opt).from(container).save();
+    return true;
+  } catch (err) {
+    console.error('[PDF Export] Błąd eksportu dokumentu HTML do PDF:', err);
+    throw err;
+  } finally {
+    if (container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
+  }
+};
+
+/**
  * Eksport treści notatnika do pliku `.doc` — zwykły HTML z nagłówkiem MS
  * Office, bez żadnej integracji API. Word otwiera taki plik bezpośrednio;
  * Google Docs otwiera go po wgraniu na Dysk ("Otwórz za pomocą → Dokumenty

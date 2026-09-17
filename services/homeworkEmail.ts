@@ -71,16 +71,16 @@ export function buildHomeworkConfirmationEmail(params: HomeworkConfirmationEmail
     : `Nowa praca domowa: ${cleanTitle}`;
 
   const instructionsHtml = instructions
-    ? `<div style="margin:16px 0 0;background:#f0fdf4;border-left:4px solid #16a34a;padding:12px 16px;border-radius:0 8px 8px 0;">
-         <p style="margin:0;font-size:12px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.05em;">Wskazówki od lektora:</p>
-         <p style="margin:4px 0 0;color:#14532d;font-size:14px;line-height:1.5;">${escapeHtml(instructions)}</p>
+    ? `<div style="margin:16px 0 0;background:#f8fafc;border-left:4px solid #3b82f6;padding:12px 16px;border-radius:0 8px 8px 0;">
+         <p style="margin:0;font-size:12px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.05em;">Wskazówki ode mnie:</p>
+         <p style="margin:4px 0 0;color:#1e3a8a;font-size:14px;line-height:1.5;">${escapeHtml(instructions)}</p>
        </div>`
     : '';
 
   const customNoteHtml = customNote
-    ? `<div style="margin:16px 0 0;background:#fefce8;border-left:4px solid #eab308;padding:12px 16px;border-radius:0 8px 8px 0;">
-         <p style="margin:0;font-size:12px;font-weight:700;color:#854d0e;text-transform:uppercase;letter-spacing:0.05em;">Wiadomość od lektora:</p>
-         <p style="margin:4px 0 0;color:#713f12;font-size:14px;line-height:1.5;">${escapeHtml(customNote)}</p>
+    ? `<div style="margin:0 0 20px;background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #0d9488;padding:16px 18px;border-radius:0 10px 10px 0;">
+         <p style="margin:0;font-size:11px;font-weight:700;color:#0f766e;text-transform:uppercase;letter-spacing:0.06em;">Wiadomość ode mnie:</p>
+         <p style="margin:6px 0 0;color:#134e4a;font-size:15px;line-height:1.6;font-weight:500;">${escapeHtml(customNote)}</p>
        </div>`
     : '';
 
@@ -192,21 +192,22 @@ export function buildHomeworkConfirmationEmail(params: HomeworkConfirmationEmail
             <span style="font-size:11px;font-weight:600;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;padding:3px 8px;border-radius:999px;">NOWA PRACA DOMOWA</span>
           </div>
 
-          <h1 style="margin:0 0 14px;font-size:22px;line-height:1.3;color:#0f172a;font-weight:800;">
+          <h1 style="margin:0 0 16px;font-size:23px;line-height:1.3;color:#0f172a;font-weight:800;">
             ${escapeHtml(greeting)}
           </h1>
 
-          <p style="margin:0;color:#334155;font-size:15px;line-height:1.65;">
-            Przygotowałem dla Ciebie nową pracę domową:
-            <strong style="color:#0f172a;display:block;margin-top:6px;font-size:17px;font-weight:700;">${escapeHtml(cleanTitle)}</strong>
-          </p>
+          ${customNoteHtml}
 
-          <p style="margin:12px 0 0;color:#475569;font-size:14px;line-height:1.6;">
+          <div style="margin:16px 0 0;padding:14px 18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+            <p style="margin:0;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Praca domowa:</p>
+            <strong style="color:#0f172a;display:block;margin-top:4px;font-size:16px;font-weight:700;line-height:1.4;">${escapeHtml(cleanTitle)}</strong>
+          </div>
+
+          <p style="margin:14px 0 0;color:#475569;font-size:14px;line-height:1.6;">
             Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś ${verbZnalazl} na nie 5–10 minut przed naszym kolejnym spotkaniem — to świetny sposób, żeby utrwalić to, nad czym pracowaliśmy na lekcji.
           </p>
 
           ${instructionsHtml}
-          ${customNoteHtml}
           ${metaHtml}
 
           <!-- Przycisk CTA -->
@@ -226,6 +227,7 @@ export function buildHomeworkConfirmationEmail(params: HomeworkConfirmationEmail
   const textLines = [
     greeting,
     '',
+    customNote ? `${customNote}\n` : null,
     `Przygotowałem dla Ciebie nową pracę domową: „${cleanTitle}".`,
     `Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś ${verbZnalazl} na nie 5-10 minut przed naszą kolejną lekcją — to świetny sposób na utrwalenie materiału.`,
     due ? `Termin wykonania: ${due}` : null,

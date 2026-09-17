@@ -196,26 +196,104 @@ ZASADY JAKOŚCI — OBOWIĄZUJĄ W KAŻDYM ZADANIU:
 6. BEZ ZDAŃ-WYDMUSZEK. Żadnych „This is a sentence with the word X" ani zdań,
    których jedyną treścią jest to, że zawierają słowo z listy.`;
 
-const askForJson = async (prompt: string): Promise<{ parsed: any; modelUsed: string }> => {
+import { formatPolishGreeting } from '../utils/polishVocative';
+
+export interface GeneratePersonalizedNoteParams {
+  studentName?: string;
+  topicTitle?: string;
+  lessonTopics?: string[];
+  vocabularySample?: string[];
+  exerciseCount?: number;
+  exerciseTypes?: HomeworkType[];
+}
+
+/**
+ * Inteligentny prompt tworzący spersonalizowaną notatkę od lektora (Macieja)
+ * do kursanta na temat przypisanej pracy domowej, nawiązując do konkretnych
+ * tematów i słownictwa z lekcji, zwracając się po imieniu w wołaczu.
+ */
+export async function generatePersonalizedHomeworkNote(params: GeneratePersonalizedNoteParams): Promise<string> {
+  const {
+    studentName,
+    topicTitle,
+    lessonTopics = [],
+    vocabularySample = [],
+    exerciseCount = 6,
+  } = params;
+
+  const vocativeGreeting = formatPolishGreeting(studentName);
+  const topicsSummary = Array.from(new Set([topicTitle, ...lessonTopics].filter(Boolean))).join(', ');
+  const vocabSummary = vocabularySample.slice(0, 8).join(', ');
+
+  const systemInstruction = `Jesteś Maciejem Wyrozumskim — doświadczonym lektorem i metodykiem języka angielskiego (CRIBRO ENGLISH, www.maciej.pro).
+Twój styl komunikacji: naturalny, ciepły, profesjonalny, konkretny i motywujący.
+Zwracasz się bezpośrednio do kursanta po imieniu w polskim wołaczu (np. Cześć, Bartłomieju!).
+Pisz w 1. osobie („Przygotowałem dla Ciebie...", „Skupiłem się w nich na...").`;
+
+  const prompt = `Napisz krótką, naturalną i spersonalizowaną wiadomość ode mnie (Macieja) dla kursanta o nowej pracy domowej.
+DANE WEJŚCIOWE:
+- Imię i powitanie kursanta: ${vocativeGreeting}
+- Temat ostatniej lekcji / lekcji powiązanych: ${topicsSummary || 'nasze ostatnie zajęcia'}
+- Zakres ćwiczonych zwrotów / słownictwa: ${vocabSummary || 'praktyczne zwroty z lekcji'}
+- Przybliżona liczba zadań: ${exerciseCount}
+
+WYMAGANIA:
+1. Rozpocznij od powitania w wołaczu: "${vocativeGreeting}".
+2. Napisz w 1. osobie, że ułożyłeś kilka zadań w oparciu o naszą ostatnią lekcję.
+3. Krótko i zwięźle (w 1-2 zdaniach) opisz, do czego odwołują się te zadania i co kursant w nich przećwiczy (nawiąż do tematu "${topicsSummary || 'omawianego materiału'}").
+4. Wspomnij przyjaźnie, że zrobienie ich zajmie tylko 5–10 minut i warto je przejrzeć przed naszym kolejnym spotkaniem.
+5. Całość to maksymalnie 2–3 zwięzłe zdania. Zwróć wyłącznie samą treść wiadomości, bez cudzysłowów i bez podpisu.`;
+
   try {
-    const councilRes = await runCouncil({
-      systemInstruction: SYSTEM_INSTRUCTION,
+    const { text } = await generateTextWithUnifiedFallback(
       prompt,
-      reviewerSystemInstruction: EXERCISE_REVIEW_SYSTEM,
-      expectJson: true,
-    });
-    return { parsed: councilRes.data, modelUsed: councilRes.finalModel };
+      systemInstruction,
+      MODELS_FOR_HOMEWORK,
+      undefined,
+      undefined,
+      { taskName: 'Generowanie personalizacji notatki HW', category: 'homework', timeoutMs: 6000, maxRetries: 1 }
+    );
+    const cleaned = text.trim().replace(/^["']|["']$/g, '');
+    if (cleaned && cleaned.length > 20) {
+      return cleaned;
+    }
   } catch (err) {
-    console.warn('[homeworkGenerator] Narada modeli nie powiodła się, przejście do zapasowego wywołania:', err);
+    console.warn('[homeworkGenerator] Błąd szybkiej personalizacji AI, używam szablonu regułowego:', err);
+  }
+
+  // Fallback regułowy o wysokiej jakości
+  const topicFragment = topicsSummary ? ` dotyczącą „${topicsSummary}”` : '';
+  const vocabFragment = vocabSummary
+    ? ` W zadaniach skupiłem się na utrwaleniu kluczowego słownictwa (${vocabSummary}) oraz praktycznych struktur z zajęć.`
+    : ' W zadaniach skupiłem się na utrwaleniu kluczowych struktur i zwrotów z naszych zajęć.';
+  return `${vocativeGreeting} Przygotowałem dla Ciebie kilka zadań w oparciu o naszą ostatnią lekcję${topicFragment}.${vocabFragment} Ich wykonanie zajmie Ci około 5–10 minut — zachęcam do zrobienia ich przed naszym kolejnym spotkaniem!`;
+}
+
+const askForJson = async (prompt: string): Promise<{ parsed: any; modelUsed: string }> => {
+  // Szybkie bezpośrednie generowanie z limitem 7.5s i błyskawicznym przejściem do następnego modelu
+  try {
     const { text, modelUsed } = await generateTextWithUnifiedFallback(
       prompt,
       SYSTEM_INSTRUCTION,
       MODELS_FOR_HOMEWORK,
       { responseMimeType: 'application/json' },
       undefined,
-      { taskName: 'Układanie pracy domowej', category: 'homework' }
+      { taskName: 'Układanie pracy domowej (szybki fallback)', category: 'homework', timeoutMs: 7500, maxRetries: 1 }
     );
     return { parsed: JSON.parse(extractJSON(text)), modelUsed };
+  } catch (directErr) {
+    console.warn('[homeworkGenerator] Szybki fallback nie powiódł się, uruchamiam naradę awaryjną:', directErr);
+    try {
+      const councilRes = await runCouncil({
+        systemInstruction: SYSTEM_INSTRUCTION,
+        prompt,
+        reviewerSystemInstruction: EXERCISE_REVIEW_SYSTEM,
+        expectJson: true,
+      });
+      return { parsed: councilRes.data, modelUsed: councilRes.finalModel };
+    } catch (councilErr) {
+      throw directErr || councilErr;
+    }
   }
 };
 

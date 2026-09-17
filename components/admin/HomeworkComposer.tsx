@@ -12,7 +12,7 @@ import {
   generateHomeworkSet,
 } from '../../services/homeworkGenerator';
 import { taskOwnerFields } from '../../utils/homework';
-import { cleanVocabularyTopic } from '../../utils/vocabulary';
+import { cleanVocabularyTopic, splitVocabularyLines } from '../../utils/vocabulary';
 import HomeworkEmailConfirmationModal from './HomeworkEmailConfirmationModal';
 
 /**
@@ -204,6 +204,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
     setError('');
     try {
       const nowIso = new Date().toISOString();
+      const selectedLessons = lessons.filter((l) => selectedLessonIds.includes(l.id));
       const sourceLabel =
         sourceMode === 'lessons' && selectedLessons[0]
           ? cleanVocabularyTopic(selectedLessons[0].topic) || selectedLessons[0].topic
@@ -268,11 +269,23 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
         console.warn('Nie udało się ustawić flagi hasNewHomework:', e);
       }
 
+      const lessonTopics = selectedLessons
+        .map((l) => cleanVocabularyTopic(l.topic) || l.topic)
+        .filter(Boolean);
+      const vocabLines: string[] = [];
+      selectedLessons.forEach((l) => {
+        if (l.vocabularyText) {
+          vocabLines.push(...splitVocabularyLines(l.vocabularyText));
+        }
+      });
+
       setAssignedCount(items.length);
       setSections([]);
       setPendingEmailTask({
         id: docRef.id,
         ...taskPayload,
+        lessonTopics,
+        vocabularySample: vocabLines.slice(0, 10),
       });
       setIsEmailModalOpen(true);
     } catch (e: any) {

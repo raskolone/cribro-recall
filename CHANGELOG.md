@@ -2125,7 +2125,33 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 
 ### 4. Rejestr Zmian (Changelog)
 
-### 🚀 2026-09-16 — Naprawa kontrastu Prezentacji Live, Generator Lekcji w Slajdach (AI Council), Nawigacja Wieloslajdowa i Samouczek
+### 🚀 2026-09-17 — Czat Lektora: Masowy Import Kursantów (Admin-only), Web Scraping & Research, Renderer HTML i Generator PDF A4, Poprawa Powitań i Nazwisk
+
+#### 1. Masowy Import Kursantów z Innych Platform przez Czat (Tylko Administrator)
+- **Problem**: Ręczne wpisywanie kursantów podczas migracji z innych aplikacji (np. LangLion, arkuszy Google Sheets, systemów CRM) było czasochłonne i wymagało wielokrotnego wypełniania formularza dodawania użytkownika.
+- **Rozwiązanie**:
+  - Utworzono dedykowany endpoint backendu `POST /api/admin-users/bulk-import` chroniony middleware `requireFirebaseAdmin`. Obsługuje on jednoczesne zakładanie kont w Firebase Authentication i profili w kolekcji `users` w Firestore, generuje unikalne adresy e-mail `@student.vocabboost.com` i bezpieczne hasła startowe, pomija istniejące duplikaty oraz zwraca szczegółowy raport statusów.
+  - Asystent Lektora (`TeacherAssistant.tsx` + `teacherAssistant.ts`) potrafi zinterpretować wklejony tekst, tabelę, CSV czy listę kontaktów i zaprezentować interaktywną kartę podglądu `BulkStudentImportCard` z tabelą użytkowników, poziomami CEFR, firmami i przyciskiem natychmiastowego importu jednym kliknięciem.
+  - Narzędzie jest ściśle ograniczone do użytkowników z rolą `admin` — dla zwykłych użytkowników i lektorów komenda `/import` i akcja importu są niewidoczne i zablokowane.
+
+#### 2. Narzędzia Web Scrapingu i Researchu Internetowego
+- **Problem**: Lektorzy potrzebują wyszukiwać i analizować autentyczne materiały, artykuły prasowe czy słownictwo branżowe z sieci bez opuszczania czatu.
+- **Rozwiązanie**:
+  - Wdrożono endpoint `POST /api/web-research/scrape` pobierający strony internetowe z nagłówkami User-Agent, czyszczący zbędny kod HTML (skrypty, style, nawigację) i dostarczający esencję tekstu do analizy przez model AI.
+  - Asystent automatycznie wykrywa linki URL w promptach, pobiera ich treść i dołącza do kontekstu modelu, generując podsumowania, konspekty lub pytania konwersacyjne z listą klikalnych źródeł `WebSourcesList`.
+  - Dodano komendę `/research` do szybkiego zlecania analizy źródeł internetowych.
+
+#### 3. Wbudowany Renderer HTML oraz Generator PDF A4 dla Raportów i Planów
+- **Problem**: Raporty postępów, plany wdrożenia i konspekty generowane w czacie były zwykłym tekstem markdown, wymagającym ręcznego formatowania przy wysyłce do klienta/kursanta.
+- **Rozwiązanie**:
+  - Zaimplementowano funkcję `exportHtmlToPDF` w [utils/pdfExport.ts](utils/pdfExport.ts) przygotowaną do druku w formacie A4 z zachowaniem typografii CRIBRO, nagłówków, ramek i tabel.
+  - Asystent wyposażony w komendy `/raport` oraz `/plan` generuje bloki ````html_report ... ````, które czat renderuje w formie karty `HtmlReportCard` z podglądem na żywo, opcją otwarcia w nowym oknie, kopiowaniem kodu źródłowego oraz 1-klikowym pobraniem sformatowanego pliku `.pdf`.
+
+#### 4. Humanizacja Nazwisk Kursantów i Poprawa Powitań
+- **Problem**: Zastąpienie surowych identyfikatorów UID czytelnymi imionami i nazwiskami kursantów w całej aplikacji oraz naturalna odmiana powitań.
+- **Rozwiązanie**:
+  - Zweryfikowano i wdrożono helper [utils/studentFormat.ts](utils/studentFormat.ts) zabezpieczający przed wyświetlaniem technicznych ID.
+  - Zintegrowano moduł wołacza [utils/polishVocative.ts](utils/polishVocative.ts) w nagłówku powitalnym czatu (`W czym mogę dzisiaj pomóc, Macieju?`).
 
 #### 1. Naprawa kontrastu i stylistyki Prezentacji Live (Tryb Ciemny & Jasny)
 - **Problem**: Karta fiszek 3D (`InteractiveSlideDeck`) oraz nagłówek prezentacji (`ScratchpadPresentationOverlay`) renderowały ciemny tekst na ciemnym tle w trybie nocnym ze względu na niezdefiniowane aliasy klas Tailwind (`text-text-muted`, `bg-bg-surface`, `border-border-subtle`).

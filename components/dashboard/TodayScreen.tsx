@@ -8,6 +8,7 @@ import {
   FileEdit,
   GraduationCap,
   History,
+  Layers,
   Library,
   Puzzle,
   RotateCcw,
@@ -24,6 +25,7 @@ import PuzzleExercise from './PuzzleExercise';
 import StudentLessonPanel from './StudentLessonPanel';
 import StudentHomeworkPanelSection from './StudentHomeworkPanelSection';
 import StudentTestsPanelSection from './StudentTestsPanelSection';
+import StudentVocabPreview from './StudentVocabPreview';
 import PracticeSessionsSection from './PracticeSessionsSection';
 import StudentHeroHeader from './StudentHeroHeader';
 import StudentToolBar, { StudentTool } from './StudentToolBar';
@@ -173,6 +175,8 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
    * możliwości, nie na treści, której kursant w tej chwili nie szukał.
    */
   const [openTool, setOpenTool] = useState<string | null>(null);
+  const [resourceSubTab, setResourceSubTab] = useState<'homework' | 'tests' | 'vocabulary'>('homework');
+  const [historySubTab, setHistorySubTab] = useState<'lessons' | 'practice'>('lessons');
 
   const L =
     language === 'pl'
@@ -198,13 +202,18 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
           giveUp: 'Nie pamiętam — dalej',
           check: 'Sprawdź',
           tools: {
+            resources: 'Moje zasoby',
+            resourcesDesc: 'Zadania, testy, słownictwo',
+            history: 'Historia',
+            historyDesc: 'Wcześniejsze lekcje i historia ćwiczeń',
+            scratchpad: 'Mój notatnik',
+            scratchpadDesc: 'Wspólny brudnopis z lektorem',
             homework: 'Moje zadania',
             tests: 'Moje testy',
+            vocabulary: 'Moje słownictwo',
             lessons: 'Wcześniejsze lekcje',
             practice: 'Historia ćwiczeń',
-            vocabulary: 'Moje słownictwo',
             extraPractice: 'Praktyka dodatkowa',
-            scratchpad: 'Mój notatnik',
           },
         }
       : {
@@ -230,13 +239,18 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
           giveUp: "I don't remember — move on",
           check: 'Check',
           tools: {
+            resources: 'My resources',
+            resourcesDesc: 'Tasks, tests, vocabulary',
+            history: 'History',
+            historyDesc: 'Earlier lessons & practice sessions',
+            scratchpad: 'My notebook',
+            scratchpadDesc: 'Shared notes with tutor',
             homework: 'My tasks',
             tests: 'My tests',
+            vocabulary: 'My word lists',
             lessons: 'Earlier lessons',
             practice: 'Practice history',
-            vocabulary: 'My word lists',
             extraPractice: 'Extra practice',
-            scratchpad: 'My notebook',
           },
         };
 
@@ -517,79 +531,36 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
   })();
 
   /*
-   * Kafelki listwy.
-   *
-   * Notatnik prowadzi gdzie indziej (pełny ekran do pisania), więc ma
-   * `onNavigate` zamiast panelu — i tylko na dużym ekranie, bo wspólne
-   * pisanie na telefonie nie działa. Reszta otwiera się pod listwą.
-   *
-   * Kafelki nie noszą liczników: policzenie zadań i testów tutaj znaczyłoby
-   * drugi odczyt tych samych kolekcji, które sekcje i tak czytają po
-   * otwarciu, a stan „coś czeka" mówi już nagłówek wyżej.
+   * 3 Kafelki listwy kursanta:
+   * 1. Moje zasoby (Zadania, testy, słownictwo)
+   * 2. Historia (Wcześniejsze lekcje i historia ćwiczeń)
+   * 3. Mój notatnik (Wspólny brudnopis z lektorem)
    */
   const tools: StudentTool[] = [
     {
-      id: 'homework',
-      domId: 'tour-homework',
-      label: L.tools.homework,
-      icon: <BookOpen size={20} />,
-      /* Kropka z flag, które już są w profilu kursanta — te same, którymi
-         świeci menu boczne. Policzenie zadań tutaj znaczyłoby drugi nasłuch
-         na tej samej kolekcji. Podgląd lektora nie świeci: to nie jego
-         nieprzeczytane rzeczy. */
+      id: 'resources',
+      domId: 'tour-resources',
+      label: L.tools.resources,
+      meta: L.tools.resourcesDesc,
+      icon: <Layers size={20} />,
+      /* Kropka z flag, które już są w profilu kursanta — nowe lub ocenione zadania domowe */
       highlight: !studentId && (Boolean(user?.hasNewHomework) || Boolean(user?.hasGradedHomework)),
     },
     {
-      id: 'tests',
-      domId: 'tour-tests',
-      label: L.tools.tests,
-      icon: <GraduationCap size={20} />,
-    },
-    {
-      id: 'lessons',
+      id: 'history',
       domId: 'tour-history',
-      label: L.tools.lessons,
+      label: L.tools.history,
+      meta: L.tools.historyDesc,
       icon: <History size={20} />,
       highlight: !studentId && Boolean(user?.hasNewLesson),
     },
-    {
-      id: 'practice',
-      domId: 'tour-practice',
-      label: L.tools.practice,
-      icon: <Dumbbell size={20} />,
-    },
-    /*
-     * Słownictwo i praktyka dodatkowa dochodzą tu po zdjęciu menu bocznego.
-     * Oba były dotąd wyłącznie tam, więc bez kafelków nie byłoby do nich
-     * żadnej drogi — a to ekrany, po które kursant wraca sam z siebie,
-     * nie dlatego, że lektor coś zadał.
-     */
-    ...(onOpenVocabulary
-      ? [
-          {
-            id: 'vocabulary',
-            domId: 'tour-flashcards',
-            label: L.tools.vocabulary,
-            icon: <Library size={20} />,
-            onNavigate: onOpenVocabulary,
-          } satisfies StudentTool,
-        ]
-      : []),
-    /*
-     * „Praktyka dodatkowa" NIE MA tu kafelka.
-     *
-     * Dokładnie to samo wejście stoi w nagłówku jako jedyny duży, zielony
-     * przycisk — i stoi tam po coś: to jest rzecz, którą kursant ma zrobić,
-     * gdy lektor nic nie zadał. Kafelek obok powtarzał je drobniejszą
-     * czcionką, przez co siatka miała siedem pozycji zamiast sześciu i nie
-     * dawała się ułożyć równo w żadnej szerokości.
-     */
     ...(onOpenScratchpad
       ? [
           {
             id: 'scratchpad',
             domId: 'tour-scratchpad',
             label: L.tools.scratchpad,
+            meta: L.tools.scratchpadDesc,
             icon: <FileEdit size={20} />,
             onNavigate: onOpenScratchpad,
           } satisfies StudentTool,
@@ -651,30 +622,131 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                   {language === 'pl' ? 'Zwiń' : 'Collapse'}
                 </button>
               </div>
-              {openTool === 'homework' && (
-                <StudentHomeworkPanelSection
-                  headless
-                  studentId={targetId}
-                  onOpenHomework={onOpenHomework || (() => {})}
-                />
+
+              {openTool === 'resources' && (
+                <div>
+                  <div className="px-3 sm:px-4 py-2 border-b border-line-soft bg-base-300/20 flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setResourceSubTab('homework')}
+                      className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        resourceSubTab === 'homework'
+                          ? 'bg-primary/15 text-primary border border-primary/30 shadow-sm'
+                          : 'text-text-2 hover:text-content hover:bg-white/[0.05] border border-transparent'
+                      }`}
+                    >
+                      <span>{L.tools.homework}</span>
+                      {!studentId && (Boolean(user?.hasNewHomework) || Boolean(user?.hasGradedHomework)) && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResourceSubTab('tests')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        resourceSubTab === 'tests'
+                          ? 'bg-primary/15 text-primary border border-primary/30 shadow-sm'
+                          : 'text-text-2 hover:text-content hover:bg-white/[0.05] border border-transparent'
+                      }`}
+                    >
+                      {L.tools.tests}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResourceSubTab('vocabulary')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        resourceSubTab === 'vocabulary'
+                          ? 'bg-primary/15 text-primary border border-primary/30 shadow-sm'
+                          : 'text-text-2 hover:text-content hover:bg-white/[0.05] border border-transparent'
+                      }`}
+                    >
+                      {L.tools.vocabulary}
+                    </button>
+                  </div>
+
+                  {resourceSubTab === 'homework' && (
+                    <StudentHomeworkPanelSection
+                      headless
+                      studentId={targetId}
+                      onOpenHomework={onOpenHomework || (() => {})}
+                    />
+                  )}
+                  {resourceSubTab === 'tests' && (
+                    <StudentTestsPanelSection
+                      headless
+                      studentId={targetId}
+                      onOpenTests={onOpenTests || (() => {})}
+                    />
+                  )}
+                  {resourceSubTab === 'vocabulary' && (
+                    <div className="p-3 sm:p-4 space-y-3">
+                      {onOpenVocabulary && (
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl bg-white/[0.03] border border-line-soft">
+                          <div className="text-xs text-text-2 leading-relaxed">
+                            {language === 'pl'
+                              ? 'Przeglądaj słownictwo z lekcji i trenuj fiszki w dedykowanym module.'
+                              : 'Browse lesson vocabulary and practice flashcards in full view.'}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={onOpenVocabulary}
+                            className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-black font-semibold text-xs hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+                          >
+                            <span>{language === 'pl' ? 'Otwórz fiszki' : 'Open flashcards'}</span>
+                            <ArrowRight size={13} />
+                          </button>
+                        </div>
+                      )}
+                      <StudentVocabPreview studentId={targetId} />
+                    </div>
+                  )}
+                </div>
               )}
-              {openTool === 'tests' && (
-                <StudentTestsPanelSection
-                  headless
-                  studentId={targetId}
-                  onOpenTests={onOpenTests || (() => {})}
-                />
+
+              {openTool === 'history' && (
+                <div>
+                  <div className="px-3 sm:px-4 py-2 border-b border-line-soft bg-base-300/20 flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setHistorySubTab('lessons')}
+                      className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        historySubTab === 'lessons'
+                          ? 'bg-primary/15 text-primary border border-primary/30 shadow-sm'
+                          : 'text-text-2 hover:text-content hover:bg-white/[0.05] border border-transparent'
+                      }`}
+                    >
+                      <span>{L.tools.lessons}</span>
+                      {!studentId && Boolean(user?.hasNewLesson) && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHistorySubTab('practice')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        historySubTab === 'practice'
+                          ? 'bg-primary/15 text-primary border border-primary/30 shadow-sm'
+                          : 'text-text-2 hover:text-content hover:bg-white/[0.05] border border-transparent'
+                      }`}
+                    >
+                      {L.tools.practice}
+                    </button>
+                  </div>
+
+                  {historySubTab === 'lessons' && (
+                    <StudentLessonPanel
+                      headless
+                      only="earlier"
+                      studentId={targetId}
+                      onStudySet={onStudySet}
+                      onPracticeAI={onPracticeAI}
+                    />
+                  )}
+                  {historySubTab === 'practice' && (
+                    <PracticeSessionsSection headless studentId={targetId} />
+                  )}
+                </div>
               )}
-              {openTool === 'lessons' && (
-                <StudentLessonPanel
-                  headless
-                  only="earlier"
-                  studentId={targetId}
-                  onStudySet={onStudySet}
-                  onPracticeAI={onPracticeAI}
-                />
-              )}
-              {openTool === 'practice' && <PracticeSessionsSection headless studentId={targetId} />}
             </div>
           )}
         </GSAPModuleTransition>

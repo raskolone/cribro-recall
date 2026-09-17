@@ -31,6 +31,7 @@ import {
   ShieldCheck,
   RotateCcw,
   HelpCircle,
+  Globe,
 } from 'lucide-react';
 import {
   askTeacherAssistant,
@@ -43,11 +44,18 @@ import {
   ASSISTANT_SKILLS,
   AssistantSkill,
   AIAssistantMode,
+  StudentsImportProposal,
+  HtmlReportProposal,
+  WebGroundingSource,
 } from '../../services/teacherAssistant';
-import { LessonAttachment } from '../../types';
+import { LessonAttachment, GeneratedLessonScenario } from '../../types';
+import { saveGeneratedScenario } from '../../services/scenarioService';
 import { AIAssistantIcon } from '../ui/AIAssistantIcon';
 import { useAuth } from '../../context/AuthContext';
 import { toPolishVocative } from '../../utils/polishVocative';
+import { useFirebaseAdminApi } from '../../hooks/useFirebaseAdminApi';
+import { exportHtmlToPDF } from '../../utils/pdfExport';
+import { invalidateUsersCache } from '../../services/userService';
 import Markdown from 'react-markdown';
 
 const STORAGE_KEY = 'cribro_teacher_assistant_sessions_v1';
@@ -60,6 +68,335 @@ const QUICK_FOLLOWUPS = [
   'Utwórz konspekt do Prezentacji Live',
   'Podsumuj słownictwo w 4 blokach Notion',
 ];
+
+/**
+ * Karta interaktywna do importu kursantów z poziomu czatu
+ */
+interface BulkStudentImportCardProps {
+  studentsImport: StudentsImportProposal;
+  isAdmin: boolean;
+  onRefreshUsers: () => void;
+}
+
+const BulkStudentImportCard: React.FC<BulkStudentImportCardProps> = ({
+  studentsImport,
+  isAdmin,
+  onRefreshUsers,
+}) => {
+  const { bulkImportUsers } = useFirebaseAdminApi();
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    total: number;
+    created: number;
+    existing: number;
+    failed: number;
+    results: Array<{ username: string; email: string; password?: string; status: string; error?: string }>;
+  } | null>(null);
+  const [copiedCreds, setCopiedCreds] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleExecuteImport = async () => {
+    if (!isAdmin) {
+      setErrorMsg('Operacja dodawania kursantów do CRM wymaga uprawnień administratora.');
+      return;
+    }
+    setIsImporting(true);
+    setErrorMsg('');
+    try {
+      const data = await bulkImportUsers(studentsImport.students);
+      setImportResult(data);
+      invalidateUsersCache();
+      onRefreshUsers();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Wystąpił błąd podczas importu kursantów.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleCopyCredentials = () => {
+    if (!importResult?.results) return;
+    const credsText = importResult.results
+      .map(r => `Kursant: ${r.username}\nLogin/Email: ${r.email}\nHasło: ${r.password || '(bez zmian)'}\nStatus: ${r.status}`)
+      .join('\n-------------------\n');
+    navigator.clipboard.writeText(credsText);
+    setCopiedCreds(true);
+    setTimeout(() => setCopiedCreds(false), 2500);
+  };
+
+  return (
+    <div className="p-3.5 sm:p-4 rounded-2xl bg-base-100/90 border border-primary/40 text-xs space-y-3 shadow-ambient-sm">
+      <div className="flex items-center justify-between border-b border-line pb-2 flex-wrap gap-1.5">
+        <div className="flex items-center gap-1.5 font-bold text-primary">
+          <Users size={14} className="text-primary" />
+          <span className="uppercase tracking-wider text-[10px] font-mono">
+            Import Kursantów do Bazy CRM
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-mono font-bold border border-primary/30">
+            {studentsImport.students.length} {studentsImport.students.length === 1 ? 'kursant' : 'kursantów'}
+          </span>
+          {isAdmin ? (
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-success/20 text-success border border-success/30 font-mono font-semibold">
+              Admin OK
+            </span>
+          ) : (
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-danger/20 text-danger border border-danger/30 font-mono font-semibold">
+              Wymaga Admina
+            </span>
+          )}
+        </div>
+      </div>
+
+      <p className="text-text-2 text-[11px] leading-relaxed">
+        {studentsImport.summary || 'Zweryfikuj listę osób poniżej i zatwierdź utworzenie kont w systemie:'}
+      </p>
+
+      {/* Tabela / Lista kursantów */}
+      <div className="overflow-x-auto rounded-xl border border-line bg-base-200/50">
+        <table className="w-full text-left border-collapse text-[11px]">
+          <thead>
+            <tr className="border-b border-line bg-base-300/40 text-text-mute font-mono text-[9px] uppercase">
+              <th className="p-2">Imię i Nazwisko / Login</th>
+              <th className="p-2">E-mail</th>
+              <th className="p-2">Poziom</th>
+              <th className="p-2">Firma / Grupa</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {studentsImport.students.map((st, sIdx) => (
+              <tr key={sIdx} className="hover:bg-base-100/50 transition-colors">
+                <td className="p-2 font-semibold text-text-hi">
+                  {`${st.firstName || ''} ${st.lastName || ''}`.trim() || st.username || 'Kursant'}
+                </td>
+                <td className="p-2 text-text-2 font-mono text-[10px]">
+                  {st.email || <span className="text-text-mute italic">auto-generowany</span>}
+                </td>
+                <td className="p-2">
+                  <span className="px-1.5 py-0.5 rounded bg-base-100 text-text font-mono font-bold border border-line text-[9px]">
+                    {st.level || 'A2-B1'}
+                  </span>
+                </td>
+                <td className="p-2 text-text-2">
+                  {st.company || <span className="text-text-mute">-</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {errorMsg && (
+        <div className="p-2 rounded-lg bg-danger/10 border border-danger/30 text-danger text-[11px]">
+          {errorMsg}
+        </div>
+      )}
+
+      {/* Raport po zaimportowaniu */}
+      {importResult && (
+        <div className="p-3 rounded-xl bg-success/10 border border-success/30 text-text space-y-2">
+          <div className="flex items-center justify-between text-success font-bold text-[11px]">
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 size={13} />
+              Sukces: {importResult.created} utworzono, {importResult.existing} zaktualizowano ({importResult.failed} błędów)
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleCopyCredentials}
+            className="w-full py-1.5 px-3 rounded-lg bg-base-100 border border-line hover:border-primary/50 text-text-hi font-medium text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          >
+            {copiedCreds ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
+            <span>{copiedCreds ? 'Skopiowano dane logowania do schowka!' : 'Kopiuj listę loginów i haseł'}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Przycisk akcji importu */}
+      {!importResult && (
+        <div className="pt-1">
+          {isAdmin ? (
+            <button
+              type="button"
+              disabled={isImporting}
+              onClick={handleExecuteImport}
+              className="w-full py-2 px-3.5 rounded-xl bg-gradient-to-r from-primary to-accent hover:opacity-95 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer disabled:opacity-50"
+            >
+              {isImporting ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>Tworzenie kont w bazie CRM...</span>
+                </>
+              ) : (
+                <>
+                  <Plus size={13} />
+                  <span>Zatwierdź i dodaj {studentsImport.students.length} kursantów do CRM</span>
+                </>
+              )}
+            </button>
+          ) : (
+            <div className="p-2.5 rounded-xl bg-base-200 border border-line text-text-mute text-center text-[11px]">
+              🔒 Opcja dodawania kursantów jest aktywna wyłącznie dla konta administratora.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Karta interaktywna dla wygenerowanego raportu HTML z eksportem do PDF
+ */
+interface HtmlReportCardProps {
+  htmlReport: HtmlReportProposal;
+}
+
+const HtmlReportCard: React.FC<HtmlReportCardProps> = ({ htmlReport }) => {
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [copiedHtml, setCopiedHtml] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    setIsExportingPdf(true);
+    try {
+      await exportHtmlToPDF(htmlReport.html, htmlReport.title);
+    } catch (err) {
+      console.error('Błąd generowania PDF:', err);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const handleCopyHtml = () => {
+    navigator.clipboard.writeText(htmlReport.html);
+    setCopiedHtml(true);
+    setTimeout(() => setCopiedHtml(false), 2000);
+  };
+
+  const handleOpenInNewTab = () => {
+    const blob = new Blob([`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${htmlReport.title}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:40px;max-width:800px;margin:0 auto;color:#0f172a;line-height:1.6;}table{width:100%;border-collapse:collapse;margin:16px 0;}th,td{border:1px solid #cbd5e1;padding:8px 12px;}th{background:#f1f5f9;}</style></head><body>${htmlReport.html}</body></html>`], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  };
+
+  return (
+    <div className="p-3.5 sm:p-4 rounded-2xl bg-base-100/90 border border-primary/40 text-xs space-y-3 shadow-ambient-sm">
+      <div className="flex items-center justify-between border-b border-line pb-2 flex-wrap gap-1.5">
+        <div className="flex items-center gap-1.5 font-bold text-primary">
+          <PdfIcon size={14} className="text-primary" />
+          <span className="uppercase tracking-wider text-[10px] font-mono">
+            Dokument HTML & Raport PDF
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-mono font-bold border border-primary/30">
+            Format A4
+          </span>
+        </div>
+      </div>
+
+      <div className="font-extrabold text-sm text-text-hi">
+        {htmlReport.title}
+      </div>
+
+      <p className="text-text-2 text-[11px] leading-relaxed">
+        {htmlReport.summary || 'Wygenerowano sformatowany dokument gotowy do druku i eksportu.'}
+      </p>
+
+      {/* Przyciski akcji */}
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <button
+          type="button"
+          disabled={isExportingPdf}
+          onClick={handleDownloadPdf}
+          className="flex-1 min-w-[140px] py-1.5 px-3 rounded-xl bg-primary hover:bg-primary/90 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50"
+        >
+          {isExportingPdf ? (
+            <>
+              <Loader2 size={12} className="animate-spin" />
+              <span>Generowanie PDF...</span>
+            </>
+          ) : (
+            <>
+              <PdfIcon size={12} />
+              <span>Pobierz plik PDF</span>
+            </>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsPreviewOpen(!isPreviewOpen)}
+          className="py-1.5 px-3 rounded-xl bg-base-200 hover:bg-base-300 border border-line text-text-hi font-medium text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+        >
+          <FileText size={12} />
+          <span>{isPreviewOpen ? 'Zwiń podgląd' : 'Podgląd HTML'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleCopyHtml}
+          className="py-1.5 px-3 rounded-xl bg-base-200 hover:bg-base-300 border border-line text-text-hi font-medium text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+          title="Kopiuj surowy kod HTML"
+        >
+          {copiedHtml ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
+          <span>{copiedHtml ? 'Skopiowano' : 'Kopiuj HTML'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleOpenInNewTab}
+          className="p-1.5 rounded-xl bg-base-200 hover:bg-base-300 border border-line text-text-mute hover:text-text-hi transition-colors cursor-pointer"
+          title="Otwórz w nowej karcie"
+        >
+          <ChevronRight size={14} />
+        </button>
+      </div>
+
+      {/* Rozwijany podgląd HTML */}
+      {isPreviewOpen && (
+        <div className="mt-3 p-4 rounded-xl border border-line bg-white text-slate-900 overflow-x-auto max-h-[380px] overflow-y-auto shadow-inner text-[13px] leading-relaxed">
+          <div dangerouslySetInnerHTML={{ __html: htmlReport.html }} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Lista źródeł internetowych
+ */
+interface WebSourcesListProps {
+  sources: WebGroundingSource[];
+}
+
+const WebSourcesList: React.FC<WebSourcesListProps> = ({ sources }) => {
+  if (!sources || sources.length === 0) return null;
+
+  return (
+    <div className="pt-2 border-t border-line/60 space-y-1.5">
+      <div className="text-[10px] font-mono uppercase text-text-mute flex items-center gap-1">
+        <Globe size={11} className="text-primary" /> Źródła i materiały z sieci:
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {sources.map((s, sIdx) => (
+          <a
+            key={sIdx}
+            href={s.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-base-100 hover:bg-base-200 border border-line text-[11px] text-text-hi hover:text-primary transition-colors truncate max-w-[280px]"
+          >
+            <span className="truncate">{s.title || s.url}</span>
+            <ChevronRight size={10} className="text-text-mute shrink-0" />
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 interface TeacherAssistantProps {
   /** Tryb wyświetlania: 'embedded' (centralny panel na stronie głównej) lub 'floating' (dymek w lewym dolnym rogu) */
@@ -171,6 +508,14 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
     }
   }, [draft]);
 
+  const isAdmin = currentUser?.role === 'admin';
+
+  const refreshStudentIndex = useCallback(() => {
+    buildStudentIndex()
+      .then(setIndex)
+      .catch((err) => console.warn('[Asystent] Odświeżenie indeksu kursantów:', err));
+  }, []);
+
   // Filtrowanie kursantów dla menu @
   const filteredStudents = useMemo(() => {
     if (!index) return [];
@@ -189,16 +534,17 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
 
   // Filtrowanie skilli dla menu /
   const filteredSkills = useMemo(() => {
-    if (!slashQuery.trim()) return ASSISTANT_SKILLS;
+    const list = ASSISTANT_SKILLS.filter((s) => !s.adminOnly || isAdmin);
+    if (!slashQuery.trim()) return list;
     const q = slashQuery.toLowerCase().trim();
-    return ASSISTANT_SKILLS.filter(
+    return list.filter(
       (s) =>
         s.command.toLowerCase().includes(q) ||
         s.name.toLowerCase().includes(q) ||
         s.description.toLowerCase().includes(q) ||
         s.category.toLowerCase().includes(q)
     );
-  }, [slashQuery]);
+  }, [slashQuery, isAdmin]);
 
   // Sprawdzanie wyzwalaczy @ i / przy edycji tekstu
   const handleDraftChange = (newText: string, cursorPos: number) => {
@@ -433,6 +779,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
         text: resp.text,
         actions: resp.actions,
         lessonDraft: resp.lessonDraft,
+        lessonScenario: resp.lessonScenario,
         timestamp: Date.now(),
         modelUsed: resp.modelUsed,
         isCouncil: resp.isCouncil,
@@ -513,12 +860,13 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
       }
     } else if (action.type === 'presentation') {
       if (onOpenInPresentation) {
-        onOpenInPresentation(action.lessonDraft, action.studentId, action.studentName);
+        onOpenInPresentation(action.lessonScenario || action.lessonDraft, action.studentId, action.studentName);
       } else if (onNavigateToModule) {
         onNavigateToModule('presentation', {
           studentId: action.studentId,
           studentName: action.studentName,
           topic: action.topic,
+          initialScenario: action.lessonScenario,
         });
       }
     } else if (action.type === 'profile' && action.studentId) {
@@ -528,8 +876,16 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
         onNavigateToModule('admin', { tab: 'profile', userId: action.studentId });
       }
     } else if (action.type === 'planner') {
+      if (action.lessonScenario) {
+        saveGeneratedScenario(action.lessonScenario).catch(console.warn);
+      }
       if (onNavigateToModule) {
-        onNavigateToModule('admin', { tab: 'lesson-planner', userId: action.studentId });
+        onNavigateToModule('lesson-planner', {
+          tab: 'lesson-planner',
+          userId: action.studentId,
+          studentId: action.studentId,
+          initialScenario: action.lessonScenario,
+        });
       }
     } else if (action.type === 'homework') {
       if (onNavigateToModule) {
@@ -543,6 +899,8 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
       if (onNavigateToModule) {
         onNavigateToModule('scratchpad', { userId: action.studentId });
       }
+    } else if (action.type === 'html_pdf' && action.htmlReport) {
+      exportHtmlToPDF(action.htmlReport.html, action.htmlReport.title).catch(console.warn);
     }
   };
 
@@ -812,49 +1170,153 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                               </div>
                             </div>
 
-                            {/* Podgląd karty lekcji Notion AI */}
-                            {message.lessonDraft && (
-                              <div className="p-3 rounded-2xl bg-base-100/60 border border-primary/30 text-xs space-y-2 shadow-inner">
-                                <div className="flex items-center justify-between border-b border-line pb-1.5 flex-wrap gap-1">
+                            {/* Podgląd karty lekcji i scenariusza Notion AI */}
+                            {(message.lessonScenario || message.lessonDraft) && (
+                              <div className="p-3.5 rounded-2xl bg-base-100/70 border border-primary/35 text-xs space-y-2.5 shadow-ambient-sm">
+                                <div className="flex items-center justify-between border-b border-line pb-2 flex-wrap gap-1.5">
                                   <div className="flex items-center gap-1.5 font-bold text-primary">
                                     <Sparkles size={13} className="text-primary" />
-                                    <span className="uppercase tracking-wider text-[10px]">Karta Lekcji AI (Format 4 Bloków)</span>
-                                  </div>
-                                  {message.lessonDraft.studentName && (
-                                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-mono font-bold border border-primary/30">
-                                      @{message.lessonDraft.studentName}
+                                    <span className="uppercase tracking-wider text-[10px] font-mono">
+                                      {message.lessonScenario ? 'Scenariusz Lekcji AI (Studio & Live)' : 'Karta Lekcji AI (Format 4 Bloków)'}
                                     </span>
-                                  )}
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    {message.lessonScenario?.targetLevel && (
+                                      <span className="text-[9px] px-2 py-0.5 rounded-full bg-base-200 text-text font-mono font-bold border border-line">
+                                        {message.lessonScenario.targetLevel}
+                                      </span>
+                                    )}
+                                    {message.lessonScenario?.lessonDuration && (
+                                      <span className="text-[9px] px-2 py-0.5 rounded-full bg-base-200 text-text-mute font-mono border border-line">
+                                        {message.lessonScenario.lessonDuration}
+                                      </span>
+                                    )}
+                                    {(message.lessonDraft?.studentName || message.lessonScenario?.studentName) && (
+                                      <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-mono font-bold border border-primary/30">
+                                        @{message.lessonDraft?.studentName || message.lessonScenario?.studentName}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="font-extrabold text-sm text-text-hi">{message.lessonDraft.topic}</div>
-                                {message.lessonDraft.summary && (
+
+                                <div className="font-extrabold text-sm text-text-hi">
+                                  {message.lessonScenario?.topic || message.lessonDraft?.topic}
+                                </div>
+
+                                {(message.lessonScenario?.goal || message.lessonDraft?.summary) && (
                                   <div className="text-text-2 leading-relaxed text-[11px]">
-                                    {message.lessonDraft.summary}
+                                    {message.lessonScenario?.goal || message.lessonDraft?.summary}
                                   </div>
                                 )}
-                                {message.lessonDraft.vocabulary && (
+
+                                {/* Podgląd etapów scenariusza (Stages pipeline) */}
+                                {message.lessonScenario?.stages && message.lessonScenario.stages.length > 0 && (
+                                  <div className="space-y-1 pt-1">
+                                    <span className="font-bold text-text-mute text-[10px] block uppercase tracking-wide font-mono">
+                                      Etapy scenariusza ({message.lessonScenario.stages.length}):
+                                    </span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {message.lessonScenario.stages.map((st, sIdx) => (
+                                        <div
+                                          key={sIdx}
+                                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-base-200/90 border border-line text-[10px] font-mono text-text"
+                                        >
+                                          <span className="text-primary font-bold">{sIdx + 1}.</span>
+                                          <span className="truncate max-w-[150px] font-medium">{st.title.replace(/^\d+\.\s*/, '')}</span>
+                                          {st.duration && <span className="text-text-mute text-[9px]">({st.duration})</span>}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {message.lessonDraft?.vocabulary && (
                                   <div>
                                     <span className="font-bold text-text-mute text-[10px] block uppercase tracking-wide mb-0.5 font-mono">
                                       Kluczowe słownictwo:
                                     </span>
-                                    <div className="text-text text-[11px] font-mono whitespace-pre-line bg-ink p-2.5 rounded-xl border border-line">
+                                    <div className="text-text text-[11px] font-mono whitespace-pre-line bg-ink p-2.5 rounded-xl border border-line max-h-32 overflow-y-auto">
                                       {message.lessonDraft.vocabulary}
                                     </div>
                                   </div>
                                 )}
-                                {message.lessonDraft.grammar && (
-                                  <div className="text-[11px] text-text-2 flex items-start gap-1">
-                                    <span className="font-bold text-warn shrink-0">Gramatyka / Poprawa:</span>
-                                    <span>{message.lessonDraft.grammar}</span>
-                                  </div>
-                                )}
-                                {message.lessonDraft.homework && (
-                                  <div className="text-[11px] text-text-2 flex items-start gap-1">
-                                    <span className="font-bold text-primary shrink-0">Zadanie domowe:</span>
-                                    <span>{message.lessonDraft.homework}</span>
-                                  </div>
-                                )}
+
+                                {/* Szybkie przyciski bezpośredniego uruchomienia w narzędziach */}
+                                <div className="pt-2 border-t border-line flex flex-wrap gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleExecuteAction({
+                                        type: 'planner',
+                                        label: 'Studio Planera',
+                                        studentId: message.lessonDraft?.studentId || message.lessonScenario?.studentId || undefined,
+                                        studentName: message.lessonDraft?.studentName || message.lessonScenario?.studentName || undefined,
+                                        topic: message.lessonScenario?.topic || message.lessonDraft?.topic,
+                                        lessonDraft: message.lessonDraft,
+                                        lessonScenario: message.lessonScenario,
+                                      })
+                                    }
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-accent-ink font-bold text-[11px] shadow-sm hover:scale-[1.02] transition-all cursor-pointer"
+                                  >
+                                    <BookOpen size={12} />
+                                    <span>Otwórz w Studio Planera</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleExecuteAction({
+                                        type: 'presentation',
+                                        label: 'Prezentacja Live',
+                                        studentId: message.lessonDraft?.studentId || message.lessonScenario?.studentId || undefined,
+                                        studentName: message.lessonDraft?.studentName || message.lessonScenario?.studentName || undefined,
+                                        topic: message.lessonScenario?.topic || message.lessonDraft?.topic,
+                                        lessonDraft: message.lessonDraft,
+                                        lessonScenario: message.lessonScenario,
+                                      })
+                                    }
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-base-200 hover:bg-base-200/90 text-text-hi border border-line-strong font-bold text-[11px] transition-all hover:scale-[1.02] cursor-pointer"
+                                  >
+                                    <Airplay size={12} className="text-primary" />
+                                    <span>Uruchom w Prezentacji Live</span>
+                                  </button>
+
+                                  {message.lessonDraft && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleExecuteAction({
+                                          type: 'insert_lesson',
+                                          label: 'Dziennik',
+                                          studentId: message.lessonDraft?.studentId || undefined,
+                                          studentName: message.lessonDraft?.studentName || undefined,
+                                          topic: message.lessonDraft.topic,
+                                          lessonDraft: message.lessonDraft,
+                                          lessonScenario: message.lessonScenario,
+                                        })
+                                      }
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-base-200 hover:bg-base-200/90 text-text-2 hover:text-text-hi border border-line font-medium text-[11px] transition-all cursor-pointer"
+                                    >
+                                      <CheckCircle2 size={12} className="text-primary" />
+                                      <span>Zapisz w Dzienniku</span>
+                                    </button>
+                                  )}
+                                </div>
                               </div>
+                            )}
+
+                            {/* Karta importu kursantów do CRM */}
+                            {message.studentsImport && (
+                              <BulkStudentImportCard
+                                studentsImport={message.studentsImport}
+                                isAdmin={isAdmin}
+                                onRefreshUsers={refreshStudentIndex}
+                              />
+                            )}
+
+                            {/* Karta dokumentu HTML & raportu PDF */}
+                            {message.htmlReport && (
+                              <HtmlReportCard htmlReport={message.htmlReport} />
                             )}
 
                             {/* Główna treść odpowiedzi Markdown */}
@@ -916,13 +1378,18 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                                 {message.text}
                               </Markdown>
                             </div>
+
+                            {/* Źródła internetowe z researchu */}
+                            {message.webSources && message.webSources.length > 0 && (
+                              <WebSourcesList sources={message.webSources} />
+                            )}
                           </div>
 
                           {/* 1-klikowe akcje Notion AI pod odpowiedzią */}
                           {message.actions && message.actions.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 pt-0.5 pl-1">
                               {message.actions.map((act, aIdx) => {
-                                const isPrimary = act.type === 'insert_lesson' || act.type === 'presentation';
+                                const isPrimary = act.type === 'insert_lesson' || act.type === 'presentation' || act.type === 'html_pdf' || act.type === 'bulk_import';
                                 return (
                                   <button
                                     key={aIdx}
@@ -941,6 +1408,8 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                                     {act.type === 'scratchpad' && <FileText size={12} />}
                                     {act.type === 'mailing' && <Mail size={12} />}
                                     {act.type === 'profile' && <User size={12} />}
+                                    {act.type === 'bulk_import' && <Users size={12} />}
+                                    {act.type === 'html_pdf' && <PdfIcon size={12} />}
                                     <span>{act.label}</span>
                                     <ChevronRight size={11} className={isPrimary ? 'text-accent-ink' : 'opacity-60'} />
                                   </button>
@@ -1470,37 +1939,83 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                         </div>
                       )}
 
-                      {/* Podgląd karty lekcji w Floating */}
-                      {message.lessonDraft && (
-                        <div className="mt-2 p-2.5 rounded-xl bg-base-100/60 border border-primary/30 text-[11px] space-y-1.5 shadow-inner">
-                          <div className="flex items-center justify-between border-b border-line pb-1.5">
+                      {/* Podgląd karty lekcji i scenariusza w Floating */}
+                      {(message.lessonScenario || message.lessonDraft) && (
+                        <div className="mt-2 p-2.5 rounded-xl bg-base-100/70 border border-primary/35 text-[11px] space-y-2 shadow-inner">
+                          <div className="flex items-center justify-between border-b border-line pb-1.5 flex-wrap gap-1">
                             <div className="flex items-center gap-1 font-bold text-primary">
                               <Sparkles size={12} className="text-primary" />
-                              <span className="uppercase tracking-wider text-[10px]">Karta lekcji AI</span>
-                            </div>
-                            {message.lessonDraft.studentName && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-mono font-bold border border-primary/30">
-                                @{message.lessonDraft.studentName}
+                              <span className="uppercase tracking-wider text-[9px] font-mono">
+                                {message.lessonScenario ? 'Scenariusz AI' : 'Karta lekcji AI'}
                               </span>
-                            )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {message.lessonScenario?.targetLevel && (
+                                <span className="text-[8px] px-1.5 py-0.5 rounded bg-base-200 text-text font-mono border border-line">
+                                  {message.lessonScenario.targetLevel}
+                                </span>
+                              )}
+                              {(message.lessonDraft?.studentName || message.lessonScenario?.studentName) && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-mono font-bold border border-primary/30">
+                                  @{message.lessonDraft?.studentName || message.lessonScenario?.studentName}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className="font-bold text-xs text-text-hi">{message.lessonDraft.topic}</div>
-                          {message.lessonDraft.vocabulary && (
-                            <div className="text-[10px] font-mono whitespace-pre-line bg-ink p-1.5 rounded border border-line text-text">
+                          <div className="font-bold text-xs text-text-hi">
+                            {message.lessonScenario?.topic || message.lessonDraft?.topic}
+                          </div>
+                          {message.lessonScenario?.stages && message.lessonScenario.stages.length > 0 && (
+                            <div className="flex flex-wrap gap-1 pt-0.5">
+                              {message.lessonScenario.stages.map((st, sIdx) => (
+                                <span
+                                  key={sIdx}
+                                  className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-base-200 border border-line text-text-2"
+                                >
+                                  {sIdx + 1}. {st.title.replace(/^\d+\.\s*/, '').slice(0, 18)}…
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {message.lessonDraft?.vocabulary && (
+                            <div className="text-[10px] font-mono whitespace-pre-line bg-ink p-1.5 rounded border border-line text-text max-h-24 overflow-y-auto">
                               {message.lessonDraft.vocabulary}
                             </div>
                           )}
                         </div>
                       )}
 
-                      {message.text}
+                      {/* Karta importu kursantów w floating */}
+                      {message.studentsImport && (
+                        <div className="mt-2">
+                          <BulkStudentImportCard
+                            studentsImport={message.studentsImport}
+                            isAdmin={isAdmin}
+                            onRefreshUsers={refreshStudentIndex}
+                          />
+                        </div>
+                      )}
+
+                      {/* Karta raportu HTML/PDF w floating */}
+                      {message.htmlReport && (
+                        <div className="mt-2">
+                          <HtmlReportCard htmlReport={message.htmlReport} />
+                        </div>
+                      )}
+
+                      <div className="mt-1">{message.text}</div>
+
+                      {/* Źródła internetowe w floating */}
+                      {message.webSources && message.webSources.length > 0 && (
+                        <WebSourcesList sources={message.webSources} />
+                      )}
                     </div>
 
                     {/* Action buttons */}
                     {message.role === 'assistant' && message.actions && message.actions.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pt-1 pl-1">
                         {message.actions.map((act, aIdx) => {
-                          const isPrimary = act.type === 'insert_lesson' || act.type === 'presentation';
+                          const isPrimary = act.type === 'insert_lesson' || act.type === 'presentation' || act.type === 'html_pdf' || act.type === 'bulk_import';
                           return (
                             <button
                               key={aIdx}
@@ -1517,6 +2032,8 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                               {act.type === 'homework' && <ClipboardList size={11} />}
                               {act.type === 'planner' && <BookOpen size={11} />}
                               {act.type === 'scratchpad' && <FileText size={11} />}
+                              {act.type === 'bulk_import' && <Users size={11} />}
+                              {act.type === 'html_pdf' && <PdfIcon size={11} />}
                               <span>{act.label}</span>
                             </button>
                           );

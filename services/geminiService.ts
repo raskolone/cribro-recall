@@ -698,7 +698,7 @@ export const generateTextWithUnifiedFallback = async (
   explicitModels?: string[],
   geminiConfig?: any,
   onModelAttempt?: (model: string) => void,
-  taskContext?: { taskName?: string; category?: any }
+  taskContext?: { taskName?: string; category?: any; timeoutMs?: number; maxRetries?: number }
 ): Promise<{ text: string, modelUsed: string }> => {
   const preferredModels =
     explicitModels && explicitModels.length > 0
@@ -714,6 +714,17 @@ export const generateTextWithUnifiedFallback = async (
     statusMessage: `Wysyłam zapytanie do: ${formatAIModelName(preferredModels[0])}`
   });
   
+  const perModelTimeoutMs = taskContext?.timeoutMs || (taskContext?.category === 'homework' ? 7500 : 25000);
+  const perModelMaxRetries = taskContext?.maxRetries ?? (taskContext?.category === 'homework' ? 1 : 2);
+
+  const wrapWithTimeout = <T>(promise: Promise<T>, ms: number, modelName: string): Promise<T> => {
+    let timer: any;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`Model ${modelName} timed out after ${ms}ms`)), ms);
+    });
+    return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
+  };
+  
   for (const model of preferredModels) {
     try {
       console.log(`Attempting generation with ${model}...`);
@@ -724,7 +735,11 @@ export const generateTextWithUnifiedFallback = async (
       
       if (model.startsWith('openai')) {
         const isJson = geminiConfig?.responseMimeType === 'application/json';
-        const openAiRes = await callOpenAI(prompt, systemInstruction, model.replace('openai/', ''), isJson);
+        const openAiRes = await wrapWithTimeout(
+          callOpenAI(prompt, systemInstruction, model.replace('openai/', ''), isJson),
+          perModelTimeoutMs,
+          model
+        );
         if (openAiRes && openAiRes.text) {
           const usedModel = openAiRes.modelUsed
             ? (openAiRes.modelUsed.startsWith('gemini') || openAiRes.modelUsed.startsWith('openai')
@@ -736,7 +751,11 @@ export const generateTextWithUnifiedFallback = async (
         }
       } else if (model.startsWith('anthropic')) {
         const isJson = geminiConfig?.responseMimeType === 'application/json';
-        const anthropicRes = await callAnthropic(prompt, systemInstruction, model.replace('anthropic/', ''), isJson);
+        const anthropicRes = await wrapWithTimeout(
+          callAnthropic(prompt, systemInstruction, model.replace('anthropic/', ''), isJson),
+          perModelTimeoutMs,
+          model
+        );
         if (anthropicRes && anthropicRes.text) {
           const usedModel = anthropicRes.modelUsed
             ? (anthropicRes.modelUsed.startsWith('anthropic') ? anthropicRes.modelUsed : `anthropic/${anthropicRes.modelUsed}`)
@@ -746,7 +765,11 @@ export const generateTextWithUnifiedFallback = async (
         }
       } else if (model.startsWith('deepseek')) {
         const isJson = geminiConfig?.responseMimeType === 'application/json';
-        const deepseekRes = await callDeepSeek(prompt, systemInstruction, model.replace('deepseek/', ''), isJson);
+        const deepseekRes = await wrapWithTimeout(
+          callDeepSeek(prompt, systemInstruction, model.replace('deepseek/', ''), isJson),
+          perModelTimeoutMs,
+          model
+        );
         if (deepseekRes && deepseekRes.text) {
           const usedModel = deepseekRes.modelUsed
             ? (deepseekRes.modelUsed.startsWith('deepseek') ? deepseekRes.modelUsed : `deepseek/${deepseekRes.modelUsed}`)
@@ -755,13 +778,9 @@ export const generateTextWithUnifiedFallback = async (
           return { text: deepseekRes.text, modelUsed: usedModel };
         }
       } else if (model.startsWith('gemini')) {
-        let retries = 3;
+        let retries = perModelMaxRetries;
         while (retries > 0) {
           try {
-            const timeoutPromise = new Promise((_, reject) => {
-              setTimeout(() => reject(new Error("Request timed out after 60 seconds")), 60000);
-            });
-            
             const apiCall = getAI().models.generateContent({
               model,
               contents: prompt,
@@ -771,7 +790,7 @@ export const generateTextWithUnifiedFallback = async (
               }
             });
 
-            const response: any = await Promise.race([apiCall, timeoutPromise]);
+            const response: any = await wrapWithTimeout(apiCall, perModelTimeoutMs, model);
             const text = response?.text;
             if (text) {
               aiMonitor.completeRequest(reqId, { modelUsed: model });
@@ -780,9 +799,9 @@ export const generateTextWithUnifiedFallback = async (
           } catch (gErr: any) {
             console.warn(`Gemini model ${model} attempt failed (retries left ${retries - 1}):`, gErr?.message || gErr);
             retries--;
-            if (retries > 0) {
+            if (retries > 0 && !gErr?.message?.includes('timed out')) {
               aiMonitor.updateStatus(reqId, `Ponawianie próby dla ${formatAIModelName(model)} (pozostało: ${retries})...`);
-              await new Promise(r => setTimeout(r, 1500));
+              await new Promise(r => setTimeout(r, 1000));
             } else {
               throw gErr;
             }
@@ -797,7 +816,7 @@ export const generateTextWithUnifiedFallback = async (
         throw error;
       }
       if (error?.message?.includes("timed out")) {
-        aiMonitor.updateStatus(reqId, `Model ${formatAIModelName(model)} przekroczył limit czasu.`);
+        aiMonitor.updateStatus(reqId, `Model ${formatAIModelName(model)} przekroczył limit czasu (${perModelTimeoutMs}ms). Szybki fallback do kolejnego modelu...`);
         continue;
       }
       if (String(error?.status) === "404" || String(error?.status) === "503" || String(error?.status) === "429" || error?.message?.includes("503") || error?.message?.includes("429")) {
@@ -1023,13 +1042,26 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
         preferredModels,
         geminiConfig,
         onModelAttempt,
-        { taskName: 'Generowanie zdań ćwiczeniowych (krok 1)', category: 'sentence-gen' }
+        { taskName: 'Generowanie zdań ćwiczeniowych', category: 'sentence-gen', timeoutMs: 8000, maxRetries: 1 }
       );
       let responseText = fallbackRes1.text;
       let modelUsed = fallbackRes1.modelUsed;
 
-      // Krok 2: Weryfikacja i poprawa logiczna
-      const verificationPrompt = `Przeanalizuj poniższe wygenerowane zdania w formacie JSON:
+      // Szybka ścieżka: sprawdź, czy krok 1 zwrócił już poprawny JSON ze zdaniami
+      let hasValidSentences = false;
+      try {
+        const quickCheck = JSON.parse(extractJSON(responseText || ""));
+        const list = Array.isArray(quickCheck) ? quickCheck : (quickCheck?.sentences || []);
+        if (Array.isArray(list) && list.length >= numSentences) {
+          hasValidSentences = true;
+        }
+      } catch {
+        hasValidSentences = false;
+      }
+
+      // Krok 2: Weryfikacja uruchamiana tylko wtedy, gdy krok 1 nie zwrócił pełnego zestawu zdań
+      if (!hasValidSentences) {
+        const verificationPrompt = `Przeanalizuj poniższe wygenerowane zdania w formacie JSON:
 ${responseText}
 
 TWOJE ZADANIE: Sprawdź spójność logiczną i sens każdego zdania. Upewnij się, że zdania są w 100% logiczne, sensowne i naturalne w realnym świecie, a nie robotyczne, dziwaczne czy sztuczne. Zdania mają uczyć poprawnego, autentycznego kontekstu! Jeśli jakiekolwiek zdanie jest bez sensu, sztuczne lub dziwne, OD RAZU popraw je na w pełni logiczne i życiowe, zachowując docelowe słownictwo.
@@ -1037,17 +1069,18 @@ PAMIĘTAJ: Pole \`polish_translation\` (lub \`polishSentence\`) MUSI być ZAWSZE
 
 Zwróć skorygowany wynik WYŁĄCZNIE jako poprawny obiekt JSON, zachowując dokładnie tę samą strukturę (klucze).`;
 
-      let fallbackRes2 = await generateTextWithUnifiedFallback(
-        verificationPrompt,
-        systemInstruction,
-        preferredModels,
-        geminiConfig,
-        onModelAttempt,
-        { taskName: 'Weryfikacja logiczna zdań (krok 2)', category: 'sentence-gen' }
-      );
-      if (fallbackRes2.text) {
-        responseText = fallbackRes2.text;
-        modelUsed = fallbackRes2.modelUsed;
+        let fallbackRes2 = await generateTextWithUnifiedFallback(
+          verificationPrompt,
+          systemInstruction,
+          preferredModels,
+          geminiConfig,
+          onModelAttempt,
+          { taskName: 'Weryfikacja logiczna zdań (krok 2)', category: 'sentence-gen', timeoutMs: 8000, maxRetries: 1 }
+        );
+        if (fallbackRes2.text) {
+          responseText = fallbackRes2.text;
+          modelUsed = fallbackRes2.modelUsed;
+        }
       }
 
       let jsonText = extractJSON(responseText || "");

@@ -599,17 +599,28 @@ export function createApp() {
 
   app.post('/api/admin-users/users', requireFirebaseAdmin, async (req, res) => {
     try {
-      const { email, password, role } = req.body;
+      const { email, password, role, username, displayName, firstName, lastName, ...extraData } = req.body;
+      const cleanEmail = String(email || '').trim().toLowerCase();
+      
+      const resolvedDisplayName = displayName || username || (firstName && lastName ? `${firstName} ${lastName}`.trim() : cleanEmail.split('@')[0]);
+      const nameParts = (resolvedDisplayName || '').split(' ');
+      const resolvedFirst = firstName || (nameParts[0] || resolvedDisplayName);
+      const resolvedLast = lastName || (nameParts.slice(1).join(' ') || '');
+      const cleanUsername = username || resolvedDisplayName;
+
       let userRecord;
       try {
         userRecord = await adminAuth.createUser({
-          email,
+          email: cleanEmail,
           password,
+          displayName: resolvedDisplayName,
         });
       } catch (authError: any) {
         if (authError.code === 'auth/email-already-exists') {
-          userRecord = await adminAuth.getUserByEmail(email);
-          await adminAuth.updateUser(userRecord.uid, { password });
+          userRecord = await adminAuth.getUserByEmail(cleanEmail);
+          if (password) {
+            await adminAuth.updateUser(userRecord.uid, { password });
+          }
         } else {
           throw authError;
         }
@@ -619,7 +630,35 @@ export function createApp() {
       if (role) {
         await adminAuth.setCustomUserClaims(userRecord.uid, { role });
       }
-      res.json(userRecord);
+
+      // Atomowy zapis profilu w Firestore przez Admin SDK (omija ograniczenia reguł klienta)
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+
+      const newUserDoc: Record<string, any> = {
+        email: cleanEmail,
+        username: cleanUsername,
+        displayName: resolvedDisplayName,
+        firstName: resolvedFirst,
+        lastName: resolvedLast,
+        role: role || 'user',
+        createdAt: new Date().toISOString(),
+        loginCount: 0,
+        streakCount: 0,
+        requirePasswordChange: true,
+        tempPassword: password,
+        statusWspolpracy: 'Aktywny',
+        ...extraData,
+      };
+
+      await adminDb.collection('users').doc(userRecord.uid).set(newUserDoc, { merge: true });
+
+      res.json({
+        ...userRecord,
+        uid: userRecord.uid,
+        email: cleanEmail,
+        userDoc: newUserDoc,
+      });
     } catch (error: any) {
       res.status(500).json({ error: formatErrorString(error) });
     }
@@ -695,6 +734,230 @@ export function createApp() {
     } catch (error: any) {
       console.error('[Admin User Email Error]:', error);
       res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+
+  function normalizeUsername(username: string): string {
+    return (username || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/ł/g, 'l')
+      .replace(/[^a-z0-9]/g, '')
+      .slice(0, 30) || 'student';
+  }
+
+  // Hurtowy import kursantów z poziomu Asystenta CRM (wyłącznie dla Administratora)
+  app.post('/api/admin-users/bulk-import', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { students } = req.body;
+      if (!Array.isArray(students) || students.length === 0) {
+        return res.status(400).json({ error: 'Brak listy kursantów do zaimportowania.' });
+      }
+
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+
+      const results: Array<{
+        uid?: string;
+        username: string;
+        email: string;
+        password?: string;
+        status: 'created' | 'existing' | 'error';
+        error?: string;
+      }> = [];
+
+      for (const item of students) {
+        try {
+          const rawFirst = String(item.firstName || '').trim();
+          const rawLast = String(item.lastName || '').trim();
+          const rawUsername = String(item.username || '').trim();
+
+          let displayName = '';
+          if (rawFirst || rawLast) {
+            displayName = `${rawFirst} ${rawLast}`.trim();
+          } else if (rawUsername) {
+            displayName = rawUsername;
+          } else {
+            displayName = 'Kursant';
+          }
+
+          const cleanUsername = rawUsername || displayName;
+
+          const rawEmail = String(item.email || '').trim().toLowerCase();
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          const finalEmail = (rawEmail && emailRegex.test(rawEmail))
+            ? rawEmail
+            : `${normalizeUsername(cleanUsername)}@student.vocabboost.com`;
+
+          const rawPassword = String(item.password || '').trim();
+          const finalPassword = rawPassword.length >= 6 ? rawPassword : Math.random().toString(36).slice(-8);
+
+          let userRecord;
+          let status: 'created' | 'existing' = 'created';
+
+          try {
+            userRecord = await adminAuth.createUser({
+              email: finalEmail,
+              password: finalPassword,
+              displayName: displayName || cleanUsername,
+            });
+          } catch (authErr: any) {
+            if (authErr?.code === 'auth/email-already-exists') {
+              userRecord = await adminAuth.getUserByEmail(finalEmail);
+              status = 'existing';
+              if (rawPassword) {
+                await adminAuth.updateUser(userRecord.uid, { password: finalPassword });
+              }
+            } else {
+              throw authErr;
+            }
+          }
+
+          const newUserDoc: Record<string, any> = {
+            email: finalEmail,
+            username: cleanUsername,
+            displayName: displayName,
+            firstName: rawFirst || (displayName.includes(' ') ? displayName.split(' ')[0] : displayName),
+            lastName: rawLast || (displayName.includes(' ') ? displayName.split(' ').slice(1).join(' ') : ''),
+            role: 'user',
+            level: item.level || 'A2-B1',
+            company: item.company || '',
+            notes: item.notes || '',
+            createdAt: new Date().toISOString(),
+            loginCount: 0,
+            streakCount: 0,
+            requirePasswordChange: true,
+            tempPassword: finalPassword,
+            statusWspolpracy: 'Aktywny',
+          };
+
+          await adminDb.collection('users').doc(userRecord.uid).set(newUserDoc, { merge: true });
+
+          results.push({
+            uid: userRecord.uid,
+            username: cleanUsername,
+            email: finalEmail,
+            password: finalPassword,
+            status,
+          });
+        } catch (itemErr: any) {
+          console.error('[Bulk Import Item Error]:', itemErr);
+          results.push({
+            username: item.username || item.firstName || 'Nieznany',
+            email: item.email || '',
+            status: 'error',
+            error: formatErrorString(itemErr),
+          });
+        }
+      }
+
+      const createdCount = results.filter(r => r.status === 'created').length;
+      const existingCount = results.filter(r => r.status === 'existing').length;
+      const errorCount = results.filter(r => r.status === 'error').length;
+
+      res.json({
+        total: students.length,
+        created: createdCount,
+        existing: existingCount,
+        failed: errorCount,
+        results,
+      });
+    } catch (error: any) {
+      console.error('[Bulk Import Error]:', error);
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+
+  // Web Scraping / Research Endpoint dla Asystenta
+  app.post('/api/web-research/scrape', requireFirebaseAuth, async (req, res) => {
+    try {
+      const { url } = req.body || {};
+      if (!url || typeof url !== 'string' || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+        return res.status(400).json({ error: 'Nieprawidłowy adres URL. Wymagany protokół http:// lub https://' });
+      }
+
+      console.log(`[Web Scraping] Fetching URL: ${url}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 CRIBRO/1.0',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.7',
+          'Accept-Language': 'pl,en-US;q=0.9,en;q=0.8',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        return res.status(response.status).json({
+          error: `Strona odpowiedziała kodem ${response.status}: ${response.statusText}`,
+        });
+      }
+
+      const html = await response.text();
+
+      // Wyciągnij tytuł
+      const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+      const title = titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : 'Strona WWW';
+
+      // Usuń tagi techniczne i zbędne sekcje
+      let cleaned = html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
+        .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, ' ')
+        .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, ' ')
+        .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, ' ')
+        .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, ' ')
+        .replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, ' ')
+        .replace(/<!--[\s\S]*?-->/g, ' ');
+
+      // Zastąp nagłówki i bloki nowymi liniami
+      cleaned = cleaned
+        .replace(/<h[1-6][^>]*>/gi, '\n\n### ')
+        .replace(/<\/h[1-6]>/gi, '\n')
+        .replace(/<p[^>]*>/gi, '\n\n')
+        .replace(/<\/p>/gi, '')
+        .replace(/<br\s*[\/]?>/gi, '\n')
+        .replace(/<li[^>]*>/gi, '\n* ')
+        .replace(/<\/li>/gi, '')
+        .replace(/<tr[^>]*>/gi, '\n')
+        .replace(/<td[^>]*>/gi, ' | ')
+        .replace(/<th[^>]*>/gi, ' | ');
+
+      // Usuń wszelkie pozostałe tagi HTML
+      cleaned = cleaned.replace(/<[^>]+>/g, ' ');
+
+      // Rozkoduj encje HTML
+      cleaned = cleaned
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&#x2F;/g, '/');
+
+      // Wyczyść nadmiarowe białe znaki
+      const formattedText = cleaned
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean)
+        .join('\n\n')
+        .slice(0, 15000);
+
+      res.json({
+        url,
+        title,
+        textContent: formattedText,
+        length: formattedText.length,
+      });
+    } catch (error: any) {
+      console.error('[Web Scraping Error]:', error);
+      res.status(500).json({ error: `Nie udało się pobrać strony: ${formatErrorString(error)}` });
     }
   });
 
@@ -1223,6 +1486,9 @@ export function createApp() {
     try {
       const rawExercises = Array.isArray(req.body?.exercises) ? req.body.exercises : [];
       const studentUids = Array.isArray(req.body?.studentUids) ? req.body.studentUids : [];
+      const studentNames = (typeof req.body?.studentNames === 'object' && req.body?.studentNames !== null) ? req.body.studentNames : {};
+      const studentEmails = (typeof req.body?.studentEmails === 'object' && req.body?.studentEmails !== null) ? req.body.studentEmails : {};
+      const studentUsernames = (typeof req.body?.studentUsernames === 'object' && req.body?.studentUsernames !== null) ? req.body.studentUsernames : {};
       const title = String(req.body?.title || 'Praca domowa').trim();
       const dueDate = String(req.body?.dueDate || '').trim();
       const groupId = String(req.body?.groupId || '').trim();
@@ -1245,6 +1511,9 @@ export function createApp() {
       for (const studentUid of studentUids) {
         const payload = buildV2TaskPayload({
           studentUid,
+          studentName: studentNames[studentUid],
+          studentEmail: studentEmails[studentUid],
+          studentUsername: studentUsernames[studentUid],
           exercises,
           teacherId,
           title,
@@ -4155,8 +4424,19 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+  });
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      const altPort = PORT + 1;
+      console.warn(`[Server] Port ${PORT} busy, starting on http://localhost:${altPort}`);
+      app.listen(altPort, "0.0.0.0", () => {
+        console.log(`Server running on http://localhost:${altPort}`);
+      });
+    } else {
+      console.error('[Server] Startup error:', err);
+    }
   });
 }
 

@@ -1,11 +1,12 @@
 import { collection, getDocs, query } from 'firebase/firestore';
-import { db } from '../firebase';
-import { LessonRecord, LessonAttachment } from '../types';
+import { db, auth } from '../firebase';
+import { LessonRecord, LessonAttachment, GeneratedLessonScenario, LessonScenarioStage } from '../types';
 import { getLessonRecordsForStudent } from './lessonRecord';
 import { getAllUsers } from './userService';
 import { extractLessonBlocks } from '../utils/lessonBlocks';
 import { generateTextWithUnifiedFallback, getAI } from './geminiService';
 import { runCouncil, DEFAULT_COUNCIL } from './aiCouncil';
+import { parseScenarioStages } from './scenarioService';
 
 export interface LessonDraftProposal {
   topic: string;
@@ -17,13 +18,44 @@ export interface LessonDraftProposal {
   studentName?: string;
 }
 
+export interface StudentImportCandidate {
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  email?: string;
+  password?: string;
+  level?: string;
+  company?: string;
+  notes?: string;
+}
+
+export interface StudentsImportProposal {
+  students: StudentImportCandidate[];
+  summary?: string;
+}
+
+export interface HtmlReportProposal {
+  title: string;
+  html: string;
+  summary?: string;
+}
+
+export interface WebGroundingSource {
+  title: string;
+  url: string;
+  snippet?: string;
+}
+
 export interface AssistantAction {
-  type: 'insert_lesson' | 'planner' | 'presentation' | 'homework' | 'scratchpad' | 'mailing' | 'profile';
+  type: 'insert_lesson' | 'planner' | 'presentation' | 'homework' | 'scratchpad' | 'mailing' | 'profile' | 'bulk_import' | 'html_pdf';
   label: string;
   studentId?: string;
   studentName?: string;
   topic?: string;
   lessonDraft?: LessonDraftProposal;
+  lessonScenario?: GeneratedLessonScenario;
+  studentsImport?: StudentsImportProposal;
+  htmlReport?: HtmlReportProposal;
 }
 
 export interface AssistantMessage {
@@ -32,6 +64,10 @@ export interface AssistantMessage {
   attachments?: LessonAttachment[];
   actions?: AssistantAction[];
   lessonDraft?: LessonDraftProposal;
+  lessonScenario?: GeneratedLessonScenario;
+  studentsImport?: StudentsImportProposal;
+  htmlReport?: HtmlReportProposal;
+  webSources?: WebGroundingSource[];
   timestamp?: number;
   modelUsed?: string;
   isCouncil?: boolean;
@@ -66,6 +102,7 @@ export interface AssistantSkill {
   category: 'Planowanie' | 'Analiza' | 'Ćwiczenia' | 'Komunikacja';
   template: string;
   badge?: string;
+  adminOnly?: boolean;
 }
 
 export const ASSISTANT_SKILLS: AssistantSkill[] = [
@@ -78,6 +115,47 @@ export const ASSISTANT_SKILLS: AssistantSkill[] = [
     category: 'Analiza',
     template: '/help',
     badge: 'Pomoc',
+  },
+  {
+    id: 'import',
+    command: '/import',
+    name: 'Import kursantów do CRM',
+    description: 'Dodaj wielu kursantów naraz z listy, tabeli lub innej aplikacji (Tylko Admin)',
+    icon: 'users',
+    category: 'Planowanie',
+    template: 'Dodaj do bazy CRM następujących kursantów:\n1. Jan Kowalski (B2, InPost, jan@inpost.pl)\n2. Anna Nowak (C1, Allegro)',
+    badge: 'Admin',
+    adminOnly: true,
+  },
+  {
+    id: 'research',
+    command: '/research',
+    name: 'Research w internecie & Scraping',
+    description: 'Przeszukaj Google lub pobierz treść ze strony WWW i przygotuj analizę',
+    icon: 'globe',
+    category: 'Analiza',
+    template: '/research Zrób research w internecie na temat: ',
+    badge: 'Google',
+  },
+  {
+    id: 'raport',
+    command: '/raport',
+    name: 'Raport HTML & Eksport PDF',
+    description: 'Stwórz profesjonalny raport lub podsumowanie w HTML z gotowym plikiem PDF',
+    icon: 'pdf',
+    category: 'Analiza',
+    template: 'Przygotuj raport postępów w formacie HTML do wydruku PDF dla kursanta ',
+    badge: 'PDF',
+  },
+  {
+    id: 'plan',
+    command: '/plan',
+    name: 'Plan implementacji w PDF',
+    description: 'Przygotuj szczegółowy plan wdrożenia, harmonogram lub strategię w dokumencie PDF',
+    icon: 'document',
+    category: 'Planowanie',
+    template: 'Przygotuj plan implementacji w formacie HTML i PDF dla tematu: ',
+    badge: 'PDF',
   },
   {
     id: 'konspekt',
@@ -305,7 +383,10 @@ Twoje możliwości:
 2. Tworzenie czytelnych, estetycznych podsumowań ostatnich lekcji i analizy postępów językowych.
 3. Analiza załączonych materiałów: screenshotów, zdjęć zadań, plików PDF, artykułów i dokumentów.
 4. PRZYGOTOWYWANIE TEMATÓW LEKCJI, SCENARIUSZY I POWTÓREK dla kursantów.
-5. Obsługa szybkich komend lektora (np. /konspekt, /podsumowanie, /zadanie, /fiszki, /slajdy, /bledy, /kolo, /email, /analiza).
+5. DODAWANIE I IMPORT KURSANTÓW DO BAZY CRM (pojedynczo lub hurtowo z list, CSV i tabel z innych aplikacji).
+6. TWORZENIE RAPORTÓW, PLANÓW IMPLEMENTACJI I DOKUMENTÓW W HTML GOTOWYCH DO DRUKU PDF.
+7. RESEARCH W INTERNECIE I ANALIZA STRON WWW z cytowaniem źródeł.
+8. Obsługa szybkich komend lektora (np. /konspekt, /import, /research, /raport, /plan, /podsumowanie, /zadanie, /fiszki, /slajdy, /bledy, /kolo, /email, /analiza).
 
 ZASADY ODPOWIADANIA I FORMATOWANIA (BARDZO WAŻNE):
 - Odpowiadasz PO POLSKU, nowocześnie, przejrzyście, z zachowaniem nienagannej estetyki wizualnej.
@@ -322,23 +403,73 @@ ZASADY ODPOWIADANIA I FORMATOWANIA (BARDZO WAŻNE):
     🏠 **Zadanie domowe**
     🔮 **Rekomendowany follow-up na następne zajęcia**
 
-- Gdy lektor prosi o przygotowanie tematu lekcji, powtórki lub nowego konspektu:
-  1. Zaproponuj chwytliwy temat i poziom.
-  2. Wskaż cel i kluczowe słownictwo (**słowo** - znaczenie).
-  3. Opisz przebieg / ćwiczenia konwersacyjne i gramatyczne.
-  4. Zaproponuj zadanie domowe.
-  5. NA SAMYM KOŃCU odpowiedzi dołącz blok maszynowy w formacie JSON w tagach \`\`\`lesson_json ... \`\`\`:
+- Gdy lektor prosi o przygotowanie tematu lekcji, powtórki, scenariusza lub nowego konspektu (np. komendą /konspekt):
+  1. Zaproponuj chwytliwy temat, poziom CEFR oraz szacowany czas (np. 60 min).
+  2. Wskaż cel komunikacyjny lekcji i kluczowe słownictwo (**słowo** - znaczenie).
+  3. Rozpisz czytelny scenariusz w podziale na 5 standardowych etapów lekcji CRIBRO:
+     - 1. Warm-up & Koło Fortuny (10 min) – pytania do dyskusji / icebreaker
+     - 2. Language Focus & Vocabulary (15 min) – nowe zwroty, wymowa, naturalny kontekst
+     - 3. Main Discussion & Case Study (20 min) – pytania pogłębiające, analiza sytuacji
+     - 4. Controlled Practice & Role-play (10 min) – scenka, zadanie komunikacyjne
+     - 5. Wrap-up & Homework (5 min) – podsumowanie, zadanie domowe
+  4. NA SAMYM KOŃCU odpowiedzi dołącz blok maszynowy w formacie JSON w tagach \`\`\`lesson_json ... \`\`\`:
 \`\`\`lesson_json
 {
   "topic": "Tytuł lekcji",
-  "summary": "Zwięzłe podsumowanie i przebieg lekcji",
+  "summary": "Zwięzłe podsumowanie i cel dydaktyczny lekcji",
   "vocabulary": "word 1 - znaczenie 1\\nword 2 - znaczenie 2",
-  "grammar": "Zagadnienie gramatyczne / do poprawy",
-  "homework": "Zadanie domowe"
+  "grammar": "Zagadnienie gramatyczne / struktura",
+  "homework": "Zadanie domowe",
+  "level": "B2",
+  "duration": "60 min",
+  "goal": "Główny cel komunikacyjny lekcji",
+  "stages": [
+    { "title": "1. Warm-up & Koło Fortuny (10 min)", "duration": "10 min", "body": "Pytania rozgrzewkowe..." },
+    { "title": "2. Language Focus (15 min)", "duration": "15 min", "body": "Kluczowe zwroty..." },
+    { "title": "3. Main Discussion (20 min)", "duration": "20 min", "body": "Pytania i case study..." },
+    { "title": "4. Controlled Practice (10 min)", "duration": "10 min", "body": "Scenka role-play..." },
+    { "title": "5. Wrap-up & Homework (5 min)", "duration": "5 min", "body": "Podsumowanie i zadanie..." }
+  ]
 }
 \`\`\`
 
-- Gdy pytanie dotyczy faktów z bazy CRM („z kim była ostatnia lekcja”, „kto ma zaległości”), odpowiedz zwięźle i konkretnie w punktach, bez zbędnego bloku lesson_json.
+- Gdy lektor prosi o DODANIE KURSANTA LUB IMPORT WIELU KURSANTÓW (np. wkleja listę, CSV, tabelę lub wpisuje komendę /import):
+  1. Krótko i elegancko podsumuj w punktach rozpoznanych kursantów, ich poziomy i firmy.
+  2. NA SAMYM KOŃCU odpowiedzi dołącz blok maszynowy w tagach \`\`\`students_import_json ... \`\`\`:
+\`\`\`students_import_json
+{
+  "summary": "Przygotowano listę kursantów do zaimportowania do bazy CRM.",
+  "students": [
+    {
+      "firstName": "Jan",
+      "lastName": "Kowalski",
+      "username": "Jan Kowalski",
+      "email": "jan.kowalski@example.com",
+      "level": "B2",
+      "company": "Nazwa Firmy",
+      "notes": "Dodatkowe uwagi"
+    }
+  ]
+}
+\`\`\`
+
+- Gdy lektor prosi o STWORZENIE RAPORTU, PLANU IMPLEMENTACJI LUB DOKUMENTU W HTML DO DRUKU / PDF (np. komendą /raport, /plan lub poleceniem "wygeneruj w HTML / PDF"):
+  1. Opisz syntetycznie kluczowe wnioski i strukturę w Markdown.
+  2. NA SAMYM KOŃCU odpowiedzi dołącz pełny, semantyczny kod HTML dokumentu w tagach \`\`\`html_report ... \`\`\`.
+     Kod HTML musi zawierać czystą strukturę z nagłówkami <h1>, <h2>, czytelnymi tabelami (z obramowaniem i nagłówkami th), listami <ul>/<ol> oraz ramkami blokowymi:
+\`\`\`html_report
+<div class="cribro-document">
+  <h1>Tytuł Dokumentu lub Raportu</h1>
+  <p><strong>Cel i podsumowanie:</strong> Wprowadzenie do dokumentu...</p>
+  <h2>1. Szczegółowy Plan i Zakres</h2>
+  <ul>
+    <li>Punkt 1 - opis</li>
+    <li>Punkt 2 - opis</li>
+  </ul>
+</div>
+\`\`\`
+
+- Gdy pytanie dotyczy faktów z bazy CRM („z kim była ostatnia lekcja”, „kto ma zaległości”), odpowiedz zwięźle i konkretnie w punktach.
 - Nie zmyślasz faktów z przeszłości. Jeśli czegoś nie ma w historii kursanta, poinformuj o tym wprost.`;
 
 export const TEACHER_ASSISTANT_REVIEW_SYSTEM = `
@@ -348,7 +479,7 @@ Twoim celem jest zagwarantowanie najwyższej jakości merytorycznej, poprawnośc
 Sprawdź w szczególności:
 1. AUTENTYCZNOŚĆ I NATURALNOŚĆ: Wszystkie zdania angielskie i polskie muszą brzmieć w 100% naturalnie dla native speakerów. Bezwzględny zakaz sztucznych zdań czy niegramatycznych kalk językowych.
 2. DOPASOWANIE DO KURSANTA: Czy słownictwo i poziom gramatyki odpowiadają poziomowi CEFR i historii kursanta (jeśli został wskazany)?
-3. FORMATOWANIE: Czy odpowiedź jest czytelnie podzielona na sekcje Markdown z nagłówkami, listami punktowanymi i wytłuszczeniami? Jeśli to propozycja lekcji, czy na końcu znajduje się poprawny blok \`\`\`lesson_json\`\`\`?
+3. FORMATOWANIE: Czy odpowiedź jest czytelnie podzielona na sekcje Markdown z nagłówkami, listami punktowanymi i wytłuszczeniami?
 4. DOKŁADNOŚĆ: Czy nie ma zmyślonych faktów o kursancie, które nie wynikają z przekazanej bazy CRM?
 
 Wypisz maksymalnie 4 zwięzłe uwagi do poprawy lub napisz dokładnie: „Brak zastrzeżeń."
@@ -357,7 +488,8 @@ Wypisz maksymalnie 4 zwięzłe uwagi do poprawy lub napisz dokładnie: „Brak z
 export type AIAssistantMode = 'flash' | 'thinking';
 
 /**
- * Odpowiedź asystenta lektora z obsługą kontekstu bazy CRM, załączników multimedialnych, komend / oraz trybów Flash (szybki) i Thinking (Rada Modeli AI).
+ * Odpowiedź asystenta lektora z obsługą kontekstu bazy CRM, załączników multimedialnych, komend /,
+ * importu kursantów, web researchu / scrapingu oraz generowania raportów HTML i PDF.
  */
 export const askTeacherAssistant = async (
   question: string,
@@ -370,6 +502,10 @@ export const askTeacherAssistant = async (
   usedStudents: string[];
   actions: AssistantAction[];
   lessonDraft?: LessonDraftProposal;
+  lessonScenario?: GeneratedLessonScenario;
+  studentsImport?: StudentsImportProposal;
+  htmlReport?: HtmlReportProposal;
+  webSources?: WebGroundingSource[];
   modelUsed?: string;
   isCouncil?: boolean;
 }> => {
@@ -381,17 +517,20 @@ export const askTeacherAssistant = async (
 Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcji oraz modułami platformy CRIBRO.
 
 #### 🎯 Do czego możesz mnie użyć?
-* 📚 **Konspekty lekcji 4-blokowych** (\`/konspekt\`): Generowanie 4-częściowych konspektów Notion (Words, Grammar, Pronunciation, Homework) z natychmiastowym 1-klikowym zapisem.
-* 👥 **Analiza kursantów i CRM** (\`/podsumowanie\` lub *@Kursant*): Szybki dostęp do historii lekcji, poziomu CEFR, notatek i najczęstszych trudności.
-* 🎯 **Zadania domowe i ćwiczenia** (\`/zadanie\`, \`/fiszki\`): Kreatywne prace domowe, zestawy słówek do powtórek i zadania gramatyczne.
-* 🎡 **Warm-up & Koło fortuny** (\`/kolo\`): Angażujące pytania rozgrzewkowe na 60–90 sekund do dyskusji na zajęciach.
-* 📎 **Analiza materiałów (Multimodal)** (\`/analiza\`): Przeciągnij screenshot, zdjęcie zadania lub plik PDF, aby wyodrębnić słówka i ułożyć ćwiczenia.
-* 📺 **Prezentacja Live** (\`/slajdy\`): Scenariusze i interaktywne slajdy do tablicy lekcyjnej na żywo.
-* ✉️ **E-maile do kursantów** (\`/email\`): Profesjonalne i ciepłe podsumowania zajęć dla kursantów.
+* 👥 **Hurtowe dodawanie kursantów** (\`/import\`): Wklej listę, CSV lub tabelę, a asystent przygotuje konta do bazy CRM jednym kliknięciem (Tylko Admin).
+* 🌐 **Research w internecie & Scraping** (\`/research\`): Przeszukuj Google lub wklej dowolny link WWW, aby wyciągnąć kluczowe fakty i słownictwo.
+* 📄 **Raporty HTML & Generator PDF** (\`/raport\`, \`/plan\`): Generuj gotowe do druku pliki PDF z planami wdrożeń, raportami postępów i konspektami A4.
+* 📚 **Konspekty lekcji 4-blokowych** (\`/konspekt\`): 4-częściowe scenariusze Notion (Words, Grammar, Pronunciation, Homework).
+* 👥 **Analiza kursantów i CRM** (\`/podsumowanie\` lub *@Kursant*): Szybki dostęp do historii lekcji, poziomu CEFR, notatek i trudności.
+* 🎯 **Zadania domowe i ćwiczenia** (\`/zadanie\`, \`/fiszki\`): Kreatywne prace domowe i zestawy fiszek.
+* 🎡 **Warm-up & Koło fortuny** (\`/kolo\`): Pytania rozgrzewkowe do dyskusji na zajęciach.
+* 📎 **Analiza materiałów (Multimodal)** (\`/analiza\`): Przeciągnij screenshot, zdjęcie zadania lub plik PDF.
+* 📺 **Prezentacja Live** (\`/slajdy\`): Scenariusze i interaktywne slajdy do lekcji na żywo.
+* ✉️ **E-maile do kursantów** (\`/email\`): Profesjonalne podsumowania zajęć dla kursantów.
 
 #### ⚡ Skróty i komendy:
 * **\`@\`** — Wskaż kursanta z bazy CRM (np. *@Dariusz*), aby automatycznie załadować jego kontekst.
-* **\`/\`** — Wybierz gotowy szablon komendy (np. \`/konspekt\`, \`/zadanie\`, \`/fiszki\`).
+* **\`/\`** — Wybierz gotowy szablon komendy (np. \`/konspekt\`, \`/import\`, \`/research\`, \`/raport\`, \`/plan\`).
 * **⚡ Flash** — Błyskawiczna odpowiedź jednomodelowa w ułamku sekundy.
 * **🧠 Thinking** — Głęboka narada Rady Modeli AI (Autor + Recenzenci).`,
       usedStudents: [],
@@ -399,6 +538,42 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
       modelUsed: 'CRIBRO System',
       isCouncil: false,
     };
+  }
+
+  // 1. Scraping stron WWW jeśli lektor podał linki URL w pytaniu
+  const detectedWebSources: WebGroundingSource[] = [];
+  const urlRegex = /(https?:\/\/[^\s<>"']+)/gi;
+  const urlsInPrompt = question.match(urlRegex) || [];
+  let scrapedWebText = '';
+
+  if (urlsInPrompt.length > 0) {
+    for (const u of urlsInPrompt.slice(0, 2)) {
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        const scrapeRes = await fetch('/api/web-research/scrape', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ url: u }),
+        });
+        if (scrapeRes.ok) {
+          const sData = await scrapeRes.json();
+          if (sData.textContent) {
+            scrapedWebText += `\n=== POBRANA TREŚĆ STRONY WWW (${sData.title || u}) ===\nURL: ${u}\n\n${sData.textContent}\n=== KONIEC POBRANEJ STRONY ===\n\n`;
+            if (!detectedWebSources.some(s => s.url === u)) {
+              detectedWebSources.push({
+                title: sData.title || u,
+                url: u,
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[TeacherAssistant] Scraping error:', u, err);
+      }
+    }
   }
 
   const mentioned = matchStudents(question, index);
@@ -450,6 +625,10 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
     prompt += `WCZEŚNIEJSZA ROZMOWA:\n${conversation}\n\n`;
   }
 
+  if (scrapedWebText) {
+    prompt += `${scrapedWebText}\n\n`;
+  }
+
   // Dołącz materiały tekstowe/dokumenty
   if (attachments && attachments.length > 0) {
     const textAttachments = attachments.filter(a => a.textContent && a.textContent.trim().length > 0);
@@ -472,6 +651,13 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
   let rawResponseText = '';
   let modelUsed = aiMode === 'thinking' ? 'Rada Modeli AI (Thinking)' : 'Gemini 2.5 Flash';
   let isCouncil = false;
+
+  const isWebResearchIntent =
+    cleanQ.startsWith('/research') ||
+    cleanQ.includes('research') ||
+    cleanQ.includes('przeszukaj') ||
+    cleanQ.includes('wyszukaj w internecie') ||
+    cleanQ.includes('wyszukaj w google');
 
   if (mediaAttachments.length > 0) {
     try {
@@ -537,7 +723,7 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
       modelUsed = singleModel || 'Gemini 2.5 Flash';
     }
   } else {
-    // ⚡ TRYB FLASH: Błyskawiczna, bezpośrednia generacja (najniższa latencja)
+    // ⚡ TRYB FLASH: Błyskawiczna, bezpośrednia generacja
     try {
       const { text, modelUsed: singleModel } = await generateTextWithUnifiedFallback(
         prompt,
@@ -566,7 +752,11 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
 
   // Rozpoznaj blok lesson_json
   let lessonDraft: LessonDraftProposal | undefined;
+  let lessonScenario: GeneratedLessonScenario | undefined;
+  let studentsImport: StudentsImportProposal | undefined;
+  let htmlReport: HtmlReportProposal | undefined;
   let cleanText = rawResponseText;
+
   const jsonMatch = rawResponseText.match(/```lesson_json\s*([\s\S]*?)\s*```/);
   if (jsonMatch) {
     try {
@@ -581,11 +771,175 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
           studentId: fallback[0]?.id,
           studentName: fallback[0]?.name,
         };
+
+        const parsedStagesRaw: LessonScenarioStage[] =
+          parsed.stages && Array.isArray(parsed.stages) && parsed.stages.length > 0
+            ? parsed.stages.map((st: any, sIdx: number) => ({
+                id: st.id || `stage_${sIdx + 1}`,
+                title: st.title || `Moduł ${sIdx + 1}`,
+                duration: st.duration || '10 min',
+                body: st.body || '',
+              }))
+            : parseScenarioStages(cleanText).stages;
+
+        const stages =
+          parsedStagesRaw.length > 0
+            ? parsedStagesRaw
+            : [
+                { id: 'stage_1', title: '1. Warm-up & Koło Fortuny (10 min)', duration: '10 min', body: 'Rozgrzewka i pytania wprowadzające' },
+                { id: 'stage_2', title: '2. Language Focus (15 min)', duration: '15 min', body: parsed.vocabulary || 'Kluczowe słownictwo i struktury' },
+                { id: 'stage_3', title: '3. Main Discussion (20 min)', duration: '20 min', body: parsed.summary || 'Dyskusja i analiza zagadnienia' },
+                { id: 'stage_4', title: '4. Controlled Practice & Role-play (10 min)', duration: '10 min', body: parsed.grammar || 'Ćwiczenia utrwalające' },
+                { id: 'stage_5', title: '5. Wrap-up & Homework (5 min)', duration: '5 min', body: parsed.homework || 'Podsumowanie i zadanie domowe' },
+              ];
+
+        const targetLevel = parsed.level || fallback[0]?.level || 'B2';
+        const duration = parsed.duration || '60 min';
+        const goal = parsed.goal || parsed.summary || parsed.topic || 'Scenariusz lekcji';
+
+        lessonScenario = {
+          id: `scen_ai_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          title: parsed.topic || 'Scenariusz lekcji',
+          topic: parsed.topic || 'Scenariusz lekcji',
+          content: cleanText,
+          studentId: fallback[0]?.id || null,
+          studentName: fallback[0]?.name || null,
+          targetLevel,
+          lessonDuration: duration,
+          lessonType: 'Scenariusz AI CRIBRO',
+          vocabularyText: parsed.vocabulary || '',
+          stages,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          goal,
+          format: `indywidualna lekcja, ${duration}, poziom ${targetLevel}`,
+          sourceMaterialDescription: 'Wygenerowano z Asystenta Lektora CRIBRO',
+          planJson: JSON.stringify({
+            title: parsed.topic || 'Scenariusz lekcji',
+            summary: parsed.summary || '',
+            format: `indywidualna lekcja, ${duration}, poziom ${targetLevel}`,
+            goal,
+            sourceMaterialDescription: 'Wygenerowano z Asystenta Lektora CRIBRO',
+            sections: stages.map((st, sIdx) => ({
+              id: st.id || `sec_${sIdx + 1}`,
+              title: st.title,
+              duration: st.duration,
+              items: [
+                {
+                  id: `item_${sIdx + 1}_1`,
+                  kind: 'text',
+                  text: st.body,
+                },
+              ],
+            })),
+          }),
+        };
       }
     } catch (e) {
       console.warn('Could not parse lesson_json from assistant:', e);
     }
     cleanText = rawResponseText.replace(/```lesson_json[\s\S]*?```/g, '').trim();
+  }
+
+  // Rozpoznaj blok students_import_json
+  const studentsImportMatch = rawResponseText.match(/```students_import_json\s*([\s\S]*?)\s*```/);
+  if (studentsImportMatch) {
+    try {
+      const parsed = JSON.parse(studentsImportMatch[1]);
+      const list = Array.isArray(parsed) ? parsed : parsed.students;
+      if (Array.isArray(list) && list.length > 0) {
+        studentsImport = {
+          students: list.map((st: any) => ({
+            firstName: st.firstName || '',
+            lastName: st.lastName || '',
+            username: st.username || `${st.firstName || ''} ${st.lastName || ''}`.trim() || 'Kursant',
+            email: st.email || '',
+            password: st.password || '',
+            level: st.level || 'A2-B1',
+            company: st.company || '',
+            notes: st.notes || '',
+          })),
+          summary: parsed.summary || `Rozpoznano ${list.length} kursantów gotowych do zaimportowania do CRM.`,
+        };
+      }
+    } catch (e) {
+      console.warn('Could not parse students_import_json from assistant:', e);
+    }
+    cleanText = cleanText.replace(/```students_import_json[\s\S]*?```/g, '').trim();
+  }
+
+  // Rozpoznaj blok html_report
+  const htmlReportMatch = rawResponseText.match(/```html_report\s*([\s\S]*?)\s*```/);
+  if (htmlReportMatch) {
+    try {
+      const rawHtml = htmlReportMatch[1].trim();
+      const titleMatch = rawHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || rawHtml.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+      const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : 'Raport CRIBRO';
+
+      htmlReport = {
+        title,
+        html: rawHtml,
+        summary: 'Wygenerowano sformatowany dokument HTML z opcją pobrania jako plik PDF A4.',
+      };
+    } catch (e) {
+      console.warn('Could not parse html_report from assistant:', e);
+    }
+    cleanText = cleanText.replace(/```html_report[\s\S]*?```/g, '').trim();
+  }
+
+  // Fallback: jeśli lektor pytał o konspekt/scenariusz, a model wypluł tylko etapy w tekście
+  if (
+    !lessonScenario &&
+    (cleanQ.includes('/konspekt') || cleanQ.includes('konspekt') || cleanQ.includes('scenariusz') || cleanQ.includes('/slajdy'))
+  ) {
+    const autoStages = parseScenarioStages(cleanText);
+    if (autoStages.stages && autoStages.stages.length >= 2) {
+      const targetLevel = fallback[0]?.level || 'B2';
+      const duration = '60 min';
+      lessonDraft = {
+        topic: autoStages.topic || autoStages.title || 'Scenariusz lekcji',
+        summary: autoStages.title || '',
+        vocabulary: autoStages.vocabularyText || '',
+        studentId: fallback[0]?.id,
+        studentName: fallback[0]?.name,
+      };
+      lessonScenario = {
+        id: `scen_ai_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        title: autoStages.title || 'Scenariusz lekcji',
+        topic: autoStages.topic || 'Scenariusz lekcji',
+        content: cleanText,
+        studentId: fallback[0]?.id || null,
+        studentName: fallback[0]?.name || null,
+        targetLevel,
+        lessonDuration: duration,
+        lessonType: 'Scenariusz AI CRIBRO',
+        vocabularyText: autoStages.vocabularyText || '',
+        stages: autoStages.stages,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        goal: autoStages.topic,
+        format: `indywidualna lekcja, ${duration}, poziom ${targetLevel}`,
+        sourceMaterialDescription: 'Wygenerowano z Asystenta Lektora CRIBRO',
+        planJson: JSON.stringify({
+          title: autoStages.title || 'Scenariusz lekcji',
+          summary: autoStages.title || '',
+          format: `indywidualna lekcja, ${duration}, poziom ${targetLevel}`,
+          goal: autoStages.topic,
+          sections: autoStages.stages.map((st, sIdx) => ({
+            id: st.id || `sec_${sIdx + 1}`,
+            title: st.title,
+            duration: st.duration,
+            items: [
+              {
+                id: `item_${sIdx + 1}_1`,
+                kind: 'text',
+                text: st.body,
+              },
+            ],
+          })),
+        }),
+      };
+    }
   }
 
   // Czyścimy ewentualne otaczające znaczniki markdown
@@ -598,38 +952,58 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
   const actions: AssistantAction[] = [];
   const primaryStudent = fallback[0];
 
-  if (lessonDraft) {
+  if (studentsImport) {
     actions.push({
-      type: 'insert_lesson',
-      label: 'Utwórz lekcję w Dzienniku',
-      studentId: primaryStudent?.id,
-      studentName: primaryStudent?.name,
-      topic: lessonDraft.topic,
-      lessonDraft,
+      type: 'bulk_import',
+      label: `👥 Dodaj ${studentsImport.students.length} kursantów do CRM`,
+      studentsImport,
     });
+  }
+
+  if (htmlReport) {
+    actions.push({
+      type: 'html_pdf',
+      label: `📄 Pobierz PDF: ${htmlReport.title.slice(0, 30)}`,
+      htmlReport,
+    });
+  }
+
+  if (lessonScenario || lessonDraft) {
     actions.push({
       type: 'planner',
-      label: 'Dopracuj w Planerze lekcji',
+      label: '🚀 Otwórz w Studio Planera',
       studentId: primaryStudent?.id,
       studentName: primaryStudent?.name,
-      topic: lessonDraft.topic,
+      topic: lessonScenario?.topic || lessonDraft?.topic,
       lessonDraft,
+      lessonScenario,
     });
     actions.push({
       type: 'presentation',
-      label: 'Uruchom w Prezentacji Live',
+      label: '📡 Uruchom Sesję Live (Slajdy)',
       studentId: primaryStudent?.id,
       studentName: primaryStudent?.name,
-      topic: lessonDraft.topic,
+      topic: lessonScenario?.topic || lessonDraft?.topic,
       lessonDraft,
+      lessonScenario,
+    });
+    actions.push({
+      type: 'insert_lesson',
+      label: '💾 Zapisz w Dzienniku lekcji',
+      studentId: primaryStudent?.id,
+      studentName: primaryStudent?.name,
+      topic: lessonDraft?.topic || lessonScenario?.topic,
+      lessonDraft,
+      lessonScenario,
     });
     actions.push({
       type: 'homework',
-      label: 'Zadaj jako Pracę domową',
+      label: '📝 Zadaj jako Pracę domową',
       studentId: primaryStudent?.id,
       studentName: primaryStudent?.name,
-      topic: lessonDraft.topic,
+      topic: lessonDraft?.topic || lessonScenario?.topic,
       lessonDraft,
+      lessonScenario,
     });
     if (primaryStudent) {
       actions.push({
@@ -665,7 +1039,7 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
       studentId: primaryStudent.id,
       studentName: primaryStudent.name,
     });
-  } else {
+  } else if (!studentsImport && !htmlReport) {
     actions.push({ type: 'planner', label: 'Otwórz Planer lekcji' });
     actions.push({ type: 'homework', label: 'Zadania i testy' });
     actions.push({ type: 'mailing', label: 'Otwórz Mailing' });
@@ -676,6 +1050,10 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
     usedStudents: fallback.map(entry => entry.name),
     actions,
     lessonDraft,
+    lessonScenario,
+    studentsImport,
+    htmlReport,
+    webSources: detectedWebSources.length > 0 ? detectedWebSources : undefined,
     modelUsed,
     isCouncil,
   };

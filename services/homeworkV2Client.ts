@@ -56,6 +56,10 @@ export interface AssignSetRequest {
   exercises: ExerciseContractV2[];
   /** Jeden dokument na kursanta, wspólna treść — także dla grupy. */
   studentUids: string[];
+  /** Opcjonalne mapowanie UID -> Imię i Nazwisko kursanta */
+  studentNames?: Record<string, string>;
+  studentEmails?: Record<string, string>;
+  studentUsernames?: Record<string, string>;
   title: string;
   dueDate?: string;
   groupId?: string;
@@ -206,6 +210,9 @@ export const assignHomeworkSetV2 = async (request: AssignSetRequest): Promise<As
     for (const studentUid of request.studentUids) {
       const payload = buildV2TaskPayload({
         studentUid,
+        studentName: request.studentNames?.[studentUid],
+        studentEmail: request.studentEmails?.[studentUid],
+        studentUsername: request.studentUsernames?.[studentUid],
         exercises,
         teacherId,
         title: request.title,

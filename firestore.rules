@@ -48,7 +48,10 @@ service cloud.firestore {
         (
           ('email' in request.auth.token && (
             request.auth.token.email == 'maciej.wyrozumski@gmail.com' ||
-            request.auth.token.email == 'marta.lukaszczyk@gmail.com'
+            request.auth.token.email == 'marta.lukaszczyk@gmail.com' ||
+            request.auth.token.email == 'maciejwyrozumski@icloud.com' ||
+            request.auth.token.email == 'wyrozumski@maciej.pro' ||
+            request.auth.token.email == 'maciej@learnwithmaciej.com'
           )) ||
           (
             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
@@ -126,7 +129,7 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['id', 'username', 'role', 'email', 'photoURL', 'streakCount', 'lastStreakDate', 'streakHidden', 'createdAt', 'loginCount', 'lastLoginDate', 'firstName', 'lastName', 'level', 'description', 'requirePasswordChange', 'tempPassword', 'tempPasswordLogins', 'isSuspended', 'onboardingCompleted', 'passwordChangeDismissed', 'hasNewVocabulary', 'hasNewLesson', 'hasNewHomework', 'hasGradedHomework', 'lastGradedHomeworkId', 'lastGradedHomeworkTitle', 'lastGradedFeedback', 'lastGradedScore', 'dismissedNotifications', 'translatedSentencesCount', 'aiPrompt', 'frequentErrors', 'emailNotificationsDisabled', 'unsubscribedAt', 'lastInviteSentAt', 'inviteSentBy', 'invitationSent', 'invitationSentAt', 'isActivated', 'firstLoginAt', 'hasCustomPassword', 'passwordChangedAt', 'authProvider', 'isGoogleLinked', 'completedTasksCount']) &&
+      return hasOnlyAllowedFields(['id', 'username', 'displayName', 'name', 'role', 'email', 'photoURL', 'streakCount', 'lastStreakDate', 'streakHidden', 'createdAt', 'loginCount', 'lastLoginDate', 'firstName', 'lastName', 'level', 'description', 'requirePasswordChange', 'tempPassword', 'tempPasswordLogins', 'isSuspended', 'isArchived', 'archivedAt', 'notionPageId', 'statusWspolpracy', 'company', 'contractor', 'lessonType', 'recordType', 'isGroup', 'groupType', 'memberIds', 'memberNames', 'groupIds', 'studentInsights', 'showAiMonitor', 'canViewAiMonitor', 'soundSettings', 'ttsAccent', 'voiceGender', 'voiceSpeed', 'soundEngine', 'autoPlaySentence', 'autoPlayFlashcards', 'adminMessage', 'notes', 'phone', 'onboardingCompleted', 'passwordChangeDismissed', 'hasNewVocabulary', 'hasNewLesson', 'hasNewHomework', 'hasGradedHomework', 'lastGradedHomeworkId', 'lastGradedHomeworkTitle', 'lastGradedFeedback', 'lastGradedScore', 'dismissedNotifications', 'translatedSentencesCount', 'aiPrompt', 'frequentErrors', 'emailNotificationsDisabled', 'unsubscribedAt', 'lastInviteSentAt', 'inviteSentBy', 'invitationSent', 'invitationSentAt', 'isActivated', 'firstLoginAt', 'hasCustomPassword', 'passwordChangedAt', 'authProvider', 'isGoogleLinked', 'completedTasksCount']) &&
              (!('frequentErrors' in data) || data.frequentErrors is list) &&
              validStringLength('username', 1, 100) &&
              validStringLength('email', 0, 100) &&
@@ -142,6 +145,11 @@ service cloud.firestore {
              (!('tempPassword' in data) || data.tempPassword is string) &&
              (!('tempPasswordLogins' in data) || data.tempPasswordLogins is number) &&
              (!('isSuspended' in data) || data.isSuspended is bool) &&
+             (!('isArchived' in data) || data.isArchived is bool) &&
+             (!('isGroup' in data) || data.isGroup is bool) &&
+             (!('memberIds' in data) || data.memberIds is list) &&
+             (!('memberNames' in data) || data.memberNames is list) &&
+             (!('groupIds' in data) || data.groupIds is list) &&
              (!('onboardingCompleted' in data) || data.onboardingCompleted is bool) &&
              (!('passwordChangeDismissed' in data) || data.passwordChangeDismissed is bool) &&
              (!('hasNewVocabulary' in data) || data.hasNewVocabulary is bool) &&
@@ -159,8 +167,14 @@ service cloud.firestore {
              (!('unsubscribedAt' in data) || isValidDateString(data.unsubscribedAt)) &&
              isValidOptionalString('firstName', 0, 100) &&
              isValidOptionalString('lastName', 0, 100) &&
+             isValidOptionalString('displayName', 0, 200) &&
+             isValidOptionalString('name', 0, 200) &&
+             isValidOptionalString('statusWspolpracy', 0, 50) &&
+             isValidOptionalString('company', 0, 200) &&
+             isValidOptionalString('contractor', 0, 200) &&
              isValidOptionalString('level', 0, 50) &&
-             isValidOptionalString('description', 0, 1000);
+             isValidOptionalString('description', 0, 1000) &&
+             isValidOptionalString('notes', 0, 5000);
     }
 
     function isValidPracticeLog(data) {
@@ -242,8 +256,8 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) && ((request.resource.data.role == 'user') || ('email' in request.auth.token && (request.auth.token.email == "maciej.wyrozumski@gmail.com" || request.auth.token.email == "marta.lukaszczyk@gmail.com")) || isAdmin());
-      allow update: if (isOwner(userId) || isAdmin()) && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(["loginCount", "lastLoginDate", "streakCount", "lastStreakDate", "streakHidden", "username", "photoURL", "firstName", "lastName", "email", "level", "description", "requirePasswordChange", "hasNewVocabulary", "hasNewLesson", "hasNewHomework", "hasGradedHomework", "lastGradedHomeworkId", "lastGradedHomeworkTitle", "lastGradedFeedback", "lastGradedScore", "dismissedNotifications", "translatedSentencesCount", "aiPrompt", "frequentErrors", "tempPassword", "tempPasswordLogins", "onboardingCompleted", "passwordChangeDismissed", "emailNotificationsDisabled", "unsubscribedAt", "lastInviteSentAt", "inviteSentBy", "invitationSent", "invitationSentAt", "isActivated", "firstLoginAt", "hasCustomPassword", "passwordChangedAt", "authProvider", "isGoogleLinked", "completedTasksCount"]) || isAdmin());
+      allow create: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) && ((request.resource.data.role == 'user') || ('email' in request.auth.token && (request.auth.token.email == "maciej.wyrozumski@gmail.com" || request.auth.token.email == "marta.lukaszczyk@gmail.com" || request.auth.token.email == "maciejwyrozumski@icloud.com" || request.auth.token.email == "wyrozumski@maciej.pro" || request.auth.token.email == "maciej@learnwithmaciej.com")) || isAdmin());
+      allow update: if (isOwner(userId) || isAdmin()) && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(["loginCount", "lastLoginDate", "streakCount", "lastStreakDate", "streakHidden", "username", "displayName", "name", "photoURL", "firstName", "lastName", "email", "level", "description", "requirePasswordChange", "hasNewVocabulary", "hasNewLesson", "hasNewHomework", "hasGradedHomework", "lastGradedHomeworkId", "lastGradedHomeworkTitle", "lastGradedFeedback", "lastGradedScore", "dismissedNotifications", "translatedSentencesCount", "aiPrompt", "frequentErrors", "tempPassword", "tempPasswordLogins", "onboardingCompleted", "passwordChangeDismissed", "emailNotificationsDisabled", "unsubscribedAt", "lastInviteSentAt", "inviteSentBy", "invitationSent", "invitationSentAt", "isActivated", "firstLoginAt", "hasCustomPassword", "passwordChangedAt", "authProvider", "isGoogleLinked", "completedTasksCount", "isGroup", "groupType", "memberIds", "memberNames", "groupIds", "company", "contractor", "lessonType", "recordType", "statusWspolpracy", "studentInsights", "notes", "phone", "isArchived", "archivedAt", "notionPageId"]) || isAdmin());
       allow delete: if isAdmin();
 
       match /words/{wordId} {

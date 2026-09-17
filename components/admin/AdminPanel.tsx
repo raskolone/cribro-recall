@@ -87,6 +87,7 @@ interface AdminPanelProps {
   onViewChange?: (view: any, extra?: any) => void; 
   initialSelectedUserId?: string | null; 
   initialLessonDraft?: LessonDraftProposal | null;
+  initialScenario?: GeneratedLessonScenario | null;
   onUserSelect?: (userId: string | null) => void; 
   onTabChange?: (tab: string | null) => void;
 }
@@ -103,7 +104,7 @@ interface AdminPanelProps {
  */
 const SHOW_LEGACY_PANEL_TOOLS = false;
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId, initialLessonDraft, onUserSelect, onTabChange }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId, initialLessonDraft, initialScenario, onUserSelect, onTabChange }) => {
   const { sets: adminSets, getFlashcards } = useFlashcards();
   const { language } = useLanguage();
   const { connectGoogleDrive, connectGoogleWorkspace } = useAuth();
@@ -1277,21 +1278,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       }
       const email = trimmedEmail || (normalizeUsername(newStudentUsername) + '@student.vocabboost.com');
       const password = isAutoGeneratePassword ? Math.random().toString(36).slice(-8) : passwordInput;
-      
-      const userRecord = await createUser(email, password, 'user');
-      
+      const nameParts = newStudentUsername.trim().split(' ');
+      const firstName = nameParts[0] || newStudentUsername.trim();
+      const lastName = nameParts.slice(1).join(' ') || '';
+
       const newUserDoc = {
         email,
-        username: newStudentUsername,
-        role: 'user',
+        username: newStudentUsername.trim(),
+        displayName: newStudentUsername.trim(),
+        firstName,
+        lastName,
+        role: 'user' as const,
         createdAt: new Date().toISOString(),
         loginCount: 0,
         streakCount: 0,
         requirePasswordChange: true,
-        tempPassword: password
+        tempPassword: password,
+        statusWspolpracy: 'Aktywny' as const,
       };
+
+      const userRecord = await createUser(email, password, 'user', newUserDoc);
       
-      await setDoc(doc(db, 'users', userRecord.uid), newUserDoc);
+      try {
+        await setDoc(doc(db, 'users', userRecord.uid), newUserDoc, { merge: true });
+      } catch (clientErr) {
+        console.warn('[AdminPanel] Klient pominął bezpośredni setDoc (zapisany przez Admin API):', clientErr);
+      }
+
       addCachedUser({ id: userRecord.uid, ...newUserDoc } as UserWithId);
       
       setNewStudentPassword(password);
@@ -1463,6 +1476,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [lessonFormScenarioTopic, setLessonFormScenarioTopic] = useState('');
   const [lessonFormScenarioContent, setLessonFormScenarioContent] = useState('');
   const [availableScenariosForForm, setAvailableScenariosForForm] = useState<GeneratedLessonScenario[]>([]);
+  const [plannerInitialScenario, setPlannerInitialScenario] = useState<GeneratedLessonScenario | null>(initialScenario || null);
   const [lessonRecordModalMode, setLessonRecordModalMode] = useState<'view' | 'edit'>('view');
   
   // Lesson Database clone States
@@ -1811,6 +1825,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       openLessonRecordModal('edit', undefined, true);
     }
   }, [initialLessonDraft]);
+
+  useEffect(() => {
+    if (initialScenario) {
+      setPlannerInitialScenario(initialScenario);
+      setActiveTab('lesson-planner');
+    }
+  }, [initialScenario]);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -2389,6 +2410,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <LessonPlannerStudio
                   selectedUser={selectedUser}
                   users={users}
+                  initialScenario={plannerInitialScenario}
                   onSelectUser={(u) => {
                     if (u) {
                       handleSelectUser(u, 'lesson-planner');
@@ -2418,13 +2440,18 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   }}
                   onOpenInPresentation={async (scenario) => {
                     try {
-                      const sName = selectedUser ? (selectedUser.firstName ? `${selectedUser.firstName} ${selectedUser.lastName || ''}`.trim() : selectedUser.username) : null;
+                      const sName = selectedUser?.firstName
+                        ? `${selectedUser.firstName} ${selectedUser.lastName || ''}`.trim()
+                        : selectedUser?.username || null;
                       const pres = createPresentationFromScenario(scenario, selectedUser?.id, sName);
                       await savePresentationToStorage(pres);
                       setActiveTab('presentation');
-                      showToast('Scenariusz załadowany do Prezentacji & Notatnika Live!');
+                      showToast('Scenariusz lekcji załadowany do Prezentacji Live!');
+                      setTimeout(() => {
+                        tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }, 150);
                     } catch (e) {
-                      console.error('Błąd uruchamiania w prezentacji:', e);
+                      console.error('Błąd otwierania prezentacji:', e);
                       showToast('Nie udało się załadować scenariusza do prezentacji.');
                     }
                   }}
@@ -2441,10 +2468,21 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             onNavigateToModule={(mod, extra) => {
               if (mod === 'scratchpad') {
                 openScratchpadTab(extra?.studentId ? `sp_${extra.studentId}` : undefined);
-              } else if (mod === 'students' || mod === 'lesson-history' || mod === 'mailing' || mod === 'lesson-planner') {
-                setActiveTab(mod);
-                if (extra?.studentId) {
-                  const u = users.find((x) => x.id === extra.studentId);
+              } else if (
+                mod === 'students' ||
+                mod === 'lesson-history' ||
+                mod === 'mailing' ||
+                mod === 'lesson-planner' ||
+                (mod === 'admin' && extra?.tab === 'lesson-planner')
+              ) {
+                const targetTab = mod === 'admin' && extra?.tab ? extra.tab : mod;
+                setActiveTab(targetTab);
+                if (extra?.initialScenario) {
+                  setPlannerInitialScenario(extra.initialScenario);
+                }
+                const sId = extra?.studentId || extra?.userId;
+                if (sId) {
+                  const u = users.find((x) => x.id === sId);
                   if (u) setSelectedUser(u as UserWithId);
                 }
                 setTimeout(() => {
@@ -2488,19 +2526,23 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   setSelectedUser(targetStudent as UserWithId);
                 }
                 const sName = studentName || (targetStudent ? (targetStudent.firstName ? `${targetStudent.firstName} ${targetStudent.lastName || ''}`.trim() : targetStudent.username) : null);
-                const scenario = {
-                  id: `scen_${Date.now()}`,
-                  topic: scenarioData.topic || 'Temat lekcji',
-                  summary: scenarioData.summary || '',
-                  vocabulary: scenarioData.vocabulary || '',
-                  grammar: scenarioData.grammar || '',
-                  homework: scenarioData.homework || '',
-                  level: targetStudent?.level || 'A2-B1',
+                const scenario: GeneratedLessonScenario = (scenarioData && scenarioData.stages) ? scenarioData : {
+                  id: scenarioData?.id || `scen_${Date.now()}`,
+                  title: scenarioData?.topic || 'Temat lekcji',
+                  topic: scenarioData?.topic || 'Temat lekcji',
+                  content: scenarioData?.summary || '',
+                  summary: scenarioData?.summary || '',
+                  vocabularyText: scenarioData?.vocabulary || '',
+                  grammar: scenarioData?.grammar || '',
+                  homework: scenarioData?.homework || '',
+                  targetLevel: targetStudent?.level || scenarioData?.targetLevel || 'B2',
+                  lessonDuration: scenarioData?.lessonDuration || '60 min',
+                  createdAt: new Date().toISOString(),
                 };
-                const pres = createPresentationFromScenario(scenario as any, targetStudent?.id, sName);
+                const pres = createPresentationFromScenario(scenario, targetStudent?.id, sName);
                 await savePresentationToStorage(pres);
                 setActiveTab('presentation');
-                showToast('Lekcja z Asystenta AI załadowana do Prezentacji Live!');
+                showToast('Scenariusz z Asystenta AI załadowany do Prezentacji Live!');
                 setTimeout(() => {
                   tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }, 150);

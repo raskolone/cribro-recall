@@ -1,9 +1,10 @@
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { normalizeText, taskOwnerFields, TASK_OWNER_FIELD } from './homework';
+import { isRawId } from './studentFormat';
 
 /**
- * Uzupełnia `studentUid` w starych pracach domowych.
+ * Uzupełnia `studentUid` oraz czytelne `studentName` w starych pracach domowych.
  *
  * Dopóki kolekcja `specialTasks` była otwarta dla każdego zalogowanego, pole
  * przypisania bywało zapisywane jako imię, e-mail albo nazwa użytkownika —
@@ -13,10 +14,8 @@ import { normalizeText, taskOwnerFields, TASK_OWNER_FIELD } from './homework';
  * u nauczyciela (jedynego konta, które ma prawo zapisu) i dopisuje UID tam,
  * gdzie da się go jednoznacznie wskazać.
  *
- * Zadania, których nie da się przypisać jednoznacznie — w tym stare zadania
- * „dla wszystkich" — zostają nietknięte i trafiają do konsoli. Zgadywanie
- * właściciela pracy domowej to dokładnie ten rodzaj cichej decyzji, przez
- * którą cudze odpowiedzi lądują na niewłaściwym koncie.
+ * Dodatkowo naprawia zadania, w których `studentName` nie zostało zapisane
+ * lub zostało omyłkowo zapisane jako techniczny identyfikator UID Firebase.
  */
 
 const EVERYONE = ['all', 'wszyscy', '*', 'all_students', 'allstudents'];
@@ -86,7 +85,6 @@ export async function backfillTaskOwners(): Promise<void> {
       const uid = (d.data() as any)[TASK_OWNER_FIELD];
       return typeof uid !== 'string' || uid.length === 0;
     });
-    if (stale.length === 0) return;
 
     const unresolved: string[] = [];
     const updates: Array<{ id: string; owner: string }> = [];
@@ -99,18 +97,49 @@ export async function backfillTaskOwners(): Promise<void> {
 
     // Batch Firestore'a mieści 500 operacji — dzielimy z zapasem.
     const CHUNK = 400;
-    for (let i = 0; i < updates.length; i += CHUNK) {
-      const batch = writeBatch(db);
-      for (const u of updates.slice(i, i + CHUNK)) {
-        batch.update(doc(db, 'specialTasks', u.id), taskOwnerFields(u.owner));
+    if (updates.length > 0) {
+      for (let i = 0; i < updates.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        for (const u of updates.slice(i, i + CHUNK)) {
+          batch.update(doc(db, 'specialTasks', u.id), taskOwnerFields(u.owner));
+        }
+        await batch.commit();
       }
-      await batch.commit();
+      console.info(
+        `[specialTasks] Uzupełniono ${TASK_OWNER_FIELD} w ${updates.length} zadaniach.`
+      );
     }
-    const patched = updates.length;
 
-    console.info(
-      `[specialTasks] Uzupełniono ${TASK_OWNER_FIELD} w ${patched} zadaniach.`
-    );
+    // Uzupełnienie lub naprawa pola studentName, gdy go brakuje lub zawiera surowy UID
+    const nameUpdates: Array<{ id: string; studentName: string }> = [];
+    for (const d of tasksSnap.docs) {
+      const data = d.data() as any;
+      const currentName = data.studentName;
+      if (!currentName || isRawId(currentName)) {
+        const ownerUid = data[TASK_OWNER_FIELD] || data.studentId || data.userId;
+        const candidate = candidates.find(c => c.id === ownerUid);
+        if (candidate) {
+          const properName = candidate.fullName || candidate.username || '';
+          if (properName && !isRawId(properName)) {
+            nameUpdates.push({ id: d.id, studentName: properName });
+          }
+        }
+      }
+    }
+
+    if (nameUpdates.length > 0) {
+      for (let i = 0; i < nameUpdates.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        for (const u of nameUpdates.slice(i, i + CHUNK)) {
+          batch.update(doc(db, 'specialTasks', u.id), { studentName: u.studentName });
+        }
+        await batch.commit();
+      }
+      console.info(
+        `[specialTasks] Uzupełniono studentName w ${nameUpdates.length} zadaniach.`
+      );
+    }
+
     if (unresolved.length > 0) {
       console.warn(
         `[specialTasks] ${unresolved.length} zadań bez jednoznacznego właściciela — ` +

@@ -34,6 +34,7 @@ import CoachMarks from '../ui/CoachMarks';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import TeacherAssistant from '../admin/TeacherAssistant';
 import { LessonDraftProposal } from '../../services/teacherAssistant';
+import { GeneratedLessonScenario } from '../../types';
 import { buildStudentTourSteps, buildTeacherTourSteps } from './tourSteps';
 
 import TodayScreen from './TodayScreen';
@@ -175,6 +176,7 @@ const Dashboard: React.FC = () => {
   const [adminSelectedUserId, setAdminSelectedUserId] = useState<string | null>(restoredPanelState.adminSelectedUserId ?? null);
   const [adminActiveTab, setAdminActiveTab] = useState<string | null>(restoredPanelState.adminActiveTab ?? null);
   const [adminLessonDraft, setAdminLessonDraft] = useState<LessonDraftProposal | null>(null);
+  const [adminInitialScenario, setAdminInitialScenario] = useState<GeneratedLessonScenario | null>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(restoredPanelState.activeTaskId ?? null);
   const [activeTestId, setActiveTestId] = useState<string | null>(restoredPanelState.activeTestId ?? null);
   const [homeworkFilterStatus, setHomeworkFilterStatus] = useState<string | null>(restoredPanelState.homeworkFilterStatus ?? null);
@@ -238,6 +240,12 @@ const Dashboard: React.FC = () => {
       setAdminLessonDraft(extra.createLessonDraft);
     } else {
       setAdminLessonDraft(null);
+    }
+
+    if (extra && extra.initialScenario) {
+      setAdminInitialScenario(extra.initialScenario);
+    } else if (newView !== 'admin' && !extra?.tab) {
+      setAdminInitialScenario(null);
     }
 
     if (extra && extra.taskId) {
@@ -566,6 +574,7 @@ const Dashboard: React.FC = () => {
           initialTab={tabFromView}
           initialSelectedUserId={adminSelectedUserId}
           initialLessonDraft={adminLessonDraft}
+          initialScenario={adminInitialScenario}
           onUserSelect={(id) => {
             setAdminSelectedUserId(id);
           }}
@@ -600,6 +609,7 @@ const Dashboard: React.FC = () => {
             initialTab={adminActiveTab || null}
             initialSelectedUserId={adminSelectedUserId}
             initialLessonDraft={adminLessonDraft}
+            initialScenario={adminInitialScenario}
             onUserSelect={(id) => {
               setAdminSelectedUserId(id);
             }}
@@ -781,13 +791,18 @@ const Dashboard: React.FC = () => {
           }}
           onOpenInPresentation={async (scenarioData, studentId, studentName) => {
             try {
-              const scenario = {
-                id: `scen_${Date.now()}`,
-                topic: scenarioData.topic || 'Temat lekcji',
-                summary: scenarioData.summary || '',
-                vocabulary: scenarioData.vocabulary || '',
-                grammar: scenarioData.grammar || '',
-                homework: scenarioData.homework || '',
+              const scenario = scenarioData?.stages ? scenarioData : {
+                id: scenarioData?.id || `scen_${Date.now()}`,
+                title: scenarioData?.topic || 'Temat lekcji',
+                topic: scenarioData?.topic || 'Temat lekcji',
+                content: scenarioData?.summary || '',
+                summary: scenarioData?.summary || '',
+                vocabularyText: scenarioData?.vocabulary || '',
+                grammar: scenarioData?.grammar || '',
+                homework: scenarioData?.homework || '',
+                targetLevel: scenarioData?.targetLevel || 'B2',
+                lessonDuration: scenarioData?.lessonDuration || '60 min',
+                createdAt: new Date().toISOString(),
               };
               const pres = createPresentationFromScenario(scenario as any, studentId, studentName);
               await savePresentationToStorage(pres);

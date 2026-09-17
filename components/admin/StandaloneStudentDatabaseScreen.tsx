@@ -387,22 +387,34 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
         throw new Error('Hasło musi mieć co najmniej 6 znaków.');
       }
 
-      const userRecord = await createUser(finalEmail, finalPassword, 'user');
+      const nameParts = newUsername.trim().split(' ');
+      const firstName = nameParts[0] || newUsername.trim();
+      const lastName = nameParts.slice(1).join(' ') || '';
 
       const newUserDoc = {
         email: finalEmail,
         username: newUsername.trim(),
         displayName: newUsername.trim(),
-        role: 'user',
+        firstName,
+        lastName,
+        role: 'user' as const,
         createdAt: new Date().toISOString(),
         loginCount: 0,
         streakCount: 0,
         requirePasswordChange: true,
         tempPassword: finalPassword,
-        statusWspolpracy: 'Aktywny',
+        statusWspolpracy: 'Aktywny' as const,
       };
 
-      await setDoc(doc(db, 'users', userRecord.uid), newUserDoc);
+      const userRecord = await createUser(finalEmail, finalPassword, 'user', newUserDoc);
+
+      // Bezpieczna synchronizacja po stronie klienta (dokument jest już utworzony przez Admin API)
+      try {
+        await setDoc(doc(db, 'users', userRecord.uid), newUserDoc, { merge: true });
+      } catch (clientErr) {
+        console.warn('[CRM] Klient pominął bezpośredni setDoc (zapisany przez Admin API):', clientErr);
+      }
+
       addCachedUser({ id: userRecord.uid, ...newUserDoc } as UserWithId);
       setCreatedCredentials({ email: finalEmail, password: finalPassword });
       fetchUsersAndLessons(true);

@@ -36,6 +36,9 @@ export const selectSendableExercises = (rawExercises: unknown[]): ExerciseContra
 
 export interface BuildTaskPayloadInput {
   studentUid: string;
+  studentName?: string;
+  studentEmail?: string;
+  studentUsername?: string;
   exercises: ExerciseContractV2[];
   teacherId: string;
   title: string;
@@ -67,6 +70,9 @@ export const buildV2TaskPayload = (input: BuildTaskPayloadInput): Record<string,
   studentId: input.studentUid,
   userId: input.studentUid,
   studentIds: [input.studentUid],
+  studentName: input.studentName || 'Kursant',
+  ...(input.studentEmail ? { studentEmail: input.studentEmail } : {}),
+  ...(input.studentUsername ? { studentUsername: input.studentUsername } : {}),
   title: input.title,
   instructions: 'Masz trzy próby na każde zadanie. Podpowiedź pojawi się, gdy będzie potrzebna.',
   createdAt: input.createdAt,

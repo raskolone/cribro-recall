@@ -5,6 +5,7 @@ import { db, auth } from '../../firebase';
 import { User } from '../../types';
 import { buildHomeworkConfirmationEmail } from '../../services/homeworkEmail';
 import { formatPolishGreeting } from '../../utils/polishVocative';
+import { generatePersonalizedHomeworkNote } from '../../services/homeworkGenerator';
 
 interface HomeworkEmailConfirmationModalProps {
   isOpen: boolean;
@@ -21,6 +22,10 @@ interface HomeworkEmailConfirmationModalProps {
     accessToken?: string;
     accessExpiresAt?: string;
     accessUrl?: string;
+    customNote?: string;
+    personalizedNote?: string;
+    lessonTopics?: string[];
+    vocabularySample?: string[];
   } | null;
   onEmailSent?: () => void;
   onSkip?: () => void;
@@ -39,6 +44,7 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
   const [recipientEmail, setRecipientEmail] = useState<string>('');
   const [subject, setSubject] = useState<string>('');
   const [customNote, setCustomNote] = useState<string>('');
+  const [isGeneratingNote, setIsGeneratingNote] = useState<boolean>(false);
   const [updateProfileEmail, setUpdateProfileEmail] = useState<boolean>(false);
   const [enableBcc, setEnableBcc] = useState<boolean>(true);
   const [bccEmail, setBccEmail] = useState<string>('wyrozumski@maciej.pro');
@@ -85,6 +91,35 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
     fetchMailingDefaults();
   }, [isOpen]);
 
+  const studentDisplayName = useMemo(() => {
+    if (!student) return 'Kursant';
+    const fullName = `${student.firstName || ''} ${student.lastName || ''}`.trim();
+    return fullName || student.username || 'Kursant';
+  }, [student]);
+
+  const handleGenerateAIPersonalization = async () => {
+    if (!task) return;
+    setIsGeneratingNote(true);
+    try {
+      const vocab = (task.sentences || [])
+        .map((s: any) => s.targetWord || s.target_word_used || (typeof s === 'string' ? s : ''))
+        .filter(Boolean);
+
+      const note = await generatePersonalizedHomeworkNote({
+        studentName: student?.firstName || studentDisplayName,
+        topicTitle: task.title,
+        lessonTopics: task.lessonTopics || [task.title],
+        vocabularySample: task.vocabularySample || vocab,
+        exerciseCount: task.sentences?.length || task.itemCount || 6,
+      });
+      setCustomNote(note);
+    } catch (e) {
+      console.warn('Błąd generowania notatki AI:', e);
+    } finally {
+      setIsGeneratingNote(false);
+    }
+  };
+
   // Inicjalizacja pól na podstawie zadania i kursanta
   useEffect(() => {
     if (!isOpen || !task) return;
@@ -99,7 +134,14 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
         : `Nowa praca domowa: ${cleanTitle}`
     );
 
-    setCustomNote('');
+    const prefilledNote = task.personalizedNote || task.customNote || '';
+    if (prefilledNote) {
+      setCustomNote(prefilledNote);
+    } else {
+      // Automatyczne ułożenie spersonalizowanej notatki przy pierwszym otwarciu
+      handleGenerateAIPersonalization();
+    }
+
     setErrorMessage(null);
     setSendSuccess(false);
 
@@ -107,12 +149,6 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
     const isPlaceholder = !initialEmail || initialEmail.includes('@student.vocabboost.com') || initialEmail.includes('@example.com');
     setUpdateProfileEmail(isPlaceholder);
   }, [isOpen, task, student]);
-
-  const studentDisplayName = useMemo(() => {
-    if (!student) return 'Kursant';
-    const fullName = `${student.firstName || ''} ${student.lastName || ''}`.trim();
-    return fullName || student.username || 'Kursant';
-  }, [student]);
 
   const polishGreeting = useMemo(() => {
     const rawName = student?.firstName || student?.name || student?.username || '';
@@ -430,15 +466,34 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
               />
             </div>
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-content-muted block mb-1">
-                Osobista notatka / komentarz lektora (opcjonalnie)
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-content-muted flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-primary" /> Spersonalizowana wiadomość ode mnie (Lektora)
+                </label>
+                <button
+                  type="button"
+                  onClick={handleGenerateAIPersonalization}
+                  disabled={isGeneratingNote}
+                  className="text-[11px] font-semibold text-primary hover:text-primary-focus flex items-center gap-1 transition-colors px-2 py-0.5 rounded-md hover:bg-primary/10"
+                  title="Wygeneruj lub odśwież treść wiadomości przy użyciu AI"
+                >
+                  {isGeneratingNote ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" /> Generuję…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3 h-3" /> Odśwież z AI
+                    </>
+                  )}
+                </button>
+              </div>
               <textarea
                 value={customNote}
                 onChange={(e) => setCustomNote(e.target.value)}
-                rows={2}
-                className="w-full bg-base-300/80 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-primary focus:outline-none placeholder:text-content-muted/60"
-                placeholder="np. Dobra robota na dzisiejszych zajęciach! W razie pytań do zdań 3 i 4 napisz do mnie."
+                rows={3}
+                className="w-full bg-base-300/80 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-primary focus:outline-none placeholder:text-content-muted/60 leading-relaxed font-normal"
+                placeholder="np. Cześć, Bartłomieju! Przygotowałem dla Ciebie kilka zadań w oparciu o naszą ostatnią lekcję..."
               />
             </div>
           </div>

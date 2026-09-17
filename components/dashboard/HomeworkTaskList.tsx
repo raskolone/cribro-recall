@@ -1,6 +1,7 @@
 import React from 'react';
 import { Award, CheckCircle2, Clock, Edit3, Eye, FileText } from 'lucide-react';
 import { SpecialTask } from '../../types';
+import { formatStudentDisplayName } from '../../utils/studentFormat';
 
 /**
  * Prace domowe jako kompaktowa lista.
@@ -32,6 +33,8 @@ interface HomeworkTaskListProps {
   tasks: SpecialTask[];
   /** Czy pokazywać kolumnę kursanta — u kursanta to zawsze on sam. */
   showStudent?: boolean;
+  /** Opcjonalna funkcja pobierająca imię i nazwisko kursanta dla danego zadania */
+  getStudentName?: (task: SpecialTask) => string;
   /** Czy praca jest dla lektora nowa (kropka po lewej). */
   isNew?: (task: SpecialTask) => boolean;
   onPreview: (task: SpecialTask) => void;
@@ -56,6 +59,7 @@ const TYPE_LABEL: Record<string, string> = {
 const HomeworkTaskList: React.FC<HomeworkTaskListProps> = ({
   tasks,
   showStudent = true,
+  getStudentName,
   isNew,
   onPreview,
   onEdit,
@@ -98,7 +102,7 @@ const HomeworkTaskList: React.FC<HomeworkTaskListProps> = ({
                 )}
                 {showStudent && (
                   <span className="text-[12px] font-bold text-primary truncate">
-                    {task.studentName || task.studentId}
+                    {getStudentName ? getStudentName(task) : formatStudentDisplayName(null, task.studentName)}
                   </span>
                 )}
               </span>

@@ -7,6 +7,7 @@ import { auth, db } from '../../firebase';
 import { generateTranslationExercises, generateFillInTheBlankExercises, evaluateErrorCorrectionSentence, evaluateTranslations, evaluateTeacherHomework, processBulkSentences, generateHomeworkChatPipeline } from '../../services/geminiService';
 import { generateFindErrors } from '../../services/homeworkGenerator';
 import { isTaskForStudent, studentTasksQuery, taskOwnerFields, homeworkItemType } from '../../utils/homework';
+import { formatStudentDisplayName } from '../../utils/studentFormat';
 import { backfillTaskOwners } from '../../utils/backfillTaskOwners';
 import { getAllUsers } from '../../services/userService';
 import Card from '../ui/Card';
@@ -275,6 +276,28 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   // State
   const [students, setStudents] = useState<User[]>([]);
   const [tasks, setTasks] = useState<SpecialTask[]>([]);
+
+  const studentMap = React.useMemo(() => {
+    const map = new Map<string, User>();
+    students.forEach((s) => {
+      if (s.id) map.set(s.id, s);
+    });
+    return map;
+  }, [students]);
+
+  const resolveStudentName = React.useCallback(
+    (taskOrUid?: SpecialTask | string | null, fallbackName?: string | null): string => {
+      if (!taskOrUid) return formatStudentDisplayName(null, fallbackName);
+      if (typeof taskOrUid === 'string') {
+        const student = studentMap.get(taskOrUid);
+        return formatStudentDisplayName(student, fallbackName);
+      }
+      const uid = taskOrUid.studentUid || taskOrUid.studentId || (taskOrUid as any).userId;
+      const student = uid ? studentMap.get(uid) : undefined;
+      return formatStudentDisplayName(student, taskOrUid.studentName || fallbackName);
+    },
+    [studentMap]
+  );
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSavingHomework, setIsSavingHomework] = useState<boolean>(false);
   const isSavingRef = React.useRef<boolean>(false);
@@ -1207,7 +1230,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
         /* Imiona obu stron. Bez nich model pisze „Drogi Kursancie" i wychodzi
            z tego okólnik, a nie wiadomość od lektora do konkretnej osoby. */
         {
-          student: (reviewTask as any).studentName || null,
+          student: resolveStudentName(reviewTask),
           teacher: user?.firstName || user?.username || null,
         }
       );
@@ -1882,7 +1905,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                     Edytujesz pracę: <span className="text-primary">{editingTask.title || 'Praca domowa'}</span>
                   </h4>
                   <p className="text-xs text-content-muted">
-                    Przypisana do: <strong className="text-white">{editingTask.studentName || editingTask.studentId}</strong> | Możesz modyfikować treść zdań, wytyczne, termin oraz kursanta.
+                    Przypisana do: <strong className="text-white">{resolveStudentName(editingTask)}</strong> | Możesz modyfikować treść zdań, wytyczne, termin oraz kursanta.
                   </p>
                 </div>
               </div>
@@ -2477,7 +2500,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                   <option value="all">Wszyscy kursanci</option>
                   {students.map((st) => (
                     <option key={st.id} value={st.id}>
-                      {st.firstName ? `${st.firstName} ${st.lastName || ''}` : st.username}
+                      {formatStudentDisplayName(st)}
                     </option>
                   ))}
                 </select>
@@ -2570,6 +2593,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
             <HomeworkTaskList
               tasks={isTeacher ? filteredTasks : tasks}
               showStudent={isTeacher}
+              getStudentName={resolveStudentName}
               isNew={isTeacher ? isTaskNewForTeacher : undefined}
               formatDate={formatTaskDateTime}
               onPreview={(task) => {
@@ -2654,7 +2678,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                     
                     {isTeacher && (
                       <p className="text-xs text-primary/90 font-medium mb-1">
-                        👤 Kursant: {task.studentName || task.studentId}
+                        👤 Kursant: {resolveStudentName(task)}
                       </p>
                     )}
 
@@ -2862,7 +2886,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-content-muted mt-1">
                             <span className="flex items-center gap-1 text-content-muted font-medium">
                               <UserIcon size={12} className="text-primary" />
-                              {task.studentName || task.studentId}
+                              {resolveStudentName(task)}
                             </span>
                             {dateFormatted && (
                               <span className="flex items-center gap-1 font-mono text-[11px]">
@@ -3083,7 +3107,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                 </span>
                 <h2 className="text-xl font-bold text-white mt-2">{reviewTask.title}</h2>
                 <p className="text-xs text-content-muted mt-1">
-                  Kursant: <strong className="text-white">{reviewTask.studentName || reviewTask.studentId}</strong> | Status: <span className="text-primary font-bold">{reviewTask.status}</span>
+                  Kursant: <strong className="text-white">{resolveStudentName(reviewTask)}</strong> | Status: <span className="text-primary font-bold">{reviewTask.status}</span>
                 </p>
               </div>
               <button
@@ -3223,7 +3247,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                 </div>
                 <h2 className="text-xl font-bold text-white">{previewTask.title}</h2>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-content-muted mt-1.5">
-                  <span>Kursant: <strong className="text-white">{previewTask.studentName || previewTask.studentId}</strong></span>
+                  <span>Kursant: <strong className="text-white">{resolveStudentName(previewTask)}</strong></span>
                   {previewTask.createdAt && (
                     <span className="flex items-center gap-1">
                       • Zadano: <strong className="text-content">{formatTaskDateTime(previewTask.createdAt)}</strong>
@@ -3371,7 +3395,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
         title="Usunąć pracę domową?"
         message={
           taskToDelete
-            ? `Czy na pewno chcesz trwale usunąć pracę "${taskToDelete.title || 'Praca domowa'}" dla kursanta ${taskToDelete.studentName || taskToDelete.studentId || ''}? Tej operacji nie można cofnąć.`
+            ? `Czy na pewno chcesz trwale usunąć pracę "${taskToDelete.title || 'Praca domowa'}" dla kursanta ${resolveStudentName(taskToDelete)}? Tej operacji nie można cofnąć.`
             : ''
         }
         confirmText={isDeleting ? 'Usuwanie...' : 'Usuń pracę domową'}

@@ -106,3 +106,20 @@ test('buildHomeworkConfirmationEmail generuje powitanie z wołaczem, prostą tre
   assert.ok(email.text.includes('wyrozumski@maciej.pro'));
 });
 
+test('generatePersonalizedHomeworkNote tworzy spersonalizowaną notatkę z wołaczem i odniesieniem do lekcji', async () => {
+  const { generatePersonalizedHomeworkNote } = await import('../services/homeworkGenerator');
+
+  const note = await generatePersonalizedHomeworkNote({
+    studentName: 'Bartłomiej',
+    topicTitle: 'From Symptom to Solution: Troubleshooting an Aircraft Problem',
+    lessonTopics: ['From Symptom to Solution: Troubleshooting an Aircraft Problem'],
+    vocabularySample: ['troubleshoot', 'engine stall', 'oil leak'],
+    exerciseCount: 6,
+  });
+
+  assert.ok(note.startsWith('Cześć, Bartłomieju!'));
+  assert.ok(note.includes('From Symptom to Solution') || note.includes('ostatnią lekcję'));
+  assert.ok(note.length > 30);
+});
+
+
