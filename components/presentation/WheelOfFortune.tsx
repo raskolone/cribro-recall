@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import gsap from 'gsap';
 import confetti from 'canvas-confetti';
-import { 
-  Sparkles, RotateCcw, Volume2, CheckCircle2, Clock, 
+import {
+  Sparkles, RotateCcw, Volume2, CheckCircle2, Clock,
   HelpCircle, ChevronRight, Plus, Shuffle, Copy, Check,
   BookOpen, History, MessageSquare, Award, ArrowRight, Play, Pause,
-  Sun, Moon
+  Sun, Moon, Pencil, X, Save
 } from 'lucide-react';
 import { PresentationSlide, LessonRecord } from '../../types';
 import { SlideInteraction } from '../admin/presentation/SlideCard';
@@ -17,8 +17,16 @@ import {
   extractQuestionsFromPastLessons, 
   generateWheelQuestionsAI 
 } from '../../services/wheelQuestionService';
-import { animateDropletSuccess, prefersReducedMotion } from '../../services/gsapAnimations';
+import { animateDropletSuccess, prefersReducedMotion, cubicBezierEase } from '../../services/gsapAnimations';
 import { useTheme } from '../../context/ThemeContext';
+
+// Naturalna krzywa zwalniania koła fortuny — odpowiednik CSS
+// `cubic-bezier(0.15, 0.9, 0.2, 1.0)`, policzona raz przy starcie modułu.
+const WHEEL_SPIN_EASE = cubicBezierEase(0.15, 0.9, 0.2, 1.0);
+
+// Skraca treść pytania do czytelnej etykiety na wycinku koła (pełny tekst trafia do karty wyniku).
+const truncateForWheel = (text: string, max = 20): string =>
+  text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
 
 interface WheelOfFortuneProps {
   slide?: PresentationSlide;
@@ -113,6 +121,8 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
   const [showQuestionPool, setShowQuestionPool] = useState<boolean>(false);
   const [copiedQuestion, setCopiedQuestion] = useState<boolean>(false);
   const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
+  const [isEditingQuestions, setIsEditingQuestions] = useState<boolean>(false);
+  const [questionsDraft, setQuestionsDraft] = useState<string>('');
 
   // Stoper wypowiedzi (60 sekund dla kursanta)
   const [timerSeconds, setTimerSeconds] = useState<number>(60);
@@ -194,13 +204,13 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
     gsap.killTweensOf(wheelGroupRef.current);
     if (needleRef.current) gsap.killTweensOf(needleRef.current);
 
-    // Dynamiczny, zoptymalizowany czas trwania: 2.8s (oraz 2.4s dla zdalnej synchronizacji kursanta, aby nie lagował)
-    const spinDuration = isRemote ? 2.4 : 2.8;
+    // Naturalny, "fizyczny" czas trwania: 4.5s (oraz 4.0s dla zdalnej synchronizacji kursanta, aby nie lagował)
+    const spinDuration = isRemote ? 4.0 : 4.5;
 
     gsap.to(wheelGroupRef.current, {
       rotation: targetRotation,
       duration: spinDuration,
-      ease: 'power3.out',
+      ease: WHEEL_SPIN_EASE,
       onUpdate: () => {
         if (!wheelGroupRef.current) return;
         const currentRot = gsap.getProperty(wheelGroupRef.current, 'rotation') as number;
@@ -288,8 +298,8 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
     // Dopasowanie do iglicy na 270° (godzina 12:00)
     const targetAngleAtPointer = (270 - sliceCenterAngle + 360) % 360;
 
-    // 4 do 5 pełnych obrotów dla spektakularnego, ale szybkiego ruchu
-    const extraSpins = (4 + Math.floor(Math.random() * 2)) * 360;
+    // Min. 5 pełnych obrotów (1800°) dla spektakularnego, satysfakcjonującego ruchu
+    const extraSpins = (5 + Math.floor(Math.random() * 2)) * 360;
     const currentRot = rotationRef.current;
     const currentModulo = ((currentRot % 360) + 360) % 360;
     const angleDelta = ((targetAngleAtPointer - currentModulo) + 360) % 360;
@@ -330,6 +340,33 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
     if (onAddToNotes) {
       onAddToNotes(text);
     }
+  };
+
+  // Otwarcie panelu szybkiej edycji puli pytań (lektor)
+  const handleOpenQuestionEditor = () => {
+    setQuestionsDraft(activeQuestions.map(q => q.question).join('\n'));
+    setIsEditingQuestions(true);
+  };
+
+  // Zapis ręcznie edytowanej puli pytań — jedna linia = jedno pytanie
+  const handleSaveEditedQuestions = () => {
+    const lines = questionsDraft
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean);
+    if (lines.length === 0) return;
+
+    const editedQuestions: WheelQuestionItem[] = lines.map((line, idx) => ({
+      id: `custom-${Date.now()}-${idx}`,
+      question: line,
+      category: 'custom',
+      sourceTag: 'Edycja lektora'
+    }));
+
+    setActiveQuestions(editedQuestions);
+    setDiscussedQuestionIds(new Set());
+    setDrawnQuestion(null);
+    setIsEditingQuestions(false);
   };
 
   // Generowanie pytań przez AI
@@ -455,6 +492,22 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
             </Button>
           )}
 
+          {!isStudent && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={isSpinning}
+              onClick={handleOpenQuestionEditor}
+              className={`h-8 px-2.5 text-xs font-bold flex items-center gap-1.5 ${
+                isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Szybko dopisz lub usuń pytania z puli"
+            >
+              <Pencil size={12} />
+              <span className="hidden sm:inline">Edytuj pytania</span>
+            </Button>
+          )}
+
           <Button
             size="sm"
             variant="ghost"
@@ -551,6 +604,63 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ─── SZYBKA EDYCJA PULI PYTAŃ (LEKTOR) ─── */}
+      {isEditingQuestions && !isStudent && (
+        <div className={`p-4 rounded-2xl border space-y-3 animate-fadeIn backdrop-blur-xl ${
+          isDark
+            ? 'bg-slate-900/85 border-white/10'
+            : 'bg-white/95 border-slate-200 shadow-md'
+        }`}>
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+              isDark ? 'text-slate-400' : 'text-slate-500'
+            }`}>
+              <Pencil size={13} /> Edytuj pulę pytań (jedno pytanie na wiersz)
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsEditingQuestions(false)}
+              className={`p-1 rounded-md ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
+              title="Zamknij bez zapisywania"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          <textarea
+            value={questionsDraft}
+            onChange={(e) => setQuestionsDraft(e.target.value)}
+            rows={8}
+            placeholder={"What was the highlight of your week?\nHow do you usually unwind after work?\n..."}
+            className={`w-full text-xs font-mono rounded-xl border p-3 resize-y focus:outline-none focus:ring-1 ${
+              isDark
+                ? 'bg-black/30 border-white/10 text-white placeholder:text-slate-500 focus:ring-primary/40'
+                : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-emerald-500/40'
+            }`}
+          />
+
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setIsEditingQuestions(false)}
+              className={`h-8 px-3 text-xs ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              Anuluj
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={handleSaveEditedQuestions}
+              className="h-8 px-3 text-xs font-bold flex items-center gap-1.5 bg-primary text-accent-ink hover:brightness-110"
+            >
+              <Save size={13} />
+              Zapisz pulę
+            </Button>
           </div>
         </div>
       )}
@@ -668,6 +778,7 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
 
                   return (
                     <g key={q.id || idx}>
+                      <title>{q.question}</title>
                       {/* Sektor / Wedge */}
                       <path
                         d={pathData}
@@ -681,22 +792,20 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                         className="transition-colors duration-200"
                       />
 
-                      {/* Numer sektora — zawsze czytelny i poprawnie zorientowany */}
+                      {/* Treść pytania (skrócona) — zawsze biały tekst z text-shadow, czytelny na każdym kolorze i w obu motywach */}
                       <text
                         x={tx}
                         y={ty}
-                        fill={isWinner ? (isDark ? '#ffffff' : '#064e3b') : colorInfo.text}
-                        fontSize="15"
-                        fontWeight="800"
-                        fontFamily="monospace"
+                        fill="#ffffff"
+                        fontSize="10.5"
+                        fontWeight="700"
                         textAnchor="middle"
                         dominantBaseline="central"
                         transform={`rotate(${textRotation}, ${tx}, ${ty})`}
-                        className={`pointer-events-none ${
-                          isDark ? 'drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]' : 'font-extrabold'
-                        }`}
+                        style={{ textShadow: '0 1px 2px rgba(0,0,0,0.75), 0 1px 4px rgba(0,0,0,0.55)' }}
+                        className="pointer-events-none"
                       >
-                        #{idx + 1}
+                        {truncateForWheel(q.question)}
                       </text>
                     </g>
                   );
@@ -855,7 +964,7 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                     <h3 className={`font-extrabold leading-relaxed tracking-tight ${
                       isDark ? 'text-white' : 'text-slate-900'
                     } ${
-                      isFullscreen ? 'text-xl sm:text-2xl md:text-3xl' : 'text-lg sm:text-xl'
+                      isFullscreen ? 'text-xl sm:text-2xl md:text-3xl' : 'text-xl sm:text-2xl'
                     }`}>
                       "{drawnQuestion.question}"
                     </h3>

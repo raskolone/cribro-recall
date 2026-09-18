@@ -2057,3 +2057,58 @@ Weryfikacja:
 - `npx tsc --noEmit` — 0 błędów.
 - `npm test` — 363/363 (362 + 1 nowy).
 - `npm run build` — kod 0.
+
+---
+
+2026-09-18 — Claude Code / Sonnet 5
+
+Zadanie: Przebudowa fizyki animacji i czytelności "Koła Fortuny"
+(warm-up spinner) w module prezentacji + ręczna edycja puli pytań przez
+lektora.
+
+Zrobione:
+- `services/gsapAnimations.ts`: nowy `cubicBezierEase(x1,y1,x2,y2)` —
+  rozwiązuje krzywą Beziera metodą Newtona (polyfill jak w przeglądarkach),
+  bo darmowy GSAP nie ma `CustomEase` (to płatny plugin Club GreenSock).
+- `components/presentation/WheelOfFortune.tsx`:
+  - Obrót koła: `ease: cubicBezierEase(0.15, 0.9, 0.2, 1.0)` zamiast
+    `power3.out`, czas 4.5s (lokalnie) / 4.0s (zdalna sync kursanta),
+    min. 5 pełnych obrotów (1800°) zamiast 4.
+  - Wycinki koła: tekst zawsze biały + `textShadow` (niezależnie od
+    koloru wycinka/motywu), pokazują skróconą treść pytania
+    (`truncateForWheel`, 20 znaków + „…") zamiast samego numeru `#n`;
+    pełna treść w `<title>` (tooltip) i karcie wyniku.
+  - Karta wyniku: font pytania podniesiony do min. `text-xl` (1.25rem)
+    również poza fullscreenem.
+  - Nowy przycisk „Edytuj pytania" (tylko dla lektora) + panel z
+    `<textarea>` (jedno pytanie na wiersz) i przyciskiem „Zapisz pulę" —
+    buduje nową listę `WheelQuestionItem[]` z `category: 'custom'`.
+- `CHANGELOG.md`: nowa sekcja „runda 34" z pełnym opisem.
+
+Nie dokończone / do sprawdzenia:
+- Nie zweryfikowano wzrokowo w przeglądarce (brak prostej ścieżki
+  logowania lektor→prezentacja z kołem fortuny w tej sesji, tylko
+  `tsc`/testy/`build`). Maciej: sprawdź obrót (4.5s, wyraźne zwolnienie
+  na końcu, min. 5 pełnych obrotów), czytelność tekstu na wycinkach i w
+  karcie wyniku w trybie jasnym i ciemnym, oraz panel „Edytuj pytania".
+- Pula pytań z `services/wheelQuestionService.ts` (scenariusz/historia
+  lekcji/AI) nie była zmieniana — zadanie dotyczyło wyłącznie animacji,
+  czytelności i ręcznej edycji w UI.
+
+Decyzje architektoniczne:
+- Krzywa easingu zaimplementowana jako czysta funkcja JS (Newton-Raphson)
+  zamiast próby użycia `CustomEase` z GSAP — unikamy zależności od
+  płatnego pluginu, a wynik matematycznie odpowiada podanej krzywej CSS
+  `cubic-bezier(0.15, 0.9, 0.2, 1.0)`.
+- Ręczna edycja puli pytań nadpisuje całą aktywną listę (nie scala z
+  istniejącą) — prostsze UX „jedno pytanie na wiersz" zgodne z opisem
+  zadania („w 5 sekund dopisać/usunąć"), zamiast osobnego CRUD na
+  pojedynczych pozycjach.
+
+Ryzyka: Brak zmian w `firestore.rules`, autoryzacji czy ścieżkach
+tokenowych bez logowania.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 363/363 (bez zmian w testowanej logice serwisowej).
+- `npm run build` — kod 0.

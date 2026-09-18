@@ -198,6 +198,63 @@ we dwoje na żywo.
 
 ---
 
+### 🚀 Fizyka i Czytelność Koła Fortuny, Ręczna Edycja Puli Pytań (2026-09-18, runda 34)
+
+**Kontekst:** Koło Fortuny (`components/presentation/WheelOfFortune.tsx`) miało już
+źródła pytań (scenariusz / poprzednie lekcje / AI), ale animacja obrotu była zbyt
+krótka i mało "fizyczna", wycinki koła pokazywały tylko numer porządkowy zamiast
+treści pytania (kolor tekstu zależny od motywu — czytelność zmienna), a lektor nie
+miał szybkiego sposobu na ręczną edycję puli bez przechodzenia przez AI.
+
+**1. Naturalna fizyka obrotu:**
+- Nowa funkcja `cubicBezierEase(x1, y1, x2, y2)` w `services/gsapAnimations.ts` —
+  rozwiązuje krzywą Beziera metodą Newtona i zwraca funkcję łagodzącą kompatybilną z
+  GSAP (darmowy GSAP nie ma `CustomEase`, to płatny plugin Club GreenSock).
+- Obrót koła używa teraz `WHEEL_SPIN_EASE = cubicBezierEase(0.15, 0.9, 0.2, 1.0)`
+  (odpowiednik CSS `cubic-bezier(0.15, 0.9, 0.2, 1.0)`) zamiast `power3.out`.
+- Czas trwania: 4.5s (lokalny obrót) / 4.0s (synchronizacja zdalna kursanta —
+  celowo nieco krótszy, żeby nie lagował, ale w tym samym zakresie 4–5s).
+- Minimum 5 pełnych obrotów (1800°) zamiast poprzednich 4.
+- Przycisk "ZAKRĘĆ" i przycisk "Zakręć ponownie" były już blokowane na czas
+  `isSpinning` — bez zmian, tylko zweryfikowano zgodność z wymaganiem.
+
+**2. Czytelność wycinków koła (Light/Dark):**
+- Tekst na wycinkach zawsze biały (`fill="#ffffff"`) z `textShadow` w `style`
+  (SVG `<text>` wspiera CSS text-shadow w Chrome/Firefox) — niezależnie od
+  koloru wycinka czy motywu aplikacji, zamiast poprzedniego `colorInfo.text`
+  zależnego od palety jasnej/ciemnej.
+- Wycinki pokazują teraz skróconą treść pytania (`truncateForWheel`, limit 20
+  znaków + wielokropek) zamiast samego numeru `#n` — pełna treść w `<title>`
+  (tooltip po najechaniu) i w karcie wyniku.
+- Karta wyniku: rozmiar czcionki pytania podniesiony do min. `text-xl`
+  (1.25rem) w obu stanach (fullscreen i standardowy), żeby spełnić wymóg
+  minimalnego kontrastu/czytelności.
+
+**3. Ręczna edycja puli pytań przez lektora:**
+- Nowy przycisk "Edytuj pytania" (obok "Nowe pytania AI", tylko `!isStudent`)
+  otwiera panel z `<textarea>` — jedno pytanie na wiersz, wstępnie wypełniony
+  aktualną pulą.
+- "Zapisz pulę" buduje nową listę `WheelQuestionItem[]` (`category: 'custom'`,
+  `sourceTag: 'Edycja lektora'`), resetuje omówione pytania i wylosowany wynik.
+- Fallback do 6+ domyślnych pytań warm-up po angielsku już istniał w
+  `services/wheelQuestionService.ts` (`FALLBACK_WARMUP_QUESTIONS`, używany
+  automatycznie zarówno dla scenariusza, jak i historii lekcji, gdy danych
+  jest za mało) — bez zmian, tylko zweryfikowano że pokrywa wymóg.
+
+**Nie dotknięto:** `services/wheelQuestionService.ts` (logika ekstrakcji pytań
+ze scenariusza/historii/AI) — zmiany dotyczą wyłącznie warstwy animacji i UI
+w `WheelOfFortune.tsx` oraz nowego, generycznego helpera easing w
+`gsapAnimations.ts`.
+
+**Weryfikacja:** `npx tsc --noEmit` — 0 błędów. `npm test` — 363/363 zielone
+(bez zmian w testowanej logice serwisowej). `npm run build` — kod 0. Nie
+zweryfikowano wzrokowo w przeglądarce (brak łatwej ścieżki logowania
+lektor→prezentacja z kołem fortuny w tej sesji) — Maciej: sprawdź obrót
+(4.5s, wyraźne zwolnienie na końcu), czytelność tekstu na wycinkach i karcie
+wyniku w obu motywach, oraz panel "Edytuj pytania".
+
+---
+
 ### 🚀 Integracja Notion AI Meeting Notes, Sanitizacja JSON i Weryfikacja Aktywności Kursantów (2026-09-18, runda 33)
 
 **1. Naprawa parsowania JSON w podsumowaniach lekcji (`utils/transcriptLesson.ts`):**
