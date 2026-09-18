@@ -152,7 +152,7 @@ const FormatButton: React.FC<{
 );
 
 interface ScratchpadEditorProps {
-  document: ScratchpadDocument;
+  document?: ScratchpadDocument | null;
   onSaveContent?: (html: string, text: string) => Promise<any> | void;
   onToggleStudentEdit?: (allow: boolean) => Promise<void>;
   onToggleRequirePin?: (require: boolean) => Promise<void>;
@@ -178,7 +178,7 @@ interface ScratchpadEditorProps {
 }
 
 export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
-  document: docData,
+  document: rawDocData,
   onSaveContent,
   onToggleStudentEdit,
   onToggleRequirePin,
@@ -190,6 +190,24 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   onClose,
   standalone = false,
 }) => {
+  const docData: ScratchpadDocument = useMemo(() => {
+    return rawDocData || {
+      id: 'default',
+      pin: '',
+      studentName: 'Kursant',
+      teacherUid: currentUser?.uid || 'teacher_default',
+      teacherName: currentUser?.name || 'Lektor CRIBRO',
+      title: 'Notatnik lekcyjny',
+      contentHtml: '',
+      contentText: '',
+      allowStudentEdit: true,
+      requirePin: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      version: 1,
+    };
+  }, [rawDocData, currentUser]);
+
   const isTeacher = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
   
   // Kursant może edytować tylko wtedy, gdy lektor włączył flagę `allowStudentEdit` i nie narzucono explicitReadOnly
@@ -1603,7 +1621,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
   return (
     <div
       data-pad-theme={paperTheme}
-      className={`pad-shell flex flex-col overflow-hidden ${standalone ? 'is-standalone' : ''} ${className}`}
+      className={`pad-shell h-full w-full min-h-0 flex flex-col overflow-hidden bg-base-100 ${standalone ? 'is-standalone' : ''} ${className}`}
     >
       {/* 1. JEDNOLITY NAGŁÓWEK DOKUMENTU */}
       <header className="px-4 py-2.5 pad-bar border-b border-line-strong flex items-center justify-between gap-3 select-none flex-wrap sm:flex-nowrap">

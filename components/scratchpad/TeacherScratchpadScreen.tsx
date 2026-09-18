@@ -218,6 +218,23 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
     setScratchpadDoc(prev => prev ? { ...prev, requirePin: require } : null);
   };
 
+  const safeScratchpad: ScratchpadDocument = scratchpadDoc || {
+    id: documentId || (student.id ? `sp_${student.id}` : `sp_${Date.now()}`),
+    pin: '',
+    studentId: student.id || undefined,
+    studentName: student.name || 'Kursant',
+    teacherUid: user?.id || 'teacher_default',
+    teacherName: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.username || 'Lektor CRIBRO',
+    title: `Notatnik — ${student.name || 'Lekcja'}`,
+    contentHtml: '',
+    contentText: '',
+    allowStudentEdit: true,
+    requirePin: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    version: 1,
+  };
+
   /**
    * Przypisanie notatnika roboczego do kursanta w trakcie pisania.
    *
@@ -225,23 +242,50 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
    * kursant ją znajdzie — szczegóły i powód w `adoptScratchpadForStudent`.
    */
   const handleAssignStudent = async (picked: { id: string; name: string }) => {
-    if (!scratchpadDoc) return;
+    if (!picked?.id) return;
     setIsAssigning(true);
     setError(null);
+    setIsPickerOpen(false);
+
+    const baseDoc = safeScratchpad;
+    const teacherUid = user?.id || 'teacher_default';
+    const teacherName = user?.firstName
+      ? `${user.firstName} ${user.lastName || ''}`.trim()
+      : user?.username || 'Lektor CRIBRO';
+
+    // a) Natychmiast zaktualizuj stan lokalny w UI lektora
+    const optimisticDoc: ScratchpadDocument = {
+      ...baseDoc,
+      studentId: picked.id,
+      studentName: picked.name,
+      title: `Notatnik — ${picked.name}`,
+    };
+    setScratchpadDoc(optimisticDoc);
+
+    // c) Jeśli w trybie standalone, zaktualizuj ID w pasku adresu
+    const targetDocId = `sp_${picked.id}`;
+    if (typeof window !== 'undefined') {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('id') !== targetDocId) {
+          params.set('id', targetDocId);
+          window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+        }
+      } catch (navErr) {
+        console.warn('[Notatnik] Nie udało się zaktualizować URL:', navErr);
+      }
+    }
+
+    // b) Asynchroniczny zapis/przeniesienie do chmury (błąd sieci nie blokuje zmiany stanu w UI)
     try {
-      const teacherUid = user?.id || 'teacher_default';
-      const teacherName = user?.firstName
-        ? `${user.firstName} ${user.lastName || ''}`.trim()
-        : user?.username || 'Lektor CRIBRO';
-      const adopted = await adoptScratchpadForStudent(scratchpadDoc, picked, {
+      const adopted = await adoptScratchpadForStudent(baseDoc, picked, {
         uid: teacherUid,
         name: teacherName,
       });
       setScratchpadDoc(adopted);
-      setIsPickerOpen(false);
     } catch (err: any) {
-      console.error('Nie udało się przypisać notatnika:', err);
-      setError(err.message || 'Nie udało się przypisać notatnika do kursanta.');
+      console.error('Nie udało się zapisać przypisania notatnika w chmurze:', err);
+      // Nie cofamy stanu w UI lektora, aby mógł kontynuować lekcję
     } finally {
       setIsAssigning(false);
     }
@@ -260,15 +304,15 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
     <div
       className={
         variant === 'standalone'
-          ? 'h-[100dvh] flex flex-col bg-base-100'
+          ? 'h-[100dvh] min-h-screen flex flex-col bg-base-100'
           : variant === 'overlay'
-          ? 'fixed inset-0 z-[100] flex flex-col bg-base-100'
+          ? 'fixed inset-0 z-[100] h-full min-h-screen flex flex-col bg-base-100'
           /* `h-full`, nie `flex-1`: kontener, w którym stoi ten ekran
              (`<main>` w Dashboard), jest zwykłym blokiem z przewijaniem, a nie
              kontenerem flex — `flex-1` nic tam nie znaczy i strona kurczyła się
              do wysokości treści, przez co stopka ucinała kartkę w połowie
              ekranu, a pod nią świeciło tło aplikacji. */
-          : 'h-full min-h-0 flex flex-col bg-base-100'
+          : 'h-full min-h-[600px] flex flex-col bg-base-100'
       }
     >
       <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -277,11 +321,11 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
             <p className="text-sm font-semibold text-content-muted">Ładowanie notatnika lekcyjnego...</p>
           </div>
-        ) : error ? (
+        ) : error && !scratchpadDoc ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
             <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 max-w-md">
               <AlertCircle size={28} className="mx-auto mb-2" />
-              <p className="font-bold text-sm">Nie udało się otworzyć notatnika</p>
+              <p className="font-bold text-sm">Nie udało się pobrać notatnika z chmury</p>
               <p className="text-xs mt-1 opacity-80">{error}</p>
             </div>
             <button
@@ -292,17 +336,10 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
               Zamknij
             </button>
           </div>
-        ) : scratchpadDoc ? (
+        ) : (
           <div className="flex-1 flex flex-col overflow-hidden">
-            {/* PASEK PRZYPISANIA — tylko dopóki notatnik jest roboczy.
-
-                Notatnik bez kursanta jest sprawny: da się w nim pisać,
-                zapisuje się, ma PIN. Brakuje mu jednego — kogoś, kto go
-                zobaczy. Ten pasek mówi dokładnie to i znika w chwili, gdy
-                kursant jest wybrany; po przypisaniu nie ma już czego
-                wybierać, a stały pasek byłby stałym przypomnieniem o
-                decyzji, która zapadła. */}
-            {!scratchpadDoc.studentId && assignableStudents.length > 0 && (
+            {/* PASEK PRZYPISANIA — tylko dopóki notatnik jest roboczy. */}
+            {!safeScratchpad.studentId && assignableStudents.length > 0 && (
               <div className="px-4 py-2.5 border-b border-line-strong bg-primary/[0.06] flex flex-wrap items-center gap-2">
                 <span className="text-xs text-content-muted">
                   Notatnik roboczy — nikt go jeszcze nie widzi.
@@ -349,7 +386,7 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
             )}
 
             <ScratchpadEditor
-              document={scratchpadDoc}
+              document={safeScratchpad}
               onSaveContent={handleSaveContent}
               onToggleStudentEdit={handleToggleStudentEdit}
               onToggleRequirePin={handleToggleRequirePin}
@@ -365,8 +402,7 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
               onClose={onClose}
             />
           </div>
-        ) : null}
-
+        )}
       </div>
     </div>
   );
