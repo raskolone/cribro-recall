@@ -2002,3 +2002,58 @@ Weryfikacja:
 - `npm test` — 362/362 (359 + 3 nowe).
 - `npm run build` — kod 0 (istniejące ostrzeżenia o rozmiarze chunków,
   niezwiązane z tą zmianą).
+
+---
+
+2026-09-18 — Claude Code / Sonnet 5
+
+Zadanie: Naprawa pustej sekcji Revision przy „+ Nowa lekcja” (opisane w
+poprzednim wpisie jako znane ryzyko/dług — teraz naprawione).
+
+Zrobione:
+- `utils/lessonTemplate.ts`: `extractLastLessonSections` zwraca teraz też
+  `fallbackText` — surowy tekst CAŁEJ ostatniej lekcji (wszystkie sekcje),
+  nie tylko „Main topic / Practice” i „Key Language & Corrections”.
+- `components/scratchpad/ScratchpadEditor.tsx` (`handleInsertLesson`):
+  - Gdy `mainTopic`/`keyLanguage` są puste (lektor nie wypełnił ich jeszcze
+    w poprzedniej lekcji — najczęstszy przypadek zgłoszonego buga), używa
+    `fallbackText` jako materiału dla `generateLessonRevision`, zamiast
+    pomijać wywołanie AI i zostawiać pusty szablon.
+  - Nowa strona A4 wstawia się teraz OD RAZU (bez czekania na Gemini) z
+    placeholderem „⏳ Generuję powtórkę na podstawie poprzedniej
+    lekcji...” (`data-revision-pending="<token>"`); po odpowiedzi AI
+    placeholder jest podmieniany w miejscu, bez re-insertowania całej
+    strony. Błąd AI podmienia placeholder na neutralny tekst do ręcznego
+    wypełnienia (nie zostaje „⏳” na stałe).
+  - Dodano `console.log('[REVISION_DEBUG] ...')` (numer szukanej lekcji,
+    pobrany tekst poprzedniej lekcji) i `console.error('[REVISION_API_ERROR]',
+    err)` przy błędzie Gemini — do diagnostyki w konsoli przeglądarki.
+- `tests/lessonTemplate.test.ts`: nowy test na `fallbackText` z pustymi
+  `mainTopic`/`keyLanguage`.
+- `CHANGELOG.md`: sekcja O. z opisem przyczyny i naprawy.
+
+Nie dokończone / do sprawdzenia:
+- Nie testowano wzrokowo w przeglądarce (brak dostępu do żywego Gemini w
+  tej sesji) — sam mechanizm placeholdera i podmiany w miejscu przeszedł
+  tylko `tsc`/testy/`build`. Maciej: sprawdź w devtools log
+  `[REVISION_DEBUG]` przy kliknięciu „+ Nowa lekcja” na dokumencie z
+  jedną, jeszcze niewypełnioną lekcją — to był dokładny scenariusz buga.
+- `fallbackText` to tekst WSZYSTKICH sekcji ostatniej lekcji (łącznie z
+  ewentualnie już wpisanym Homework czy Lesson Summary) — może być
+  szumniejszy niż docelowe „Main topic + Key Language”, ale to świadomy
+  kompromis: lepiej dać AI więcej kontekstu niż nic.
+
+Decyzje architektoniczne:
+- Placeholder podmieniany przez `outerHTML` po `data-revision-pending`
+  (unikalny token z timestampem), nie przez ponowne wywołanie
+  `buildLessonTemplate` — unika duplikowania strony/nagłówków, jeśli
+  lektor zdążył coś kliknąć/wpisać w międzyczasie gdzie indziej w
+  dokumencie.
+
+Ryzyka: Brak zmian w `firestore.rules`, autoryzacji czy ścieżkach
+tokenowych.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 363/363 (362 + 1 nowy).
+- `npm run build` — kod 0.

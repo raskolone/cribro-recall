@@ -2628,6 +2628,13 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
   - Czat AI dokumentu był już wcześniej ograniczony do `isTeacher` — bez zmian, tylko zweryfikowano.
   - Kursant zachowuje pełne uprawnienia do pisania w dokumencie, formatowania (czcionki, listy, checklisty) i zaznaczania fragmentów jako błąd/poprawna forma/słówko.
 
+### O. Naprawa: Pusta sekcja Revision przy „+ Nowa lekcja”, gdy poprzednia lekcja nie miała jeszcze wpisanych błędów/słówek (2026-09-18)
+- **Przyczyna**: `extractLastLessonSections` wyciągała tekst tylko z sekcji „Main topic / Practice” i „Key Language & Corrections” ostatniej lekcji. Jeśli lektor nie zdążył ich jeszcze wypełnić (typowy przypadek — druga lekcja dodana od razu po pierwszej), obie sekcje były puste, `previousLessonText` był pusty i `handleInsertLesson` w ogóle nie wołał `generateLessonRevision` — sekcja Revision zostawała z domyślnym pustym szablonem.
+- **Fallback na treść całej ostatniej lekcji ([lessonTemplate.ts](utils/lessonTemplate.ts))**: `extractLastLessonSections` zwraca teraz dodatkowo `fallbackText` (surowy tekst WSZYSTKICH sekcji ostatniej lekcji, nie tylko dwóch konkretnych). `ScratchpadEditor.handleInsertLesson` używa `fallbackText` jako materiału dla AI, gdy `mainTopic`/`keyLanguage` są puste, zamiast od razu wycofywać się do pustego szablonu.
+- **Placeholder ładowania ([ScratchpadEditor.tsx](components/scratchpad/ScratchpadEditor.tsx))**: nowa strona A4 wstawia się natychmiast (bez czekania na Gemini) z tekstem „⏳ Generuję powtórkę na podstawie poprzedniej lekcji...” w sekcji Revision (znacznik `data-revision-pending`); po odebraniu odpowiedzi z `generateLessonRevision` placeholder jest podmieniany w miejscu na gotowe zadania. Błąd AI podmienia placeholder na neutralny tekst do ręcznego wypełnienia, zamiast zostawiać „⏳” na stałe.
+- **Diagnostyka**: dodano `console.log('[REVISION_DEBUG] ...')` (numer szukanej lekcji, pobrany tekst poprzedniej lekcji) i `console.error('[REVISION_API_ERROR]', err)` przy błędzie wywołania Gemini.
+- Nowy test w [lessonTemplate.test.ts](tests/lessonTemplate.test.ts) pokrywa przypadek pustych `mainTopic`/`keyLanguage` z niepustym `fallbackText`.
+
 ---
 
 

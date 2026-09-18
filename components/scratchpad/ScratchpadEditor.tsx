@@ -879,34 +879,42 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     if (isReadOnly || !editorRef.current || isInsertingLesson) return;
     setIsInsertingLesson(true);
 
-    const previousHtml = editorRef.current.innerHTML;
-
-    // Powtórka (Revision) jest generowana z treści OSTATNIEJ lekcji w tym
-    // samym dokumencie — nie z Notion. Brak poprzedniej lekcji (Lesson 1)
-    // = domyślna, pusta sekcja Revision.
-    let revisionHtml: string | undefined;
-    const previousLesson = extractLastLessonSections(previousHtml);
-    const previousLessonText = previousLesson
-      ? [
-          previousLesson.mainTopic && `Main topic / Practice:\n${previousLesson.mainTopic}`,
-          previousLesson.keyLanguage && `Key Language & Corrections:\n${previousLesson.keyLanguage}`,
-        ]
-          .filter(Boolean)
-          .join('\n\n')
-      : '';
-
-    if (previousLessonText.trim().length > 0) {
-      try {
-        revisionHtml = await generateLessonRevision(previousLessonText);
-      } catch (err) {
-        console.warn('[Scratchpad] Błąd generowania sekcji Revision przez AI:', err);
-      }
-    }
-
     try {
+      const previousHtml = editorRef.current.innerHTML;
+
+      // Powtórka (Revision) jest generowana z treści OSTATNIEJ lekcji w tym
+      // samym dokumencie — nie z Notion. Brak poprzedniej lekcji (Lesson 1)
+      // = domyślna, pusta sekcja Revision.
+      const previousLesson = extractLastLessonSections(previousHtml);
+      console.log(
+        '[REVISION_DEBUG] Szukanie lekcji przed numerem:',
+        highestLessonNumber(previousHtml) + 1
+      );
+
+      const structuredText = previousLesson
+        ? [
+            previousLesson.mainTopic && `Main topic / Practice:\n${previousLesson.mainTopic}`,
+            previousLesson.keyLanguage && `Key Language & Corrections:\n${previousLesson.keyLanguage}`,
+          ]
+            .filter(Boolean)
+            .join('\n\n')
+        : '';
+      // Lektor nie wypełnił jeszcze konkretnie „Main topic" ani „Key
+      // Language"? Nie wycofuj się do pustego szablonu — podaj AI treść
+      // całej ostatniej lekcji, żeby ułożyła powtórkę na podstawie
+      // omówionego tematu, zamiast zostawiać sekcję pustą.
+      const previousLessonText =
+        structuredText.trim().length > 0 ? structuredText : previousLesson?.fallbackText || '';
+      console.log('[REVISION_DEBUG] Pobrany tekst z poprzedniej lekcji:', previousLessonText);
+
+      const willGenerateRevision = previousLessonText.trim().length > 0;
+      const pendingToken = `revision-pending-${Date.now()}`;
+
       const html = buildLessonTemplate({
         previousHtml,
-        revisionHtml,
+        revisionHtml: willGenerateRevision
+          ? `<p data-revision-pending="${pendingToken}">⏳ Generuję powtórkę na podstawie poprzedniej lekcji...</p>`
+          : undefined,
       });
 
       editorRef.current.insertAdjacentHTML('beforeend', html);
@@ -928,6 +936,32 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       setTimeout(() => {
         measurePages();
       }, 60);
+
+      if (willGenerateRevision) {
+        // Nie blokuje wstawienia strony — placeholder jest już widoczny,
+        // podmieniamy go dopiero gdy Gemini odpowie (1-2 s).
+        void generateLessonRevision(previousLessonText)
+          .then((generatedHtml) => {
+            const placeholder = editorRef.current?.querySelector(
+              `[data-revision-pending="${pendingToken}"]`
+            );
+            if (placeholder) {
+              placeholder.outerHTML = generatedHtml;
+              handleInput();
+              setTimeout(() => measurePages(), 60);
+            }
+          })
+          .catch((err) => {
+            console.error('[REVISION_API_ERROR]', err);
+            const placeholder = editorRef.current?.querySelector(
+              `[data-revision-pending="${pendingToken}"]`
+            );
+            if (placeholder) {
+              placeholder.outerHTML = '<p>• Przejrzyj korekty i słownictwo z poprzednich zajęć.</p>';
+              handleInput();
+            }
+          });
+      }
     } finally {
       setIsInsertingLesson(false);
     }

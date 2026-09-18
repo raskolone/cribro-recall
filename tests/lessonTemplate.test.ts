@@ -72,5 +72,20 @@ describe('utils/lessonTemplate', () => {
       assert.ok(sections!.keyLanguage.includes('luggage'));
       assert.ok(!sections!.keyLanguage.includes('Stare słówka'));
     });
+
+    it('fallbackText niesie treść całej ostatniej lekcji, gdy Main topic/Key Language są puste', () => {
+      const html = [
+        '<h2 data-toggle="1" data-collapsed="0"><span class="pad-toggle">▾</span>Lesson 1 — 18.09.2026</h2>',
+        '<h3>Main topic / Practice</h3><p><br></p>',
+        '<h3>Key Language &amp; Corrections (New words)</h3><p><br></p>',
+        '<h3>Homework</h3><p>Przeczytaj rozdział o Present Perfect</p>',
+      ].join('');
+
+      const sections = extractLastLessonSections(html);
+      assert.ok(sections);
+      assert.equal(sections!.mainTopic, '');
+      assert.equal(sections!.keyLanguage, '');
+      assert.ok(sections!.fallbackText.includes('Present Perfect'));
+    });
   });
 });

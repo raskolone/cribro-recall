@@ -56,10 +56,15 @@ const splitByHeading = (
  * znaczników), używany jako materiał wejściowy do wygenerowania sekcji
  * Revision następnej lekcji. `null`, gdy w dokumencie nie ma jeszcze
  * żadnej lekcji (Lesson 1).
+ *
+ * `fallbackText` to treść CAŁEJ ostatniej lekcji (wszystkie sekcje razem) —
+ * używana, gdy lektor nie wypełnił jeszcze konkretnie „Main topic" ani
+ * „Key Language", ale coś już jest wpisane gdzie indziej (np. w Homework)
+ * i AI ma z czego ułożyć powtórkę, zamiast dostawać puste materiały.
  */
 export const extractLastLessonSections = (
   html: string
-): { mainTopic: string; keyLanguage: string } | null => {
+): { mainTopic: string; keyLanguage: string; fallbackText: string } | null => {
   if (!html) return null;
   const lessons = splitByHeading(html, 'h2').filter(l => /lesson|lekcja/i.test(l.title));
   if (lessons.length === 0) return null;
@@ -71,6 +76,7 @@ export const extractLastLessonSections = (
   return {
     mainTopic: stripHtml(findSection(/main topic|practice/i)?.body || ''),
     keyLanguage: stripHtml(findSection(/key language|corrections/i)?.body || ''),
+    fallbackText: stripHtml(lastLesson.body),
   };
 };
 
