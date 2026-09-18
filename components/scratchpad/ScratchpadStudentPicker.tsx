@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { FileEdit, Search, X } from 'lucide-react';
 import { User } from '../../types';
+import { formatStudentDisplayName } from '../../utils/studentFormat';
 
 interface ScratchpadStudentPickerProps {
   isOpen: boolean;
   onClose: () => void;
   students: User[];
-  onPick: (student: { id: string; name: string }) => void;
-  /** Nagłówek okna — domyślnie notatnik, bo to było pierwsze wejście. */
+  onPick: (student: { id?: string; name: string }) => void;
   title?: string;
   subtitle?: string;
   icon?: React.ReactNode;
@@ -20,10 +20,7 @@ interface ScratchpadStudentPickerProps {
   headerExtra?: React.ReactNode;
 }
 
-const displayName = (student: User): string =>
-  student.firstName
-    ? `${student.firstName} ${student.lastName || ''}`.trim()
-    : student.username;
+const displayName = (student: User): string => formatStudentDisplayName(student);
 
 /**
  * Wybór kursanta przed otwarciem jego brudnopisu.

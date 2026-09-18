@@ -6,12 +6,13 @@ import { db } from '../../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { LessonRecord, User as UserType } from '../../types';
 import { getIsoDateOnly } from '../../services/teacherCockpitService';
+import { formatStudentDisplayName } from '../../utils/studentFormat';
 import Button from '../ui/Button';
 
 interface ManualTranscriptImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  students?: Array<UserType | { id?: string; name?: string; displayName?: string; username?: string; level?: string }>;
+  students?: Array<UserType | { id?: string; name?: string; displayName?: string; username?: string; level?: string; firstName?: string; lastName?: string; email?: string }>;
   currentTeacherId?: string;
   onLessonCreated?: (lessonId: string, studentId: string) => void;
 }
@@ -60,11 +61,7 @@ export const ManualTranscriptImportModal: React.FC<ManualTranscriptImportModalPr
     }
 
     const targetStudent = students.find((s) => s.id === selectedStudentId);
-    const studentName =
-      targetStudent?.name ||
-      targetStudent?.displayName ||
-      targetStudent?.username ||
-      'Kursant';
+    const studentName = formatStudentDisplayName(targetStudent as Partial<UserType>, null, 'Kursant');
     const studentLevel = targetStudent?.level || 'B1';
 
     setIsSubmitting(true);
@@ -203,16 +200,23 @@ export const ManualTranscriptImportModal: React.FC<ManualTranscriptImportModalPr
                 className="w-full px-3.5 py-2.5 rounded-xl bg-base-100 border border-line-strong text-xs font-bold text-text-hi focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer disabled:opacity-50"
               >
                 <option value="" disabled>-- Wybierz kursanta --</option>
-                {students.map((s) => {
-                  const sId = s.id;
-                  if (!sId) return null;
-                  const label = s.name || (s as any).displayName || (s as any).username || sId;
-                  return (
-                    <option key={sId} value={sId}>
-                      {label} {s.level ? `(${s.level})` : ''}
-                    </option>
-                  );
-                })}
+                {[...students]
+                  .sort((a, b) =>
+                    formatStudentDisplayName(a as Partial<UserType>).localeCompare(
+                      formatStudentDisplayName(b as Partial<UserType>),
+                      'pl'
+                    )
+                  )
+                  .map((s) => {
+                    const sId = s.id;
+                    if (!sId) return null;
+                    const label = formatStudentDisplayName(s as Partial<UserType>, (s as any).name || (s as any).displayName);
+                    return (
+                      <option key={sId} value={sId}>
+                        {label} {s.level ? `(${s.level})` : ''}
+                      </option>
+                    );
+                  })}
               </select>
             </div>
 

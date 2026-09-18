@@ -19,8 +19,8 @@ export const isRawId = (str?: string | null): boolean => {
 };
 
 /**
- * Zwraca czytelną dla człowieka reprezentację kursanta (Imię i Nazwisko, Display Name lub Nazwę Użytkownika).
- * GWARANCJA: Nigdy nie zwraca surowego technicznego identyfikatora UID/ID.
+ * Zwraca czytelną dla człowieka reprezentację kursanta (Imię i Nazwisko, Display Name lub sformatowaną nazwę).
+ * GWARANCJA: Zawsze priorytetyzuje Imię i Nazwisko (`firstName` + `lastName`), czyszcząc techniczne loginy.
  *
  * @param user Obiekt profilu użytkownika (jeśli dostępny)
  * @param fallbackName Opcjonalna nazwa zapasowa (np. z dokumentu zadania)
@@ -32,15 +32,29 @@ export const formatStudentDisplayName = (
   fallbackDefault = 'Kursant'
 ): string => {
   if (user) {
+    // 1. Jawne imię i nazwisko z profilu (firstName + lastName)
     const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
     if (fullName) return fullName;
 
+    // 2. displayName / name (o ile to nie surowy UID)
     const disp = (user.displayName || (user as any).name || '').trim();
     if (disp && !isRawId(disp)) return disp;
 
-    const uname = (user.username || '').trim();
-    if (uname && !isRawId(uname)) return uname;
+    // 3. Fallback name z argumentu
+    if (fallbackName) {
+      const trimmed = fallbackName.trim();
+      if (trimmed && !isRawId(trimmed)) {
+        return trimmed;
+      }
+    }
 
+    // 4. Nazwa użytkownika / login (o ile to nie surowy UID)
+    const uname = (user.username || '').trim();
+    if (uname && !isRawId(uname)) {
+      return uname;
+    }
+
+    // 5. Nazwa z emaila
     if (user.email && user.email.includes('@')) {
       const emailPrefix = user.email.split('@')[0].trim();
       if (emailPrefix && !isRawId(emailPrefix)) return emailPrefix;
