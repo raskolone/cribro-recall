@@ -34,6 +34,7 @@ import {
 import { fetchTeacherCockpitData } from '../../services/teacherCockpitService';
 import { toPolishVocative } from '../../utils/polishVocative';
 import { openScratchpadTab } from '../../services/scratchpadService';
+import ManualTranscriptImportModal from './ManualTranscriptImportModal';
 
 interface TeacherTodayCockpitProps {
   currentUser?: User | null;
@@ -62,6 +63,7 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<'all' | 'today' | 'closeout' | 'homework' | 'unplanned'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isNotionImportOpen, setIsNotionImportOpen] = useState(false);
 
   const teacherName = currentUser?.displayName || currentUser?.username || 'Lektorze';
   const teacherVocative = toPolishVocative(teacherName);
@@ -138,6 +140,14 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
               <span>Odśwież</span>
             </button>
             <button
+              onClick={() => setIsNotionImportOpen(true)}
+              className="px-4 py-2.5 rounded-xl border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary hover:text-primary-focus text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
+              title="Wklej notatki ze spotkania z Notion AI i wygeneruj lekcję"
+            >
+              <FileText size={15} />
+              <span>Wklej z Notion AI</span>
+            </button>
+            <button
               onClick={() => onOpenPlanner()}
               className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary-focus hover:from-primary-focus hover:to-primary text-accent-ink font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] cursor-pointer"
             >
@@ -146,6 +156,20 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Modal ręcznego importu z Notion AI */}
+        <ManualTranscriptImportModal
+          isOpen={isNotionImportOpen}
+          onClose={() => setIsNotionImportOpen(false)}
+          students={students}
+          currentTeacherId={currentUser?.id || 'teacher'}
+          onLessonCreated={(newLessonId, studentId) => {
+            loadData();
+            if (studentId) {
+              onOpenHistory(studentId, newLessonId);
+            }
+          }}
+        />
 
         {/* ── 4 KPI Action Cards ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t border-line-soft">

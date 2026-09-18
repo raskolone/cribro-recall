@@ -1406,7 +1406,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
     refreshTemplates();
   }, [refreshTemplates]);
 
-  // Zakreślacze lektorskie
+  // Zakreślacze lektorskie — czysty element liniowy (inline mark / <span>) bez rozbijania akapitu
   const handleHighlight = (bgColor: string, textColor: string) => {
     if (isReadOnly) return;
     const selection = window.getSelection();
@@ -1416,9 +1416,10 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
     const span = window.document.createElement('span');
     span.style.backgroundColor = bgColor;
     span.style.color = textColor;
-    span.style.padding = '1px 5px';
+    span.style.fontWeight = 'bold';
+    span.style.padding = '1px 4px';
     span.style.borderRadius = '4px';
-    span.style.fontWeight = '500';
+    span.style.display = 'inline';
 
     try {
       span.appendChild(range.extractContents());
@@ -1632,19 +1633,23 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               </span>
               <span aria-hidden>•</span>
               {saveStatus === 'saving' ? (
-                <span className="text-text-2 flex items-center gap-1">
-                  <CloudUpload size={11} className="animate-pulse text-primary" /> Zapisywanie…
+                <span className="text-amber-400 flex items-center gap-1.5 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0 -ml-3.5" />
+                  <CloudUpload size={11} className="animate-pulse" /> Zapisywanie…
                 </span>
               ) : saveStatus === 'local_only' ? (
                 <span
-                  className="text-warn flex items-center gap-1"
-                  title="Zapisano w tej przeglądarce — kursant nie zobaczy tych zmian."
+                  className="text-red-400 flex items-center gap-1.5 font-medium"
+                  title="Błąd sieci / zapis tylko lokalnie — kursant nie zobaczy tych zmian dopóki połączenie nie wróci."
                 >
-                  <CloudUpload size={11} /> Tylko lokalnie
+                  <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 shadow-[0_0_6px_rgba(239,68,68,0.6)]" />
+                  <CloudUpload size={11} /> Błąd sieci (tylko lokalnie)
                 </span>
               ) : (
-                <span className="text-accent/90 flex items-center gap-1">
-                  <CloudCheck size={11} /> Zapisano w chmurze
+                <span className="text-emerald-400 flex items-center gap-1.5 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
+                  <CloudCheck size={11} /> Zsynchronizowano
                 </span>
               )}
             </div>
@@ -2203,12 +2208,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               <button
                 type="button"
                 onMouseDown={event => event.preventDefault()}
-                onClick={() =>
-                  handleHighlight(
-                    paperTheme === 'dark' ? 'rgba(244, 63, 94, 0.22)' : 'rgba(209, 84, 76, 0.18)',
-                    paperTheme === 'dark' ? '#fb7185' : '#b91c1c'
-                  )
-                }
+                onClick={() => handleHighlight('#fee2e2', '#b91c1c')}
                 className="h-7 px-2 rounded-lg text-[11px] font-bold bg-danger/15 text-danger border border-danger/30 hover:bg-danger/25 transition-colors cursor-pointer shrink-0"
                 title="Zaznacz fragment jako błąd kursanta"
               >
@@ -2217,12 +2217,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               <button
                 type="button"
                 onMouseDown={event => event.preventDefault()}
-                onClick={() =>
-                  handleHighlight(
-                    paperTheme === 'dark' ? 'rgba(114, 240, 180, 0.22)' : 'rgba(23, 145, 122, 0.18)',
-                    paperTheme === 'dark' ? '#72f0b4' : '#047857'
-                  )
-                }
+                onClick={() => handleHighlight('#dcfce7', '#15803d')}
                 className="h-7 px-2 rounded-lg text-[11px] font-bold bg-accent/12 text-accent border border-accent/30 hover:bg-accent/20 transition-colors cursor-pointer shrink-0"
                 title="Zaznacz fragment jako poprawną formę"
               >
@@ -2231,12 +2226,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               <button
                 type="button"
                 onMouseDown={event => event.preventDefault()}
-                onClick={() =>
-                  handleHighlight(
-                    paperTheme === 'dark' ? 'rgba(251, 191, 36, 0.22)' : 'rgba(192, 106, 38, 0.18)',
-                    paperTheme === 'dark' ? '#fbbf24' : '#b45309'
-                  )
-                }
+                onClick={() => handleHighlight('#fef3c7', '#92400e')}
                 className="h-7 px-2 rounded-lg text-[11px] font-bold bg-warn/15 text-warn border border-warn/30 hover:bg-warn/25 transition-colors cursor-pointer shrink-0"
                 title="Wyróżnij nowe słówko"
               >

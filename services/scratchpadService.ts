@@ -337,6 +337,7 @@ export async function findScratchpadByPin(
 
 /**
  * Subskrypcja zmian dokumentu w czasie rzeczywistym (Real-time onSnapshot).
+ * Błąd sieci lub pojedynczy wyjątek nie ubija listenera — dodano automatyczny reconnect.
  */
 export function subscribeScratchpad(
   id: string,
@@ -351,36 +352,77 @@ export function subscribeScratchpad(
     onUpdate(local);
   }
 
-  try {
-    return onSnapshot(
-      ref,
-      (snap) => {
-        if (snap.exists()) {
-          const cloudDoc = snap.data() as ScratchpadDocument;
-          saveLocalScratchpad(cloudDoc);
-          onUpdate(cloudDoc);
-        } else {
+  let activeUnsubscribe: (() => void) | null = null;
+  let reconnectTimeout: any = null;
+  let isCancelled = false;
+
+  const startListening = () => {
+    if (isCancelled) return;
+
+    try {
+      activeUnsubscribe = onSnapshot(
+        ref,
+        (snap) => {
+          if (isCancelled) return;
+          if (snap.exists()) {
+            const cloudDoc = snap.data() as ScratchpadDocument;
+            saveLocalScratchpad(cloudDoc);
+            onUpdate(cloudDoc);
+          } else {
+            const fallback = getLocalScratchpad(id);
+            if (fallback) {
+              onUpdate(fallback);
+            } else {
+              onUpdate(null);
+            }
+          }
+        },
+        (err) => {
+          console.warn('[Scratchpad] Błąd subskrypcji Firestore (próba ponownego połączenia):', err?.message || err);
           const fallback = getLocalScratchpad(id);
           if (fallback) {
             onUpdate(fallback);
-          } else {
-            onUpdate(null);
+          }
+          if (onError) onError(err);
+
+          // Automatyczny reconnect w razie zerwania subskrypcji
+          if (!isCancelled) {
+            if (activeUnsubscribe) {
+              try {
+                activeUnsubscribe();
+              } catch {}
+              activeUnsubscribe = null;
+            }
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
+            reconnectTimeout = setTimeout(() => {
+              startListening();
+            }, 2000);
           }
         }
-      },
-      (err) => {
-        console.warn('[Scratchpad] Błąd subskrypcji Firestore (używam stanu lokalnego):', err?.message || err);
-        const fallback = getLocalScratchpad(id);
-        if (fallback) {
-          onUpdate(fallback);
-        }
-        if (onError) onError(err);
+      );
+    } catch (err: any) {
+      console.warn('[Scratchpad] Nie udało się zainicjować subskrypcji:', err);
+      if (!isCancelled) {
+        if (reconnectTimeout) clearTimeout(reconnectTimeout);
+        reconnectTimeout = setTimeout(() => {
+          startListening();
+        }, 2000);
       }
-    );
-  } catch (err: any) {
-    console.warn('[Scratchpad] Nie udało się zainicjować subskrypcji:', err);
-    return () => {};
-  }
+    }
+  };
+
+  startListening();
+
+  return () => {
+    isCancelled = true;
+    if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    if (activeUnsubscribe) {
+      try {
+        activeUnsubscribe();
+      } catch {}
+      activeUnsubscribe = null;
+    }
+  };
 }
 
 export interface ScratchpadSaveResult {
@@ -479,6 +521,7 @@ const buildRevisions = (
 
 /**
  * Zapisuje zaktualizowaną treść HTML i tekstową dokumentu z metadanymi edytora.
+ * W razie chwilowego błędu sieci ponawia próbę zapisu (retry po 1.5s).
  */
 export async function saveScratchpadContent(
   id: string,
@@ -527,12 +570,12 @@ export async function saveScratchpadContent(
   saveLocalScratchpad(updatedDoc);
   const result: ScratchpadSaveResult = { local: true, cloud: false, bytes };
 
-  try {
+  const attemptCloudSave = async (): Promise<boolean> => {
     const ref = scratchpadDocRef(id);
     const patch: any = {
       contentHtml,
       contentText,
-      updatedAt: now,
+      updatedAt: new Date().toISOString(),
       version: increment(1),
     };
 
@@ -544,28 +587,40 @@ export async function saveScratchpadContent(
       patch.revisions = revisions;
     }
 
-    await updateDoc(ref, patch);
-    result.cloud = true;
-  } catch (err: any) {
-    // `updateDoc` wymaga istniejącego dokumentu. Gdy pierwszy zapis do chmury
-    // się nie udał (np. reguły nie były jeszcze wdrożone), brudnopis istnieje
-    // tylko lokalnie i każdy kolejny zapis leciałby na `not-found` w kółko —
-    // notatki nigdy nie trafiłyby do kursanta. Zakładamy wtedy dokument od nowa
-    // z pełnej kopii lokalnej, zamiast zostawiać lektora z samą pamięcią karty.
-    if (err?.code === 'not-found') {
-      try {
-        await setDoc(scratchpadDocRef(id), updatedDoc);
-        result.cloud = true;
-        return result;
-      } catch (createErr: any) {
-        result.cloudError = createErr?.message || String(createErr);
-        console.warn('[Scratchpad] Odtworzenie dokumentu w chmurze nie powiodło się:', createErr?.message || createErr);
-        return result;
+    try {
+      await updateDoc(ref, patch);
+      return true;
+    } catch (err: any) {
+      if (err?.code === 'not-found') {
+        try {
+          await setDoc(ref, updatedDoc);
+          return true;
+        } catch (createErr: any) {
+          result.cloudError = createErr?.message || String(createErr);
+          throw createErr;
+        }
       }
+      result.cloudError = err?.message || String(err);
+      throw err;
     }
+  };
 
-    result.cloudError = err?.message || String(err);
-    console.warn('[Scratchpad] Zapis do Cloud Firestore nie powiódł się (zapisano w pamięci lokalnej):', err?.message || err);
+  try {
+    await attemptCloudSave();
+    result.cloud = true;
+  } catch (firstErr: any) {
+    console.warn('[Scratchpad] Pierwsza próba zapisu do chmury nie powiodła się, ponawiam za 1.5s...', firstErr?.message || firstErr);
+    // Ponowienie zapisu po 1.5s w razie chwilowego zerwania połączenia
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      await attemptCloudSave();
+      result.cloud = true;
+      result.cloudError = undefined;
+    } catch (retryErr: any) {
+      result.cloud = false;
+      result.cloudError = retryErr?.message || String(retryErr);
+      console.warn('[Scratchpad] Zapis do Cloud Firestore po ponowieniu nie powiódł się (zapisano w pamięci lokalnej):', retryErr?.message || retryErr);
+    }
   }
 
   return result;
