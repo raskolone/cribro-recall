@@ -1822,3 +1822,42 @@ Weryfikacja:
 Ryzyka: Zmiany nie dotykają `firestore.rules` ani middleware autoryzacji.
 Dotyczą wyłącznie klienta (frontend), poza obszarem wysokiego ryzyka z
 sekcji 3 CLAUDE.md.
+
+---
+
+2026-09-18 — Claude Code / Sonnet 5 (kontynuacja tej samej sesji, runda 3)
+
+Zadanie: Usunięcie fałszywego alarmu timeoutu inicjalizacji notatnika
+lektora — baner „Ten notatnik nie zapisał się w chmurze" wisiał na stałe
+mimo że Firestore realnie przyjmował zapisy i dostarczał aktualizacje
+(`[SCRATCHPAD SAVE]` / `[SCRATCHPAD LISTEN]` w konsoli), co sprawiało
+wrażenie zablokowanego przypisywania kursanta.
+
+Zrobione — `components/scratchpad/TeacherScratchpadScreen.tsx`:
+- Timeout `Promise.race` na inicjalizację: 3000ms → 6000ms (zimny start
+  Firebase nie wywołuje już fałszywego trybu awaryjnego).
+- Dodano `clearCloudSyncWarning()` — czyści `error` oraz `cloudBlockedReason`
+  na dokumencie, wywoływane przy KAŻDYM realnym dowodzie łączności: pierwszym
+  callbacku z `onSnapshot` w subskrypcji na żywo oraz po potwierdzonym
+  zapisie w chmurze (`handleSaveContent`, gdy `res.cloud !== false`). Baner
+  znika automatycznie, gdy połączenie wraca — nie czeka na przeładowanie
+  ekranu.
+- `handleAssignStudent`: błąd przypisania nie trafia już do stanu `error`
+  (który przełącza CAŁY ekran na widok „Zamknij") — nowy, osobny stan
+  `assignError` pokazuje się jako mały czerwony tekst przy pasku „Przypisz
+  kursanta", nie wyrzucając lektora z działającego edytora. Wywołanie
+  `clearCloudSyncWarning()` na starcie przypisania usuwa stary/przeterminowany
+  stan błędu, zanim zacznie się próba.
+- Potwierdzono (bez zmiany kodu): `adoptScratchpadForStudent` już poprawnie
+  przepina dokument na `sp_<studentUid>` i nagłówek edytora („Notatnik
+  roboczy" → imię kursanta) — czyta to wprost z `scratchpadDoc.studentName`/
+  `title`, więc samo przepięcie stanu w `setScratchpadDoc(adopted)`
+  wystarcza.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 359/359.
+- `npm run build` — kod 0.
+
+Ryzyka: Brak — zmiany dotyczą wyłącznie logiki UI notatnika lektora, poza
+obszarem wysokiego ryzyka z sekcji 3 CLAUDE.md.
