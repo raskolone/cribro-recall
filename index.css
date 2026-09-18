@@ -1155,6 +1155,24 @@ tr.liquid-glass-hover:hover {
   color: #475569;
 }
 
+/*
+ * Znaczniki (badże) wstawiane przez Asystenta AI w sekcji „Key Language &
+ * Corrections" — te same trzy kolory, co ręczne zakreślacze lektorskie
+ * (przyciski ❌ Błąd / ✅ Poprawnie / 💡 Słówko), żeby treść wklejona przez AI
+ * wyglądała identycznie do treści zaznaczonej ręcznie przez lektora.
+ */
+.badge-error,
+.badge-success,
+.badge-vocab {
+  display: inline;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.badge-error { background: #fee2e2; color: #b91c1c; }
+.badge-success { background: #dcfce7; color: #15803d; }
+.badge-vocab { background: #fef3c7; color: #92400e; }
+
 /* Zawsze nagłówek lekcji na samej górze nowej strony A4 */
 .pad-paper > *:first-child,
 .pad-paper .pad-page-break + h1,

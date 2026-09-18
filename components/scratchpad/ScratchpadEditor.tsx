@@ -1159,22 +1159,34 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       const docText = editorRef.current?.innerText || '';
       const selectedText = window.getSelection()?.toString().trim() || '';
 
-      const systemPrompt = `Jesteś inteligentnym, wszechstronnym asystentem lektora i kursanta CRIBRO ENGLISH wbudowanym bezpośrednio w notatnik lekcyjny (Notebook / Scratchpad).
-Twoim celem jest:
-1. Prowadzenie i planowanie efektywnej lekcji języka angielskiego.
-2. Błyskawiczna analiza notatek, transkrypcji i załączników (pliki PDF, dokumenty DOCX/Word, screenshoty, dokumenty, wklejony tekst).
-3. Wyciąganie kluczowego słownictwa, korekt gramatycznych i tworzenie podsumowań.
-4. Gdy użytkownik prosi o:
-   - Przygotowanie lekcji lub uporządkowanie notatek/materiałów w standardzie CRIBRO:
-     • Wyróżnij 5 standardowych sekcji lekcji CRIBRO/Notion:
-       [Revision] (powtórka / kluczowe elementy do poprawy)
-       [Main topic / Practice] (temat główny, zagadnienia, teoria i ćwiczenia)
-       [Lesson Summary] (streszczenie i najważniejsze punkty lekcji)
-       [Key Language & Corrections] (nowe słówka z definicjami w formacie "słowo - znaczenie" oraz zdania z korektą)
-       [Homework] (zadanie domowe / słówka do utrwalenia w Recall)
-       [Next Lesson] (rekomendowany follow-up)
-   - Przeprowadzenie operacji formatowania na dokumencie (np. sformatowanie notatek, pogrubienie trudnych słówek, korekta):
-     Przygotuj przejrzyste, gotowe do zatwierdzenia opracowanie.
+      // Lista aktywnych nagłówków dokumentu — żeby asystent wiedział, ile lekcji
+      // już jest i pod jaką sekcją (jeśli w ogóle) właśnie pracuje lektor,
+      // zamiast zgadywać ze streszczenia całej treści.
+      const headingsList = editorRef.current
+        ? (Array.from(editorRef.current.querySelectorAll('h1, h2, h3')) as HTMLElement[])
+            .map(h => `${h.tagName}: ${(h.textContent || '').replace(/[▾▸]/g, '').trim()}`)
+            .filter(line => line.length > 4)
+            .join('\n')
+        : '';
+
+      const systemPrompt = `Jesteś inteligentnym asystentem lektora języka angielskiego w notatniku lekcyjnym.
+Twoim zadaniem jest pomoc w edycji i organizacja materiału zgodnie z szablonem lekcji.
+
+Aktywne sekcje/nagłówki w bieżącym dokumencie:
+${headingsList || '(dokument jest pusty — brak nagłówków)'}
+
+Gdy lektor wklei chaotyczne notatki lub poprosi o uporządkowanie materiału:
+- Rozpoznaj i podziel treść na właściwe sekcje: Revision, Main topic / Practice, Lesson Summary, Key Language & Corrections (New words), Homework.
+- W sekcji Key Language & Corrections oznaczaj błędy i poprawne formy dokładnie tymi znacznikami HTML (interfejs rozpoznaje tylko te trzy klasy):
+  Błąd: <span class="badge-error">X [błędna forma]</span>
+  Poprawnie: <span class="badge-success">✓ [poprawna forma]</span>
+  Słówko: <span class="badge-vocab">Słówko: [wyrażenie] - [wyjaśnienie]</span>
+- Zwracaj odpowiedź w ustrukturyzowanym formacie sekcji (nagłówek sekcji, potem jej treść), tak aby interfejs mógł wygenerować przyciski wstawiania do konkretnej sekcji.
+
+Dodatkowo, poza samym porządkowaniem notatek:
+1. Pomagasz prowadzić i planować efektywną lekcję języka angielskiego.
+2. Błyskawicznie analizujesz notatki, transkrypcje i załączniki (PDF, DOCX/Word, screenshoty, wklejony tekst).
+3. Wyciągasz kluczowe słownictwo, korekty gramatyczne i tworzysz podsumowania.
 Zasady:
 - Odpowiadaj konkretnie, estetycznie i nowocześnie. Słownictwo pogrubiaj (**word**).
 - Wyjaśnienia po polsku, przykłady i ćwiczenia po angielsku.`;
@@ -1376,6 +1388,61 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
     setTimeout(() => {
       measurePages();
       editorRef.current?.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 100);
+  };
+
+  /**
+   * Wstawia treść AI pod WYBRANĄ sekcję bieżącej (ostatniej) lekcji, zamiast
+   * tworzyć nową lekcję. Sekcja to nagłówek H3 z `LESSON_SECTIONS` — szuka go
+   * w obrębie ostatniego bloku lekcyjnego (od ostatniego H2 do końca
+   * dokumentu albo do następnego H2) i dopisuje treść na końcu tej sekcji,
+   * przed kolejnym nagłówkiem.
+   *
+   * Jeśli w dokumencie nie ma jeszcze żadnej lekcji (H2), nie zgaduje gdzie
+   * wstawić — dopisuje na końcu dokumentu, tak jak „Dopisz na końcu”.
+   */
+  const handleInsertIntoSection = (sectionTitle: string, text: string) => {
+    if (isReadOnly || !editorRef.current) return;
+
+    const allH2 = Array.from(editorRef.current.querySelectorAll('h2')) as HTMLElement[];
+    const lastH2 = allH2[allH2.length - 1];
+    if (!lastH2) {
+      handleAppendAiMessageToDoc(text);
+      return;
+    }
+
+    // Wszystkie węzły od ostatniego H2 (włącznie) do następnego H2 lub końca dokumentu.
+    const lessonNodes: Element[] = [];
+    let node: Element | null = lastH2;
+    while (node) {
+      lessonNodes.push(node);
+      node = node.nextElementSibling;
+      if (node && node.tagName === 'H2') break;
+    }
+
+    const targetH3 = lessonNodes.find(
+      el => el.tagName === 'H3' && (el.textContent || '').toLowerCase().includes(sectionTitle.toLowerCase())
+    ) as HTMLElement | undefined;
+
+    if (!targetH3) {
+      handleAppendAiMessageToDoc(text);
+      return;
+    }
+
+    // Ostatni węzeł tej sekcji: wszystko po `targetH3` aż do kolejnego H2/H3.
+    let insertAfter: Element = targetH3;
+    let sibling = targetH3.nextElementSibling;
+    while (sibling && sibling.tagName !== 'H2' && sibling.tagName !== 'H3') {
+      insertAfter = sibling;
+      sibling = sibling.nextElementSibling;
+    }
+
+    const bodyHtml = markdownToHtml(text);
+    insertAfter.insertAdjacentHTML('afterend', bodyHtml);
+    handleInput();
+    setTimeout(() => {
+      measurePages();
+      targetH3.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 100);
   };
 
@@ -2419,11 +2486,17 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               )
             )}
 
-            <FormatButton
-              icon={<Calendar size={14} />}
-              title="Nowa lekcja — nagłówek z numerem i sekcjami"
+            <button
+              type="button"
+              onMouseDown={event => event.preventDefault()}
               onClick={handleInsertLesson}
-            />
+              disabled={isInsertingLesson}
+              title="Dodaj nową lekcję: nowa strona A4, kolejny numer i 5 sekcji szablonu"
+              className="h-7 px-2.5 rounded-lg text-[11px] font-bold bg-primary/12 text-primary border border-primary/30 hover:bg-primary/20 transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <Calendar size={13} />
+              <span className="whitespace-nowrap">+ Nowa lekcja</span>
+            </button>
           </>
         )}
 
@@ -2894,6 +2967,46 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                           >
                             <PlusCircle size={12} className="shrink-0 text-primary" />
                             <span className="truncate">Dopisz na końcu</span>
+                          </button>
+                        </div>
+
+                        {/* Wstawienie POD wybraną sekcję bieżącej (ostatniej) lekcji —
+                            w odróżnieniu od „Wstaw wg szablonu”, które zakłada NOWĄ lekcję. */}
+                        <div className="text-[10px] font-bold text-content-muted uppercase tracking-wider pt-1">
+                          Wstaw do sekcji bieżącej lekcji:
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleInsertIntoSection('Revision', msg.text)}
+                            title="Wstaw pod sekcję Revision bieżącej lekcji"
+                            className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-hi hover:text-primary border border-line text-[10.5px] font-semibold transition-all cursor-pointer truncate"
+                          >
+                            Revision
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleInsertIntoSection('Key Language', msg.text)}
+                            title="Wstaw pod sekcję Key Language & Corrections bieżącej lekcji"
+                            className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-hi hover:text-primary border border-line text-[10.5px] font-semibold transition-all cursor-pointer truncate"
+                          >
+                            Key Language
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleInsertIntoSection('Lesson Summary', msg.text)}
+                            title="Wstaw pod sekcję Lesson Summary bieżącej lekcji"
+                            className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-hi hover:text-primary border border-line text-[10.5px] font-semibold transition-all cursor-pointer truncate"
+                          >
+                            Summary
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleInsertIntoSection('Homework', msg.text)}
+                            title="Wstaw pod sekcję Homework bieżącej lekcji"
+                            className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-hi hover:text-primary border border-line text-[10.5px] font-semibold transition-all cursor-pointer truncate"
+                          >
+                            Homework
                           </button>
                         </div>
                         <div className="flex items-center justify-between pt-1 border-t border-line-soft/60 text-[10px] text-content-muted">
