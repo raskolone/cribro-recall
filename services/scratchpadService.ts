@@ -367,9 +367,11 @@ export function subscribeScratchpad(
           if (snap.exists()) {
             const cloudDoc = snap.data() as ScratchpadDocument;
             saveLocalScratchpad(cloudDoc);
+            console.log('[SCRATCHPAD LISTEN] Subscribed to ID:', id, 'Received content length:', (cloudDoc.contentHtml || cloudDoc.contentText || '').length);
             onUpdate(cloudDoc);
           } else {
             const fallback = getLocalScratchpad(id);
+            console.log('[SCRATCHPAD LISTEN] Document not found on Firestore for ID:', id, 'Using local fallback:', !!fallback);
             if (fallback) {
               onUpdate(fallback);
             } else {
@@ -568,6 +570,7 @@ export async function saveScratchpadContent(
   };
 
   saveLocalScratchpad(updatedDoc);
+  console.log('[SCRATCHPAD SAVE] Document ID:', id, 'Length:', contentHtml.length);
   const result: ScratchpadSaveResult = { local: true, cloud: false, bytes };
 
   const attemptCloudSave = async (): Promise<boolean> => {

@@ -193,13 +193,14 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
   }, [scratchpadDoc?.id]);
 
   const handleSaveContent = async (html: string, text: string) => {
-    if (!scratchpadDoc?.id) return;
+    const docId = scratchpadDoc?.id || safeScratchpad.id;
+    if (!docId) return;
     const teacherUid = user?.id || 'teacher_default';
     const teacherName = user?.firstName
       ? `${user.firstName} ${user.lastName || ''}`.trim()
       : user?.username || 'Lektor';
 
-    return await saveScratchpadContent(scratchpadDoc.id, html, text, {
+    return await saveScratchpadContent(docId, html, text, {
       uid: teacherUid,
       name: teacherName,
       role: 'teacher',
@@ -207,14 +208,16 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
   };
 
   const handleToggleStudentEdit = async (allow: boolean) => {
-    if (!scratchpadDoc?.id) return;
-    await updateScratchpadSettings(scratchpadDoc.id, { allowStudentEdit: allow });
+    const docId = scratchpadDoc?.id || safeScratchpad.id;
+    if (!docId) return;
+    await updateScratchpadSettings(docId, { allowStudentEdit: allow });
     setScratchpadDoc(prev => prev ? { ...prev, allowStudentEdit: allow } : null);
   };
 
   const handleToggleRequirePin = async (require: boolean) => {
-    if (!scratchpadDoc?.id) return;
-    await updateScratchpadSettings(scratchpadDoc.id, { requirePin: require });
+    const docId = scratchpadDoc?.id || safeScratchpad.id;
+    if (!docId) return;
+    await updateScratchpadSettings(docId, { requirePin: require });
     setScratchpadDoc(prev => prev ? { ...prev, requirePin: require } : null);
   };
 
@@ -253,9 +256,12 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
       ? `${user.firstName} ${user.lastName || ''}`.trim()
       : user?.username || 'Lektor CRIBRO';
 
-    // a) Natychmiast zaktualizuj stan lokalny w UI lektora
+    const targetDocId = `sp_${picked.id}`;
+
+    // a) Natychmiast zaktualizuj stan lokalny w UI lektora i przepnij ID na dokument kursanta
     const optimisticDoc: ScratchpadDocument = {
       ...baseDoc,
+      id: targetDocId,
       studentId: picked.id,
       studentName: picked.name,
       title: `Notatnik — ${picked.name}`,
@@ -263,7 +269,6 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
     setScratchpadDoc(optimisticDoc);
 
     // c) Jeśli w trybie standalone, zaktualizuj ID w pasku adresu
-    const targetDocId = `sp_${picked.id}`;
     if (typeof window !== 'undefined') {
       try {
         const params = new URLSearchParams(window.location.search);
