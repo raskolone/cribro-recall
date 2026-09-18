@@ -114,6 +114,14 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
 
   const assignableStudents = students ?? loadedStudents;
 
+  // Twardy timeout bezpieczeństwa (Safety Fallback) — notatnik nigdy nie wisi dłużej niż 2.5 sekundy
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Pobierz lub utwórz stały brudnopis kursanta po wejściu na ekran
   useEffect(() => {
     let isMounted = true;
@@ -151,12 +159,14 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
 
         if (isMounted) {
           setScratchpadDoc(doc);
-          setIsLoading(false);
         }
       } catch (err: any) {
         console.error('Błąd inicjalizacji notatnika:', err);
         if (isMounted) {
           setError(err.message || 'Nie udało się załadować notatnika.');
+        }
+      } finally {
+        if (isMounted) {
           setIsLoading(false);
         }
       }

@@ -23,8 +23,19 @@ export const StudentScratchpadScreen: React.FC = () => {
     ? `${user.firstName} ${user.lastName || ''}`.trim()
     : user?.username || 'Kursant';
 
+  // Twardy timeout bezpieczeństwa (Safety Fallback) — notatnik nigdy nie wisi dłużej niż 2.5 sekundy
   useEffect(() => {
-    if (!user?.id) return;
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setIsLoading(false);
+      return;
+    }
 
     let isMounted = true;
     setIsLoading(true);
@@ -38,12 +49,14 @@ export const StudentScratchpadScreen: React.FC = () => {
         );
         if (isMounted) {
           setDocument(doc);
-          setIsLoading(false);
         }
       } catch (err: any) {
         console.error('Błąd ładowania brudnopisu kursanta:', err);
         if (isMounted) {
           setErrorMessage(err.message || 'Nie udało się otworzyć notatnika.');
+        }
+      } finally {
+        if (isMounted) {
           setIsLoading(false);
         }
       }
