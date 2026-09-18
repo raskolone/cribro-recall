@@ -21,11 +21,12 @@ import { animateDropletSuccess, prefersReducedMotion, cubicBezierEase } from '..
 import { useTheme } from '../../context/ThemeContext';
 
 // Naturalna krzywa zwalniania koła fortuny — odpowiednik CSS
-// `cubic-bezier(0.15, 0.9, 0.2, 1.0)`, policzona raz przy starcie modułu.
-const WHEEL_SPIN_EASE = cubicBezierEase(0.15, 0.9, 0.2, 1.0);
+// `cubic-bezier(0.12, 0.8, 0.2, 1.0)`, policzona raz przy starcie modułu.
+const WHEEL_SPIN_EASE = cubicBezierEase(0.12, 0.8, 0.2, 1.0);
 
-// Skraca treść pytania do czytelnej etykiety na wycinku koła (pełny tekst trafia do karty wyniku).
-const truncateForWheel = (text: string, max = 20): string =>
+// Krótka etykieta kategorii na wycinku koła (pełne pytanie pojawia się wyłącznie
+// w karcie wyniku po zatrzymaniu — długi tekst na okręgu nachodził na sąsiednie wycinki).
+const truncateForWheel = (text: string, max = 14): string =>
   text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
 
 interface WheelOfFortuneProps {
@@ -195,7 +196,11 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
 
     if (prefersReducedMotion()) {
       rotationRef.current = targetRotation;
-      gsap.set(wheelGroupRef.current, { rotation: targetRotation });
+      // `svgOrigin` (współrzędne w lokalnym układzie SVG, nie CSS transform-origin)
+      // to jedyny niezawodny sposób ustawienia osi obrotu dla <g> w GSAP — CSS
+      // transform-origin na elementach SVG bywa przeliczany na nowo z bounding boxa
+      // przy każdej klatce w części przeglądarek, co dawało efekt "skakania" koła.
+      gsap.set(wheelGroupRef.current, { rotation: targetRotation, svgOrigin: '200 200' });
       setIsSpinning(false);
       finishSpin(targetRotation, forcedWinnerId);
       return;
@@ -209,6 +214,8 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
 
     gsap.to(wheelGroupRef.current, {
       rotation: targetRotation,
+      svgOrigin: '200 200',
+      transformOrigin: '50% 50%',
       duration: spinDuration,
       ease: WHEEL_SPIN_EASE,
       onUpdate: () => {
@@ -474,51 +481,56 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
 
         {/* Akcje pomocnicze */}
         <div className="flex items-center gap-2 ml-auto">
+          {/* Zwykłe <button>, nie współdzielony <Button>: warianty `Button` (ghost/secondary)
+              mają własne klasy koloru tekstu, których kolejność w wygenerowanym CSS
+              Tailwinda nie jest gwarantowana względem className przekazanego z zewnątrz —
+              w praktyce potrafiły wygrywać i wygaszać te przyciski w trybie ciemnym. */}
           {!isStudent && (
-            <Button
-              size="sm"
-              variant="secondary"
+            <button
+              type="button"
               disabled={isSpinning || isAiGenerating}
               onClick={handleGenerateAiQuestions}
-              className={`h-8 px-2.5 text-xs font-bold flex items-center gap-1.5 border ${
-                isDark 
-                  ? 'border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary' 
-                  : 'border-emerald-500/30 bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
-              }`}
               title="Wygeneruj 8 świeżych pytań rozgrzewkowych przez AI"
+              className={`h-8 px-2.5 rounded-full text-xs font-bold flex items-center gap-1.5 border transition-colors disabled:opacity-45 disabled:pointer-events-none cursor-pointer ${
+                isDark
+                  ? 'text-primary border-primary/40 bg-primary/10 hover:bg-primary/20 hover:border-primary/60'
+                  : 'text-emerald-800 border-emerald-500/30 bg-emerald-50 hover:bg-emerald-100'
+              }`}
             >
               <Sparkles size={12} className={isAiGenerating ? 'animate-spin' : ''} />
               <span className="hidden sm:inline">Nowe pytania AI</span>
-            </Button>
+            </button>
           )}
 
           {!isStudent && (
-            <Button
-              size="sm"
-              variant="ghost"
+            <button
+              type="button"
               disabled={isSpinning}
               onClick={handleOpenQuestionEditor}
-              className={`h-8 px-2.5 text-xs font-bold flex items-center gap-1.5 ${
-                isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-              }`}
               title="Szybko dopisz lub usuń pytania z puli"
+              className={`h-8 px-2.5 rounded-full text-xs font-bold flex items-center gap-1.5 border transition-colors disabled:opacity-45 disabled:pointer-events-none cursor-pointer ${
+                isDark
+                  ? 'text-slate-200 hover:text-white border-slate-700 bg-slate-800/60 hover:bg-slate-800'
+                  : 'text-slate-600 hover:text-slate-900 border-slate-200 bg-slate-50 hover:bg-slate-100'
+              }`}
             >
               <Pencil size={12} />
               <span className="hidden sm:inline">Edytuj pytania</span>
-            </Button>
+            </button>
           )}
 
-          <Button
-            size="sm"
-            variant="ghost"
+          <button
+            type="button"
             onClick={() => setShowQuestionPool(!showQuestionPool)}
-            className={`h-8 px-2.5 text-xs flex items-center gap-1 ${
-              isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+            className={`h-8 px-2.5 rounded-full text-xs font-bold flex items-center gap-1 border transition-colors cursor-pointer ${
+              isDark
+                ? 'text-slate-200 hover:text-white border-slate-700 bg-slate-800/60 hover:bg-slate-800'
+                : 'text-slate-600 hover:text-slate-900 border-slate-200 bg-slate-50 hover:bg-slate-100'
             }`}
           >
             <HelpCircle size={13} />
             <span>{showQuestionPool ? 'Ukryj listę' : 'Pokaż pytania'}</span>
-          </Button>
+          </button>
 
           {/* Przełącznik motywu (Lektor i kursant zmieniają niezależnie w swoim oknie) */}
           <button
@@ -644,14 +656,17 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
           />
 
           <div className="flex items-center justify-end gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
+            <button
+              type="button"
               onClick={() => setIsEditingQuestions(false)}
-              className={`h-8 px-3 text-xs ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
+              className={`h-8 px-3 rounded-full text-xs font-bold border transition-colors cursor-pointer ${
+                isDark
+                  ? 'text-slate-200 hover:text-white border-slate-700 bg-slate-800/60 hover:bg-slate-800'
+                  : 'text-slate-600 hover:text-slate-900 border-slate-200 bg-slate-50 hover:bg-slate-100'
+              }`}
             >
               Anuluj
-            </Button>
+            </button>
             <Button
               size="sm"
               variant="primary"
@@ -792,12 +807,14 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                         className="transition-colors duration-200"
                       />
 
-                      {/* Treść pytania (skrócona) — zawsze biały tekst z text-shadow, czytelny na każdym kolorze i w obu motywach */}
+                      {/* Krótka etykieta kategorii (nie całe pytanie — to nachodziło na sąsiednie
+                          wycinki i tworzyło szum). Zawsze biały tekst z text-shadow, czytelny na
+                          każdym kolorze wycinka i w obu motywach. Pełne pytanie: karta wyniku. */}
                       <text
                         x={tx}
                         y={ty}
                         fill="#ffffff"
-                        fontSize="10.5"
+                        fontSize="11"
                         fontWeight="700"
                         textAnchor="middle"
                         dominantBaseline="central"
@@ -805,7 +822,7 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                         style={{ textShadow: '0 1px 2px rgba(0,0,0,0.75), 0 1px 4px rgba(0,0,0,0.55)' }}
                         className="pointer-events-none"
                       >
-                        {truncateForWheel(q.question)}
+                        {truncateForWheel(q.sourceTag || `Pytanie ${idx + 1}`)}
                       </text>
                     </g>
                   );
@@ -961,11 +978,18 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
               {drawnQuestion ? (
                 <div className="space-y-3 pt-1 animate-fadeIn">
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className={`font-extrabold leading-relaxed tracking-tight ${
-                      isDark ? 'text-white' : 'text-slate-900'
-                    } ${
-                      isFullscreen ? 'text-xl sm:text-2xl md:text-3xl' : 'text-xl sm:text-2xl'
-                    }`}>
+                    {/* Kolor wymuszony inline stylem — żaden potomny/globalny styl (np.
+                        typografia notatnika) nie ma szansy nadpisać go na ciemny tekst,
+                        co wcześniej robiło pytanie nieczytelnym na ciemnym tle karty. */}
+                    <h3
+                      className={isFullscreen ? 'text-xl sm:text-2xl md:text-3xl tracking-tight' : ''}
+                      style={{
+                        color: isDark ? '#ffffff' : '#0f172a',
+                        fontSize: isFullscreen ? undefined : '1.2rem',
+                        fontWeight: 500,
+                        lineHeight: 1.5,
+                      }}
+                    >
                       "{drawnQuestion.question}"
                     </h3>
                     <TTSButtons text={drawnQuestion.question} />
@@ -1032,9 +1056,8 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                   <span>{timerSeconds}s</span>
                 </div>
 
-                <Button
-                  size="sm"
-                  variant="ghost"
+                <button
+                  type="button"
                   onClick={() => {
                     if (isTimerRunning) {
                       setIsTimerRunning(false);
@@ -1043,28 +1066,31 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                       setIsTimerRunning(true);
                     }
                   }}
-                  className={`h-8 px-2.5 text-xs ${
-                    isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                  className={`h-8 px-2.5 rounded-full text-xs font-bold flex items-center border transition-colors cursor-pointer ${
+                    isDark
+                      ? 'text-slate-200 hover:text-white border-slate-700 bg-slate-800/60 hover:bg-slate-800'
+                      : 'text-slate-600 hover:text-slate-900 border-slate-200 bg-slate-50 hover:bg-slate-100'
                   }`}
                 >
                   {isTimerRunning ? <Pause size={12} /> : <Play size={12} />}
                   <span className="ml-1">{isTimerRunning ? 'Pauza' : 'Start (60s)'}</span>
-                </Button>
+                </button>
 
-                <Button
-                  size="sm"
-                  variant="ghost"
+                <button
+                  type="button"
                   onClick={() => {
                     setIsTimerRunning(false);
                     setTimerSeconds(60);
                   }}
-                  className={`h-8 px-2 text-xs ${
-                    isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                  }`}
                   title="Resetuj stoper"
+                  className={`h-8 px-2 rounded-full flex items-center border transition-colors cursor-pointer ${
+                    isDark
+                      ? 'text-slate-200 hover:text-white border-slate-700 bg-slate-800/60 hover:bg-slate-800'
+                      : 'text-slate-600 hover:text-slate-900 border-slate-200 bg-slate-50 hover:bg-slate-100'
+                  }`}
                 >
                   <RotateCcw size={12} />
-                </Button>
+                </button>
               </div>
 
               {/* Przycisk zakręć ponownie */}
