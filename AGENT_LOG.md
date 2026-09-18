@@ -1778,3 +1778,47 @@ Decyzje architektoniczne:
 Ryzyka: Zmiany dotyczą wyłącznie logiki komponentów notatnika (nie
 `firestore.rules`, nie middleware autoryzacji, nie ścieżek tokenowych bez
 logowania) — poza zakresem sekcji 3 CLAUDE.md, nie wymagały wstrzymania.
+
+---
+
+2026-09-18 — Claude Code / Sonnet 5 (kontynuacja tej samej sesji)
+
+Zadanie: Twardy timeout 3s na inicjalizację `TeacherScratchpadScreen.tsx`
+(żeby ekran lektora nigdy nie wisiał w nieskończoność na wolnym Firestore)
++ weryfikacja, z którą bazą Firestore łączy się klient.
+
+Zrobione:
+- `components/scratchpad/TeacherScratchpadScreen.tsx`:
+  - Pobranie dokumentu (`getScratchpadById`/`getOrCreateStudentScratchpad`)
+    owinięte w `Promise.race` z timeoutem 3000ms.
+  - Przy timeoucie LUB `err.code === 'resource-exhausted'`: lektor dostaje
+    w pełni sprawny edytor na STAŁYM, jednorazowo ustawionym przez
+    `setScratchpadDoc` ID `sp_teacher_<uid>` (nie liczonym na nowo przy
+    każdym renderze — to była dokładnie ta regresja, którą naprawiono
+    wcześniej dziś z `sp_${Date.now()}`). Oznaczone przez istniejące pole
+    `cloudBlockedReason`, które odpala już istniejący żółty baner w
+    `ScratchpadEditor.tsx` ("Ten notatnik nie zapisał się w chmurze —
+    kursant go nie zobaczy"). Inne błędy nadal pokazują ekran błędu jak
+    dotychczas.
+- `firebase.ts`: dodano `console.log('[FIRESTORE-DB-NAME]', ...)` po
+  `initializeFirestore` do weryfikacji aktywnej bazy.
+
+Decyzje architektoniczne:
+- NIE zmieniono ID bazy Firestore. Zlecenie wskazywało
+  `ai-studio-103bf60d-6134-4dcf-97f6-1080bc759669`, ale w całym stosie
+  (`firebase.ts`, `server.ts`, `functions/src/config.ts`, `firebase.json`,
+  `package.json`) konsekwentnie zaszyte jest
+  `ai-studio-520a4841-33d0-41ef-829a-838ebc44072d`. To dwa różne ID, nie
+  literówka — przełączenie na złe ID urwałoby dostęp do danych w całej
+  aplikacji (klient/serwer/functions łączyłyby się z pustą, prawdopodobnie
+  bez wdrożonych `firestore.rules`, bazą). Zapytałem Macieja wprost —
+  potwierdził zostawienie obecnego ID i weryfikację przez nowy log.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 359/359.
+- `npm run build` — kod 0.
+
+Ryzyka: Zmiany nie dotykają `firestore.rules` ani middleware autoryzacji.
+Dotyczą wyłącznie klienta (frontend), poza obszarem wysokiego ryzyka z
+sekcji 3 CLAUDE.md.
