@@ -2165,3 +2165,65 @@ Weryfikacja:
 - `npm test` — 363/363 zielone.
 - `npm run build` — kod 0, nowy hash bundla: `index-D7iVkZT_.js`
   (poprzednio `index-f-64mY-j.js`).
+
+---
+
+2026-09-18 — Claude Code / Sonnet 5
+
+Zadanie: Naprawa kontrastu tekstu w trybie ciemnym oraz stabilizacja
+animacji obrotu Koła Fortuny (4 zgłoszone problemy widoku, kontynuacja
+rundy 34 z tej samej sesji).
+
+Zrobione (`components/presentation/WheelOfFortune.tsx`):
+1. Tekst wylosowanego pytania w karcie wyniku: kolor wymuszony inline
+   `style` (`color: isDark ? '#ffffff' : '#0f172a'`, `fontSize: 1.2rem`
+   poza fullscreenem, `fontWeight: 500`, `lineHeight: 1.5`) — wcześniej
+   klasa `text-white`/`text-slate-900` z `isDark` ternary była
+   teoretycznie poprawna, ale nic nie chroniło przed nadpisaniem przez
+   styl potomny/globalny; inline styl wygrywa zawsze.
+2. Przyciski paska górnego ("Nowe pytania AI", "Edytuj pytania",
+   "Pokaż pytania", "Start (60s)"/"Pauza", "Resetuj stoper", "Anuluj")
+   były wygaszone w trybie ciemnym: korzystały z wariantów `ghost`/
+   `secondary` współdzielonego `components/ui/Button.tsx`, którego
+   własne klasy koloru tekstu (`variantStyles`) kolidują z `className`
+   przekazywanym z zewnątrz — Tailwind NIE gwarantuje, że klasa później
+   w JSX wygrywa w wygenerowanym CSS, więc wygaszony domyślny kolor
+   wariantu czasem wygrywał. Zamieniono na zwykłe `<button>` z
+   samodzielnymi klasami (`text-slate-200 hover:text-white
+   border-slate-700 bg-slate-800/60` w ciemnym motywie) — NIE dotknięto
+   samego `Button.tsx` (zmiana tam uderzyłaby we wszystkie ekrany apki).
+3. "Skakanie" koła podczas obrotu: CSS `transform-origin` na `<g>` SVG
+   bywa przeliczany na nowo z bounding boxa klatka po klatce w części
+   przeglądarek. Zamieniono na `svgOrigin: '200 200'` GSAP (właściwy,
+   udokumentowany sposób GSAP na stabilną oś obrotu SVG) w
+   `gsap.set` (reduced motion) i `gsap.to` (animacja). Krzywa zwalniania
+   zaktualizowana na `cubic-bezier(0.12, 0.8, 0.2, 1.0)` zgodnie z nową
+   specyfikacją (poprzednio 0.15/0.9/0.2/1.0 z poprzedniego zadania w
+   tej samej sesji).
+4. Etykiety na wycinkach: zamiast skróconego pytania (20 znaków, które
+   nachodziło na sąsiednie wycinki) — krótka etykieta kategorii
+   (`q.sourceTag`, max 14 znaków, fallback „Pytanie {n}"). Pełna treść
+   pytania: wyłącznie w karcie wyniku po zatrzymaniu koła.
+
+Nie dokończone / do sprawdzenia:
+- Nie zweryfikowano wzrokowo w przeglądarce w tej sesji (ta sama
+  przeszkoda co w rundzie 34 — brak prostej ścieżki logowania
+  lektor→prezentacja z kołem fortuny). Maciej: sprawdź obrót (brak
+  bocznego "skakania"), czytelność karty wyniku i przycisków paska w
+  trybie ciemnym, oraz że etykiety na wycinkach się nie nakładają.
+
+Decyzje architektoniczne:
+- Naprawiono kontrast przycisków przez zamianę na zwykłe `<button>`
+  zamiast edycji `components/ui/Button.tsx` — root cause (kolizja
+  kolejności klas Tailwind) dotyczy potencjalnie każdego miejsca w
+  apce, gdzie wariant `Button` jest nadpisywany przez `className`, ale
+  naprawa samego `Button.tsx` to osobna, szersza zmiana wymagająca
+  przeglądu wszystkich wywołań — poza zakresem tego zadania.
+
+Ryzyka: Brak zmian w `firestore.rules`, autoryzacji czy ścieżkach
+tokenowych bez logowania.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 363/363 zielone.
+- `npm run build` — kod 0.

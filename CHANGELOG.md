@@ -198,6 +198,43 @@ we dwoje na żywo.
 
 ---
 
+### 🔧 Kontrast Trybu Ciemnego i Stabilna Oś Obrotu Koła Fortuny (2026-09-18, runda 36)
+
+**Zgłoszenie:** 4 problemy widoku Koła Fortuny po rundzie 34 (ta sama sesja):
+nieczytelny czarny tekst pytania na ciemnej karcie, wygaszone przyciski paska
+("Nowe pytania AI", "Edytuj pytania", "Start (60s)"), koło "skaczące" podczas
+obrotu zamiast czystej rotacji w osi, oraz nachodzące na siebie etykiety na
+wycinkach.
+
+**Naprawa (`components/presentation/WheelOfFortune.tsx`):**
+1. **Kontrast karty wyniku:** kolor tekstu pytania wymuszony inline `style`
+   (`color`, `fontSize: 1.2rem` poza fullscreenem, `fontWeight: 500`,
+   `lineHeight: 1.5`) zamiast samej klasy Tailwind — inline styl gwarantuje,
+   że nic potomnego/globalnego go nie nadpisze.
+2. **Wygaszone przyciski:** przyczyna — warianty `ghost`/`secondary`
+   współdzielonego `components/ui/Button.tsx` mają własne klasy koloru
+   tekstu, które kolidują z `className` przekazywanym z zewnątrz (Tailwind
+   nie gwarantuje, że klasa późniejsza w JSX wygrywa w wygenerowanym CSS).
+   Naprawiono przez zamianę na zwykłe `<button>` z samodzielnymi klasami —
+   **celowo NIE dotknięto** `Button.tsx` (zmiana tam uderzyłaby we
+   wszystkie ekrany aplikacji, poza zakresem tego zadania).
+3. **Skakanie koła:** CSS `transform-origin` na `<g>` SVG bywa przeliczany
+   z bounding boxa klatka po klatce w części przeglądarek. Zamieniono na
+   `svgOrigin: '200 200'` GSAP (udokumentowany, SVG-bezpieczny odpowiednik)
+   w `gsap.set` i `gsap.to`. Krzywa zwalniania zaktualizowana na
+   `cubic-bezier(0.12, 0.8, 0.2, 1.0)`.
+4. **Etykiety na wycinkach:** zamiast skróconego pytania (20 znaków, które
+   nachodziło na sąsiednie wycinki) — krótka etykieta kategorii
+   (`sourceTag`, max 14 znaków). Pełne pytanie: wyłącznie w karcie wyniku.
+
+**Weryfikacja:** `npx tsc --noEmit` — 0 błędów. `npm test` — 363/363 zielone.
+`npm run build` — kod 0. Nie zweryfikowano wzrokowo w przeglądarce w tej
+sesji (brak prostej ścieżki logowania lektor→prezentacja z kołem fortuny) —
+Maciej: sprawdź brak bocznego "skakania" koła, czytelność karty wyniku i
+przycisków w trybie ciemnym, brak nachodzenia etykiet na wycinkach.
+
+---
+
 ### 🔧 Naprawa Awarii Głównego Widoku Kursanta — Niewalidowane Słówka z Firestore (2026-09-18, runda 35)
 
 **Zgłoszenie:** dorotakj@student.vocabboost.com — cała aplikacja wywalała się
