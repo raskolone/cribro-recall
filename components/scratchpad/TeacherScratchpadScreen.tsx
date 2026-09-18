@@ -120,19 +120,69 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
     setIsLoading(true);
     setError(null);
 
+    const teacherUid = user?.id || 'teacher_default';
+    const teacherName = user?.firstName
+      ? `${user.firstName} ${user.lastName || ''}`.trim()
+      : user?.username || 'Lektor CRIBRO';
+
+    /*
+     * Notatnik roboczy o STAŁYM ID na lektora (`sp_teacher_<uid>`) — nie
+     * `Date.now()`. Regenerowanie ID przy każdym renderze było dokładnie tą
+     * regresją, którą naprawiliśmy wcześniej dziś: zapisy trafiały pod wciąż
+     * inny, efemeryczny dokument, więc status „Zsynchronizowano" był
+     * prawdziwy, ale nie dla dokumentu, którego ktokolwiek słuchał. Ten
+     * fallback jest odwrotnością tamtego błędu — jedno stałe ID na sesję
+     * lektora, ustawiane raz przez `setScratchpadDoc` (stan Reacta, nie
+     * wyrażenie liczone w ciele komponentu), i jawnie oznaczone jako lokalny
+     * tryb roboczy przez `cloudBlockedReason`, żeby lektor wiedział, że
+     * kursant tego NIE zobaczy, dopóki połączenie nie wróci.
+     */
+    const buildDegradedFallback = (reason: string): ScratchpadDocument => {
+      const now = new Date().toISOString();
+      return {
+        id: `sp_teacher_${user?.id || 'temp'}`,
+        pin: '',
+        studentId: student.id || undefined,
+        studentName: student.name || 'Kursant',
+        teacherUid,
+        teacherName,
+        title: `Notatnik — ${student.name || 'Lekcja'}`,
+        contentHtml: '',
+        contentText: '',
+        allowStudentEdit: true,
+        requirePin: false,
+        createdAt: now,
+        updatedAt: now,
+        version: 1,
+        cloudBlockedReason: reason,
+      };
+    };
+
+    const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> =>
+      new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('SCRATCHPAD_INIT_TIMEOUT')), ms);
+        promise.then(
+          (value) => {
+            clearTimeout(timer);
+            resolve(value);
+          },
+          (err) => {
+            clearTimeout(timer);
+            reject(err);
+          }
+        );
+      });
+
     const init = async () => {
       try {
-        const teacherUid = user?.id || 'teacher_default';
-        const teacherName = user?.firstName
-          ? `${user.firstName} ${user.lastName || ''}`.trim()
-          : user?.username || 'Lektor CRIBRO';
-
-        const doc = documentId
-          ? await getScratchpadById(documentId)
-          : await getOrCreateStudentScratchpad(
+        const fetchDoc = documentId
+          ? getScratchpadById(documentId)
+          : getOrCreateStudentScratchpad(
               { id: student.id || null, name: student.name || 'Kursant' },
               { uid: teacherUid, name: teacherName }
             );
+
+        const doc = await withTimeout(fetchDoc, 3000);
 
         if (!doc) throw new Error('Nie znaleziono notatnika o podanym adresie.');
 
@@ -153,9 +203,27 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
           setScratchpadDoc(doc);
         }
       } catch (err: any) {
+        const isTimeout = err?.message === 'SCRATCHPAD_INIT_TIMEOUT';
+        const isResourceExhausted = err?.code === 'resource-exhausted';
         console.error('Błąd inicjalizacji notatnika:', err);
+
         if (isMounted) {
-          setError(err.message || 'Nie udało się załadować notatnika.');
+          if (isTimeout || isResourceExhausted) {
+            /* Baza nie odpowiedziała na czas — lektor dostaje edytor, który
+               DZIAŁA, zamiast wiszącego spinnera. Świadomie zamienia to
+               "notatnik kursanta" na "prywatny brudnopis lektora": to jedyny
+               sposób, żeby nie zgadywać cudzego ID dokumentu w trybie
+               awaryjnym. Baner `cloudBlockedReason` mówi to wprost. */
+            setScratchpadDoc(
+              buildDegradedFallback(
+                isTimeout
+                  ? 'Baza nie odpowiedziała w 3 sekundy — tryb roboczy, synchronizacja w toku.'
+                  : 'Baza chwilowo przeciążona (resource-exhausted) — tryb roboczy, synchronizacja w toku.'
+              )
+            );
+          } else {
+            setError(err.message || 'Nie udało się załadować notatnika.');
+          }
         }
       } finally {
         if (isMounted) {

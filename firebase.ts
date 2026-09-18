@@ -47,6 +47,8 @@ export const db = initializeFirestore(app, {
   ignoreUndefinedProperties: true,
 }, firebaseConfig.firestoreDatabaseId || "ai-studio-520a4841-33d0-41ef-829a-838ebc44072d");
 
+console.log('[FIRESTORE-DB-NAME]', (db as any)?._databaseId?.database);
+
 /**
  * Funkcje wywoływane z aplikacji.
  *
