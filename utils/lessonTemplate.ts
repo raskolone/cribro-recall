@@ -30,6 +30,50 @@ export const highestLessonNumber = (html: string): number => {
   return highest;
 };
 
+const stripHtml = (html: string): string =>
+  html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+/** Dzieli fragment HTML na sekcje po nagłówkach danego poziomu. */
+const splitByHeading = (
+  html: string,
+  tag: 'h2' | 'h3'
+): { title: string; body: string }[] => {
+  const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'gi');
+  const headings: { title: string; index: number; end: number }[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(html))) {
+    headings.push({ title: stripHtml(match[1]), index: match.index, end: regex.lastIndex });
+  }
+  return headings.map((heading, i) => ({
+    title: heading.title,
+    body: html.slice(heading.end, i + 1 < headings.length ? headings[i + 1].index : html.length),
+  }));
+};
+
+/**
+ * Wyciąga treść sekcji „Main topic / Practice" i „Key Language &
+ * Corrections" z OSTATNIEJ lekcji w dokumencie — surowy tekst (bez
+ * znaczników), używany jako materiał wejściowy do wygenerowania sekcji
+ * Revision następnej lekcji. `null`, gdy w dokumencie nie ma jeszcze
+ * żadnej lekcji (Lesson 1).
+ */
+export const extractLastLessonSections = (
+  html: string
+): { mainTopic: string; keyLanguage: string } | null => {
+  if (!html) return null;
+  const lessons = splitByHeading(html, 'h2').filter(l => /lesson|lekcja/i.test(l.title));
+  if (lessons.length === 0) return null;
+  const lastLesson = lessons[lessons.length - 1];
+  const sections = splitByHeading(lastLesson.body, 'h3');
+
+  const findSection = (matcher: RegExp) => sections.find(s => matcher.test(s.title));
+
+  return {
+    mainTopic: stripHtml(findSection(/main topic|practice/i)?.body || ''),
+    keyLanguage: stripHtml(findSection(/key language|corrections/i)?.body || ''),
+  };
+};
+
 /** Data w formacie używanym w nagłówkach notatnika. */
 export const templateDate = (date: Date = new Date()): string =>
   date.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -79,6 +123,12 @@ export const buildLessonTemplate = (options?: {
     corrections?: string[];
     vocabulary?: string[];
   };
+  /**
+   * Sekcja Revision wygenerowana przez AI (patrz `generateLessonRevision`
+   * w `services/scratchpadAiService.ts`) — gotowy fragment HTML, wstawiany
+   * do sekcji Revision zamiast `recallItems`, gdy podany.
+   */
+  revisionHtml?: string;
 }): string => {
   const previous = options?.previousHtml || '';
   const number =
@@ -87,7 +137,9 @@ export const buildLessonTemplate = (options?: {
 
   const sections = LESSON_SECTIONS.map((section) => {
     let innerBody = '<p><br></p>';
-    if (section.title === 'Revision' && options?.recallItems) {
+    if (section.title === 'Revision' && options?.revisionHtml && options.revisionHtml.trim().length > 0) {
+      innerBody = `${options.revisionHtml}<p><br></p>`;
+    } else if (section.title === 'Revision' && options?.recallItems) {
       const { corrections, vocabulary } = options.recallItems;
       const hasCorrections = corrections && corrections.length > 0;
       const hasVocab = vocabulary && vocabulary.length > 0;

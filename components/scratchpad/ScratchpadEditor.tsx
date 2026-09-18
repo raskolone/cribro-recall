@@ -98,10 +98,11 @@ import { ScratchpadPresentationOverlay, PresentationState } from './ScratchpadPr
 import { ScratchpadLivePresentationModal } from './ScratchpadLivePresentationModal';
 import { ScratchpadTeacherCompanionDrawer } from './ScratchpadTeacherCompanionDrawer';
 import { InteractiveExercise } from '../../services/lessonPlannerMethod';
-import { buildLessonTemplate, highestLessonNumber, LESSON_SECTIONS } from '../../utils/lessonTemplate';
+import { buildLessonTemplate, extractLastLessonSections, highestLessonNumber, LESSON_SECTIONS } from '../../utils/lessonTemplate';
 import { NOTEBOOK_COLORS, NOTEBOOK_INK, NOTEBOOK_SWATCHES } from '../../utils/notebookPalette';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { generateTextWithUnifiedFallback } from '../../services/geminiService';
+import { generateLessonRevision } from '../../services/scratchpadAiService';
 import { runCouncil, SCRATCHPAD_REVIEW_SYSTEM } from '../../services/aiCouncil';
 import mammoth from 'mammoth';
 import ScratchpadInsertPreviewModal, {
@@ -878,62 +879,34 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     if (isReadOnly || !editorRef.current || isInsertingLesson) return;
     setIsInsertingLesson(true);
 
-    let recallItems: { corrections?: string[]; vocabulary?: string[] } | undefined = undefined;
+    const previousHtml = editorRef.current.innerHTML;
 
-    const studentId = docData.studentId || (document as any).studentId;
-    if (studentId) {
+    // Powtórka (Revision) jest generowana z treści OSTATNIEJ lekcji w tym
+    // samym dokumencie — nie z Notion. Brak poprzedniej lekcji (Lesson 1)
+    // = domyślna, pusta sekcja Revision.
+    let revisionHtml: string | undefined;
+    const previousLesson = extractLastLessonSections(previousHtml);
+    const previousLessonText = previousLesson
+      ? [
+          previousLesson.mainTopic && `Main topic / Practice:\n${previousLesson.mainTopic}`,
+          previousLesson.keyLanguage && `Key Language & Corrections:\n${previousLesson.keyLanguage}`,
+        ]
+          .filter(Boolean)
+          .join('\n\n')
+      : '';
+
+    if (previousLessonText.trim().length > 0) {
       try {
-        const records = await getLessonRecordsForStudent(studentId);
-        if (records && records.length > 0) {
-          const sorted = [...records].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-          const latest = sorted[0];
-
-          const rawCorrections =
-            latest.thingsToImprove ||
-            latest.corrections ||
-            latest.structuredBlocks?.corrections ||
-            '';
-
-          const rawVocab =
-            latest.vocabularyText ||
-            latest.structuredBlocks?.vocabulary ||
-            '';
-
-          const correctionsList = rawCorrections
-            .split('\n')
-            .map(l => l.replace(/^[-*•\d.]+\s*/, '').trim())
-            .filter(l => l.length > 3)
-            .slice(0, 3);
-
-          const vocabList = rawVocab
-            .split('\n')
-            .map(l => {
-              const clean = l.replace(/^[-*•\d.]+\s*/, '').trim();
-              if (clean.includes(' - ')) return clean.split(' - ')[0].trim();
-              if (clean.includes(' – ')) return clean.split(' – ')[0].trim();
-              if (clean.includes(' — ')) return clean.split(' — ')[0].trim();
-              if (clean.includes(':')) return clean.split(':')[0].trim();
-              return clean;
-            })
-            .filter(w => w.length > 1)
-            .slice(0, 5);
-
-          if (correctionsList.length > 0 || vocabList.length > 0) {
-            recallItems = {
-              corrections: correctionsList,
-              vocabulary: vocabList,
-            };
-          }
-        }
+        revisionHtml = await generateLessonRevision(previousLessonText);
       } catch (err) {
-        console.warn('[Scratchpad] Błąd pobierania poprzedniej lekcji do powtórki:', err);
+        console.warn('[Scratchpad] Błąd generowania sekcji Revision przez AI:', err);
       }
     }
 
     try {
       const html = buildLessonTemplate({
-        previousHtml: editorRef.current.innerHTML,
-        recallItems,
+        previousHtml,
+        revisionHtml,
       });
 
       editorRef.current.insertAdjacentHTML('beforeend', html);
@@ -2342,26 +2315,30 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                 </>
               }
               sections={[
-                {
-                  id: 'lesson',
-                  label: 'Elementy lekcji',
-                  items: [
-                    {
-                      id: 'lesson',
-                      label: 'Nowa lekcja',
-                      description: 'Numer, data i sekcje — na końcu dokumentu',
-                      icon: <Calendar size={14} />,
-                      onSelect: handleInsertLesson,
-                    },
-                    {
-                      id: 'upload-image',
-                      label: 'Wstaw zdjęcie z dysku',
-                      description: 'PNG, JPG lub WebP (możesz też wklejać Ctrl+V)',
-                      icon: <ImageIcon size={14} />,
-                      onSelect: () => imageFileInputRef.current?.click(),
-                    },
-                  ],
-                },
+                ...(isTeacher
+                  ? [
+                      {
+                        id: 'lesson',
+                        label: 'Elementy lekcji',
+                        items: [
+                          {
+                            id: 'lesson',
+                            label: 'Nowa lekcja',
+                            description: 'Numer, data i sekcje — na końcu dokumentu',
+                            icon: <Calendar size={14} />,
+                            onSelect: handleInsertLesson,
+                          },
+                          {
+                            id: 'upload-image',
+                            label: 'Wstaw zdjęcie z dysku',
+                            description: 'PNG, JPG lub WebP (możesz też wklejać Ctrl+V)',
+                            icon: <ImageIcon size={14} />,
+                            onSelect: () => imageFileInputRef.current?.click(),
+                          },
+                        ],
+                      },
+                    ]
+                  : []),
                 ...(isTeacher
                   ? [
                       {
@@ -2486,17 +2463,19 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               )
             )}
 
-            <button
-              type="button"
-              onMouseDown={event => event.preventDefault()}
-              onClick={handleInsertLesson}
-              disabled={isInsertingLesson}
-              title="Dodaj nową lekcję: nowa strona A4, kolejny numer i 5 sekcji szablonu"
-              className="h-7 px-2.5 rounded-lg text-[11px] font-bold bg-primary/12 text-primary border border-primary/30 hover:bg-primary/20 transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 disabled:opacity-50"
-            >
-              <Calendar size={13} />
-              <span className="whitespace-nowrap">+ Nowa lekcja</span>
-            </button>
+            {isTeacher && (
+              <button
+                type="button"
+                onMouseDown={event => event.preventDefault()}
+                onClick={handleInsertLesson}
+                disabled={isInsertingLesson}
+                title="Dodaj nową lekcję: nowa strona A4, kolejny numer i 5 sekcji szablonu"
+                className="h-7 px-2.5 rounded-lg text-[11px] font-bold bg-primary/12 text-primary border border-primary/30 hover:bg-primary/20 transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <Calendar size={13} />
+                <span className="whitespace-nowrap">+ Nowa lekcja</span>
+              </button>
+            )}
           </>
         )}
 
