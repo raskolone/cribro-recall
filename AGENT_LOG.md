@@ -1861,3 +1861,67 @@ Weryfikacja:
 
 Ryzyka: Brak — zmiany dotyczą wyłącznie logiki UI notatnika lektora, poza
 obszarem wysokiego ryzyka z sekcji 3 CLAUDE.md.
+
+---
+
+2026-09-18 — Claude Code / Sonnet 5 (kontynuacja tej samej sesji, runda 4)
+
+Zadanie: Dynamiczne dodawanie lekcji A4 + spis treści + asystent AI z
+inteligentnym wstawianiem do sekcji w notatniku.
+
+Ustalenie stanu wyjściowego (przed pisaniem czegokolwiek): większość
+zamówionej mechaniki JUŻ ISTNIAŁA w `ScratchpadEditor.tsx` i
+`utils/lessonTemplate.ts` — `buildLessonTemplate`/`highestLessonNumber`
+(numeracja "Lesson N — data" ze skanu nagłówków), `handleInsertLesson`
+(przycisk dodania lekcji z podziałem A4 i 5 sekcjami: Revision, Main topic
+/ Practice, Lesson Summary, Key Language & Corrections (New words),
+Homework), `rebuildToc` (spis treści z H1/H2, scrollIntoView smooth) oraz
+czat AI z przyciskami wstawiania (`handleInsertAsStructuredLesson`,
+podgląd/edycja w `ScratchpadInsertPreviewModal`). Żaden szablon lekcji NIE
+jest wstrzykiwany automatycznie przy montowaniu — `getInitialScratchpadContent`
+odpala się tylko RAZ, przy tworzeniu zupełnie nowego dokumentu kursanta w
+`getOrCreateStudentScratchpad`, nigdy przy zwykłym otwarciu istniejącego
+notatnika. Nie było więc czego wyłączać w punkcie 1 zlecenia.
+
+Zrobione (domknięcie realnych braków względem zlecenia):
+- `components/scratchpad/ScratchpadEditor.tsx`:
+  - Przycisk „Nowa lekcja” dostał widoczną etykietę „+ Nowa lekcja” (był
+    tylko ikoną z tooltipem).
+  - System prompt czatu AI dostał listę aktywnych nagłówków H1/H2/H3
+    bieżącego dokumentu oraz instrukcję trzech znaczników-badge
+    (`badge-error`/`badge-success`/`badge-vocab`) do oznaczania błędów,
+    poprawnych form i słówek w sekcji Key Language & Corrections.
+  - Nowa funkcja `handleInsertIntoSection(sectionTitle, text)`: znajduje
+    nagłówek H3 wybranej sekcji (Revision / Key Language / Lesson Summary /
+    Homework) w obrębie OSTATNIEJ lekcji (od ostatniego H2) i dopisuje tam
+    treść z AI, zamiast tworzyć nową lekcję. Fallback do dopisania na końcu
+    dokumentu, jeśli żadna lekcja jeszcze nie istnieje.
+  - Cztery nowe przyciski pod odpowiedzią asystenta: Revision / Key Language
+    / Summary / Homework — obok istniejących „Wstaw wg szablonu” (cała nowa
+    lekcja), „Dopisz na końcu”, „Wstaw w miejscu kursora”.
+- `index.css`: klasy `.badge-error`, `.badge-success`, `.badge-vocab` —
+  te same kolory co istniejące ręczne zakreślacze (❌ Błąd / ✅ Poprawnie /
+  💡 Słówko), żeby treść wstawiona przez AI wyglądała identycznie do
+  ręcznie zaznaczonej.
+
+Decyzje architektoniczne:
+- Nie tworzyłem nowej architektury czatu AI ani nowego systemu wstawiania —
+  rozszerzyłem istniejący `handleSendAiChat`/system prompt i istniejący
+  zestaw przycisków pod wiadomością asystenta, zgodnie z CLAUDE.md
+  („nie wprowadzaj kolejnego mechanizmu bez potrzeby”).
+- Sekcja docelowa w `handleInsertIntoSection` jest dopasowywana po
+  częściowym dopasowaniu tekstu nagłówka (np. „Key Language” pasuje do
+  „Key Language & Corrections (New words)”) — odporne na drobne różnice
+  w tytule sekcji między lekcjami.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 359/359.
+- `npm run build` — kod 0.
+
+Nie dokończone / do sprawdzenia: Nie testowano wzrokowo w przeglądarce
+(kliknięcie „+ Nowa lekcja” i wstawianie do sekcji z czatu AI) — do
+potwierdzenia przez Macieja.
+
+Ryzyka: Brak — zmiany dotyczą wyłącznie UI/logiki notatnika, poza obszarem
+wysokiego ryzyka z sekcji 3 CLAUDE.md.
