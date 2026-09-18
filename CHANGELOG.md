@@ -2259,6 +2259,16 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 
 ### 4. Rejestr Zmian (Changelog)
 
+### 🐛 2026-09-18 — Naprawa Regresji: Synchronizacja Notatnika Lekcyjnego Przestała Działać dla Kursanta
+
+- **Objaw**: Lektor widział status „Zsynchronizowano" przy zapisie, ale kursant nie otrzymywał treści na żywo (pusty edytor / brak aktualizacji).
+- **Przyczyna**: Regresja wprowadzona tego samego dnia (commity `7217fa9`, `96aa789`, `4848657`) podczas prób naprawy loadera notatnika:
+  - Twardy timeout bezpieczeństwa (`setTimeout(() => setIsLoading(false), 2500)`) w `TeacherScratchpadScreen.tsx` i `StudentScratchpadScreen.tsx` potrafił zwolnić stan ładowania, zanim faktyczny dokument został pobrany z Firestore.
+  - W tym oknie lektor renderował edytor na podstawie obiektu zastępczego (`safeScratchpad`), którego identyfikator dla notatnika roboczego liczył się jako `` `sp_${Date.now()}` `` **na nowo przy każdym renderze** — zamiast stałego `sp_<uid>` kursanta. Zapisy trafiały więc pod wciąż inny, efemeryczny dokument, którego kursant nigdy nie słuchał (jego ekran zawsze nasłuchuje `sp_<uid>`).
+  - Zapis mimo to „się udawał" (Firestore przyjmował go pod dowolnym ID przez fallback `updateDoc` → `setDoc`), stąd mylący status „Zsynchronizowano" u lektora.
+- **Naprawa**: Usunięto twardy timeout (zbędny — `try/finally` z tego samego dnia już gwarantuje zwolnienie loadera) i fallback `safeScratchpad`; edytor lektora renderuje się dopiero po realnym załadowaniu dokumentu, tak jak przed regresją. `handleAssignStudent` wraca do wersji, która czeka na `adoptScratchpadForStudent` przed przełączeniem lokalnego stanu, bez optymistycznego przeskoku ID. Zachowano dzisiejsze poprawki czysto kosmetyczne (klasy CSS wysokości kontenerów). Szczegóły: `AGENT_LOG.md`, wpis 2026-09-18.
+- **Zweryfikowano**: `npx tsc --noEmit` (0 błędów), `npm test` (359/359), `npm run build` (kod 0). Nie zweryfikowano wzrokowo w przeglądarce z dwoma równoległymi sesjami — do potwierdzenia przez Macieja.
+
 ### 🚀 2026-09-17 — Przebudowa Planera Lekcji AI: Wybór Kursanta z Listy, Auto-zaczytywanie Poziomu CEFR, Architektura 6 Bloków ze Zrzutów, 1-klikowe Zadanie Pracy Domowej ze Zdań i Centrum Prezentacji z Przypisanymi Prezentacjami
 
 #### 1. Wybór Kursanta / Grupy z Bazy i Automatyczne Zaczytywanie Poziomu CEFR

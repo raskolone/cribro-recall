@@ -32,14 +32,6 @@ export const PublicScratchpadScreen: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
 
-  // Twardy timeout bezpieczeństwa (Safety Fallback) — notatnik nigdy nie wisi dłużej niż 2.5 sekundy
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, []);
-
   // 1. Sprawdź parametry URL: ?id=... (unikalny link) lub ?pin=... (kod dostępu)
   useEffect(() => {
     if (typeof window === 'undefined') return;

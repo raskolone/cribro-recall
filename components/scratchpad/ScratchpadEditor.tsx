@@ -152,7 +152,7 @@ const FormatButton: React.FC<{
 );
 
 interface ScratchpadEditorProps {
-  document?: ScratchpadDocument | null;
+  document: ScratchpadDocument;
   onSaveContent?: (html: string, text: string) => Promise<any> | void;
   onToggleStudentEdit?: (allow: boolean) => Promise<void>;
   onToggleRequirePin?: (require: boolean) => Promise<void>;
@@ -178,7 +178,7 @@ interface ScratchpadEditorProps {
 }
 
 export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
-  document: rawDocData,
+  document: docData,
   onSaveContent,
   onToggleStudentEdit,
   onToggleRequirePin,
@@ -190,24 +190,6 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   onClose,
   standalone = false,
 }) => {
-  const docData: ScratchpadDocument = useMemo(() => {
-    return rawDocData || {
-      id: 'default',
-      pin: '',
-      studentName: 'Kursant',
-      teacherUid: currentUser?.uid || 'teacher_default',
-      teacherName: currentUser?.name || 'Lektor CRIBRO',
-      title: 'Notatnik lekcyjny',
-      contentHtml: '',
-      contentText: '',
-      allowStudentEdit: true,
-      requirePin: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      version: 1,
-    };
-  }, [rawDocData, currentUser]);
-
   const isTeacher = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
   
   // Kursant może edytować tylko wtedy, gdy lektor włączył flagę `allowStudentEdit` i nie narzucono explicitReadOnly

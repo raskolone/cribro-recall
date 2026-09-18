@@ -1687,3 +1687,94 @@ Weryfikacja:
 
 
 
+
+---
+
+2026-09-18 — Claude Code / Sonnet 5
+
+Zadanie: Krytyczna naprawa regresji w synchronizacji notatnika lekcyjnego —
+lektor widział status "Zsynchronizowano", ale kursant nie otrzymywał treści
+na żywo. Regresja wprowadzona tego samego dnia w trzech commitach
+(7217fa9, 96aa789, 4848657) podczas prób naprawy loadera.
+
+Analiza (git diff 45a808c..HEAD):
+- `TeacherScratchpadScreen.tsx` i `StudentScratchpadScreen.tsx` dostały
+  "twardy timeout bezpieczeństwa" (`setTimeout(() => setIsLoading(false), 2500)`)
+  jako osobny `useEffect`, niezależny od faktycznego zakończenia ładowania
+  dokumentu.
+- Gdy ten timeout odpalał się PRZED zakończeniem `getOrCreateStudentScratchpad`
+  (wolna sieć / zimny start Firestore), `isLoading` przechodził na `false`,
+  mimo że `scratchpadDoc` był wciąż `null`.
+- Ekran lektora w tym stanie renderował edytor na podstawie NIEPAMIĘTANEGO
+  (`safeScratchpad`, zwykły `const`, nie `useMemo`) obiektu zastępczego,
+  którego `id` dla notatnika roboczego liczyło się jako `` `sp_${Date.now()}` ``
+  — NA NOWO PRZY KAŻDYM RENDERZE. Każdy zapis (`handleSaveContent`) trafiał
+  więc pod inny, efemeryczny identyfikator dokumentu, nigdy pod stały
+  `sp_<uid>`, którego słucha ekran kursanta (`StudentScratchpadScreen`).
+  Stąd zapisy "udawały się" (status Zsynchronizowano — bo Firestore
+  przyjmował zapis pod dowolnym ID przez `setDoc`/`updateDoc` fallback),
+  a kursant nigdy nie widział zmian, bo jego `onSnapshot` nasłuchiwał
+  cały czas na `sp_<uid>`.
+- Dodatkowo `handleAssignStudent` przełączał `scratchpadDoc.id` OPTYMISTYCZNIE
+  (przed zakończeniem `adoptScratchpadForStudent`), co pogłębiało rozjazd ID
+  przy przypisywaniu kursanta w trakcie lekcji.
+
+Zrobione (przywrócono stabilny mechanizm sprzed regresji, zachowano tylko
+udane poprawki stylu/layoutu z dzisiejszych commitów):
+- `components/scratchpad/TeacherScratchpadScreen.tsx`:
+  - Usunięcie twardego timeoutu 2.5s (zbędny — `try/finally` w efekcie
+    inicjalizującym już gwarantuje zwolnienie `isLoading`).
+  - Usunięcie `safeScratchpad` (fallback z `sp_${Date.now()}` liczonym co
+    render) — edytor renderuje się TYLKO gdy `scratchpadDoc` jest realnie
+    załadowany (`scratchpadDoc ? <Editor/> : null`), tak jak przed regresją.
+  - `handleAssignStudent` wraca do wersji synchronicznej: czeka na
+    `adoptScratchpadForStudent`, dopiero potem przełącza `scratchpadDoc`
+    lokalnie — bez optymistycznego przeskoku ID.
+  - `handleSaveContent`/`handleToggleStudentEdit`/`handleToggleRequirePin`
+    znów czytają `scratchpadDoc.id` bezpośrednio (bez fallbacku).
+  - Zachowano poprawki CSS z dzisiejszych commitów (`min-h-screen`,
+    `min-h-[600px]` na kontenerach wariantów) — czysto kosmetyczne, bez
+    wpływu na dane.
+  - Dodano log diagnostyczny `[SYNC-TEACHER-WRITE]` przy każdym zapisie.
+- `components/scratchpad/StudentScratchpadScreen.tsx`:
+  - Usunięcie tego samego twardego timeoutu 2.5s.
+  - Dodano log diagnostyczny `[SYNC-STUDENT-READ]` przy każdej aktualizacji
+    z `onSnapshot`.
+- `components/scratchpad/PublicScratchpadScreen.tsx`:
+  - Usunięcie analogicznego twardego timeoutu 2.5s (ten plik już miał
+    poprawny `try/finally`, timeout był tu czystym duplikatem ryzyka).
+- `components/scratchpad/ScratchpadEditor.tsx`:
+  - Cofnięcie propa `document` z `ScratchpadDocument | null | undefined`
+    z wewnętrznym fallbackiem `id: 'default'` z powrotem do wymaganego
+    `document: ScratchpadDocument` — fallback z ID `'default'` był kolejnym
+    potencjalnym źródłem współdzielonego/kolizyjnego dokumentu między
+    sesjami. Wszyscy trzej wywołujący (`Teacher`/`Student`/`PublicScratchpadScreen`)
+    już renderują edytor dopiero po realnym załadowaniu dokumentu.
+  - Zachowano dzisiejszą poprawkę stylu kontenera (`h-full w-full min-h-0
+    ... bg-base-100` na `.pad-shell`).
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów typowania.
+- `npm test` — 359/359 testów zaliczonych pomyślnie.
+- `npm run build` — kod 0, poprawnie zbudowano bundle produkcyjny i serwer.
+- Diagnostyka w konsoli: dodane logi `[SYNC-TEACHER-WRITE]` i
+  `[SYNC-STUDENT-READ]` — do zweryfikowania ręcznie przez Macieja w dwóch
+  oknach przeglądarki (ten sam `docId`, rosnący `length` po obu stronach).
+
+Nie dokończone / do sprawdzenia:
+- Nie testowano wzrokowo w przeglądarce (brak środowiska z dwoma sesjami
+  auth w tym uruchomieniu) — Maciej powinien zweryfikować scenariusz
+  "assign kursanta w trakcie pisania" ręcznie przed uznaniem za zamknięte.
+
+Decyzje architektoniczne:
+- Uznałem twardy timeout 2.5s za redukujący realne ryzyko (loader wiszący
+  w nieskończoność) za cenę wprowadzenia poważniejszego ryzyka (rozjazd ID
+  dokumentu) — usunąłem go całkowicie zamiast naprawiać, bo `try/finally`
+  z commitu 7217fa9 już rozwiązuje pierwotny problem (wiszący loader) bez
+  tego efektu ubocznego. To nie jest nowa architektura — to przywrócenie
+  stanu z 45a808c plus zachowanie tej jednej, poprawnej części dzisiejszej
+  poprawki (try/finally).
+
+Ryzyka: Zmiany dotyczą wyłącznie logiki komponentów notatnika (nie
+`firestore.rules`, nie middleware autoryzacji, nie ścieżek tokenowych bez
+logowania) — poza zakresem sekcji 3 CLAUDE.md, nie wymagały wstrzymania.

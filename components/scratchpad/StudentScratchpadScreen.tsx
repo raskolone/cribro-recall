@@ -23,14 +23,6 @@ export const StudentScratchpadScreen: React.FC = () => {
     ? `${user.firstName} ${user.lastName || ''}`.trim()
     : user?.username || 'Kursant';
 
-  // Twardy timeout bezpieczeństwa (Safety Fallback) — notatnik nigdy nie wisi dłużej niż 2.5 sekundy
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, []);
-
   useEffect(() => {
     if (!user?.id) {
       setIsLoading(false);
@@ -75,6 +67,7 @@ export const StudentScratchpadScreen: React.FC = () => {
 
     const unsubscribe = subscribeScratchpad(document.id, (updated) => {
       if (updated) {
+        console.log('[SYNC-STUDENT-READ]', { docId: updated.id, length: updated.contentHtml?.length });
         setDocument(updated);
       }
     });
