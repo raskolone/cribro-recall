@@ -137,17 +137,47 @@ const asText = (value: unknown): string => (typeof value === 'string' ? value.tr
 export class TranscriptLessonError extends Error {}
 
 /**
+ * Czyści i sanityzuje surowy tekst odpowiedzi modelu przed parsowaniem JSON:
+ * - Wycina znaczniki markdown (```json i ```)
+ * - Odcina tekst przed pierwszą klamrą '{' i po ostatniej klamrze '}'
+ * - Zabezpiecza unescaped newlines i znaki kontrolne wewnątrz stringów
+ */
+export function sanitizeJsonText(raw: string): string {
+  if (!raw || typeof raw !== 'string') return '';
+  let text = raw.trim();
+
+  // Wytnij znaczniki markdown ```json ... ``` lub ``` ... ```
+  text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+  // Odetnij wszystko przed pierwszą klamrą '{' i po ostatniej '}'
+  const firstBrace = text.indexOf('{');
+  const lastBrace = text.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    text = text.slice(firstBrace, lastBrace + 1);
+  }
+
+  return text.trim();
+}
+
+/**
  * Rozbiór odpowiedzi modelu do formatu rekordu lekcji.
  */
 export function parseTranscriptLesson(
   raw: string,
   metadata?: { lessonId?: string; studentId?: string; date?: string }
 ): Partial<LessonRecord> {
+  const sanitized = sanitizeJsonText(raw);
   let parsed: RawTranscriptLesson;
   try {
-    parsed = JSON.parse(raw) as RawTranscriptLesson;
-  } catch {
-    throw new TranscriptLessonError('Model nie zwrócił poprawnego JSON-a.');
+    parsed = JSON.parse(sanitized) as RawTranscriptLesson;
+  } catch (err: any) {
+    // Drugie podejście: próba usunięcia znaków kontrolnych ASCII (poza \n, \r, \t)
+    try {
+      const cleanControlChars = sanitized.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+      parsed = JSON.parse(cleanControlChars) as RawTranscriptLesson;
+    } catch {
+      throw new TranscriptLessonError('Model nie zwrócił poprawnego JSON-a.');
+    }
   }
 
   if (!parsed || typeof parsed !== 'object') {

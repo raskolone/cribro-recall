@@ -1,13 +1,22 @@
-import React, { useState } from 'react';
-import { Sparkles, X, AlertCircle, Calendar, User, FileText, Loader2, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, X, AlertCircle, Calendar, User, FileText, Loader2, CheckCircle2, ExternalLink, RefreshCw, Bot } from 'lucide-react';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 import { generateLessonFromTranscript, persistQuestionUsageLogs, updateStudentInsightsProfile } from '../../services/transcriptLesson';
-import { db } from '../../firebase';
+import { db, auth } from '../../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { LessonRecord, User as UserType } from '../../types';
 import { getIsoDateOnly } from '../../services/teacherCockpitService';
 import { formatStudentDisplayName } from '../../utils/studentFormat';
 import Button from '../ui/Button';
+
+interface NotionMeetingItem {
+  id: string;
+  title: string;
+  studentNameRaw: string;
+  lessonDate: string;
+  url: string;
+  createdTime?: string;
+}
 
 interface ManualTranscriptImportModalProps {
   isOpen: boolean;
@@ -31,10 +40,59 @@ export const ManualTranscriptImportModal: React.FC<ManualTranscriptImportModalPr
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Notion state
+  const [notionMeetings, setNotionMeetings] = useState<NotionMeetingItem[]>([]);
+  const [isLoadingMeetings, setIsLoadingMeetings] = useState<boolean>(false);
+  const [loadingMeetingContentId, setLoadingMeetingContentId] = useState<string | null>(null);
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
+  const [notionConfigured, setNotionConfigured] = useState<boolean>(true);
+
   useEscapeModal(isOpen, onClose);
 
+  // Helper do pobrania tokenu autoryzacji Firebase
+  const getAuthHeader = async () => {
+    try {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const token = await currentUser.getIdToken();
+        return { Authorization: `Bearer ${token}` };
+      }
+    } catch {}
+    return {};
+  };
+
+  // Pobieranie ostatnich spotkań z Notion
+  const fetchRecentMeetings = async () => {
+    if (!isOpen) return;
+    setIsLoadingMeetings(true);
+    try {
+      const headers = await getAuthHeader();
+      const res = await fetch('/api/notion/recent-meetings', {
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNotionConfigured(data.configured !== false);
+        setNotionMeetings(data.meetings || []);
+      }
+    } catch (e) {
+      console.warn('[ManualTranscriptImportModal] Nie udało się pobrać spotkań z Notion:', e);
+    } finally {
+      setIsLoadingMeetings(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchRecentMeetings();
+    }
+  }, [isOpen]);
+
   // Synchronizacja domyślnego studenta, gdy lista się pojawi lub zmieni
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
       if (!selectedStudentId && students.length > 0 && students[0].id) {
         setSelectedStudentId(students[0].id);
@@ -42,6 +100,64 @@ export const ManualTranscriptImportModal: React.FC<ManualTranscriptImportModalPr
       setError(null);
     }
   }, [isOpen, students, selectedStudentId]);
+
+  // Pobieranie treści spotkania z Notion i wstrzykiwanie do formularza
+  const handleSelectMeeting = async (meeting: NotionMeetingItem) => {
+    setSelectedMeetingId(meeting.id);
+    if (meeting.lessonDate) {
+      setLessonDate(meeting.lessonDate);
+    }
+    if (meeting.title && !lessonTopic) {
+      setLessonTopic(meeting.title);
+    }
+
+    setLoadingMeetingContentId(meeting.id);
+    try {
+      const headers = await getAuthHeader();
+      const res = await fetch(`/api/notion/meeting-content/${meeting.id}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.content) {
+          setRawText(data.content);
+        }
+      }
+    } catch (err) {
+      console.error('[ManualTranscriptImportModal] Błąd pobierania bloków ze spotkania Notion:', err);
+    } finally {
+      setLoadingMeetingContentId(null);
+    }
+  };
+
+  // Funkcja sprawdzająca czy spotkanie pasuje do danego kursanta
+  const checkMeetingMatch = (meeting: NotionMeetingItem, studentObj?: Partial<UserType> | any) => {
+    if (!studentObj) return false;
+    const name = (formatStudentDisplayName(studentObj as Partial<UserType>, (studentObj as any).name || (studentObj as any).displayName) || '').toLowerCase().trim();
+    const firstName = (studentObj.firstName || name.split(/\s+/)[0] || '').toLowerCase().trim();
+    const rawStudent = (meeting.studentNameRaw || '').toLowerCase().trim();
+    const rawTitle = (meeting.title || '').toLowerCase().trim();
+
+    if (name && (rawStudent.includes(name) || rawTitle.includes(name))) return true;
+    if (firstName && firstName.length >= 3 && (rawStudent.includes(firstName) || rawTitle.includes(firstName))) return true;
+    return false;
+  };
+
+  // Auto-matching: kiedy zmienia się wybrany kursant lub lista spotkań
+  useEffect(() => {
+    if (!selectedStudentId || notionMeetings.length === 0) return;
+    const currentStudent = students.find((s) => s.id === selectedStudentId);
+    if (!currentStudent) return;
+
+    // Szukamy pierwszego pasującego spotkania
+    const matched = notionMeetings.find((m) => checkMeetingMatch(m, currentStudent));
+    if (matched && selectedMeetingId !== matched.id && !rawText) {
+      handleSelectMeeting(matched);
+    }
+  }, [selectedStudentId, notionMeetings]);
 
   if (!isOpen) return null;
 
@@ -252,8 +368,109 @@ export const ManualTranscriptImportModal: React.FC<ManualTranscriptImportModalPr
             />
           </div>
 
+          {/* Ostatnie spotkania Notion (ostatnie 7 dni) */}
+          <div className="p-3.5 rounded-2xl bg-base-100 border border-line-strong space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bot size={15} className="text-primary" />
+                <span className="text-xs font-black text-text-hi tracking-tight">
+                  Ostatnie spotkania Notion (ostatnie 7 dni)
+                </span>
+                {isLoadingMeetings && <Loader2 size={12} className="animate-spin text-primary" />}
+              </div>
+              <button
+                type="button"
+                onClick={fetchRecentMeetings}
+                disabled={isLoadingMeetings || isSubmitting}
+                className="p-1 rounded-lg text-content-muted hover:text-text-hi hover:bg-base-300 transition-colors cursor-pointer"
+                title="Odśwież listę spotkań z Notion"
+              >
+                <RefreshCw size={12} className={isLoadingMeetings ? 'animate-spin' : ''} />
+              </button>
+            </div>
+
+            {!notionConfigured ? (
+              <p className="text-[11px] text-content-muted">
+                Baza spotkań Notion nie jest jeszcze skonfigurowana w Ustawieniach. Możesz wkleić notatki ręcznie poniżej.
+              </p>
+            ) : notionMeetings.length === 0 ? (
+              <p className="text-[11px] text-content-muted">
+                {isLoadingMeetings ? 'Pobieram ostatnie spotkania z Notion…' : 'Brak spotkań w bazie Notion z ostatnich 7 dni. Możesz wkleić notatki ręcznie.'}
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
+                {notionMeetings.map((meeting) => {
+                  const currentStudent = students.find((s) => s.id === selectedStudentId);
+                  const isSuggested = checkMeetingMatch(meeting, currentStudent);
+                  const isSelected = selectedMeetingId === meeting.id;
+                  const isLoadingContent = loadingMeetingContentId === meeting.id;
+
+                  const studentLabel = currentStudent ? (currentStudent.firstName || formatStudentDisplayName(currentStudent as Partial<UserType>, (currentStudent as any).name).split(/\s+/)[0]) : '';
+
+                  return (
+                    <div
+                      key={meeting.id}
+                      onClick={() => !isSubmitting && handleSelectMeeting(meeting)}
+                      className={`group relative flex flex-col p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                        isSelected
+                          ? 'bg-primary/10 border-primary shadow-sm shadow-primary/10 ring-1 ring-primary'
+                          : isSuggested
+                          ? 'bg-emerald-500/10 border-emerald-500/30 hover:border-emerald-500/60'
+                          : 'bg-base-200/80 border-line-soft hover:border-line-strong hover:bg-base-200'
+                      }`}
+                      style={{ minWidth: '220px', maxWidth: '100%', flex: '1 1 calc(50% - 8px)' }}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        {isSuggested ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            <CheckCircle2 size={10} />
+                            Sugerowane {studentLabel ? `dla ${studentLabel}` : ''}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-medium text-content-muted">
+                            {meeting.lessonDate || meeting.createdTime?.slice(0, 10) || 'Notion'}
+                          </span>
+                        )}
+
+                        {meeting.url && (
+                          <a
+                            href={meeting.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-content-muted hover:text-text-hi p-0.5"
+                            title="Otwórz stronę w Notion"
+                          >
+                            <ExternalLink size={11} />
+                          </a>
+                        )}
+                      </div>
+
+                      <div className="text-xs font-bold text-text-hi line-clamp-1 group-hover:text-primary transition-colors">
+                        {meeting.title}
+                      </div>
+
+                      {meeting.studentNameRaw && (
+                        <div className="text-[10px] text-content-muted line-clamp-1 mt-0.5">
+                          Kursant: <span className="font-semibold text-text-hi/80">{meeting.studentNameRaw}</span>
+                        </div>
+                      )}
+
+                      {isLoadingContent && (
+                        <div className="absolute inset-0 bg-base-300/80 backdrop-blur-xs rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold text-primary">
+                          <Loader2 size={13} className="animate-spin" />
+                          <span>Ładowanie treści…</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Wklejony tekst */}
-          <div className="flex-1 flex flex-col min-h-[220px]">
+          <div className="flex-1 flex flex-col min-h-[200px]">
             <label className="block text-xs font-bold text-text-hi mb-1.5 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <FileText size={13} className="text-primary" />

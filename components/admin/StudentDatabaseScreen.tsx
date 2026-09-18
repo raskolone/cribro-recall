@@ -1105,33 +1105,46 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                           </div>
 
                           <div>
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold ${
-                                user.isActivated || (user.loginCount && user.loginCount > 0)
-                                  ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
-                                  : 'text-content-muted/70 bg-white/5 border border-white/10'
-                              }`}
-                              title={
+                            {(() => {
+                              const isStudentLoggedIn = Boolean(
+                                user.isActivated ||
+                                (user.loginCount && user.loginCount > 0) ||
+                                user.lastLoginDate ||
+                                (user as any).lastLoginAt ||
+                                (user as any).lastActiveAt ||
+                                (user as any).activatedAt ||
+                                (user as any).hasLoggedIn ||
                                 user.firstLoginAt
-                                  ? `Pierwsze logowanie: ${new Date(user.firstLoginAt).toLocaleDateString('pl-PL')}`
-                                  : user.lastLoginDate
-                                  ? `Ostatnie logowanie: ${new Date(user.lastLoginDate).toLocaleDateString('pl-PL')}`
-                                  : 'Konto oczekuje na pierwsze logowanie'
-                              }
-                            >
-                              <span
-                                className={`w-1.5 h-1.5 rounded-full ${
-                                  user.isActivated || (user.loginCount && user.loginCount > 0)
-                                    ? 'bg-emerald-400'
-                                    : 'bg-content-muted/40'
-                                }`}
-                              />
-                              <span>
-                                {user.isActivated || (user.loginCount && user.loginCount > 0)
-                                  ? 'Aktywowane'
-                                  : 'Oczekuje'}
-                              </span>
-                            </span>
+                              );
+
+                              const loginDateLabel = (user as any).lastLoginAt || user.lastLoginDate || user.firstLoginAt || (user as any).lastActiveAt || (user as any).activatedAt;
+
+                              return (
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold ${
+                                    isStudentLoggedIn
+                                      ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                                      : 'text-content-muted/70 bg-white/5 border border-white/10'
+                                  }`}
+                                  title={
+                                    loginDateLabel
+                                      ? `Aktywność: ${new Date(loginDateLabel).toLocaleDateString('pl-PL')}`
+                                      : 'Konto oczekuje na pierwsze logowanie'
+                                  }
+                                >
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${
+                                      isStudentLoggedIn
+                                        ? 'bg-emerald-400'
+                                        : 'bg-content-muted/40'
+                                    }`}
+                                  />
+                                  <span>
+                                    {isStudentLoggedIn ? 'Aktywny' : 'Oczekuje'}
+                                  </span>
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                       </td>

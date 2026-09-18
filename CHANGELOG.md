@@ -198,6 +198,38 @@ we dwoje na żywo.
 
 ---
 
+### 🚀 Integracja Notion AI Meeting Notes, Sanitizacja JSON i Weryfikacja Aktywności Kursantów (2026-09-18, runda 33)
+
+**1. Naprawa parsowania JSON w podsumowaniach lekcji (`utils/transcriptLesson.ts`):**
+- Wdrożono funkcję sanitizującą `sanitizeJsonText(raw)` wywoływaną przed `JSON.parse()`:
+  - Usuwanie znaczników bloków markdown (` ```json `, ` ``` `).
+  - Obcinanie śmieciowych znaków przed pierwszą klamrą `{` i po ostatniej klamrze `}`.
+  - Zabezpieczenie nieeskejpowanych znaków nowej linii (`\n`, `\r`, `\t`) oraz znaków kontrolnych wewnątrz wartości string.
+- Ustawiono `responseMimeType: 'application/json'` w wywołaniach SDK Gemini.
+
+**2. Pobieranie spotkań i notatek z bazy Notion (`server.ts`):**
+- Endpoint `GET /api/notion/recent-meetings`:
+  - Filtrowanie i sortowanie spotkań Notion z ostatnich 7–10 dni (po właściwościach daty lub `created_time`).
+  - Odczytywanie właściwości strony Notion: tytuł (`title`), pełna nazwa kursanta (`studentNameRaw` z właściwości `Kursant`/`Student` lub prefiksu tytułu), data zajęć (`lessonDate` z `date.start`) oraz link URL.
+- Endpoint `GET /api/notion/meeting-content/:pageId`:
+  - Rekurencyjne pobieranie i scalanie zawartości bloków strony Notion w jednolity ciąg tekstowy notatek ze spotkania.
+
+**3. 1-klikowy import notatek i auto-matching (`components/admin/ManualTranscriptImportModal.tsx`):**
+- Dodano sekcję *"Ostatnie spotkania Notion (ostatnie 7 dni)"* nad polem tekstowym z kafelkami spotkań.
+- Logika automatycznego dopasowywania do wybranego kursanta:
+  - Porównywanie imienia/nazwiska kursanta ze `studentNameRaw` oraz tytułem strony Notion.
+  - Oznaczanie dopasowanego spotkania zielonym badge'em *"Sugerowane dla [Imię]"*.
+  - Automatyczne ustawienie daty lekcji i zaciągnięcie pełnej treści notatek z Notion do pola `textarea`.
+  - Możliwość ręcznego wyboru innego spotkania lub wklejenia własnego tekstu.
+
+**4. Weryfikacja logowania kursanta w kolumnie "ZAPROSZENIE & AKTYWACJA" (`components/admin/StudentDatabaseScreen.tsx`, `components/admin/StandaloneStudentDatabaseScreen.tsx`):**
+- Sprawdzanie pól logowania i aktywności w obiekcie kursanta Firestore (`isActivated`, `loginCount`, `lastLoginDate`, `lastLoginAt`, `firstLoginAt`, `lastActiveAt`, `activatedAt`, `hasLoggedIn`).
+- Dynamiczna zmiana badge'a ze statycznego "Oczekuje" na zielony pill **"Aktywny"** z zieloną kropką statusu w przypadku wykrycia pomyślnego logowania.
+
+**Weryfikacja:** `npx tsc --noEmit` — 0 błędów ✓.
+
+---
+
 ### 🚀 System Podpowiedzi (ModuleHelpButton) dla Modułów Lesson Planner i Presentation Studio (2026-09-17, runda 32)
 
 **1. Konfiguracja Przewodników Modułów (`config/moduleGuides.ts`):**

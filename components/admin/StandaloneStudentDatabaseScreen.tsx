@@ -958,33 +958,46 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
                           </div>
 
                           <div>
-                            <span
-                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                                student.isActivated || (student.loginCount && student.loginCount > 0)
-                                  ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
-                                  : 'text-content-muted/70 bg-base-100 border border-line-strong'
-                              }`}
-                              title={
+                            {(() => {
+                              const isStudentLoggedIn = Boolean(
+                                student.isActivated ||
+                                (student.loginCount && student.loginCount > 0) ||
+                                student.lastLoginDate ||
+                                (student as any).lastLoginAt ||
+                                (student as any).lastActiveAt ||
+                                (student as any).activatedAt ||
+                                (student as any).hasLoggedIn ||
                                 student.firstLoginAt
-                                  ? `Pierwsze logowanie: ${new Date(student.firstLoginAt).toLocaleDateString('pl-PL')}`
-                                  : student.lastLoginDate
-                                  ? `Ostatnie logowanie: ${new Date(student.lastLoginDate).toLocaleDateString('pl-PL')}`
-                                  : 'Konto oczekuje na pierwsze logowanie'
-                              }
-                            >
-                              <span
-                                className={`w-1.5 h-1.5 rounded-full ${
-                                  student.isActivated || (student.loginCount && student.loginCount > 0)
-                                    ? 'bg-emerald-400'
-                                    : 'bg-content-muted/40'
-                                }`}
-                              />
-                              <span>
-                                {student.isActivated || (student.loginCount && student.loginCount > 0)
-                                  ? 'Aktywowane'
-                                  : 'Oczekuje'}
-                              </span>
-                            </span>
+                              );
+
+                              const loginDateLabel = (student as any).lastLoginAt || student.lastLoginDate || student.firstLoginAt || (student as any).lastActiveAt || (student as any).activatedAt;
+
+                              return (
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold ${
+                                    isStudentLoggedIn
+                                      ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                                      : 'text-content-muted/70 bg-base-100 border border-line-strong'
+                                  }`}
+                                  title={
+                                    loginDateLabel
+                                      ? `Aktywność: ${new Date(loginDateLabel).toLocaleDateString('pl-PL')}`
+                                      : 'Konto oczekuje na pierwsze logowanie'
+                                  }
+                                >
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${
+                                      isStudentLoggedIn
+                                        ? 'bg-emerald-400'
+                                        : 'bg-content-muted/40'
+                                    }`}
+                                  />
+                                  <span>
+                                    {isStudentLoggedIn ? 'Aktywny' : 'Oczekuje'}
+                                  </span>
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                       </td>

@@ -2869,6 +2869,178 @@ export function createApp() {
     }
   });
 
+  // 5. GET /api/notion/recent-meetings — pobieranie spotkań z bazy Notion z ostatnich 7 dni
+  app.get('/api/notion/recent-meetings', requireFirebaseAdmin, async (_req, res) => {
+    try {
+      const cfg = await getNotionConfig();
+      const token = cfg.token;
+      const meetingNotesDbId = normalizeNotionId(cfg.meetingNotesDbId);
+
+      if (!token || !meetingNotesDbId) {
+        return res.json({
+          ok: true,
+          configured: false,
+          meetings: [],
+          message: 'Baza spotkań Notion nie jest jeszcze skonfigurowana.',
+        });
+      }
+
+      const NOTION_API = 'https://api.notion.com/v1';
+      const NOTION_VERSION = '2022-06-28';
+
+      // 7 dni wstecz
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const sevenDaysAgoIso = sevenDaysAgo.toISOString();
+
+      // Zapytaj bazę Notion z sortowaniem malejącym i ewentualnym filtrem daty
+      const queryRes = await fetch(`${NOTION_API}/databases/${meetingNotesDbId}/query`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Notion-Version': NOTION_VERSION,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          page_size: 50,
+          sorts: [
+            {
+              timestamp: 'created_time',
+              direction: 'descending',
+            },
+          ],
+        }),
+      });
+
+      if (!queryRes.ok) {
+        const errTxt = await queryRes.text();
+        return res.status(queryRes.status).json({
+          error: `Błąd odpytywania bazy Notion (${queryRes.status}): ${errTxt.slice(0, 250)}`,
+        });
+      }
+
+      const queryData: any = await queryRes.json();
+      const pages = queryData.results || [];
+      const meetings: Array<{
+        id: string;
+        title: string;
+        studentNameRaw: string;
+        lessonDate: string;
+        url: string;
+        createdTime: string;
+      }> = [];
+
+      for (const page of pages) {
+        const props = page.properties || {};
+
+        // 1. Tytuł spotkania
+        let title = '';
+        for (const key of Object.keys(props)) {
+          if (props[key].type === 'title') {
+            title = (props[key].title || []).map((t: any) => t.plain_text || '').join('').trim();
+            break;
+          }
+        }
+        if (!title) title = 'Spotkanie bez tytułu';
+
+        // 2. Kursant (właściwość "Kursant" lub powiązana relacja/tekst/select)
+        let studentNameRaw = '';
+        for (const key of Object.keys(props)) {
+          const lowerKey = key.toLowerCase();
+          if (lowerKey.includes('kursant') || lowerKey.includes('student') || lowerKey.includes('uczeń') || lowerKey.includes('klient')) {
+            const prop = props[key];
+            if (prop.type === 'rich_text') {
+              studentNameRaw = (prop.rich_text || []).map((t: any) => t.plain_text || '').join('').trim();
+            } else if (prop.type === 'title') {
+              studentNameRaw = (prop.title || []).map((t: any) => t.plain_text || '').join('').trim();
+            } else if (prop.type === 'select' && prop.select?.name) {
+              studentNameRaw = prop.select.name.trim();
+            } else if (prop.type === 'people' && prop.people?.length > 0) {
+              studentNameRaw = prop.people.map((p: any) => p.name || p.person?.email || '').filter(Boolean).join(', ');
+            } else if (prop.type === 'relation' && prop.relation?.length > 0) {
+              studentNameRaw = 'Relacja do kursanta';
+            }
+            if (studentNameRaw) break;
+          }
+        }
+
+        // Jeśli brak osobnej właściwości "Kursant", spróbuj wyciągnąć imię/nazwisko z początku tytułu
+        if (!studentNameRaw && title) {
+          const cleanFromTitle = title.split(/[@–—\-:(]/)[0].trim();
+          if (cleanFromTitle && cleanFromTitle.length >= 3) {
+            studentNameRaw = cleanFromTitle;
+          }
+        }
+
+        // 3. Data zajęć (właściwość "Data zajęć", "Data" lub created_time)
+        let lessonDate = '';
+        for (const key of Object.keys(props)) {
+          const lowerKey = key.toLowerCase();
+          if (props[key].type === 'date' && props[key].date?.start) {
+            lessonDate = props[key].date.start.split('T')[0];
+            if (lowerKey.includes('zajęć') || lowerKey.includes('lekcj') || lowerKey.includes('data')) {
+              break;
+            }
+          }
+        }
+        if (!lessonDate) {
+          lessonDate = (page.created_time || new Date().toISOString()).split('T')[0];
+        }
+
+        // Filtruj spotkania z ostatnich 7-10 dni (lub wszystkie najświeższe do limitu)
+        const pageDateObj = new Date(lessonDate || page.created_time);
+        const isRecent = isNaN(pageDateObj.getTime()) || (Date.now() - pageDateObj.getTime()) <= 10 * 24 * 60 * 60 * 1000;
+
+        if (isRecent || meetings.length < 15) {
+          meetings.push({
+            id: page.id,
+            title,
+            studentNameRaw,
+            lessonDate,
+            url: page.url || `https://notion.so/${page.id.replace(/-/g, '')}`,
+            createdTime: page.created_time,
+          });
+        }
+      }
+
+      return res.json({
+        ok: true,
+        configured: true,
+        meetings,
+      });
+    } catch (err: any) {
+      console.error('[Notion Recent Meetings Error]:', err);
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
+
+  // 6. GET /api/notion/meeting-content/:pageId — pobieranie scalonej treści bloków notatek/transkrypcji
+  app.get('/api/notion/meeting-content/:pageId', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const pageId = String(req.params.pageId || '').trim();
+      if (!pageId) {
+        return res.status(400).json({ error: 'Brak identyfikatora strony Notion (pageId).' });
+      }
+
+      const cfg = await getNotionConfig();
+      const token = cfg.token;
+      if (!token) {
+        return res.status(400).json({ error: 'Brak skonfigurowanego tokena Notion API.' });
+      }
+
+      const content = await fetchNotionBlocksText(token, pageId, 0);
+      return res.json({
+        ok: true,
+        pageId,
+        content: content || '',
+        length: content ? content.length : 0,
+      });
+    } catch (err: any) {
+      console.error('[Notion Meeting Content Error]:', err);
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
+
   // Background cyclic timer for Notion auto-fetching
   setInterval(async () => {
     try {
