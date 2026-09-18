@@ -198,6 +198,46 @@ we dwoje na żywo.
 
 ---
 
+### 🔧 Naprawa Awarii Głównego Widoku Kursanta — Niewalidowane Słówka z Firestore (2026-09-18, runda 35)
+
+**Zgłoszenie:** dorotakj@student.vocabboost.com — cała aplikacja wywalała się
+na trasie "/" z `TypeError: Cannot read properties of undefined (reading 'word')`.
+
+**Przyczyna:** `context/VocabularyContext.tsx` ładował `words` bezpośrednio z
+`onSnapshot` na `users/{uid}/words` bez żadnej walidacji. Dokument w trakcie
+zapisu/synchronizacji (albo bez pola `word`) trafiał do tablicy. `QuizExercise`
+i `FillInBlankExercise` indeksują tę tablicę po pozycji
+(`shuffledWords[currentIndex]`) — gdy żywa aktualizacja Firestore skurczyła
+tablicę w trakcie trwającego ćwiczenia, `currentWord` stawał się `undefined` i
+`currentWord.word` wywalało cały komponent. Ponieważ jedyny `ErrorBoundary` w
+drzewie jest globalny (`components/ui/GlobalErrorBoundary.tsx`, montowany w
+`App.tsx`), błąd czyścił całą aplikację zamiast tylko ćwiczenia.
+
+**Naprawa:**
+- `context/VocabularyContext.tsx`: twarde filtrowanie w `onSnapshot` —
+  `.filter(item => item && typeof item.word === 'string' && item.word.trim().length > 0)`
+  — wadliwe rekordy nigdy nie docierają do konsumentów (naprawia pośrednio
+  wszystko, co czyta `words`/`difficultWords`/`dueWords`: `PracticeZone`,
+  `MatchExercise`, `WordList` itd.).
+- `components/practice/QuizExercise.tsx`: guard na `currentWord` w efekcie
+  budującym opcje odpowiedzi i w `handleAnswer`; łagodny fallback zamiast
+  crasha, gdy lista zmieni się w trakcie sesji.
+- `components/practice/FillInBlankExercise.tsx`: brakujący guard w
+  `handleSubmit` (render już miał `if (!currentWord) return null`).
+
+**Nie dotknięto:** `FlashcardExercise.tsx`, `MatchExercise.tsx` (już poprawnie
+zabezpieczone) ani pozostałe odwołania do `.word` w kodzie (`FlashcardContext.tsx`,
+`StudentLessonHistory.tsx`, `WordCard.tsx` itd.) — te operują na obiektach, które
+w swoim kontekście nie mogą być `undefined`, albo są już warunkowane.
+
+**Weryfikacja:** `npx tsc --noEmit` — 0 błędów. `npm test` — 363/363 zielone.
+`npm run build` — kod 0, nowy hash bundla `index-D7iVkZT_.js` (poprzednio
+`index-f-64mY-j.js`). Błąd nie został odtworzony 1:1 na koncie dorotakj (brak
+dostępu do jej danych produkcyjnych) — naprawa oparta o dokładne dopasowanie
+sygnatury błędu i analizę kodu.
+
+---
+
 ### 🚀 Fizyka i Czytelność Koła Fortuny, Ręczna Edycja Puli Pytań (2026-09-18, runda 34)
 
 **Kontekst:** Koło Fortuny (`components/presentation/WheelOfFortune.tsx`) miało już

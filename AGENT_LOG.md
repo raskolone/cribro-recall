@@ -2112,3 +2112,56 @@ Weryfikacja:
 - `npx tsc --noEmit` — 0 błędów.
 - `npm test` — 363/363 (bez zmian w testowanej logice serwisowej).
 - `npm run build` — kod 0.
+
+---
+
+2026-09-18 — Claude Code / Sonnet 5
+
+Zadanie: Pilna naprawa błędu produkcyjnego kursantki dorotakj@student.vocabboost.com
+na trasie "/": `TypeError: Cannot read properties of undefined (reading 'word')`.
+
+Zrobione:
+- Zlokalizowano źródło: `context/VocabularyContext.tsx` ładował `words` wprost
+  z Firestore bez walidacji — dokument w trakcie synchronizacji lub bez pola
+  `word` trafiał do tablicy, którą `QuizExercise`/`FillInBlankExercise` indeksują
+  po pozycji (`shuffledWords[currentIndex]`). Żywa aktualizacja `onSnapshot`
+  kurcząca tablicę w trakcie sesji ćwiczenia dawała `undefined` i wywalała
+  całą aplikację (łapał to dopiero globalny `GlobalErrorBoundary`, czyszcząc
+  cały widok „/").
+- `context/VocabularyContext.tsx`: twarde filtrowanie w `onSnapshot` dla
+  `users/{uid}/words` — `.filter(item => item && typeof item.word === 'string'
+  && item.word.trim().length > 0)`, żeby wadliwe rekordy nigdy nie trafiały do
+  konsumentów (naprawia też `PracticeZone`, `MatchExercise`, `WordList` itd.
+  pośrednio, bo wszystkie czerpią z tego samego `words`).
+- `components/practice/QuizExercise.tsx`: guard `currentWord` w `useEffect`
+  budującym opcje i w `handleAnswer`; dodano wczesny `return` z komunikatem
+  „lista słówek się zmieniła" zamiast crasha, gdy `currentWord` jest chwilowo
+  `undefined`.
+- `components/practice/FillInBlankExercise.tsx`: guard `!currentWord` w
+  `handleSubmit` (render już miał `if (!currentWord) return null`).
+- `FlashcardExercise.tsx` i `MatchExercise.tsx` sprawdzone — już poprawnie
+  zabezpieczone, bez zmian.
+
+Nie dokończone / do sprawdzenia:
+- Nie odtworzono błędu 1:1 na koncie dorotakj (brak dostępu do jej danych
+  produkcyjnych w tej sesji) — naprawa wynika z analizy kodu i dokładnego
+  dopasowania sygnatury błędu, nie z powtórzenia crasha lokalnie.
+- Pozostałe odwołania `.word` w kodzie (np. `FlashcardContext.tsx`,
+  `StudentLessonHistory.tsx`, `WordCard.tsx`) są już zagnieżdżone w warunkach
+  (`if (item.word)`, `.filter(item => item.word)`) lub operują na obiektach,
+  które nie mogą być `undefined` w danym kontekście — celowo NIE dotknięte,
+  żeby nie rozmyć commitu; jeśli błąd wróci z innym stack trace, zacząć tam.
+
+Decyzje architektoniczne:
+- Filtrowanie zrobione raz, u źródła danych (`VocabularyContext`), zamiast
+  w każdym z ~10 miejsc renderujących `.word` — mniejsza powierzchnia zmian,
+  ten sam efekt dla wszystkich konsumentów tej tablicy.
+
+Ryzyka: Brak zmian w `firestore.rules`, autoryzacji czy ścieżkach
+tokenowych bez logowania.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 363/363 zielone.
+- `npm run build` — kod 0, nowy hash bundla: `index-D7iVkZT_.js`
+  (poprzednio `index-f-64mY-j.js`).
