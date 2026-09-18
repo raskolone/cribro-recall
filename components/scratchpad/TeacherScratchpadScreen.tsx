@@ -84,6 +84,12 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
   /** Otwarta lista kursantów do przypisania notatnika w trakcie pisania. */
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  /* Błąd przypisania pokazuje się PRZY pasku, nie zamiast całego edytora —
+     nieudana próba (np. chwilowy błąd sieci) nie może wyrzucić lektora z
+     notatnika, w którym akurat pisze. Osobny stan od `error` z inicjalizacji
+     celowo: `error` przełącza cały ekran na widok „Zamknij", a to jest
+     dokładnie to, czego nie chcemy przy samym przypisaniu kursanta. */
+  const [assignError, setAssignError] = useState<string | null>(null);
   /* Lista kursantów do przypisania. Ekran stoi teraz sam, poza panelem, więc
      nikt mu jej nie poda — wczytuje ją sam, raz przy wejściu. Jedno zapytanie
      o nazwy, bez żadnych danych lekcyjnych. */
@@ -182,7 +188,7 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
               { uid: teacherUid, name: teacherName }
             );
 
-        const doc = await withTimeout(fetchDoc, 3000);
+        const doc = await withTimeout(fetchDoc, 6000);
 
         if (!doc) throw new Error('Nie znaleziono notatnika o podanym adresie.');
 
@@ -217,7 +223,7 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
             setScratchpadDoc(
               buildDegradedFallback(
                 isTimeout
-                  ? 'Baza nie odpowiedziała w 3 sekundy — tryb roboczy, synchronizacja w toku.'
+                  ? 'Baza nie odpowiedziała w 6 sekund — tryb roboczy, synchronizacja w toku.'
                   : 'Baza chwilowo przeciążona (resource-exhausted) — tryb roboczy, synchronizacja w toku.'
               )
             );
@@ -239,12 +245,27 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
     };
   }, [documentId, student.id, student.name, user, variant]);
 
+  /*
+   * Zdejmuje ślady trybu awaryjnego (żółty baner + ekran błędu), gdy tylko
+   * przyjdzie DOWÓD, że baza faktycznie odpowiada — pierwszy `onSnapshot`
+   * albo potwierdzony zapis w chmurze. Bez tego `cloudBlockedReason`
+   * ustawiony raz w `buildDegradedFallback` wisiał na dokumencie na stałe,
+   * mimo że połączenie dawno wróciło (widoczne po `[SCRATCHPAD SAVE]` /
+   * `[SCRATCHPAD LISTEN]` w konsoli) — a przez to pasek „Przypisz kursanta"
+   * nie znikał i sprawiał wrażenie, że przypisanie jest zablokowane.
+   */
+  const clearCloudSyncWarning = () => {
+    setError(null);
+    setScratchpadDoc(prev => (prev && prev.cloudBlockedReason ? { ...prev, cloudBlockedReason: undefined } : prev));
+  };
+
   // Subskrypcja na żywo
   useEffect(() => {
     if (!scratchpadDoc?.id) return;
 
     const unsubscribe = subscribeScratchpad(scratchpadDoc.id, (updated) => {
       if (updated) {
+        clearCloudSyncWarning();
         setScratchpadDoc(updated);
       }
     });
@@ -262,11 +283,17 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
 
     console.log('[SYNC-TEACHER-WRITE]', { docId, length: html?.length });
 
-    return await saveScratchpadContent(docId, html, text, {
+    const res = await saveScratchpadContent(docId, html, text, {
       uid: teacherUid,
       name: teacherName,
       role: 'teacher',
     });
+
+    if (res && res.cloud !== false) {
+      clearCloudSyncWarning();
+    }
+
+    return res;
   };
 
   const handleToggleStudentEdit = async (allow: boolean) => {
@@ -295,7 +322,11 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
   const handleAssignStudent = async (picked: { id: string; name: string }) => {
     if (!scratchpadDoc) return;
     setIsAssigning(true);
-    setError(null);
+    setAssignError(null);
+    /* Stary błąd inicjalizacji (ekran „Zamknij") albo przeterminowany baner
+       trybu roboczego nie mogą blokować przypisania — lektor już PATRZY na
+       sprawny edytor, więc próba przypisania ma prawo się udać. */
+    clearCloudSyncWarning();
     try {
       const teacherUid = user?.id || 'teacher_default';
       const teacherName = user?.firstName
@@ -305,11 +336,14 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
         uid: teacherUid,
         name: teacherName,
       });
+      // Nagłówek edytora czyta `studentName`/`title` wprost z dokumentu —
+      // przepięcie stanu na `adopted` (id `sp_<studentUid>`) wystarczy, by
+      // "Notatnik roboczy" zamienił się na imię kursanta bez dodatkowej logiki.
       setScratchpadDoc(adopted);
       setIsPickerOpen(false);
     } catch (err: any) {
       console.error('Nie udało się przypisać notatnika:', err);
-      setError(err.message || 'Nie udało się przypisać notatnika do kursanta.');
+      setAssignError(err.message || 'Nie udało się przypisać notatnika do kursanta. Spróbuj ponownie.');
     } finally {
       setIsAssigning(false);
     }
@@ -411,6 +445,12 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
                 {isAssigning && (
                   <span className="flex items-center gap-1.5 text-xs text-primary">
                     <Loader2 size={13} className="animate-spin" /> Przenoszę treść…
+                  </span>
+                )}
+
+                {assignError && (
+                  <span className="flex items-center gap-1.5 text-xs text-rose-400">
+                    <AlertCircle size={13} /> {assignError}
                   </span>
                 )}
               </div>
