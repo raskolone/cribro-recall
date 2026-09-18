@@ -49,7 +49,13 @@ export const VocabularyProvider: React.FC<{ children: ReactNode }> = ({ children
 
     const wordsRef = collection(db, `users/${userId}/words`);
     const unsubscribeWords = onSnapshot(query(wordsRef), (snapshot) => {
-      const wordsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Word));
+      const wordsData = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Word))
+        // Twarde filtrowanie: dokumenty puste lub w trakcie synchronizacji (bez
+        // wypełnionego `word`) nie trafiają do listy — inaczej rozsypują ćwiczenia
+        // indeksujące po pozycji (Quiz, Fill-in-the-blank) na "Cannot read
+        // properties of undefined (reading 'word')".
+        .filter((item): item is Word => Boolean(item && typeof item.word === 'string' && item.word.trim().length > 0));
       setWords(wordsData);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `users/${userId}/words`);

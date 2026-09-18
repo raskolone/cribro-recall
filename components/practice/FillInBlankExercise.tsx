@@ -30,8 +30,8 @@ const FillInBlankExercise: React.FC<FillInBlankExerciseProps> = ({ words, onExit
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() || isSubmitted) return;
-    
+    if (!inputValue.trim() || isSubmitted || !currentWord) return;
+
     const correct = inputValue.trim().toLowerCase() === currentWord.word.toLowerCase();
     setIsSubmitted(true);
     setIsCorrect(correct);

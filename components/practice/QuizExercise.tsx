@@ -27,14 +27,14 @@ const QuizExercise: React.FC<QuizExerciseProps> = ({ words, onExit, onComplete }
   const currentWord = shuffledWords[currentIndex];
 
   useEffect(() => {
-    if (!isFinished) {
+    if (!isFinished && currentWord) {
       const correctOption = currentWord.word;
       const wrongOptions = words
-        .filter(w => w.id !== currentWord.id)
+        .filter(w => w?.id !== currentWord.id)
         .sort(() => Math.random() - 0.5)
         .slice(0, 3)
         .map(w => w.word);
-      
+
       setOptions([correctOption, ...wrongOptions].sort(() => Math.random() - 0.5));
       setSelectedAnswer(null);
       setIsCorrect(null);
@@ -43,7 +43,7 @@ const QuizExercise: React.FC<QuizExerciseProps> = ({ words, onExit, onComplete }
   }, [currentIndex, isFinished]);
 
   const handleAnswer = (option: string) => {
-    if (selectedAnswer) return;
+    if (selectedAnswer || !currentWord) return;
 
     const correct = option === currentWord.word;
     setSelectedAnswer(option);
@@ -93,6 +93,15 @@ const QuizExercise: React.FC<QuizExerciseProps> = ({ words, onExit, onComplete }
             </div>
         </div>
       )
+  }
+
+  if (!currentWord) {
+    return (
+      <div className="text-center p-8 bg-base-200/40 backdrop-blur-xl border border-white/20 rounded-lg shadow-2xl max-w-md mx-auto">
+        <p className="text-content-muted mb-6">{i18n.t("This word list changed while you were practicing.")}</p>
+        <Button onClick={onExit}>{i18n.t("Back to Dashboard")}</Button>
+      </div>
+    );
   }
 
   return (
