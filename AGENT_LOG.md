@@ -1925,3 +1925,80 @@ potwierdzenia przez Macieja.
 
 Ryzyka: Brak — zmiany dotyczą wyłącznie UI/logiki notatnika, poza obszarem
 wysokiego ryzyka z sekcji 3 CLAUDE.md.
+
+---
+
+2026-09-18 — Claude Code / Sonnet 5
+
+Zadanie: (1) Zastąpienie mechanizmu powtórki (Revision) przy „+ Nowa
+lekcja” — dotąd ciągniętego z rekordów lekcji w Notion — generatorem AI
+opartym o treść OSTATNIEJ lekcji w samym dokumencie notatnika. (2)
+Rozgraniczenie uprawnień lektor/kursant w pasku narzędzi Notatnika:
+ukrycie „+ Nowa lekcja”, uploadu zdjęć i Czatu AI przed kursantem.
+
+Zrobione:
+- `utils/lessonTemplate.ts`: nowa funkcja `extractLastLessonSections(html)`
+  (regexowy split po `<h2>`/`<h3>`, bez zależności od DOM — testowalna w
+  Node) — wycina tekst sekcji „Main topic / Practice” i „Key Language &
+  Corrections” z ostatniej lekcji w dokumencie, `null` gdy dokument nie ma
+  jeszcze żadnej lekcji. `buildLessonTemplate` dostał opcję `revisionHtml`
+  (wygrywa z dotychczasowym `recallItems`).
+- `services/scratchpadAiService.ts` (nowy plik): `generateLessonRevision`
+  — wysyła wyciągniętą treść do `generateTextWithUnifiedFallback`
+  (kaskada Gemini Flash) z promptem metodycznym zwracającym gotowy HTML
+  (3 błędy z badge-error/badge-success, 6 słówek EN/PL, 5 zdań PL→EN).
+- `components/scratchpad/ScratchpadEditor.tsx`:
+  - `handleInsertLesson`: usunięto zapytanie do `getLessonRecordsForStudent`
+    (Notion) w tym miejscu (funkcja nadal używana gdzie indziej w pliku —
+    import został). Zamiast tego skanuje `editorRef.current.innerHTML`
+    przez `extractLastLessonSections`, woła `generateLessonRevision`, a
+    błąd generowania jest łapany i loguje `console.warn` bez blokowania
+    wstawienia lekcji (Revision zostaje wtedy pusta).
+  - Przyciski „+ Nowa lekcja” (pozycja w menu „Wstaw” i osobny przycisk-
+    skrót) oraz „Wstaw zdjęcie z dysku” owinięte w `isTeacher &&` —
+    wcześniej wisiały tylko na `!isReadOnly`, więc kursant z
+    `docData.allowStudentEdit === true` widział te same narzędzia co
+    lektor. Czat AI był już wcześniej gated `isTeacher` — zweryfikowano,
+    bez zmian.
+- `tests/lessonTemplate.test.ts`: 3 nowe testy — `revisionHtml` wygrywa z
+  `recallItems`, `extractLastLessonSections` daje `null` bez lekcji w
+  dokumencie, i wycina sekcje z OSTATNIEJ lekcji (nie wcześniejszej).
+- `CHANGELOG.md`: nowa sekcja N. z opisem obu zmian.
+
+Nie dokończone / do sprawdzenia:
+- Nie testowano wzrokowo w przeglądarce — ani jakości wygenerowanej
+  treści Revision (prompt nie był jeszcze uruchomiony na żywym Gemini),
+  ani wizualnego ukrycia przycisków na koncie kursanta. Do potwierdzenia
+  przez Macieja.
+- Interpretacja zlecenia „+ Nowa lekcja / + Dodaj stronę”: przyjąłem, że
+  to dwie nazwy TEJ SAMEJ funkcji (dodanie lekcji = podział strony A4 +
+  szablon), więc osobny przycisk „Podział strony A4” (ogólny, bez numeru
+  lekcji) NIE został ukryty przed kursantem — może się przydać do
+  zwykłego strukturyzowania notatek. Do weryfikacji z Maciejem, czy to
+  słuszna interpretacja.
+- Poprzedni mechanizm powtórki z Notion (`getLessonRecordsForStudent`) w
+  `handleInsertLesson` został całkowicie zastąpiony, nie zachowany jako
+  fallback — zgodnie z literalnym zleceniem („przeskanuj DOKUMENT”), ale
+  to zmiana zachowania względem tego, co działało wcześniej.
+
+Decyzje architektoniczne:
+- `extractLastLessonSections` napisana na regexach (nie `DOMParser`), żeby
+  działała identycznie w przeglądarce i w testach Node (`tsx --test`, bez
+  jsdom) — ten sam wzorzec co istniejące `highestLessonNumber`.
+- AI zwraca od razu gotowy HTML z klasami `badge-error`/`badge-success`
+  (te same zakreślacze co przy ręcznym oznaczaniu), nie markdown do
+  parsowania — mniej miejsc, w których treść może się rozjechać.
+
+Ryzyka: Brak zmian w `firestore.rules` ani middleware autoryzacji —
+ukrycie przycisków jest kontrolą na poziomie UI (`isTeacher` z
+`currentUser?.role`), nie nowym zabezpieczeniem serwerowym. Kursant z
+edytowalnym dostępem do notatnika (`allowStudentEdit`) nadal może
+technicznie wstawić dowolny HTML przez inne ścieżki (np. wklejenie) —
+to nie jest nowa dziura, tylko niezmieniony istniejący zakres uprawnień
+edycji treści.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 362/362 (359 + 3 nowe).
+- `npm run build` — kod 0 (istniejące ostrzeżenia o rozmiarze chunków,
+  niezwiązane z tą zmianą).

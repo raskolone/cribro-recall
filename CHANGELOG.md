@@ -2617,6 +2617,17 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
   - Wzbogacono presety prezentacji o „🎧 Słuchanie & Audio (Listening comprehension)”.
   - Dodano pole wgrywania plików audio z dysku lub linku URL z podglądem na żywo w edytorze pojedynczych slajdów oraz w modalu prezentacji live.
 
+### N. Automatyczna sekcja Revision (AI) przy dodawaniu lekcji + rozgraniczenie uprawnień lektor/kursant w Notatniku (2026-09-18)
+- **Inteligentna Powtórka generowana z poprzedniej lekcji ([lessonTemplate.ts](utils/lessonTemplate.ts), [scratchpadAiService.ts](services/scratchpadAiService.ts), [ScratchpadEditor.tsx](components/scratchpad/ScratchpadEditor.tsx))**:
+  - Przycisk **„+ Nowa lekcja”** nie pyta już Notion o powtórkę — skanuje treść OSTATNIEJ lekcji w tym samym dokumencie notatnika (`extractLastLessonSections`), wycinając sekcje „Main topic / Practice” i „Key Language & Corrections”.
+  - Nowa funkcja `generateLessonRevision` wysyła tę treść do kaskady Gemini Flash (`generateTextWithUnifiedFallback`) z promptem metodycznym, który zwraca gotowy fragment HTML: 3 błędy z badge-error/badge-success, 6 słówek EN↔PL do sprawdzenia, 5 zdań PL→EN do przetłumaczenia.
+  - `buildLessonTemplate` przyjmuje teraz `revisionHtml` (wygrywa z dotychczasowym `recallItems`) — Lesson 1 (brak poprzedniej lekcji w dokumencie) dostaje pusty szablon Revision bez wywołania AI.
+  - Błąd generowania (np. limit AI, brak sieci) nie blokuje wstawienia lekcji — sekcja Revision zostaje wtedy pusta, do ręcznego wypełnienia.
+- **Rozgraniczenie uprawnień lektor/kursant w pasku narzędzi Notatnika ([ScratchpadEditor.tsx](components/scratchpad/ScratchpadEditor.tsx))**:
+  - Przyciski **„+ Nowa lekcja”** (skrót i pozycja w menu „Wstaw”) oraz **„Wstaw zdjęcie z dysku”** są teraz widoczne wyłącznie dla `isTeacher` (lektor/admin) — wcześniej zależały tylko od `isReadOnly`, więc kursant z włączonym `allowStudentEdit` widział te same narzędzia co lektor.
+  - Czat AI dokumentu był już wcześniej ograniczony do `isTeacher` — bez zmian, tylko zweryfikowano.
+  - Kursant zachowuje pełne uprawnienia do pisania w dokumencie, formatowania (czcionki, listy, checklisty) i zaznaczania fragmentów jako błąd/poprawna forma/słówko.
+
 ---
 
 
