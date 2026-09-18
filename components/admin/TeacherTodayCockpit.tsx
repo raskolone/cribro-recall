@@ -157,20 +157,6 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
           </div>
         </div>
 
-        {/* Modal ręcznego importu z Notion AI */}
-        <ManualTranscriptImportModal
-          isOpen={isNotionImportOpen}
-          onClose={() => setIsNotionImportOpen(false)}
-          students={students}
-          currentTeacherId={currentUser?.id || 'teacher'}
-          onLessonCreated={(newLessonId, studentId) => {
-            loadData();
-            if (studentId) {
-              onOpenHistory(studentId, newLessonId);
-            }
-          }}
-        />
-
         {/* ── 4 KPI Action Cards ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t border-line-soft">
           <button
@@ -691,6 +677,20 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Modal ręcznego importu z Notion AI — na poziomie głównym kokpitu */}
+      <ManualTranscriptImportModal
+        isOpen={isNotionImportOpen}
+        onClose={() => setIsNotionImportOpen(false)}
+        students={students}
+        currentTeacherId={currentUser?.id || 'teacher'}
+        onLessonCreated={(newLessonId, studentId) => {
+          loadData();
+          if (studentId) {
+            onOpenHistory(studentId, newLessonId);
+          }
+        }}
+      />
     </div>
   );
 };
