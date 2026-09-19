@@ -2791,3 +2791,69 @@ Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji
 (`requireFirebaseAuth`/`requireFirebaseAdmin`) ani ścieżkach tokenowych
 bez logowania. Endpointy istniały już wcześniej, autoryzacja
 niezmieniona.
+
+2026-09-19 — Claude Code / Sonnet 5
+
+Zadanie: Podpięcie generatora scenariusza lekcji 2.0 jako Tool (Function
+Calling) do czatu Asystenta Lektora, zgodnie z wytycznymi audytu GPT-5.6
+Sol: zero dublowania logiki między endpointem HTTP a toolem, bezpieczny
+resolve studentRef wyłącznie po stronie backendu, granice MVP (podgląd +
+link do profilu, bez auto-zapisu do lekcji).
+
+Zrobione:
+- `services/scenarioContextService.ts` (nowy) — `loadScenarioStudentContext`,
+  wyodrębnione z ciała `/api/scenario/generate`.
+- `services/scenarioAiService.ts` (nowy) — `generateScenarioForStudent`,
+  wspólny dwuetapowy potok Gemini dla endpointu i toola.
+- `services/studentResolver.ts` (nowy) — `resolveStudentRef`, rozstrzyga
+  `studentRef` (ID/nazwa) wyłącznie w zbiorze aktywnych kursantów; rzuca
+  jawny błąd przy braku/kilku dopasowaniach.
+- `server.ts` — endpoint `/api/scenario/generate` przepisany na wywołanie
+  wspólnej funkcji; nowy endpoint `POST /api/scenario/generate-for-chat`
+  dla toola czatu.
+- `services/teacherAssistant.ts` — deklaracja toola Gemini
+  `generate_lesson_scenario` (pierwsze prawdziwe function-calling w repo,
+  dotąd był tylko wzorzec fenced-block), round-trip functionCall/
+  functionResponse w trybie Flash, nowy eksport `ScenarioToolResult`,
+  pole `AssistantMessage.scenarioToolResult`.
+- `components/admin/ScenarioModuleCard.tsx` (nowy) — wydzielony z
+  `ScenarioPreviewPanel.tsx`, prop `readOnly` do kompaktowego podglądu;
+  `ScenarioPreviewPanel.tsx` przepisany na jego użycie (bez zmiany
+  zachowania w edytorze).
+- `components/admin/TeacherAssistant.tsx` — nowy lokalny komponent
+  `ScenarioToolResultCard` (wzorem istniejącego `HtmlReportCard`),
+  podpięty w obu miejscach renderowania wiadomości; przycisk nawigacji
+  reużywa istniejący typ akcji `'profile'`.
+- `CHANGELOG.md` sekcja T.
+
+Nie dokończone / do sprawdzenia:
+- Brak nowych testów jednostkowych dla `resolveStudentRef` /
+  `generateScenarioForStudent` / toola czatu — do zrobienia w osobnej
+  rundzie.
+- Tool nie był wołany na żywo (brak kluczy Gemini / zalogowanej sesji w
+  tej sesji agenta) — nie zweryfikowano w przeglądarce, czy Gemini
+  faktycznie decyduje się wywołać `generate_lesson_scenario` przy
+  naturalnych poleceniach lektora, ani pełnego round-tripu przez proxy
+  `/api/gemini/generate`.
+- Tool działa wyłącznie w trybie Flash — Thinking i multimodalny generują
+  scenariusz po staremu (bez toola), świadomie poza zakresem tej rundy.
+
+Decyzje architektoniczne:
+- Scope resolve studentRef: w bazie nie ma pola wiążącego kursanta z
+  konkretnym lektorem (teacherUid/teacherId tylko na grupach/
+  scratchpadach/sesjach). Zapytałem Macieja wprost (AskUserQuestion) —
+  wybrał globalny zbiór aktywnych kursantów, spójny z istniejącym
+  zachowaniem `/api/scenario/generate` i `buildStudentIndex()`. Prawdziwe
+  multi-tenant scoping (nowe pole + ew. `firestore.rules`) zostaje jako
+  osobna decyzja na przyszłość.
+- Tryb Flash w czacie: zamieniłem kolejność prób (`generateTextWithUnifiedFallback`
+  był główną ścieżką, bezpośrednie wywołanie Gemini — fallbackiem) na
+  odwrotną, bo tylko bezpośrednie wywołanie niesie `tools`. Fallback bez
+  toola (kaskada Gemini/OpenAI/Anthropic) zostaje jako siatka
+  bezpieczeństwa przy błędzie.
+
+Ryzyka: Nowa logika autoryzacji dostępu (`resolveStudentRef`) — nie
+zmienia `firestore.rules` ani middleware `requireFirebaseAuth`/
+`requireFirebaseAdmin`, endpoint nadal wymaga zalogowanego lektora/admina
+tak jak istniejący `/api/scenario/generate`. Brak zmian w ścieżkach
+tokenowych bez logowania.

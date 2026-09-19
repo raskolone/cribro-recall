@@ -1,6 +1,8 @@
 import { collection, getDocs, query } from 'firebase/firestore';
+import { Type } from '@google/genai';
 import { db, auth } from '../firebase';
 import { LessonRecord, LessonAttachment, GeneratedLessonScenario, LessonScenarioStage } from '../types';
+import { LessonScenario } from '../types/scenario';
 import { getLessonRecordsForStudent } from './lessonRecord';
 import { getAllUsers } from './userService';
 import { extractLessonBlocks } from '../utils/lessonBlocks';
@@ -46,6 +48,18 @@ export interface WebGroundingSource {
   snippet?: string;
 }
 
+/**
+ * Wynik toola czatu `generate_lesson_scenario` — scenariusz 2.0 (4 moduły,
+ * budżety 45/60/90) wygenerowany dla kursanta rozstrzygniętego po stronie
+ * backendu z `studentRef`. Osobny typ od starego `GeneratedLessonScenario`
+ * (5-etapowy, `types.ts`) — to inny kontrakt/inny generator.
+ */
+export interface ScenarioToolResult {
+  scenario: LessonScenario;
+  studentId: string;
+  studentName: string;
+}
+
 export interface AssistantAction {
   type: 'insert_lesson' | 'planner' | 'presentation' | 'homework' | 'scratchpad' | 'mailing' | 'profile' | 'bulk_import' | 'html_pdf';
   label: string;
@@ -65,6 +79,7 @@ export interface AssistantMessage {
   actions?: AssistantAction[];
   lessonDraft?: LessonDraftProposal;
   lessonScenario?: GeneratedLessonScenario;
+  scenarioToolResult?: ScenarioToolResult;
   studentsImport?: StudentsImportProposal;
   htmlReport?: HtmlReportProposal;
   webSources?: WebGroundingSource[];
@@ -470,7 +485,8 @@ ZASADY ODPOWIADANIA I FORMATOWANIA (BARDZO WAŻNE):
 \`\`\`
 
 - Gdy pytanie dotyczy faktów z bazy CRM („z kim była ostatnia lekcja”, „kto ma zaległości”), odpowiedz zwięźle i konkretnie w punktach.
-- Nie zmyślasz faktów z przeszłości. Jeśli czegoś nie ma w historii kursanta, poinformuj o tym wprost.`;
+- Nie zmyślasz faktów z przeszłości. Jeśli czegoś nie ma w historii kursanta, poinformuj o tym wprost.
+- Gdy lektor prosi o WYGENEROWANIE/PRZYGOTOWANIE SCENARIUSZA LEKCJI 2.0 (4 moduły: warm-up, praca na błędach, główny temat, podsumowanie) dla konkretnego kursanta — użyj narzędzia \`generate_lesson_scenario\` zamiast wymyślać scenariusz samodzielnie. Podaj w nim \`studentRef\` dokładnie tak, jak lektor nazwał kursanta.`;
 
 export const TEACHER_ASSISTANT_REVIEW_SYSTEM = `
 Jesteś starszym metodykiem języka angielskiego w platformie CRIBRO ENGLISH recenzującym odpowiedź Asystenta Lektora.
@@ -488,6 +504,76 @@ Wypisz maksymalnie 4 zwięzłe uwagi do poprawy lub napisz dokładnie: „Brak z
 export type AIAssistantMode = 'flash' | 'thinking';
 
 /**
+ * Deklaracja toola Gemini function-calling dla generatora scenariusza 2.0.
+ * Gemini NIE ma dostępu do bazy — podaje wyłącznie `studentRef` (imię/nazwę
+ * tak jak wspomniał ją lektor), a backend (`/api/scenario/generate-for-chat`)
+ * sam rozstrzyga go do konkretnego kursanta i woła dokładnie tę samą funkcję
+ * generatora co `POST /api/scenario/generate` (`services/scenarioAiService.ts`).
+ */
+const GENERATE_SCENARIO_TOOL_DECLARATION = {
+  name: 'generate_lesson_scenario',
+  description:
+    'Generuje strukturalny scenariusz lekcji 2.0 (4 moduły: warm-up/follow-up, praca na błędach, główny temat, podsumowanie i feedback) dla konkretnego kursanta, na podstawie jego profilu i historii lekcji z bazy CRM. Użyj, gdy lektor prosi o przygotowanie/wygenerowanie scenariusza, planu albo konspektu kolejnej lekcji dla konkretnego kursanta.',
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      studentRef: {
+        type: Type.STRING,
+        description: 'Imię/nazwa wyświetlana kursanta dokładnie tak, jak wspomniał ją lektor w rozmowie. Nigdy nie zgaduj ani nie wymyślaj ID z bazy.',
+      },
+      durationMin: {
+        type: Type.STRING,
+        enum: ['45', '60', '90'],
+        description: 'Długość lekcji w minutach. Jeśli lektor nie podał, pomiń to pole — backend przyjmie domyślnie 45 minut.',
+      },
+      customTopicFocus: {
+        type: Type.STRING,
+        description: 'Opcjonalne doprecyzowanie głównego tematu lekcji (moduł main_topic), jeśli lektor wskazał konkretną sytuację/temat. Maks. 150 znaków.',
+      },
+    },
+    required: ['studentRef'],
+  },
+};
+
+/** Wyciąga pierwsze wywołanie funkcji z odpowiedzi Gemini (proxy zwraca surowe `candidates`). */
+const extractFunctionCall = (response: any): { name: string; args: any } | undefined => {
+  const parts = response?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return undefined;
+  const part = parts.find((p: any) => p?.functionCall?.name);
+  return part?.functionCall;
+};
+
+/**
+ * Wykonuje tool `generate_lesson_scenario`: woła autoryzowany endpoint
+ * backendu, który rozstrzyga `studentRef` (wyłącznie w zbiorze aktywnych
+ * kursantów, patrz `services/studentResolver.ts`) i generuje scenariusz.
+ */
+const callGenerateScenarioTool = async (args: {
+  studentRef?: string;
+  durationMin?: string | number;
+  customTopicFocus?: string;
+}): Promise<ScenarioToolResult> => {
+  const token = await auth.currentUser?.getIdToken();
+  const res = await fetch('/api/scenario/generate-for-chat', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      studentRef: args?.studentRef,
+      durationMin: args?.durationMin !== undefined ? Number(args.durationMin) : undefined,
+      customTopicFocus: args?.customTopicFocus,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error || `Błąd generowania scenariusza (status ${res.status}).`);
+  }
+  return { scenario: data.scenario as LessonScenario, studentId: data.studentId, studentName: data.studentName };
+};
+
+/**
  * Odpowiedź asystenta lektora z obsługą kontekstu bazy CRM, załączników multimedialnych, komend /,
  * importu kursantów, web researchu / scrapingu oraz generowania raportów HTML i PDF.
  */
@@ -503,6 +589,7 @@ export const askTeacherAssistant = async (
   actions: AssistantAction[];
   lessonDraft?: LessonDraftProposal;
   lessonScenario?: GeneratedLessonScenario;
+  scenarioToolResult?: ScenarioToolResult;
   studentsImport?: StudentsImportProposal;
   htmlReport?: HtmlReportProposal;
   webSources?: WebGroundingSource[];
@@ -651,6 +738,7 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
   let rawResponseText = '';
   let modelUsed = aiMode === 'thinking' ? 'Rada Modeli AI (Thinking)' : 'Gemini 2.5 Flash';
   let isCouncil = false;
+  let scenarioToolResult: ScenarioToolResult | undefined;
 
   const isWebResearchIntent =
     cleanQ.startsWith('/research') ||
@@ -723,30 +811,64 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
       modelUsed = singleModel || 'Gemini 2.5 Flash';
     }
   } else {
-    // ⚡ TRYB FLASH: Błyskawiczna, bezpośrednia generacja
+    // ⚡ TRYB FLASH: Błyskawiczna, bezpośrednia generacja — bezpośrednie wywołanie
+    // Gemini (nie `generateTextWithUnifiedFallback`, bo ta kaskada nie przenosi
+    // `tools`/function-calling), żeby tool `generate_lesson_scenario` zadziałał.
     try {
+      const contents: any[] = [{ role: 'user', parts: [{ text: prompt }] }];
+      let res = await getAI().models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents,
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          tools: [{ functionDeclarations: [GENERATE_SCENARIO_TOOL_DECLARATION] }],
+        },
+      });
+
+      const call = extractFunctionCall(res);
+      if (call?.name === 'generate_lesson_scenario') {
+        let functionResponsePayload: any;
+        try {
+          scenarioToolResult = await callGenerateScenarioTool(call.args || {});
+          functionResponsePayload = {
+            result: 'ok',
+            studentName: scenarioToolResult.studentName,
+            durationMin: scenarioToolResult.scenario.durationMin,
+            mode: scenarioToolResult.scenario.mode,
+          };
+        } catch (toolErr: any) {
+          functionResponsePayload = { error: toolErr?.message || 'Nie udało się wygenerować scenariusza.' };
+        }
+
+        contents.push({ role: 'model', parts: [{ functionCall: call }] });
+        contents.push({
+          role: 'user',
+          parts: [{ functionResponse: { name: call.name, response: functionResponsePayload } }],
+        });
+
+        res = await getAI().models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents,
+          config: { systemInstruction: SYSTEM_INSTRUCTION },
+        });
+      }
+
+      rawResponseText = res?.text || '';
+      modelUsed = 'Gemini 2.5 Flash';
+      isCouncil = false;
+    } catch (flashErr) {
+      console.warn('[TeacherAssistant] Flash mode direct error:', flashErr);
       const { text, modelUsed: singleModel } = await generateTextWithUnifiedFallback(
         prompt,
         SYSTEM_INSTRUCTION,
         undefined,
         undefined,
         undefined,
-        { taskName: 'Asystent lektora (Flash Mode)', category: 'general' }
+        { taskName: 'Asystent lektora (Flash Mode, fallback bez toola)', category: 'general' }
       );
       rawResponseText = text;
       modelUsed = singleModel || 'Gemini 2.5 Flash';
       isCouncil = false;
-    } catch (flashErr) {
-      console.warn('[TeacherAssistant] Flash mode direct error:', flashErr);
-      const res = await getAI().models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-        },
-      });
-      rawResponseText = res?.text || '';
-      modelUsed = 'Gemini 2.5 Flash';
     }
   }
 
@@ -968,6 +1090,15 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
     });
   }
 
+  if (scenarioToolResult) {
+    actions.push({
+      type: 'profile',
+      label: `Przejdź do profilu kursanta (${scenarioToolResult.studentName})`,
+      studentId: scenarioToolResult.studentId,
+      studentName: scenarioToolResult.studentName,
+    });
+  }
+
   if (lessonScenario || lessonDraft) {
     actions.push({
       type: 'planner',
@@ -1051,6 +1182,7 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
     actions,
     lessonDraft,
     lessonScenario,
+    scenarioToolResult,
     studentsImport,
     htmlReport,
     webSources: detectedWebSources.length > 0 ? detectedWebSources : undefined,

@@ -47,9 +47,11 @@ import {
   StudentsImportProposal,
   HtmlReportProposal,
   WebGroundingSource,
+  ScenarioToolResult,
 } from '../../services/teacherAssistant';
 import { LessonAttachment, GeneratedLessonScenario } from '../../types';
 import { saveGeneratedScenario } from '../../services/scenarioService';
+import { ScenarioModuleCard } from './ScenarioModuleCard';
 import { AIAssistantIcon } from '../ui/AIAssistantIcon';
 import { useAuth } from '../../context/AuthContext';
 import { toPolishVocative } from '../../utils/polishVocative';
@@ -361,6 +363,58 @@ const HtmlReportCard: React.FC<HtmlReportCardProps> = ({ htmlReport }) => {
           <div dangerouslySetInnerHTML={{ __html: htmlReport.html }} />
         </div>
       )}
+    </div>
+  );
+};
+
+/**
+ * Kompaktowy, tylko-do-odczytu podgląd scenariusza lekcji 2.0 wygenerowanego
+ * przez tool czatu `generate_lesson_scenario`. Granica MVP: sam podgląd +
+ * link do profilu kursanta, bez automatycznego zapisu do lekcji.
+ */
+interface ScenarioToolResultCardProps {
+  result: ScenarioToolResult;
+  onOpenProfile: () => void;
+}
+
+const ScenarioToolResultCard: React.FC<ScenarioToolResultCardProps> = ({ result, onOpenProfile }) => {
+  const { scenario, studentName } = result;
+  return (
+    <div className="rounded-2xl border border-violet-500/25 bg-violet-950/15 overflow-hidden shadow-sm">
+      <div className="p-3 bg-gradient-to-r from-violet-900/40 via-violet-950/30 to-transparent flex items-center justify-between gap-2 border-b border-violet-500/15 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Sparkles size={14} className="text-violet-300" />
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30">
+            Scenariusz 2.0
+          </span>
+          <span className="text-[11px] font-bold text-violet-100">@{studentName}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] px-2 py-0.5 rounded-full bg-base-200 text-text-mute font-mono border border-line">
+            {scenario.durationMin} min
+          </span>
+          {scenario.mode === 'cold_start' && (
+            <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-mono border border-amber-500/30">
+              diagnostyczny
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="p-3 space-y-2.5">
+        {scenario.modules.map((mod) => (
+          <ScenarioModuleCard key={mod.moduleId} module={mod} readOnly />
+        ))}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-base-200 hover:bg-base-200/90 text-text-hi border border-line-strong font-bold text-[11px] transition-all hover:scale-[1.02] cursor-pointer"
+          >
+            <User size={12} className="text-primary" />
+            <span>Przejdź do profilu kursanta</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -780,6 +834,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
         actions: resp.actions,
         lessonDraft: resp.lessonDraft,
         lessonScenario: resp.lessonScenario,
+        scenarioToolResult: resp.scenarioToolResult,
         timestamp: Date.now(),
         modelUsed: resp.modelUsed,
         isCouncil: resp.isCouncil,
@@ -1317,6 +1372,21 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                             {/* Karta dokumentu HTML & raportu PDF */}
                             {message.htmlReport && (
                               <HtmlReportCard htmlReport={message.htmlReport} />
+                            )}
+
+                            {/* Podgląd scenariusza lekcji 2.0 wygenerowanego toolem czatu */}
+                            {message.scenarioToolResult && (
+                              <ScenarioToolResultCard
+                                result={message.scenarioToolResult}
+                                onOpenProfile={() =>
+                                  handleExecuteAction({
+                                    type: 'profile',
+                                    label: 'Profil kursanta',
+                                    studentId: message.scenarioToolResult!.studentId,
+                                    studentName: message.scenarioToolResult!.studentName,
+                                  })
+                                }
+                              />
                             )}
 
                             {/* Główna treść odpowiedzi Markdown */}
@@ -2000,6 +2070,22 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                       {message.htmlReport && (
                         <div className="mt-2">
                           <HtmlReportCard htmlReport={message.htmlReport} />
+                        </div>
+                      )}
+
+                      {message.scenarioToolResult && (
+                        <div className="mt-2">
+                          <ScenarioToolResultCard
+                            result={message.scenarioToolResult}
+                            onOpenProfile={() =>
+                              handleExecuteAction({
+                                type: 'profile',
+                                label: 'Profil kursanta',
+                                studentId: message.scenarioToolResult!.studentId,
+                                studentName: message.scenarioToolResult!.studentName,
+                              })
+                            }
+                          />
                         </div>
                       )}
 

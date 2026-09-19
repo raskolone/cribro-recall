@@ -306,8 +306,8 @@ import fs from "fs";
 import { initializeApp as initializeApp2, cert, getApps as getApps2, getApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore as getFirestore2 } from "firebase-admin/firestore";
-import { createHmac, randomUUID as randomUUID2 } from "crypto";
-import { GoogleGenAI, Type } from "@google/genai";
+import { createHmac } from "crypto";
+import { GoogleGenAI as GoogleGenAI2, Type as Type2 } from "@google/genai";
 
 // services/aiModels.ts
 var PRIMARY_MODEL = "gemini-2.5-flash";
@@ -432,6 +432,10 @@ function normalizeStudentImportAnalysis(payload, today) {
   };
 }
 
+// services/scenarioAiService.ts
+import { GoogleGenAI, Type } from "@google/genai";
+import { randomUUID } from "crypto";
+
 // types/scenario.ts
 var SCENARIO_MODULE_IDS = [
   "warmup_followup",
@@ -516,6 +520,215 @@ function buildLessonScenario(parsed, opts, makeId) {
     modules,
     generatedAt: opts.generatedAt
   };
+}
+
+// services/scenarioContextService.ts
+var ScenarioContextError = class extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+  }
+};
+function isCompletedLessonRecord(data) {
+  if (!data) return false;
+  if (data.status === "pending_confirmation" || data.status === "rejected") return false;
+  if (data.sessionStatus === "draft" || data.sessionStatus === "live") return false;
+  return true;
+}
+async function loadScenarioStudentContext(adminDb, studentId) {
+  const studentSnap = await adminDb.collection("users").doc(studentId).get();
+  if (!studentSnap.exists) {
+    throw new ScenarioContextError("not-found", "Nie znaleziono kursanta.");
+  }
+  const studentData = studentSnap.data() || {};
+  const cefr = String(studentData.level || "").trim();
+  if (!cefr) {
+    throw new ScenarioContextError("insufficient-profile", "insufficient-profile");
+  }
+  const goals = String(studentData.goals || "").trim();
+  const industry = String(studentData.industry || "").trim();
+  let lastLesson = null;
+  try {
+    const recordsSnap = await adminDb.collection("users").doc(studentId).collection("lessonRecords").orderBy("date", "desc").limit(10).get();
+    for (const docSnap of recordsSnap.docs) {
+      const data = docSnap.data();
+      if (isCompletedLessonRecord(data)) {
+        lastLesson = data;
+        break;
+      }
+    }
+  } catch (queryErr) {
+    console.warn("[scenarioContextService] nie uda\u0142o si\u0119 odczyta\u0107 lessonRecords:", queryErr);
+  }
+  const mode = lastLesson ? "returning" : "cold_start";
+  const lastLessonContext = lastLesson ? `Temat ostatniej lekcji: ${lastLesson.topic || "brak"}
+Konkretne sytuacje zawodowe poruszone na lekcji: ${lastLesson.summary || lastLesson.topic || "brak"}
+S\u0142ownictwo z ostatniej lekcji: ${lastLesson.vocabularyText || "brak"}
+DOK\u0141ADNE b\u0142\u0119dy/korekty z ostatniej lekcji (do recyklingu): ${lastLesson.corrections || lastLesson.thingsToImprove || "brak"}
+Plan/kierunek na kolejn\u0105 lekcj\u0119 (z poprzedniej notatki): ${lastLesson.nextLessonPlan || lastLesson.suggestedFollowUp || "brak"}` : "Brak historii lekcji tego kursanta \u2014 to pierwszy scenariusz (cold_start).";
+  const profileContext = `Poziom CEFR: ${cefr}
+Bran\u017Ca / kontekst zawodowy: ${industry || "brak danych \u2014 nie zgaduj konkretnej bran\u017Cy, trzymaj si\u0119 og\xF3lnego kontekstu zawodowego"}
+Cele edukacyjne/zawodowe kursanta: ${goals || "brak danych"}
+Preferencje korekty b\u0142\u0119d\xF3w: brak wyodr\u0119bnionego pola w profilu \u2014 koryguj na bie\u017C\u0105co w module "error_work", bez nachalno\u015Bci w pozosta\u0142ych modu\u0142ach`;
+  const errorWorkInstruction = mode === "returning" ? 'modu\u0142 "error_work" musi \u0107wiczy\u0107 DOK\u0141ADNIE te b\u0142\u0119dy i to s\u0142ownictwo, kt\xF3re pad\u0142y na OSTATNIEJ lekcji kursanta (patrz kontekst ni\u017Cej) \u2014 konkretne zdania/sytuacje do poprawy, nie og\xF3lna gramatyka.' : 'kursant nie ma jeszcze historii lekcji, wi\u0119c modu\u0142 "error_work" zamienia si\u0119 w \u0107wiczenia DIAGNOSTYCZNE \u2014 kr\xF3tkie zadania sprawdzaj\u0105ce realny poziom wzgl\u0119dem deklarowanego CEFR.';
+  return { mode, cefr, profileContext, lastLessonContext, errorWorkInstruction };
+}
+
+// services/scenarioAiService.ts
+var SCENARIO_DIDACTIC_MODEL = "gemini-2.5-pro";
+var SCENARIO_FORMATTING_MODEL = "gemini-2.5-flash";
+async function generateScenarioForStudent(params) {
+  const { adminDb, geminiApiKey, studentId, durationMin, customTopicFocus, generateContentWithRetry: generateContentWithRetry2, geminiModelCascade } = params;
+  const { mode, cefr, profileContext, lastLessonContext, errorWorkInstruction } = await loadScenarioStudentContext(adminDb, studentId);
+  const customFocusInstruction = customTopicFocus ? `
+
+DODATKOWA WYTYCZNA OD LEKTORA (uwzgl\u0119dnij j\u0105 w module "main_topic" jako priorytet nad domy\u015Blnym doborem sytuacji): ${customTopicFocus}` : "";
+  const didacticPrompt = `Jeste\u015B do\u015Bwiadczonym metodykiem j\u0119zyka angielskiego (1:1, kursy zawodowe), uk\u0142adaj\u0105cym scenariusz KONKRETNEJ lekcji dla konkretnego lektora i konkretnego kursanta. Nie piszesz podr\u0119cznika ani ankiety ewaluacyjnej \u2014 piszesz notatki robocze dla lektora, kt\xF3ry za chwil\u0119 usi\u0105dzie z t\u0105 osob\u0105.
+
+PROFIL KURSANTA:
+${profileContext}
+
+KONTEKST Z OSTATNIEJ LEKCJI:
+${lastLessonContext}
+
+PARAMETRY LEKCJI:
+D\u0142ugo\u015B\u0107: ${durationMin} minut
+Tryb: ${mode === "returning" ? "kursant powracaj\u0105cy (returning)" : "pierwszy kontakt / brak historii (cold_start)"}
+
+TEST NATURALNO\u015ACI (obowi\u0105zkowy, sprawd\u017A ka\u017Cde zdanie przed oddaniem odpowiedzi):
+- Ka\u017Cde pytanie i polecenie musi brzmie\u0107 jak \u017Cywa rozmowa dw\xF3ch ludzi, NIGDY jak formularz ewaluacyjny, ankieta HR ani lista kontrolna.
+- Zakazane s\u0142owa-klucze i ich polskie odpowiedniki (nie u\u017Cywaj ich w og\xF3le): "headspace", "bandwidth", "leverage", "facilitate", "synergy", "touch base", "circle back", "actionable", "streamline", "usprawni\u0107", "wdro\u017Cy\u0107 synergi\u0119", "przestrze\u0144 mentaln\u0105".
+- Je\u015Bli zdanie brzmi jak co\u015B, co powiedzia\u0142by dzia\u0142 HR albo konsultant, przepisz je jak zwyk\u0142\u0105 rozmow\u0119 przy kawie.
+
+STRUKTURA (dok\u0142adnie 4 bloki, w tej kolejno\u015Bci):
+
+1. WARM-UP / FOLLOW-UP \u2014 rozgrzewka zakotwiczona w KONKRETNYM dniu i konkretnym do\u015Bwiadczeniu kursanta (np. nawi\u0105zanie do sytuacji z ostatniej lekcji, konkretnego wydarzenia w pracy, konkretnego dnia tygodnia). Nigdy og\xF3lnikowe "How was your week?" ani "How are you?" bez punktu zaczepienia.
+
+2. PRACA NA B\u0141\u0118DACH \u2014 ${errorWorkInstruction} Podaj konkretne zdania/sytuacje do prze\u0107wiczenia, odwo\u0142uj\u0105ce si\u0119 wprost do b\u0142\u0119d\xF3w i s\u0142ownictwa z kontekstu wy\u017Cej (nie wymy\u015Blaj nowych, niepowi\u0105zanych b\u0142\u0119d\xF3w).
+
+3. G\u0141\xD3WNY TEMAT \u2014 dok\u0142adnie JEDNA konkretna sytuacja z pracy kursanta (np. konkretna linia produkcyjna, konkretny wska\u017Anik/proces, konkretna eskalacja problemu, konkretne spotkanie) \u2014 nie og\xF3lny temat bran\u017Cowy. Rozwi\u0144 j\u0105 w pytania i zadania na poziomie ${cefr}. Dodatkowo przygotuj DLA LEKTORA sekcj\u0119 "Wskaz\xF3wki ratunkowe" \u2014 2-4 prostsze, awaryjne pytania/podpowiedzi na wypadek, gdyby kursant odpowiedzia\u0142 jednym s\u0142owem albo utkn\u0105\u0142 i milcza\u0142. Te wskaz\xF3wki s\u0105 dla lektora, nie dla kursanta.${customFocusInstruction}
+
+4. PODSUMOWANIE I FEEDBACK \u2014 kr\xF3tkie podsumowanie lekcji, konkretny feedback dla kursanta, zapowied\u017A pracy domowej nawi\u0105zuj\u0105ca do tematu g\u0142\xF3wnego.
+
+Dla ka\u017Cdego z 4 blok\xF3w podaj jednozdaniowy cel oraz list\u0119 1-6 konkretnych, samodzielnych punkt\xF3w (pyta\u0144/\u0107wicze\u0144/zwrot\xF3w) do realizacji na \u017Cywo. Nie podawaj czas\xF3w trwania ani identyfikator\xF3w. Odpowiedz zwyk\u0142ym tekstem, jasno opisuj\u0105c bloki po kolei \u2014 o formatowanie do JSON zadba kolejny etap.`;
+  const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+  const didacticResponse = await generateContentWithRetry2(
+    ai,
+    didacticPrompt,
+    {},
+    [SCENARIO_DIDACTIC_MODEL, ...geminiModelCascade]
+  );
+  if (!didacticResponse.text) throw new Error("Brak odpowiedzi z modelu dydaktycznego AI.");
+  const didacticText = String(didacticResponse.text).trim();
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      modules: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            moduleId: { type: Type.STRING, enum: [...SCENARIO_MODULE_IDS] },
+            objective: { type: Type.STRING },
+            items: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: { text: { type: Type.STRING } },
+                required: ["text"]
+              }
+            },
+            teacherNotes: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            }
+          },
+          required: ["moduleId", "objective", "items"]
+        }
+      }
+    },
+    required: ["modules"]
+  };
+  const formattingPrompt = `Poni\u017Cej jest gotowy merytorycznie scenariusz lekcji, u\u0142o\u017Cony przez metodyka. Twoje jedyne zadanie: przepisa\u0107 go WIERNIE (bez zmiany tre\u015Bci, bez skracania, bez parafrazowania) na struktur\u0119 JSON zgodn\u0105 ze schematem.
+
+Zasady przepisania:
+- DOK\u0141ADNIE 4 modu\u0142y w tej kolejno\u015Bci: "warmup_followup", "error_work", "main_topic", "wrapup_feedback".
+- Ka\u017Cdy modu\u0142: "objective" (jednozdaniowy cel z tekstu), "items" (1-6 punkt\xF3w \u2014 ka\u017Cdy punkt jako osobny, samodzielny tekst, bez numeracji i bez markdown).
+- Modu\u0142 "main_topic" musi mie\u0107 dodatkowo "teacherNotes": list\u0119 wskaz\xF3wek ratunkowych dla lektora z tekstu (sekcja "Wskaz\xF3wki ratunkowe") \u2014 je\u015Bli tekst nie nazywa ich wprost, wyodr\u0119bnij zdania, kt\xF3re pe\u0142ni\u0105 t\u0119 funkcj\u0119.
+- Nie dodawaj w\u0142asnej tre\u015Bci, nie koryguj merytoryki \u2014 tylko formatowanie.
+
+SCENARIUSZ DO PRZEPISANIA:
+${didacticText}`;
+  const response = await generateContentWithRetry2(
+    ai,
+    formattingPrompt,
+    { responseMimeType: "application/json", responseSchema: schema },
+    [SCENARIO_FORMATTING_MODEL, ...geminiModelCascade]
+  );
+  if (!response.text) throw new Error("Brak odpowiedzi z modelu formatuj\u0105cego AI.");
+  const cleanText = String(response.text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
+  const parsed = JSON.parse(cleanText);
+  validateScenarioModelOutput(parsed);
+  return buildLessonScenario(
+    parsed,
+    { studentId, durationMin, mode, generatedAt: (/* @__PURE__ */ new Date()).toISOString() },
+    randomUUID
+  );
+}
+
+// services/studentResolver.ts
+var StudentResolutionError = class extends Error {
+  constructor(code, message, candidates) {
+    super(message);
+    this.code = code;
+    this.candidates = candidates;
+  }
+};
+function isActiveStudent(data) {
+  if (!data) return false;
+  if (data.isArchived) return false;
+  return !data.role || data.role === "user";
+}
+async function resolveStudentRef(adminDb, studentRef) {
+  const ref = studentRef.trim();
+  if (!ref) {
+    throw new StudentResolutionError("not-found", "Nie podano kursanta.");
+  }
+  const directSnap = await adminDb.collection("users").doc(ref).get();
+  if (directSnap.exists && isActiveStudent(directSnap.data())) {
+    const data2 = directSnap.data() || {};
+    return { studentId: directSnap.id, displayName: String(data2.displayName || data2.name || ref) };
+  }
+  const usersSnap = await adminDb.collection("users").get();
+  const activeStudents = usersSnap.docs.map((doc) => ({ id: doc.id, data: doc.data() || {} })).filter(({ data: data2 }) => isActiveStudent(data2));
+  const refFold = ref.toLocaleLowerCase("pl");
+  const exactMatches = activeStudents.filter(({ data: data2 }) => {
+    const name = String(data2.displayName || data2.name || "").trim();
+    return name.toLocaleLowerCase("pl") === refFold;
+  });
+  let matches = exactMatches;
+  if (matches.length === 0) {
+    matches = activeStudents.filter(({ data: data2 }) => {
+      const name = String(data2.displayName || data2.name || "").trim();
+      return name.toLocaleLowerCase("pl").includes(refFold);
+    });
+  }
+  if (matches.length === 0) {
+    throw new StudentResolutionError("not-found", `Nie znaleziono kursanta pasuj\u0105cego do \u201E${ref}".`);
+  }
+  if (matches.length > 1) {
+    const candidates = matches.map(({ id: id2, data: data2 }) => ({
+      id: id2,
+      displayName: String(data2.displayName || data2.name || id2)
+    }));
+    throw new StudentResolutionError(
+      "ambiguous",
+      `Kilku kursant\xF3w pasuje do \u201E${ref}" (${candidates.map((c) => c.displayName).join(", ")}) \u2014 doprecyzuj imi\u0119/nazwisko albo podaj ID kursanta.`,
+      candidates
+    );
+  }
+  const { id, data } = matches[0];
+  return { studentId: id, displayName: String(data.displayName || data.name || id) };
 }
 
 // utils/exerciseShuffle.ts
@@ -762,7 +975,7 @@ var planExercises = (input) => {
 };
 
 // functions/src/homeworkV2/exerciseGenerator.ts
-import { randomUUID } from "crypto";
+import { randomUUID as randomUUID2 } from "crypto";
 
 // functions/src/homeworkV2/coreKnowledge.ts
 var ASSISTANT_IDENTITY = `Jeste\u015B Asystentem Cribro \u2014 cz\u0119\u015Bci\u0105 platformy do nauki angielskiego,
@@ -935,7 +1148,7 @@ var finalizeContract = (input) => {
   const lessonIndex = Math.min(Math.max(1, draft.sourceLessonIndex), context.lessons.length) - 1;
   const lesson = context.lessons[lessonIndex] || context.lessons[0];
   return {
-    id: randomUUID(),
+    id: randomUUID2(),
     engineVersion: ENGINE_VERSION,
     schemaVersion: SCHEMA_VERSION,
     promptVersion: PROMPT_VERSION,
@@ -4372,7 +4585,7 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
     try {
       const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, typeCounts, fileData, driveFile } = req.body;
       const apiKey = getGeminiApiKey();
-      const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI2({ apiKey: apiKey || "dummy" });
       let typeBreakdownInstruction = "";
       if (typeCounts && typeof typeCounts === "object" && Object.keys(typeCounts).length > 0) {
         const parts = Object.entries(typeCounts).filter(([t]) => !selectedTypes || selectedTypes.includes(t)).map(([type, count]) => `- ${type}: DOK\u0141ADNIE 1 ZADANIE ZBIORCZE zawieraj\u0105ce ${count} przyk\u0142ad\xF3w/zda\u0144 w bullet pointach`);
@@ -4484,26 +4697,26 @@ Zwr\xF3\u0107 wynik jako obiekt JSON zawieraj\u0105cy tablic\u0119 obiekt\xF3w p
         contents = [{ text: prompt }];
       }
       const schema = {
-        type: Type.ARRAY,
+        type: Type2.ARRAY,
         description: "Array of test questions",
         items: {
-          type: Type.OBJECT,
+          type: Type2.OBJECT,
           properties: {
-            type: { type: Type.STRING, enum: ["multiple_choice", "fill_in_blank", "fill_in_blank_bank", "translation", "matching", "writing", "find_mistake"], description: "Type of the question" },
-            instruction: { type: Type.STRING, description: 'Short instruction in Polish, e.g. "Uzupe\u0142nij luki:"' },
-            prompt: { type: Type.STRING, description: "The question or the sentence to translate/fill" },
+            type: { type: Type2.STRING, enum: ["multiple_choice", "fill_in_blank", "fill_in_blank_bank", "translation", "matching", "writing", "find_mistake"], description: "Type of the question" },
+            instruction: { type: Type2.STRING, description: 'Short instruction in Polish, e.g. "Uzupe\u0142nij luki:"' },
+            prompt: { type: Type2.STRING, description: "The question or the sentence to translate/fill" },
             options: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
+              type: Type2.ARRAY,
+              items: { type: Type2.STRING },
               description: "Options for multiple_choice, find_mistake or matching pairs."
             },
             wordBank: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
+              type: Type2.ARRAY,
+              items: { type: Type2.STRING },
               description: "List of words in the word bank for fill_in_blank_bank"
             },
-            correctAnswer: { type: Type.STRING, description: "The correct answer (exact string)." },
-            hint: { type: Type.STRING, description: "Optional hint in Polish." }
+            correctAnswer: { type: Type2.STRING, description: "The correct answer (exact string)." },
+            hint: { type: Type2.STRING, description: "Optional hint in Polish." }
           },
           required: ["type", "instruction", "prompt", "correctAnswer"]
         }
@@ -4609,7 +4822,7 @@ tak, \u017Ceby \u0107wiczenie dalej sprawdza\u0142o to samo. Zwr\xF3\u0107 wynik
       if (!apiKey && !getOpenAIApiKey()) {
         return res.status(500).json({ error: "AI API key not configured. Please set GEMINI_API_KEY or OPENAI_API_KEY in environment variables." });
       }
-      const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI2({ apiKey: apiKey || "dummy" });
       const studentsListStr = typeof students === "string" ? students : Array.isArray(students) ? students.map((s) => `ID: ${s.id} | Imi\u0119/Nazwisko: ${s.name || s.username || ""} | Poziom: ${s.level || ""} | Opis: ${s.description || ""}`).join("\n") : "Brak bazy kursant\xF3w";
       let parsedDocText = textContent || "";
       let isPdfFallbackNeeded = false;
@@ -4724,22 +4937,22 @@ Zwr\xF3\u0107 dok\u0142adnie taki kszta\u0142t, bez komentarzy i bez bloku markd
 {"lessons":[{"date":"2024-03-12","studentId":"abc123","studentIds":["abc123"],"lessonTopic":"Present Perfect","revisionNotes":"...","vocabularyText":"deadline - termin\\nto meet - spotka\u0107","studentSpeaking":"...","thingsToImprove":"...","suggestedFollowUp":"..."}]}
 Gdy w materiale nie ma \u017Cadnej lekcji, zwr\xF3\u0107 {"lessons":[]} \u2014 nigdy nie wymy\u015Blaj lekcji, kt\xF3rych nie ma w tek\u015Bcie.`;
       const schema = {
-        type: Type.OBJECT,
+        type: Type2.OBJECT,
         properties: {
           lessons: {
-            type: Type.ARRAY,
+            type: Type2.ARRAY,
             items: {
-              type: Type.OBJECT,
+              type: Type2.OBJECT,
               properties: {
-                date: { type: Type.STRING },
-                studentId: { type: Type.STRING },
-                studentIds: { type: Type.ARRAY, items: { type: Type.STRING } },
-                lessonTopic: { type: Type.STRING },
-                revisionNotes: { type: Type.STRING },
-                vocabularyText: { type: Type.STRING },
-                studentSpeaking: { type: Type.STRING },
-                thingsToImprove: { type: Type.STRING },
-                suggestedFollowUp: { type: Type.STRING }
+                date: { type: Type2.STRING },
+                studentId: { type: Type2.STRING },
+                studentIds: { type: Type2.ARRAY, items: { type: Type2.STRING } },
+                lessonTopic: { type: Type2.STRING },
+                revisionNotes: { type: Type2.STRING },
+                vocabularyText: { type: Type2.STRING },
+                studentSpeaking: { type: Type2.STRING },
+                thingsToImprove: { type: Type2.STRING },
+                suggestedFollowUp: { type: Type2.STRING }
               },
               required: ["date", "studentId", "lessonTopic", "revisionNotes", "vocabularyText"]
             }
@@ -4787,7 +5000,7 @@ Gdy w materiale nie ma \u017Cadnej lekcji, zwr\xF3\u0107 {"lessons":[]} \u2014 n
       if (!apiKey && !getOpenAIApiKey()) {
         return res.status(500).json({ error: "AI API key not configured. Please set GEMINI_API_KEY or OPENAI_API_KEY in environment variables." });
       }
-      const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI2({ apiKey: apiKey || "dummy" });
       let parsedDocText = textContent || "";
       let isPdfFallbackNeeded = false;
       if (pdfBase64) {
@@ -4848,27 +5061,27 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
 - aiComment: kr\xF3tkie podsumowanie w 1-2 zdaniach PO POLSKU \u2014 co znalaz\u0142e\u015B i na co lektor powinien zwr\xF3ci\u0107 uwag\u0119.
 - Zwr\xF3\u0107 wy\u0142\u0105cznie poprawny obiekt JSON zgodny ze schematem, bez komentarzy i bloku markdown.`;
       const schema = {
-        type: Type.OBJECT,
+        type: Type2.OBJECT,
         properties: {
           extractedData: {
-            type: Type.OBJECT,
+            type: Type2.OBJECT,
             properties: {
-              fullName: { type: Type.STRING },
-              email: { type: Type.STRING },
-              level: { type: Type.STRING },
-              targetGoals: { type: Type.STRING },
-              industry: { type: Type.STRING },
-              generalNotes: { type: Type.STRING },
+              fullName: { type: Type2.STRING },
+              email: { type: Type2.STRING },
+              level: { type: Type2.STRING },
+              targetGoals: { type: Type2.STRING },
+              industry: { type: Type2.STRING },
+              generalNotes: { type: Type2.STRING },
               historicalLessons: {
-                type: Type.ARRAY,
+                type: Type2.ARRAY,
                 items: {
-                  type: Type.OBJECT,
+                  type: Type2.OBJECT,
                   properties: {
-                    date: { type: Type.STRING },
-                    dateAmbiguous: { type: Type.BOOLEAN },
-                    summary: { type: Type.STRING },
-                    vocabulary: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    corrections: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    date: { type: Type2.STRING },
+                    dateAmbiguous: { type: Type2.BOOLEAN },
+                    summary: { type: Type2.STRING },
+                    vocabulary: { type: Type2.ARRAY, items: { type: Type2.STRING } },
+                    corrections: { type: Type2.ARRAY, items: { type: Type2.STRING } }
                   },
                   required: ["date", "summary"]
                 }
@@ -4876,7 +5089,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
             },
             required: ["historicalLessons"]
           },
-          aiComment: { type: Type.STRING }
+          aiComment: { type: Type2.STRING }
         },
         required: ["extractedData", "aiComment"]
       };
@@ -4905,14 +5118,6 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  const SCENARIO_DIDACTIC_MODEL = "gemini-2.5-pro";
-  const SCENARIO_FORMATTING_MODEL = "gemini-2.5-flash";
-  function isCompletedLessonRecord(data) {
-    if (!data) return false;
-    if (data.status === "pending_confirmation" || data.status === "rejected") return false;
-    if (data.sessionStatus === "draft" || data.sessionStatus === "live") return false;
-    return true;
-  }
   app2.post("/api/scenario/generate", requireFirebaseAuth, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || "").trim();
@@ -4927,135 +5132,55 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       }
       const adminApp2 = getAdminApp();
       const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
-      const studentSnap = await adminDb.collection("users").doc(studentId).get();
-      if (!studentSnap.exists) {
-        return res.status(404).json({ error: "Nie znaleziono kursanta." });
-      }
-      const studentData = studentSnap.data() || {};
-      const cefr = String(studentData.level || "").trim();
-      if (!cefr) {
-        return res.status(400).json({ error: "insufficient-profile" });
-      }
-      const goals = String(studentData.goals || "").trim();
-      const industry = String(studentData.industry || "").trim();
-      let lastLesson = null;
-      try {
-        const recordsSnap = await adminDb.collection("users").doc(studentId).collection("lessonRecords").orderBy("date", "desc").limit(10).get();
-        for (const docSnap of recordsSnap.docs) {
-          const data = docSnap.data();
-          if (isCompletedLessonRecord(data)) {
-            lastLesson = data;
-            break;
-          }
-        }
-      } catch (queryErr) {
-        console.warn("[scenario/generate] nie uda\u0142o si\u0119 odczyta\u0107 lessonRecords:", queryErr);
-      }
-      const mode = lastLesson ? "returning" : "cold_start";
-      const lastLessonContext = lastLesson ? `Temat ostatniej lekcji: ${lastLesson.topic || "brak"}
-Konkretne sytuacje zawodowe poruszone na lekcji: ${lastLesson.summary || lastLesson.topic || "brak"}
-S\u0142ownictwo z ostatniej lekcji: ${lastLesson.vocabularyText || "brak"}
-DOK\u0141ADNE b\u0142\u0119dy/korekty z ostatniej lekcji (do recyklingu): ${lastLesson.corrections || lastLesson.thingsToImprove || "brak"}
-Plan/kierunek na kolejn\u0105 lekcj\u0119 (z poprzedniej notatki): ${lastLesson.nextLessonPlan || lastLesson.suggestedFollowUp || "brak"}` : "Brak historii lekcji tego kursanta \u2014 to pierwszy scenariusz (cold_start).";
-      const profileContext = `Poziom CEFR: ${cefr}
-Bran\u017Ca / kontekst zawodowy: ${industry || "brak danych \u2014 nie zgaduj konkretnej bran\u017Cy, trzymaj si\u0119 og\xF3lnego kontekstu zawodowego"}
-Cele edukacyjne/zawodowe kursanta: ${goals || "brak danych"}
-Preferencje korekty b\u0142\u0119d\xF3w: brak wyodr\u0119bnionego pola w profilu \u2014 koryguj na bie\u017C\u0105co w module "error_work", bez nachalno\u015Bci w pozosta\u0142ych modu\u0142ach`;
-      const errorWorkInstruction = mode === "returning" ? 'modu\u0142 "error_work" musi \u0107wiczy\u0107 DOK\u0141ADNIE te b\u0142\u0119dy i to s\u0142ownictwo, kt\xF3re pad\u0142y na OSTATNIEJ lekcji kursanta (patrz kontekst ni\u017Cej) \u2014 konkretne zdania/sytuacje do poprawy, nie og\xF3lna gramatyka.' : 'kursant nie ma jeszcze historii lekcji, wi\u0119c modu\u0142 "error_work" zamienia si\u0119 w \u0107wiczenia DIAGNOSTYCZNE \u2014 kr\xF3tkie zadania sprawdzaj\u0105ce realny poziom wzgl\u0119dem deklarowanego CEFR.';
-      const didacticPrompt = `Jeste\u015B do\u015Bwiadczonym metodykiem j\u0119zyka angielskiego (1:1, kursy zawodowe), uk\u0142adaj\u0105cym scenariusz KONKRETNEJ lekcji dla konkretnego lektora i konkretnego kursanta. Nie piszesz podr\u0119cznika ani ankiety ewaluacyjnej \u2014 piszesz notatki robocze dla lektora, kt\xF3ry za chwil\u0119 usi\u0105dzie z t\u0105 osob\u0105.
-
-PROFIL KURSANTA:
-${profileContext}
-
-KONTEKST Z OSTATNIEJ LEKCJI:
-${lastLessonContext}
-
-PARAMETRY LEKCJI:
-D\u0142ugo\u015B\u0107: ${durationMin} minut
-Tryb: ${mode === "returning" ? "kursant powracaj\u0105cy (returning)" : "pierwszy kontakt / brak historii (cold_start)"}
-
-TEST NATURALNO\u015ACI (obowi\u0105zkowy, sprawd\u017A ka\u017Cde zdanie przed oddaniem odpowiedzi):
-- Ka\u017Cde pytanie i polecenie musi brzmie\u0107 jak \u017Cywa rozmowa dw\xF3ch ludzi, NIGDY jak formularz ewaluacyjny, ankieta HR ani lista kontrolna.
-- Zakazane s\u0142owa-klucze i ich polskie odpowiedniki (nie u\u017Cywaj ich w og\xF3le): "headspace", "bandwidth", "leverage", "facilitate", "synergy", "touch base", "circle back", "actionable", "streamline", "usprawni\u0107", "wdro\u017Cy\u0107 synergi\u0119", "przestrze\u0144 mentaln\u0105".
-- Je\u015Bli zdanie brzmi jak co\u015B, co powiedzia\u0142by dzia\u0142 HR albo konsultant, przepisz je jak zwyk\u0142\u0105 rozmow\u0119 przy kawie.
-
-STRUKTURA (dok\u0142adnie 4 bloki, w tej kolejno\u015Bci):
-
-1. WARM-UP / FOLLOW-UP \u2014 rozgrzewka zakotwiczona w KONKRETNYM dniu i konkretnym do\u015Bwiadczeniu kursanta (np. nawi\u0105zanie do sytuacji z ostatniej lekcji, konkretnego wydarzenia w pracy, konkretnego dnia tygodnia). Nigdy og\xF3lnikowe "How was your week?" ani "How are you?" bez punktu zaczepienia.
-
-2. PRACA NA B\u0141\u0118DACH \u2014 ${errorWorkInstruction} Podaj konkretne zdania/sytuacje do prze\u0107wiczenia, odwo\u0142uj\u0105ce si\u0119 wprost do b\u0142\u0119d\xF3w i s\u0142ownictwa z kontekstu wy\u017Cej (nie wymy\u015Blaj nowych, niepowi\u0105zanych b\u0142\u0119d\xF3w).
-
-3. G\u0141\xD3WNY TEMAT \u2014 dok\u0142adnie JEDNA konkretna sytuacja z pracy kursanta (np. konkretna linia produkcyjna, konkretny wska\u017Anik/proces, konkretna eskalacja problemu, konkretne spotkanie) \u2014 nie og\xF3lny temat bran\u017Cowy. Rozwi\u0144 j\u0105 w pytania i zadania na poziomie ${cefr}. Dodatkowo przygotuj DLA LEKTORA sekcj\u0119 "Wskaz\xF3wki ratunkowe" \u2014 2-4 prostsze, awaryjne pytania/podpowiedzi na wypadek, gdyby kursant odpowiedzia\u0142 jednym s\u0142owem albo utkn\u0105\u0142 i milcza\u0142. Te wskaz\xF3wki s\u0105 dla lektora, nie dla kursanta.
-
-4. PODSUMOWANIE I FEEDBACK \u2014 kr\xF3tkie podsumowanie lekcji, konkretny feedback dla kursanta, zapowied\u017A pracy domowej nawi\u0105zuj\u0105ca do tematu g\u0142\xF3wnego.
-
-Dla ka\u017Cdego z 4 blok\xF3w podaj jednozdaniowy cel oraz list\u0119 1-6 konkretnych, samodzielnych punkt\xF3w (pyta\u0144/\u0107wicze\u0144/zwrot\xF3w) do realizacji na \u017Cywo. Nie podawaj czas\xF3w trwania ani identyfikator\xF3w. Odpowiedz zwyk\u0142ym tekstem, jasno opisuj\u0105c bloki po kolei \u2014 o formatowanie do JSON zadba kolejny etap.`;
-      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-      const didacticResponse = await generateContentWithRetry(
-        ai,
-        didacticPrompt,
-        {},
-        [SCENARIO_DIDACTIC_MODEL, ...GEMINI_MODEL_CASCADE]
-      );
-      if (!didacticResponse.text) throw new Error("Brak odpowiedzi z modelu dydaktycznego AI.");
-      const didacticText = String(didacticResponse.text).trim();
-      const schema = {
-        type: Type.OBJECT,
-        properties: {
-          modules: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                moduleId: { type: Type.STRING, enum: [...SCENARIO_MODULE_IDS] },
-                objective: { type: Type.STRING },
-                items: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: { text: { type: Type.STRING } },
-                    required: ["text"]
-                  }
-                },
-                teacherNotes: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING }
-                }
-              },
-              required: ["moduleId", "objective", "items"]
-            }
-          }
-        },
-        required: ["modules"]
-      };
-      const formattingPrompt = `Poni\u017Cej jest gotowy merytorycznie scenariusz lekcji, u\u0142o\u017Cony przez metodyka. Twoje jedyne zadanie: przepisa\u0107 go WIERNIE (bez zmiany tre\u015Bci, bez skracania, bez parafrazowania) na struktur\u0119 JSON zgodn\u0105 ze schematem.
-
-Zasady przepisania:
-- DOK\u0141ADNIE 4 modu\u0142y w tej kolejno\u015Bci: "warmup_followup", "error_work", "main_topic", "wrapup_feedback".
-- Ka\u017Cdy modu\u0142: "objective" (jednozdaniowy cel z tekstu), "items" (1-6 punkt\xF3w \u2014 ka\u017Cdy punkt jako osobny, samodzielny tekst, bez numeracji i bez markdown).
-- Modu\u0142 "main_topic" musi mie\u0107 dodatkowo "teacherNotes": list\u0119 wskaz\xF3wek ratunkowych dla lektora z tekstu (sekcja "Wskaz\xF3wki ratunkowe") \u2014 je\u015Bli tekst nie nazywa ich wprost, wyodr\u0119bnij zdania, kt\xF3re pe\u0142ni\u0105 t\u0119 funkcj\u0119.
-- Nie dodawaj w\u0142asnej tre\u015Bci, nie koryguj merytoryki \u2014 tylko formatowanie.
-
-SCENARIUSZ DO PRZEPISANIA:
-${didacticText}`;
-      const response = await generateContentWithRetry(
-        ai,
-        formattingPrompt,
-        { responseMimeType: "application/json", responseSchema: schema },
-        [SCENARIO_FORMATTING_MODEL, ...GEMINI_MODEL_CASCADE]
-      );
-      if (!response.text) throw new Error("Brak odpowiedzi z modelu formatuj\u0105cego AI.");
-      let cleanText = String(response.text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
-      const parsed = JSON.parse(cleanText);
-      validateScenarioModelOutput(parsed);
-      const scenario = buildLessonScenario(
-        parsed,
-        { studentId, durationMin, mode, generatedAt: (/* @__PURE__ */ new Date()).toISOString() },
-        randomUUID2
-      );
+      const scenario = await generateScenarioForStudent({
+        adminDb,
+        geminiApiKey,
+        studentId,
+        durationMin,
+        generateContentWithRetry,
+        geminiModelCascade: GEMINI_MODEL_CASCADE
+      });
       return res.json({ scenario });
     } catch (err) {
+      if (err instanceof ScenarioContextError) {
+        return res.status(err.code === "not-found" ? 404 : 400).json({ error: err.code === "not-found" ? err.message : "insufficient-profile" });
+      }
       console.error("[server] b\u0142\u0105d generowania scenariusza lekcji:", err);
+      return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 wygenerowa\u0107 scenariusza." });
+    }
+  });
+  app2.post("/api/scenario/generate-for-chat", requireFirebaseAuth, async (req, res) => {
+    try {
+      const studentRef = String(req.body?.studentRef || "").trim();
+      if (!studentRef) return res.status(400).json({ error: "Nie podano kursanta." });
+      let durationMin = Number(req.body?.durationMin);
+      if (![45, 60, 90].includes(durationMin)) durationMin = 45;
+      const customTopicFocus = String(req.body?.customTopicFocus || "").trim().slice(0, 150) || void 0;
+      const geminiApiKey = getGeminiApiKey();
+      if (!geminiApiKey) {
+        return res.status(500).json({ error: "GEMINI_API_KEY nie jest skonfigurowany." });
+      }
+      const adminApp2 = getAdminApp();
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const { studentId, displayName } = await resolveStudentRef(adminDb, studentRef);
+      const scenario = await generateScenarioForStudent({
+        adminDb,
+        geminiApiKey,
+        studentId,
+        durationMin,
+        customTopicFocus,
+        generateContentWithRetry,
+        geminiModelCascade: GEMINI_MODEL_CASCADE
+      });
+      return res.json({ scenario, studentId, studentName: displayName });
+    } catch (err) {
+      if (err instanceof StudentResolutionError) {
+        return res.status(err.code === "not-found" ? 404 : 409).json({ error: err.message, candidates: err.candidates });
+      }
+      if (err instanceof ScenarioContextError) {
+        return res.status(err.code === "not-found" ? 404 : 400).json({ error: err.code === "not-found" ? err.message : "insufficient-profile" });
+      }
+      console.error("[server] b\u0142\u0105d generowania scenariusza lekcji (tool czatu):", err);
       return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 wygenerowa\u0107 scenariusza." });
     }
   });
@@ -5095,7 +5220,7 @@ ${didacticText}`;
       if (!apiKey && !getOpenAIApiKey()) {
         return res.status(500).json({ error: "AI API key not configured. Please set GEMINI_API_KEY or OPENAI_API_KEY in environment variables." });
       }
-      const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI2({ apiKey: apiKey || "dummy" });
       const studentsListStr = typeof students === "string" ? students : Array.isArray(students) ? students.map((s) => `ID: ${s.id} | Imi\u0119/Nazwisko: ${s.name || s.username || ""} | Poziom: ${s.level || ""} | Opis: ${s.description || ""}`).join("\n") : "Brak bazy kursant\xF3w";
       let promptContext = [];
       if (driveFile) {
@@ -5220,23 +5345,23 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
 - suggestedFollowUp (string, Ustalenia i najlepsze tematy na kolejn\u0105 lekcj\u0119, po polsku)
 `;
       const schema = {
-        type: Type.OBJECT,
+        type: Type2.OBJECT,
         properties: {
-          studentId: { type: Type.STRING },
-          studentIds: { type: Type.ARRAY, items: { type: Type.STRING } },
-          lessonTopic: { type: Type.STRING },
-          revisionNotes: { type: Type.STRING },
-          vocabularyText: { type: Type.STRING },
-          studentSpeaking: { type: Type.STRING },
-          thingsToImprove: { type: Type.STRING },
-          suggestedFollowUp: { type: Type.STRING },
+          studentId: { type: Type2.STRING },
+          studentIds: { type: Type2.ARRAY, items: { type: Type2.STRING } },
+          lessonTopic: { type: Type2.STRING },
+          revisionNotes: { type: Type2.STRING },
+          vocabularyText: { type: Type2.STRING },
+          studentSpeaking: { type: Type2.STRING },
+          thingsToImprove: { type: Type2.STRING },
+          suggestedFollowUp: { type: Type2.STRING },
           /* Bloki 2b-4 wprost. Wersja notatkowa ich nie wypełnia i nie musi —
              pola są opcjonalne, więc schemat jest jeden dla obu trybów. */
-          date: { type: Type.STRING },
-          corrections: { type: Type.STRING },
-          homeworkText: { type: Type.STRING },
-          homeworkAnswerKey: { type: Type.STRING },
-          nextLessonPlan: { type: Type.STRING }
+          date: { type: Type2.STRING },
+          corrections: { type: Type2.STRING },
+          homeworkText: { type: Type2.STRING },
+          homeworkAnswerKey: { type: Type2.STRING },
+          nextLessonPlan: { type: Type2.STRING }
         },
         required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
       };
@@ -5278,14 +5403,14 @@ Zwr\xF3\u0107 JSON z polami:
 `;
       const apiKey = getGeminiApiKey();
       if (!apiKey && !getOpenAIApiKey()) return res.status(500).json({ error: "AI API key not configured." });
-      const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI2({ apiKey: apiKey || "dummy" });
       const response = await generateContentWithRetry(ai, prompt, {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: Type2.OBJECT,
           properties: {
-            score: { type: Type.NUMBER },
-            feedback: { type: Type.STRING }
+            score: { type: Type2.NUMBER },
+            feedback: { type: Type2.STRING }
           },
           required: ["score", "feedback"]
         }
@@ -5305,7 +5430,7 @@ Zwr\xF3\u0107 JSON z polami:
       if (!geminiApiKey && !openaiApiKey) {
         return res.status(500).json({ error: "No AI API key configured. Please set OPENAI_API_KEY or GEMINI_API_KEY in environment variables." });
       }
-      const ai = new GoogleGenAI({ apiKey: geminiApiKey || "DUMMY" });
+      const ai = new GoogleGenAI2({ apiKey: geminiApiKey || "DUMMY" });
       const isPl = language !== "en";
       const prompt = `Jeste\u015B do\u015Bwiadczonym, empatycznym i wybitnym metodykiem oraz nauczycielem j\u0119zyka angielskiego (ELT Pedagogical Specialist & Language Coach).
 Twoim zadaniem jest przedstawienie kompleksowego, merytorycznego i metodycznego komentarza dla kursanta na podstawie analizy jego wynik\xF3w w \u0107wiczeniach j\u0119zykowych.
@@ -5330,18 +5455,18 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       const response = await generateContentWithRetry(ai, prompt, {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: Type2.OBJECT,
           properties: {
-            overallTeacherCommentary: { type: Type.STRING },
+            overallTeacherCommentary: { type: Type2.STRING },
             keyStrengths: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
+              type: Type2.ARRAY,
+              items: { type: Type2.STRING }
             },
             areasToImprove: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
+              type: Type2.ARRAY,
+              items: { type: Type2.STRING }
             },
-            pedagogicalTip: { type: Type.STRING }
+            pedagogicalTip: { type: Type2.STRING }
           },
           required: ["overallTeacherCommentary", "keyStrengths", "areasToImprove", "pedagogicalTip"]
         }
@@ -5524,7 +5649,7 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       const geminiKey = getGeminiApiKey();
       if (!finalAudioBuffer && (engine === "auto" || engine === "gemini") && geminiKey) {
         try {
-          const ai = new GoogleGenAI({ apiKey: geminiKey });
+          const ai = new GoogleGenAI2({ apiKey: geminiKey });
           const voiceName = isMale ? "Puck" : "Kore";
           const modelsToTry = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash"];
           for (const m of modelsToTry) {
@@ -5673,7 +5798,7 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
           let gRetries = 2;
           while (gRetries > 0) {
             try {
-              const ai = new GoogleGenAI({ apiKey: geminiKey });
+              const ai = new GoogleGenAI2({ apiKey: geminiKey });
               let fullPrompt = prompt || "";
               if (!fullPrompt && Array.isArray(messages)) {
                 fullPrompt = messages.map((m) => `${m.role}: ${m.content}`).join("\n");
@@ -5872,7 +5997,7 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
         let retries = 2;
         while (retries > 0) {
           try {
-            const ai = new GoogleGenAI({ apiKey });
+            const ai = new GoogleGenAI2({ apiKey });
             const response = await ai.models.generateContent({ model: m, contents, config });
             return res.json({
               text: response?.text ?? "",

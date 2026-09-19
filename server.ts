@@ -173,7 +173,7 @@ import fs from "fs";
 import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-import { createHmac, randomUUID } from "crypto";
+import { createHmac } from "crypto";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
 import defaultFirebaseConfig from "./firebase-applet-config.json";
@@ -181,12 +181,12 @@ import { AI_MODEL_CASCADE, GEMINI_MODEL_CASCADE, openAiModelsFor } from "./servi
 import { normalizeImportedLessons } from "./utils/lessonImport";
 import { normalizeStudentImportAnalysis } from "./utils/studentImportNormalize";
 import {
-  SCENARIO_MODULE_IDS,
   ScenarioDurationMin,
-  ScenarioModelOutput,
   LessonScenario,
 } from "./types/scenario";
-import { validateScenarioModelOutput, buildLessonScenario } from "./utils/scenarioValidation";
+import { generateScenarioForStudent } from "./services/scenarioAiService";
+import { ScenarioContextError } from "./services/scenarioContextService";
+import { resolveStudentRef, StudentResolutionError } from "./services/studentResolver";
 import { shuffleDistinct } from "./utils/exerciseShuffle";
 import { assembleContext } from "./functions/src/homeworkV2/contextAssembler";
 import { planExercises } from "./functions/src/homeworkV2/exercisePlanner";
@@ -3712,27 +3712,6 @@ Jesteś skrupulatnym asystentem lektora języka angielskiego weryfikującym prof
      model nie mógł zepsuć matematyki czasu trwania lekcji. Zobacz
      types/scenario.ts. ═══════════════════════════════════════════════ */
 
-  /**
-   * Modele dla dwuetapowego potoku "The Cribro Method" (Etap 2.1).
-   *
-   * Zadanie źródłowe wskazywało gemini-1.5-pro / gemini-1.5-flash, ale ta
-   * rodzina modeli jest wygaszana przez Google i nie występuje w jedynym
-   * źródle prawdy dla modeli w tym repo (`services/aiModels.ts`). Zostają
-   * więc jako nazwane stałe — łatwe do podmiany — ustawione domyślnie na
-   * aktualne, wspierane odpowiedniki z tej samej kaskady (Pro do rozumowania
-   * dydaktycznego, Flash do formatowania JSON). Wyłącznie modele Gemini —
-   * bez fallbacku na OpenAI, zgodnie z poleceniem.
-   */
-  const SCENARIO_DIDACTIC_MODEL = 'gemini-2.5-pro';
-  const SCENARIO_FORMATTING_MODEL = 'gemini-2.5-flash';
-
-  function isCompletedLessonRecord(data: any): boolean {
-    if (!data) return false;
-    if (data.status === 'pending_confirmation' || data.status === 'rejected') return false;
-    if (data.sessionStatus === 'draft' || data.sessionStatus === 'live') return false;
-    return true;
-  }
-
   app.post('/api/scenario/generate', requireFirebaseAuth, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || '').trim();
@@ -3751,169 +3730,64 @@ Jesteś skrupulatnym asystentem lektora języka angielskiego weryfikującym prof
       const adminApp = getAdminApp();
       const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
 
-      const studentSnap = await adminDb.collection('users').doc(studentId).get();
-      if (!studentSnap.exists) {
-        return res.status(404).json({ error: 'Nie znaleziono kursanta.' });
-      }
-      const studentData = studentSnap.data() || {};
-      const cefr = String(studentData.level || '').trim();
-      if (!cefr) {
-        return res.status(400).json({ error: 'insufficient-profile' });
-      }
-      const goals = String(studentData.goals || '').trim();
-      const industry = String(studentData.industry || '').trim();
-
-      let lastLesson: any = null;
-      try {
-        const recordsSnap = await adminDb
-          .collection('users').doc(studentId)
-          .collection('lessonRecords')
-          .orderBy('date', 'desc')
-          .limit(10)
-          .get();
-        for (const docSnap of recordsSnap.docs) {
-          const data = docSnap.data();
-          if (isCompletedLessonRecord(data)) {
-            lastLesson = data;
-            break;
-          }
-        }
-      } catch (queryErr) {
-        console.warn('[scenario/generate] nie udało się odczytać lessonRecords:', queryErr);
-      }
-
-      const mode: 'returning' | 'cold_start' = lastLesson ? 'returning' : 'cold_start';
-
-      const lastLessonContext = lastLesson
-        ? `Temat ostatniej lekcji: ${lastLesson.topic || 'brak'}
-Konkretne sytuacje zawodowe poruszone na lekcji: ${lastLesson.summary || lastLesson.topic || 'brak'}
-Słownictwo z ostatniej lekcji: ${lastLesson.vocabularyText || 'brak'}
-DOKŁADNE błędy/korekty z ostatniej lekcji (do recyklingu): ${lastLesson.corrections || lastLesson.thingsToImprove || 'brak'}
-Plan/kierunek na kolejną lekcję (z poprzedniej notatki): ${lastLesson.nextLessonPlan || lastLesson.suggestedFollowUp || 'brak'}`
-        : 'Brak historii lekcji tego kursanta — to pierwszy scenariusz (cold_start).';
-
-      const profileContext = `Poziom CEFR: ${cefr}
-Branża / kontekst zawodowy: ${industry || 'brak danych — nie zgaduj konkretnej branży, trzymaj się ogólnego kontekstu zawodowego'}
-Cele edukacyjne/zawodowe kursanta: ${goals || 'brak danych'}
-Preferencje korekty błędów: brak wyodrębnionego pola w profilu — koryguj na bieżąco w module "error_work", bez nachalności w pozostałych modułach`;
-
-      const errorWorkInstruction = mode === 'returning'
-        ? 'moduł "error_work" musi ćwiczyć DOKŁADNIE te błędy i to słownictwo, które padły na OSTATNIEJ lekcji kursanta (patrz kontekst niżej) — konkretne zdania/sytuacje do poprawy, nie ogólna gramatyka.'
-        : 'kursant nie ma jeszcze historii lekcji, więc moduł "error_work" zamienia się w ćwiczenia DIAGNOSTYCZNE — krótkie zadania sprawdzające realny poziom względem deklarowanego CEFR.';
-
-      /* ── ETAP 1 (model dydaktyczny): rozumowanie pedagogiczne, wolny tekst,
-         bez schematu JSON — narzucenie JSON-a na tym etapie spłaszcza jakość
-         treści do formularza. Rygor "The Cribro Method": zero korpo-żargonu,
-         warm-up zakotwiczony w konkretnym dniu/sytuacji, jedna konkretna
-         sytuacja zawodowa w main_topic + wskazówki ratunkowe dla lektora. ── */
-      const didacticPrompt = `Jesteś doświadczonym metodykiem języka angielskiego (1:1, kursy zawodowe), układającym scenariusz KONKRETNEJ lekcji dla konkretnego lektora i konkretnego kursanta. Nie piszesz podręcznika ani ankiety ewaluacyjnej — piszesz notatki robocze dla lektora, który za chwilę usiądzie z tą osobą.
-
-PROFIL KURSANTA:
-${profileContext}
-
-KONTEKST Z OSTATNIEJ LEKCJI:
-${lastLessonContext}
-
-PARAMETRY LEKCJI:
-Długość: ${durationMin} minut
-Tryb: ${mode === 'returning' ? 'kursant powracający (returning)' : 'pierwszy kontakt / brak historii (cold_start)'}
-
-TEST NATURALNOŚCI (obowiązkowy, sprawdź każde zdanie przed oddaniem odpowiedzi):
-- Każde pytanie i polecenie musi brzmieć jak żywa rozmowa dwóch ludzi, NIGDY jak formularz ewaluacyjny, ankieta HR ani lista kontrolna.
-- Zakazane słowa-klucze i ich polskie odpowiedniki (nie używaj ich w ogóle): "headspace", "bandwidth", "leverage", "facilitate", "synergy", "touch base", "circle back", "actionable", "streamline", "usprawnić", "wdrożyć synergię", "przestrzeń mentalną".
-- Jeśli zdanie brzmi jak coś, co powiedziałby dział HR albo konsultant, przepisz je jak zwykłą rozmowę przy kawie.
-
-STRUKTURA (dokładnie 4 bloki, w tej kolejności):
-
-1. WARM-UP / FOLLOW-UP — rozgrzewka zakotwiczona w KONKRETNYM dniu i konkretnym doświadczeniu kursanta (np. nawiązanie do sytuacji z ostatniej lekcji, konkretnego wydarzenia w pracy, konkretnego dnia tygodnia). Nigdy ogólnikowe "How was your week?" ani "How are you?" bez punktu zaczepienia.
-
-2. PRACA NA BŁĘDACH — ${errorWorkInstruction} Podaj konkretne zdania/sytuacje do przećwiczenia, odwołujące się wprost do błędów i słownictwa z kontekstu wyżej (nie wymyślaj nowych, niepowiązanych błędów).
-
-3. GŁÓWNY TEMAT — dokładnie JEDNA konkretna sytuacja z pracy kursanta (np. konkretna linia produkcyjna, konkretny wskaźnik/proces, konkretna eskalacja problemu, konkretne spotkanie) — nie ogólny temat branżowy. Rozwiń ją w pytania i zadania na poziomie ${cefr}. Dodatkowo przygotuj DLA LEKTORA sekcję "Wskazówki ratunkowe" — 2-4 prostsze, awaryjne pytania/podpowiedzi na wypadek, gdyby kursant odpowiedział jednym słowem albo utknął i milczał. Te wskazówki są dla lektora, nie dla kursanta.
-
-4. PODSUMOWANIE I FEEDBACK — krótkie podsumowanie lekcji, konkretny feedback dla kursanta, zapowiedź pracy domowej nawiązująca do tematu głównego.
-
-Dla każdego z 4 bloków podaj jednozdaniowy cel oraz listę 1-6 konkretnych, samodzielnych punktów (pytań/ćwiczeń/zwrotów) do realizacji na żywo. Nie podawaj czasów trwania ani identyfikatorów. Odpowiedz zwykłym tekstem, jasno opisując bloki po kolei — o formatowanie do JSON zadba kolejny etap.`;
-
-      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-      const didacticResponse = await generateContentWithRetry(
-        ai,
-        didacticPrompt,
-        {},
-        [SCENARIO_DIDACTIC_MODEL, ...GEMINI_MODEL_CASCADE]
-      );
-
-      if (!didacticResponse.text) throw new Error('Brak odpowiedzi z modelu dydaktycznego AI.');
-      const didacticText = String(didacticResponse.text).trim();
-
-      /* ── ETAP 2 (model formatujący): wyłącznie przepisanie merytorycznej
-         treści z Etapu 1 na ścisły JSON — nie generuje nowej treści
-         pedagogicznej, więc niższy/tańszy model wystarcza i nie psuje
-         rygoru "Naturalness Test" z Etapu 1. ── */
-      const schema = {
-        type: Type.OBJECT,
-        properties: {
-          modules: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                moduleId: { type: Type.STRING, enum: [...SCENARIO_MODULE_IDS] },
-                objective: { type: Type.STRING },
-                items: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: { text: { type: Type.STRING } },
-                    required: ['text'],
-                  },
-                },
-                teacherNotes: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                },
-              },
-              required: ['moduleId', 'objective', 'items'],
-            },
-          },
-        },
-        required: ['modules'],
-      };
-
-      const formattingPrompt = `Poniżej jest gotowy merytorycznie scenariusz lekcji, ułożony przez metodyka. Twoje jedyne zadanie: przepisać go WIERNIE (bez zmiany treści, bez skracania, bez parafrazowania) na strukturę JSON zgodną ze schematem.
-
-Zasady przepisania:
-- DOKŁADNIE 4 moduły w tej kolejności: "warmup_followup", "error_work", "main_topic", "wrapup_feedback".
-- Każdy moduł: "objective" (jednozdaniowy cel z tekstu), "items" (1-6 punktów — każdy punkt jako osobny, samodzielny tekst, bez numeracji i bez markdown).
-- Moduł "main_topic" musi mieć dodatkowo "teacherNotes": listę wskazówek ratunkowych dla lektora z tekstu (sekcja "Wskazówki ratunkowe") — jeśli tekst nie nazywa ich wprost, wyodrębnij zdania, które pełnią tę funkcję.
-- Nie dodawaj własnej treści, nie koryguj merytoryki — tylko formatowanie.
-
-SCENARIUSZ DO PRZEPISANIA:
-${didacticText}`;
-
-      const response = await generateContentWithRetry(
-        ai,
-        formattingPrompt,
-        { responseMimeType: 'application/json', responseSchema: schema },
-        [SCENARIO_FORMATTING_MODEL, ...GEMINI_MODEL_CASCADE]
-      );
-
-      if (!response.text) throw new Error('Brak odpowiedzi z modelu formatującego AI.');
-
-      let cleanText = String(response.text).replace(/^```json\n?/g, '').replace(/```$/g, '').trim();
-      const parsed = JSON.parse(cleanText) as ScenarioModelOutput;
-
-      validateScenarioModelOutput(parsed);
-
-      const scenario: LessonScenario = buildLessonScenario(
-        parsed,
-        { studentId, durationMin, mode, generatedAt: new Date().toISOString() },
-        randomUUID
-      );
+      const scenario = await generateScenarioForStudent({
+        adminDb, geminiApiKey, studentId, durationMin,
+        generateContentWithRetry, geminiModelCascade: GEMINI_MODEL_CASCADE,
+      });
 
       return res.json({ scenario });
     } catch (err: any) {
+      if (err instanceof ScenarioContextError) {
+        return res.status(err.code === 'not-found' ? 404 : 400).json({ error: err.code === 'not-found' ? err.message : 'insufficient-profile' });
+      }
       console.error('[server] błąd generowania scenariusza lekcji:', err);
+      return res.status(500).json({ error: err?.message || 'Nie udało się wygenerować scenariusza.' });
+    }
+  });
+
+  /**
+   * Tool czatu `generate_lesson_scenario` (Asystent Lektora). Klient wysyła
+   * WYŁĄCZNIE { studentRef, durationMin?, customTopicFocus? } — nigdy sam ID
+   * kursanta z Firestore, bo Gemini nie ma dostępu do bazy. Backend
+   * rozstrzyga `studentRef` (imię lub ID) do kursanta wyłącznie w zbiorze
+   * aktywnych kursantów (patrz `services/studentResolver.ts`) i woła
+   * dokładnie tę samą funkcję generatora co `/api/scenario/generate` —
+   * zero dublowania logiki.
+   */
+  app.post('/api/scenario/generate-for-chat', requireFirebaseAuth, async (req, res) => {
+    try {
+      const studentRef = String(req.body?.studentRef || '').trim();
+      if (!studentRef) return res.status(400).json({ error: 'Nie podano kursanta.' });
+
+      let durationMin = Number(req.body?.durationMin) as ScenarioDurationMin;
+      if (![45, 60, 90].includes(durationMin)) durationMin = 45;
+
+      const customTopicFocus = String(req.body?.customTopicFocus || '').trim().slice(0, 150) || undefined;
+
+      const geminiApiKey = getGeminiApiKey();
+      if (!geminiApiKey) {
+        return res.status(500).json({ error: 'GEMINI_API_KEY nie jest skonfigurowany.' });
+      }
+
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+
+      const { studentId, displayName } = await resolveStudentRef(adminDb, studentRef);
+
+      const scenario = await generateScenarioForStudent({
+        adminDb, geminiApiKey, studentId, durationMin, customTopicFocus,
+        generateContentWithRetry, geminiModelCascade: GEMINI_MODEL_CASCADE,
+      });
+
+      return res.json({ scenario, studentId, studentName: displayName });
+    } catch (err: any) {
+      if (err instanceof StudentResolutionError) {
+        return res.status(err.code === 'not-found' ? 404 : 409).json({ error: err.message, candidates: err.candidates });
+      }
+      if (err instanceof ScenarioContextError) {
+        return res.status(err.code === 'not-found' ? 404 : 400).json({ error: err.code === 'not-found' ? err.message : 'insufficient-profile' });
+      }
+      console.error('[server] błąd generowania scenariusza lekcji (tool czatu):', err);
       return res.status(500).json({ error: err?.message || 'Nie udało się wygenerować scenariusza.' });
     }
   });
