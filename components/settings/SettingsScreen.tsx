@@ -13,7 +13,7 @@ import { FREQUENCIES } from '../../constants';
 import { RevisionFrequency, TTSAccent, VoiceGender, VoiceSpeed, SoundEngine, canUserViewAiMonitor } from '../../types';
 import AiModelsSettings from './AiModelsSettings';
 import AiCouncilSettings from './AiCouncilSettings';
-import { LogOut, Volume2, Play, CheckCircle2, RefreshCw, VolumeX, Sparkles, Sliders, Check, Flame, Mail, Key, Eye, EyeOff, AlertTriangle, Database, Search, Unlink, ExternalLink, Layers, Table, ClipboardPaste, X } from 'lucide-react';
+import { LogOut, Volume2, Play, CheckCircle2, VolumeX, Sparkles, Sliders, Check, Flame, Mail, Key, Eye, EyeOff, AlertTriangle, Unlink, ClipboardPaste, X } from 'lucide-react';
 import { playSpeech } from '../../services/ttsService';
 import i18n from "i18next";
 import { useEscapeModal } from '../../hooks/useEscapeModal';
@@ -109,53 +109,20 @@ const SettingsScreen: React.FC = () => {
         }
     };
 
-    // Notion Integration State
+    // Notion Integration State — wyłącznie opcjonalny import transkrypcji (workflow lektora)
     const [notionTokenInput, setNotionTokenInput] = useState<string>('');
     const [showNotionToken, setShowNotionToken] = useState<boolean>(false);
     const [meetingNotesDbInput, setMeetingNotesDbInput] = useState<string>('');
-    const [autoFetchEnabledInput, setAutoFetchEnabledInput] = useState<boolean>(false);
-    const [autoFetchIntervalInput, setAutoFetchIntervalInput] = useState<number>(30);
     const [notionConfigStatus, setNotionConfigStatus] = useState<{
         configured: boolean;
         maskedToken?: string | null;
         meetingNotesDbId?: string;
-        autoFetchEnabled?: boolean;
-        autoFetchIntervalMinutes?: number;
         lastFetchTime?: string | null;
         lastFetchStatus?: string | null;
     }>({ configured: false });
     const [isSavingNotion, setIsSavingNotion] = useState(false);
     const [notionSaveSuccess, setNotionSaveSuccess] = useState(false);
     const [notionError, setNotionError] = useState<string | null>(null);
-    const [isTestingNotion, setIsTestingNotion] = useState(false);
-    const [notionTestResult, setNotionTestResult] = useState<{
-        ok: boolean;
-        botName?: string;
-        workspaceName?: string;
-        meetingDbTitle?: string;
-        studentsDbTitle?: string;
-        message?: string;
-    } | null>(null);
-    const [isFetchingNotion, setIsFetchingNotion] = useState(false);
-    const [notionFetchResult, setNotionFetchResult] = useState<{
-        ok: boolean;
-        found?: number;
-        processed?: number;
-        items?: any[];
-        message?: string;
-    } | null>(null);
-
-    // Auto-discovery & Disconnect state
-    const [isSearchingDatabases, setIsSearchingDatabases] = useState(false);
-    const [discoveredDatabases, setDiscoveredDatabases] = useState<Array<{
-        id: string;
-        title: string;
-        description?: string;
-        icon?: string | null;
-        url?: string;
-        properties?: string[];
-        lastEditedTime?: string | null;
-    }>>([]);
     const [isClearingNotion, setIsClearingNotion] = useState(false);
     const [notionClearSuccess, setNotionClearSuccess] = useState(false);
 
@@ -173,8 +140,6 @@ const SettingsScreen: React.FC = () => {
                     const data = await res.json();
                     setNotionConfigStatus(data);
                     if (data.meetingNotesDbId) setMeetingNotesDbInput(data.meetingNotesDbId);
-                    if (typeof data.autoFetchEnabled === 'boolean') setAutoFetchEnabledInput(data.autoFetchEnabled);
-                    if (typeof data.autoFetchIntervalMinutes === 'number') setAutoFetchIntervalInput(data.autoFetchIntervalMinutes);
                 }
             } catch (e) {
                 console.warn('Nie udało się sprawdzić konfiguracji Notion:', e);
@@ -185,9 +150,7 @@ const SettingsScreen: React.FC = () => {
 
     const hasUnsavedNotionChanges = Boolean(
         (notionTokenInput.trim() !== '') ||
-        (cleanNotionId(meetingNotesDbInput) !== cleanNotionId(notionConfigStatus.meetingNotesDbId || '')) ||
-        (autoFetchEnabledInput !== Boolean(notionConfigStatus.autoFetchEnabled)) ||
-        (autoFetchIntervalInput !== (notionConfigStatus.autoFetchIntervalMinutes || 30))
+        (cleanNotionId(meetingNotesDbInput) !== cleanNotionId(notionConfigStatus.meetingNotesDbId || ''))
     );
 
     const handlePasteNotionToken = async () => {
@@ -222,8 +185,6 @@ const SettingsScreen: React.FC = () => {
                 body: JSON.stringify({
                     token: cleanToken || undefined,
                     meetingNotesDbId: cleanMeetingId || undefined,
-                    autoFetchEnabled: autoFetchEnabledInput,
-                    autoFetchIntervalMinutes: autoFetchIntervalInput,
                 }),
             });
 
@@ -234,8 +195,6 @@ const SettingsScreen: React.FC = () => {
                 configured: true,
                 maskedToken: data.maskedToken || (cleanToken ? `${cleanToken.slice(0, 8)}••••` : notionConfigStatus.maskedToken),
                 meetingNotesDbId: data.meetingNotesDbId || cleanMeetingId,
-                autoFetchEnabled: data.autoFetchEnabled,
-                autoFetchIntervalMinutes: data.autoFetchIntervalMinutes,
                 lastFetchTime: notionConfigStatus.lastFetchTime,
                 lastFetchStatus: notionConfigStatus.lastFetchStatus,
             });
@@ -251,124 +210,6 @@ const SettingsScreen: React.FC = () => {
         }
     };
 
-    const handleTestNotionConnection = async () => {
-        setIsTestingNotion(true);
-        setNotionError(null);
-        setNotionTestResult(null);
-        try {
-            const token = await auth.currentUser?.getIdToken();
-            if (!token) throw new Error('Brak uprawnień administratora.');
-
-            const cleanToken = notionTokenInput.trim().replace(/["']/g, '');
-            const cleanMeetingId = cleanNotionId(meetingNotesDbInput);
-
-            const res = await fetch('/api/notion/test-connection', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    token: cleanToken || undefined,
-                    meetingNotesDbId: cleanMeetingId || undefined,
-                }),
-            });
-
-            const data = await res.json();
-            if (!res.ok) {
-                setNotionTestResult({ ok: false, message: data?.error || 'Nie udało się nawiązać połączenia z Notion.' });
-            } else {
-                setNotionTestResult({
-                    ok: true,
-                    botName: data.botName,
-                    workspaceName: data.workspaceName,
-                    meetingDbTitle: data.meetingDbTitle,
-                    studentsDbTitle: data.studentsDbTitle,
-                    message: data.message || 'Połączenie z Notion udane!',
-                });
-            }
-        } catch (err: any) {
-            setNotionTestResult({ ok: false, message: err?.message || 'Błąd testu połączenia.' });
-        } finally {
-            setIsTestingNotion(false);
-        }
-    };
-
-    const handleFetchNotionTranscripts = async () => {
-        setIsFetchingNotion(true);
-        setNotionFetchResult(null);
-        setNotionError(null);
-        try {
-            const token = await auth.currentUser?.getIdToken();
-            if (!token) throw new Error('Brak uprawnień administratora.');
-
-            const res = await fetch('/api/notion/fetch-transcripts', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-
-            const data = await res.json();
-            if (!res.ok) throw new Error(data?.error || 'Błąd pobierania transkrypcji z Notion.');
-
-            setNotionFetchResult({
-                ok: true,
-                found: data.found,
-                processed: data.processed,
-                items: data.items,
-                message: `Pobrano ${data.processed || 0} z ${data.found || 0} znalezionych stron w Notion.`,
-            });
-            if (data.lastFetchTime) {
-                setNotionConfigStatus(prev => ({
-                    ...prev,
-                    lastFetchTime: data.lastFetchTime,
-                    lastFetchStatus: `Przetworzono ${data.processed || 0} stron`,
-                }));
-            }
-        } catch (err: any) {
-            console.error('Błąd pobierania transkrypcji:', err);
-            setNotionError(err?.message || 'Nie udało się pobrać transkrypcji z Notion.');
-        } finally {
-            setIsFetchingNotion(false);
-        }
-    };
-
-    const handleSearchNotionDatabases = async () => {
-        setIsSearchingDatabases(true);
-        setNotionError(null);
-        try {
-            const token = await auth.currentUser?.getIdToken();
-            if (!token) throw new Error('Brak uprawnień administratora.');
-
-            const cleanToken = notionTokenInput.trim().replace(/["']/g, '');
-            const res = await fetch('/api/notion/search-databases', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    token: cleanToken || undefined,
-                }),
-            });
-
-            const data = await res.json();
-            if (!res.ok) throw new Error(data?.error || 'Nie udało się przeszukać baz w Notion.');
-
-            setDiscoveredDatabases(data.databases || []);
-            if ((data.databases || []).length === 0) {
-                setNotionError('Nie znaleziono żadnych baz danych. Upewnij się, że w Notion udostępniłeś integracji odpowiednie bazy (opcja "Add connections" w menu bazy w Notion).');
-            }
-        } catch (err: any) {
-            console.error('Błąd wyszukiwania baz Notion:', err);
-            setNotionError(err?.message || 'Błąd podczas wyszukiwania baz Notion.');
-        } finally {
-            setIsSearchingDatabases(false);
-        }
-    };
-
     const handleClearNotionConfig = async () => {
         if (!window.confirm(language === 'pl'
             ? 'Czy na pewno chcesz rozłączyć integrację Notion i wyczyścić zapisane tokeny oraz ID baz danych?'
@@ -377,9 +218,6 @@ const SettingsScreen: React.FC = () => {
         }
         setIsClearingNotion(true);
         setNotionError(null);
-        setNotionTestResult(null);
-        setNotionFetchResult(null);
-        setDiscoveredDatabases([]);
         try {
             const token = await auth.currentUser?.getIdToken();
             if (!token) throw new Error('Brak uprawnień administratora.');
@@ -399,7 +237,6 @@ const SettingsScreen: React.FC = () => {
                 configured: false,
                 maskedToken: null,
                 meetingNotesDbId: '',
-                autoFetchEnabled: false,
                 lastFetchTime: null,
                 lastFetchStatus: null,
             });
@@ -1023,7 +860,7 @@ const SettingsScreen: React.FC = () => {
                     </Card>
                 )}
 
-                {/* ADMIN ONLY: NOTION INTEGRATION & TRANSCRIPTS CONFIGURATION */}
+                {/* ADMIN ONLY: NOTION — OPCJONALNA INTEGRACJA TRANSKRYPCJI (workflow lektora) */}
                 {isTeacherOrAdmin && (
                     <Card className="border border-primary/30 bg-gradient-to-br from-base-200/90 via-base-200/70 to-primary/10 shadow-lg md:col-span-2">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 mb-4 border-b border-white/10">
@@ -1033,7 +870,7 @@ const SettingsScreen: React.FC = () => {
                                 </div>
                                 <div>
                                     <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                                        {language === 'pl' ? 'Integracja z Notion (Transkrypcje & Kursanci)' : 'Notion Integration & Transcripts'}
+                                        {language === 'pl' ? 'Opcjonalna integracja transkrypcji (workflow lektora)' : 'Optional transcript integration (teacher workflow)'}
                                         {notionConfigStatus.configured ? (
                                             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 uppercase tracking-wider flex items-center gap-1 font-bold">
                                                 <CheckCircle2 size={11} /> {notionConfigStatus.maskedToken || 'Połączono'}
@@ -1046,8 +883,8 @@ const SettingsScreen: React.FC = () => {
                                     </h2>
                                     <p className="text-xs text-content-muted">
                                         {language === 'pl'
-                                            ? 'Połączenie z workspace Notion do automatycznego pobierania transkrypcji spotkań AI i bazy kursantów'
-                                            : 'Connect to Notion workspace to fetch meeting transcripts and student database'}
+                                            ? 'Notion służy tu wyłącznie do opcjonalnego pobrania notatek ze spotkania / surowej transkrypcji w karcie importera.'
+                                            : 'Notion is used here only to optionally fetch meeting notes / raw transcripts in the importer card.'}
                                     </p>
                                 </div>
                             </div>
@@ -1153,135 +990,11 @@ const SettingsScreen: React.FC = () => {
                                 </p>
                             </div>
 
-                            {/* AUTO-DISCOVERY: Wyszukiwarka baz w Notion */}
-                            <div className="p-3.5 rounded-xl bg-black/30 border border-primary/20 space-y-3">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                    <div>
-                                        <h4 className="text-xs font-bold text-primary flex items-center gap-1.5 uppercase tracking-wider">
-                                            <Search size={14} />
-                                            {language === 'pl' ? 'Automatyczne wykrywanie baz w Notion' : 'Notion Database Auto-Discovery'}
-                                        </h4>
-                                        <p className="text-[11px] text-content-muted">
-                                            {language === 'pl'
-                                                ? 'Wyszukaj bazy udostępnione Twojej integracji i przypisz je jednym kliknięciem bez ręcznego kopiowania ID'
-                                                : 'Search databases shared with your integration and assign them in 1 click'}
-                                        </p>
-                                    </div>
-                                    <Button
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={handleSearchNotionDatabases}
-                                        isLoading={isSearchingDatabases}
-                                        className="shrink-0 flex items-center gap-1.5 text-xs"
-                                    >
-                                        <Database size={13} className={isSearchingDatabases ? 'animate-pulse' : ''} />
-                                        {language === 'pl' ? 'Wyszukaj bazy w Notion' : 'Discover Databases'}
-                                    </Button>
-                                </div>
-
-                                {discoveredDatabases.length > 0 && (
-                                    <div className="space-y-2 pt-2 border-t border-white/10">
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                                            <p className="text-[11px] font-semibold text-white">
-                                                Znaleziono {discoveredDatabases.length} {discoveredDatabases.length === 1 ? 'bazę' : 'baz(y)'} w Twoim Notion:
-                                            </p>
-                                            <span className="text-[10px] text-content-muted">Kliknij przycisk na kafelku bazy, aby przypisać jej rolę</span>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1">
-                                            {discoveredDatabases.map((db) => {
-                                                const isMeetingSelected = cleanNotionId(meetingNotesDbInput) === cleanNotionId(db.id);
-
-                                                return (
-                                                    <div
-                                                        key={db.id}
-                                                        className={`p-3 rounded-xl border transition-all ${
-                                                            isMeetingSelected
-                                                                ? 'bg-emerald-500/10 border-emerald-500/40 shadow-sm'
-                                                                : 'bg-black/50 border-white/10 hover:border-white/20'
-                                                        }`}
-                                                    >
-                                                        <div className="flex items-start justify-between gap-2">
-                                                            <div className="min-w-0 flex-1">
-                                                                <div className="flex items-center gap-1.5 flex-wrap">
-                                                                    <h5 className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
-                                                                        {db.icon ? (
-                                                                            <span className="text-sm">{db.icon}</span>
-                                                                        ) : (
-                                                                            <Table size={13} className="text-primary shrink-0" />
-                                                                        )}
-                                                                        <span className="truncate">{db.title}</span>
-                                                                    </h5>
-                                                                    {isMeetingSelected && (
-                                                                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold uppercase tracking-wider">
-                                                                            🎯 Transkrypcje
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                                {db.description && (
-                                                                    <p className="text-[10px] text-content-muted truncate mt-0.5">{db.description}</p>
-                                                                )}
-                                                                <p className="text-[9px] font-mono text-content-muted truncate mt-1">
-                                                                    ID: {db.id}
-                                                                </p>
-                                                            </div>
-                                                            {db.url && (
-                                                                <a
-                                                                    href={db.url}
-                                                                    target="_blank"
-                                                                    rel="noreferrer"
-                                                                    className="text-content-muted hover:text-white shrink-0 p-1"
-                                                                    title="Otwórz w Notion"
-                                                                >
-                                                                    <ExternalLink size={12} />
-                                                                </a>
-                                                            )}
-                                                        </div>
-
-                                                        {Array.isArray(db.properties) && db.properties.length > 0 && (
-                                                            <div className="flex flex-wrap gap-1 mt-2">
-                                                                {db.properties.slice(0, 4).map((prop, idx) => (
-                                                                    <span key={idx} className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-content-muted font-mono">
-                                                                        {prop}
-                                                                    </span>
-                                                                ))}
-                                                                {db.properties.length > 4 && (
-                                                                    <span className="text-[9px] px-1 py-0.5 text-content-muted font-mono">
-                                                                        +{db.properties.length - 4}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        )}
-
-                                                        <div className="mt-2.5 pt-2 border-t border-white/5 flex justify-end">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setMeetingNotesDbInput(db.id);
-                                                                    setNotionError(null);
-                                                                }}
-                                                                className={`w-full px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer ${
-                                                                    isMeetingSelected
-                                                                        ? 'bg-emerald-500 text-black font-bold shadow-xs'
-                                                                        : 'bg-white/5 hover:bg-emerald-500/20 text-content border border-white/10 hover:text-white hover:border-emerald-500/30'
-                                                                }`}
-                                                            >
-                                                                {isMeetingSelected ? <Check size={12} /> : <span>🎯</span>}
-                                                                {isMeetingSelected ? 'Wybrana do transkrypcji ✓' : 'Wybierz jako bazę transkrypcji'}
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Database IDs (Quick Dropdown from Discovered or Manual/Paste) */}
+                            {/* Meeting Notes Database ID (manualny wpis — bez auto-discovery i bez baz kursantów) */}
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-between">
                                     <label className="block text-xs font-semibold text-content uppercase tracking-wider">
-                                        {language === 'pl' ? 'ID Bazy Spotkań & Transkrypcji' : 'Meeting Notes Database ID'}
+                                        {language === 'pl' ? 'ID Bazy/Strony z Transkrypcjami (AI Meeting Notes)' : 'AI Meeting Notes Database/Page ID'}
                                     </label>
                                     {meetingNotesDbInput && (
                                         <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-0.5">
@@ -1289,25 +1002,6 @@ const SettingsScreen: React.FC = () => {
                                         </span>
                                     )}
                                 </div>
-                                {discoveredDatabases.length > 0 && (
-                                    <select
-                                        value={discoveredDatabases.some(d => cleanNotionId(d.id) === cleanNotionId(meetingNotesDbInput)) ? cleanNotionId(meetingNotesDbInput) : ''}
-                                        onChange={(e) => {
-                                            if (e.target.value) {
-                                                setMeetingNotesDbInput(e.target.value);
-                                                setNotionError(null);
-                                            }
-                                        }}
-                                        className="w-full px-3 py-2 rounded-xl bg-black/70 border border-emerald-500/30 text-white text-xs focus:outline-none focus:border-emerald-500 mb-1"
-                                    >
-                                        <option value="">-- Wybierz z wykrytych baz w Notion ({discoveredDatabases.length}) --</option>
-                                        {discoveredDatabases.map(d => (
-                                            <option key={d.id} value={cleanNotionId(d.id)}>
-                                                {d.icon ? `${d.icon} ` : ''}{d.title} ({d.id.slice(0, 8)}...)
-                                            </option>
-                                        ))}
-                                    </select>
-                                )}
                                 <input
                                     type="text"
                                     value={meetingNotesDbInput}
@@ -1315,52 +1009,12 @@ const SettingsScreen: React.FC = () => {
                                         setMeetingNotesDbInput(cleanNotionId(e.target.value));
                                         setNotionError(null);
                                     }}
-                                    placeholder="Wklej ID lub link do bazy spotkań w Notion..."
+                                    placeholder="Wklej ID lub link do bazy/strony z transkrypcjami w Notion..."
                                     className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-primary"
                                 />
                                 <p className="text-[10px] text-content-muted">
-                                    {language === 'pl' ? 'Baza ze spotkaniami i transkrypcjami AI z lekcji.' : 'Database with meeting notes and AI transcripts.'}
+                                    {language === 'pl' ? 'Baza ze spotkaniami i transkrypcjami AI z lekcji — używana wyłącznie w karcie importera.' : 'Database with meeting notes and AI transcripts — used only in the importer card.'}
                                 </p>
-                            </div>
-
-                            {/* Auto fetch toggle & interval */}
-                            <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-3">
-                                <label className="flex items-center justify-between cursor-pointer">
-                                    <div className="pr-4">
-                                        <span className="text-sm font-semibold text-white block">
-                                            {language === 'pl' ? 'Automatyczne cykliczne pobieranie w tle (Notion Fetch)' : 'Automatic background polling (Notion Fetch)'}
-                                        </span>
-                                        <span className="text-xs text-content-muted">
-                                            {language === 'pl'
-                                                ? 'System regularnie sprawdza bazę spotkań w Notion i automatycznie przypisuje nowe transkrypcje do właściwych kursantów i grup'
-                                                : 'Regularly queries Notion database and matches new transcripts to students and groups'}
-                                        </span>
-                                    </div>
-                                    <input
-                                        type="checkbox"
-                                        checked={autoFetchEnabledInput}
-                                        onChange={(e) => setAutoFetchEnabledInput(e.target.checked)}
-                                        className="w-5 h-5 rounded border-white/20 bg-black/40 text-primary focus:ring-primary accent-primary cursor-pointer shrink-0"
-                                    />
-                                </label>
-
-                                {autoFetchEnabledInput && (
-                                    <div className="flex items-center gap-3 pt-2 border-t border-white/5">
-                                        <label className="text-xs text-content-muted shrink-0">
-                                            {language === 'pl' ? 'Częstotliwość sprawdzania:' : 'Check interval:'}
-                                        </label>
-                                        <select
-                                            value={autoFetchIntervalInput}
-                                            onChange={(e) => setAutoFetchIntervalInput(Number(e.target.value))}
-                                            className="px-3 py-1.5 rounded-lg bg-black/60 border border-white/15 text-white text-xs focus:outline-none focus:border-primary"
-                                        >
-                                            <option value={15}>{language === 'pl' ? 'Co 15 minut' : 'Every 15 minutes'}</option>
-                                            <option value={30}>{language === 'pl' ? 'Co 30 minut (zalecane)' : 'Every 30 minutes (recommended)'}</option>
-                                            <option value={60}>{language === 'pl' ? 'Co 1 godzinę' : 'Every 1 hour'}</option>
-                                            <option value={120}>{language === 'pl' ? 'Co 2 godziny' : 'Every 2 hours'}</option>
-                                        </select>
-                                    </div>
-                                )}
                             </div>
 
                             {/* Unsaved changes alert */}
@@ -1383,25 +1037,6 @@ const SettingsScreen: React.FC = () => {
                                     className={`shrink-0 ${hasUnsavedNotionChanges ? 'ring-2 ring-primary ring-offset-2 ring-offset-base-200' : ''}`}
                                 >
                                     {language === 'pl' ? 'Zapisz konfigurację Notion' : 'Save Notion Config'}
-                                </Button>
-
-                                <Button
-                                    variant="secondary"
-                                    onClick={handleTestNotionConnection}
-                                    isLoading={isTestingNotion}
-                                    className="shrink-0"
-                                >
-                                    {language === 'pl' ? 'Testuj połączenie' : 'Test Connection'}
-                                </Button>
-
-                                <Button
-                                    variant="secondary"
-                                    onClick={handleFetchNotionTranscripts}
-                                    isLoading={isFetchingNotion}
-                                    className="shrink-0 flex items-center gap-1.5"
-                                >
-                                    <RefreshCw size={14} className={isFetchingNotion ? 'animate-spin' : ''} />
-                                    {language === 'pl' ? 'Pobierz transkrypcje teraz' : 'Fetch Transcripts Now'}
                                 </Button>
 
                                 <Button
@@ -1440,55 +1075,6 @@ const SettingsScreen: React.FC = () => {
                                 </p>
                             )}
 
-                            {notionTestResult && (
-                                <div className={`p-3 rounded-xl border text-xs ${notionTestResult.ok ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-danger/10 border-danger/30 text-danger'} animate-fade-in`}>
-                                    <p className="font-semibold flex items-center gap-1.5">
-                                        {notionTestResult.ok ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-                                        {notionTestResult.message || (notionTestResult.ok ? 'Połączenie z Notion działa poprawnie!' : 'Błąd połączenia z Notion')}
-                                    </p>
-                                    {notionTestResult.workspaceName && (
-                                        <p className="text-content-muted mt-1">
-                                            Workspace: <strong className="text-white">{notionTestResult.workspaceName}</strong> | Bot: <strong className="text-white">{notionTestResult.botName}</strong>
-                                        </p>
-                                    )}
-                                    {notionTestResult.meetingDbTitle && (
-                                        <p className="text-content-muted mt-0.5">
-                                            Baza spotkań: <strong className="text-white">{notionTestResult.meetingDbTitle}</strong>
-                                        </p>
-                                    )}
-                                    {notionTestResult.studentsDbTitle && (
-                                        <p className="text-content-muted mt-0.5">
-                                            Baza kursantów: <strong className="text-white">{notionTestResult.studentsDbTitle}</strong>
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-
-                            {notionFetchResult && (
-                                <div className="p-3 rounded-xl bg-primary/10 border border-primary/30 text-xs text-white space-y-1.5 animate-fade-in">
-                                    <p className="font-bold text-primary flex items-center gap-1.5">
-                                        <CheckCircle2 size={14} /> {notionFetchResult.message}
-                                    </p>
-                                    {Array.isArray(notionFetchResult.items) && notionFetchResult.items.length > 0 && (
-                                        <div className="max-h-36 overflow-y-auto space-y-1 mt-2 pr-1">
-                                            {notionFetchResult.items.map((it, idx) => (
-                                                <div key={idx} className="flex items-center justify-between p-1.5 rounded bg-black/40 border border-white/5 text-[11px]">
-                                                    <span className="font-medium truncate max-w-[200px]">{it.title}</span>
-                                                    <span className="text-primary truncate">{it.studentName}</span>
-                                                    <span className="text-[10px] text-content-muted font-mono">{it.status}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Status info */}
-                            {notionConfigStatus.lastFetchTime && (
-                                <p className="text-[11px] text-content-muted pt-1">
-                                    Ostatnia synchronizacja: {new Date(notionConfigStatus.lastFetchTime).toLocaleString()} ({notionConfigStatus.lastFetchStatus || 'Brak uwag'})
-                                </p>
-                            )}
                         </div>
                     </Card>
                 )}
