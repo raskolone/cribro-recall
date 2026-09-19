@@ -2302,3 +2302,58 @@ zmian kontraktu danych.
 Weryfikacja:
 - `npx tsc --noEmit` — 0 błędów.
 - `npm test` — 363/363 zielone.
+
+## 2026-09-19 — Claude Code / Sonnet 5
+
+Zadanie: Zlecenie opisywało reset konfiguracji Notion w stylu aplikacji
+Electron (electron-store, sqlite/pouchdb, userData) po migracji na nowy
+workspace „Maciej's space" — audyt i wyczyszczenie starych powiązań.
+
+Zrobione:
+- Audyt: Cribro nie jest aplikacją Electron — nie ma electron-store, sqlite
+  ani pouchdb. Konfiguracja Notion żyje w Firestore (`system/notion`,
+  odczyt/zapis w `server.ts` `getNotionConfig`/`/api/notion/save-config`),
+  z fallbackiem na `process.env`/`.env`.
+- Ustalono, że pełny mechanizm rozłączenia już istnieje i działa poprawnie:
+  `POST /api/notion/clear-config` (`server.ts:2404`) zeruje `process.env`,
+  dokument Firestore `system/notion` i `.env`; `handleClearNotionConfig`
+  (`components/settings/SettingsScreen.tsx:372`) resetuje cały stan UI do
+  `configured: false` bez ryzyka „Cannot read properties of undefined".
+  Maciej może po prostu kliknąć „Rozłącz" w Ustawieniach — nic nie trzeba
+  było tam zmieniać.
+- Znaleziono realną lukę: `functions/src/config.ts` miał zahardkodowane
+  stare ID baz Notion (`NOTION_LESSONS_DB`, `NOTION_STUDENTS_DB`) używane
+  przez `checkNotionDaily` (funkcja zaplanowana), niezależnie od
+  Firestore/UI. Na wyraźną prośbę Macieja wyzerowano obie stałe na `''`
+  (niewdrożone — czeka na `npm run deploy:functions` po ręcznym wpisaniu
+  nowych ID i potwierdzeniu, że integracja ma dostęp do nowych baz).
+- Zweryfikowano, że puste ID nie psują `checkNotionDaily` w sposób cichy:
+  `previewSync`→`queryDatabase`→`request()` rzuci błąd HTTP z Notion API,
+  złapany przez istniejący `try/catch` w `dailyCheck.ts`, który loguje
+  błąd i nie nadpisuje ostatniego dobrego wyniku w Firestore.
+
+Nie dokończone / do sprawdzenia:
+- `functions/src/config.ts`: `NOTION_LESSONS_DB`/`NOTION_STUDENTS_DB` są
+  puste — trzeba wpisać nowe ID z „Maciej's space" i zdeployować
+  (`npm run deploy:functions`), inaczej codzienna auto-synchronizacja
+  (`checkNotionDaily`) będzie się nie udawać co dzień o 6:00.
+- Firestore `system/notion` (produkcja) NIE został wyczyszczony przez tego
+  agenta — Maciej zdecydował, że zrobi to sam przez przycisk „Rozłącz" w
+  Ustawieniach zamiast przez skrypt.
+
+Decyzje architektoniczne:
+- Nie napisano żadnego skryptu `scripts/reset-notion-config.js` ani kodu
+  electron-store z oryginalnego zlecenia — nie istnieją w tym projekcie i
+  ich dodanie byłoby fikcyjną warstwą niepasującą do architektury
+  (patrz `CLAUDE.md` sekcja 2). Zamiast tego potwierdzono z Maciejem
+  rzeczywisty zakres przez `AskUserQuestion`.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji ani
+ścieżkach tokenowych bez logowania. Jedyna dotknięta stała
+(`functions/src/config.ts`) wpływa na zaplanowaną Cloud Function po
+kolejnym deployu — nieskonfigurowane ID zatrzymają `checkNotionDaily`
+z jawnym błędem w logu, nie cichym uszkodzeniem danych.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 363/363 zielone.

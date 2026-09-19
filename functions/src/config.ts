@@ -66,6 +66,12 @@ export const APP_URL = 'https://app.maciej.pro';
  * udostępnione integracji (w Notion: „...” → Connections → nazwa integracji),
  * inaczej API odpowiada 404 — Notion nie odróżnia „nie istnieje” od
  * „nie masz dostępu”.
+ *
+ * Puste od 2026-09-19: stary workspace został usunięty (migracja do
+ * „Maciej's space”). Stare ID wskazywałyby na nieistniejącą bazę i
+ * `checkNotionDaily` dostawałby 404 bez żadnego wyjaśnienia w logu — pusty
+ * string zamiast tego zatrzyma synchronizację jawnie. Wpisz tu nowe ID przed
+ * kolejnym `npm run deploy:functions`.
  */
-export const NOTION_LESSONS_DB = '5c6d910b-31b7-83b8-810c-0187aa513b51';
-export const NOTION_STUDENTS_DB = 'ca88a293-bd34-4cc7-b09e-f6bd3901ef96';
+export const NOTION_LESSONS_DB = '';
+export const NOTION_STUDENTS_DB = '';
