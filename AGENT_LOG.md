@@ -2553,3 +2553,72 @@ Weryfikacja:
 - `npx tsx scripts/migrate-notion-archive.ts` (bez `--apply`, bez env) —
   kończy się kontrolowanym komunikatem o brakującej zmiennej, zero
   zapisów.
+
+## 2026-09-19 — Claude Code / Sonnet 5 (5)
+
+Zadanie: Naprawić dwa zgłoszone problemy w
+[scripts/migrate-notion-archive.ts](scripts/migrate-notion-archive.ts)
+(z poprzedniej sesji, runda 37): (1) skrypt pracował na zamrożonym
+zrzucie z 16 września zamiast pobierać świeże dane z Notion, (2) skrypt
+wywalał się twardym błędem przy braku `FB_USER`.
+
+Zrobione:
+- [scripts/fetch_notion_dump.mjs](scripts/fetch_notion_dump.mjs)
+  przebudowany na eksportowaną funkcję `fetchNotionArchive(...)` (reszta
+  logiki pobierania/parsowania Notion bez zmian) — CLI (`node
+  scripts/fetch_notion_dump.mjs`) nadal działa identycznie, tylko przez
+  `isMainModule` guard woła tę samą funkcję.
+- [scripts/migrate-notion-archive.ts](scripts/migrate-notion-archive.ts):
+  `loadDump()` odpytuje Notion na żywo gdy `NOTION_API_KEY` jest
+  ustawiony, inaczej głośno ostrzega i spada do zrzutu z dysku z jego
+  datą w logu. Przepisany z klienckiego SDK (`signInWithEmailAndPassword`
+  wymagający `FB_USER`/`FB_PASS`) na `firebase-admin` (wzorzec
+  poświadczeń identyczny z `server.ts` — `FIREBASE_SERVICE_ACCOUNT` albo
+  ADC środowiska). `resolveTeacherIdentity()` szuka jedynego konta
+  admin/teacher w Firestore, potem `FB_USER`/`VITE_FIREBASE_ADMIN_UID`
+  jako literalny UID, a przy braku wyniku **nie przerywa działania** —
+  loguje ostrzeżenie i kontynuuje bez `migratedBy`.
+- CHANGELOG.md: nowa sekcja „runda 38" z pełnym opisem.
+
+Nie dokończone / do sprawdzenia:
+- Pełne uruchomienie na żywo (z realnym `NOTION_API_KEY` i
+  `FIREBASE_SERVICE_ACCOUNT`/ADC) nie było wykonane — w tym środowisku
+  brak obu, więc dry-run kończy się spodziewanym
+  `Could not load the default credentials` z Google Auth po wyczerpaniu
+  wszystkich ścieżek rozwiązania tożsamości lektora (co samo w sobie
+  potwierdza, że brak `FB_USER` już nie jest blokerem — skrypt dochodzi
+  dużo dalej niż poprzednio, zanim faktycznie brakujące poświadczenia
+  Firestore go zatrzymają).
+- `role in ['admin','teacher']` w `resolveTeacherIdentity()` to
+  zapytanie Firestore z operatorem `in` na pojedynczym polu — nie
+  weryfikowane na produkcyjnej bazie w tej sesji (brak poświadczeń
+  lokalnie), teoretycznie nie wymaga indeksu złożonego, ale warto
+  potwierdzić przy pierwszym realnym uruchomieniu.
+
+Decyzje architektoniczne:
+- Logika pobierania Notion żyje wyłącznie w `fetch_notion_dump.mjs`
+  (eksportowana funkcja) — `migrate-notion-archive.ts` ją importuje
+  zamiast duplikować pipeline (CLAUDE.md §4).
+- `FB_USER`/`VITE_FIREBASE_ADMIN_UID` zmieniły znaczenie: to już nie są
+  poświadczenia logowania (email/hasło), tylko opcjonalny, jawnie podany
+  UID do oznaczenia migracji — zgodnie z literalnym zleceniem, które
+  mówiło o „identyfikatorze lektora", nie o loginie.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji ani
+ścieżkach tokenowych bez logowania. Skrypt teraz pisze przez
+`firebase-admin`, które **omija reguły bezpieczeństwa Firestore** —
+większa siła rażenia niż poprzednia wersja (klucz SDK + logowanie jako
+konkretny użytkownik podlegające `firestore.rules`). Ryzyko ograniczone
+przez to, że zapis nadal wymaga jawnego `--apply` i realnych poświadczeń
+(`FIREBASE_SERVICE_ACCOUNT`/ADC), których nikt przypadkiem nie ustawi.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 365/365 zielone.
+- `npx tsx scripts/migrate-notion-archive.ts` (dry-run, bez env) —
+  potwierdzony brak crashu na samym braku `FB_USER`; poprawny spadek do
+  zrzutu z ostrzeżeniem o dacie; jedyny błąd końcowy to oczekiwany brak
+  poświadczeń Google w tym środowisku.
+- `node scripts/fetch_notion_dump.mjs` (bez `NOTION_API_KEY`) — kończy
+  się czytelnym błędem zamiast cichego zawieszenia, CLI-owe zachowanie
+  zachowane.

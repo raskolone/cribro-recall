@@ -198,6 +198,24 @@ we dwoje na żywo.
 
 ---
 
+### 🔧 Skrypt migracji Notion: pobieranie na żywo zamiast zamrożonego zrzutu, koniec zależności od FB_USER (2026-09-19, runda 38)
+
+**Zgłoszone problemy:** `scripts/migrate-notion-archive.ts` (runda 37) pracował na zamrożonym zrzucie z 16 września (nowe lekcje/kursanci dopisani w Notion od tamtej pory były niewidoczne) i wywalał się twardym błędem, gdy `FB_USER` nie był ustawiony w środowisku.
+
+**1. Pobieranie live z Notion API (`scripts/fetch_notion_dump.mjs`, `scripts/migrate-notion-archive.ts`):**
+- `fetch_notion_dump.mjs` przebudowany na eksportowaną funkcję `fetchNotionArchive({ token, studentsDbId?, lessonsDbId?, onProgress? })` — cała logika pobierania/paginacji/rate-limitu/parsowania stron Notion żyje teraz w jednym miejscu; oryginalne CLI (`node scripts/fetch_notion_dump.mjs` → zapis `notion_migration_dump.json`) działa bez zmian, tylko woła tę samą funkcję pod strażą `isMainModule`.
+- `migrate-notion-archive.ts` → `loadDump()`: jeśli `NOTION_API_KEY` jest ustawiony, woła `fetchNotionArchive` na żywo i pracuje na stanie bazy z chwili uruchomienia (opcjonalne nadpisanie ID baz przez `NOTION_STUDENTS_DB_ID` / `NOTION_LESSONS_DB_ID`). Bez klucza — głośne ostrzeżenie i spadek do `notion_migration_dump.json` z datą zrzutu w logu, żeby nie było wątpliwości, że dane mogą być nieaktualne.
+- Żelazna zasada deduplikacji (e-mail LUB imię i nazwisko → `[SKIP]`, dopisywanie tylko brakujących po dacie lekcji) — bez zmian.
+
+**2. Koniec twardej zależności od `FB_USER` (`migrate-notion-archive.ts`):**
+- Skrypt przepisany z klienckiego SDK Firebase (`signInWithEmailAndPassword`, wymagający `FB_USER`/`FB_PASS`) na **firebase-admin** — ten sam wzorzec poświadczeń co `server.ts` (`FIREBASE_SERVICE_ACCOUNT` w .env, w innym wypadku Application Default Credentials środowiska). Zapis do Firestore przez Admin SDK omija reguły bezpieczeństwa, więc logowanie jako konkretny lektor przestało być potrzebne do działania skryptu.
+- `resolveTeacherIdentity()`: jeśli w kolekcji `users` istnieje dokładnie jedno konto o roli `admin`/`teacher`, jego UID jest wybierany automatycznie. Przy 0 lub >1 dopasowaniach skrypt sprawdza `FB_USER` lub `VITE_FIREBASE_ADMIN_UID` z .env jako **literalny UID** (nie e-mail/hasło). Gdy żadna ścieżka nie da wyniku, skrypt **nie przerywa działania** — loguje ostrzeżenie i kontynuuje bez znacznika `migratedBy` (nowe, opcjonalne pole zapisywane na utworzonych rekordach kursanta/lekcji, gdy tożsamość lektora jest znana).
+- Log: `Migracja dla lektora UID: <uid> (<email>)` przy udanym rozwiązaniu.
+
+**3. Weryfikacja:** `npx tsc --noEmit` (0 błędów), `npm test` (365/365). Dry-run bez `FB_USER`/`FIREBASE_SERVICE_ACCOUNT`/`NOTION_API_KEY` w tym środowisku potwierdza: brak crashu na samym braku `FB_USER` (ostrzeżenie + kontynuacja), poprawny spadek do zrzutu z ostrzeżeniem o dacie; jedyny błąd końcowy to spodziewany brak poświadczeń Google (`Could not load the default credentials`) — do uzupełnienia przez `FIREBASE_SERVICE_ACCOUNT` w .env albo `gcloud auth application-default login` przy faktycznym uruchomieniu z `--apply`. Pełne uruchomienie live (z realnym `NOTION_API_KEY` i poświadczeniami zapisu) nie było wykonane w tej sesji.
+
+---
+
 ### 🔧 Domyślnie zwinięte bloki historii lekcji, uproszczenie ustawień Notion do samej transkrypcji, skrypt migracji archiwum (2026-09-19, runda 37)
 
 **1. Domyślnie zwinięte akordeony w historii lekcji (UI polish):**
