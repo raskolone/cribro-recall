@@ -35,6 +35,19 @@ export function validateScenarioModelOutput(parsed: ScenarioModelOutput | null |
         throw new Error(`Moduł "${expectedId}" zawiera pusty punkt.`);
       }
     }
+
+    if (expectedId === 'main_topic') {
+      if (!Array.isArray(mod.teacherNotes) || mod.teacherNotes.length < 1) {
+        throw new Error('Moduł "main_topic" musi mieć co najmniej jedną wskazówkę ratunkową (teacherNotes).');
+      }
+      for (const note of mod.teacherNotes) {
+        if (!note || !String(note).trim()) {
+          throw new Error('Moduł "main_topic" zawiera pustą wskazówkę ratunkową (teacherNotes).');
+        }
+      }
+    } else if (mod.teacherNotes !== undefined && !Array.isArray(mod.teacherNotes)) {
+      throw new Error(`Moduł "${expectedId}" ma nieprawidłowy format teacherNotes.`);
+    }
   }
 }
 
@@ -56,6 +69,7 @@ export function buildLessonScenario(
       id: makeId(),
       text: item.text.trim(),
     })),
+    ...(mod.teacherNotes ? { teacherNotes: mod.teacherNotes.map((note) => note.trim()) } : {}),
   }));
 
   return {

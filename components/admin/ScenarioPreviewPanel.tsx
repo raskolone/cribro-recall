@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, X, Wand2, Save, Trash2, AlertTriangle, Clock, Target } from 'lucide-react';
+import { Sparkles, X, Wand2, Save, Trash2, AlertTriangle, Clock, Target, LifeBuoy } from 'lucide-react';
 import { useScenarioGenerator } from '../../hooks/useScenarioGenerator';
 import { ScenarioDurationMin, ScenarioModuleId } from '../../types/scenario';
 import Button from '../ui/Button';
@@ -129,6 +129,18 @@ export const ScenarioPreviewPanel: React.FC<ScenarioPreviewPanelProps> = ({ stud
                       </li>
                     ))}
                   </ul>
+                  {mod.moduleId === 'main_topic' && mod.teacherNotes && mod.teacherNotes.length > 0 && (
+                    <div className="mt-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/25">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-300 mb-1.5">
+                        <LifeBuoy size={12} /> Wskazówki ratunkowe (dla lektora)
+                      </div>
+                      <ul className="space-y-1 list-disc list-inside">
+                        {mod.teacherNotes.map((note, idx) => (
+                          <li key={idx} className="text-[11px] text-amber-100/80">{note}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

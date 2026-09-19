@@ -482,6 +482,18 @@ function validateScenarioModelOutput(parsed) {
         throw new Error(`Modu\u0142 "${expectedId}" zawiera pusty punkt.`);
       }
     }
+    if (expectedId === "main_topic") {
+      if (!Array.isArray(mod.teacherNotes) || mod.teacherNotes.length < 1) {
+        throw new Error('Modu\u0142 "main_topic" musi mie\u0107 co najmniej jedn\u0105 wskaz\xF3wk\u0119 ratunkow\u0105 (teacherNotes).');
+      }
+      for (const note of mod.teacherNotes) {
+        if (!note || !String(note).trim()) {
+          throw new Error('Modu\u0142 "main_topic" zawiera pust\u0105 wskaz\xF3wk\u0119 ratunkow\u0105 (teacherNotes).');
+        }
+      }
+    } else if (mod.teacherNotes !== void 0 && !Array.isArray(mod.teacherNotes)) {
+      throw new Error(`Modu\u0142 "${expectedId}" ma nieprawid\u0142owy format teacherNotes.`);
+    }
   }
 }
 function buildLessonScenario(parsed, opts, makeId) {
@@ -493,7 +505,8 @@ function buildLessonScenario(parsed, opts, makeId) {
     items: mod.items.map((item) => ({
       id: makeId(),
       text: item.text.trim()
-    }))
+    })),
+    ...mod.teacherNotes ? { teacherNotes: mod.teacherNotes.map((note) => note.trim()) } : {}
   }));
   return {
     id: makeId(),
@@ -4892,6 +4905,8 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
+  const SCENARIO_DIDACTIC_MODEL = "gemini-2.5-pro";
+  const SCENARIO_FORMATTING_MODEL = "gemini-2.5-flash";
   function isCompletedLessonRecord(data) {
     if (!data) return false;
     if (data.status === "pending_confirmation" || data.status === "rejected") return false;
@@ -4921,6 +4936,8 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       if (!cefr) {
         return res.status(400).json({ error: "insufficient-profile" });
       }
+      const goals = String(studentData.goals || "").trim();
+      const industry = String(studentData.industry || "").trim();
       let lastLesson = null;
       try {
         const recordsSnap = await adminDb.collection("users").doc(studentId).collection("lessonRecords").orderBy("date", "desc").limit(10).get();
@@ -4936,30 +4953,52 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       }
       const mode = lastLesson ? "returning" : "cold_start";
       const lastLessonContext = lastLesson ? `Temat ostatniej lekcji: ${lastLesson.topic || "brak"}
+Konkretne sytuacje zawodowe poruszone na lekcji: ${lastLesson.summary || lastLesson.topic || "brak"}
 S\u0142ownictwo z ostatniej lekcji: ${lastLesson.vocabularyText || "brak"}
-Korekty/b\u0142\u0119dy z ostatniej lekcji: ${lastLesson.corrections || lastLesson.thingsToImprove || "brak"}
-Plan na kolejn\u0105 lekcj\u0119 (z poprzedniej notatki): ${lastLesson.nextLessonPlan || lastLesson.suggestedFollowUp || "brak"}` : "Brak historii lekcji tego kursanta \u2014 to pierwszy scenariusz.";
-      const errorWorkInstruction = mode === "returning" ? 'modu\u0142 "error_work" musi skupia\u0107 si\u0119 na powt\xF3rce i utrwaleniu b\u0142\u0119d\xF3w oraz s\u0142ownictwa z OSTATNIEJ lekcji kursanta (patrz kontekst ni\u017Cej) \u2014 konkretne zdania do poprawy/prze\u0107wiczenia tych b\u0142\u0119d\xF3w.' : 'kursant nie ma jeszcze historii lekcji, wi\u0119c modu\u0142 "error_work" zamienia si\u0119 w \u0107wiczenia DIAGNOSTYCZNE \u2014 zadania sprawdzaj\u0105ce realny poziom kursanta wzgl\u0119dem deklarowanego CEFR (np. kr\xF3tkie zadania na czas, struktury gramatyczne i s\u0142ownictwo typowe dla tego poziomu).';
-      const prompt = `Jeste\u015B metodykiem j\u0119zyka angielskiego uk\u0142adaj\u0105cym scenariusz lekcji 1:1 dla lektora.
+DOK\u0141ADNE b\u0142\u0119dy/korekty z ostatniej lekcji (do recyklingu): ${lastLesson.corrections || lastLesson.thingsToImprove || "brak"}
+Plan/kierunek na kolejn\u0105 lekcj\u0119 (z poprzedniej notatki): ${lastLesson.nextLessonPlan || lastLesson.suggestedFollowUp || "brak"}` : "Brak historii lekcji tego kursanta \u2014 to pierwszy scenariusz (cold_start).";
+      const profileContext = `Poziom CEFR: ${cefr}
+Bran\u017Ca / kontekst zawodowy: ${industry || "brak danych \u2014 nie zgaduj konkretnej bran\u017Cy, trzymaj si\u0119 og\xF3lnego kontekstu zawodowego"}
+Cele edukacyjne/zawodowe kursanta: ${goals || "brak danych"}
+Preferencje korekty b\u0142\u0119d\xF3w: brak wyodr\u0119bnionego pola w profilu \u2014 koryguj na bie\u017C\u0105co w module "error_work", bez nachalno\u015Bci w pozosta\u0142ych modu\u0142ach`;
+      const errorWorkInstruction = mode === "returning" ? 'modu\u0142 "error_work" musi \u0107wiczy\u0107 DOK\u0141ADNIE te b\u0142\u0119dy i to s\u0142ownictwo, kt\xF3re pad\u0142y na OSTATNIEJ lekcji kursanta (patrz kontekst ni\u017Cej) \u2014 konkretne zdania/sytuacje do poprawy, nie og\xF3lna gramatyka.' : 'kursant nie ma jeszcze historii lekcji, wi\u0119c modu\u0142 "error_work" zamienia si\u0119 w \u0107wiczenia DIAGNOSTYCZNE \u2014 kr\xF3tkie zadania sprawdzaj\u0105ce realny poziom wzgl\u0119dem deklarowanego CEFR.';
+      const didacticPrompt = `Jeste\u015B do\u015Bwiadczonym metodykiem j\u0119zyka angielskiego (1:1, kursy zawodowe), uk\u0142adaj\u0105cym scenariusz KONKRETNEJ lekcji dla konkretnego lektora i konkretnego kursanta. Nie piszesz podr\u0119cznika ani ankiety ewaluacyjnej \u2014 piszesz notatki robocze dla lektora, kt\xF3ry za chwil\u0119 usi\u0105dzie z t\u0105 osob\u0105.
 
-Poziom CEFR kursanta: ${cefr}
-D\u0142ugo\u015B\u0107 lekcji: ${durationMin} minut
-Tryb: ${mode === "returning" ? "kursant powracaj\u0105cy (returning)" : "pierwszy kontakt / brak historii (cold_start)"}
+PROFIL KURSANTA:
+${profileContext}
 
-Kontekst z poprzedniej lekcji:
+KONTEKST Z OSTATNIEJ LEKCJI:
 ${lastLessonContext}
 
-Zbuduj scenariusz lekcji z DOK\u0141ADNIE czterema modu\u0142ami, w tej kolejno\u015Bci: "warmup_followup", "error_work", "main_topic", "wrapup_feedback".
-- "warmup_followup": rozgrzewka i nawi\u0105zanie do poprzedniej lekcji (pytania konwersacyjne).
-- "error_work": ${errorWorkInstruction}
-- "main_topic": g\u0142\xF3wny temat lekcji, dopasowany do poziomu ${cefr} \u2014 nowe s\u0142ownictwo, struktury, pytania do dyskusji.
-- "wrapup_feedback": podsumowanie, feedback dla kursanta, zapowied\u017A pracy domowej.
+PARAMETRY LEKCJI:
+D\u0142ugo\u015B\u0107: ${durationMin} minut
+Tryb: ${mode === "returning" ? "kursant powracaj\u0105cy (returning)" : "pierwszy kontakt / brak historii (cold_start)"}
 
-Dla ka\u017Cdego modu\u0142u podaj:
-- "objective": jednozdaniowy cel modu\u0142u po polsku,
-- "items": list\u0119 1-6 konkretnych punkt\xF3w (pyta\u0144, \u0107wicze\u0144, zwrot\xF3w) do realizacji \u2014 ka\u017Cdy jako zwi\u0119z\u0142y, samodzielny tekst.
+TEST NATURALNO\u015ACI (obowi\u0105zkowy, sprawd\u017A ka\u017Cde zdanie przed oddaniem odpowiedzi):
+- Ka\u017Cde pytanie i polecenie musi brzmie\u0107 jak \u017Cywa rozmowa dw\xF3ch ludzi, NIGDY jak formularz ewaluacyjny, ankieta HR ani lista kontrolna.
+- Zakazane s\u0142owa-klucze i ich polskie odpowiedniki (nie u\u017Cywaj ich w og\xF3le): "headspace", "bandwidth", "leverage", "facilitate", "synergy", "touch base", "circle back", "actionable", "streamline", "usprawni\u0107", "wdro\u017Cy\u0107 synergi\u0119", "przestrze\u0144 mentaln\u0105".
+- Je\u015Bli zdanie brzmi jak co\u015B, co powiedzia\u0142by dzia\u0142 HR albo konsultant, przepisz je jak zwyk\u0142\u0105 rozmow\u0119 przy kawie.
 
-NIE podawaj czas\xF3w trwania ani identyfikator\xF3w \u2014 to ustala backend. Zwr\xF3\u0107 wy\u0142\u0105cznie tre\u015B\u0107 modu\u0142\xF3w.`;
+STRUKTURA (dok\u0142adnie 4 bloki, w tej kolejno\u015Bci):
+
+1. WARM-UP / FOLLOW-UP \u2014 rozgrzewka zakotwiczona w KONKRETNYM dniu i konkretnym do\u015Bwiadczeniu kursanta (np. nawi\u0105zanie do sytuacji z ostatniej lekcji, konkretnego wydarzenia w pracy, konkretnego dnia tygodnia). Nigdy og\xF3lnikowe "How was your week?" ani "How are you?" bez punktu zaczepienia.
+
+2. PRACA NA B\u0141\u0118DACH \u2014 ${errorWorkInstruction} Podaj konkretne zdania/sytuacje do prze\u0107wiczenia, odwo\u0142uj\u0105ce si\u0119 wprost do b\u0142\u0119d\xF3w i s\u0142ownictwa z kontekstu wy\u017Cej (nie wymy\u015Blaj nowych, niepowi\u0105zanych b\u0142\u0119d\xF3w).
+
+3. G\u0141\xD3WNY TEMAT \u2014 dok\u0142adnie JEDNA konkretna sytuacja z pracy kursanta (np. konkretna linia produkcyjna, konkretny wska\u017Anik/proces, konkretna eskalacja problemu, konkretne spotkanie) \u2014 nie og\xF3lny temat bran\u017Cowy. Rozwi\u0144 j\u0105 w pytania i zadania na poziomie ${cefr}. Dodatkowo przygotuj DLA LEKTORA sekcj\u0119 "Wskaz\xF3wki ratunkowe" \u2014 2-4 prostsze, awaryjne pytania/podpowiedzi na wypadek, gdyby kursant odpowiedzia\u0142 jednym s\u0142owem albo utkn\u0105\u0142 i milcza\u0142. Te wskaz\xF3wki s\u0105 dla lektora, nie dla kursanta.
+
+4. PODSUMOWANIE I FEEDBACK \u2014 kr\xF3tkie podsumowanie lekcji, konkretny feedback dla kursanta, zapowied\u017A pracy domowej nawi\u0105zuj\u0105ca do tematu g\u0142\xF3wnego.
+
+Dla ka\u017Cdego z 4 blok\xF3w podaj jednozdaniowy cel oraz list\u0119 1-6 konkretnych, samodzielnych punkt\xF3w (pyta\u0144/\u0107wicze\u0144/zwrot\xF3w) do realizacji na \u017Cywo. Nie podawaj czas\xF3w trwania ani identyfikator\xF3w. Odpowiedz zwyk\u0142ym tekstem, jasno opisuj\u0105c bloki po kolei \u2014 o formatowanie do JSON zadba kolejny etap.`;
+      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+      const didacticResponse = await generateContentWithRetry(
+        ai,
+        didacticPrompt,
+        {},
+        [SCENARIO_DIDACTIC_MODEL, ...GEMINI_MODEL_CASCADE]
+      );
+      if (!didacticResponse.text) throw new Error("Brak odpowiedzi z modelu dydaktycznego AI.");
+      const didacticText = String(didacticResponse.text).trim();
       const schema = {
         type: Type.OBJECT,
         properties: {
@@ -4977,6 +5016,10 @@ NIE podawaj czas\xF3w trwania ani identyfikator\xF3w \u2014 to ustala backend. Z
                     properties: { text: { type: Type.STRING } },
                     required: ["text"]
                   }
+                },
+                teacherNotes: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING }
                 }
               },
               required: ["moduleId", "objective", "items"]
@@ -4985,12 +5028,23 @@ NIE podawaj czas\xF3w trwania ani identyfikator\xF3w \u2014 to ustala backend. Z
         },
         required: ["modules"]
       };
-      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-      const response = await generateContentWithRetry(ai, prompt, {
-        responseMimeType: "application/json",
-        responseSchema: schema
-      }, GEMINI_MODEL_CASCADE);
-      if (!response.text) throw new Error("Brak odpowiedzi z modelu AI.");
+      const formattingPrompt = `Poni\u017Cej jest gotowy merytorycznie scenariusz lekcji, u\u0142o\u017Cony przez metodyka. Twoje jedyne zadanie: przepisa\u0107 go WIERNIE (bez zmiany tre\u015Bci, bez skracania, bez parafrazowania) na struktur\u0119 JSON zgodn\u0105 ze schematem.
+
+Zasady przepisania:
+- DOK\u0141ADNIE 4 modu\u0142y w tej kolejno\u015Bci: "warmup_followup", "error_work", "main_topic", "wrapup_feedback".
+- Ka\u017Cdy modu\u0142: "objective" (jednozdaniowy cel z tekstu), "items" (1-6 punkt\xF3w \u2014 ka\u017Cdy punkt jako osobny, samodzielny tekst, bez numeracji i bez markdown).
+- Modu\u0142 "main_topic" musi mie\u0107 dodatkowo "teacherNotes": list\u0119 wskaz\xF3wek ratunkowych dla lektora z tekstu (sekcja "Wskaz\xF3wki ratunkowe") \u2014 je\u015Bli tekst nie nazywa ich wprost, wyodr\u0119bnij zdania, kt\xF3re pe\u0142ni\u0105 t\u0119 funkcj\u0119.
+- Nie dodawaj w\u0142asnej tre\u015Bci, nie koryguj merytoryki \u2014 tylko formatowanie.
+
+SCENARIUSZ DO PRZEPISANIA:
+${didacticText}`;
+      const response = await generateContentWithRetry(
+        ai,
+        formattingPrompt,
+        { responseMimeType: "application/json", responseSchema: schema },
+        [SCENARIO_FORMATTING_MODEL, ...GEMINI_MODEL_CASCADE]
+      );
+      if (!response.text) throw new Error("Brak odpowiedzi z modelu formatuj\u0105cego AI.");
       let cleanText = String(response.text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
       const parsed = JSON.parse(cleanText);
       validateScenarioModelOutput(parsed);

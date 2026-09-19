@@ -9,6 +9,7 @@ function validModel() {
       moduleId,
       objective: `Cel modułu ${moduleId}`,
       items: [{ text: `Punkt 1 dla ${moduleId}` }, { text: `Punkt 2 dla ${moduleId}` }],
+      ...(moduleId === 'main_topic' ? { teacherNotes: ['Wskazówka ratunkowa 1', 'Wskazówka ratunkowa 2'] } : {}),
     })),
   };
 }
@@ -67,6 +68,33 @@ test('validateScenarioModelOutput odrzuca pusty tekst punktu', () => {
   const modules = validModel().modules;
   modules[3].items = [{ text: '' }];
   assert.throws(() => validateScenarioModelOutput({ modules }));
+});
+
+test('validateScenarioModelOutput odrzuca brak teacherNotes w module main_topic', () => {
+  const modules = validModel().modules;
+  const mainTopic = modules.find((m) => m.moduleId === 'main_topic')!;
+  delete (mainTopic as any).teacherNotes;
+  assert.throws(() => validateScenarioModelOutput({ modules }));
+});
+
+test('validateScenarioModelOutput odrzuca pustą wskazówkę ratunkową w main_topic', () => {
+  const modules = validModel().modules;
+  const mainTopic = modules.find((m) => m.moduleId === 'main_topic')!;
+  (mainTopic as any).teacherNotes = ['   '];
+  assert.throws(() => validateScenarioModelOutput({ modules }));
+});
+
+test('buildLessonScenario przepisuje teacherNotes modułu main_topic', () => {
+  const scenario = buildLessonScenario(
+    validModel(),
+    { studentId: 'student-3', durationMin: 45, mode: 'returning', generatedAt: '2026-09-19T10:00:00.000Z' },
+    () => 'x'
+  );
+  const mainTopic = scenario.modules.find((m) => m.moduleId === 'main_topic')!;
+  assert.deepEqual(mainTopic.teacherNotes, ['Wskazówka ratunkowa 1', 'Wskazówka ratunkowa 2']);
+
+  const warmup = scenario.modules.find((m) => m.moduleId === 'warmup_followup')!;
+  assert.equal(warmup.teacherNotes, undefined);
 });
 
 test('buildLessonScenario nadaje czasy z budżetu i unikalne ID punktom', () => {

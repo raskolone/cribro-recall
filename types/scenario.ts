@@ -60,6 +60,12 @@ export interface ScenarioModelModule {
   moduleId: ScenarioModuleId;
   objective: string;
   items: ScenarioModelItem[];
+  /**
+   * Wskazówki ratunkowe dla lektora (rescue prompts) — wyłącznie dla modułu
+   * "main_topic": alternatywne, prostsze pytania na wypadek, gdy kursant
+   * odpowie jednym słowem lub utknie na temacie.
+   */
+  teacherNotes?: string[];
 }
 
 /** Dokładnie to, co ma zwrócić Gemini: 4 moduły w stałej kolejności, bez metadanych czasowych. */
@@ -80,6 +86,8 @@ export interface ScenarioModule {
   objective: string;
   durationMin: number;
   items: ScenarioItem[];
+  /** Patrz `ScenarioModelModule.teacherNotes` — przepisane bez zmian z modelu. */
+  teacherNotes?: string[];
 }
 
 export interface LessonScenario {

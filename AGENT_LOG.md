@@ -2728,3 +2728,66 @@ Decyzje architektoniczne:
 Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji ani
 ścieżkach tokenowych bez logowania. Nowe endpointy tylko *używają*
 `requireFirebaseAuth`, nie modyfikują go.
+
+2026-09-19 — Claude Code / Sonnet 5
+
+Zadanie: Wdrożenie 2-etapowego potoku Gemini ("The Cribro Method") w
+Generatorze Scenariusza 2.0 (Etap 2.1), zgodnie z podanym poleceniem dla
+"Coder 3". Kontrakt/typy/walidacja/UI z Etapu 2.1 istniały już z
+poprzedniej rundy tego samego dnia (zob. wpis wyżej) — potok był
+jednoetapowy (jedno wywołanie Gemini z responseSchema).
+
+Zrobione:
+- `server.ts` (`POST /api/scenario/generate`): rozbito na Etap 1
+  (dydaktyczny, wolny tekst, bez responseSchema — pełny profil kursanta
+  `level`/`industry`/`goals`, bogatszy kontekst ostatniej lekcji, rygor
+  "Test Naturalności" z listą zakazanych korpo-słów, warm-up zakotwiczony
+  w konkretnym dniu, main_topic zredukowany do JEDNEJ sytuacji zawodowej
+  + wskazówki ratunkowe) i Etap 2 (formatujący, responseSchema — wierne
+  przepisanie Etapu 1 na JSON kontraktu).
+- Nowe stałe `SCENARIO_DIDACTIC_MODEL`/`SCENARIO_FORMATTING_MODEL` w
+  `server.ts`, domyślnie `gemini-2.5-pro`/`gemini-2.5-flash` — patrz
+  decyzja niżej. Obie kaskady wywołań to wyłącznie Gemini
+  (`GEMINI_MODEL_CASCADE` jako fallback), zero OpenAI.
+- `types/scenario.ts`: nowe opcjonalne `teacherNotes?: string[]` na
+  `ScenarioModelModule`/`ScenarioModule`.
+- `utils/scenarioValidation.ts`: `validateScenarioModelOutput` wymaga
+  niepustych `teacherNotes` wyłącznie dla modułu `main_topic`;
+  `buildLessonScenario` przepisuje pole 1:1.
+- `components/admin/ScenarioPreviewPanel.tsx`: nowy panel "Wskazówki
+  ratunkowe (dla lektora)" pod punktami modułu `main_topic`.
+- `tests/scenario.test.ts`: +3 testy (brak/pusty teacherNotes w
+  main_topic, przepisanie przez buildLessonScenario bez wycieku do
+  innych modułów).
+- `CHANGELOG.md` — sekcja S.
+
+Nie dokończone / do sprawdzenia:
+- Potok NIE był wołany na żywo na kluczu Gemini — brak dostępu do
+  skonfigurowanych kluczy i zalogowanej sesji w tej sesji agenta. W
+  szczególności nie zweryfikowano, czy Etap 2 zawsze poprawnie wyciąga
+  teacherNotes z wolnego tekstu Etapu 1 na żywym modelu (tylko logika
+  promptu + walidacja backendu, przetestowane jednostkowo na sztucznych
+  danych).
+- `npx tsc --noEmit` (0 błędów), `npm test` (390/390, +3 nowe),
+  `npm run build` — wszystko przeszło.
+
+Decyzje architektoniczne:
+- Zlecenie wskazywało dosłownie modele `gemini-1.5-pro`/`gemini-1.5-flash`.
+  Ta rodzina jest wygaszana przez Google i nie istnieje w jedynym źródle
+  prawdy modeli w repo (`services/aiModels.ts`, kaskada 2.5/3.8) — użycie
+  jej dosłownie groziło realnym błędem 404/deprecated w produkcji.
+  Zapytałem Macieja wprost: wybrał "zrób obie nazwy konfigurowalne" — więc
+  stałe `SCENARIO_DIDACTIC_MODEL`/`SCENARIO_FORMATTING_MODEL` są nazwane i
+  łatwe do podmiany, domyślnie ustawione na aktualne odpowiedniki
+  (`gemini-2.5-pro`/`gemini-2.5-flash`), z komentarzem uzasadniającym.
+- Zlecenie zakładało pole profilu "preferencje korekty błędów" — nie
+  istnieje w `User` (`types.ts`). Nie dodałem nowego pola na chybcika;
+  prompt Etapu 1 jawnie mówi modelowi, że tych danych brakuje, i każe mu
+  korygować błędy w module `error_work` bez nachalności gdzie indziej.
+  Jeśli lektorzy realnie tego potrzebują, wymaga to osobnej decyzji (nowe
+  pole w profilu + UI do jego edycji w `SettingsScreen`/karcie kursanta).
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji
+(`requireFirebaseAuth`/`requireFirebaseAdmin`) ani ścieżkach tokenowych
+bez logowania. Endpointy istniały już wcześniej, autoryzacja
+niezmieniona.
