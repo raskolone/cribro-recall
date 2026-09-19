@@ -363,6 +363,75 @@ function normalizeImportedLessons(payload, options) {
   );
 }
 
+// utils/studentImportNormalize.ts
+var asText3 = (value) => typeof value === "string" ? value : value == null ? "" : String(value);
+var asStringArray = (value) => Array.isArray(value) ? value.map(asText3).map((s) => s.trim()).filter(Boolean) : [];
+var CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"];
+var asCefrLevel = (value) => {
+  const text = asText3(value).trim().toUpperCase();
+  return CEFR_LEVELS.includes(text) ? text : void 0;
+};
+var EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function normalizeLessonImportDate(rawDate, today) {
+  const text = asText3(rawDate).trim();
+  if (!text) return { date: today, ambiguous: true };
+  const hasFourDigitYear = /\b\d{4}\b/.test(text);
+  const normalized = normalizeLessonDate(text, today);
+  return { date: normalized, ambiguous: !hasFourDigitYear };
+}
+function normalizeParsedLessons(payload, today) {
+  const raw = Array.isArray(payload) ? payload : [];
+  return raw.filter((lesson) => lesson && typeof lesson === "object").map((lesson) => {
+    const { date, ambiguous } = normalizeLessonImportDate(lesson.date, today);
+    return {
+      date,
+      dateAmbiguous: Boolean(lesson.dateAmbiguous) || ambiguous,
+      summary: asText3(lesson.summary).trim(),
+      vocabulary: asStringArray(lesson.vocabulary),
+      corrections: asStringArray(lesson.corrections)
+    };
+  }).filter(
+    (lesson) => lesson.summary || lesson.vocabulary.length > 0 || lesson.corrections.length > 0
+  );
+}
+function normalizeStudentImportAnalysis(payload, today) {
+  const raw = payload && typeof payload === "object" ? payload : {};
+  const rawExtracted = raw.extractedData && typeof raw.extractedData === "object" ? raw.extractedData : {};
+  const fullName = asText3(rawExtracted.fullName).trim() || void 0;
+  const emailCandidate = asText3(rawExtracted.email).trim().toLowerCase();
+  const email = EMAIL_REGEX.test(emailCandidate) ? emailCandidate : void 0;
+  const level = asCefrLevel(rawExtracted.level);
+  const historicalLessons = normalizeParsedLessons(rawExtracted.historicalLessons, today);
+  const missingFields = [];
+  if (!fullName) {
+    missingFields.push({ field: "fullName", label: "Imi\u0119 i nazwisko kursanta", severity: "critical" });
+  }
+  if (!email) {
+    missingFields.push({ field: "email", label: "Adres e-mail kursanta", severity: "critical" });
+  }
+  if (!level) {
+    missingFields.push({ field: "level", label: "Poziom zaawansowania (CEFR)", severity: "warning" });
+  }
+  if (historicalLessons.some((l) => l.dateAmbiguous)) {
+    missingFields.push({ field: "lessonDates", label: "Niepewne daty lekcji do weryfikacji", severity: "warning" });
+  }
+  const hasCritical = missingFields.some((f) => f.severity === "critical");
+  return {
+    status: hasCritical ? "NEEDS_REVIEW" : "READY",
+    extractedData: {
+      fullName,
+      email,
+      level,
+      targetGoals: asText3(rawExtracted.targetGoals).trim() || void 0,
+      industry: asText3(rawExtracted.industry).trim() || void 0,
+      generalNotes: asText3(rawExtracted.generalNotes).trim() || void 0,
+      historicalLessons
+    },
+    missingFields,
+    aiComment: asText3(raw.aiComment).trim() || "Model nie doda\u0142 podsumowania."
+  };
+}
+
 // utils/exerciseShuffle.ts
 function shuffleArray(items, random = Math.random) {
   const result = [...items];
@@ -682,14 +751,14 @@ var buildCoreSystemPrompt = () => [ASSISTANT_IDENTITY, NATURALNESS_RULES, ANTI_P
 
 // functions/src/homeworkV2/exerciseGenerator.ts
 var isNonEmptyString2 = (value) => typeof value === "string" && value.trim().length > 0;
-var asStringArray = (value) => Array.isArray(value) ? value.filter((v) => typeof v === "string" && v.trim().length > 0) : [];
+var asStringArray2 = (value) => Array.isArray(value) ? value.filter((v) => typeof v === "string" && v.trim().length > 0) : [];
 var parseDraft = (raw, fallbackType) => {
   if (!raw || typeof raw !== "object") return null;
   const d = raw;
   if (!isNonEmptyString2(d.content)) return null;
   if (!isNonEmptyString2(d.modelAnswer)) return null;
   if (!isNonEmptyString2(d.learningObjective)) return null;
-  const requiredMaterial = asStringArray(d.requiredMaterial);
+  const requiredMaterial = asStringArray2(d.requiredMaterial);
   if (requiredMaterial.length === 0) return null;
   return {
     exerciseType: isNonEmptyString2(d.exerciseType) ? d.exerciseType : fallbackType,
@@ -697,9 +766,9 @@ var parseDraft = (raw, fallbackType) => {
     content: String(d.content).trim(),
     instruction: isNonEmptyString2(d.instruction) ? String(d.instruction).trim() : "",
     modelAnswer: String(d.modelAnswer).trim(),
-    acceptedVariants: asStringArray(d.acceptedVariants),
+    acceptedVariants: asStringArray2(d.acceptedVariants),
     requiredMaterial,
-    commonMistakes: asStringArray(d.commonMistakes),
+    commonMistakes: asStringArray2(d.commonMistakes),
     hintSmall: isNonEmptyString2(d.hintSmall) ? String(d.hintSmall).trim() : "",
     hintLarge: isNonEmptyString2(d.hintLarge) ? String(d.hintLarge).trim() : "",
     sourceLessonIndex: typeof d.sourceLessonIndex === "number" ? d.sourceLessonIndex : 1
@@ -1545,14 +1614,14 @@ CRIBRO ENGLISH`;
 }
 
 // utils/learningCurve.ts
-var CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"];
+var CEFR_LEVELS2 = ["A1", "A2", "B1", "B2", "C1", "C2"];
 var DECISION_WINDOW = 12;
 var PROMOTE_ACCURACY = 0.85;
 var DEMOTE_ACCURACY = 0.45;
 var MAX_DRIFT_FROM_BASE = 1;
 var MAX_RECENT_MISTAKES = 15;
 var MAX_RECENT_OUTCOMES = DECISION_WINDOW * 2;
-var isCefrLevel = (value) => typeof value === "string" && CEFR_LEVELS.includes(value);
+var isCefrLevel = (value) => typeof value === "string" && CEFR_LEVELS2.includes(value);
 var normalizeLevel = (raw, fallback = "B1") => {
   if (isCefrLevel(raw)) return raw;
   const text = String(raw || "").toUpperCase();
@@ -1561,15 +1630,15 @@ var normalizeLevel = (raw, fallback = "B1") => {
   const found = match.filter(isCefrLevel);
   if (found.length === 0) return fallback;
   return found.reduce(
-    (lowest, level) => CEFR_LEVELS.indexOf(level) < CEFR_LEVELS.indexOf(lowest) ? level : lowest
+    (lowest, level) => CEFR_LEVELS2.indexOf(level) < CEFR_LEVELS2.indexOf(lowest) ? level : lowest
   );
 };
 var shiftLevel = (level, step) => {
-  const index = CEFR_LEVELS.indexOf(level);
-  const next = Math.min(CEFR_LEVELS.length - 1, Math.max(0, index + step));
-  return CEFR_LEVELS[next];
+  const index = CEFR_LEVELS2.indexOf(level);
+  const next = Math.min(CEFR_LEVELS2.length - 1, Math.max(0, index + step));
+  return CEFR_LEVELS2[next];
 };
-var levelDistance = (a, b) => CEFR_LEVELS.indexOf(a) - CEFR_LEVELS.indexOf(b);
+var levelDistance = (a, b) => CEFR_LEVELS2.indexOf(a) - CEFR_LEVELS2.indexOf(b);
 var emptyTally = () => ({ attempts: 0, correct: 0, scoreSum: 0 });
 var addToTally = (tally, attempt) => {
   const base = tally || emptyTally();
@@ -4061,6 +4130,144 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
+  app2.get("/api/notion/recent-meetings", requireFirebaseAdmin, async (_req, res) => {
+    try {
+      const cfg = await getNotionConfig();
+      const token = cfg.token;
+      const meetingNotesDbId = normalizeNotionId(cfg.meetingNotesDbId);
+      if (!token || !meetingNotesDbId) {
+        return res.json({
+          ok: true,
+          configured: false,
+          meetings: [],
+          message: "Baza spotka\u0144 Notion nie jest jeszcze skonfigurowana."
+        });
+      }
+      const NOTION_API = "https://api.notion.com/v1";
+      const NOTION_VERSION = "2022-06-28";
+      const sevenDaysAgo = /* @__PURE__ */ new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const sevenDaysAgoIso = sevenDaysAgo.toISOString();
+      const queryRes = await fetch(`${NOTION_API}/databases/${meetingNotesDbId}/query`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Notion-Version": NOTION_VERSION,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          page_size: 50,
+          sorts: [
+            {
+              timestamp: "created_time",
+              direction: "descending"
+            }
+          ]
+        })
+      });
+      if (!queryRes.ok) {
+        const errTxt = await queryRes.text();
+        return res.status(queryRes.status).json({
+          error: `B\u0142\u0105d odpytywania bazy Notion (${queryRes.status}): ${errTxt.slice(0, 250)}`
+        });
+      }
+      const queryData = await queryRes.json();
+      const pages = queryData.results || [];
+      const meetings = [];
+      for (const page of pages) {
+        const props = page.properties || {};
+        let title = "";
+        for (const key of Object.keys(props)) {
+          if (props[key].type === "title") {
+            title = (props[key].title || []).map((t) => t.plain_text || "").join("").trim();
+            break;
+          }
+        }
+        if (!title) title = "Spotkanie bez tytu\u0142u";
+        let studentNameRaw = "";
+        for (const key of Object.keys(props)) {
+          const lowerKey = key.toLowerCase();
+          if (lowerKey.includes("kursant") || lowerKey.includes("student") || lowerKey.includes("ucze\u0144") || lowerKey.includes("klient")) {
+            const prop = props[key];
+            if (prop.type === "rich_text") {
+              studentNameRaw = (prop.rich_text || []).map((t) => t.plain_text || "").join("").trim();
+            } else if (prop.type === "title") {
+              studentNameRaw = (prop.title || []).map((t) => t.plain_text || "").join("").trim();
+            } else if (prop.type === "select" && prop.select?.name) {
+              studentNameRaw = prop.select.name.trim();
+            } else if (prop.type === "people" && prop.people?.length > 0) {
+              studentNameRaw = prop.people.map((p) => p.name || p.person?.email || "").filter(Boolean).join(", ");
+            } else if (prop.type === "relation" && prop.relation?.length > 0) {
+              studentNameRaw = "Relacja do kursanta";
+            }
+            if (studentNameRaw) break;
+          }
+        }
+        if (!studentNameRaw && title) {
+          const cleanFromTitle = title.split(/[@–—\-:(]/)[0].trim();
+          if (cleanFromTitle && cleanFromTitle.length >= 3) {
+            studentNameRaw = cleanFromTitle;
+          }
+        }
+        let lessonDate = "";
+        for (const key of Object.keys(props)) {
+          const lowerKey = key.toLowerCase();
+          if (props[key].type === "date" && props[key].date?.start) {
+            lessonDate = props[key].date.start.split("T")[0];
+            if (lowerKey.includes("zaj\u0119\u0107") || lowerKey.includes("lekcj") || lowerKey.includes("data")) {
+              break;
+            }
+          }
+        }
+        if (!lessonDate) {
+          lessonDate = (page.created_time || (/* @__PURE__ */ new Date()).toISOString()).split("T")[0];
+        }
+        const pageDateObj = new Date(lessonDate || page.created_time);
+        const isRecent = isNaN(pageDateObj.getTime()) || Date.now() - pageDateObj.getTime() <= 10 * 24 * 60 * 60 * 1e3;
+        if (isRecent || meetings.length < 15) {
+          meetings.push({
+            id: page.id,
+            title,
+            studentNameRaw,
+            lessonDate,
+            url: page.url || `https://notion.so/${page.id.replace(/-/g, "")}`,
+            createdTime: page.created_time
+          });
+        }
+      }
+      return res.json({
+        ok: true,
+        configured: true,
+        meetings
+      });
+    } catch (err) {
+      console.error("[Notion Recent Meetings Error]:", err);
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
+  app2.get("/api/notion/meeting-content/:pageId", requireFirebaseAdmin, async (req, res) => {
+    try {
+      const pageId = String(req.params.pageId || "").trim();
+      if (!pageId) {
+        return res.status(400).json({ error: "Brak identyfikatora strony Notion (pageId)." });
+      }
+      const cfg = await getNotionConfig();
+      const token = cfg.token;
+      if (!token) {
+        return res.status(400).json({ error: "Brak skonfigurowanego tokena Notion API." });
+      }
+      const content = await fetchNotionBlocksText(token, pageId, 0);
+      return res.json({
+        ok: true,
+        pageId,
+        content: content || "",
+        length: content ? content.length : 0
+      });
+    } catch (err) {
+      console.error("[Notion Meeting Content Error]:", err);
+      return res.status(500).json({ error: formatErrorString(err) });
+    }
+  });
   setInterval(async () => {
     try {
       const cfg = await getNotionConfig();
@@ -4481,6 +4688,134 @@ Gdy w materiale nie ma \u017Cadnej lekcji, zwr\xF3\u0107 {"lessons":[]} \u2014 n
       res.json({ lessons });
     } catch (error) {
       console.error("Error in import-lessons-batch:", error);
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+  app2.post("/api/gemini/analyze-student-import", requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { textContent, pdfBase64 } = req.body;
+      if (!textContent && !pdfBase64) {
+        return res.status(400).json({ error: "Missing textContent or pdfBase64" });
+      }
+      const apiKey = getGeminiApiKey();
+      if (!apiKey && !getOpenAIApiKey()) {
+        return res.status(500).json({ error: "AI API key not configured. Please set GEMINI_API_KEY or OPENAI_API_KEY in environment variables." });
+      }
+      const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
+      let parsedDocText = textContent || "";
+      let isPdfFallbackNeeded = false;
+      if (pdfBase64) {
+        try {
+          const rawB64 = pdfBase64.split(",")[1] || pdfBase64;
+          const pdfBuffer = Buffer.from(rawB64, "base64");
+          const pdfData = await pdfParse(pdfBuffer);
+          if (pdfData && pdfData.text && pdfData.text.trim().length > 10) {
+            parsedDocText = (parsedDocText ? parsedDocText + "\n\n" : "") + pdfData.text;
+          } else {
+            isPdfFallbackNeeded = true;
+          }
+        } catch (pdfErr) {
+          console.warn("[analyze-student-import] pdf-parse failed, falling back to multi-modal PDF upload:", pdfErr);
+          isPdfFallbackNeeded = true;
+        }
+      }
+      const MAX_SOURCE_CHARS = 12e4;
+      if (parsedDocText.length > MAX_SOURCE_CHARS) {
+        console.warn(`[analyze-student-import] Materia\u0142 ma ${parsedDocText.length} znak\xF3w \u2014 ucinam do ${MAX_SOURCE_CHARS}.`);
+        parsedDocText = parsedDocText.slice(0, MAX_SOURCE_CHARS);
+      }
+      let contents;
+      if (isPdfFallbackNeeded && pdfBase64) {
+        contents = [{
+          role: "user",
+          parts: [
+            { inlineData: { data: pdfBase64.split(",")[1] || pdfBase64, mimeType: "application/pdf" } },
+            { text: "Przeanalizuj powy\u017Cszy plik PDF z profilem i histori\u0105 lekcji nowego kursanta." }
+          ]
+        }];
+      } else {
+        contents = [{
+          role: "user",
+          parts: [{ text: `Tre\u015B\u0107 dokumentu/notatek o kursancie:
+${parsedDocText}` }]
+        }];
+      }
+      const sysInstruction = `# Cel
+Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u0105cym profil nowego kursanta przed za\u0142o\u017Ceniem mu konta. Dostajesz plik (notatki, e-mail, wizyt\xF3wk\u0119, histori\u0119 lekcji z innej platformy) i masz wyodr\u0119bni\u0107 z niego dane profilowe oraz histori\u0119 dotychczasowych lekcji.
+
+# CO WYCI\u0104GN\u0104\u0106 (extractedData):
+- fullName: imi\u0119 i nazwisko kursanta.
+- email: adres e-mail, je\u015Bli wyst\u0119puje w tre\u015Bci.
+- level: poziom zaawansowania CEFR \u2014 DOK\u0141ADNIE jedno z: A1, A2, B1, B2, C1, C2. Je\u015Bli nie da si\u0119 jednoznacznie ustali\u0107, pomi\u0144 pole.
+- targetGoals: cele nauki kursanta (np. "przygotowanie do rozm\xF3w biznesowych", "matura").
+- industry: bran\u017Ca/zaw\xF3d kursanta, je\u015Bli wspomniana.
+- generalNotes: inne istotne informacje o kursancie, kt\xF3rych nie da si\u0119 przypisa\u0107 do powy\u017Cszych p\xF3l.
+- historicalLessons: lista dotychczasowych lekcji, ka\u017Cda z polami:
+  - date: data lekcji w formacie YYYY-MM-DD. Je\u015Bli w \u017Ar\xF3dle brakuje roku (np. "15 maja") lub daty w og\xF3le, ustaw dateAmbiguous: true i podaj najlepsze przybli\u017Cenie (z dzisiejszym rokiem, je\u015Bli rok nieznany).
+  - summary: kr\xF3tki opis tematu/przebiegu lekcji.
+  - vocabulary: lista s\u0142\xF3wek/zwrot\xF3w om\xF3wionych na lekcji (same stringi, "s\u0142owo - t\u0142umaczenie" je\u015Bli t\u0142umaczenie jest dost\u0119pne).
+  - corrections: lista b\u0142\u0119d\xF3w/korekt j\u0119zykowych z lekcji (same stringi).
+
+# ZASADY:
+- NIE WYMY\u015ALAJ danych, kt\xF3rych nie ma w tek\u015Bcie. Brakuj\u0105ce pole zostaw puste/pomi\u0144.
+- Je\u015Bli w tek\u015Bcie nie ma \u017Cadnej historii lekcji, zwr\xF3\u0107 pust\u0105 tablic\u0119 historicalLessons.
+- aiComment: kr\xF3tkie podsumowanie w 1-2 zdaniach PO POLSKU \u2014 co znalaz\u0142e\u015B i na co lektor powinien zwr\xF3ci\u0107 uwag\u0119.
+- Zwr\xF3\u0107 wy\u0142\u0105cznie poprawny obiekt JSON zgodny ze schematem, bez komentarzy i bloku markdown.`;
+      const schema = {
+        type: Type.OBJECT,
+        properties: {
+          extractedData: {
+            type: Type.OBJECT,
+            properties: {
+              fullName: { type: Type.STRING },
+              email: { type: Type.STRING },
+              level: { type: Type.STRING },
+              targetGoals: { type: Type.STRING },
+              industry: { type: Type.STRING },
+              generalNotes: { type: Type.STRING },
+              historicalLessons: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    date: { type: Type.STRING },
+                    dateAmbiguous: { type: Type.BOOLEAN },
+                    summary: { type: Type.STRING },
+                    vocabulary: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    corrections: { type: Type.ARRAY, items: { type: Type.STRING } }
+                  },
+                  required: ["date", "summary"]
+                }
+              }
+            },
+            required: ["historicalLessons"]
+          },
+          aiComment: { type: Type.STRING }
+        },
+        required: ["extractedData", "aiComment"]
+      };
+      const response = await generateContentWithRetry(
+        ai,
+        contents,
+        {
+          systemInstruction: sysInstruction,
+          responseMimeType: "application/json",
+          responseSchema: schema,
+          temperature: 0.2
+        },
+        AI_MODEL_CASCADE
+      );
+      const responseText = response.text;
+      if (!responseText) throw new Error("Model nie zwr\xF3ci\u0142 odpowiedzi.");
+      const json = extractJsonFromString(responseText);
+      if (!json) {
+        console.error("[analyze-student-import] Odpowied\u017A bez poprawnego JSON:", responseText.slice(0, 400));
+        throw new Error("Model zwr\xF3ci\u0142 odpowied\u017A, kt\xF3rej nie da si\u0119 odczyta\u0107 jako JSON.");
+      }
+      const analysis = normalizeStudentImportAnalysis(json, (/* @__PURE__ */ new Date()).toISOString().split("T")[0]);
+      res.json({ analysis });
+    } catch (error) {
+      console.error("Error in analyze-student-import:", error);
       res.status(500).json({ error: formatErrorString(error) });
     }
   });

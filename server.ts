@@ -179,6 +179,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import defaultFirebaseConfig from "./firebase-applet-config.json";
 import { AI_MODEL_CASCADE, GEMINI_MODEL_CASCADE, openAiModelsFor } from "./services/aiModels";
 import { normalizeImportedLessons } from "./utils/lessonImport";
+import { normalizeStudentImportAnalysis } from "./utils/studentImportNormalize";
 import { shuffleDistinct } from "./utils/exerciseShuffle";
 import { assembleContext } from "./functions/src/homeworkV2/contextAssembler";
 import { planExercises } from "./functions/src/homeworkV2/exercisePlanner";
@@ -3548,6 +3549,147 @@ Gdy w materiale nie ma żadnej lekcji, zwróć {"lessons":[]} — nigdy nie wymy
       res.json({ lessons });
     } catch (error: any) {
       console.error('Error in import-lessons-batch:', error);
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+
+  // Smart Student Onboarding: analiza jednego pliku (.txt/.md/.pdf) z profilem
+  // i historią lekcji nowego kursanta, przed założeniem konta.
+  app.post('/api/gemini/analyze-student-import', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { textContent, pdfBase64 } = req.body;
+      if (!textContent && !pdfBase64) {
+        return res.status(400).json({ error: 'Missing textContent or pdfBase64' });
+      }
+
+      const apiKey = getGeminiApiKey();
+      if (!apiKey && !getOpenAIApiKey()) {
+        return res.status(500).json({ error: 'AI API key not configured. Please set GEMINI_API_KEY or OPENAI_API_KEY in environment variables.' });
+      }
+      const ai = new GoogleGenAI({ apiKey: apiKey || "dummy" });
+
+      let parsedDocText = textContent || '';
+      let isPdfFallbackNeeded = false;
+
+      if (pdfBase64) {
+        try {
+          const rawB64 = pdfBase64.split(',')[1] || pdfBase64;
+          const pdfBuffer = Buffer.from(rawB64, 'base64');
+          const pdfData = await pdfParse(pdfBuffer);
+          if (pdfData && pdfData.text && pdfData.text.trim().length > 10) {
+            parsedDocText = (parsedDocText ? parsedDocText + '\n\n' : '') + pdfData.text;
+          } else {
+            isPdfFallbackNeeded = true;
+          }
+        } catch (pdfErr) {
+          console.warn('[analyze-student-import] pdf-parse failed, falling back to multi-modal PDF upload:', pdfErr);
+          isPdfFallbackNeeded = true;
+        }
+      }
+
+      const MAX_SOURCE_CHARS = 120000;
+      if (parsedDocText.length > MAX_SOURCE_CHARS) {
+        console.warn(`[analyze-student-import] Materiał ma ${parsedDocText.length} znaków — ucinam do ${MAX_SOURCE_CHARS}.`);
+        parsedDocText = parsedDocText.slice(0, MAX_SOURCE_CHARS);
+      }
+
+      let contents: any[];
+      if (isPdfFallbackNeeded && pdfBase64) {
+        contents = [{
+          role: 'user',
+          parts: [
+            { inlineData: { data: pdfBase64.split(',')[1] || pdfBase64, mimeType: 'application/pdf' } },
+            { text: 'Przeanalizuj powyższy plik PDF z profilem i historią lekcji nowego kursanta.' }
+          ]
+        }];
+      } else {
+        contents = [{
+          role: 'user',
+          parts: [{ text: `Treść dokumentu/notatek o kursancie:\n${parsedDocText}` }]
+        }];
+      }
+
+      const sysInstruction = `# Cel
+Jesteś skrupulatnym asystentem lektora języka angielskiego weryfikującym profil nowego kursanta przed założeniem mu konta. Dostajesz plik (notatki, e-mail, wizytówkę, historię lekcji z innej platformy) i masz wyodrębnić z niego dane profilowe oraz historię dotychczasowych lekcji.
+
+# CO WYCIĄGNĄĆ (extractedData):
+- fullName: imię i nazwisko kursanta.
+- email: adres e-mail, jeśli występuje w treści.
+- level: poziom zaawansowania CEFR — DOKŁADNIE jedno z: A1, A2, B1, B2, C1, C2. Jeśli nie da się jednoznacznie ustalić, pomiń pole.
+- targetGoals: cele nauki kursanta (np. "przygotowanie do rozmów biznesowych", "matura").
+- industry: branża/zawód kursanta, jeśli wspomniana.
+- generalNotes: inne istotne informacje o kursancie, których nie da się przypisać do powyższych pól.
+- historicalLessons: lista dotychczasowych lekcji, każda z polami:
+  - date: data lekcji w formacie YYYY-MM-DD. Jeśli w źródle brakuje roku (np. "15 maja") lub daty w ogóle, ustaw dateAmbiguous: true i podaj najlepsze przybliżenie (z dzisiejszym rokiem, jeśli rok nieznany).
+  - summary: krótki opis tematu/przebiegu lekcji.
+  - vocabulary: lista słówek/zwrotów omówionych na lekcji (same stringi, "słowo - tłumaczenie" jeśli tłumaczenie jest dostępne).
+  - corrections: lista błędów/korekt językowych z lekcji (same stringi).
+
+# ZASADY:
+- NIE WYMYŚLAJ danych, których nie ma w tekście. Brakujące pole zostaw puste/pomiń.
+- Jeśli w tekście nie ma żadnej historii lekcji, zwróć pustą tablicę historicalLessons.
+- aiComment: krótkie podsumowanie w 1-2 zdaniach PO POLSKU — co znalazłeś i na co lektor powinien zwrócić uwagę.
+- Zwróć wyłącznie poprawny obiekt JSON zgodny ze schematem, bez komentarzy i bloku markdown.`;
+
+      const schema = {
+        type: Type.OBJECT,
+        properties: {
+          extractedData: {
+            type: Type.OBJECT,
+            properties: {
+              fullName: { type: Type.STRING },
+              email: { type: Type.STRING },
+              level: { type: Type.STRING },
+              targetGoals: { type: Type.STRING },
+              industry: { type: Type.STRING },
+              generalNotes: { type: Type.STRING },
+              historicalLessons: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    date: { type: Type.STRING },
+                    dateAmbiguous: { type: Type.BOOLEAN },
+                    summary: { type: Type.STRING },
+                    vocabulary: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    corrections: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  },
+                  required: ["date", "summary"]
+                }
+              }
+            },
+            required: ["historicalLessons"]
+          },
+          aiComment: { type: Type.STRING }
+        },
+        required: ["extractedData", "aiComment"]
+      };
+
+      const response = await generateContentWithRetry(
+        ai,
+        contents,
+        {
+          systemInstruction: sysInstruction,
+          responseMimeType: "application/json",
+          responseSchema: schema,
+          temperature: 0.2
+        },
+        AI_MODEL_CASCADE
+      );
+
+      const responseText = response.text;
+      if (!responseText) throw new Error("Model nie zwrócił odpowiedzi.");
+
+      const json = extractJsonFromString(responseText);
+      if (!json) {
+        console.error('[analyze-student-import] Odpowiedź bez poprawnego JSON:', responseText.slice(0, 400));
+        throw new Error('Model zwrócił odpowiedź, której nie da się odczytać jako JSON.');
+      }
+
+      const analysis = normalizeStudentImportAnalysis(json, new Date().toISOString().split('T')[0]);
+      res.json({ analysis });
+    } catch (error: any) {
+      console.error('Error in analyze-student-import:', error);
       res.status(500).json({ error: formatErrorString(error) });
     }
   });

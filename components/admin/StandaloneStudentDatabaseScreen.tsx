@@ -6,9 +6,12 @@ import { getAllUsers, updateCachedUser, addCachedUser, removeCachedUser, UserWit
 import { useFirebaseAdminApi } from '../../hooks/useFirebaseAdminApi';
 import { useLanguage } from '../../context/LanguageContext';
 import { openScratchpadTab } from '../../services/scratchpadService';
-import { getAllLessonRecordsForTeacher } from '../../services/lessonRecord';
+import { createLessonRecordWithVocabularySet, getAllLessonRecordsForTeacher } from '../../services/lessonRecord';
+import { parseStudentDocument, SUPPORTED_STUDENT_IMPORT_EXTENSIONS } from '../../services/studentImportService';
+import { StudentImportAnalysis } from '../../types/studentImport';
 import CreateGroupModal from './CreateGroupModal';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
+import StudentImportReviewCard from './StudentImportReviewCard';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import {
@@ -38,6 +41,7 @@ import {
   ChevronRight,
   RefreshCw,
   Trash2,
+  UploadCloud,
   Shield,
   Key,
   Lock,
@@ -98,6 +102,13 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
   const [copiedCreds, setCopiedCreds] = useState(false);
   const [copiedPasswordId, setCopiedPasswordId] = useState<string | null>(null);
   const [isUpdatingInviteId, setIsUpdatingInviteId] = useState<string | null>(null);
+
+  // Smart Student Onboarding: import kursanta z pliku (.txt/.md/.pdf)
+  const [importAnalysis, setImportAnalysis] = useState<StudentImportAnalysis | null>(null);
+  const [isAnalyzingImport, setIsAnalyzingImport] = useState(false);
+  const [isSavingImport, setIsSavingImport] = useState(false);
+  const [importDragActive, setImportDragActive] = useState(false);
+  const [importError, setImportError] = useState('');
 
   const handleCopyPassword = (studentId: string, pass: string) => {
     navigator.clipboard.writeText(pass);
@@ -435,6 +446,125 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
     setCreateError('');
     setCreatedCredentials(null);
     setCopiedCreds(false);
+    setImportAnalysis(null);
+    setImportError('');
+    setIsAnalyzingImport(false);
+  };
+
+  const handleImportFile = async (file: File) => {
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    if (!SUPPORTED_STUDENT_IMPORT_EXTENSIONS.includes(ext)) {
+      setImportError('Obsługiwane formaty: .txt, .md, .pdf');
+      return;
+    }
+    setImportError('');
+    setIsAnalyzingImport(true);
+    try {
+      const analysis = await parseStudentDocument(file);
+      setImportAnalysis(analysis);
+    } catch (err: any) {
+      setImportError(err.message || 'Nie udało się przeanalizować pliku.');
+    } finally {
+      setIsAnalyzingImport(false);
+    }
+  };
+
+  const handleImportLessonDateChange = (index: number, date: string) => {
+    setImportAnalysis((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        extractedData: {
+          ...prev.extractedData,
+          historicalLessons: prev.extractedData.historicalLessons.map((lesson, i) =>
+            i === index ? { ...lesson, date, dateAmbiguous: false } : lesson
+          ),
+        },
+      };
+    });
+  };
+
+  const handleConfirmImport = async () => {
+    if (!importAnalysis) return;
+    const { extractedData } = importAnalysis;
+    const fullName = (extractedData.fullName || '').trim();
+    const trimmedEmail = (extractedData.email || '').trim().toLowerCase();
+
+    if (!fullName || !trimmedEmail) {
+      setImportError('Uzupełnij imię i nazwisko oraz e-mail przed zatwierdzeniem.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setImportError('Podano niepoprawny format adresu e-mail.');
+      return;
+    }
+
+    setIsSavingImport(true);
+    setImportError('');
+    try {
+      const finalPassword = Math.random().toString(36).slice(-8);
+      const nameParts = fullName.split(' ');
+      const firstName = nameParts[0] || fullName;
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const noteLines = [
+        extractedData.targetGoals ? `Cele nauki: ${extractedData.targetGoals}` : '',
+        extractedData.industry ? `Branża: ${extractedData.industry}` : '',
+        extractedData.generalNotes || '',
+      ].filter(Boolean);
+
+      const newUserDoc = {
+        email: trimmedEmail,
+        username: fullName,
+        displayName: fullName,
+        firstName,
+        lastName,
+        role: 'user' as const,
+        createdAt: new Date().toISOString(),
+        loginCount: 0,
+        streakCount: 0,
+        requirePasswordChange: true,
+        tempPassword: finalPassword,
+        statusWspolpracy: 'Aktywny' as const,
+        ...(extractedData.level ? { level: extractedData.level } : {}),
+        ...(noteLines.length ? { description: noteLines.join('\n') } : {}),
+      };
+
+      const userRecord = await createUser(trimmedEmail, finalPassword, 'user', newUserDoc);
+
+      try {
+        await setDoc(doc(db, 'users', userRecord.uid), newUserDoc, { merge: true });
+      } catch (clientErr) {
+        console.warn('[CRM] Klient pominął bezpośredni setDoc (zapisany przez Admin API):', clientErr);
+      }
+
+      addCachedUser({ id: userRecord.uid, ...newUserDoc } as UserWithId);
+
+      for (const lesson of extractedData.historicalLessons) {
+        try {
+          await createLessonRecordWithVocabularySet({
+            studentId: userRecord.uid,
+            date: lesson.date,
+            topic: lesson.summary.slice(0, 120) || 'Lekcja zaimportowana',
+            vocabularyText: lesson.vocabulary.join('\n'),
+            lessonSummary: lesson.summary,
+            corrections: lesson.corrections.join('\n'),
+          });
+        } catch (lessonErr) {
+          console.warn('[Smart Import] Nie udało się zapisać zaimportowanej lekcji:', lessonErr);
+        }
+      }
+
+      setImportAnalysis(null);
+      setCreatedCredentials({ email: trimmedEmail, password: finalPassword });
+      fetchUsersAndLessons(true);
+      onRefreshUsers?.();
+    } catch (err: any) {
+      setImportError(err.message || 'Wystąpił błąd podczas tworzenia kursanta.');
+    } finally {
+      setIsSavingImport(false);
+    }
   };
 
   const handleCopyEmail = (emailStr?: string) => {
@@ -1244,13 +1374,72 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
                 </button>
               </div>
 
-              {!createdCredentials ? (
+              {!createdCredentials && importAnalysis ? (
+                <StudentImportReviewCard
+                  analysis={importAnalysis}
+                  onChange={setImportAnalysis}
+                  onLessonDateChange={handleImportLessonDateChange}
+                  onConfirm={handleConfirmImport}
+                  onCancel={() => setImportAnalysis(null)}
+                  isSaving={isSavingImport}
+                />
+              ) : !createdCredentials ? (
                 <form onSubmit={handleCreateStudent} className="space-y-4">
                   {createError && (
                     <div className="p-3 bg-danger/10 border border-danger/30 text-danger rounded-xl text-xs font-semibold">
                       {createError}
                     </div>
                   )}
+
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setImportDragActive(true); }}
+                    onDragLeave={() => setImportDragActive(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setImportDragActive(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) handleImportFile(file);
+                    }}
+                    onClick={() => document.getElementById('smart-import-file-input')?.click()}
+                    className={`p-4 border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors ${
+                      importDragActive ? 'border-primary bg-primary/5' : 'border-line-strong hover:border-primary/50'
+                    }`}
+                  >
+                    <input
+                      id="smart-import-file-input"
+                      type="file"
+                      accept=".txt,.md,.markdown,.pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImportFile(file);
+                        e.target.value = '';
+                      }}
+                    />
+                    {isAnalyzingImport ? (
+                      <div className="flex items-center justify-center gap-2 text-xs text-content-muted">
+                        <RefreshCw size={14} className="animate-spin text-primary" />
+                        <span>Analizuję dokument i historię lekcji...</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 text-content-muted">
+                        <UploadCloud size={20} className="text-primary" />
+                        <span className="text-xs font-semibold">Przeciągnij plik z notatkami kursanta</span>
+                        <span className="text-[11px]">.txt, .md, .pdf — profil i historia lekcji zostaną wypełnione automatycznie</span>
+                      </div>
+                    )}
+                  </div>
+                  {importError && (
+                    <div className="p-3 bg-danger/10 border border-danger/30 text-danger rounded-xl text-xs font-semibold">
+                      {importError}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 text-[11px] text-content-muted">
+                    <div className="h-px bg-line-strong flex-1" />
+                    <span>albo wypełnij ręcznie</span>
+                    <div className="h-px bg-line-strong flex-1" />
+                  </div>
 
                   <div>
                     <label className="block text-xs font-bold text-content-muted mb-1">

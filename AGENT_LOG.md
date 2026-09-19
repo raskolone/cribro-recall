@@ -2622,3 +2622,54 @@ Weryfikacja:
 - `node scripts/fetch_notion_dump.mjs` (bez `NOTION_API_KEY`) — kończy
   się czytelnym błędem zamiast cichego zawieszenia, CLI-owe zachowanie
   zachowane.
+
+2026-09-19 — Claude Code / Sonnet 5
+
+Zadanie: Wdrożenie "Smart Student Onboarding" — import kursanta z pliku
+(.txt/.md/.pdf) w oknie dodawania kursanta, z analizą AI (Gemini) i kartą
+weryfikacji braków dla lektora przed utworzeniem konta.
+
+Zrobione:
+- Nowe: `types/studentImport.ts` (kontrakt `StudentImportAnalysis`),
+  `utils/studentImportNormalize.ts` (deterministyczna normalizacja
+  odpowiedzi modelu, wzorowana na `utils/lessonImport.ts`),
+  `services/studentImportService.ts` (frontend: czyta plik, woła backend),
+  `components/admin/StudentImportReviewCard.tsx` (karta weryfikacji).
+- `server.ts`: nowy endpoint `POST /api/gemini/analyze-student-import`
+  (`requireFirebaseAdmin`), wariant istniejącego
+  `/api/gemini/import-lessons-batch` dla pojedynczego kursanta.
+- `components/admin/StandaloneStudentDatabaseScreen.tsx`: dropzone nad
+  formularzem tworzenia kursanta, przełączanie na kartę weryfikacji po
+  analizie, zapis konta (`createUser`) + historycznych lekcji
+  (`createLessonRecordWithVocabularySet`) po zatwierdzeniu.
+- `tests/studentImport.test.ts` — 11 testów normalizacji (node:test).
+- CHANGELOG.md — runda 39.
+
+Nie dokończone / do sprawdzenia:
+- Flow (dropzone → analiza → karta weryfikacji → zapis) nie był klikany
+  w przeglądarce w tej sesji — tylko `tsc --noEmit`, `npm test` (376/376)
+  i `npm run build` przeszły. Wymaga realnego testu z kluczem Gemini i
+  przykładowym plikiem notatek przed uznaniem za w pełni gotowe.
+- Brak dodania kluczy i18n (`en.json`/`pl.json`) — świadomie pominięte,
+  bo `StandaloneStudentDatabaseScreen.tsx` nigdzie indziej nie używa
+  `useTranslation`, więc nowy tekst jest hardkodowanym polskim, zgodnie
+  z konwencją tego ekranu (patrz decyzje niżej).
+
+Decyzje architektoniczne:
+- Task zlecał kontrakt lekcji "Words & Phrases/Grammar & Accuracy/
+  Pronunciation/Homework" — takiego kontraktu nie ma w kodzie (prawdziwy
+  to `LessonBlocks`: summary/vocabulary/corrections/homework/nextLesson).
+  Zaimportowane lekcje piszą do istniejących płaskich pól `LessonRecord`
+  przez `createLessonRecordWithVocabularySet`, żeby nie tworzyć
+  równoległego, niezgodnego kontraktu.
+- Task zlecał pole `fullName` na koncie kursanta — `User` nie ma takiego
+  pola (jest `displayName`/`firstName`/`lastName`/`username`). `fullName`
+  zostało jako pole pośrednie w `StudentImportAnalysis` (wynik ekstrakcji
+  AI), a przy zapisie konta jest dzielone na `firstName`/`lastName` i
+  kopiowane do `displayName`/`username`, dokładnie jak w istniejącym
+  `handleCreateStudent`.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji
+(`requireFirebaseAuth`/`requireFirebaseAdmin` — nowy endpoint tylko
+*używa* `requireFirebaseAdmin`, nie modyfikuje go) ani ścieżkach
+tokenowych bez logowania.

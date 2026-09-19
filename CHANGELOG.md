@@ -198,6 +198,30 @@ we dwoje na żywo.
 
 ---
 
+### 🚀 Smart Student Onboarding — import kursanta z pliku (.txt/.md/.pdf) z analizą AI i kartą weryfikacji (2026-09-19, runda 39)
+
+**Zadanie:** okno "Dodaj kursanta" (`components/admin/StandaloneStudentDatabaseScreen.tsx`) dostało strefę przeciągnij-i-upuść — lektor wrzuca plik z notatkami o kursancie (profil + historia lekcji), Gemini wyciąga dane, a lektor dostaje kartę weryfikacji z podświetlonymi brakami zamiast wypełniać formularz ręcznie.
+
+**Added:**
+- `types/studentImport.ts` — kontrakt `StudentImportAnalysis`/`ParsedLessonImport`. Pola nazwane inaczej niż w istniejącym `User`/`LessonRecord` (np. `fullName` zamiast `displayName`) celowo — to surowy wynik ekstrakcji AI, mapowany na docelowy dokument dopiero przy zapisie.
+- `utils/studentImportNormalize.ts` — deterministyczne wyznaczanie `status`/`missingFields` z odpowiedzi modelu (ten sam wzorzec co `utils/lessonImport.ts`: kształt pilnujemy u siebie, nie w prompcie, bo `responseSchema` działa tylko dla Gemini). Brak imienia/e-maila = brak krytyczny (blokuje zapis), brak poziomu CEFR i niepewna data lekcji (np. "15 maja" bez roku) = tylko ostrzeżenie.
+- `POST /api/gemini/analyze-student-import` (`server.ts`, `requireFirebaseAdmin`) — wariant istniejącego `/api/gemini/import-lessons-batch` (ten sam pipeline PDF: `pdf-parse` → fallback na multimodalny upload), ale dla pojedynczego kursanta bez dopasowywania do bazy.
+- `services/studentImportService.ts` — `parseStudentDocument(file)`, czyta .txt/.md jako tekst, .pdf jako base64, woła powyższy endpoint z tokenem Firebase.
+- `components/admin/StudentImportReviewCard.tsx` — karta weryfikacji: pola edytowalne, czerwona/żółta ramka na brakach, lista historycznych lekcji z edytowalną datą (`dateAmbiguous` podświetlone na żółto).
+- Integracja w `StandaloneStudentDatabaseScreen.tsx`: dropzone nad istniejącym formularzem tworzenia konta; po zatwierdzeniu karty tworzy konto (`createUser`, jak dotychczasowy `handleCreateStudent`) i dopisuje historyczne lekcje przez `createLessonRecordWithVocabularySet` (`users/{uid}/lessonRecords`).
+- `tests/studentImport.test.ts` — 11 testów `normalizeStudentImportAnalysis`/`normalizeParsedLessons` (node:test), w stylu `tests/lessonImport.test.ts`.
+
+**Decyzje architektoniczne:**
+- Nie wprowadzono nowej nazwy bloków lekcji ("Words & Phrases"/"Grammar & Accuracy"/"Pronunciation") — takiego kontraktu nie ma nigdzie w kodzie (patrz sekcja 1 wyżej, opis Historii Lekcji to uproszczenie). Zaimportowane lekcje piszą do istniejących płaskich pól `LessonRecord` (`lessonSummary`, `vocabularyText`, `corrections`) przez `createLessonRecordWithVocabularySet`, zgodnie z §4 `CLAUDE.md` (jedna logika domenowa, bez duplikatu).
+- `extractedData.level` to podzbiór CEFR (`A1`–`C2`) zapisywany wprost do wolnotekstowego `User.level` — brak konwersji, bo pole i tak nie ma enuma w typie `User`.
+- Panel admina nie używa `useTranslation` nigdzie indziej w tym pliku — nowe napisy są hardkodowanym polskim tekstem, zgodnie z konwencją sąsiednich ekranów CRM, a nie przez `en.json`/`pl.json`.
+
+**Ryzyka:** brak zmian w `firestore.rules`, middleware autoryzacji ani ścieżkach tokenowych bez logowania. Nowy endpoint chroniony `requireFirebaseAdmin`, tak jak analogiczne endpointy importu lekcji.
+
+**Weryfikacja:** `npx tsc --noEmit` (0 błędów), `npm test` (376/376 zielone, w tym 11 nowych), `npm run build` (przechodzi; nieusunięte wcześniej istniejące ostrzeżenia o rozmiarze chunków niezwiązane ze zmianą). UI nie było klikane w przeglądarce w tej sesji — flow dropzone→review→zapis nie był ręcznie zweryfikowany wzrokowo.
+
+---
+
 ### 🔧 Skrypt migracji Notion: pobieranie na żywo zamiast zamrożonego zrzutu, koniec zależności od FB_USER (2026-09-19, runda 38)
 
 **Zgłoszone problemy:** `scripts/migrate-notion-archive.ts` (runda 37) pracował na zamrożonym zrzucie z 16 września (nowe lekcje/kursanci dopisani w Notion od tamtej pory były niewidoczne) i wywalał się twardym błędem, gdy `FB_USER` nie był ustawiony w środowisku.
