@@ -614,7 +614,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
             filteredLessons.map((lesson) => {
               const globalIndex = lessons.findIndex((l) => l.id === lesson.id);
               const lessonNum = lessons.length - globalIndex;
-              const isExpanded = expandedLessonIds[lesson.id] ?? true;
+              const isExpanded = expandedLessonIds[lesson.id] ?? false;
               const items = getLessonItems(lesson);
               const cleanTopic = cleanVocabularyTopic(lesson.topic) || lesson.topic;
 

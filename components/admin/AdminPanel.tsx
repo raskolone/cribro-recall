@@ -5283,14 +5283,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <div className="font-mono text-sm text-primary mt-1">{viewingRecord?.date}</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button 
-                      variant="primary" 
-                      onClick={() => handleGenerateHomeworkFromLesson(viewingRecord!)}
-                      className="flex items-center gap-1.5 font-bold shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:scale-105 text-xs sm:text-sm"
-                    >
-                      <Sparkles size={16} />
-                      {i18n.t("Wygeneruj pracę domową")}
-                    </Button>
                     <Button variant="ghost" onClick={() => openLessonRecordModal('edit', viewingRecord!)}>
                       {i18n.t("Edytuj")}
                     </Button>

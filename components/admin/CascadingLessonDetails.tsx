@@ -57,7 +57,7 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
    */
   const isFromTranscript = record.source === 'live_transcript';
 
-  // Section collapse states (Domyślnie wszystkie bloki Notion są rozwinięte, aby lektor widział pełny obraz)
+  // Section collapse states (Domyślnie wszystkie bloki Notion są zwinięte — lektor sam rozwija to, co go interesuje)
   const [expandedSections, setExpandedSections] = useState<{
     block1: boolean;
     block2: boolean;
@@ -65,11 +65,11 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
     block4: boolean;
     learningCurve: boolean;
   }>({
-    block1: true,
-    block2: true,
-    block3: true,
-    block4: true,
-    learningCurve: true
+    block1: false,
+    block2: false,
+    block3: false,
+    block4: false,
+    learningCurve: false
   });
 
   const toggleSection = (section: keyof typeof expandedSections) => {
