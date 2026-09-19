@@ -596,6 +596,10 @@ export interface LessonRecord {
   drillDraft?: string;
   /** Identyfikator spotkania po stronie Cribro Sift — chroni przed dublem przy ponownej wysyłce. */
   siftSessionId?: string;
+  /** Scenariusz wygenerowany przez Generator Scenariusza Lekcji 2.0 (types/scenario.ts), zapisany dla tej lekcji. */
+  plannedScenario?: import('./types/scenario').LessonScenario;
+  /** Znacznik czasu ostatniego zapisu `plannedScenario`. */
+  scenarioSavedAt?: string;
   /** ISO, kiedy transkrypcja dotarła do bazy. */
   transcriptReceivedAt?: string;
 

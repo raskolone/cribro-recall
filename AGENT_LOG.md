@@ -2673,3 +2673,58 @@ Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji
 (`requireFirebaseAuth`/`requireFirebaseAdmin` — nowy endpoint tylko
 *używa* `requireFirebaseAdmin`, nie modyfikuje go) ani ścieżkach
 tokenowych bez logowania.
+
+2026-09-19 — Claude Code / Sonnet 5
+
+Zadanie: Implementacja Generatora Scenariusza Lekcji 2.0 (Etap 2.1) wg
+specyfikacji architektonicznej Opus 5 / audytu GPT-5.6 Sol — ścisły
+kontrakt: klient wysyła wyłącznie { studentId, durationMin }, cała reszta
+(profil, ostatnia lekcja, tryb, wywołanie Gemini) po stronie backendu.
+
+Zrobione:
+- Nowe: `types/scenario.ts` (kontrakt: SCENARIO_MODULE_IDS,
+  SCENARIO_DURATION_BUDGETS dla 45/60/90 min, GenerateScenarioRequest,
+  ScenarioModelOutput, LessonScenario/ScenarioModule/ScenarioItem,
+  SaveScenarioRequest/LessonRecordScenarioPatch), `utils/scenarioValidation.ts`
+  (walidacja odpowiedzi modelu + nadawanie czasów/ID — wydzielone z
+  endpointu pod testy jednostkowe bez uruchamiania Expressa),
+  `services/scenarioClient.ts` (generateScenario/saveScenario z tokenem
+  Firebase), `hooks/useScenarioGenerator.ts` (maszyna stanów idle→
+  generating→draft→saving→saved|error + edycja/usuwanie punktów draftu),
+  `components/admin/ScenarioPreviewPanel.tsx` (selektor 45/60/90 min,
+  podgląd 4 modułów, edycja inline, baner cold_start, zapis/odrzucenie).
+- `server.ts`: `POST /api/scenario/generate` (requireFirebaseAuth — czyta
+  users/{studentId} i ostatnią ukończoną lekcję z lessonRecords, woła
+  Gemini Flash z responseSchema, waliduje i zwraca LessonScenario) oraz
+  `POST /api/scenario/save` (dopisuje plannedScenario/scenarioSavedAt do
+  lessonRecords/{targetLessonId}).
+- `types.ts`: `LessonRecord.plannedScenario`/`scenarioSavedAt`.
+- `components/admin/AdminPanel.tsx`: wpięty `ScenarioPreviewPanel` nad
+  `CascadingLessonDetails` w modalu podglądu lekcji.
+- `tests/scenario.test.ts` — 11 testów (node:test): sumowanie budżetów,
+  walidacja modelu (zła kolejność/liczba modułów, puste pola, limity
+  1-6 punktów), buildLessonScenario (unikalne ID, czasy, kolejność).
+- CHANGELOG.md — runda 40.
+
+Nie dokończone / do sprawdzenia:
+- Flow (wybór długości → generuj → edycja draftu → zapis) nie był
+  klikany w przeglądarce w tej sesji — tylko `tsc --noEmit` (0 błędów),
+  `npm test` (387/387) i `npm run build` przeszły. Wymaga testu z
+  realnym kluczem Gemini i realnym kursantem/lekcją przed uznaniem za
+  w pełni gotowe.
+- "Ostatnia ukończona lekcja" pomija rekordy pending_confirmation/
+  rejected/draft/live po stronie backendu, ale logika nie była
+  przetestowana na realnych danych Firestore z produkcji.
+
+Decyzje architektoniczne:
+- Model dostaje responseSchema z enum na moduleId, ale backend i tak
+  re-waliduje kolejność/liczbę/długość (validateScenarioModelOutput) —
+  responseSchema Gemini nie gwarantuje kolejności ani limitu elementów
+  tablicy, a budżety czasowe muszą się dokładnie sumować do 45/60/90 min.
+- Endpoint zabezpieczony requireFirebaseAuth, nie requireFirebaseAdmin —
+  zgodnie z literalnym poleceniem ("autoryzuje lektora przez Firebase
+  Auth") i wzorem /api/homework-v2/generate.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji ani
+ścieżkach tokenowych bez logowania. Nowe endpointy tylko *używają*
+`requireFirebaseAuth`, nie modyfikują go.

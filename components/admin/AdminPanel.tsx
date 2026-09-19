@@ -17,6 +17,7 @@ import { saveRecallReview } from '../../services/recallItems';
 import { countVocabularyItems, buildVocabularySetTitle, splitVocabularyLines } from '../../utils/vocabulary';
 import { isLessonPendingConfirmation, extractLessonBlocks } from '../../utils/lessonBlocks';
 import { CascadingLessonDetails } from './CascadingLessonDetails';
+import { ScenarioPreviewPanel } from './ScenarioPreviewPanel';
 import { getGeneratedScenarios } from '../../services/scenarioService';
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
@@ -5330,6 +5331,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     </Button>
                   </div>
                   
+                  {/* Generator Scenariusza Lekcji 2.0 */}
+                  {viewingRecord && selectedUser?.id && (
+                    <ScenarioPreviewPanel
+                      studentId={selectedUser.id}
+                      targetLessonId={viewingRecord.id}
+                    />
+                  )}
+
                   {/* Cascading Lesson Details view */}
                   {viewingRecord && (
                     <CascadingLessonDetails

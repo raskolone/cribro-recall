@@ -198,6 +198,32 @@ we dwoje na żywo.
 
 ---
 
+### 🧩 Generator Scenariusza Lekcji 2.0 — kontrakt 4 modułów, budżety czasowe po stronie backendu (2026-09-19, runda 40)
+
+**Zadanie:** nowy generator scenariusza kolejnej lekcji dla lektora (Etap 2.1), oparty o ścisły kontrakt: klient wysyła wyłącznie `{ studentId, durationMin }`, nigdy nie czyta Firestore przed wywołaniem AI. Cała logika (profil kursanta, ostatnia ukończona lekcja, tryb `returning`/`cold_start`, wywołanie Gemini) żyje w `server.ts`.
+
+**Added:**
+- `types/scenario.ts` — kontrakt: `SCENARIO_MODULE_IDS` (`warmup_followup`/`error_work`/`main_topic`/`wrapup_feedback`, stała kolejność), `SCENARIO_DURATION_BUDGETS` dla 45/60/90 min (budżety per moduł sumują się dokładnie do długości lekcji), `GenerateScenarioRequest`, `ScenarioModelOutput` (to, co zwraca model — bez czasów i ID), `LessonScenario`/`ScenarioModule`/`ScenarioItem` (to, co widzi klient — z czasami i ID nadanymi przez backend), `SaveScenarioRequest`/`LessonRecordScenarioPatch`.
+- `utils/scenarioValidation.ts` — `validateScenarioModelOutput` (dokładnie 4 moduły w stałej kolejności, 1-6 niepustych punktów każdy) i `buildLessonScenario` (nadaje czasy z `SCENARIO_DURATION_BUDGETS` i ID punktów) — wydzielone z endpointu, żeby dało się przetestować bez uruchamiania Expressa.
+- `POST /api/scenario/generate` (`server.ts`, `requireFirebaseAuth`) — czyta `users/{studentId}` (brak `level`/CEFR → 400 `insufficient-profile`), ostatnią ukończoną lekcję z `users/{studentId}/lessonRecords` (pomija `pending_confirmation`/`rejected`/`draft`/`live`; brak wyniku → `mode: 'cold_start'`), woła Gemini Flash (`GEMINI_MODEL_CASCADE`, `responseSchema` wymuszający kształt `ScenarioModelOutput`) z osobnym poleceniem dla `error_work` zależnie od trybu (powtórka błędów z ostatniej lekcji vs. ćwiczenia diagnostyczne poziomu), waliduje odpowiedź i zwraca gotowy `LessonScenario`.
+- `POST /api/scenario/save` (`server.ts`, `requireFirebaseAuth`) — dopisuje `plannedScenario`/`scenarioSavedAt` do `users/{studentId}/lessonRecords/{targetLessonId}`.
+- `services/scenarioClient.ts` — `generateScenario`/`saveScenario`, doklejają token Firebase Auth (wzorem `services/studentImportService.ts`).
+- `hooks/useScenarioGenerator.ts` — maszyna stanów `idle → generating → draft → saving → saved | error`, mutacje draftu (`editItem`, `removeItem`) i `discard`.
+- `components/admin/ScenarioPreviewPanel.tsx` — selektor 45/60/90 min, przycisk generowania, podgląd 4 modułów z czasem i celem, edytowalne punkty z przyciskiem usunięcia, baner dla `cold_start`, przyciski zapisu/odrzucenia draftu. Wpięty w `AdminPanel.tsx` nad `CascadingLessonDetails`, w modalu podglądu lekcji (`studentId` z `selectedUser.id`, `targetLessonId` z `viewingRecord.id`).
+- `LessonRecord.plannedScenario`/`scenarioSavedAt` (`types.ts`) — pola na wynik zapisu.
+- `tests/scenario.test.ts` — 11 testów (node:test): sumowanie budżetów do 45/60/90 min, walidacja modelu (zła liczba/kolejność modułów, pusty cel, 0 lub >6 punktów, pusty tekst punktu), `buildLessonScenario` (unikalne ID, czasy z budżetu, zachowana kolejność modułów).
+
+**Decyzje architektoniczne:**
+- Model dostaje `responseSchema` z `enum` na `moduleId`, ale backend i tak re-waliduje kolejność/liczbę/długość w `validateScenarioModelOutput` — `responseSchema` u Gemini nie gwarantuje kolejności ani limitu elementów tablicy, a matematyka czasu trwania lekcji (budżety sumujące się do 45/60/90) nie może zależeć od tego, czy model coś pominął.
+- "Ostatnia ukończona lekcja" pomija rekordy `pending_confirmation`/`rejected`/`draft`/`live` (pobiera do 10 najnowszych i bierze pierwszą pasującą) — inaczej scenariusz `returning` opierałby się na notatce, której kursant jeszcze nie widział albo która została odrzucona.
+- Endpoint zabezpieczony `requireFirebaseAuth`, nie `requireFirebaseAdmin` — zgodnie z literalnym poleceniem ("autoryzuje lektora przez Firebase Auth") i wzorem `/api/homework-v2/generate`, który też nie wymaga roli admina.
+
+**Ryzyka:** brak zmian w `firestore.rules`, middleware autoryzacji ani ścieżkach tokenowych bez logowania — nowe endpointy tylko *używają* `requireFirebaseAuth`.
+
+**Weryfikacja:** `npx tsc --noEmit` (0 błędów), `npm test` (387/387 zielone, w tym 11 nowych), `npm run build` (przechodzi). UI (`ScenarioPreviewPanel`) nie było klikane w przeglądarce w tej sesji — flow generuj→edytuj→zapisz nie był ręcznie zweryfikowany wzrokowo, wymaga testu z realnym kluczem Gemini.
+
+---
+
 ### 🚀 Smart Student Onboarding — import kursanta z pliku (.txt/.md/.pdf) z analizą AI i kartą weryfikacji (2026-09-19, runda 39)
 
 **Zadanie:** okno "Dodaj kursanta" (`components/admin/StandaloneStudentDatabaseScreen.tsx`) dostało strefę przeciągnij-i-upuść — lektor wrzuca plik z notatkami o kursancie (profil + historia lekcji), Gemini wyciąga dane, a lektor dostaje kartę weryfikacji z podświetlonymi brakami zamiast wypełniać formularz ręcznie.

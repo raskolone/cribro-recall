@@ -173,13 +173,20 @@ import fs from "fs";
 import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-import { createHmac } from "crypto";
+import { createHmac, randomUUID } from "crypto";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
 import defaultFirebaseConfig from "./firebase-applet-config.json";
 import { AI_MODEL_CASCADE, GEMINI_MODEL_CASCADE, openAiModelsFor } from "./services/aiModels";
 import { normalizeImportedLessons } from "./utils/lessonImport";
 import { normalizeStudentImportAnalysis } from "./utils/studentImportNormalize";
+import {
+  SCENARIO_MODULE_IDS,
+  ScenarioDurationMin,
+  ScenarioModelOutput,
+  LessonScenario,
+} from "./types/scenario";
+import { validateScenarioModelOutput, buildLessonScenario } from "./utils/scenarioValidation";
 import { shuffleDistinct } from "./utils/exerciseShuffle";
 import { assembleContext } from "./functions/src/homeworkV2/contextAssembler";
 import { planExercises } from "./functions/src/homeworkV2/exercisePlanner";
@@ -3691,6 +3698,188 @@ Jesteś skrupulatnym asystentem lektora języka angielskiego weryfikującym prof
     } catch (error: any) {
       console.error('Error in analyze-student-import:', error);
       res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════
+     GENERATOR SCENARIUSZA LEKCJI 2.0 (Etap 2.1)
+
+     Kontrakt: klient wysyła wyłącznie { studentId, durationMin } i nigdy
+     nie czyta Firestore przed wywołaniem AI. Backend czyta profil kursanta
+     i ostatnią ukończoną lekcję, ustala tryb (returning/cold_start) i woła
+     Gemini, które zwraca WYŁĄCZNIE treść 4 modułów — bez czasów i bez ID.
+     Czasy (SCENARIO_DURATION_BUDGETS) i identyfikatory nadaje backend, żeby
+     model nie mógł zepsuć matematyki czasu trwania lekcji. Zobacz
+     types/scenario.ts. ═══════════════════════════════════════════════ */
+
+  function isCompletedLessonRecord(data: any): boolean {
+    if (!data) return false;
+    if (data.status === 'pending_confirmation' || data.status === 'rejected') return false;
+    if (data.sessionStatus === 'draft' || data.sessionStatus === 'live') return false;
+    return true;
+  }
+
+  app.post('/api/scenario/generate', requireFirebaseAuth, async (req, res) => {
+    try {
+      const studentId = String(req.body?.studentId || '').trim();
+      const durationMin = Number(req.body?.durationMin) as ScenarioDurationMin;
+
+      if (!studentId) return res.status(400).json({ error: 'Nie wskazano kursanta.' });
+      if (![45, 60, 90].includes(durationMin)) {
+        return res.status(400).json({ error: 'Nieprawidłowa długość lekcji — dozwolone: 45, 60, 90 minut.' });
+      }
+
+      const geminiApiKey = getGeminiApiKey();
+      if (!geminiApiKey) {
+        return res.status(500).json({ error: 'GEMINI_API_KEY nie jest skonfigurowany.' });
+      }
+
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+
+      const studentSnap = await adminDb.collection('users').doc(studentId).get();
+      if (!studentSnap.exists) {
+        return res.status(404).json({ error: 'Nie znaleziono kursanta.' });
+      }
+      const studentData = studentSnap.data() || {};
+      const cefr = String(studentData.level || '').trim();
+      if (!cefr) {
+        return res.status(400).json({ error: 'insufficient-profile' });
+      }
+
+      let lastLesson: any = null;
+      try {
+        const recordsSnap = await adminDb
+          .collection('users').doc(studentId)
+          .collection('lessonRecords')
+          .orderBy('date', 'desc')
+          .limit(10)
+          .get();
+        for (const docSnap of recordsSnap.docs) {
+          const data = docSnap.data();
+          if (isCompletedLessonRecord(data)) {
+            lastLesson = data;
+            break;
+          }
+        }
+      } catch (queryErr) {
+        console.warn('[scenario/generate] nie udało się odczytać lessonRecords:', queryErr);
+      }
+
+      const mode: 'returning' | 'cold_start' = lastLesson ? 'returning' : 'cold_start';
+
+      const lastLessonContext = lastLesson
+        ? `Temat ostatniej lekcji: ${lastLesson.topic || 'brak'}
+Słownictwo z ostatniej lekcji: ${lastLesson.vocabularyText || 'brak'}
+Korekty/błędy z ostatniej lekcji: ${lastLesson.corrections || lastLesson.thingsToImprove || 'brak'}
+Plan na kolejną lekcję (z poprzedniej notatki): ${lastLesson.nextLessonPlan || lastLesson.suggestedFollowUp || 'brak'}`
+        : 'Brak historii lekcji tego kursanta — to pierwszy scenariusz.';
+
+      const errorWorkInstruction = mode === 'returning'
+        ? 'moduł "error_work" musi skupiać się na powtórce i utrwaleniu błędów oraz słownictwa z OSTATNIEJ lekcji kursanta (patrz kontekst niżej) — konkretne zdania do poprawy/przećwiczenia tych błędów.'
+        : 'kursant nie ma jeszcze historii lekcji, więc moduł "error_work" zamienia się w ćwiczenia DIAGNOSTYCZNE — zadania sprawdzające realny poziom kursanta względem deklarowanego CEFR (np. krótkie zadania na czas, struktury gramatyczne i słownictwo typowe dla tego poziomu).';
+
+      const prompt = `Jesteś metodykiem języka angielskiego układającym scenariusz lekcji 1:1 dla lektora.
+
+Poziom CEFR kursanta: ${cefr}
+Długość lekcji: ${durationMin} minut
+Tryb: ${mode === 'returning' ? 'kursant powracający (returning)' : 'pierwszy kontakt / brak historii (cold_start)'}
+
+Kontekst z poprzedniej lekcji:
+${lastLessonContext}
+
+Zbuduj scenariusz lekcji z DOKŁADNIE czterema modułami, w tej kolejności: "warmup_followup", "error_work", "main_topic", "wrapup_feedback".
+- "warmup_followup": rozgrzewka i nawiązanie do poprzedniej lekcji (pytania konwersacyjne).
+- "error_work": ${errorWorkInstruction}
+- "main_topic": główny temat lekcji, dopasowany do poziomu ${cefr} — nowe słownictwo, struktury, pytania do dyskusji.
+- "wrapup_feedback": podsumowanie, feedback dla kursanta, zapowiedź pracy domowej.
+
+Dla każdego modułu podaj:
+- "objective": jednozdaniowy cel modułu po polsku,
+- "items": listę 1-6 konkretnych punktów (pytań, ćwiczeń, zwrotów) do realizacji — każdy jako zwięzły, samodzielny tekst.
+
+NIE podawaj czasów trwania ani identyfikatorów — to ustala backend. Zwróć wyłącznie treść modułów.`;
+
+      const schema = {
+        type: Type.OBJECT,
+        properties: {
+          modules: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                moduleId: { type: Type.STRING, enum: [...SCENARIO_MODULE_IDS] },
+                objective: { type: Type.STRING },
+                items: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: { text: { type: Type.STRING } },
+                    required: ['text'],
+                  },
+                },
+              },
+              required: ['moduleId', 'objective', 'items'],
+            },
+          },
+        },
+        required: ['modules'],
+      };
+
+      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+      const response = await generateContentWithRetry(ai, prompt, {
+        responseMimeType: 'application/json',
+        responseSchema: schema,
+      }, GEMINI_MODEL_CASCADE);
+
+      if (!response.text) throw new Error('Brak odpowiedzi z modelu AI.');
+
+      let cleanText = String(response.text).replace(/^```json\n?/g, '').replace(/```$/g, '').trim();
+      const parsed = JSON.parse(cleanText) as ScenarioModelOutput;
+
+      validateScenarioModelOutput(parsed);
+
+      const scenario: LessonScenario = buildLessonScenario(
+        parsed,
+        { studentId, durationMin, mode, generatedAt: new Date().toISOString() },
+        randomUUID
+      );
+
+      return res.json({ scenario });
+    } catch (err: any) {
+      console.error('[server] błąd generowania scenariusza lekcji:', err);
+      return res.status(500).json({ error: err?.message || 'Nie udało się wygenerować scenariusza.' });
+    }
+  });
+
+  app.post('/api/scenario/save', requireFirebaseAuth, async (req, res) => {
+    try {
+      const studentId = String(req.body?.studentId || '').trim();
+      const targetLessonId = String(req.body?.targetLessonId || '').trim();
+      const scenario = req.body?.scenario as LessonScenario | undefined;
+
+      if (!studentId) return res.status(400).json({ error: 'Nie wskazano kursanta.' });
+      if (!targetLessonId) return res.status(400).json({ error: 'Nie wskazano lekcji docelowej.' });
+      if (!scenario || !Array.isArray(scenario.modules)) {
+        return res.status(400).json({ error: 'Brak poprawnego scenariusza do zapisania.' });
+      }
+
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+      const recordRef = adminDb.collection('users').doc(studentId).collection('lessonRecords').doc(targetLessonId);
+
+      const recordSnap = await recordRef.get();
+      if (!recordSnap.exists) {
+        return res.status(404).json({ error: 'Nie znaleziono lekcji docelowej.' });
+      }
+
+      const scenarioSavedAt = new Date().toISOString();
+      await recordRef.update({ plannedScenario: scenario, scenarioSavedAt });
+
+      return res.json({ ok: true, scenarioSavedAt });
+    } catch (err: any) {
+      console.error('[server] błąd zapisu scenariusza lekcji:', err);
+      return res.status(500).json({ error: err?.message || 'Nie udało się zapisać scenariusza.' });
     }
   });
 

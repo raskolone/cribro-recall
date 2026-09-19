@@ -306,7 +306,7 @@ import fs from "fs";
 import { initializeApp as initializeApp2, cert, getApps as getApps2, getApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore as getFirestore2 } from "firebase-admin/firestore";
-import { createHmac } from "crypto";
+import { createHmac, randomUUID as randomUUID2 } from "crypto";
 import { GoogleGenAI, Type } from "@google/genai";
 
 // services/aiModels.ts
@@ -429,6 +429,79 @@ function normalizeStudentImportAnalysis(payload, today) {
     },
     missingFields,
     aiComment: asText3(raw.aiComment).trim() || "Model nie doda\u0142 podsumowania."
+  };
+}
+
+// types/scenario.ts
+var SCENARIO_MODULE_IDS = [
+  "warmup_followup",
+  "error_work",
+  "main_topic",
+  "wrapup_feedback"
+];
+var SCENARIO_DURATION_BUDGETS = {
+  45: {
+    warmup_followup: 5,
+    error_work: 10,
+    main_topic: 25,
+    wrapup_feedback: 5
+  },
+  60: {
+    warmup_followup: 8,
+    error_work: 12,
+    main_topic: 32,
+    wrapup_feedback: 8
+  },
+  90: {
+    warmup_followup: 10,
+    error_work: 18,
+    main_topic: 50,
+    wrapup_feedback: 12
+  }
+};
+
+// utils/scenarioValidation.ts
+function validateScenarioModelOutput(parsed) {
+  if (!parsed || !Array.isArray(parsed.modules) || parsed.modules.length !== 4) {
+    throw new Error("Model zwr\xF3ci\u0142 nieprawid\u0142ow\u0105 liczb\u0119 modu\u0142\xF3w scenariusza.");
+  }
+  for (let i = 0; i < SCENARIO_MODULE_IDS.length; i++) {
+    const expectedId = SCENARIO_MODULE_IDS[i];
+    const mod = parsed.modules[i];
+    if (!mod || mod.moduleId !== expectedId) {
+      throw new Error(`Nieprawid\u0142owa kolejno\u015B\u0107 lub identyfikator modu\u0142u na pozycji ${i}: oczekiwano "${expectedId}".`);
+    }
+    if (!mod.objective || !String(mod.objective).trim()) {
+      throw new Error(`Modu\u0142 "${expectedId}" nie ma celu (objective).`);
+    }
+    if (!Array.isArray(mod.items) || mod.items.length < 1 || mod.items.length > 6) {
+      throw new Error(`Modu\u0142 "${expectedId}" musi mie\u0107 od 1 do 6 punkt\xF3w.`);
+    }
+    for (const item of mod.items) {
+      if (!item?.text || !String(item.text).trim()) {
+        throw new Error(`Modu\u0142 "${expectedId}" zawiera pusty punkt.`);
+      }
+    }
+  }
+}
+function buildLessonScenario(parsed, opts, makeId) {
+  const budgets = SCENARIO_DURATION_BUDGETS[opts.durationMin];
+  const modules = parsed.modules.map((mod) => ({
+    moduleId: mod.moduleId,
+    objective: mod.objective.trim(),
+    durationMin: budgets[mod.moduleId],
+    items: mod.items.map((item) => ({
+      id: makeId(),
+      text: item.text.trim()
+    }))
+  }));
+  return {
+    id: makeId(),
+    studentId: opts.studentId,
+    durationMin: opts.durationMin,
+    mode: opts.mode,
+    modules,
+    generatedAt: opts.generatedAt
   };
 }
 
@@ -4817,6 +4890,144 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
     } catch (error) {
       console.error("Error in analyze-student-import:", error);
       res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+  function isCompletedLessonRecord(data) {
+    if (!data) return false;
+    if (data.status === "pending_confirmation" || data.status === "rejected") return false;
+    if (data.sessionStatus === "draft" || data.sessionStatus === "live") return false;
+    return true;
+  }
+  app2.post("/api/scenario/generate", requireFirebaseAuth, async (req, res) => {
+    try {
+      const studentId = String(req.body?.studentId || "").trim();
+      const durationMin = Number(req.body?.durationMin);
+      if (!studentId) return res.status(400).json({ error: "Nie wskazano kursanta." });
+      if (![45, 60, 90].includes(durationMin)) {
+        return res.status(400).json({ error: "Nieprawid\u0142owa d\u0142ugo\u015B\u0107 lekcji \u2014 dozwolone: 45, 60, 90 minut." });
+      }
+      const geminiApiKey = getGeminiApiKey();
+      if (!geminiApiKey) {
+        return res.status(500).json({ error: "GEMINI_API_KEY nie jest skonfigurowany." });
+      }
+      const adminApp2 = getAdminApp();
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const studentSnap = await adminDb.collection("users").doc(studentId).get();
+      if (!studentSnap.exists) {
+        return res.status(404).json({ error: "Nie znaleziono kursanta." });
+      }
+      const studentData = studentSnap.data() || {};
+      const cefr = String(studentData.level || "").trim();
+      if (!cefr) {
+        return res.status(400).json({ error: "insufficient-profile" });
+      }
+      let lastLesson = null;
+      try {
+        const recordsSnap = await adminDb.collection("users").doc(studentId).collection("lessonRecords").orderBy("date", "desc").limit(10).get();
+        for (const docSnap of recordsSnap.docs) {
+          const data = docSnap.data();
+          if (isCompletedLessonRecord(data)) {
+            lastLesson = data;
+            break;
+          }
+        }
+      } catch (queryErr) {
+        console.warn("[scenario/generate] nie uda\u0142o si\u0119 odczyta\u0107 lessonRecords:", queryErr);
+      }
+      const mode = lastLesson ? "returning" : "cold_start";
+      const lastLessonContext = lastLesson ? `Temat ostatniej lekcji: ${lastLesson.topic || "brak"}
+S\u0142ownictwo z ostatniej lekcji: ${lastLesson.vocabularyText || "brak"}
+Korekty/b\u0142\u0119dy z ostatniej lekcji: ${lastLesson.corrections || lastLesson.thingsToImprove || "brak"}
+Plan na kolejn\u0105 lekcj\u0119 (z poprzedniej notatki): ${lastLesson.nextLessonPlan || lastLesson.suggestedFollowUp || "brak"}` : "Brak historii lekcji tego kursanta \u2014 to pierwszy scenariusz.";
+      const errorWorkInstruction = mode === "returning" ? 'modu\u0142 "error_work" musi skupia\u0107 si\u0119 na powt\xF3rce i utrwaleniu b\u0142\u0119d\xF3w oraz s\u0142ownictwa z OSTATNIEJ lekcji kursanta (patrz kontekst ni\u017Cej) \u2014 konkretne zdania do poprawy/prze\u0107wiczenia tych b\u0142\u0119d\xF3w.' : 'kursant nie ma jeszcze historii lekcji, wi\u0119c modu\u0142 "error_work" zamienia si\u0119 w \u0107wiczenia DIAGNOSTYCZNE \u2014 zadania sprawdzaj\u0105ce realny poziom kursanta wzgl\u0119dem deklarowanego CEFR (np. kr\xF3tkie zadania na czas, struktury gramatyczne i s\u0142ownictwo typowe dla tego poziomu).';
+      const prompt = `Jeste\u015B metodykiem j\u0119zyka angielskiego uk\u0142adaj\u0105cym scenariusz lekcji 1:1 dla lektora.
+
+Poziom CEFR kursanta: ${cefr}
+D\u0142ugo\u015B\u0107 lekcji: ${durationMin} minut
+Tryb: ${mode === "returning" ? "kursant powracaj\u0105cy (returning)" : "pierwszy kontakt / brak historii (cold_start)"}
+
+Kontekst z poprzedniej lekcji:
+${lastLessonContext}
+
+Zbuduj scenariusz lekcji z DOK\u0141ADNIE czterema modu\u0142ami, w tej kolejno\u015Bci: "warmup_followup", "error_work", "main_topic", "wrapup_feedback".
+- "warmup_followup": rozgrzewka i nawi\u0105zanie do poprzedniej lekcji (pytania konwersacyjne).
+- "error_work": ${errorWorkInstruction}
+- "main_topic": g\u0142\xF3wny temat lekcji, dopasowany do poziomu ${cefr} \u2014 nowe s\u0142ownictwo, struktury, pytania do dyskusji.
+- "wrapup_feedback": podsumowanie, feedback dla kursanta, zapowied\u017A pracy domowej.
+
+Dla ka\u017Cdego modu\u0142u podaj:
+- "objective": jednozdaniowy cel modu\u0142u po polsku,
+- "items": list\u0119 1-6 konkretnych punkt\xF3w (pyta\u0144, \u0107wicze\u0144, zwrot\xF3w) do realizacji \u2014 ka\u017Cdy jako zwi\u0119z\u0142y, samodzielny tekst.
+
+NIE podawaj czas\xF3w trwania ani identyfikator\xF3w \u2014 to ustala backend. Zwr\xF3\u0107 wy\u0142\u0105cznie tre\u015B\u0107 modu\u0142\xF3w.`;
+      const schema = {
+        type: Type.OBJECT,
+        properties: {
+          modules: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                moduleId: { type: Type.STRING, enum: [...SCENARIO_MODULE_IDS] },
+                objective: { type: Type.STRING },
+                items: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: { text: { type: Type.STRING } },
+                    required: ["text"]
+                  }
+                }
+              },
+              required: ["moduleId", "objective", "items"]
+            }
+          }
+        },
+        required: ["modules"]
+      };
+      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+      const response = await generateContentWithRetry(ai, prompt, {
+        responseMimeType: "application/json",
+        responseSchema: schema
+      }, GEMINI_MODEL_CASCADE);
+      if (!response.text) throw new Error("Brak odpowiedzi z modelu AI.");
+      let cleanText = String(response.text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
+      const parsed = JSON.parse(cleanText);
+      validateScenarioModelOutput(parsed);
+      const scenario = buildLessonScenario(
+        parsed,
+        { studentId, durationMin, mode, generatedAt: (/* @__PURE__ */ new Date()).toISOString() },
+        randomUUID2
+      );
+      return res.json({ scenario });
+    } catch (err) {
+      console.error("[server] b\u0142\u0105d generowania scenariusza lekcji:", err);
+      return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 wygenerowa\u0107 scenariusza." });
+    }
+  });
+  app2.post("/api/scenario/save", requireFirebaseAuth, async (req, res) => {
+    try {
+      const studentId = String(req.body?.studentId || "").trim();
+      const targetLessonId = String(req.body?.targetLessonId || "").trim();
+      const scenario = req.body?.scenario;
+      if (!studentId) return res.status(400).json({ error: "Nie wskazano kursanta." });
+      if (!targetLessonId) return res.status(400).json({ error: "Nie wskazano lekcji docelowej." });
+      if (!scenario || !Array.isArray(scenario.modules)) {
+        return res.status(400).json({ error: "Brak poprawnego scenariusza do zapisania." });
+      }
+      const adminApp2 = getAdminApp();
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const recordRef = adminDb.collection("users").doc(studentId).collection("lessonRecords").doc(targetLessonId);
+      const recordSnap = await recordRef.get();
+      if (!recordSnap.exists) {
+        return res.status(404).json({ error: "Nie znaleziono lekcji docelowej." });
+      }
+      const scenarioSavedAt = (/* @__PURE__ */ new Date()).toISOString();
+      await recordRef.update({ plannedScenario: scenario, scenarioSavedAt });
+      return res.json({ ok: true, scenarioSavedAt });
+    } catch (err) {
+      console.error("[server] b\u0142\u0105d zapisu scenariusza lekcji:", err);
+      return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 zapisa\u0107 scenariusza." });
     }
   });
   app2.post("/api/gemini/lesson-summary", requireFirebaseAdmin, async (req, res) => {
