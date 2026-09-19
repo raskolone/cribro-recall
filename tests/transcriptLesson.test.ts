@@ -116,6 +116,66 @@ describe('rozbiór odpowiedzi modelu', () => {
     assert.equal(update.structuredBlocks?.homework, '');
     assert.equal(update.structuredBlocks?.nextLesson, '');
   });
+
+  it('wypełnia trzy ustrukturyzowane sekcje historii kursanta obok pól tekstowych', () => {
+    const update = parseTranscriptLesson(
+      JSON.stringify({
+        summary: 'Rozmowa o dojazdach.',
+        vocabulary: 'commute — dojeżdżać',
+        corrections: '❌ I was commuting a lot → ✅ I commuted a lot — past simple',
+        summaryPoints: ['Rozmawialiśmy o dojazdach do pracy.', 'Przećwiczyliśmy past simple.', 'Wprowadziliśmy nowe słownictwo.'],
+        vocabularyItems: [
+          {
+            term: 'commute',
+            translation: 'dojeżdżać',
+            contextSentence: 'I commute to work by train.',
+            category: 'general',
+          },
+        ],
+        areasForImprovement: [
+          {
+            originalError: 'I was commuting a lot',
+            correctedForm: 'I commuted a lot',
+            ruleExplanation: 'Past simple do zakończonych czynności w przeszłości.',
+          },
+        ],
+      })
+    );
+
+    assert.deepEqual(update.summaryPoints, [
+      'Rozmawialiśmy o dojazdach do pracy.',
+      'Przećwiczyliśmy past simple.',
+      'Wprowadziliśmy nowe słownictwo.',
+    ]);
+    assert.deepEqual(update.vocabularyItems, [
+      { term: 'commute', translation: 'dojeżdżać', contextSentence: 'I commute to work by train.', category: 'general' },
+    ]);
+    assert.deepEqual(update.areasForImprovement, [
+      {
+        originalError: 'I was commuting a lot',
+        correctedForm: 'I commuted a lot',
+        ruleExplanation: 'Past simple do zakończonych czynności w przeszłości.',
+      },
+    ]);
+  });
+
+  it('pomija niekompletne pozycje ustrukturyzowane i nie ustawia pustych tablic', () => {
+    const update = parseTranscriptLesson(
+      JSON.stringify({
+        summary: 'Rozmowa.',
+        vocabulary: 'a — b',
+        vocabularyItems: [{ term: 'word' /* brak translation */ }, { term: 'ok', translation: 'dobrze', category: 'nonsense' }],
+        areasForImprovement: [{ originalError: 'x' /* brak correctedForm */ }],
+        summaryPoints: ['', '   '],
+      })
+    );
+
+    assert.equal(update.summaryPoints, undefined);
+    assert.equal(update.areasForImprovement, undefined);
+    assert.deepEqual(update.vocabularyItems, [
+      { term: 'ok', translation: 'dobrze', contextSentence: '' },
+    ]);
+  });
 });
 
 describe('zatwierdzenie lekcji przez lektora', () => {

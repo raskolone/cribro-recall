@@ -2357,3 +2357,110 @@ z jawnym błędem w logu, nie cichym uszkodzeniem danych.
 Weryfikacja:
 - `npx tsc --noEmit` — 0 błędów.
 - `npm test` — 363/363 zielone.
+
+## 2026-09-19 — Claude Code / Sonnet 5 (2)
+
+Zadanie: Zlecenie opisywało usunięcie automatycznego dodawania nowej
+lekcji przy montowaniu Scratchpada / wyborze kursanta z listy oraz pełną
+manualną kontrolę nad „+ Nowa lekcja" (w tym gating lektor/kursant i
+generowanie Revision przez Gemini tylko gdy jest poprzednia lekcja).
+
+Zrobione: Audyt kodu (bez zmian) — opisany problem NIE występuje w
+obecnym stanie repo, bo już go naprawiono w poprzednich sesjach
+(`f4556a1`, `a9f8ccc`). Sprawdzono:
+- `services/scratchpadService.ts` (`getOrCreateStudentScratchpad`,
+  `adoptScratchpadForStudent`) — szablon startowy (`buildLessonTemplate`,
+  bez wywołania Gemini) wstawia się WYŁĄCZNIE gdy dokument danego
+  kursanta nie istnieje jeszcze nigdzie (ani w Firestore, ani lokalnie).
+  Istniejący dokument (chmura/lokalny) wraca bez modyfikacji.
+- `components/scratchpad/ScratchpadEditor.tsx` — `handleInsertLesson`
+  (linia 890) ma dokładnie 2 miejsca wywołania: przycisk „+ Nowa lekcja"
+  (linia 2516) i pozycja menu „Wstaw → Nowa lekcja" (linia 2375) — oba
+  wyłącznie po kliknięciu, brak wywołania w `useEffect` montażu. Funkcja
+  już warunkuje wywołanie Gemini (`generateLessonRevision`) obecnością
+  treści poprzedniej lekcji (`willGenerateRevision`) — pierwsza lekcja
+  dostaje pusty szablon Revision bez zapytania do AI.
+- Oba miejsca wstawiania „Nowa lekcja" (przycisk i pozycja menu) i całą
+  sekcję „Elementy lekcji"/„Szablony" w menu „Wstaw" opakowuje warunek
+  `isTeacher` (`currentUser.role === 'teacher' || 'admin'`) — kursant
+  (`StudentScratchpadScreen.tsx` przekazuje `role: 'student'` na sztywno)
+  nie widzi przycisku w ogóle.
+- `TeacherScratchpadScreen.tsx` — wybór kursanta („Przypisz kursanta")
+  woła `adoptScratchpadForStudent`, które też nie dopisuje nowej lekcji:
+  albo zwraca istniejący dokument kursanta bez zmian, albo (dokument
+  „nietknięty" = wciąż szablon startowy) podmienia go treścią
+  notatnika roboczego — nigdy nie dokleja nowej strony A4.
+
+Nie dokończone / do sprawdzenia: Nie odtworzono opisanego zachowania w
+przeglądarce (dev server nieuruchamiany w tej sesji) — jeśli Maciej
+nadal to widzi w działającej aplikacji, może to być inne wejście niż
+`TeacherScratchpadScreen`/`ScratchpadPage`/`StudentDatabaseScreen`
+sprawdzone tutaj, albo build w przeglądarce jest starszy niż `main`
+(cache/service worker) — warto potwierdzić przez twardy refresh przed
+dalszym szukaniem.
+
+Decyzje architektoniczne: Brak zmian w kodzie — nie wprowadzono żadnej
+warstwy „na wszelki wypadek" do funkcji, które już spełniają zlecenie.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji ani
+ścieżkach tokenowych bez logowania — sesja była czysto diagnostyczna.
+
+Weryfikacja: Nie dotyczy (brak zmian w kodzie).
+
+## 2026-09-19 — Claude Code / Sonnet 5 (3)
+
+Zadanie: Zlecenie prosiło o nowy moduł „Historia Lekcji" (3 sekcje:
+summary/vocabulary/areasForImprovement) + parser transkrypcji „Narada AI"
+jako osobny model danych (`LessonHistoryEntry`, nowy serwis, nowe
+komponenty w `src/`).
+
+Zrobione: Audyt PRZED implementacją wykazał, że moduł już istnieje pod
+innymi nazwami — `LessonRecord` ([types.ts](types.ts)),
+`generateLessonFromTranscript` ([services/transcriptLesson.ts](services/transcriptLesson.ts)),
+panel lektora [TranscriptLessonPanel.tsx](components/admin/TranscriptLessonPanel.tsx),
+widok kursanta [StudentLessonHistory.tsx](components/dashboard/StudentLessonHistory.tsx)
+już renderujący 3 sekcje. Po potwierdzeniu z Maciejem ([AskUserQuestion])
+zamiast budować równoległy model, rozszerzono istniejące moduły:
+- `types.ts`: nowe opcjonalne pola `LessonRecord.summaryPoints: string[]`,
+  `vocabularyItems: LessonVocabularyItem[]` (term/translation/
+  contextSentence/category), `areasForImprovement:
+  LessonAreaForImprovement[]` (originalError/correctedForm/
+  ruleExplanation) — obok istniejących pól tekstowych, które zostają
+  jedynym źródłem dla fiszek i puli powtórek.
+- `utils/transcriptLesson.ts`: `buildTranscriptLessonPrompt` prosi Gemini
+  Flash o te 3 pola dodatkowo; `parseTranscriptLesson` waliduje je nowymi
+  helperami (`asStringArray`, `asVocabularyItems`,
+  `asAreasForImprovement`) — niekompletne pozycje odpadają po cichu,
+  puste tablice nie trafiają do rekordu (undefined, nie []).
+- `components/dashboard/StudentLessonHistory.tsx`: nagłówki sekcji
+  dostały emoji 📘/📙/📕 z zamówienia. Nowe komponenty `SummaryContent`,
+  `VocabularyGrid` (z `enrichVocabularyItems` — dopasowuje strukturalne
+  dane po haśle do już wyświetlanej/zatwierdzonej listy słówek, nigdy nie
+  zmienia samej listy), `AreasForImprovementContent` — użyte we
+  wszystkich 3 miejscach renderowania (najnowsza lekcja, wyszukiwanie,
+  lista wcześniejszych lekcji), z fallbackiem na stary tekst dla
+  starszych lekcji bez pól strukturalnych.
+- `tests/transcriptLesson.test.ts`: +2 testy (wypełnianie 3 sekcji,
+  odrzucanie niekompletnych pozycji).
+- `CHANGELOG.md`: nowa sekcja R pod „3. Znane Ograniczenia...".
+
+Nie dokończone / do sprawdzenia: Zmiana nie była testowana wzrokowo w
+przeglądarce (dev server nieuruchamiany w tej sesji) — `npx tsc --noEmit`
+i `npm test` (365/365) przechodzą, ale wygląd kart w Historii Lekcji
+(emoji, plakietki kategorii, karty błędów) warto sprawdzić na żywo przed
+uznaniem UI za gotowe.
+
+Decyzje architektoniczne: Świadomie NIE stworzono osobnego modelu
+`LessonHistoryEntry`/nowego serwisu/nowych komponentów, mimo że zlecenie
+tak opisywało — istniejący `LessonRecord`/`TranscriptLessonPanel`/
+`StudentLessonHistory` już realizowały tę funkcję; równoległy model
+byłby duplikacją bez korzyści i naruszałby CLAUDE.md §4 (nie wprowadzaj
+kolejnego mechanizmu bez potrzeby). Nowe pola są opcjonalne i addytywne,
+żeby nie zerwać żadnego istniejącego konsumenta `LessonRecord`.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji ani
+ścieżkach tokenowych bez logowania.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 365/365 zielone (+2 nowe testy).

@@ -474,6 +474,21 @@ export interface LessonBlocks {
   learningCurve?: string;
 }
 
+/** Pozycja słownictwa dla karty w Historii Lekcji kursanta (BLOK 2a, wersja ustrukturyzowana). */
+export interface LessonVocabularyItem {
+  term: string;
+  translation: string;
+  contextSentence: string;
+  category?: 'idiom' | 'collocation' | 'business' | 'general';
+}
+
+/** Pozycja błędu/korekty dla karty w Historii Lekcji kursanta (BLOK 2b, wersja ustrukturyzowana). */
+export interface LessonAreaForImprovement {
+  originalError: string;
+  correctedForm: string;
+  ruleExplanation: string;
+}
+
 export interface QuestionUsageLog {
   questionLogId: string;
   lessonId: string;
@@ -583,6 +598,21 @@ export interface LessonRecord {
   siftSessionId?: string;
   /** ISO, kiedy transkrypcja dotarła do bazy. */
   transcriptReceivedAt?: string;
+
+  // ── Trzy sekcje Historii Lekcji (widok kursanta) ──────────────────────
+  //
+  // Wersja ustrukturyzowana bloków `summary`/`vocabulary`/`corrections`
+  // (patrz `LessonBlocks`), wypełniana przez Naradę AI (`generateLessonFromTranscript`)
+  // obok istniejących pól tekstowych — te pozostają jedynym źródłem dla
+  // fiszek (`syncFlashcardSetForLesson`), puli powtórek (`generateRecallCandidates`)
+  // i starszych widoków. Brak tych pól (starsze lekcje) = karta w Historii
+  // Lekcji wraca do renderowania tekstu z `lessonSummary`/`vocabularyText`/`thingsToImprove`.
+  /** Podsumowanie lekcji jako lista punktów (min. 3), zamiast ciągłego tekstu. */
+  summaryPoints?: string[];
+  /** Słownictwo z kontekstowym zdaniem i kategorią, do kart w Historii Lekcji. */
+  vocabularyItems?: LessonVocabularyItem[];
+  /** Błędy kursanta z poprawną formą i wyjaśnieniem zasady, do kart w Historii Lekcji. */
+  areasForImprovement?: LessonAreaForImprovement[];
 
   createdAt: string;
   updatedAt: string;

@@ -1,4 +1,4 @@
-import { LessonBlocks, LessonRecord, QuestionUsageLog } from '../types';
+import { LessonAreaForImprovement, LessonBlocks, LessonRecord, LessonVocabularyItem, QuestionUsageLog } from '../types';
 
 /**
  * Transkrypcja rozmowy → cztery bloki lekcji oraz ukryte logi pytań
@@ -88,6 +88,25 @@ Przygotuj kompletną analizę lekcji jako obiekt JSON o dokładnie takich polach
 
   "corrections": "BLOK 2b: Korekty i wymowa.\\n'Corrections:' (max 3 błędy w formacie: '❌ [błąd] → ✅ [poprawna forma] — [krótka zasada]').\\n'Pronunciation:' (max 2-3 elementy w formacie: 'słowo — /wymowa/ — [akcent/uwaga]').",
 
+  "summaryPoints": ["ta sama treść co 'summary', ale rozbita na dokładnie 3 zwięzłe punkty tematyczne/merytoryczne (bez linii z datą i godziną, bez powitań) — jeden punkt = jedno zdanie o tym, co było na lekcji"],
+
+  "vocabularyItems": [
+    {
+      "term": "to samo słownictwo co w polu 'vocabulary', jedna pozycja na obiekt — angielskie hasło lub zwrot",
+      "translation": "polskie tłumaczenie",
+      "contextSentence": "przykładowe zdanie z transkrypcji (lub naturalne zdanie ilustrujące użycie, jeśli w transkrypcji go nie było) zawierające to słowo/zwrot",
+      "category": "idiom | collocation | business | general — najbardziej pasująca kategoria"
+    }
+  ],
+
+  "areasForImprovement": [
+    {
+      "originalError": "dokładny błąd kursanta z transkrypcji (to samo źródło co 'Corrections' w polu 'corrections')",
+      "correctedForm": "poprawna forma",
+      "ruleExplanation": "krótkie wyjaśnienie zasady gramatycznej lub językowej"
+    }
+  ],
+
   "homework": "BLOK 3a: Praca domowa — Cribro Habit (DLA LEKTORA).\\nZadanie 1 — Translation PL→EN (dokładnie 6 zdań po polsku do przetłumaczenia)\\nZadanie 2 — Correct the Mistake (4 zdania po angielsku z celowym błędem)\\nZadanie 3 — Finish the Response (4 krótkie mini-dialogi / sytuacje)\\nZadanie 4 — Build a Natural Sentence (4 zestawy wskazówek do ułożenia zdania)",
 
   "answerKey": "BLOK 3b: Answer Key — klucz odpowiedzi do wszystkich 4 zadań domowych",
@@ -125,6 +144,9 @@ interface RawTranscriptLesson {
   studentInsights?: unknown;
   vocabulary?: unknown;
   corrections?: unknown;
+  summaryPoints?: unknown;
+  vocabularyItems?: unknown;
+  areasForImprovement?: unknown;
   homework?: unknown;
   answerKey?: unknown;
   nextLesson?: unknown;
@@ -133,6 +155,57 @@ interface RawTranscriptLesson {
 }
 
 const asText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+
+/** Rozbiór `summaryPoints`: tylko niepuste stringi, reszta (liczby, obiekty) odpada po cichu. */
+const asStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value.map((v) => asText(v)).filter((v) => v.length > 0);
+};
+
+const VOCAB_CATEGORIES: Array<NonNullable<LessonVocabularyItem['category']>> = [
+  'idiom',
+  'collocation',
+  'business',
+  'general',
+];
+
+/** Rozbiór `vocabularyItems`: odrzuca pozycje bez hasła lub tłumaczenia — niekompletna karta nie trafia do historii kursanta. */
+const asVocabularyItems = (value: unknown): LessonVocabularyItem[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((v): v is Record<string, any> => Boolean(v && typeof v === 'object'))
+    .map((v) => {
+      const term = asText(v.term);
+      const translation = asText(v.translation);
+      if (!term || !translation) return null;
+      const category = VOCAB_CATEGORIES.includes(v.category) ? (v.category as LessonVocabularyItem['category']) : undefined;
+      return {
+        term,
+        translation,
+        contextSentence: asText(v.contextSentence),
+        ...(category ? { category } : {}),
+      } as LessonVocabularyItem;
+    })
+    .filter((v): v is LessonVocabularyItem => Boolean(v));
+};
+
+/** Rozbiór `areasForImprovement`: odrzuca pozycje bez błędu lub poprawnej formy. */
+const asAreasForImprovement = (value: unknown): LessonAreaForImprovement[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((v): v is Record<string, any> => Boolean(v && typeof v === 'object'))
+    .map((v) => {
+      const originalError = asText(v.originalError);
+      const correctedForm = asText(v.correctedForm);
+      if (!originalError || !correctedForm) return null;
+      return {
+        originalError,
+        correctedForm,
+        ruleExplanation: asText(v.ruleExplanation),
+      } as LessonAreaForImprovement;
+    })
+    .filter((v): v is LessonAreaForImprovement => Boolean(v));
+};
 
 export class TranscriptLessonError extends Error {}
 
@@ -196,6 +269,10 @@ export function parseTranscriptLesson(
 
   const studentSpeaking = asText(parsed.studentSpeaking) || blocks.learningCurve || '';
   const studentInsights = asText(parsed.studentInsights) || studentSpeaking;
+
+  const summaryPoints = asStringArray(parsed.summaryPoints);
+  const vocabularyItems = asVocabularyItems(parsed.vocabularyItems);
+  const areasForImprovement = asAreasForImprovement(parsed.areasForImprovement);
 
   if (!blocks.summary && !blocks.vocabulary) {
     throw new TranscriptLessonError(
@@ -271,6 +348,9 @@ export function parseTranscriptLesson(
     nextLessonPlan: blocks.nextLesson,
     studentSpeaking: studentSpeaking,
     studentInsights: studentInsights,
+    summaryPoints: summaryPoints.length > 0 ? summaryPoints : undefined,
+    vocabularyItems: vocabularyItems.length > 0 ? vocabularyItems : undefined,
+    areasForImprovement: areasForImprovement.length > 0 ? areasForImprovement : undefined,
     questionUsageLogs: questionUsageLogs.length > 0 ? questionUsageLogs : undefined,
     processingRunId: `run_${Date.now()}`,
     analysisVersion: 'v2026-09-16',

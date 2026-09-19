@@ -24,7 +24,7 @@ import {
 import Markdown from 'react-markdown';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { LessonRecord } from '../../types';
+import { LessonAreaForImprovement, LessonRecord, LessonVocabularyItem } from '../../types';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { getApprovedItemsForLesson } from '../../services/studentContext';
 import { splitVocabularyLines, cleanVocabularyTopic } from '../../utils/vocabulary';
@@ -41,6 +41,134 @@ interface ParsedVocabItem {
   word: string;
   translation: string | null;
 }
+
+/** Pozycja słownictwa gotowa do renderowania w karcie — tekstowa lista wzbogacona o `vocabularyItems`, gdy Narada AI je dostarczyła. */
+interface DisplayVocabItem {
+  term: string;
+  translation: string | null;
+  contextSentence?: string;
+  category?: LessonVocabularyItem['category'];
+}
+
+const VOCAB_CATEGORY_LABEL: Record<NonNullable<LessonVocabularyItem['category']>, { pl: string; en: string }> = {
+  idiom: { pl: 'idiom', en: 'idiom' },
+  collocation: { pl: 'kolokacja', en: 'collocation' },
+  business: { pl: 'biznes', en: 'business' },
+  general: { pl: 'ogólne', en: 'general' },
+};
+
+/**
+ * Wzbogaca listę słówek (tekstową, ewentualnie zawężoną do zatwierdzonych przez lektora)
+ * o zdanie kontekstowe i kategorię ze strukturalnego `vocabularyItems`, gdy dopasuje się hasło.
+ * Zatwierdzone słówka (`approvedItemsMap`) pozostają jedynym źródłem TEGO, co się wyświetla —
+ * to dopasowanie tylko dokłada kontekst, nigdy nie zmienia listy.
+ */
+const enrichVocabularyItems = (
+  baseItems: ParsedVocabItem[],
+  structured?: LessonVocabularyItem[]
+): DisplayVocabItem[] => {
+  if (!structured || structured.length === 0) {
+    return baseItems.map((item) => ({ term: item.word, translation: item.translation }));
+  }
+  const byTerm = new Map(structured.map((v) => [v.term.toLowerCase().trim(), v]));
+  return baseItems.map((item) => {
+    const match = byTerm.get(item.word.toLowerCase().trim());
+    if (!match) return { term: item.word, translation: item.translation };
+    return {
+      term: item.word,
+      translation: item.translation || match.translation,
+      contextSentence: match.contextSentence || undefined,
+      category: match.category,
+    };
+  });
+};
+
+/** 📘 Podsumowanie: punkty z Narady AI, gdy są; ciągły tekst (starsze lekcje) w przeciwnym razie. */
+const SummaryContent: React.FC<{ points?: string[]; fallbackText?: string }> = ({ points, fallbackText }) => {
+  if (points && points.length > 0) {
+    return (
+      <ul className="text-sm text-content leading-relaxed space-y-2 bg-ink/20 p-4 rounded-xl border border-line-soft">
+        {points.map((point, idx) => (
+          <li key={idx} className="flex items-start gap-2.5">
+            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+            <span>{point}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (!fallbackText) return null;
+  return (
+    <div className="text-sm text-content leading-relaxed text-justify [text-align:justify] hyphens-auto prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none [&>p]:text-justify [&>p]:leading-relaxed bg-ink/20 p-4 rounded-xl border border-line-soft">
+      <Markdown>{fallbackText}</Markdown>
+    </div>
+  );
+};
+
+/** 📙 Słownictwo: siatka kart, opcjonalnie ze zdaniem kontekstowym i kategorią. */
+const VocabularyGrid: React.FC<{ items: DisplayVocabItem[]; language: 'pl' | 'en' }> = ({ items, language }) => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+    {items.map((item, idx) => (
+      <div
+        key={`${idx}-${item.term}`}
+        className="flex items-center justify-between gap-3 p-3 rounded-xl bg-black/30 border border-white/5 hover:border-white/15 transition-colors group/item"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="font-bold text-white text-sm group-hover/item:text-primary transition-colors truncate">
+              {item.term}
+            </p>
+            {item.category && (
+              <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25 shrink-0">
+                {VOCAB_CATEGORY_LABEL[item.category][language]}
+              </span>
+            )}
+          </div>
+          {item.translation && (
+            <p className="text-xs text-content-muted truncate mt-0.5">{item.translation}</p>
+          )}
+          {item.contextSentence && (
+            <p className="text-[11px] text-content-muted/80 italic mt-1 line-clamp-2">
+              {item.contextSentence}
+            </p>
+          )}
+        </div>
+        <TTSButtons text={item.term} size="sm" />
+      </div>
+    ))}
+  </div>
+);
+
+/** 📕 Obszary do poprawy: błąd → poprawna forma + zasada z Narady AI, gdy są; ciągły tekst w przeciwnym razie. */
+const AreasForImprovementContent: React.FC<{ areas?: LessonAreaForImprovement[]; fallbackText?: string }> = ({
+  areas,
+  fallbackText,
+}) => {
+  if (areas && areas.length > 0) {
+    return (
+      <div className="space-y-2.5">
+        {areas.map((area, idx) => (
+          <div key={idx} className="rounded-xl border border-danger/20 bg-danger/10 p-3.5 space-y-1.5">
+            <p className="text-sm text-content leading-relaxed">
+              <span className="text-danger">❌ {area.originalError}</span>
+              <span className="text-content-muted mx-1.5">→</span>
+              <span className="text-emerald-300 font-semibold">✅ {area.correctedForm}</span>
+            </p>
+            {area.ruleExplanation && (
+              <p className="text-xs text-content-muted leading-relaxed">{area.ruleExplanation}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (!fallbackText) return null;
+  return (
+    <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none bg-danger/10 p-4 rounded-xl border border-danger/20">
+      <Markdown>{fallbackText}</Markdown>
+    </div>
+  );
+};
 
 const parseVocabularyLine = (line: string): ParsedVocabItem => {
   let cleanLine = line.replace(/^[\s\*\-\•\d\.]+\s*/, '').trim();
@@ -140,11 +268,11 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
           sectionTitle: 'Historia lekcji',
           latestLessonBadge: 'Ostatnia lekcja',
           pastLessonsTitle: 'Wcześniejsze lekcje',
-          summary: 'Co przerabialiśmy',
-          items: 'Słownictwo z lekcji',
+          summary: '📘 Podsumowanie',
+          items: '📙 Słownictwo',
           nextStep: 'Twój następny krok',
           teacherSpeaking: 'O czym mówił kursant (notatka lektora)',
-          thingsToImprove: 'Do poprawy (wskazówki lektora)',
+          thingsToImprove: '📕 Obszary do poprawy',
           studyFlashcards: 'Fiszki z lekcji',
           practiceAI: 'Trening zdań',
           repeatLessonBtn: 'Powtórz ostatnią lekcję',
@@ -167,11 +295,11 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
           sectionTitle: 'Lesson History',
           latestLessonBadge: 'Latest Lesson',
           pastLessonsTitle: 'Previous Lessons',
-          summary: 'What we covered',
-          items: 'Vocabulary from lesson',
+          summary: '📘 Summary',
+          items: '📙 Vocabulary',
           nextStep: 'Your next step',
           teacherSpeaking: 'Student speaking (Teacher note)',
-          thingsToImprove: 'Things to improve (Teacher feedback)',
+          thingsToImprove: '📕 Areas to improve',
           studyFlashcards: 'Study Flashcards',
           practiceAI: 'Sentence Practice',
           repeatLessonBtn: 'Repeat latest lesson',
@@ -387,25 +515,24 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
               </h3>
             </div>
 
-            {/* Summary (PODSUMOWANIE - Tekst wyjustowany) */}
-            {(latestBlocks.summary || latestLesson.lessonSummary) && (
+            {/* 📘 Summary (PODSUMOWANIE) */}
+            {(latestLesson.summaryPoints?.length || latestBlocks.summary || latestLesson.lessonSummary) && (
               <div className="space-y-2">
                 <h4 className="text-xs font-bold text-content-muted uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles size={13} className="text-primary" />
                   {L.summary}
                 </h4>
-                <div className="text-sm text-content leading-relaxed text-justify [text-align:justify] hyphens-auto prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none [&>p]:text-justify [&>p]:leading-relaxed bg-ink/20 p-4 rounded-xl border border-line-soft">
-                  <Markdown>{latestBlocks.summary || latestLesson.lessonSummary}</Markdown>
-                </div>
+                <SummaryContent
+                  points={latestLesson.summaryPoints}
+                  fallbackText={latestBlocks.summary || latestLesson.lessonSummary}
+                />
               </div>
             )}
 
-            {/* Vocabulary list with TTS (SŁOWNICTWO) */}
+            {/* 📙 Vocabulary list with TTS (SŁOWNICTWO) */}
             {latestItems.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-content-muted uppercase tracking-wider flex items-center gap-1.5">
-                    <Tag size={13} className="text-primary" />
                     {L.items}
                     <span className="text-[11px] font-mono text-primary font-bold ml-1">
                       ({latestItems.length})
@@ -413,39 +540,23 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                   </h4>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {latestItems.map((item, idx) => (
-                    <div
-                      key={`${idx}-${item.word}`}
-                      className="flex items-center justify-between gap-3 p-3 rounded-xl bg-black/30 border border-white/5 hover:border-white/15 transition-colors group/item"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="font-bold text-white text-sm group-hover/item:text-primary transition-colors truncate">
-                          {item.word}
-                        </p>
-                        {item.translation && (
-                          <p className="text-xs text-content-muted truncate mt-0.5">
-                            {item.translation}
-                          </p>
-                        )}
-                      </div>
-                      <TTSButtons text={item.word} size="sm" />
-                    </div>
-                  ))}
-                </div>
+                <VocabularyGrid
+                  items={enrichVocabularyItems(latestItems, latestLesson.vocabularyItems)}
+                  language={language}
+                />
               </div>
             )}
 
-            {/* Things to improve (RZECZY DO POPRAWY / KOREKTY) */}
-            {(latestBlocks.corrections || latestLesson.thingsToImprove) && (
+            {/* 📕 Things to improve (OBSZARY DO POPRAWY) */}
+            {(latestLesson.areasForImprovement?.length || latestBlocks.corrections || latestLesson.thingsToImprove) && (
               <div className="space-y-2">
                 <h4 className="text-xs font-bold text-danger uppercase tracking-wider flex items-center gap-1.5">
-                  <AlertCircle size={13} />
                   {L.thingsToImprove}
                 </h4>
-                <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none bg-danger/10 p-4 rounded-xl border border-danger/20">
-                  <Markdown>{latestBlocks.corrections || latestLesson.thingsToImprove}</Markdown>
-                </div>
+                <AreasForImprovementContent
+                  areas={latestLesson.areasForImprovement}
+                  fallbackText={latestBlocks.corrections || latestLesson.thingsToImprove}
+                />
               </div>
             )}
 
@@ -545,62 +656,41 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
 
                   {isExpanded && (
                     <div className="p-5 border-t border-white/10 space-y-5 bg-black/20">
-                      {/* Summary (Podsumowanie wyjustowane) */}
-                      {lesson.lessonSummary && (
+                      {/* 📘 Summary (Podsumowanie) */}
+                      {(lesson.summaryPoints?.length || lesson.lessonSummary) && (
                         <div>
                           <h5 className="text-xs font-bold text-content-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                            <Sparkles size={13} className="text-primary" />
                             {L.summary}
                           </h5>
-                          <div className="text-sm text-content leading-relaxed text-justify [text-align:justify] hyphens-auto prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none [&>p]:text-justify [&>p]:leading-relaxed bg-ink/20 p-4 rounded-xl border border-line-soft">
-                            <Markdown>{lesson.lessonSummary}</Markdown>
-                          </div>
+                          <SummaryContent points={lesson.summaryPoints} fallbackText={lesson.lessonSummary} />
                         </div>
                       )}
 
-                      {/* Vocabulary (Słownictwo) */}
+                      {/* 📙 Vocabulary (Słownictwo) */}
                       {items.length > 0 && (
                         <div>
                           <h5 className="text-xs font-bold text-content-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                            <Tag size={13} className="text-primary" />
                             {L.items} ({items.length})
                           </h5>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {items.map((item, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center justify-between p-2.5 rounded-lg bg-black/30 border border-white/5 text-xs"
-                              >
-                                <div>
-                                  <span className="font-bold text-white">{item.word}</span>
-                                  {item.translation && (
-                                    <span className="text-content-muted ml-2">
-                                      - {item.translation}
-                                    </span>
-                                  )}
-                                </div>
-                                <TTSButtons text={item.word} size="sm" />
-                              </div>
-                            ))}
-                          </div>
+                          <VocabularyGrid
+                            items={enrichVocabularyItems(items, lesson.vocabularyItems)}
+                            language={language}
+                          />
                         </div>
                       )}
 
-                      {/* Things to improve (Rzeczy do poprawy) & Zadania z lekcji */}
+                      {/* 📕 Things to improve (Obszary do poprawy) & Zadania z lekcji */}
                       {(() => {
                         const lessonBlocks = extractLessonBlocks(lesson);
                         const corrs = lessonBlocks.corrections || lesson.thingsToImprove;
                         return (
                           <>
-                            {corrs && (
+                            {(lesson.areasForImprovement?.length || corrs) && (
                               <div className="space-y-2">
                                 <h5 className="text-xs font-bold text-danger uppercase tracking-wider flex items-center gap-1.5">
-                                  <AlertCircle size={13} />
                                   {L.thingsToImprove}
                                 </h5>
-                                <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none bg-danger/10 p-4 rounded-xl border border-danger/20">
-                                  <Markdown>{corrs}</Markdown>
-                                </div>
+                                <AreasForImprovementContent areas={lesson.areasForImprovement} fallbackText={corrs} />
                               </div>
                             )}
                             {isTeacher && lessonBlocks.homework && (
@@ -781,61 +871,41 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                           )}
                         </div>
 
-                        {/* Summary (Wyjustowane) */}
-                        {lesson.lessonSummary ? (
+                        {/* 📘 Summary (Podsumowanie) */}
+                        {lesson.summaryPoints?.length || lesson.lessonSummary ? (
                           <div className="space-y-2">
                             <h5 className="text-xs font-bold text-content-muted uppercase tracking-wider flex items-center gap-1.5">
-                              <Sparkles size={13} className="text-primary" />
                               {L.summary}
                             </h5>
-                            <div className="text-sm text-content leading-relaxed text-justify [text-align:justify] hyphens-auto prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none [&>p]:text-justify [&>p]:leading-relaxed bg-ink/20 p-4 rounded-xl border border-line-soft">
-                              <Markdown>{lesson.lessonSummary}</Markdown>
-                            </div>
+                            <SummaryContent points={lesson.summaryPoints} fallbackText={lesson.lessonSummary} />
                           </div>
                         ) : (
                           <p className="text-xs text-content-muted italic">{L.emptyNotes}</p>
                         )}
 
-                        {/* Vocabulary */}
+                        {/* 📙 Vocabulary */}
                         {items.length > 0 && (
                           <div className="space-y-3">
                             <h5 className="text-xs font-bold text-content-muted uppercase tracking-wider flex items-center gap-1.5">
-                              <Tag size={13} className="text-primary" />
                               {L.items} ({items.length})
                             </h5>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                              {items.map((item, i) => (
-                                <div
-                                  key={i}
-                                  className="flex items-center justify-between gap-3 p-3 rounded-xl bg-black/30 border border-white/5 hover:border-white/15 transition-colors"
-                                >
-                                  <div className="min-w-0 flex-1">
-                                    <p className="font-bold text-white text-sm truncate">
-                                      {item.word}
-                                    </p>
-                                    {item.translation && (
-                                      <p className="text-xs text-content-muted truncate mt-0.5">
-                                        {item.translation}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <TTSButtons text={item.word} size="sm" />
-                                </div>
-                              ))}
-                            </div>
+                            <VocabularyGrid
+                              items={enrichVocabularyItems(items, lesson.vocabularyItems)}
+                              language={language}
+                            />
                           </div>
                         )}
 
-                        {/* Things to improve */}
-                        {lesson.thingsToImprove && (
+                        {/* 📕 Things to improve (Obszary do poprawy) */}
+                        {(lesson.areasForImprovement?.length || lesson.thingsToImprove) && (
                           <div className="space-y-2">
                             <h5 className="text-xs font-bold text-danger uppercase tracking-wider flex items-center gap-1.5">
-                              <AlertCircle size={13} />
                               {L.thingsToImprove}
                             </h5>
-                            <div className="text-sm text-content leading-relaxed prose prose-headings:text-text-hi prose-strong:text-text-hi max-w-none bg-danger/10 p-4 rounded-xl border border-danger/20">
-                              <Markdown>{lesson.thingsToImprove}</Markdown>
-                            </div>
+                            <AreasForImprovementContent
+                              areas={lesson.areasForImprovement}
+                              fallbackText={lesson.thingsToImprove}
+                            />
                           </div>
                         )}
 
