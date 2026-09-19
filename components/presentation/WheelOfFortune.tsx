@@ -1,33 +1,43 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import gsap from 'gsap';
-import confetti from 'canvas-confetti';
 import {
   Sparkles, RotateCcw, Volume2, CheckCircle2, Clock,
   HelpCircle, ChevronRight, Plus, Shuffle, Copy, Check,
   BookOpen, History, MessageSquare, Award, ArrowRight, Play, Pause,
-  Sun, Moon, Pencil, X, Save
+  Sun, Moon, Pencil, X, Save,
+  Link2, ShieldAlert, Mic, Puzzle, Languages, Gem
 } from 'lucide-react';
 import { PresentationSlide, LessonRecord } from '../../types';
 import { SlideInteraction } from '../admin/presentation/SlideCard';
 import TTSButtons from '../flashcards/TTSButtons';
 import Button from '../ui/Button';
-import { 
-  WheelQuestionItem, 
-  extractQuestionsFromScenario, 
-  extractQuestionsFromPastLessons, 
-  generateWheelQuestionsAI 
+import {
+  WheelQuestionItem,
+  ChallengeCategoryId,
+  CHALLENGE_CATEGORIES,
+  assignChallengeCategory,
+  extractQuestionsFromScenario,
+  extractQuestionsFromPastLessons,
+  generateWheelQuestionsAI
 } from '../../services/wheelQuestionService';
-import { animateDropletSuccess, prefersReducedMotion, cubicBezierEase } from '../../services/gsapAnimations';
+import { animateDropletSuccess, animateAccentPulse, animateGlowReveal, prefersReducedMotion, cubicBezierEase } from '../../services/gsapAnimations';
 import { useTheme } from '../../context/ThemeContext';
+
+// Ikony stałych wycinków tarczy — jedna ikona na kategorię wyzwania, niezależnie
+// od aktualnie wylosowanej treści (treść pojawia się wyłącznie w karcie wyniku).
+const CHALLENGE_ICONS: Record<ChallengeCategoryId, React.ComponentType<{ size?: number; className?: string }>> = {
+  collocation: Link2,
+  fix_error: ShieldAlert,
+  pitch_60s: Mic,
+  fill_gap: Puzzle,
+  translation: Languages,
+  upgrade_c1: Gem,
+};
 
 // Naturalna krzywa zwalniania koła fortuny — odpowiednik CSS
 // `cubic-bezier(0.12, 0.8, 0.2, 1.0)`, policzona raz przy starcie modułu.
 const WHEEL_SPIN_EASE = cubicBezierEase(0.12, 0.8, 0.2, 1.0);
 
-// Krótka etykieta kategorii na wycinku koła (pełne pytanie pojawia się wyłącznie
-// w karcie wyniku po zatrzymaniu — długi tekst na okręgu nachodził na sąsiednie wycinki).
-const truncateForWheel = (text: string, max = 14): string =>
-  text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
 
 interface WheelOfFortuneProps {
   slide?: PresentationSlide;
@@ -134,6 +144,7 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
   const wheelGroupRef = useRef<SVGGElement | null>(null);
   const needleRef = useRef<SVGSVGElement | null>(null);
   const resultCardRef = useRef<HTMLDivElement | null>(null);
+  const pulseRef = useRef<HTMLDivElement | null>(null);
   const rotationRef = useRef<number>(0);
   const lastPegIndexRef = useRef<number>(-1);
   const lastTickTimeRef = useRef<number>(0);
@@ -179,9 +190,10 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
     };
   }, [isTimerRunning, timerSeconds]);
 
-  // Liczba sektorów i kąt pojedynczego wycinka
-  const questionsCount = Math.max(1, activeQuestions.length);
-  const sliceAngle = 360 / questionsCount;
+  // Tarcza zawsze ma 6 stałych wycinków kategorii wyzwań (patrz CHALLENGE_CATEGORIES) —
+  // niezależnie od liczby pytań w puli. Treść merytoryczna trafia do karty wyniku.
+  const slicesCount = CHALLENGE_CATEGORIES.length;
+  const sliceAngle = 360 / slicesCount;
   const wheelRadius = 175;
   const centerCoord = 200;
 
@@ -252,53 +264,52 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
     });
   };
 
-  // Zakończenie obrotu, wyznaczenie wylosowanego pytania
+  // Zakończenie obrotu, wyznaczenie wylosowanej kategorii i dopasowanego pytania z puli
   const finishSpin = (finalRotation: number, forcedWinnerId?: string | null) => {
     const normalizedRotation = ((finalRotation % 360) + 360) % 360;
     const pointerAngle = (360 - normalizedRotation + 270) % 360;
-    const winningIndex = Math.floor(pointerAngle / sliceAngle) % questionsCount;
+    const winningIndex = Math.floor(pointerAngle / sliceAngle) % slicesCount;
+    const winningCategory = CHALLENGE_CATEGORIES[winningIndex].id;
 
-    let winner = activeQuestions[winningIndex];
+    let winner: WheelQuestionItem | null = null;
     if (forcedWinnerId) {
-      const found = activeQuestions.find(q => q.id === forcedWinnerId);
-      if (found) winner = found;
+      winner = activeQuestions.find(q => q.id === forcedWinnerId) || null;
+    }
+    if (!winner) {
+      const inCategory = activeQuestions.filter(q => q.challengeCategory === winningCategory);
+      const undiscussedInCategory = inCategory.filter(q => !discussedQuestionIds.has(q.id));
+      const pool = undiscussedInCategory.length > 0
+        ? undiscussedInCategory
+        : (inCategory.length > 0 ? inCategory : activeQuestions);
+      winner = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null;
     }
 
     setDrawnQuestion(winner || null);
 
     if (resultCardRef.current) {
       animateDropletSuccess(resultCardRef.current);
+      const glowColor = questionSource === 'past_lessons'
+        ? 'rgba(245, 158, 11, 0.55)'
+        : 'rgba(16, 185, 129, 0.55)';
+      animateGlowReveal(resultCardRef.current, glowColor);
     }
 
-    // Subtelne konfetti świętujące wylosowanie pytania
-    try {
-      confetti({
-        particleCount: 28,
-        spread: 55,
-        origin: { y: 0.7 },
-        colors: isDark 
-          ? ['#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6'] 
-          : ['#059669', '#0284c7', '#d97706', '#7c3aed'],
-        disableForReducedMotion: true
-      });
-    } catch {}
+    // Elegancki "Accent Pulse" wokół znacznika koła zamiast konfetti
+    if (pulseRef.current) {
+      animateAccentPulse(pulseRef.current);
+    }
   };
 
   // Wywołanie zakręcenia przez użytkownika
   const handleSpinClick = () => {
     if (isSpinning || activeQuestions.length === 0) return;
 
-    const undiscussedIndices = activeQuestions
-      .map((q, idx) => ({ q, idx }))
-      .filter(({ q }) => !discussedQuestionIds.has(q.id));
+    const undiscussed = activeQuestions.filter(q => !discussedQuestionIds.has(q.id));
+    const poolToChooseFrom = undiscussed.length > 0 ? undiscussed : activeQuestions;
 
-    const poolToChooseFrom = undiscussedIndices.length > 0
-      ? undiscussedIndices
-      : activeQuestions.map((q, idx) => ({ q, idx }));
-
-    const randomPick = poolToChooseFrom[Math.floor(Math.random() * poolToChooseFrom.length)];
-    const chosenIndex = randomPick.idx;
-    const chosenQuestion = randomPick.q;
+    const chosenQuestion = poolToChooseFrom[Math.floor(Math.random() * poolToChooseFrom.length)];
+    const chosenCategory = chosenQuestion.challengeCategory || assignChallengeCategory(chosenQuestion.id);
+    const chosenIndex = CHALLENGE_CATEGORIES.findIndex(c => c.id === chosenCategory);
 
     // Kąt środka wybranego wycinka
     const sliceCenterAngle = chosenIndex * sliceAngle + sliceAngle / 2;
@@ -363,12 +374,16 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
       .filter(Boolean);
     if (lines.length === 0) return;
 
-    const editedQuestions: WheelQuestionItem[] = lines.map((line, idx) => ({
-      id: `custom-${Date.now()}-${idx}`,
-      question: line,
-      category: 'custom',
-      sourceTag: 'Edycja lektora'
-    }));
+    const editedQuestions: WheelQuestionItem[] = lines.map((line, idx) => {
+      const id = `custom-${Date.now()}-${idx}`;
+      return {
+        id,
+        question: line,
+        category: 'custom',
+        sourceTag: 'Edycja lektora',
+        challengeCategory: assignChallengeCategory(id)
+      };
+    });
 
     setActiveQuestions(editedQuestions);
     setDiscussedQuestionIds(new Set());
@@ -761,9 +776,11 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                 strokeWidth="3"
               />
 
-              {/* Obracająca się grupa wycinków koła */}
+              {/* Obracająca się grupa wycinków koła — 6 stałych kategorii wyzwań,
+                  niezależnie od liczby pytań w puli. Treść pytania trafia wyłącznie
+                  do karty wyniku po zatrzymaniu (patrz finishSpin). */}
               <g ref={wheelGroupRef} className="origin-[200px_200px]">
-                {activeQuestions.map((q, idx) => {
+                {CHALLENGE_CATEGORIES.map((cat, idx) => {
                   const startAngle = idx * sliceAngle;
                   const endAngle = startAngle + sliceAngle;
                   const startRad = (startAngle * Math.PI) / 180;
@@ -779,27 +796,32 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
 
                   const colorInfo = sectorPalette[idx % sectorPalette.length];
                   const midAngle = startAngle + sliceAngle / 2;
-                  const isWinner = drawnQuestion?.id === q.id && !isSpinning;
+                  const isWinner = !isSpinning && drawnQuestion?.challengeCategory === cat.id;
+                  const IconComp = CHALLENGE_ICONS[cat.id];
 
-                  // Pozycja tekstu/numeru sektora wewnątrz wycinka
-                  const textRadius = wheelRadius * 0.72;
-                  const textRad = (midAngle * Math.PI) / 180;
-                  const tx = centerCoord + textRadius * Math.cos(textRad);
-                  const ty = centerCoord + textRadius * Math.sin(textRad);
+                  // Pozycja ikony i etykiety kategorii wewnątrz wycinka
+                  const iconRadius = wheelRadius * 0.52;
+                  const iconRad = (midAngle * Math.PI) / 180;
+                  const ix = centerCoord + iconRadius * Math.cos(iconRad);
+                  const iy = centerCoord + iconRadius * Math.sin(iconRad);
+
+                  const labelRadius = wheelRadius * 0.8;
+                  const lx = centerCoord + labelRadius * Math.cos(iconRad);
+                  const ly = centerCoord + labelRadius * Math.sin(iconRad);
 
                   // Inteligentna orientacja tekstu — koniec z obróconymi do góry nogami cyframi!
                   const isBottomHalf = midAngle > 90 && midAngle < 270;
-                  const textRotation = isBottomHalf ? midAngle - 90 : midAngle + 90;
+                  const contentRotation = isBottomHalf ? midAngle - 90 : midAngle + 90;
 
                   return (
-                    <g key={q.id || idx}>
-                      <title>{q.question}</title>
+                    <g key={cat.id}>
+                      <title>{cat.label}</title>
                       {/* Sektor / Wedge */}
                       <path
                         d={pathData}
                         fill={
-                          isWinner 
-                            ? isDark ? 'rgba(114, 240, 180, 0.45)' : 'rgba(16, 185, 129, 0.38)' 
+                          isWinner
+                            ? isDark ? 'rgba(114, 240, 180, 0.45)' : 'rgba(16, 185, 129, 0.38)'
                             : colorInfo.fill
                         }
                         stroke={isWinner ? (isDark ? '#72f0b4' : '#059669') : colorInfo.stroke}
@@ -807,29 +829,53 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                         className="transition-colors duration-200"
                       />
 
-                      {/* Krótka etykieta kategorii (nie całe pytanie — to nachodziło na sąsiednie
-                          wycinki i tworzyło szum). Zawsze biały tekst z text-shadow, czytelny na
-                          każdym kolorze wycinka i w obu motywach. Pełne pytanie: karta wyniku. */}
+                      {/* Ikona kategorii — czysty, czytelny wektor, biały z odcieniem cienia
+                          dla kontrastu na każdym kolorze wycinka i w obu motywach. */}
+                      <foreignObject
+                        x={ix - 14}
+                        y={iy - 14}
+                        width={28}
+                        height={28}
+                        transform={`rotate(${contentRotation}, ${ix}, ${iy})`}
+                        className="pointer-events-none overflow-visible"
+                      >
+                        <div
+                          style={{
+                            width: 28,
+                            height: 28,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#ffffff',
+                            filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.75))',
+                          }}
+                        >
+                          <IconComp size={17} />
+                        </div>
+                      </foreignObject>
+
+                      {/* Krótka, stała nazwa kategorii (nigdy treść pytania —
+                          to trafia wyłącznie do karty wyniku po prawej). */}
                       <text
-                        x={tx}
-                        y={ty}
+                        x={lx}
+                        y={ly}
                         fill="#ffffff"
-                        fontSize="11"
+                        fontSize="10"
                         fontWeight="700"
                         textAnchor="middle"
                         dominantBaseline="central"
-                        transform={`rotate(${textRotation}, ${tx}, ${ty})`}
+                        transform={`rotate(${contentRotation}, ${lx}, ${ly})`}
                         style={{ textShadow: '0 1px 2px rgba(0,0,0,0.75), 0 1px 4px rgba(0,0,0,0.55)' }}
                         className="pointer-events-none"
                       >
-                        {truncateForWheel(q.sourceTag || `Pytanie ${idx + 1}`)}
+                        {cat.label}
                       </text>
                     </g>
                   );
                 })}
 
                 {/* Kołki (pegs) na obrzeżu koła */}
-                {activeQuestions.map((_, idx) => {
+                {Array.from({ length: slicesCount }).map((_, idx) => {
                   const angle = idx * sliceAngle;
                   const rad = (angle * Math.PI) / 180;
                   const px = centerCoord + (wheelRadius + 6) * Math.cos(rad);
@@ -858,6 +904,17 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                 pointerEvents="none"
               />
             </svg>
+
+            {/* "Accent Pulse" — elegancki, promienisty błysk wokół znacznika przy zatrzymaniu
+                koła (scale 1 -> 1.4, opacity 0.6 -> 0, 600ms), w miejsce konfetti. Domyślnie
+                niewidoczny (opacity 0 przez GSAP `clearProps`), animowany w finishSpin(). */}
+            <div
+              ref={pulseRef}
+              className={`absolute z-10 w-28 h-28 rounded-full pointer-events-none opacity-0 ${
+                isDark ? 'bg-primary/40' : 'bg-emerald-500/35'
+              }`}
+              style={{ boxShadow: isDark ? '0 0 40px 10px rgba(114,240,180,0.35)' : '0 0 40px 10px rgba(16,185,129,0.3)' }}
+            />
 
             {/* Środkowy przycisk 3D (SPIN / ZAKRĘĆ) dopasowany do motywu */}
             <div className="absolute z-20 flex items-center justify-center">
@@ -929,6 +986,21 @@ export const WheelOfFortune: React.FC<WheelOfFortuneProps> = ({
                     <Award size={13} />
                     {drawnQuestion ? 'Wylosowane pytanie' : 'Gotowy do rozgrzewki'}
                   </span>
+                  {drawnQuestion?.challengeCategory && (() => {
+                    const catInfo = CHALLENGE_CATEGORIES.find(c => c.id === drawnQuestion.challengeCategory);
+                    const CatIcon = CHALLENGE_ICONS[drawnQuestion.challengeCategory];
+                    if (!catInfo) return null;
+                    return (
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-bold border flex items-center gap-1.5 ${
+                        isDark
+                          ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                          : 'bg-amber-50 text-amber-800 border-amber-300'
+                      }`}>
+                        <CatIcon size={13} />
+                        {catInfo.label}
+                      </span>
+                    );
+                  })()}
                   {drawnQuestion?.sourceTag && (
                     <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
                       isDark ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'

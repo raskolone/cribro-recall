@@ -3,6 +3,49 @@ import { generateLessonPlannerAI, extractJSON } from './geminiService';
 import { extractLessonBlocks } from '../utils/lessonBlocks';
 import { runCouncil, WARMUP_REVIEW_SYSTEM } from './aiCouncil';
 
+export type ChallengeCategoryId =
+  | 'collocation'
+  | 'fix_error'
+  | 'pitch_60s'
+  | 'fill_gap'
+  | 'translation'
+  | 'upgrade_c1';
+
+/**
+ * 6 stałych kategorii wyzwań rozgrzewkowych renderowanych na tarczy koła.
+ * Tarcza zawsze ma te same wycinki (nazwa + ikona) — treść merytoryczna
+ * przypisana do wylosowanej kategorii pochodzi z puli pytań i pojawia się
+ * wyłącznie w karcie wyniku (patrz `assignChallengeCategory`).
+ */
+export const CHALLENGE_CATEGORIES: { id: ChallengeCategoryId; label: string }[] = [
+  { id: 'collocation', label: 'Collocation' },
+  { id: 'fix_error', label: 'Fix Error' },
+  { id: 'pitch_60s', label: '60s Pitch' },
+  { id: 'fill_gap', label: 'Fill Gap' },
+  { id: 'translation', label: 'Translation' },
+  { id: 'upgrade_c1', label: 'Upgrade C1' },
+];
+
+/**
+ * Deterministyczny hash krótkiego stringa (id pytania) do stabilnego
+ * przypisania kategorii wyzwania — to samo pytanie zawsze trafia w tę samą
+ * kategorię w obrębie sesji, niezależnie od kolejności ponownych renderów.
+ */
+const stableHash = (input: string): number => {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 31 + input.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+};
+
+export const assignChallengeCategory = (id: string): ChallengeCategoryId => {
+  return CHALLENGE_CATEGORIES[stableHash(id) % CHALLENGE_CATEGORIES.length].id;
+};
+
+const withChallengeCategories = (items: WheelQuestionItem[]): WheelQuestionItem[] =>
+  items.map(item => ({ ...item, challengeCategory: item.challengeCategory || assignChallengeCategory(item.id) }));
+
 export interface WheelQuestionItem {
   id: string;
   question: string;
@@ -10,6 +53,8 @@ export interface WheelQuestionItem {
   sourceTag?: string;
   followUpHint?: string;
   relatedWord?: string;
+  /** Stała kategoria wyzwania (jedna z 6 wycinków tarczy) przypisana treści. */
+  challengeCategory?: ChallengeCategoryId;
 }
 
 /**
@@ -160,7 +205,7 @@ export function extractQuestionsFromScenario(
     });
   }
 
-  return list.slice(0, 10);
+  return withChallengeCategories(list.slice(0, 10));
 }
 
 /**
@@ -319,7 +364,7 @@ export function extractQuestionsFromPastLessons(
     });
   }
 
-  return list.slice(0, 10);
+  return withChallengeCategories(list.slice(0, 10));
 }
 
 /**
@@ -358,17 +403,17 @@ RULES:
     });
     const parsed = councilRes.data;
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed.slice(0, 10).map((item: any, idx: number) => ({
+      return withChallengeCategories(parsed.slice(0, 10).map((item: any, idx: number) => ({
         id: `ai-wq-${Date.now()}-${idx}`,
         question: item.question,
         category: 'scenario' as const,
         sourceTag: item.sourceTag || 'AI Generated',
         followUpHint: item.followUpHint
-      }));
+      })));
     }
   } catch (err) {
     console.warn('[WheelQuestionService] AI council generation failed, using fallback:', err);
   }
 
-  return FALLBACK_WARMUP_QUESTIONS;
+  return withChallengeCategories(FALLBACK_WARMUP_QUESTIONS);
 }

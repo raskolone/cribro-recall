@@ -112,6 +112,57 @@ export const animateDropletSuccess = (element: HTMLElement | null): gsap.core.Tw
 };
 
 /**
+ * Elegancki, promienisty błysk wokół punktu zatrzymania (np. iglicy koła fortuny) —
+ * zastępuje efekt konfetti subtelniejszym akcentem świetlnym (scale 1 -> 1.4,
+ * opacity 0.6 -> 0, 600ms).
+ */
+export const animateAccentPulse = (element: HTMLElement | null): gsap.core.Tween | null => {
+  if (!element || prefersReducedMotion()) return null;
+
+  gsap.killTweensOf(element);
+
+  return gsap.fromTo(
+    element,
+    { scale: 1, opacity: 0.6 },
+    {
+      scale: 1.4,
+      opacity: 0,
+      duration: 0.6,
+      ease: 'power2.out',
+      clearProps: 'transform,opacity',
+    }
+  );
+};
+
+/**
+ * "Glow reveal" karty wyniku — płynne rozjaśnienie ramki i lekki cień świetlny
+ * w kolorze akcentu (emerald / amber), zamiast nagłego pojawienia się stylu.
+ */
+export const animateGlowReveal = (
+  element: HTMLElement | null,
+  glowColor: string
+): gsap.core.Tween | null => {
+  if (!element) return null;
+
+  if (prefersReducedMotion()) {
+    element.style.boxShadow = `0 0 24px 2px ${glowColor}`;
+    return null;
+  }
+
+  gsap.killTweensOf(element);
+
+  return gsap.fromTo(
+    element,
+    { boxShadow: `0 0 0px 0px ${glowColor}` },
+    {
+      boxShadow: `0 0 24px 2px ${glowColor}`,
+      duration: 0.5,
+      ease: 'power2.out',
+    }
+  );
+};
+
+/**
  * Płynne napełnianie paska postępu jak ciecz (Liquid Progress Bar).
  */
 export const animateProgressBarLiquid = (

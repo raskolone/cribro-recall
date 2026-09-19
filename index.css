@@ -1516,21 +1516,31 @@ tr.liquid-glass-hover:hover {
   height: 18px;
   margin: -9px 0 0 -9px;
   border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: radial-gradient(
     circle,
-    rgba(255, 255, 255, 0.95) 0%,
-    rgba(240, 114, 111, 0.95) 28%,
-    rgba(240, 114, 111, 0.35) 55%,
-    rgba(240, 114, 111, 0) 72%
+    rgba(239, 68, 68, 0.45) 0%,
+    rgba(239, 68, 68, 0.18) 55%,
+    rgba(239, 68, 68, 0) 75%
   );
-  box-shadow: 0 0 18px 6px rgba(240, 114, 111, 0.45);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
   pointer-events: none;
   z-index: 2147483647;
   will-change: transform;
 }
 
+.pad-laser::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .pad-laser { box-shadow: 0 0 10px 3px rgba(240, 114, 111, 0.4); }
+  .pad-laser { box-shadow: 0 0 6px rgba(239, 68, 68, 0.5); }
 }
 
 .pad-laser-remote {
@@ -1541,22 +1551,41 @@ tr.liquid-glass-hover:hover {
   transition: left 0.08s ease-out, top 0.08s ease-out;
 }
 
+/* Halo (18px) + rdzeń (8px) — patrz .pad-laser dla tej samej kalibracji
+   używanej lokalnie u lektora. */
 .pad-laser-dot {
-  width: 14px;
-  height: 14px;
+  position: relative;
+  width: 18px;
+  height: 18px;
   border-radius: 999px;
-  background: radial-gradient(circle, #ffffff 0%, #ff334b 60%, rgba(255, 51, 75, 0.8) 100%);
-  box-shadow: 0 0 14px 4px rgba(255, 51, 75, 0.8), 0 0 28px 8px rgba(255, 51, 75, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(
+    circle,
+    rgba(239, 68, 68, 0.45) 0%,
+    rgba(239, 68, 68, 0.18) 55%,
+    rgba(239, 68, 68, 0) 75%
+  );
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+}
+
+.pad-laser-dot::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
 }
 
 .pad-laser-ring {
   position: absolute;
-  top: -7px;
-  left: -7px;
+  top: -5px;
+  left: -5px;
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  border: 2px solid rgba(255, 51, 75, 0.7);
+  border: 2px solid rgba(239, 68, 68, 0.7);
   animation: pad-laser-pulse 1.4s infinite ease-out;
 }
 
@@ -1567,14 +1596,14 @@ tr.liquid-glass-hover:hover {
 
 .pad-laser-label {
   position: absolute;
-  top: 18px;
+  top: 20px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 10px;
   font-weight: 800;
   background: rgba(15, 23, 42, 0.85);
-  color: #ff808f;
-  border: 1px solid rgba(255, 51, 75, 0.4);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
   padding: 1px 6px;
   border-radius: 6px;
   white-space: nowrap;

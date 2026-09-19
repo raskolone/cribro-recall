@@ -2227,3 +2227,78 @@ Weryfikacja:
 - `npx tsc --noEmit` — 0 błędów.
 - `npm test` — 363/363 zielone.
 - `npm run build` — kod 0.
+
+2026-09-19 — Claude Code / Sonnet 5
+
+Zadanie: Koło Fortuny — 6 stałych kategorii wyzwań na tarczy zamiast surowych
+notatek + "Accent Pulse" zamiast konfetti. Notatnik — kalibracja wskaźnika
+laserowego (8px rdzeń / 18px halo), widoczność lasera u lektora (nie tylko
+kursanta), skrót klawiszowy Alt+H dla żółtego zakreślacza.
+
+Zrobione:
+- `services/wheelQuestionService.ts`: nowy typ `ChallengeCategoryId`, stała
+  `CHALLENGE_CATEGORIES` (Collocation, Fix Error, 60s Pitch, Fill Gap,
+  Translation, Upgrade C1), `assignChallengeCategory` (hash id → kategoria,
+  deterministyczne) i `withChallengeCategories` — dopięte do wszystkich
+  trzech ścieżek generowania puli pytań (scenariusz, historia lekcji, AI).
+- `components/presentation/WheelOfFortune.tsx`: tarcza renderuje teraz
+  zawsze 6 wycinków `CHALLENGE_CATEGORIES` (ikona Lucide + nazwa, przez
+  `foreignObject` w SVG) zamiast liczby wycinków = liczbie pytań. Losowanie
+  wybiera najpierw pytanie z puli (jak wcześniej — priorytet nieomówionym),
+  koło ląduje na wycinku jego `challengeCategory`; `finishSpin` dobiera
+  ostateczną treść z puli pasującą do wylosowanej kategorii. Usunięto
+  `canvas-confetti` (tylko z tego komponentu — nadal używane w
+  `HomeworkWarmupScrambler`/`QuizExercise`/`FlashcardExercise`/
+  `MatchExercise`/`FillInBlankExercise`, nie ruszone). Karta wyniku
+  pokazuje teraz też plakietkę wylosowanej kategorii z ikoną.
+- `services/gsapAnimations.ts`: nowe `animateAccentPulse` (błysk
+  scale 1→1.4, opacity 0.6→0, 600ms) i `animateGlowReveal` (box-shadow
+  ramki karty wyniku, emerald/amber wg źródła pytań).
+- `index.css`: `.pad-laser` (lokalny wskaźnik lektora) i `.pad-laser-dot`
+  (zdalny, widziany przez kursanta) ujednolicone na rdzeń 8px `#EF4444`
+  pełne krycie + halo 18px (`radial-gradient` + `box-shadow: 0 0 10px
+  rgba(239,68,68,0.6)`), zamiast dawnego różowo-czerwonego gradientu.
+  `.pad-laser` był zdefiniowany od dawna, ale nigdy nieużywany w JSX —
+  dokładnie ta luka, którą wypełnia ten wpis.
+- `components/scratchpad/ScratchpadEditor.tsx`: dodano `localLaserRef` +
+  `createPortal(<div className="pad-laser" />, document.body)` renderowany
+  gdy `isLaserOn && isTeacher`; `handleLaserMouseMove` aktualizuje jego
+  `transform: translate3d(...)` natychmiast (bez throttlingu 50ms, który
+  zostaje tylko dla zapisu do Firestore) — to samo (x, y) jest źródłem dla
+  obu, więc widok lektora i kursanta są zsynchronizowane. Dodano
+  `onKeyDown` na edytowalnej kartce: `Alt+H` (`e.code === 'KeyH'`, działa
+  identycznie na Macu z Option) woła istniejące `handleHighlight('#fef3c7',
+  '#92400e')` — ten sam żółty zakreślacz „Słówko” co przycisk w toolbarze.
+
+Nie dokończone / do sprawdzenia:
+- Nie zweryfikowano wzrokowo w przeglądarce (brak w tej sesji prostej
+  ścieżki logowania lektor→prezentacja+notatnik na żywo). Maciej: sprawdź
+  (1) że 6 wycinków z ikonami czyta się dobrze w obu motywach i nie
+  nachodzi tekst na sąsiednie wycinki, (2) Accent Pulse przy zatrzymaniu
+  koła (subtelny błysk, nie migotanie), (3) glow ramki karty wyniku,
+  (4) mały czerwony punkt lasera pod kursorem lektora (osobno od tego,
+  co widzi kursant) i że nie blokuje kliknięć w tekst, (5) Alt+H na
+  zaznaczeniu tekstu w notatniku (i Option+H na Macu, jeśli macie taki
+  sprzęt pod ręką).
+
+Decyzje architektoniczne:
+- Przypisanie kategorii wyzwania do pytania jest deterministyczne (hash
+  id), nie losowe przy każdym renderze — to samo pytanie zawsze ląduje w
+  tej samej kategorii w obrębie sesji, więc powtórne losowanie tego
+  samego pytania (np. po odświeżeniu) nie przesuwa go na inny wycinek.
+- Gdy w wylosowanej kategorii nie ma żadnego nieomówionego pytania,
+  `finishSpin` spada najpierw na dowolne pytanie z tej kategorii
+  (nawet omówione), a dopiero potem na całą pulę — koło zawsze "trafia"
+  wizualnie w kategorię, karta wyniku prawie zawsze pokazuje treść z niej.
+- Lokalny wskaźnik lasera u lektora renderowany portalem na `document.body`
+  (poza `#root`), zgodnie z istniejącym komentarzem CSS przy `.pad-laser` —
+  ta klasa czekała nieużywana dokładnie na to zastosowanie.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji czy
+ścieżkach tokenowych bez logowania (`homework/direct/:token`, PIN
+notatnika) — `updateScratchpadLaser`/`docData.laserPointer` używane bez
+zmian kontraktu danych.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 363/363 zielone.

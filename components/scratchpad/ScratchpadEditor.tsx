@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Bold,
   Italic,
@@ -202,6 +203,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const typingResetTimeoutRef = useRef<any>(null);
   const saveTimeoutRef = useRef<any>(null);
   const lastLaserSendRef = useRef<number>(0);
+  const localLaserRef = useRef<HTMLDivElement | null>(null);
 
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'synced' | 'local_only'>('saved');
   const [copiedLink, setCopiedLink] = useState(false);
@@ -802,7 +804,17 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
   /** Synchronizowany wskaźnik laserowy na żywo */
   const handleLaserMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!isLaserOn || !editorRef.current || !docData.id || !isTeacher) return;
+    if (!isLaserOn || !isTeacher) return;
+
+    // Lokalny wskaźnik pod kursorem lektora — aktualizacja natychmiastowa, bez
+    // throttlingu sieciowego, żeby nie było lagu na własnym ekranie. Ten sam
+    // punkt (x, y) jest źródłem stanu wysyłanego niżej do Firestore, więc
+    // pozostaje idealnie zsynchronizowany z tym, co widzi kursant.
+    if (localLaserRef.current) {
+      localLaserRef.current.style.transform = `translate3d(${event.clientX}px, ${event.clientY}px, 0)`;
+    }
+
+    if (!editorRef.current || !docData.id) return;
     const now = Date.now();
     if (now - lastLaserSendRef.current < 50) return; // Throttling 50ms
     lastLaserSendRef.current = now;
@@ -2677,6 +2689,16 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           </button>
         )}
 
+        {/* Lokalny wskaźnik laserowy pod kursorem lektora — renderowany portalem na
+            <body>, poza #root, żeby móc śledzić kursor bez ograniczeń przez overflow
+            rodzica. `pointer-events: none` (patrz CSS .pad-laser) nie blokuje kliknięć
+            w tekst. Ten sam punkt (x, y) jest też wysyłany do Firestore w
+            handleLaserMouseMove, więc kursant widzi identyczną pozycję. */}
+        {isLaserOn && isTeacher && createPortal(
+          <div ref={localLaserRef} className="pad-laser" />,
+          document.body
+        )}
+
         {/* KANWA Z SYMETRYCZNIE WYŚRODKOWANĄ KARTKĄ A4 */}
         <div
           ref={paperWrapRef}
@@ -2711,6 +2733,14 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               onInput={handleInput}
               onClick={handlePaperClick}
               onPaste={handlePaste}
+              onKeyDown={(e) => {
+                // Alt+H (Option+H na Macu) — natychmiastowe żółte wyróżnienie zaznaczenia,
+                // bez celowania kursorem w pasek narzędzi zakreślaczy.
+                if (e.altKey && e.code === 'KeyH') {
+                  e.preventDefault();
+                  handleHighlight('#fef3c7', '#92400e');
+                }
+              }}
               suppressContentEditableWarning
               className={`pad-paper pad-sheet focus:outline-none transition-shadow font-sans selection:bg-primary/30 w-full relative ${
                 isLandscape ? 'is-landscape' : ''

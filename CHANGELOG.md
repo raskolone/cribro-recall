@@ -2769,6 +2769,16 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 - **Diagnostyka**: dodano `console.log('[REVISION_DEBUG] ...')` (numer szukanej lekcji, pobrany tekst poprzedniej lekcji) i `console.error('[REVISION_API_ERROR]', err)` przy błędzie wywołania Gemini.
 - Nowy test w [lessonTemplate.test.ts](tests/lessonTemplate.test.ts) pokrywa przypadek pustych `mainTopic`/`keyLanguage` z niepustym `fallbackText`.
 
+### P. Koło Fortuny: stałe kategorie wyzwań + Accent Pulse zamiast konfetti; Notatnik: kalibracja lasera, laser widoczny u lektora, skrót Alt+H (2026-09-19)
+- **Architektura wycinków Koła Fortuny ([WheelOfFortune.tsx](components/presentation/WheelOfFortune.tsx), [wheelQuestionService.ts](services/wheelQuestionService.ts))**:
+  - Tarcza ma teraz zawsze 6 stałych wycinków kategorii (`CHALLENGE_CATEGORIES`): Collocation, Fix Error, 60s Pitch, Fill Gap, Translation, Upgrade C1 — z ikoną Lucide na wycinku (`Link2`, `ShieldAlert`, `Mic`, `Puzzle`, `Languages`, `Gem`), niezależnie od liczby pytań w puli.
+  - Nowe pole `WheelQuestionItem.challengeCategory` (`ChallengeCategoryId`) przypisywane deterministycznie (`assignChallengeCategory`, hash id) każdemu pytaniu ze scenariusza, historii lekcji, edycji ręcznej i generacji AI.
+  - `handleSpinClick` losuje pytanie z puli (priorytet nieomówionym), koło ląduje na wycinku odpowiadającym `challengeCategory` tego pytania; `finishSpin` dobiera treść z puli pasującą do wylosowanej kategorii (fallback na dowolne nieomówione, potem dowolne). Pełna treść pytania nadal wyłącznie w karcie wyniku — na tarczy tylko nazwa kategorii i ikona.
+- **„Accent Pulse” zamiast konfetti**: usunięto `canvas-confetti` z tego komponentu (nadal używane gdzie indziej w apce — nie dotknięto). Nowe helpery w [gsapAnimations.ts](services/gsapAnimations.ts): `animateAccentPulse` (błysk scale 1→1.4 / opacity 0.6→0, 600ms, na overlayu w centrum koła) i `animateGlowReveal` (rozjaśnienie ramki karty wyniku box-shadow, kolor emerald dla źródła „scenariusz”, amber dla „poprzednie lekcje”).
+- **Kalibracja wskaźnika laserowego w Notatniku ([index.css](index.css))**: rdzeń zmniejszony do 8×8px, pełne krycie `#EF4444`; halo 18px przez `radial-gradient` + `box-shadow: 0 0 10px rgba(239,68,68,0.6)`. Dotyczy zarówno zdalnego wskaźnika (`.pad-laser-dot`, widziany przez kursanta) jak i nowego lokalnego (`.pad-laser`).
+- **Laser widoczny również u lektora ([ScratchpadEditor.tsx](components/scratchpad/ScratchpadEditor.tsx))**: wcześniej `docData.laserPointer` był renderowany tylko po stronie kursanta — lektor z włączonym laserem nie widział własnej kropki. Dodano lokalny wskaźnik renderowany przez `createPortal` na `document.body` (`pointer-events: none`), aktualizowany bez throttlingu bezpośrednio w `handleLaserMouseMove` (ten sam punkt x/y trafia też, po throttlingu 50ms, do Firestore — więc widok lektora i kursanta pozostają zsynchronizowane co do źródła danych).
+- **Skrót zakreślacza Alt+H / Option+H**: `onKeyDown` na edytowalnej kartce (`e.altKey && e.code === 'KeyH'`, sprawdzenie po `code` działa identycznie na obu platformach) wywołuje istniejący `handleHighlight('#fef3c7', '#92400e')` — to samo żółte wyróżnienie „Słówko” co przycisk w pasku narzędzi, bez konieczności celowania kursorem w toolbar.
+
 ---
 
 
