@@ -1,14 +1,13 @@
 import { writeFileSync } from 'node:fs';
 
-const token = process.env.NOTION_API_KEY || '';
 const NOTION_API = 'https://api.notion.com/v1';
 const NOTION_VERSION = '2022-06-28';
-const NOTION_STUDENTS_DB = 'ca88a293-bd34-4cc7-b09e-f6bd3901ef96';
-const NOTION_LESSONS_DB = '5c6d910b-31b7-83b8-810c-0187aa513b51';
+const DEFAULT_NOTION_STUDENTS_DB = 'ca88a293-bd34-4cc7-b09e-f6bd3901ef96';
+const DEFAULT_NOTION_LESSONS_DB = '5c6d910b-31b7-83b8-810c-0187aa513b51';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function notionRequest(path, init = {}) {
+async function notionRequest(token, path, init = {}) {
   const maxRetries = 6;
   let attempt = 0;
 
@@ -54,7 +53,7 @@ async function notionRequest(path, init = {}) {
   throw new Error(`Przekroczono limit ponowień (${maxRetries}) dla ścieżki ${path}`);
 }
 
-async function queryDatabase(databaseId, filter) {
+async function queryDatabase(token, databaseId, filter) {
   const pages = [];
   let cursor;
   do {
@@ -62,7 +61,7 @@ async function queryDatabase(databaseId, filter) {
     if (filter) body.filter = filter;
     if (cursor) body.start_cursor = cursor;
 
-    const data = await notionRequest(`/databases/${databaseId}/query`, {
+    const data = await notionRequest(token, `/databases/${databaseId}/query`, {
       method: 'POST',
       body,
     });
@@ -89,13 +88,13 @@ const prefixFor = (type, text) => {
   return text;
 };
 
-async function pageToText(blockId, depth = 0) {
+async function pageToText(token, blockId, depth = 0) {
   if (depth > 2) return '';
   const lines = [];
   let cursor;
   do {
     const query = cursor ? `?start_cursor=${cursor}&page_size=100` : '?page_size=100';
-    const data = await notionRequest(`/blocks/${blockId}/children${query}`);
+    const data = await notionRequest(token, `/blocks/${blockId}/children${query}`);
     for (const block of data.results || []) {
       const text = richTextOf(block);
       const lower = text.toLowerCase();
@@ -113,7 +112,7 @@ async function pageToText(blockId, depth = 0) {
             lower.includes('corrections'));
         const isStandardContainer = ['callout', 'quote'].includes(block.type);
         if (isSummaryToggle || isStandardContainer || depth === 0) {
-          const nested = await pageToText(block.id, depth + 1);
+          const nested = await pageToText(token, block.id, depth + 1);
           if (nested) lines.push(nested);
         }
       }
@@ -158,73 +157,100 @@ const propEmails = (page, name) => {
   return single ? [single] : [];
 };
 
-console.log('=== Rozpoczynanie pobierania danych z Notion ===');
-const [studentsPages, lessonPages] = await Promise.all([
-  queryDatabase(NOTION_STUDENTS_DB),
-  queryDatabase(NOTION_LESSONS_DB, {
-    or: [
-      { property: 'Status', select: { equals: 'Odbyta' } },
-      { property: 'Status', select: { equals: 'Podsumowanie' } },
-    ],
-  }),
-]);
-
-console.log(`Pobrano ${studentsPages.length} kursantów i ${lessonPages.length} lekcji z bazy Notion.`);
-
-const parsedStudents = studentsPages.map((p) => ({
-  id: p.id,
-  name: propText(p, 'Nazwa'),
-  emails: propEmails(p, 'Adresy e-mail'),
-  level: propText(p, 'Poziom / profil'),
-  company: propText(p, 'Gdzie pracuje') || propText(p, 'Firma'),
-  isGroup: propText(p, 'Typ') === 'Grupa',
-  status: propText(p, 'Status współpracy'),
-}));
-
-console.log('Lista kursantów z Notion:');
-parsedStudents.forEach((s, idx) => {
-  console.log(`  ${idx + 1}. ${s.name} (${s.emails.join(', ') || 'brak email'}) [${s.level || 'brak poziomu'}]`);
-});
-
-const lessonDump = [];
-let successCount = 0;
-let failCount = 0;
-
-console.log('\n=== Pobieranie treści 113 lekcji z Notion (z buforem anty-rate limit) ===');
-for (let i = 0; i < lessonPages.length; i++) {
-  const page = lessonPages[i];
-  const topic = propText(page, 'Temat lekcji') || 'Lekcja bez tematu';
-  const rawDate = propText(page, 'Data lekcji');
-  const studentName = propText(page, 'Kursant');
-  const relationIds = propRelationIds(page, 'Kursant (relacja)');
-
-console.log(`[${i + 1}/${lessonPages.length}] Pobieram: „${topic.slice(0, 35)}..." (${studentName})...`);
-  try {
-    const rawText = await pageToText(page.id);
-    lessonDump.push({
-      id: page.id,
-      url: page.url,
-      lastEditedTime: page.last_edited_time,
-      topic,
-      rawDate,
-      studentName,
-      relationIds,
-      rawText,
-    });
-    successCount++;
-    console.log(`  -> OK (${rawText.length} znaków)`);
-  } catch (err) {
-    failCount++;
-    console.log(`  -> BŁĄD: ${err.message}`);
+/**
+ * Pobiera świeży stan bazy kursantów i lekcji z Notion.
+ *
+ * Używane zarówno przez CLI tego pliku (zapis do notion_migration_dump.json),
+ * jak i bezpośrednio przez scripts/migrate-notion-archive.ts w trybie
+ * pobierania na żywo — logika pobierania/parsowania stron Notion żyje
+ * wyłącznie tutaj, żeby nie duplikować jej w dwóch miejscach.
+ *
+ * @param {{ token: string, studentsDbId?: string, lessonsDbId?: string, onProgress?: (msg: string) => void }} options
+ */
+export async function fetchNotionArchive({
+  token,
+  studentsDbId = DEFAULT_NOTION_STUDENTS_DB,
+  lessonsDbId = DEFAULT_NOTION_LESSONS_DB,
+  onProgress = (msg) => console.log(msg),
+} = {}) {
+  if (!token) {
+    throw new Error('fetchNotionArchive: brak tokena Notion (NOTION_API_KEY).');
   }
+
+  onProgress('=== Rozpoczynanie pobierania danych z Notion ===');
+  const [studentsPages, lessonPages] = await Promise.all([
+    queryDatabase(token, studentsDbId),
+    queryDatabase(token, lessonsDbId, {
+      or: [
+        { property: 'Status', select: { equals: 'Odbyta' } },
+        { property: 'Status', select: { equals: 'Podsumowanie' } },
+      ],
+    }),
+  ]);
+
+  onProgress(`Pobrano ${studentsPages.length} kursantów i ${lessonPages.length} lekcji z bazy Notion.`);
+
+  const students = studentsPages.map((p) => ({
+    id: p.id,
+    name: propText(p, 'Nazwa'),
+    emails: propEmails(p, 'Adresy e-mail'),
+    level: propText(p, 'Poziom / profil'),
+    company: propText(p, 'Gdzie pracuje') || propText(p, 'Firma'),
+    isGroup: propText(p, 'Typ') === 'Grupa',
+    status: propText(p, 'Status współpracy'),
+  }));
+
+  onProgress('Lista kursantów z Notion:');
+  students.forEach((s, idx) => {
+    onProgress(`  ${idx + 1}. ${s.name} (${s.emails.join(', ') || 'brak email'}) [${s.level || 'brak poziomu'}]`);
+  });
+
+  const lessons = [];
+  let successCount = 0;
+  let failCount = 0;
+
+  onProgress(`\n=== Pobieranie treści ${lessonPages.length} lekcji z Notion (z buforem anty-rate limit) ===`);
+  for (let i = 0; i < lessonPages.length; i++) {
+    const page = lessonPages[i];
+    const topic = propText(page, 'Temat lekcji') || 'Lekcja bez tematu';
+    const rawDate = propText(page, 'Data lekcji');
+    const studentName = propText(page, 'Kursant');
+    const relationIds = propRelationIds(page, 'Kursant (relacja)');
+
+    onProgress(`[${i + 1}/${lessonPages.length}] Pobieram: „${topic.slice(0, 35)}..." (${studentName})...`);
+    try {
+      const rawText = await pageToText(token, page.id);
+      lessons.push({
+        id: page.id,
+        url: page.url,
+        lastEditedTime: page.last_edited_time,
+        topic,
+        rawDate,
+        studentName,
+        relationIds,
+        rawText,
+      });
+      successCount++;
+    } catch (err) {
+      failCount++;
+      onProgress(`  -> BŁĄD: ${err.message}`);
+    }
+  }
+
+  onProgress(`\nZakończono pobieranie treści! Sukces: ${successCount}/${lessonPages.length}, Błędy: ${failCount}`);
+
+  return {
+    timestamp: new Date().toISOString(),
+    students,
+    lessons,
+    stats: { totalLessons: lessonPages.length, successCount, failCount },
+  };
 }
 
-writeFileSync('scripts/notion_migration_dump.json', JSON.stringify({
-  timestamp: new Date().toISOString(),
-  students: parsedStudents,
-  lessons: lessonDump,
-  stats: { totalLessons: lessonPages.length, successCount, failCount }
-}, null, 2));
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 
-console.log(`\nZakończono pobieranie treści! Sukces: ${successCount}/${lessonPages.length}, Błędy: ${failCount}`);
-console.log('Zapisano zrzut do scripts/notion_migration_dump.json');
+if (isMainModule) {
+  const dump = await fetchNotionArchive({ token: process.env.NOTION_API_KEY || '' });
+  writeFileSync('scripts/notion_migration_dump.json', JSON.stringify(dump, null, 2));
+  console.log('Zapisano zrzut do scripts/notion_migration_dump.json');
+}
