@@ -2464,3 +2464,92 @@ Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji ani
 Weryfikacja:
 - `npx tsc --noEmit` — 0 błędów.
 - `npm test` — 365/365 zielone (+2 nowe testy).
+
+## 2026-09-19 — Claude Code / Sonnet 5 (4)
+
+Zadanie: Zlecenie łączyło 4 części: (1) domyślnie zwinięte akordeony bloków
+historii lekcji + usunięcie zdublowanego przycisku pracy domowej, (2)
+redukcja integracji Notion w Ustawieniach do samej transkrypcji, (3)
+jednorazowy skrypt migracji archiwum Notion→Firestore z żelazną zasadą
+deduplikacji, (4) weryfikacja + CHANGELOG + push.
+
+Przed startem zapytałem Macieja ([AskUserQuestion]) o zakres części 2/3,
+bo zlecenie żądało też usunięcia WSZYSTKICH innych modułów odpytujących
+Notion API poza transkrypcją (`services/notionSync.ts`,
+`functions/src/notion/sync.ts`, `dailyCheck.ts`, sync UI w
+`StudentDatabaseScreen.tsx`) — to sprzeczne z architekturą opisaną w
+CLAUDE.md §2 i moją pamięcią. Maciej wybrał „Settings UI only" —
+nie ruszać backendu/istniejącego kodu synchronizacji w tej sesji.
+
+Zrobione:
+- [CascadingLessonDetails.tsx](components/admin/CascadingLessonDetails.tsx):
+  `expandedSections` (block1–4, learningCurve) domyślnie `false` zamiast
+  `true`. To jest właściwy komponent akordeonu Blok 1–4 + Learning Curve
+  (renderowany w `AdminPanel.tsx` przez `CascadingLessonDetails`), nie
+  `StudentLessonHistory.tsx`/`TranscriptLessonPanel.tsx` wymienione w
+  zleceniu jako przykład („m.in.") — te dwa nie mają takiej struktury
+  bloków; `TranscriptLessonPanel.tsx` już był domyślnie zwinięty.
+- [StudentLessonHistory.tsx](components/dashboard/StudentLessonHistory.tsx):
+  kafelki w widoku wyników wyszukiwania domyślnie zwinięte (`?? false`,
+  było `?? true`) — ujednolicone z listą wcześniejszych lekcji. Kafelek
+  „najnowszej lekcji" (hero card na górze) świadomie zostawiony zawsze
+  rozwinięty — nie ma toggle'a, to design decyzja sprzed tej sesji, nie
+  część wymienionej listy bloków.
+- [AdminPanel.tsx](components/admin/AdminPanel.tsx): usunięty zdublowany
+  przycisk „Wygeneruj pracę domową" z nagłówka modala lekcji (linia ok.
+  5286) — karta AI Generator z przyciskiem „Generuj zadania" zostaje
+  jedynym miejscem wywołania.
+- [SettingsScreen.tsx](components/settings/SettingsScreen.tsx): sekcja
+  Notion przemianowana na „Opcjonalna integracja transkrypcji (workflow
+  lektora)", zredukowana do token + Meeting Notes DB ID. Usunięte:
+  auto-discovery baz, Test Connection, Fetch Transcripts Now, toggle
+  auto-fetch + interwał, wraz z odpowiadającym stanem/handlerami.
+  Backend `/api/notion/*` w `server.ts` nietknięty (nadal używany przez
+  `TeacherLessonHistoryView.tsx` do faktycznego importu transkrypcji).
+- Nowy [scripts/migrate-notion-archive.ts](scripts/migrate-notion-archive.ts)
+  + `npm run migrate:notion` w `package.json` — patrz CHANGELOG runda 37
+  dla pełnego opisu żelaznej zasady deduplikacji i odstępstw od
+  literalnego zlecenia (tsx zamiast ts-node, kolekcja `users` zamiast
+  `students`).
+- CHANGELOG.md: nowa sekcja „runda 37".
+
+Nie dokończone / do sprawdzenia:
+- Żadna zmiana UI nie była oglądana w przeglądarce w tej sesji (brak
+  odpalonego dev servera) — akordeony w `CascadingLessonDetails.tsx` i
+  wygląd Ustawień po redukcji Notion warto sprawdzić wzrokowo.
+- `scripts/migrate-notion-archive.ts` nie był uruchomiony z `--apply`
+  (tylko suchy przebieg bez `FB_USER`/`FB_PASS` — potwierdzono, że kończy
+  się kontrolowanym błędem, nie silent-fail). Pełna migracja historyczna
+  już się odbyła w rundzie 28 (22 kursantów, 110/110 lekcji) — pierwsze
+  uruchomienie tego skryptu na aktualnym stanie bazy powinno w większości
+  zalogować same `[SKIP]`.
+- Odkryto podczas audytu: `services/notionSync.ts`,
+  `functions/src/notion/sync.ts`, `functions/src/notion/dailyCheck.ts` są
+  martwym kodem od rundy 28 (niepodpięte do `functions/src/index.ts`,
+  `notionSync.ts` woła nieistniejące już Cloud Functions) — kandydat do
+  osobnego sprzątania, celowo nietknięty w tej sesji (poza potwierdzonym
+  zakresem).
+
+Decyzje architektoniczne:
+- Zawężenie części 2/3 do „Settings UI only" na wyraźne życzenie Macieja
+  (patrz wyżej) — nie usunięto backendu/dead code synchronizacji Notion.
+- `npm run migrate:notion` używa `tsx`, nie `ts-node` z literalnego
+  zlecenia — `ts-node` nie jest zależnością repo, `tsx` jest już
+  konwencją wszystkich innych skryptów/testów.
+- Nowy skrypt migracyjny zapisuje do `users`/`users/{uid}/lessonRecords`
+  (rzeczywisty schemat aplikacji), nie do kolekcji `students` z
+  literalnego zlecenia, która nigdzie w kodzie nie istnieje.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji ani
+ścieżkach tokenowych bez logowania. Nowy skrypt migracyjny pisze do
+kolekcji `users` (produkcyjne dane kursantów) — ale tylko gdy uruchomiony
+ręcznie z terminala z `--apply` i poprawnymi `FB_USER`/`FB_PASS`; domyślny
+tryb jest suchym przebiegiem bez żadnego zapisu.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 365/365 zielone.
+- `npm run build` — bez błędów.
+- `npx tsx scripts/migrate-notion-archive.ts` (bez `--apply`, bez env) —
+  kończy się kontrolowanym komunikatem o brakującej zmiennej, zero
+  zapisów.

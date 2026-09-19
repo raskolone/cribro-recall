@@ -198,6 +198,31 @@ we dwoje na żywo.
 
 ---
 
+### 🔧 Domyślnie zwinięte bloki historii lekcji, uproszczenie ustawień Notion do samej transkrypcji, skrypt migracji archiwum (2026-09-19, runda 37)
+
+**1. Domyślnie zwinięte akordeony w historii lekcji (UI polish):**
+- `CascadingLessonDetails.tsx` (widok lektora — Blok 1 „Lekcja w skrócie", Blok 2 „Key Language & Corrections", Blok 3 „Homework — Cribro Habit", Blok 4 „Next Lesson", „Learning Curve"): domyślny stan `expandedSections` zmieniony z `true` na `false` na wszystkich pięciu sekcjach — lektor sam rozwija to, co go interesuje, zamiast przewijać ścianę zawsze otwartych bloków.
+- `StudentLessonHistory.tsx`: kafelki lekcji w widoku wyników wyszukiwania (`isExpanded = expandedLessonIds[lesson.id] ?? true`) domyślnie otwierały się rozwinięte — ujednolicono z listą wcześniejszych lekcji, gdzie domyślnie są zwinięte (`?? false`).
+- `AdminPanel.tsx`: usunięto zdublowany zielony przycisk „Wygeneruj pracę domową" z górnego paska nagłówka lekcji (obok „Edytuj"/„Usuń") — jedynym miejscem wywołania tej akcji zostaje dedykowana karta „Wygeneruj pracę domową z tej lekcji [AI Generator]" z przyciskiem „Generuj zadania".
+
+**2. Uproszczenie panelu integracji Notion w Ustawieniach do samej transkrypcji (`SettingsScreen.tsx`):**
+- Sekcja przemianowana na „Opcjonalna integracja transkrypcji (workflow lektora)" i ograniczona wyłącznie do: klucza API Notion oraz ID bazy/strony z transkrypcjami (AI Meeting Notes).
+- Usunięto z UI: automatyczne wykrywanie baz (Auto-Discovery + kafelki znalezionych baz), przycisk „Testuj połączenie", przycisk „Pobierz transkrypcje teraz", przełącznik automatycznego cyklicznego pobierania w tle wraz z wyborem interwału — razem z odpowiadającym stanem (`isSearchingDatabases`, `discoveredDatabases`, `isTestingNotion`, `notionTestResult`, `isFetchingNotion`, `notionFetchResult`, `autoFetchEnabledInput`, `autoFetchIntervalInput`) i handlerami (`handleSearchNotionDatabases`, `handleTestNotionConnection`, `handleFetchNotionTranscripts`).
+- Backend (`server.ts` endpointy `/api/notion/*`, w tym `fetch-transcripts` używany przez `TeacherLessonHistoryView.tsx`) **nie został ruszony** — decyzja podjęta świadomie po pytaniu doprecyzowującym do Macieja: zlecenie sugerowało też usunięcie modułów synchronizacji bazy kursantów (`services/notionSync.ts`, `functions/src/notion/sync.ts`, `dailyCheck.ts`), ale audyt wykazał, że są to już martwy kod nieużywany od rundy 28 (`functions/src/index.ts` ich nie importuje, `services/notionSync.ts` woła nieistniejące już Cloud Functions) — usuwanie ich wykraczałoby poza potwierdzony zakres „tylko UI Ustawień" i zostaje jako zadanie do osobnej decyzji.
+
+**3. Jednorazowy skrypt migracji archiwum Notion → Firestore z żelazną zasadą deduplikacji (`scripts/migrate-notion-archive.ts`):**
+- Nowy skrypt TS (`npm run migrate:notion`, tryb suchego przebiegu domyślnie, `-- --apply` zapisuje) importuje zrzut `scripts/notion_migration_dump.json` (generowany przez już istniejący `scripts/fetch_notion_dump.mjs` — świadomie nie duplikowano pipeline'u pobierania z API Notion) do Firestore.
+- Żelazna zasada: jeśli kursant o danym e-mailu LUB imieniu i nazwisku już istnieje w `users`, skrypt **nie tworzy** nowego rekordu — loguje `[SKIP] Kursant <Imię Nazwisko> już istnieje w bazie – pomijam.` i dopisuje tylko te jego lekcje z dumpu, których data nie występuje jeszcze w `users/{uid}/lessonRecords`.
+- Limitowanie zapytań: 300 ms opóźnienia między zapisami do Firestore.
+- **Uwaga — odstępstwa od literalnego zlecenia, świadome i udokumentowane w kodzie skryptu:**
+  - Uruchamiane przez `tsx`, nie `ts-node` — `ts-node` nie jest zależnością projektu, a `tsx` jest już używany do wszystkich innych skryptów/testów w repo (unikanie nowej zależności bez potrzeby, zgodnie z CLAUDE.md §4).
+  - Kursanci zapisywani do kolekcji `users` (rola `user`) z lekcjami w `users/{uid}/lessonRecords`, **nie** do osobnej kolekcji `students` — to jest rzeczywisty, jedyny schemat używany przez resztę aplikacji (`StudentLessonHistory.tsx`, `AdminPanel.tsx`); kolekcja `students` w ogóle nie istnieje i jej utworzenie osierociłoby dane.
+- **Kontekst — pełna migracja historyczna już się odbyła** (round 28, 2026-09-16: 22 kursantów, 110/110 lekcji, 0 pominiętych, przez istniejący `scripts/migrate_dump_to_firestore.mjs`). Nowy skrypt to bezpieczniejszy, idempotentny wariant do ponownego użycia przy przyszłych archiwalnych dumpach — pierwsze uruchomienie na aktualnym stanie bazy w większości zaloguje same `[SKIP]`.
+
+**4. Weryfikacja:** `npx tsc --noEmit` (0 błędów), `npm test` (365/365), `npm run build` (bez błędów). Zmiany UI (akordeony, Ustawienia) nie były sprawdzone wzrokowo w przeglądarce w tej sesji.
+
+---
+
 ### 🔧 Kontrast Trybu Ciemnego i Stabilna Oś Obrotu Koła Fortuny (2026-09-18, runda 36)
 
 **Zgłoszenie:** 4 problemy widoku Koła Fortuny po rundzie 34 (ta sama sesja):
