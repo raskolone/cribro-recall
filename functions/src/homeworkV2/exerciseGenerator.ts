@@ -276,72 +276,97 @@ const defaultHint = (type: ExerciseTypeV2, level: 'small' | 'large'): string => 
 };
 
 // ---------------------------------------------------------------------------
-// Regeneracja
+// Regeneracja (wsadowa — patrz uzasadnienie w `qualityValidator.ts:validateAll`)
 // ---------------------------------------------------------------------------
 
-export interface RegenerateInput {
+export interface RegenerateBatchInput {
   context: AssembledContext;
-  draft: DraftExercise;
-  failedChecks: string[];
+  items: { draft: DraftExercise; failedChecks: string[] }[];
   call: ModelCall;
 }
 
 /**
- * Układa jedno zadanie od nowa, znając zarzuty walidatora.
+ * Poprawia WSZYSTKIE nieudane zadania jednym wywołaniem modelu, znając
+ * zarzuty walidatora dla każdego z nich — zamiast osobnego zapytania na
+ * każde nieudane zadanie. Patrz uzasadnienie przy `validateAll` w
+ * `qualityValidator.ts`: sekwencyjna regeneracja po jednym zadaniu na
+ * zapytanie była głównym mnożnikiem 145-sekundowego opóźnienia przy złym
+ * losowaniu (do dwóch regeneracji na każde z sześciu zadań, każda osobnym
+ * zapytaniem).
  *
- * Zarzuty idą do modelu wprost. Regeneracja bez powiedzenia, co było nie tak,
- * to losowanie — model równie dobrze popełni ten sam błąd drugi raz, bo nic
- * mu nie powiedziało, że to był błąd.
- *
- * Cel i typ zostają zachowane. Regeneracja ma naprawić wykonanie, a nie
- * podmienić zadanie na inne — inaczej lektor traci pokrycie materiału,
- * które zaplanował.
+ * Cel i typ każdego zadania zostają zachowane z oryginału. Regeneracja ma
+ * naprawić wykonanie, a nie podmienić zadanie na inne — inaczej lektor
+ * traci pokrycie materiału, które zaplanował.
  */
-export const regenerateDraft = async (input: RegenerateInput): Promise<DraftExercise | null> => {
-  const { draft, failedChecks } = input;
+export const regenerateBatch = async (input: RegenerateBatchInput): Promise<(DraftExercise | null)[]> => {
+  if (input.items.length === 0) return [];
 
-  const response = await input.call({
-    system: `${buildCoreSystemPrompt()}
+  const typeBriefs = Array.from(new Set(input.items.map((item) => item.draft.exerciseType)))
+    .map((type) => EXERCISE_TYPE_BRIEFS[type])
+    .join('\n\n');
 
-Twoje zadanie: poprawić ćwiczenie, które nie przeszło kontroli jakości.
-Zachowujesz ten sam typ i ten sam cel nauki. Naprawiasz wykonanie.`,
-    user: `${renderContextForPrompt(input.context)}
-
----
-
-${EXERCISE_TYPE_BRIEFS[draft.exerciseType]}
-
----
-
-ZADANIE, KTÓRE NIE PRZESZŁO:
+  const itemsBlock = input.items
+    .map(
+      (item, i) => `ZADANIE #${i + 1}, KTÓRE NIE PRZESZŁO:
 ${JSON.stringify(
   {
-    exerciseType: draft.exerciseType,
-    learningObjective: draft.learningObjective,
-    content: draft.content,
-    instruction: draft.instruction,
-    modelAnswer: draft.modelAnswer,
-    acceptedVariants: draft.acceptedVariants,
-    requiredMaterial: draft.requiredMaterial,
-    hintSmall: draft.hintSmall,
-    hintLarge: draft.hintLarge,
+    exerciseType: item.draft.exerciseType,
+    learningObjective: item.draft.learningObjective,
+    content: item.draft.content,
+    instruction: item.draft.instruction,
+    modelAnswer: item.draft.modelAnswer,
+    acceptedVariants: item.draft.acceptedVariants,
+    requiredMaterial: item.draft.requiredMaterial,
+    hintSmall: item.draft.hintSmall,
+    hintLarge: item.draft.hintLarge,
   },
   null,
   2
 )}
+ZARZUTY KONTROLERA: ${item.failedChecks.length > 0 ? item.failedChecks.join(', ') : 'ogólnie za słabe'}`
+    )
+    .join('\n\n---\n\n');
 
-ZARZUTY KONTROLERA: ${failedChecks.length > 0 ? failedChecks.join(', ') : 'ogólnie za słabe'}
+  const response = await input.call({
+    system: `${buildCoreSystemPrompt()}
 
-Ułóż to zadanie od nowa tak, żeby zarzuty przestały obowiązywać.
-Zachowaj \`exerciseType\` i \`learningObjective\`. Zwróć pojedynczy obiekt JSON
-w tym samym kształcie co powyżej, uzupełniony o \`commonMistakes\` i \`sourceLessonIndex\`.`,
-    taskName: 'hw-v2/regenerate',
+Twoje zadanie: poprawić ${input.items.length} ${
+      input.items.length === 1 ? 'ćwiczenie' : 'ćwiczeń'
+    }, które nie przeszły kontroli jakości.
+Zachowujesz ten sam typ i ten sam cel nauki KAŻDEGO zadania. Naprawiasz wykonanie, nie wymyślasz nowe zadanie.`,
+    user: `${renderContextForPrompt(input.context)}
+
+---
+
+${typeBriefs}
+
+---
+
+${itemsBlock}
+
+---
+
+Ułóż KAŻDE z powyższych ${input.items.length} zadań od nowa tak, żeby jego zarzuty przestały
+obowiązywać. Zachowaj \`exerciseType\` i \`learningObjective\` każdego zadania.
+
+FORMAT ODPOWIEDZI — obiekt JSON z kluczem \`results\`, dokładnie ${input.items.length} obiektów,
+\`index\` odpowiada numerowi zadania powyżej (1-based), reszta pól jak w oryginalnym zadaniu
+(uzupełnione o \`commonMistakes\` i \`sourceLessonIndex\`):
+{ "results": [ { "index": 1, "exerciseType": "...", "learningObjective": "...", "content": "...", "instruction": "...", "modelAnswer": "...", "acceptedVariants": [], "requiredMaterial": [], "commonMistakes": [], "hintSmall": "...", "hintLarge": "...", "sourceLessonIndex": 1 } ] }`,
+    taskName: 'hw-v2/regenerate-batch',
     temperature: 0.6,
   });
 
-  const parsed = parseDraft(response.data, draft.exerciseType);
-  if (!parsed) return null;
+  const payload = response.data as { results?: unknown[] };
+  const rawList = Array.isArray(payload?.results) ? payload.results : [];
 
-  // Cel i typ trzymamy z oryginału — model bywa kreatywny tam, gdzie nie prosimy.
-  return { ...parsed, exerciseType: draft.exerciseType, learningObjective: draft.learningObjective };
+  return input.items.map((item, i) => {
+    const byIndex = rawList.find((r) => Number((r as Record<string, unknown>)?.index) === i + 1);
+    const raw = byIndex ?? rawList[i];
+    const parsed = raw ? parseDraft(raw, item.draft.exerciseType) : null;
+    if (!parsed) return null;
+
+    // Cel i typ trzymamy z oryginału — model bywa kreatywny tam, gdzie nie prosimy.
+    return { ...parsed, exerciseType: item.draft.exerciseType, learningObjective: item.draft.learningObjective };
+  });
 };

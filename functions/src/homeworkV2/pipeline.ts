@@ -12,7 +12,7 @@ import {
   DraftExercise,
   finalizeContract,
   generateExercises,
-  regenerateDraft,
+  regenerateBatch,
 } from './exerciseGenerator';
 import { ExercisePlan, PlannedSlot, planExercises } from './exercisePlanner';
 import { ModelCall } from './openai';
@@ -68,8 +68,8 @@ export const buildExerciseSet = async (input: BuildSetInput): Promise<BuildSetRe
     context: input.context,
     drafts: generated.drafts,
     call: input.call,
-    regenerate: (draft: DraftExercise, failedChecks: string[]) =>
-      regenerateDraft({ context: input.context, draft, failedChecks, call: input.call }),
+    regenerateBatch: (items: { draft: DraftExercise; failedChecks: string[] }[]) =>
+      regenerateBatch({ context: input.context, items, call: input.call }),
   });
 
   const exercises = validated.map((item, index) => {

@@ -1589,62 +1589,85 @@ var defaultHint = (type, level) => {
   }
   return level === "small" ? "Brakuje jednego s\u0142owa z lekcji." : "To s\u0142owo pojawi\u0142o si\u0119 w s\u0142ownictwie lekcji.";
 };
-var regenerateDraft = async (input) => {
-  const { draft, failedChecks } = input;
-  const response = await input.call({
-    system: `${buildCoreSystemPrompt()}
-
-Twoje zadanie: poprawi\u0107 \u0107wiczenie, kt\xF3re nie przesz\u0142o kontroli jako\u015Bci.
-Zachowujesz ten sam typ i ten sam cel nauki. Naprawiasz wykonanie.`,
-    user: `${renderContextForPrompt(input.context)}
-
----
-
-${EXERCISE_TYPE_BRIEFS[draft.exerciseType]}
-
----
-
-ZADANIE, KT\xD3RE NIE PRZESZ\u0141O:
+var regenerateBatch = async (input) => {
+  if (input.items.length === 0) return [];
+  const typeBriefs = Array.from(new Set(input.items.map((item) => item.draft.exerciseType))).map((type) => EXERCISE_TYPE_BRIEFS[type]).join("\n\n");
+  const itemsBlock = input.items.map(
+    (item, i) => `ZADANIE #${i + 1}, KT\xD3RE NIE PRZESZ\u0141O:
 ${JSON.stringify(
       {
-        exerciseType: draft.exerciseType,
-        learningObjective: draft.learningObjective,
-        content: draft.content,
-        instruction: draft.instruction,
-        modelAnswer: draft.modelAnswer,
-        acceptedVariants: draft.acceptedVariants,
-        requiredMaterial: draft.requiredMaterial,
-        hintSmall: draft.hintSmall,
-        hintLarge: draft.hintLarge
+        exerciseType: item.draft.exerciseType,
+        learningObjective: item.draft.learningObjective,
+        content: item.draft.content,
+        instruction: item.draft.instruction,
+        modelAnswer: item.draft.modelAnswer,
+        acceptedVariants: item.draft.acceptedVariants,
+        requiredMaterial: item.draft.requiredMaterial,
+        hintSmall: item.draft.hintSmall,
+        hintLarge: item.draft.hintLarge
       },
       null,
       2
     )}
+ZARZUTY KONTROLERA: ${item.failedChecks.length > 0 ? item.failedChecks.join(", ") : "og\xF3lnie za s\u0142abe"}`
+  ).join("\n\n---\n\n");
+  const response = await input.call({
+    system: `${buildCoreSystemPrompt()}
 
-ZARZUTY KONTROLERA: ${failedChecks.length > 0 ? failedChecks.join(", ") : "og\xF3lnie za s\u0142abe"}
+Twoje zadanie: poprawi\u0107 ${input.items.length} ${input.items.length === 1 ? "\u0107wiczenie" : "\u0107wicze\u0144"}, kt\xF3re nie przesz\u0142y kontroli jako\u015Bci.
+Zachowujesz ten sam typ i ten sam cel nauki KA\u017BDEGO zadania. Naprawiasz wykonanie, nie wymy\u015Blasz nowe zadanie.`,
+    user: `${renderContextForPrompt(input.context)}
 
-U\u0142\xF3\u017C to zadanie od nowa tak, \u017Ceby zarzuty przesta\u0142y obowi\u0105zywa\u0107.
-Zachowaj \`exerciseType\` i \`learningObjective\`. Zwr\xF3\u0107 pojedynczy obiekt JSON
-w tym samym kszta\u0142cie co powy\u017Cej, uzupe\u0142niony o \`commonMistakes\` i \`sourceLessonIndex\`.`,
-    taskName: "hw-v2/regenerate",
+---
+
+${typeBriefs}
+
+---
+
+${itemsBlock}
+
+---
+
+U\u0142\xF3\u017C KA\u017BDE z powy\u017Cszych ${input.items.length} zada\u0144 od nowa tak, \u017Ceby jego zarzuty przesta\u0142y
+obowi\u0105zywa\u0107. Zachowaj \`exerciseType\` i \`learningObjective\` ka\u017Cdego zadania.
+
+FORMAT ODPOWIEDZI \u2014 obiekt JSON z kluczem \`results\`, dok\u0142adnie ${input.items.length} obiekt\xF3w,
+\`index\` odpowiada numerowi zadania powy\u017Cej (1-based), reszta p\xF3l jak w oryginalnym zadaniu
+(uzupe\u0142nione o \`commonMistakes\` i \`sourceLessonIndex\`):
+{ "results": [ { "index": 1, "exerciseType": "...", "learningObjective": "...", "content": "...", "instruction": "...", "modelAnswer": "...", "acceptedVariants": [], "requiredMaterial": [], "commonMistakes": [], "hintSmall": "...", "hintLarge": "...", "sourceLessonIndex": 1 } ] }`,
+    taskName: "hw-v2/regenerate-batch",
     temperature: 0.6
   });
-  const parsed = parseDraft(response.data, draft.exerciseType);
-  if (!parsed) return null;
-  return { ...parsed, exerciseType: draft.exerciseType, learningObjective: draft.learningObjective };
+  const payload = response.data;
+  const rawList = Array.isArray(payload?.results) ? payload.results : [];
+  return input.items.map((item, i) => {
+    const byIndex = rawList.find((r) => Number(r?.index) === i + 1);
+    const raw = byIndex ?? rawList[i];
+    const parsed = raw ? parseDraft(raw, item.draft.exerciseType) : null;
+    if (!parsed) return null;
+    return { ...parsed, exerciseType: item.draft.exerciseType, learningObjective: item.draft.learningObjective };
+  });
 };
 
 // functions/src/homeworkV2/qualityValidator.ts
 var VALIDATION_PASS_THRESHOLD = 0.7;
-var buildValidatorPrompt = (context, draft) => `${renderContextForPrompt(context)}
-
----
-
-${VALIDATOR_CHECKS}
-
----
-
-ZADANIE DO SPRAWDZENIA:
+var shapeVerdict = (raw, regenerationCount, modelVersion) => {
+  const failedChecks = Array.isArray(raw.failedChecks) ? raw.failedChecks.filter((c) => typeof c === "string") : [];
+  const rawScore = typeof raw.score === "number" ? raw.score : 0;
+  const score = Math.min(1, Math.max(0, rawScore));
+  const passed = raw.passed === true && failedChecks.length === 0 && score >= VALIDATION_PASS_THRESHOLD;
+  return {
+    passed,
+    score,
+    failedChecks,
+    regenerationCount,
+    modelVersion,
+    checkedAt: (/* @__PURE__ */ new Date()).toISOString()
+  };
+};
+var buildBatchValidatorPrompt = (context, drafts) => {
+  const items = drafts.map(
+    (draft, i) => `ZADANIE #${i + 1}:
 {
   "exerciseType": ${JSON.stringify(draft.exerciseType)},
   "learningObjective": ${JSON.stringify(draft.learningObjective)},
@@ -1655,63 +1678,85 @@ ZADANIE DO SPRAWDZENIA:
   "requiredMaterial": ${JSON.stringify(draft.requiredMaterial)},
   "hintSmall": ${JSON.stringify(draft.hintSmall)},
   "hintLarge": ${JSON.stringify(draft.hintLarge)}
-}
+}`
+  ).join("\n\n");
+  return `${renderContextForPrompt(context)}
 
-FORMAT ODPOWIEDZI (JSON):
+---
+
+${VALIDATOR_CHECKS}
+
+---
+
+DO SPRAWDZENIA \u2014 ${drafts.length} zada\u0144. Oce\u0144 KA\u017BDE z osobna, niezale\u017Cnie od pozosta\u0142ych:
+
+${items}
+
+FORMAT ODPOWIEDZI (JSON) \u2014 jeden obiekt z kluczem \`results\`, dok\u0142adnie ${drafts.length}
+wpis\xF3w, \`index\` odpowiada numerowi zadania powy\u017Cej (1-based):
 {
-  "passed": true,
-  "score": 0.9,
-  "failedChecks": [],
-  "notes": "jedno zdanie dla lektora, po polsku"
+  "results": [
+    { "index": 1, "passed": true, "score": 0.9, "failedChecks": [], "notes": "jedno zdanie dla lektora, po polsku" }
+  ]
 }
 
 \`failedChecks\` zawiera nazwy pyta\u0144, kt\xF3re wypad\u0142y \u017Ale \u2014 dok\u0142adnie tak, jak nazwano je wy\u017Cej
 (np. "naturalness_pl", "single_goal"). Je\u015Bli zadanie jest dobre, tablica jest pusta.`;
-var validateDraft = async (context, draft, call, regenerationCount) => {
+};
+var validateBatch = async (context, drafts, call, regenerationCounts) => {
+  if (drafts.length === 0) return [];
   const response = await call({
     system: `${buildCoreSystemPrompt()}
 
 Twoja rola: niezale\u017Cny kontroler jako\u015Bci \u0107wicze\u0144 j\u0119zykowych.
 Nie uk\u0142adasz zada\u0144. Oceniasz cudze. Jeste\u015B surowy i konkretny.`,
-    user: buildValidatorPrompt(context, draft),
-    taskName: "hw-v2/validate",
-    // Ocena ma być powtarzalna — to samo zadanie ma dostać ten sam werdykt.
+    user: buildBatchValidatorPrompt(context, drafts),
+    taskName: "hw-v2/validate-batch",
     temperature: 0
   });
-  const verdict = response.data || {};
-  const failedChecks = Array.isArray(verdict.failedChecks) ? verdict.failedChecks.filter((c) => typeof c === "string") : [];
-  const rawScore = typeof verdict.score === "number" ? verdict.score : 0;
-  const score = Math.min(1, Math.max(0, rawScore));
-  const passed = verdict.passed === true && failedChecks.length === 0 && score >= VALIDATION_PASS_THRESHOLD;
-  return {
-    passed,
-    score,
-    failedChecks,
-    regenerationCount,
-    modelVersion: response.modelUsed,
-    checkedAt: (/* @__PURE__ */ new Date()).toISOString()
-  };
+  const payload = response.data;
+  const rawList = Array.isArray(payload?.results) ? payload.results : [];
+  return drafts.map((_, i) => {
+    const byIndex = rawList.find((r) => Number(r?.index) === i + 1);
+    const raw = byIndex ?? rawList[i] ?? {};
+    return shapeVerdict(raw, regenerationCounts[i] ?? 0, response.modelUsed);
+  });
 };
 var validateAll = async (input) => {
-  const results = [];
-  for (const originalDraft of input.drafts) {
-    let draft = originalDraft;
-    let validation = await validateDraft(input.context, draft, input.call, 0);
-    let attempts = 0;
-    while (!validation.passed && attempts < MAX_REGENERATIONS) {
-      attempts += 1;
-      const regenerated = await input.regenerate(draft, validation.failedChecks);
-      if (!regenerated) break;
-      draft = regenerated;
-      validation = await validateDraft(input.context, draft, input.call, attempts);
-    }
-    results.push({
-      draft,
-      validation,
-      requiresTeacherReview: !validation.passed
+  const drafts = [...input.drafts];
+  const regenerationCounts = drafts.map(() => 0);
+  const validations = await validateBatch(input.context, drafts, input.call, regenerationCounts);
+  for (let round = 0; round < MAX_REGENERATIONS; round++) {
+    const failingIndices = validations.map((v, i) => v.passed ? -1 : i).filter((i) => i !== -1);
+    if (failingIndices.length === 0) break;
+    const regenerated = await input.regenerateBatch(
+      failingIndices.map((i) => ({ draft: drafts[i], failedChecks: validations[i].failedChecks }))
+    );
+    const reValidateIndices = [];
+    failingIndices.forEach((originalIndex, k) => {
+      const newDraft = regenerated[k];
+      if (newDraft) {
+        drafts[originalIndex] = newDraft;
+        regenerationCounts[originalIndex] += 1;
+        reValidateIndices.push(originalIndex);
+      }
+    });
+    if (reValidateIndices.length === 0) break;
+    const revalidated = await validateBatch(
+      input.context,
+      reValidateIndices.map((i) => drafts[i]),
+      input.call,
+      reValidateIndices.map((i) => regenerationCounts[i])
+    );
+    reValidateIndices.forEach((originalIndex, k) => {
+      validations[originalIndex] = revalidated[k];
     });
   }
-  return results;
+  return drafts.map((draft, i) => ({
+    draft,
+    validation: validations[i],
+    requiresTeacherReview: !validations[i].passed
+  }));
 };
 
 // functions/src/homeworkV2/pipeline.ts
@@ -1734,7 +1779,7 @@ var buildExerciseSet = async (input) => {
     context: input.context,
     drafts: generated.drafts,
     call: input.call,
-    regenerate: (draft, failedChecks) => regenerateDraft({ context: input.context, draft, failedChecks, call: input.call })
+    regenerateBatch: (items) => regenerateBatch({ context: input.context, items, call: input.call })
   });
   const exercises = validated.map((item, index) => {
     const slot = input.plan.slots[index] || input.plan.slots[0];
@@ -1851,7 +1896,10 @@ Odpowiadaj wy\u0142\u0105cznie poprawnym JSON-em.` }]
               },
               generationConfig: {
                 responseMimeType: "application/json",
-                temperature: request.temperature ?? 0.3
+                temperature: request.temperature ?? 0.3,
+                // Patrz komentarz przy `ModelRequest.thinkingBudget` — to jest
+                // pojedyncza zmiana, która ścięła 145 s do sekund na wywołanie.
+                thinkingConfig: { thinkingBudget: request.thinkingBudget ?? 0 }
               }
             }),
             signal: controller.signal

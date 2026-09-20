@@ -69,6 +69,19 @@ export interface ModelRequest {
   taskName: string;
   /** Niższa dla walidatora i oceny, wyższa dla układania zadań. */
   temperature?: number;
+  /**
+   * Budżet "myślenia" Gemini 2.5 Flash, w tokenach. Domyślnie 0 (wyłączone).
+   *
+   * Zdiagnozowana przyczyna 145 s na wygenerowanie 6 zadań: Flash 2.5 ma
+   * rozszerzone rozumowanie WŁĄCZONE domyślnie, gdy `thinkingBudget` nie jest
+   * podany — model spędza kilkanaście sekund na niewidocznym "myśleniu"
+   * przed każdą odpowiedzią, nawet przy prostym, w pełni sprecyzowanym
+   * poleceniu z gotowym przykładem formatu. Prompty tego silnika są już
+   * maksymalnie rozpisane (format, reguły, przykład) — rozumowanie
+   * wielokrokowe nic tu nie dokłada, tylko kosztuje czas. Wywołujący może
+   * podać większy budżet tam, gdzie to się kiedyś okaże potrzebne.
+   */
+  thinkingBudget?: number;
 }
 
 export interface ModelResponse {
@@ -185,6 +198,9 @@ export const createAiCall = (keys: AiCallKeys): ModelCall => {
               generationConfig: {
                 responseMimeType: 'application/json',
                 temperature: request.temperature ?? 0.3,
+                // Patrz komentarz przy `ModelRequest.thinkingBudget` — to jest
+                // pojedyncza zmiana, która ścięła 145 s do sekund na wywołanie.
+                thinkingConfig: { thinkingBudget: request.thinkingBudget ?? 0 },
               },
             }),
             signal: controller.signal,

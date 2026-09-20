@@ -73,7 +73,40 @@ FORMAT ODPOWIEDZI (JSON):
 \`failedChecks\` zawiera nazwy pytań, które wypadły źle — dokładnie tak, jak nazwano je wyżej
 (np. "naturalness_pl", "single_goal"). Jeśli zadanie jest dobre, tablica jest pusta.`;
 
-/** Jedno sprawdzenie jednego zadania. */
+/**
+ * Nadaje surowej odpowiedzi modelu kształt werdyktu — bez modelu, bez sieci.
+ *
+ * Wspólne dla ścieżki pojedynczej (`validateDraft`) i wsadowej
+ * (`validateBatch`), żeby próg przepuszczenia i reguła "zarzuty biją
+ * deklarację" liczyły się dokładnie tak samo w obu miejscach.
+ */
+const shapeVerdict = (
+  raw: RawVerdict,
+  regenerationCount: number,
+  modelVersion: string
+): ValidationResultV2 => {
+  const failedChecks = Array.isArray(raw.failedChecks)
+    ? raw.failedChecks.filter((c): c is string => typeof c === 'string')
+    : [];
+
+  const rawScore = typeof raw.score === 'number' ? raw.score : 0;
+  const score = Math.min(1, Math.max(0, rawScore));
+
+  // Model bywa niekonsekwentny: deklaruje `passed: true` i jednocześnie
+  // wypisuje zarzuty. Rozstrzyga lista zarzutów i próg, nie deklaracja.
+  const passed = raw.passed === true && failedChecks.length === 0 && score >= VALIDATION_PASS_THRESHOLD;
+
+  return {
+    passed,
+    score,
+    failedChecks,
+    regenerationCount,
+    modelVersion,
+    checkedAt: new Date().toISOString(),
+  };
+};
+
+/** Jedno sprawdzenie jednego zadania — jedno wywołanie modelu. */
 export const validateDraft = async (
   context: AssembledContext,
   draft: DraftExercise,
@@ -91,67 +124,178 @@ Nie układasz zadań. Oceniasz cudze. Jesteś surowy i konkretny.`,
     temperature: 0,
   });
 
-  const verdict = (response.data || {}) as RawVerdict;
+  return shapeVerdict((response.data || {}) as RawVerdict, regenerationCount, response.modelUsed);
+};
 
-  const failedChecks = Array.isArray(verdict.failedChecks)
-    ? verdict.failedChecks.filter((c): c is string => typeof c === 'string')
-    : [];
+// ---------------------------------------------------------------------------
+// Wsadowa kontrola — cały zestaw jednym zapytaniem
+// ---------------------------------------------------------------------------
 
-  const rawScore = typeof verdict.score === 'number' ? verdict.score : 0;
-  const score = Math.min(1, Math.max(0, rawScore));
+interface RawBatchVerdict extends RawVerdict {
+  index?: unknown;
+}
 
-  // Model bywa niekonsekwentny: deklaruje `passed: true` i jednocześnie
-  // wypisuje zarzuty. Rozstrzyga lista zarzutów i próg, nie deklaracja.
-  const passed = verdict.passed === true && failedChecks.length === 0 && score >= VALIDATION_PASS_THRESHOLD;
+const buildBatchValidatorPrompt = (context: AssembledContext, drafts: DraftExercise[]): string => {
+  const items = drafts
+    .map(
+      (draft, i) => `ZADANIE #${i + 1}:
+{
+  "exerciseType": ${JSON.stringify(draft.exerciseType)},
+  "learningObjective": ${JSON.stringify(draft.learningObjective)},
+  "content": ${JSON.stringify(draft.content)},
+  "instruction": ${JSON.stringify(draft.instruction)},
+  "modelAnswer": ${JSON.stringify(draft.modelAnswer)},
+  "acceptedVariants": ${JSON.stringify(draft.acceptedVariants)},
+  "requiredMaterial": ${JSON.stringify(draft.requiredMaterial)},
+  "hintSmall": ${JSON.stringify(draft.hintSmall)},
+  "hintLarge": ${JSON.stringify(draft.hintLarge)}
+}`
+    )
+    .join('\n\n');
 
-  return {
-    passed,
-    score,
-    failedChecks,
-    regenerationCount,
-    modelVersion: response.modelUsed,
-    checkedAt: new Date().toISOString(),
-  };
+  return `${renderContextForPrompt(context)}
+
+---
+
+${VALIDATOR_CHECKS}
+
+---
+
+DO SPRAWDZENIA — ${drafts.length} zadań. Oceń KAŻDE z osobna, niezależnie od pozostałych:
+
+${items}
+
+FORMAT ODPOWIEDZI (JSON) — jeden obiekt z kluczem \`results\`, dokładnie ${drafts.length}
+wpisów, \`index\` odpowiada numerowi zadania powyżej (1-based):
+{
+  "results": [
+    { "index": 1, "passed": true, "score": 0.9, "failedChecks": [], "notes": "jedno zdanie dla lektora, po polsku" }
+  ]
+}
+
+\`failedChecks\` zawiera nazwy pytań, które wypadły źle — dokładnie tak, jak nazwano je wyżej
+(np. "naturalness_pl", "single_goal"). Jeśli zadanie jest dobre, tablica jest pusta.`;
+};
+
+/**
+ * Sprawdza CAŁY zestaw jednym wywołaniem modelu.
+ *
+ * To jest naprawa przyczyny 145 s na 6 zadań: wcześniej `validateAll` pytał
+ * model osobno o każde zadanie, sekwencyjnie (`for...of` + `await`) — sześć
+ * pełnych, zależnych od siebie w czasie zapytań HTTP zamiast jednego.
+ * Model widzi tu wszystkie zadania naraz i ocenia je w jednym przebiegu,
+ * dokładnie tak samo, jak generator już układa cały zestaw w jednym strzale.
+ */
+export const validateBatch = async (
+  context: AssembledContext,
+  drafts: DraftExercise[],
+  call: ModelCall,
+  regenerationCounts: number[]
+): Promise<ValidationResultV2[]> => {
+  if (drafts.length === 0) return [];
+
+  const response = await call({
+    system: `${buildCoreSystemPrompt()}
+
+Twoja rola: niezależny kontroler jakości ćwiczeń językowych.
+Nie układasz zadań. Oceniasz cudze. Jesteś surowy i konkretny.`,
+    user: buildBatchValidatorPrompt(context, drafts),
+    taskName: 'hw-v2/validate-batch',
+    temperature: 0,
+  });
+
+  const payload = response.data as { results?: unknown[] };
+  const rawList = Array.isArray(payload?.results) ? (payload.results as RawBatchVerdict[]) : [];
+
+  return drafts.map((_, i) => {
+    // Dopasowanie po `index` modelu, z awaryjnym powrotem do pozycji w
+    // tablicy — model potrafi zwrócić listę bez pola `index`, mimo że
+    // prompt o nie prosi.
+    const byIndex = rawList.find((r) => Number(r?.index) === i + 1);
+    const raw = byIndex ?? rawList[i] ?? {};
+    return shapeVerdict(raw, regenerationCounts[i] ?? 0, response.modelUsed);
+  });
 };
 
 export interface ValidateAllInput {
   context: AssembledContext;
   drafts: DraftExercise[];
   call: ModelCall;
-  /** Wywoływane, gdy zadanie trzeba ułożyć od nowa. */
-  regenerate: (draft: DraftExercise, failedChecks: string[]) => Promise<DraftExercise | null>;
+  /**
+   * Poprawia WSZYSTKIE nieudane zadania jednym wywołaniem modelu (patrz
+   * `regenerateBatch` w `exerciseGenerator.ts`). Zwraca `null` na pozycji
+   * zadania, którego nie dało się poprawić — tak jak dawne `regenerate`
+   * dla pojedynczego zadania.
+   */
+  regenerateBatch: (
+    items: { draft: DraftExercise; failedChecks: string[] }[]
+  ) => Promise<(DraftExercise | null)[]>;
 }
 
 /**
  * Sprawdza cały zestaw, regenerując to, co nie przeszło.
  *
- * Limit dwóch regeneracji jest twardy. Trzecie podejście do tego samego
- * zadania kosztuje kolejne dwa wywołania modelu i w praktyce kończy się tak
- * samo — jeśli model dwa razy nie potrafił, problemem jest materiał, a nie
- * pech. Wtedy decyzja należy do lektora.
+ * Wcześniej: pętla `for` po zadaniach, z osobnym wywołaniem modelu na
+ * walidację i osobnym na każdą regenerację KAŻDEGO zadania — dla zestawu
+ * sześciu zadań, przy pechu, nawet 1 + 6 + 2×6×2 = 31 sekwencyjnych zapytań.
+ * Stąd 145 s zamiast kilku sekund.
+ *
+ * Teraz: jedno zapytanie ocenia CAŁY zestaw naraz (`validateBatch`), a każda
+ * z najwyżej dwóch rund regeneracji też jest jednym zapytaniem obejmującym
+ * WSZYSTKIE zadania, które akurat nie przeszły (`regenerateBatch`) —
+ * niezależnie od tego, ile ich jest. Górny limit to teraz 1 (walidacja) +
+ * 2 × 2 (regeneracja + ponowna walidacja) = 5 zapytań dla całego zestawu,
+ * zamiast 5 na SZTUKĘ.
+ *
+ * Limit dwóch rund regeneracji jest twardy — trzecie podejście do tego
+ * samego zadania w praktyce kończy się tak samo, jeśli materiał, nie pech,
+ * jest problemem. Wtedy decyzja należy do lektora.
  */
 export const validateAll = async (input: ValidateAllInput): Promise<ValidatedDraft[]> => {
-  const results: ValidatedDraft[] = [];
+  const drafts = [...input.drafts];
+  const regenerationCounts = drafts.map(() => 0);
+  const validations = await validateBatch(input.context, drafts, input.call, regenerationCounts);
 
-  for (const originalDraft of input.drafts) {
-    let draft = originalDraft;
-    let validation = await validateDraft(input.context, draft, input.call, 0);
+  for (let round = 0; round < MAX_REGENERATIONS; round++) {
+    const failingIndices = validations
+      .map((v, i) => (v.passed ? -1 : i))
+      .filter((i) => i !== -1);
 
-    let attempts = 0;
-    while (!validation.passed && attempts < MAX_REGENERATIONS) {
-      attempts += 1;
-      const regenerated = await input.regenerate(draft, validation.failedChecks);
-      if (!regenerated) break;
-      draft = regenerated;
-      validation = await validateDraft(input.context, draft, input.call, attempts);
-    }
+    if (failingIndices.length === 0) break;
 
-    results.push({
-      draft,
-      validation,
-      requiresTeacherReview: !validation.passed,
+    const regenerated = await input.regenerateBatch(
+      failingIndices.map((i) => ({ draft: drafts[i], failedChecks: validations[i].failedChecks }))
+    );
+
+    // Tylko zadania, które faktycznie dostały nową wersję, wracają do
+    // walidacji w tej rundzie — reszta zostaje przy ostatnim znanym werdykcie.
+    const reValidateIndices: number[] = [];
+    failingIndices.forEach((originalIndex, k) => {
+      const newDraft = regenerated[k];
+      if (newDraft) {
+        drafts[originalIndex] = newDraft;
+        regenerationCounts[originalIndex] += 1;
+        reValidateIndices.push(originalIndex);
+      }
+    });
+
+    if (reValidateIndices.length === 0) break;
+
+    const revalidated = await validateBatch(
+      input.context,
+      reValidateIndices.map((i) => drafts[i]),
+      input.call,
+      reValidateIndices.map((i) => regenerationCounts[i])
+    );
+
+    reValidateIndices.forEach((originalIndex, k) => {
+      validations[originalIndex] = revalidated[k];
     });
   }
 
-  return results;
+  return drafts.map((draft, i) => ({
+    draft,
+    validation: validations[i],
+    requiresTeacherReview: !validations[i].passed,
+  }));
 };

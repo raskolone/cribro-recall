@@ -228,6 +228,121 @@ test('dokument v2 zachowuje pola, bez których v1 się psuje', () => {
   assert.equal(payload.engineVersion, ENGINE_VERSION);
 });
 
+// ———————————————— Wydajność: walidacja i regeneracja są WSADOWE, nie po sztuce ————————————————
+//
+// Diagnoza P0 (145 s na 6 zadań zamiast 3-5 s): `validateAll` wołał model
+// osobno na każde zadanie, sekwencyjnie, plus osobno na każdą regenerację
+// każdego zadania. Te testy pilnują, żeby liczba wywołań `call` NIE rosła
+// z liczbą zadań w zestawie — to jest sedno naprawy, nie tylko to, że wynik
+// końcowy się zgadza.
+
+test('walidacja całego zestawu to JEDNO wywołanie modelu, niezależnie od liczby zadań', async () => {
+  let callCount = 0;
+  const drafts = [draft('micro_translation'), draft('fix_sentence'), draft('gap_from_context')];
+
+  const call: ModelCall = async () => {
+    callCount += 1;
+    return {
+      data: {
+        results: drafts.map((_, i) => ({ index: i + 1, passed: true, score: 1, failedChecks: [] })),
+      },
+      modelUsed: 'gemini-2.5-flash',
+      latencyMs: 1,
+    };
+  };
+
+  const results = await validateAll({
+    context: context(),
+    drafts,
+    call,
+    regenerateBatch: async (items) => items.map((item) => item.draft),
+  });
+
+  assert.equal(callCount, 1, 'jedno zapytanie ocenia cały zestaw naraz, nie po jednym na zadanie');
+  assert.equal(results.length, 3);
+  assert.ok(results.every((r) => !r.requiresTeacherReview));
+});
+
+test('walidator dopasowuje werdykty do zadań po polu `index`, nie po kolejności w tablicy', async () => {
+  const drafts = [draft('micro_translation'), draft('fix_sentence')];
+
+  // Model zwraca werdykty w odwrotnej kolejności — dopasowanie MUSI iść po `index`.
+  const call: ModelCall = async () => ({
+    data: {
+      results: [
+        { index: 2, passed: false, score: 0.1, failedChecks: ['naturalness_en'] },
+        { index: 1, passed: true, score: 0.95, failedChecks: [] },
+      ],
+    },
+    modelUsed: 'gemini-2.5-flash',
+    latencyMs: 1,
+  });
+
+  const results = await validateAll({
+    context: context(),
+    drafts,
+    call,
+    // `null` = nic nie da się poprawić, więc pętla kończy się od razu po
+    // pierwszej walidacji — sprawdzamy tu wyłącznie dopasowanie po `index`,
+    // nie zachowanie rund regeneracji (mają na to osobny test).
+    regenerateBatch: async (items) => items.map(() => null),
+  });
+
+  assert.equal(results[0].requiresTeacherReview, false, 'zadanie #1 (index:1) dostało passed:true');
+  assert.equal(results[1].requiresTeacherReview, true, 'zadanie #2 (index:2) dostało passed:false');
+});
+
+test('regeneruje WYŁĄCZNIE zadania, które nie przeszły — jednym wywołaniem dla całej grupy', async () => {
+  const drafts = [draft('micro_translation'), draft('fix_sentence'), draft('gap_from_context')];
+  let validateCallCount = 0;
+  let regenerateBatchCallCount = 0;
+  let regenerateBatchSizes: number[] = [];
+
+  // Wywołanie #1 ocenia cały zestaw naraz (zadanie #2 nie przechodzi).
+  // Wywołania kolejne to ponowna walidacja WYŁĄCZNIE skurczonej grupy
+  // nieudanych zadań (tu: jednego) — dlatego zawsze zwracają jeden wynik.
+  const call: ModelCall = async () => {
+    validateCallCount += 1;
+    if (validateCallCount === 1) {
+      return {
+        data: {
+          results: [
+            { index: 1, passed: true, score: 1, failedChecks: [] },
+            { index: 2, passed: false, score: 0.1, failedChecks: ['single_goal'] },
+            { index: 3, passed: true, score: 1, failedChecks: [] },
+          ],
+        },
+        modelUsed: 'gemini-2.5-flash',
+        latencyMs: 1,
+      };
+    }
+    return {
+      data: { results: [{ index: 1, passed: false, score: 0.1, failedChecks: ['single_goal'] }] },
+      modelUsed: 'gemini-2.5-flash',
+      latencyMs: 1,
+    };
+  };
+
+  const results = await validateAll({
+    context: context(),
+    drafts,
+    call,
+    regenerateBatch: async (items) => {
+      regenerateBatchCallCount += 1;
+      regenerateBatchSizes.push(items.length);
+      return items.map((item) => item.draft);
+    },
+  });
+
+  // 1 walidacja wstępna + 2 rundy regeneracji, każda z ponowną walidacją = 5.
+  assert.equal(validateCallCount, 1 + MAX_REGENERATIONS, 'walidacja: wstępna + jedna na rundę regeneracji');
+  assert.equal(regenerateBatchCallCount, MAX_REGENERATIONS, 'dokładnie tyle rund regeneracji, ile MAX_REGENERATIONS');
+  assert.deepEqual(regenerateBatchSizes, [1, 1], 'każda runda regeneruje WYŁĄCZNIE zadanie #2, nie cały zestaw');
+  assert.equal(results[0].requiresTeacherReview, false);
+  assert.equal(results[2].requiresTeacherReview, false);
+  assert.equal(results[1].requiresTeacherReview, true);
+});
+
 // ———————————————— Zadanie po 2 nieudanych walidacjach ————————————————
 
 test('zadanie po dwóch nieudanych walidacjach NIE idzie auto-wysyłką', async () => {
@@ -236,14 +351,14 @@ test('zadanie po dwóch nieudanych walidacjach NIE idzie auto-wysyłką', async 
   const results = await validateAll({
     context: context(),
     drafts: [draft('micro_translation')],
-    call: modelReturning({ passed: false, score: 0.2, failedChecks: ['naturalness_pl'] }),
-    regenerate: async (d) => {
+    call: modelReturning({ results: [{ index: 1, passed: false, score: 0.2, failedChecks: ['naturalness_pl'] }] }),
+    regenerateBatch: async (items) => {
       regenerations += 1;
-      return d;
+      return items.map((item) => item.draft);
     },
   });
 
-  assert.equal(regenerations, MAX_REGENERATIONS, 'dokładnie dwie regeneracje, nie więcej');
+  assert.equal(regenerations, MAX_REGENERATIONS, 'dokładnie dwie rundy regeneracji, nie więcej');
   assert.equal(results[0].requiresTeacherReview, true);
   assert.equal(results[0].validation.regenerationCount, MAX_REGENERATIONS);
 
@@ -267,8 +382,8 @@ test('regeneracja, która nic nie zwraca, przerywa pętlę zamiast się zapętla
   const results = await validateAll({
     context: context(),
     drafts: [draft('fix_sentence')],
-    call: modelReturning({ passed: false, score: 0.1, failedChecks: ['single_goal'] }),
-    regenerate: async () => null,
+    call: modelReturning({ results: [{ index: 1, passed: false, score: 0.1, failedChecks: ['single_goal'] }] }),
+    regenerateBatch: async (items) => items.map(() => null),
   });
 
   assert.equal(results[0].requiresTeacherReview, true);
@@ -344,7 +459,7 @@ test('awaria walidatora nie przepuszcza zadania po cichu', async () => {
       context: context(),
       drafts: [draft('gap_from_context')],
       call: failingModel,
-      regenerate: async (d) => d,
+      regenerateBatch: async (items) => items.map((item) => item.draft),
     })
   );
 });

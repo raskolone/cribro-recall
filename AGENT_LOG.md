@@ -3384,3 +3384,138 @@ i ścieżki tokenowe bez logowania niedotknięte. `server.ts` w ogóle nie
 był edytowany. Zero zmian schematu danych — wyłącznie nowy, opcjonalny
 prop na już istniejącym komponencie i jedno nowe rozgałęzienie w
 `Dashboard.tsx`.
+
+---
+
+2026-09-20 — Claude Code / Sonnet 5 (P0: diagnoza 145 s w `generateHomeworkV2`)
+
+Zadanie: zdiagnozować i wyeliminować przyczynę 145 s na wygenerowanie
+6 zadań domowych w `generateHomeworkV2` (us-central1), zamiast
+oczekiwanych 3-5 s, i sprowadzić cały zestaw poniżej 8 s.
+
+Audyt (bez zmian w kodzie na tym etapie) przeszedł przez cały łańcuch
+wywołań: `endpoints.ts:generateHomeworkV2` → `pipeline.ts:buildExerciseSet`
+→ `exerciseGenerator.ts:generateExercises` → `qualityValidator.ts:
+validateAll` → `openai.ts:createAiCall`.
+
+Znalezione (dwie przyczyny, jedna dominująca):
+
+1. **`qualityValidator.ts:validateAll`** — generowanie SAMYCH zadań już
+   było jednym wywołaniem na cały zestaw (`generateExercises`, komentarz
+   w kodzie wprost to tłumaczy). Ale kontrola jakości sprawdzała KAŻDE
+   zadanie osobnym, sekwencyjnym wywołaniem modelu (`for...of` + `await`
+   w pętli), a każda z do dwóch regeneracji na zadanie też była osobnym
+   zapytaniem. Dla 6 zadań: od 7 (bez odrzuceń) do 31 (przy pechu)
+   sekwencyjnych zapytań HTTP do Gemini — to jest dokładny mechanizm
+   145 s, nie generator, wbrew założeniu w opisie zlecenia.
+2. **`openai.ts:createAiCall`** — żadne wywołanie Gemini 2.5 Flash nie
+   ustawiało `thinkingConfig`, więc model dokładał domyślny budżet
+   rozumowania do KAŻDEGO zapytania, mimo w pełni rozpisanych promptów
+   (format, reguły, gotowy przykład JSON) niepotrzebujących
+   wielokrokowego rozumowania. To mnożnik na każde z 7-31 zapytań z
+   punktu 1.
+
+Sprawdzone i WYKLUCZONE (z opisu zlecenia): brak pętli
+exponential-backoff/retry przy błędach walidacji schematu — kaskada po
+błędzie po prostu idzie do następnego modelu, bez opóźnień. Format
+odpowiedzi już wymuszony natywnie (`responseMimeType: 'application/
+json'`), wycinanie bloków markdown w `extractJson` to tylko zapasowy
+parser, nie główna ścieżka. Kontekst z lekcji już pobierany przez
+`Promise.all`, nie sekwencyjnie.
+
+Zrobione:
+- `functions/src/homeworkV2/qualityValidator.ts`: nowa `validateBatch`
+  (jedno zapytanie ocenia CAŁY zestaw, dopasowanie werdyktów po polu
+  `index` modelu, nie po pozycji w tablicy — model potrafi zwrócić listę
+  w innej kolejności). Wspólna, czysta `shapeVerdict()` wydzielona z
+  dawnej `validateDraft` — ten sam próg i ta sama reguła „zarzuty biją
+  deklarację" liczą się identycznie w ścieżce pojedynczej i wsadowej.
+  `validateAll` przepisany: 1 walidacja wstępna + do `MAX_REGENERATIONS`
+  (2) rund, każda runda to 1 zapytanie regeneracji + 1 ponownej walidacji
+  WYŁĄCZNIE zadań, które jeszcze nie przeszły (nie całego zestawu od
+  nowa). Górny limit zapytań na CAŁY zestaw: stałe 5, niezależnie od
+  liczby zadań (wcześniej: 5 na SZTUKĘ).
+- `functions/src/homeworkV2/exerciseGenerator.ts`: nowa `regenerateBatch`
+  (jedno zapytanie poprawia wszystkie nieudane zadania danej rundy,
+  każde ze swoimi zarzutami). Usunięty jako martwy kod `regenerateDraft`
+  (pojedyncze wywołanie na zadanie) razem z `RegenerateInput` — w pełni
+  zastąpiony, zero pozostałych odwołań (sprawdzone grepem po całym repo
+  i testach przed usunięciem).
+- `functions/src/homeworkV2/pipeline.ts`: `buildExerciseSet` wiąże teraz
+  `regenerateBatch` zamiast `regenerateDraft` do `validateAll`.
+- `functions/src/homeworkV2/openai.ts`: nowe opcjonalne pole
+  `ModelRequest.thinkingBudget` (domyślnie `0` w `createAiCall`),
+  przełożone na `generationConfig.thinkingConfig.thinkingBudget` w
+  zapytaniu do Gemini. Dotyczy WSZYSTKICH wywołań silnika v2 przez tę
+  jedną wspólną funkcję — generowania, walidacji, regeneracji, oceny
+  próby (`gradingEngine.ts`) i feedbacku (`feedbackComposer.ts`), nie
+  tylko `generateHomeworkV2`. Pole zostaje opcjonalne (nie usunięte) —
+  wywołujący może podać większy budżet, gdyby się to okazało potrzebne.
+- `tests/homeworkV2Flow.test.ts`: 3 nowe testy pilnujące, że liczba
+  wywołań modelu NIE rośnie z liczbą zadań (jedno zapytanie na cały
+  zestaw; dopasowanie po `index`; regeneracja obejmuje wyłącznie zadania,
+  które nie przeszły, ze stałą górną granicą zapytań) — plus aktualizacja
+  3 istniejących testów `validateAll` na nowy kontrakt `regenerateBatch`
+  (zmiana z `regenerate` na `regenerateBatch` to zmiana łamiąca sygnaturę
+  publicznego API tego modułu).
+- `tests/homeworkV2AiCall.test.ts` (nowy plik, 2 testy): stub
+  `global.fetch` (ten sam wzorzec co `tests/notionBlocksFetcher.test.ts`)
+  potwierdzający, że request do Gemini domyślnie niesie
+  `thinkingConfig: {thinkingBudget: 0}`, i że jawnie podany budżet go
+  nadpisuje.
+
+Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (445/445, baza
+440 + 5 nowych), `npm --prefix functions run build` (przechodzi),
+`npm run build` (przechodzi).
+
+Nie dokończone / do sprawdzenia:
+- **Brak realnego pomiaru czasu na produkcji.** Środowisko agenta nie ma
+  klucza Gemini ani dostępu do wdrożonych Cloud Functions — „145 s →
+  sekundy" jest policzone analitycznie (liczba zapytań × szacowany czas
+  na zapytanie bez rozszerzonego rozumowania) i potwierdzone testami na
+  LICZBĘ wywołań modelu, NIE zmierzonym czasem end-to-end. Po
+  `npm run deploy:functions` pierwsze realne `generateHomeworkV2`
+  powinno pokazać w logach `[hw-v2] wywołanie modelu Gemini` (log kosztu/
+  latencji, już istniejący) 1-2 wpisy zamiast 7+, każdy rzędu kilku
+  sekund — to jest sposób na potwierdzenie na żywo.
+  Skopiowana wersja backendu do wdrożenia (`npm run deploy:functions`)
+  jeszcze nie wykonana w tej sesji — celowo, bo to działanie na
+  produkcji.
+- Wyłączenie budżetu myślenia dla WSZYSTKICH wywołań silnika v2 (nie
+  tylko generatora) mogło, teoretycznie, obniżyć jakość ocen/feedbacku w
+  `gradingEngine.ts`/`feedbackComposer.ts` — nie oceniane jakościowo w
+  tej sesji, bo cel był wyłącznie prędkość `generateHomeworkV2`. Jeśli
+  jakość zauważalnie spadnie, pierwszy krok to selektywne podniesienie
+  `thinkingBudget` z powrotem dla konkretnego kroku (np. generator, gdzie
+  liczy się kreatywność), zostawiając walidator/regenerację (zadania
+  deterministyczne, `temperature: 0`) przy zerze.
+
+Decyzje architektoniczne:
+- `ValidateAllInput.regenerate` (pojedyncze zadanie) zmienione na
+  `regenerateBatch` (cała grupa nieudanych) — świadoma zmiana łamiąca
+  sygnaturę, bo stary kształt DI wprost wymuszał sekwencyjność, którą
+  trzeba było usunąć u źródła, nie obejść. Sprawdzone, że nic poza
+  `pipeline.ts` i testami tego repo nie importuje `qualityValidator.ts`
+  ani `exerciseGenerator.ts`.
+- Dopasowanie werdyktów/regeneracji po polu `index` zwracanym przez
+  model, z awaryjnym powrotem do pozycji w tablicy — model może zwrócić
+  listę w innej kolejności niż zapytano (widziane już w innych miejscach
+  tego silnika, stąd defensywna postawa zamiast zaufania do kolejności).
+- `thinkingBudget` jako pole `ModelRequest`, nie globalna stała w
+  `createAiCall` — zostawia furtkę na podniesienie budżetu selektywnie
+  bez przebudowy interfejsu, gdyby jakość generowania na zero-thinking
+  okazała się gorsza w praktyce (patrz „Nie dokończone" wyżej).
+- `regenerateDraft` usunięty, nie zostawiony jako martwy kod obok
+  `regenerateBatch` — zero odwołań w repo po zmianie (sprawdzone grepem),
+  a trzymanie dwóch ścieżek do tej samej rzeczy tylko myli, który sposób
+  jest tym właściwym.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji
+(`requireFirebaseAuth`/`requireFirebaseAdmin`), ścieżkach tokenowych bez
+logowania ani schemacie danych Firestore — cała zmiana jest w warstwie
+orkiestracji wywołań modelu wewnątrz Cloud Functions, nietykająca żadnej
+reguły dostępu ani zapisu. `endpoints.ts` dotknięty w jednym miejscu
+(przekazanie `regenerateBatch` zamiast `regenerateDraft` przez
+`pipeline.ts`) — bez zmiany logiki samego endpointu. Zmiana sygnatury
+`ValidateAllInput` jest breaking change dla kodu spoza tego repo, gdyby
+taki istniał (potwierdzone grepem, że nie istnieje tutaj).
