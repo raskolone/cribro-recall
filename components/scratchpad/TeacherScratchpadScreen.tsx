@@ -12,6 +12,7 @@ import {
   subscribeScratchpad,
   saveScratchpadContent,
   updateScratchpadSettings,
+  wouldAppendToExistingNotes,
 } from '../../services/scratchpadService';
 import ScratchpadEditor from './ScratchpadEditor';
 
@@ -318,20 +319,44 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
    * lokalny identyfikator dokumentu musi zawsze wskazywać na dokument, który
    * faktycznie istnieje w chmurze pod tym ID — inaczej kolejne zapisy trafiają
    * pod ID, którego notatnik kursanta nie słucha.
+   *
+   * ══ POTWIERDZENIE PRZED DOPISANIEM (Human-in-the-loop) ══
+   *
+   * Jeśli kursant ma już własne notatki, przypisanie NIE nadpisuje ich —
+   * dopisuje treść roboczą na końcu, po kresce, z nagłówkiem „Dopisane
+   * z notatnika roboczego". To nieodwracalna zmiana cudzego dokumentu, więc
+   * zanim do niej dojdzie, lektor musi jawnie potwierdzić — bez tego kliknięcie
+   * w tego samego kursanta z osobnej, świeżej karty „Notatnik roboczy"
+   * (każda taka karta zaczyna pusty, ze świeżym `sp_<timestamp>`) dopisywałoby
+   * kolejny blok przy każdym powtórzeniu, bez ostrzeżenia. Gdy notatnik
+   * kursanta jest wciąż nietknięty (świeży), przypisanie po prostu go
+   * ustanawia — tam nie ma czego stracić, więc potwierdzenie nie jest potrzebne.
    */
   const handleAssignStudent = async (picked: { id: string; name: string }) => {
     if (!scratchpadDoc) return;
-    setIsAssigning(true);
     setAssignError(null);
-    /* Stary błąd inicjalizacji (ekran „Zamknij") albo przeterminowany baner
-       trybu roboczego nie mogą blokować przypisania — lektor już PATRZY na
-       sprawny edytor, więc próba przypisania ma prawo się udać. */
-    clearCloudSyncWarning();
     try {
       const teacherUid = user?.id || 'teacher_default';
       const teacherName = user?.firstName
         ? `${user.firstName} ${user.lastName || ''}`.trim()
         : user?.username || 'Lektor CRIBRO';
+
+      const wouldAppend = await wouldAppendToExistingNotes(picked, {
+        uid: teacherUid,
+        name: teacherName,
+      });
+      if (wouldAppend) {
+        const confirmed = window.confirm(
+          `${picked.name} ma już własne notatki. Treść z notatnika roboczego zostanie DOPISANA na końcu (istniejące notatki zostaną zachowane, nic nie zostanie nadpisane).\n\nKontynuować?`
+        );
+        if (!confirmed) return;
+      }
+
+      setIsAssigning(true);
+      /* Stary błąd inicjalizacji (ekran „Zamknij") albo przeterminowany baner
+         trybu roboczego nie mogą blokować przypisania — lektor już PATRZY na
+         sprawny edytor, więc próba przypisania ma prawo się udać. */
+      clearCloudSyncWarning();
       const adopted = await adoptScratchpadForStudent(scratchpadDoc, picked, {
         uid: teacherUid,
         name: teacherName,

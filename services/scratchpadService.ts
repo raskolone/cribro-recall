@@ -760,6 +760,44 @@ export function openScratchpadTab(scratchpadId?: string | null): void {
  * szablon startowy) podmieniamy, bo tam nie ma czego stracić; notatnik
  * z historią dostaje dzisiejszą treść na końcu, po kresce.
  */
+/**
+ * „Świeży" znaczy: treść jest nadal szablonem startowym. Porównujemy po
+ * samym tekście, bez znaczników — szablon bywa zapisany z innym HTML-em
+ * (przeglądarka normalizuje `contentEditable`), a chodzi o to, czy
+ * człowiek cokolwiek dopisał.
+ */
+const isScratchpadUntouched = (
+  target: Pick<ScratchpadDocument, 'contentHtml' | 'studentName'>,
+  fallbackName: string
+): boolean => {
+  const targetText = stripHtmlToText(target.contentHtml || '').replace(/\s+/g, ' ').trim();
+  if (!targetText) return true;
+  const template = stripHtmlToText(
+    getInitialScratchpadContent(target.studentName || fallbackName).html
+  )
+    .replace(/\s+/g, ' ')
+    .trim();
+  return targetText === template;
+};
+
+/**
+ * Sprawdza z WYPRZEDZENIEM (bez zapisu), czy przypisanie roboczego notatnika
+ * temu kursantowi DOPISZE treść do jego istniejących notatek, zamiast po
+ * prostu ustanowić notatnik po raz pierwszy.
+ *
+ * Wywołujący (UI) ma na tej podstawie poprosić lektora o jawne potwierdzenie
+ * PRZED wywołaniem `adoptScratchpadForStudent` — patrz zasada „Human-in-the-
+ * -loop" w `TeacherScratchpadScreen.tsx`: żadne dopisanie nie może zajść bez
+ * świadomej zgody lektora, bo to nieodwracalna zmiana cudzego dokumentu.
+ */
+export async function wouldAppendToExistingNotes(
+  student: { id: string; name: string },
+  teacher: { uid: string; name: string }
+): Promise<boolean> {
+  const target = await getOrCreateStudentScratchpad(student, teacher);
+  return !isScratchpadUntouched(target, student.name);
+}
+
 export async function adoptScratchpadForStudent(
   draft: ScratchpadDocument,
   student: { id: string; name: string },
@@ -773,22 +811,7 @@ export async function adoptScratchpadForStudent(
   const draftHtml = (draft.contentHtml || '').trim();
   if (!draftHtml) return target;
 
-  /*
-   * „Świeży" znaczy: treść jest nadal szablonem startowym. Porównujemy po
-   * samym tekście, bez znaczników — szablon bywa zapisany z innym HTML-em
-   * (przeglądarka normalizuje `contentEditable`), a chodzi o to, czy
-   * człowiek cokolwiek dopisał.
-   */
-  const untouched = (() => {
-    const targetText = stripHtmlToText(target.contentHtml || '').replace(/\s+/g, ' ').trim();
-    if (!targetText) return true;
-    const template = stripHtmlToText(
-      getInitialScratchpadContent(target.studentName || student.name).html
-    )
-      .replace(/\s+/g, ' ')
-      .trim();
-    return targetText === template;
-  })();
+  const untouched = isScratchpadUntouched(target, student.name);
 
   const mergedHtml = untouched
     ? draftHtml
