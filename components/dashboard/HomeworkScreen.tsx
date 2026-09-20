@@ -5,6 +5,7 @@ import { User, SpecialTask, HomeworkType, TranslationExercise, FillInTheBlankExe
 import { collection, collectionGroup, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { generateTranslationExercises, generateFillInTheBlankExercises, evaluateErrorCorrectionSentence, evaluateTranslations, evaluateTeacherHomework, processBulkSentences, generateHomeworkChatPipeline } from '../../services/geminiService';
+import { HOMEWORK_GENERATION_MODELS } from '../../services/aiModels';
 import { generateFindErrors } from '../../services/homeworkGenerator';
 import { isTaskForStudent, studentTasksQuery, taskOwnerFields, homeworkItemType } from '../../utils/homework';
 import { isV2Task } from '../../services/homeworkV2/contracts';
@@ -1120,7 +1121,9 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
           exercises,
           answers,
           user?.level || 'B1-B2',
-          ''
+          '',
+          undefined,
+          [...HOMEWORK_GENERATION_MODELS]
         );
 
         if (evalArray && evalArray.length > 0) {

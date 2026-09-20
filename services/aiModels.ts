@@ -57,8 +57,35 @@ export const OPENAI_MODEL_CASCADE: string[] = AI_MODEL_CASCADE.filter((m) =>
  * widzi tylko, że zadziałał inny dostawca, a prawdziwa przyczyna awarii
  * ginie. Jeśli Gemini zawiedzie, wywołanie ma rzucić błąd wprost, a nie
  * maskować go przejściem na GPT.
+ *
+ * Literał, celowo NIE `[PRIMARY_MODEL]` — polityka homework nie może się
+ * po cichu przesunąć, gdyby ktoś kiedyś zmienił model pierwszego wyboru dla
+ * reszty aplikacji. `as const` + `assertHomeworkModelAllowed` niżej pilnują
+ * tego również w czasie działania, nie tylko na etapie typów.
  */
-export const HOMEWORK_GENERATION_MODELS: string[] = [PRIMARY_MODEL];
+export const HOMEWORK_GENERATION_MODELS = ['gemini-2.5-flash'] as const;
+
+export class DisallowedHomeworkModelError extends Error {
+  constructor(model: string) {
+    super(
+      `Model "${model}" jest niedozwolony dla generowania pracy domowej — jedyny dopuszczalny model to "${HOMEWORK_GENERATION_MODELS[0]}". ` +
+      `Praca domowa nie może po cichu schodzić na inny model ani dostawcę (patrz AGENT_LOG.md, hotfix P0).`
+    );
+    this.name = 'DisallowedHomeworkModelError';
+  }
+}
+
+/**
+ * Twardy guard wywoływany TUŻ PRZED każdym wywołaniem dostawcy w ścieżkach
+ * homework/warm-up — nie tylko w UI. Rzuca zanim jakikolwiek request sieciowy
+ * zostanie wysłany, więc awaria Gemini nigdy nie może po cichu wylądować na
+ * OpenAI ani na innym modelu Gemini.
+ */
+export function assertHomeworkModelAllowed(model: string): void {
+  if (!(HOMEWORK_GENERATION_MODELS as readonly string[]).includes(model)) {
+    throw new DisallowedHomeworkModelError(model);
+  }
+}
 
 /** Kaskada Gemini — kolejność prób po wyczerpaniu modeli OpenAI. */
 export const GEMINI_MODEL_CASCADE: string[] = AI_MODEL_CASCADE.filter((m) =>

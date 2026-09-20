@@ -7,7 +7,7 @@ import { parseDraft } from '../functions/src/homeworkV2/exerciseGenerator';
 import {
   V2_MODEL_CASCADE,
   extractJson,
-  mapToActualOpenAIModel,
+  mapToActualGeminiModel,
 } from '../functions/src/homeworkV2/openai';
 import { validateDraft, VALIDATION_PASS_THRESHOLD } from '../functions/src/homeworkV2/qualityValidator';
 import type { ModelCall, ModelResponse } from '../functions/src/homeworkV2/openai';
@@ -22,7 +22,7 @@ import type { DraftExercise } from '../functions/src/homeworkV2/exerciseGenerato
 
 const modelReturning = (data: unknown): ModelCall => async (): Promise<ModelResponse> => ({
   data,
-  modelUsed: 'gpt-5.6-luna',
+  modelUsed: 'gemini-2.5-flash',
   latencyMs: 1,
 });
 
@@ -60,18 +60,16 @@ const draft = (overrides: Partial<DraftExercise> = {}): DraftExercise => ({
 
 // --- kaskada modeli ----------------------------------------------------------
 
-test('kaskada v2 rozpoczyna się od Gemini 2.5 Flash', () => {
+test('kaskada v2 rozpoczyna się od Gemini 2.5 Flash i jest WYŁĄCZNIE Gemini (hotfix P0, 2026-09-20)', () => {
   assert.equal(V2_MODEL_CASCADE[0], 'gemini-2.5-flash');
-  assert.ok(V2_MODEL_CASCADE.includes('gpt-4o-mini'));
-  assert.equal(V2_MODEL_CASCADE.length, 3);
+  assert.ok(!V2_MODEL_CASCADE.some((m) => m.includes('gpt')), 'kaskada v2 nie może zawierać modelu OpenAI');
+  assert.equal(V2_MODEL_CASCADE.length, 2);
 });
 
-test('nazwa logiczna modelu tłumaczy się tak samo jak w server.ts', () => {
-  // server.ts:4 — „GPT 5.6 Luna" to poziom, nie endpoint.
-  assert.equal(mapToActualOpenAIModel('gpt-5.6-luna'), 'gpt-4o');
-  assert.equal(mapToActualOpenAIModel('gpt-5.6'), 'gpt-4o');
-  assert.equal(mapToActualOpenAIModel('openai/gpt-4o-mini'), 'gpt-4o-mini');
-  assert.equal(mapToActualOpenAIModel('cokolwiek'), 'gpt-4o-mini');
+test('nazwa logiczna modelu Gemini tłumaczy się na stabilny endpoint', () => {
+  assert.equal(mapToActualGeminiModel('gemini-2.5-flash'), 'gemini-2.5-flash');
+  assert.equal(mapToActualGeminiModel('gemini-3.8-flash'), 'gemini-2.5-flash');
+  assert.equal(mapToActualGeminiModel('cokolwiek'), 'gemini-2.5-flash');
 });
 
 // --- parsowanie odpowiedzi ---------------------------------------------------

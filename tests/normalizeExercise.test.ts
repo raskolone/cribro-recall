@@ -32,6 +32,36 @@ test('normalizeExercise: pusta rozsypanka degraduje do invalid zamiast crashowa�
   assert.ok(exercise.message);
 });
 
+test('normalizeExercise: tłumaczenie wystawia correctSentence z aliasu englishTranslation (dla rozgrzewki)', () => {
+  const raw = { polishSentence: 'Muszę dotrzymać terminu.', englishTranslation: 'I have to meet the deadline.' };
+  const exercise = normalizeExercise(raw, { type: 'translation' });
+
+  assert.equal(exercise.type, 'translation');
+  assert.equal(exercise.correctSentence, 'I have to meet the deadline.');
+});
+
+test('normalizeExercise: tłumaczenie wystawia correctSentence z historycznego aliasu correctTranslation', () => {
+  const raw = { polishSentence: 'Muszę dotrzymać terminu.', correctTranslation: 'I have to meet the deadline.' };
+  const exercise = normalizeExercise(raw, { type: 'translation' });
+
+  assert.equal(exercise.correctSentence, 'I have to meet the deadline.');
+});
+
+test('normalizeExercise: tłumaczenie bez żadnego aliasu zostawia correctSentence undefined (zero zgadywania)', () => {
+  const raw = { polishSentence: 'Muszę dotrzymać terminu.' };
+  const exercise = normalizeExercise(raw, { type: 'translation' });
+
+  assert.equal(exercise.correctSentence, undefined);
+});
+
+test('normalizeExercise: find_errors wystawia correctSentence z raw.correctSentence', () => {
+  const raw = { incorrectSentence: 'I have meet the deadline yesterday.', correctSentence: 'I met the deadline yesterday.' };
+  const exercise = normalizeExercise(raw);
+
+  assert.equal(exercise.type, 'find_errors');
+  assert.equal(exercise.correctSentence, 'I met the deadline yesterday.');
+});
+
 test('normalizeGapPayload: format legacy [BLANK_n] z bankiem słów', () => {
   const result = normalizeGapPayload({
     textWithBlanks: 'This is a [BLANK_1] of the text.',

@@ -1,85 +1,42 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Sparkles, 
-  ArrowRight, 
-  RotateCcw, 
-  Flame, 
-  CheckCircle2, 
-  Lightbulb, 
-  SkipForward, 
-  Zap, 
-  Shuffle 
+import {
+  ArrowRight,
+  RotateCcw,
+  Flame,
+  CheckCircle2,
+  Lightbulb,
+  SkipForward,
+  Zap,
+  Shuffle,
+  Sparkles,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import i18n from 'i18next';
+import { buildWarmupRounds, WarmupRound } from '../../utils/warmupRounds';
+import { classifyUnscrambleAttempt, UnscrambleResult } from '../../utils/unscrambleGrading';
+import { HomeworkType } from '../../types';
 
-export interface WarmupSentenceItem {
-  prompt: string;
-  targetSentence: string;
-  hint?: string;
+export interface WarmupAttemptResult {
+  /** Indeks elementu w oryginalnej tablicy `sentences` — identyfikator zgodny z istniejącym modelem odpowiedzi. */
+  itemIndex: number;
+  /** Rzeczywista odpowiedź kursanta, w kolejności, w jakiej ułożył słowa. */
+  answerOrder: string[];
+  result: UnscrambleResult;
 }
 
 interface HomeworkWarmupScramblerProps {
   sentences: any[];
+  task?: { type?: HomeworkType } | null;
   onComplete: () => void;
   onSkip: () => void;
+  /** Wywoływany raz na każdą ukończoną (w pełni ułożoną) próbę — wywołujący decyduje, jak i czy zapisać próbę trwale. */
+  onAttemptResult?: (attempt: WarmupAttemptResult) => void;
 }
 
-/**
- * Normalizuje tekst zdania i rozbija na kafelki słów.
- */
 function extractWords(sentence: string): string[] {
   if (!sentence) return [];
-  // Czyścimy wielokrotne spacje i dzielimy po słowach, zachowując interpunkcję przy słowach lub czyszcząc
   const clean = sentence.trim().replace(/\s+/g, ' ');
   return clean.split(' ').filter(Boolean);
-}
-
-/**
- * Wyciąga sensowne zdania do rozgrzewki z przekazanej listy zadań domowych.
- */
-function extractWarmupItems(rawSentences: any[]): WarmupSentenceItem[] {
-  if (!Array.isArray(rawSentences) || rawSentences.length === 0) return [];
-
-  const items: WarmupSentenceItem[] = [];
-
-  for (const item of rawSentences) {
-    if (!item) continue;
-    let target = '';
-    let prompt = '';
-    let hint = item.hint || item.hintSmall || '';
-
-    if (item.correctTranslation || item.englishTranslation || item.englishSentence || item.modelAnswer || item.targetSentence) {
-      target = item.correctTranslation || item.englishTranslation || item.englishSentence || item.modelAnswer || item.targetSentence;
-      prompt = item.polishSentence || item.prompt || item.instruction || 'Przetłumacz na angielski:';
-    } else if (item.correctSentence) {
-      target = item.correctSentence;
-      prompt = item.incorrectSentence ? `Zdanie z błędem: ${item.incorrectSentence}` : (item.instruction || 'Popraw zdanie:');
-    } else if (item.chunks && Array.isArray(item.chunks)) {
-      target = item.chunks.join(' ');
-      prompt = item.polishHint || item.instruction || 'Ułóż zdanie z rozsypanki:';
-    } else if (item.sentence && typeof item.sentence === 'string') {
-      target = item.sentence;
-      prompt = item.polishSentence || item.instruction || 'Ułóż zdanie:';
-    } else if (item.polishSentence && typeof item.polishSentence === 'string') {
-      prompt = item.polishSentence;
-      target = item.hint || item.expectedAnswer || '';
-    }
-
-    if (target && typeof target === 'string' && target.trim().length > 0) {
-      const words = extractWords(target);
-      // Wybieramy zdania o długości od 3 do 20 słów — idealne na rozgrzewkę
-      if (words.length >= 3 && words.length <= 20) {
-        items.push({
-          prompt: prompt || 'Ułóż zdanie w języku angielskim:',
-          targetSentence: target.trim(),
-          hint: hint || undefined,
-        });
-      }
-    }
-  }
-
-  // Maksymalnie 3 zdania na rozgrzewkę, żeby nie przeciążać kursanta przed właściwą pracą domową
-  return items.slice(0, 3);
 }
 
 // Kolorowe, estetyczne palety kafelków w stylu Nocturne Green & Emerald
@@ -93,15 +50,17 @@ const TILE_COLORS = [
 
 export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = ({
   sentences,
+  task,
   onComplete,
   onSkip,
+  onAttemptResult,
 }) => {
-  const warmupItems = useMemo(() => extractWarmupItems(sentences), [sentences]);
+  const warmupItems: WarmupRound[] = useMemo(() => buildWarmupRounds(sentences, task), [sentences, task]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // Aktualnie wybrane kafelki (indeksy ze shuffled banku)
   const [selectedWordIndices, setSelectedWordIndices] = useState<number[]>([]);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [result, setResult] = useState<UnscrambleResult | null>(null);
   const [showHint, setShowHint] = useState(false);
 
   // Jeśli brak odpowiednich zdań na rozgrzewkę, od razu przechodzimy do zadań
@@ -137,7 +96,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
   // Reset stanu po zmianie zdania
   useEffect(() => {
     setSelectedWordIndices([]);
-    setIsSuccess(false);
+    setResult(null);
     setShowHint(false);
   }, [currentIndex]);
 
@@ -145,20 +104,28 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
     return null;
   }
 
-  // Sprawdzamy czy ułożone słowa tworzą prawidłowe zdanie
+  const isDone = result === 'correct' || result === 'close';
+
+  // Sprawdzamy czy ułożone słowa tworzą prawidłowe (lub "bliskie") zdanie
   const handleSelectTile = (bankIndex: number) => {
-    if (isSuccess || selectedWordIndices.includes(bankIndex)) return;
+    if (isDone || selectedWordIndices.includes(bankIndex)) return;
 
     const nextSelected = [...selectedWordIndices, bankIndex];
     setSelectedWordIndices(nextSelected);
 
-    // Jeśli wybrano wszystkie kafelki, sprawdzamy zgodność
+    // Jeśli wybrano wszystkie kafelki, klasyfikujemy próbę
     if (nextSelected.length === shuffledBank.length) {
-      const constructedSentence = nextSelected.map((idx) => shuffledBank[idx].word).join(' ').toLowerCase().replace(/[.,!?;:]/g, '');
-      const cleanTarget = targetWords.join(' ').toLowerCase().replace(/[.,!?;:]/g, '');
+      const answerOrder = nextSelected.map((idx) => shuffledBank[idx].word);
+      const classification = classifyUnscrambleAttempt(answerOrder, targetWords);
+      setResult(classification);
 
-      if (constructedSentence === cleanTarget) {
-        setIsSuccess(true);
+      onAttemptResult?.({
+        itemIndex: currentItem.itemIndex,
+        answerOrder,
+        result: classification,
+      });
+
+      if (classification === 'correct') {
         try {
           confetti({
             particleCount: 40,
@@ -168,17 +135,19 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
           });
         } catch (e) {}
       }
+      // `incorrect` zostaje bez specjalnego ekranu — kursant widzi ułożone,
+      // niepasujące kafelki i może użyć "Resetuj" (istniejące zachowanie retry).
     }
   };
 
   const handleRemoveTile = (positionInSelected: number) => {
-    if (isSuccess) return;
+    if (isDone) return;
     setSelectedWordIndices((prev) => prev.filter((_, i) => i !== positionInSelected));
   };
 
   const handleReset = () => {
     setSelectedWordIndices([]);
-    setIsSuccess(false);
+    setResult(null);
   };
 
   const handleNext = () => {
@@ -221,11 +190,11 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
         {/* Subtelny ambient glow */}
         <div className="absolute -top-20 -right-20 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Informacja o braku oceny (ADHD-friendly: zero presji) */}
+        {/* Informacja o braku oceny (ADHD-friendly: zero presji) — nagłówek odpowiada rzeczywistemu typowi zadania, nie zawsze "rozsypance" */}
         <div className="flex items-center justify-between mb-4">
           <span className="text-[11px] font-mono text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
             <Zap size={13} className="text-emerald-400" />
-            Niepunktowane • Ułóż zdanie z rozsypanki
+            Niepunktowane • {currentItem.heading}
           </span>
 
           {currentItem.hint && (
@@ -240,10 +209,19 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
           )}
         </div>
 
-        {/* Prompt / Zdanie wyjściowe */}
-        <div className="p-4 rounded-xl bg-base-100/90 border border-line-strong mb-5 shadow-inner">
-          <p className="text-base sm:text-lg font-bold text-white leading-relaxed">
-            {currentItem.prompt}
+        {/* Zdanie źródłowe (polskie zdanie do przetłumaczenia / zdanie z błędem), gdy istnieje */}
+        {currentItem.sourceLabel && (
+          <div className="p-4 rounded-xl bg-base-100/90 border border-line-strong mb-3 shadow-inner">
+            <p className="text-base sm:text-lg font-bold text-white leading-relaxed">
+              {currentItem.sourceLabel}
+            </p>
+          </div>
+        )}
+
+        {/* Polecenie zgodne z rzeczywistym typem zadania (te same statyczne klucze i18n co HomeworkExercise.tsx) */}
+        <div className="p-3 rounded-xl bg-base-100/60 border border-line-strong/60 mb-5">
+          <p className="text-xs sm:text-sm text-content-muted leading-relaxed">
+            {currentItem.instruction}
           </p>
           {showHint && currentItem.hint && (
             <p className="text-xs text-amber-300/90 mt-2.5 pt-2.5 border-t border-white/10 flex items-center gap-1.5">
@@ -256,7 +234,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
         <div className="space-y-2 mb-6">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-content-muted">Twoje zdanie:</span>
-            {selectedWordIndices.length > 0 && !isSuccess && (
+            {selectedWordIndices.length > 0 && !isDone && (
               <button
                 type="button"
                 onClick={handleReset}
@@ -269,8 +247,10 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
 
           <div
             className={`min-h-[4.5rem] rounded-xl border-2 p-3 flex flex-wrap gap-2 items-center transition-all ${
-              isSuccess
+              result === 'correct'
                 ? 'border-emerald-500 bg-emerald-950/30 shadow-[0_0_20px_rgba(16,185,129,0.2)]'
+                : result === 'close'
+                ? 'border-amber-500 bg-amber-950/20 shadow-[0_0_20px_rgba(245,158,11,0.15)]'
                 : 'border-dashed border-line-strong bg-base-100/50'
             }`}
           >
@@ -309,7 +289,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
                 <button
                   key={`bank-${bankIndex}`}
                   type="button"
-                  disabled={isUsed || isSuccess}
+                  disabled={isUsed || isDone}
                   onClick={() => handleSelectTile(bankIndex)}
                   className={`px-3.5 py-2 rounded-xl border text-[15px] font-bold transition-all duration-150 active:scale-95 cursor-pointer ${
                     isUsed
@@ -324,29 +304,59 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
           </div>
         </div>
 
-        {/* Ekran sukcesu dla danego zdania */}
-        {isSuccess && (
-          <div className="mt-6 p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-2.5">
-              <CheckCircle2 size={22} className="text-emerald-400 shrink-0" />
-              <div>
-                <span className="font-bold text-emerald-300 text-sm block">Świetnie ułożone! 🔥</span>
-                <span className="text-xs text-emerald-200/80">
-                  {isLast ? 'Rozgrzewka zakończona, przejdź do zadań' : 'Gotowy na kolejne zdanie?'}
-                </span>
+        {/* Wynik próby — aria-live, żeby czytnik ekranu ogłosił zmianę bez polegania wyłącznie na kolorze */}
+        <div role="status" aria-live="polite">
+          {result === 'correct' && (
+            <div className="mt-6 p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 size={22} className="text-emerald-400 shrink-0" />
+                <div>
+                  <span className="font-bold text-emerald-300 text-sm block">{i18n.t('Świetnie ułożone!')} 🔥</span>
+                  <span className="text-xs text-emerald-200/80">
+                    {isLast ? 'Rozgrzewka zakończona, przejdź do zadań' : 'Gotowy na kolejne zdanie?'}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <button
-              type="button"
-              onClick={handleNext}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <span>{isLast ? 'Rozpocznij pracę domową →' : 'Następne zdanie →'}</span>
-              <ArrowRight size={15} />
-            </button>
-          </div>
-        )}
+              <button
+                type="button"
+                onClick={handleNext}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>{isLast ? 'Rozpocznij pracę domową →' : 'Następne zdanie →'}</span>
+                <ArrowRight size={15} />
+              </button>
+            </div>
+          )}
+
+          {result === 'close' && (
+            <div className="mt-6 p-4 rounded-xl bg-amber-500/15 border border-amber-500/40 flex flex-col gap-3 animate-in zoom-in-95 duration-200">
+              <div className="flex items-start gap-2.5">
+                <Sparkles size={22} className="text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1.5">
+                  <span className="font-bold text-amber-300 text-sm block">
+                    {i18n.t('Byłeś/Byłaś blisko!')}
+                  </span>
+                  <p className="text-xs text-amber-200/80">
+                    {i18n.t('Miałeś/Miałaś wszystkie właściwe słowa — tylko szyk był inny. Poprawna kolejność:')}
+                  </p>
+                  <p className="text-sm font-semibold text-white bg-black/20 rounded-lg px-3 py-2">
+                    {currentItem.targetSentence}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNext}
+                className="w-full sm:w-auto self-end px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>{isLast ? 'Rozpocznij pracę domową →' : 'Następne zdanie →'}</span>
+                <ArrowRight size={15} />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Stopka z szybkim pominięciem */}

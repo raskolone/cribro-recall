@@ -9,6 +9,7 @@ import { collection, getDocs, query, orderBy, limit, addDoc, where, documentId, 
 import { db } from '../../firebase';
 import { getDoc } from 'firebase/firestore';
 import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, logMistakesToFirebase, formatAIModelName } from '../../services/geminiService';
+import { HOMEWORK_GENERATION_MODELS } from '../../services/aiModels';
 import { generateSpeech, createSpeechAudio, formatTextForTTS, playSpeech } from '../../services/ttsService';
 import TTSButtons from '../flashcards/TTSButtons';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog, canUserViewAiMonitor } from '../../types';
@@ -1628,14 +1629,18 @@ ${learningContext?.briefing || ''}
           // ostatnie wyniki, a suwak zna tylko to, co kursant kiedyś wybrał.
           learningContext?.level || level,
           wordsToUse,
-          resolvedGenPrompt, 
-          lessonContextString, 
-          studentProfileContext, 
-          practiceMode === 'time' ? 10 : numSentences, 
-          pastExercisesContext, 
+          resolvedGenPrompt,
+          lessonContextString,
+          studentProfileContext,
+          practiceMode === 'time' ? 10 : numSentences,
+          pastExercisesContext,
           weaknessesListStr,
           selectedSetId === 'grammar',
-          (model) => setActiveGeneratingModel(model)
+          (model) => setActiveGeneratingModel(model),
+          // Wynik tego wywołania zasila też HomeworkWarmupScrambler (patrz JSX
+          // niżej) — ta sama granica homework/warm-up, która nie może po
+          // cichu schodzić na OpenAI (services/aiModels.ts).
+          [...HOMEWORK_GENERATION_MODELS]
         );
         
         addLog('generateTranslationExercises returned ' + (generated ? generated.length : 'null'));
@@ -4036,6 +4041,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
           <div className="max-w-2xl mx-auto pb-28 md:pb-8 animate-fade-in">
             <HomeworkWarmupScrambler
               sentences={exercises}
+              task={{ type: 'translation' }}
               onComplete={() => setWarmupPhase('exercises')}
               onSkip={() => setWarmupPhase('exercises')}
             />

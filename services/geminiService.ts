@@ -8,7 +8,7 @@ import { db } from '../firebase';
 import { Type, Modality } from "@google/genai";
 import { Language, Difficulty, Word, AISuggestion, AudioVocabulary, TranslationExercise, TranslationEvaluationResult, RecallCandidate, RecallLearningType, LessonAttachment } from '../types';
 import { aiMonitor } from './aiMonitorService';
-import { AI_MODEL_CASCADE, PRIMARY_MODEL, SECONDARY_MODEL, TERTIARY_MODEL, cascadeForCategory } from './aiModels';
+import { AI_MODEL_CASCADE, cascadeForCategory, HOMEWORK_GENERATION_MODELS, assertHomeworkModelAllowed } from './aiModels';
 import { peekAiOverrides } from './aiConfigService';
 import { toPolishVocative, detectPolishGender } from '../utils/polishVocative';
 
@@ -1031,12 +1031,22 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
   ]
 }`;
 
+  const preferredModels = modelsOverride && modelsOverride.length > 0 ? modelsOverride : PREFERRED_AI_MODELS;
+  // Guard TUŻ PRZED wywołaniem dostawcy, POZA pętlą retry poniżej — inaczej
+  // model niedozwolony rzucałby dopiero po trzech pustych próbach zamiast
+  // od razu (patrz services/aiModels.ts). Uruchamia się WYŁĄCZNIE gdy
+  // wywołujący jawnie poprosił o kaskadę homework (modelsOverride); domyślna
+  // ścieżka (bez override, np. niezależna praktyka poza rozgrzewką) zostaje
+  // nietknięta.
+  if (modelsOverride) {
+    preferredModels.forEach(assertHomeworkModelAllowed);
+  }
+
   const MAX_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. IRONCLAD RULE: Every generated sentence MUST be strictly logical, natural, and make complete real-world sense to teach authentic context (never generate senseless or bizarre sentences just to test vocabulary). Always prioritize natural logic, practical communication context, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: 1) If the target sentence has FEWER THAN 8 words (< 8 words): split into mostly SINGLE WORDS or small pairs (e.g. phrasal verbs 'look up', prepositions 'in the'). 2) If the target sentence has 8 OR MORE WORDS (>= 8 words): group into LARGER logical phrase chunks (2-4 words per chunk, e.g. 'I decided to go', 'to the grocery store', 'after work'). Limit long sentences to 3 to 5 chunks maximum so it is achievable and serves as a good warmup before typing.";
-      
-      const preferredModels = modelsOverride && modelsOverride.length > 0 ? modelsOverride : PREFERRED_AI_MODELS;
+
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: sentenceGeneratorSchema,
@@ -1049,7 +1059,7 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
         preferredModels,
         geminiConfig,
         onModelAttempt,
-        { taskName: 'Generowanie zdań ćwiczeniowych', category: 'sentence-gen', timeoutMs: 8000, maxRetries: 1 }
+        { taskName: 'Generowanie zdań ćwiczeniowych', category: modelsOverride ? 'homework' : 'sentence-gen', timeoutMs: 8000, maxRetries: 1 }
       );
       let responseText = fallbackRes1.text;
       let modelUsed = fallbackRes1.modelUsed;
@@ -1082,7 +1092,7 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawny obiekt JSON, zachowując dok
           preferredModels,
           geminiConfig,
           onModelAttempt,
-          { taskName: 'Weryfikacja logiczna zdań (krok 2)', category: 'sentence-gen', timeoutMs: 8000, maxRetries: 1 }
+          { taskName: 'Weryfikacja logiczna zdań (krok 2)', category: modelsOverride ? 'homework' : 'sentence-gen', timeoutMs: 8000, maxRetries: 1 }
         );
         if (fallbackRes2.text) {
           responseText = fallbackRes2.text;
@@ -1139,7 +1149,15 @@ export const evaluateTranslations = async (
   studentAnswers: string[],
   strictnessPrompt: string,
   evalStudentContext: string,
-  onModelAttempt?: (model: string) => void
+  onModelAttempt?: (model: string) => void,
+  /**
+   * Wymusza kaskadę homework (WYŁĄCZNIE Gemini 2.5 Flash) zamiast domyślnej
+   * `PREFERRED_AI_MODELS` — patrz komentarz przy `generateTranslationExercises`.
+   * Używane przez ocenę pracy domowej v1 (`StudentHomeworkScreen.tsx`,
+   * `HomeworkScreen.tsx`); niezależna praktyka (`AIExerciseGeneratorScreen.tsx`)
+   * woła tę samą funkcję bez override i zachowuje domyślną kaskadę.
+   */
+  modelsOverride?: string[]
 ): Promise<TranslationEvaluationResult[]> => {
   const masterEvalPrompt = `ROLE:
 You are a fair, highly intelligent AI Language Evaluator.
@@ -1206,13 +1224,19 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
   ]
 }`;
 
+  const preferredModels = modelsOverride && modelsOverride.length > 0 ? modelsOverride : PREFERRED_AI_MODELS;
+  // Guard TUŻ PRZED wywołaniem dostawcy, poza pętlą retry — patrz komentarz
+  // przy `generateTranslationExercises` i services/aiModels.ts. Uruchamia
+  // się WYŁĄCZNIE gdy ocena dotyczy pracy domowej (modelsOverride podane).
+  if (modelsOverride) {
+    preferredModels.forEach(assertHomeworkModelAllowed);
+  }
+
   const MAX_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON. CRITICAL PUNCTUATION RULE: Do NOT deduct points or penalize scores for missing or incorrect punctuation/capitalization (punctuation is needed/good practice, but must NOT lower the score).";
-      
-      // Priority: OpenAI GPT-4o-mini, with fallback to available OpenAI models and then Gemini models
-      const preferredModels = PREFERRED_AI_MODELS;
+
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: evaluationResultSchema,
@@ -1224,7 +1248,7 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
         preferredModels,
         geminiConfig,
         onModelAttempt,
-        { taskName: 'Ocena i analiza tłumaczeń zdań', category: 'evaluation' }
+        { taskName: 'Ocena i analiza tłumaczeń zdań', category: modelsOverride ? 'homework' : 'evaluation' }
       );
       const responseText = fallbackRes.text;
       const modelUsed = fallbackRes.modelUsed;
@@ -1855,7 +1879,17 @@ export const generateHomework = async (topic: string, summary: string, words: st
   Praca domowa powinna być krótka, angażująca i utrwalać przerobiony materiał. Zaproponuj 3-5 zdań do przetłumaczenia na angielski, kilka pytań otwartych do odpowiedzi pisemnej po angielsku lub krótkie ćwiczenie (np. "uzupełnij luki") polegające na użyciu słownictwa z lekcji. Zwróć wynik w formacie Markdown. Pisz bezpośrednio do ucznia w przyjaznym tonie po polsku.`;
 
   try {
-    const response = await generateContentWithFallback({ contents: prompt });
+    // Jedyny caller to LessonHistory.tsx (starszy generator pracy domowej z
+    // widoku historii lekcji) — bez innych, niehomeworkowych konsumentów,
+    // więc kaskada jest na sztywno ograniczona do Gemini 2.5 Flash
+    // (services/aiModels.ts), bez parametru override.
+    const preferredModels: string[] = [...HOMEWORK_GENERATION_MODELS];
+    preferredModels.forEach(assertHomeworkModelAllowed);
+    const response = await generateContentWithFallback({
+      contents: prompt,
+      preferredModels,
+      config: { thinkingConfig: { thinkingBudget: 0 } },
+    });
     return response?.text || "";
   } catch (error) {
     console.error("Error generating homework:", error);
@@ -1913,6 +1947,11 @@ Zwróć wynik WYŁĄCZNIE jako poprawny obiekt JSON o strukturze:
 }`;
 
   try {
+    // Guard TUŻ PRZED wywołaniem dostawcy — patrz komentarz przy
+    // `generateTranslationExercises` i services/aiModels.ts.
+    if (modelsOverride) {
+      modelsOverride.forEach(assertHomeworkModelAllowed);
+    }
     const response = await generateContentWithFallback({
       contents: prompt,
       preferredModels: modelsOverride,
@@ -1971,7 +2010,16 @@ Zwróć czysty JSON:
 }`;
 
   try {
-    const response = await generateContentWithFallback({ contents: prompt });
+    // Jedyny caller to HomeworkScreen.tsx (ocena poprawy błędu w pracy
+    // domowej) — bez innych, niehomeworkowych konsumentów, więc kaskada jest
+    // na sztywno ograniczona do Gemini 2.5 Flash (services/aiModels.ts).
+    const preferredModels: string[] = [...HOMEWORK_GENERATION_MODELS];
+    preferredModels.forEach(assertHomeworkModelAllowed);
+    const response = await generateContentWithFallback({
+      contents: prompt,
+      preferredModels,
+      config: { thinkingConfig: { thinkingBudget: 0 } },
+    });
     const jsonText = extractJSON(response?.text || '');
     const parsed = JSON.parse(jsonText);
     return {
@@ -2115,7 +2163,16 @@ PRZYKŁAD ZŁEGO (dokładnie tego NIE rób):
 "Drogi Kursancie, jestem pod wrażeniem Twojego zaangażowania w naukę i intuicji w rozumieniu znaczenia wielu zdań! Szczególnie chciałbym pochwalić Twoje sukcesy... Pamiętaj, że każdy błąd to cenna lekcja i naturalny element drogi do mistrzostwa."`;
 
   try {
-    const response = await generateContentWithFallback({ contents: prompt });
+    // Jedyny caller to HomeworkScreen.tsx ("Zaproponuj ocenę z AI" lektora) —
+    // bez innych, niehomeworkowych konsumentów, więc kaskada jest na sztywno
+    // ograniczona do Gemini 2.5 Flash (services/aiModels.ts).
+    const preferredModels: string[] = [...HOMEWORK_GENERATION_MODELS];
+    preferredModels.forEach(assertHomeworkModelAllowed);
+    const response = await generateContentWithFallback({
+      contents: prompt,
+      preferredModels,
+      config: { thinkingConfig: { thinkingBudget: 0 } },
+    });
     const text = response?.text || '';
     const jsonText = extractJSON(text);
     const parsed = JSON.parse(jsonText);
@@ -2371,8 +2428,16 @@ export const generateHomeworkChatPipeline = async ({
   summaryText: string;
   modelUsed: string;
 }> => {
+  // Jedyny dopuszczalny model dla całego potoku — patrz services/aiModels.ts.
+  // Dawniej krok 1 wołał OpenAI wprost, a krok 2 (Gemini) i tak miał w swojej
+  // kaskadzie zapasowy model OpenAI — praca domowa mogła więc po cichu
+  // wylądować w całości na GPT, mimo etykiety "Gemini". Guard rzuca, zanim
+  // cokolwiek trafi do providera.
+  const homeworkModels: string[] = [...HOMEWORK_GENERATION_MODELS];
+  homeworkModels.forEach(assertHomeworkModelAllowed);
+
   if (onStatusUpdate) {
-    onStatusUpdate("Krok 1/2: Generowanie wstępnych zdań (OpenAI GPT-4o mini)...");
+    onStatusUpdate(`Krok 1/2: Generowanie wstępnych zdań (${formatAIModelName(homeworkModels[0])})...`);
   }
 
   const historyContext = chatHistory && chatHistory.length > 0
@@ -2397,8 +2462,8 @@ ${l.studentSpeaking || 'Brak zarejestrowanych wypowiedzi kursanta.'}
 ${l.thingsToImprove || 'Brak zarejestrowanych uwag do poprawy.'}`).join('\n\n---\n')
     : 'Brak wpisanych lekcji w panelu kursanta.';
 
-  const openAiSystemInstruction = `# ROLE AND PURPOSE
-Jesteś zaawansowanym silnikiem pedagogicznym AI oraz pierwszym etapem generatora prac domowych (OpenAI GPT-4o mini). Twoim zadaniem jest generowanie spersonalizowanych prac domowych dla kursanta na podstawie historii wskazanych lekcji.
+  const draftSystemInstruction = `# ROLE AND PURPOSE
+Jesteś zaawansowanym silnikiem pedagogicznym AI oraz pierwszym etapem generatora prac domowych. Twoim zadaniem jest generowanie spersonalizowanych prac domowych dla kursanta na podstawie historii wskazanych lekcji.
 
 # INPUT DATA STRUCTURE
 Dla każdej z zaznaczonych lekcji otrzymujesz dostęp do danych z panelu kursanta:
@@ -2424,7 +2489,7 @@ Zwróć wynik jako JSON z tablicą "sentences" z polami:
 - target_word_used: kluczowe słówko / struktura
 - hint: wskazówka / kontekst lekcyjny (opcjonalnie, np. "Nawiązanie do rozmowy o...")`;
 
-  const openAiUserPrompt = `${historyContext}${wordsContext}DANE KURSANTA I LEKCJI:
+  const draftUserPrompt = `${historyContext}${wordsContext}DANE KURSANTA I LEKCJI:
 Imię: ${studentProfile.firstName || ''} ${studentProfile.lastName || ''}
 Poziom: ${studentProfile.level || level}
 Żelazne zasady / Prompt kursanta: ${studentProfile.aiPrompt || 'Brak'}
@@ -2437,36 +2502,31 @@ OBECNA INSTRUKCJA LUB WSKAZÓWKA NAUCZYCIELA W CZACIE:
 
 DLA LICZBY ZDAŃ: ${numSentences}. Zwróć DOKŁADNIE ${numSentences} zdań w formacie JSON.`;
 
-  let draftSentences: any[] = [];
-  try {
-    const openAiResult = await callOpenAI(openAiUserPrompt, openAiSystemInstruction, "gpt-5.6-luna", true);
-    const jsonStr = extractJSON(openAiResult.text || "{}");
-    const parsed = JSON.parse(jsonStr);
-    if (parsed && Array.isArray(parsed.sentences)) {
-      draftSentences = parsed.sentences;
-    } else if (Array.isArray(parsed)) {
-      draftSentences = parsed;
-    }
-  } catch (err: any) {
-    console.warn("OpenAI Step 1 error, attempting fallback draft generation:", err);
-  }
-
-  if (!draftSentences || draftSentences.length === 0) {
-    draftSentences = Array.from({ length: numSentences }, (_, i) => ({
-      id: i + 1,
-      english_sentence: `Sample English sentence ${i + 1} for ${level}.`,
-      polish_translation: `Przykładowe zdanie po polsku ${i + 1} na poziomie ${level}.`,
-      target_word_used: selectedWords[i % Math.max(1, selectedWords.length)] || 'practice',
-      hint: 'Spróbuj przetłumaczyć naturalnie'
-    }));
+  // Błąd modelu (w tym pusta/niesparsowalna odpowiedź) leci wprost do
+  // wywołującego — żadnych zmyślonych "Sample English sentence" jako cichej
+  // maski awarii, i żadnego cichego zejścia na inny model/dostawcę.
+  const draftRes = await generateTextWithUnifiedFallback(
+    draftUserPrompt,
+    draftSystemInstruction,
+    homeworkModels,
+    { responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } },
+    undefined,
+    { taskName: 'Generowanie wstępnych zdań pracy domowej', category: 'homework', timeoutMs: 15000, maxRetries: 2 }
+  );
+  const draftJson = JSON.parse(extractJSON(draftRes.text || "{}"));
+  const draftSentences: any[] = Array.isArray(draftJson?.sentences)
+    ? draftJson.sentences
+    : (Array.isArray(draftJson) ? draftJson : []);
+  if (draftSentences.length === 0) {
+    throw new Error('Model nie zwrócił żadnych zdań pracy domowej (krok 1/2).');
   }
 
   if (onStatusUpdate) {
-    onStatusUpdate("Krok 2/2: Weryfikacja spójności, profilu i historii kursanta (Gemini 3.1 Flash)...");
+    onStatusUpdate(`Krok 2/2: Weryfikacja spójności, profilu i historii kursanta (${formatAIModelName(homeworkModels[0])})...`);
   }
 
-  const geminiVerificationPrompt = `# ROLE AND PURPOSE
-Jesteś zaawansowanym silnikiem pedagogicznym AI — drugim, zaawansowanym etapem generatora prac domowych (Model Gemini 3.1 Flash). Twoim zadaniem jest zweryfikowanie i oszlifowanie spersonalizowanej pracy domowej dla kursanta.
+  const verificationPrompt = `# ROLE AND PURPOSE
+Jesteś zaawansowanym silnikiem pedagogicznym AI — drugim, zaawansowanym etapem generatora prac domowych. Twoim zadaniem jest zweryfikowanie i oszlifowanie spersonalizowanej pracy domowej dla kursanta.
 
 # INPUT DATA STRUCTURE
 Dla każdej z zaznaczonych lekcji analizujesz dane z panelu kursanta:
@@ -2485,7 +2545,7 @@ Dla każdej z zaznaczonych lekcji analizujesz dane z panelu kursanta:
 2. **KROK 2 (Identyfikacja celów):** Wyciągnij powtarzające się błędy oraz kluczowe frazy, które kursant powinien utrwalić.
 3. **KROK 3 (Kreacja/Korekta zadań):** Sformułuj lub skoryguj wstępne zdania wyjściowe w języku polskim tak, by zmuszały kursanta do użycia docelowych konstrukcji w języku obcym.
 
-WSTĘPNIE WYGENEROWANE ZDANIA PRZEZ MODEL OPENAI (GPT-4o mini):
+WSTĘPNIE WYGENEROWANE ZDANIA (KROK 1):
 ${JSON.stringify(draftSentences, null, 2)}
 
 PROFIL KURSANTA:
@@ -2504,7 +2564,7 @@ OBECNA PROŚBA NAUCZYCIELA W CZACIE:
 "${teacherInstruction}"
 Liczba zdań do zwrócenia: DOKŁADNIE ${numSentences}
 
-ZADANIE GEMINI 3.1 FLASH:
+ZADANIE (KROK 2 — WERYFIKACJA):
 1. Zweryfikuj logiczność i naturalność brzmienia zdań w języku polskim i angielskim (zero kalk i sztuczności).
 2. Sprawdź, czy zdania bezpośrednio nawiązują do transcript/spoken content, Revision Notes oraz Things to Improve ze wszystkich lekcji.
 3. Jeśli któreś zdanie jest niedopasowane, sztuczne lub ma kalki językowe, skoryguj je na lepsze.
@@ -2513,7 +2573,7 @@ ZADANIE GEMINI 3.1 FLASH:
 
 Zwróć wynik WYŁĄCZNIE w formacie JSON:
 {
-  "summary": "Analiza Gemini 3.1 Flash: przeanalizowano X lekcji (Revision Notes, Student Transcript, Things to Improve)...",
+  "summary": "Analiza: przeanalizowano X lekcji (Revision Notes, Student Transcript, Things to Improve)...",
   "sentences": [
     {
       "id": 1,
@@ -2526,86 +2586,67 @@ Zwróć wynik WYŁĄCZNIE w formacie JSON:
   ]
 }`;
 
-  const geminiSystemInstruction = "You are Gemini 3.1 Flash, an advanced pedagogical AI engine for personalized homework generation. Strictly enforce multi-lesson analysis, natural non-calque Polish, realistic student transcript context, level fit, and addressing 'Things to improve'. Always output strict JSON.";
+  const verificationSystemInstruction = "You are an advanced pedagogical AI engine for personalized homework generation. Strictly enforce multi-lesson analysis, natural non-calque Polish, realistic student transcript context, level fit, and addressing 'Things to improve'. Always output strict JSON.";
 
-  let finalSentences: TranslationExercise[] = [];
-  let summaryText = "Zdania wygenerowane i zweryfikowane przez dwustopniowy model OpenAI GPT-4o mini & Gemini 3.1 Flash.";
+  // Ten sam guard co przy kroku 1 — weryfikacja to osobne wywołanie
+  // providera, więc dostaje własną, jawną kontrolę tuż przed wysłaniem.
+  homeworkModels.forEach(assertHomeworkModelAllowed);
 
-  try {
-    const geminiRes = await generateTextWithUnifiedFallback(
-      geminiVerificationPrompt,
-      geminiSystemInstruction,
-      // Weryfikację prowadzi celowo drugi dostawca, więc kaskada startuje od
-      // Gemini — model nie sprawdza tu własnej pracy sprzed chwili.
-      [SECONDARY_MODEL, TERTIARY_MODEL, PRIMARY_MODEL],
-      { responseMimeType: "application/json" }
-    );
+  const verificationRes = await generateTextWithUnifiedFallback(
+    verificationPrompt,
+    verificationSystemInstruction,
+    homeworkModels,
+    { responseMimeType: "application/json" },
+    undefined,
+    { taskName: 'Weryfikacja zdań pracy domowej', category: 'homework', timeoutMs: 15000, maxRetries: 2 }
+  );
 
-    const extracted = extractJSON(geminiRes.text || "{}");
-    const parsedGemini = JSON.parse(extracted);
+  const parsedVerification = JSON.parse(extractJSON(verificationRes.text || "{}"));
+  const summaryText: string = parsedVerification.summary || 'Zdania wygenerowane i zweryfikowane modelem Gemini 2.5 Flash.';
+  const rawSentences = parsedVerification.sentences || parsedVerification.exercises || (Array.isArray(parsedVerification) ? parsedVerification : []);
 
-    if (parsedGemini.summary) {
-      summaryText = parsedGemini.summary;
-    }
-
-    const rawSentences = parsedGemini.sentences || parsedGemini.exercises || (Array.isArray(parsedGemini) ? parsedGemini : []);
-
-    if (Array.isArray(rawSentences) && rawSentences.length > 0) {
-      finalSentences = rawSentences.map((s: any, idx: number) => {
-        const eng = s.english_sentence || s.englishSentence || s.englishTranslation || s.english || "";
-        const pol = s.polish_translation || s.polishSentence || s.polish || "";
-        const hnt = s.hint || "";
-        const targetWord = s.target_word_used || s.targetWord || "";
-        
-        let chunks: string[] = Array.isArray(s.puzzleChunks) ? s.puzzleChunks : [];
-        if (!chunks || chunks.length === 0) {
-          const wordsInEng = eng.split(' ').filter(Boolean);
-          if (wordsInEng.length < 8) {
-            chunks = wordsInEng;
-          } else {
-            chunks = [];
-            for (let c = 0; c < wordsInEng.length; c += 3) {
-              chunks.push(wordsInEng.slice(c, c + 3).join(' '));
-            }
-          }
-        }
-
-        return {
-          id: idx + 1,
-          englishSentence: eng,
-          polishSentence: pol,
-          englishTranslation: eng,
-          targetWordUsed: targetWord,
-          hint: hnt,
-          puzzleChunks: chunks
-        };
-      });
-    }
-  } catch (err: any) {
-    console.warn("Gemini 3.1 Flash Step 2 verification failed, falling back to OpenAI draft:", err);
+  if (!Array.isArray(rawSentences) || rawSentences.length === 0) {
+    throw new Error('Model nie zwrócił zweryfikowanych zdań pracy domowej (krok 2/2).');
   }
 
-  if (finalSentences.length === 0 && draftSentences.length > 0) {
-    finalSentences = draftSentences.map((s: any, idx: number) => {
-      const eng = s.english_sentence || s.englishSentence || s.englishTranslation || s.english || "";
-      const pol = s.polish_translation || s.polishSentence || s.polish || "";
+  const finalSentences: TranslationExercise[] = rawSentences.map((s: any, idx: number) => {
+    const eng = s.english_sentence || s.englishSentence || s.englishTranslation || s.english || "";
+    const pol = s.polish_translation || s.polishSentence || s.polish || "";
+    const hnt = s.hint || "";
+    const targetWord = s.target_word_used || s.targetWord || "";
+
+    let chunks: string[] = Array.isArray(s.puzzleChunks) ? s.puzzleChunks : [];
+    if (!chunks || chunks.length === 0) {
       const wordsInEng = eng.split(' ').filter(Boolean);
-      return {
-        id: idx + 1,
-        englishSentence: eng,
-        polishSentence: pol,
-        englishTranslation: eng,
-        targetWordUsed: s.target_word_used || "",
-        hint: s.hint || "",
-        puzzleChunks: wordsInEng.length < 8 ? wordsInEng : [eng]
-      };
-    });
-  }
+      if (wordsInEng.length < 8) {
+        chunks = wordsInEng;
+      } else {
+        chunks = [];
+        for (let c = 0; c < wordsInEng.length; c += 3) {
+          chunks.push(wordsInEng.slice(c, c + 3).join(' '));
+        }
+      }
+    }
+
+    return {
+      id: idx + 1,
+      englishSentence: eng,
+      polishSentence: pol,
+      englishTranslation: eng,
+      targetWordUsed: targetWord,
+      hint: hnt,
+      puzzleChunks: chunks
+    };
+  });
 
   return {
     sentences: finalSentences.slice(0, numSentences),
     summaryText,
-    modelUsed: 'OpenAI (GPT-4o mini) → Gemini 3.1 Flash'
+    // Prawdziwy model, który skutecznie odpowiedział w kroku weryfikacji —
+    // nie stała etykieta udająca konkretnego dostawcę (patrz AGENT_LOG.md,
+    // hotfix P0: dawniej zwracano 'OpenAI (GPT-4o mini) → Gemini 3.1 Flash'
+    // niezależnie od tego, co faktycznie odpowiedziało).
+    modelUsed: verificationRes.modelUsed,
   };
 };
 
@@ -2638,7 +2679,17 @@ Zwróć wynik WYŁĄCZNIE jako obiekt JSON o strukturze:
 `;
 
   try {
-    const response = await generateContentWithFallback({ contents: prompt });
+    // Jedyny caller to kreator pracy domowej (HomeworkScreen.tsx, wklejanie
+    // zdań hurtem) — ta funkcja nie ma innych, niehomeworkowych konsumentów,
+    // więc kaskada jest na sztywno ograniczona do Gemini 2.5 Flash, bez
+    // parametru override (patrz services/aiModels.ts).
+    const preferredModels: string[] = [...HOMEWORK_GENERATION_MODELS];
+    preferredModels.forEach(assertHomeworkModelAllowed);
+    const response = await generateContentWithFallback({
+      contents: prompt,
+      preferredModels,
+      config: { thinkingConfig: { thinkingBudget: 0 } },
+    });
     const jsonText = extractJSON(response?.text || '');
     const parsed = JSON.parse(jsonText);
     if (parsed && Array.isArray(parsed.exercises)) {

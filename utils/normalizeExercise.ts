@@ -285,11 +285,23 @@ export const normalizeExercise = (raw: any, task?: { type?: HomeworkType } | nul
       const explicitHint =
         raw?.hint || raw?.hintSmall || raw?.hintLarge ||
         (Array.isArray(raw?.requiredMaterial) ? raw.requiredMaterial.join(', ') : raw?.requiredMaterial);
+      // Pole "poprawne zdanie" dla tłumaczenia nie jest dziś pokazywane w
+      // `HomeworkExercise.tsx` (ocenia to AI przy zapisie), ale generator
+      // potrafi je dołączyć pod kilkoma historycznymi nazwami — potrzebne
+      // np. do zbudowania rozgrzewki (`utils/warmupRounds.ts`), która musi
+      // znać wzorcowe zdanie, żeby ułożyć z niego rozsypankę.
+      const correctSentence =
+        typeof raw?.correctTranslation === 'string' ? raw.correctTranslation :
+        typeof raw?.englishTranslation === 'string' ? raw.englishTranslation :
+        typeof raw?.englishSentence === 'string' ? raw.englishSentence :
+        typeof raw?.modelAnswer === 'string' ? raw.modelAnswer :
+        undefined;
       return {
         type,
         state: 'ready',
         sourceSentence,
         hint: explicitHint || undefined,
+        correctSentence,
         raw,
       };
     }
@@ -309,6 +321,7 @@ export const normalizeExercise = (raw: any, task?: { type?: HomeworkType } | nul
       incorrectSentence,
       hint: explicitHint || undefined,
       meaning,
+      correctSentence: typeof raw?.correctSentence === 'string' ? raw.correctSentence : undefined,
       raw,
     };
   } catch {

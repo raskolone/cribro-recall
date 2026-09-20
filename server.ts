@@ -195,6 +195,7 @@ import { assembleContext } from "./functions/src/homeworkV2/contextAssembler";
 import { planExercises } from "./functions/src/homeworkV2/exercisePlanner";
 import { buildExerciseSet } from "./functions/src/homeworkV2/pipeline";
 import { createAiCall } from "./functions/src/homeworkV2/openai";
+import { isHomeworkEngineV2Enabled, ENGINE_DISABLED_MESSAGE } from "./functions/src/homeworkV2/flag";
 import { getRecentMistakes } from "./functions/src/homeworkV2/learningProfile";
 import { SCHEMA_VERSION } from "./functions/src/homeworkV2/contracts";
 import { buildV2TaskPayload, newHomeworkSetId, selectSendableExercises } from "./functions/src/homeworkV2/assignment";
@@ -1155,7 +1156,7 @@ export function createApp() {
   // Bezpośrednie odesłanie wykonanej pracy domowej bez logowania
   app.post('/api/homework/direct-submit', async (req, res) => {
     try {
-      const { token, answers } = req.body;
+      const { token, answers, warmupAttempts } = req.body;
       if (!token || typeof token !== 'string') {
         return res.status(400).json({ error: 'missing_token', message: 'Brak tokenu dostępowego.' });
       }
@@ -1198,6 +1199,21 @@ export function createApp() {
           message: 'Ta praca domowa została już wcześniej oddana.',
           submittedAt: taskData.submittedAt
         });
+      }
+
+      // Walidacja prób rozgrzewki z tokenowego (nieautoryzowanego logowaniem)
+      // klienta — token uprawnia do zapisu wyłącznie DO TEGO zadania, ale
+      // kształt danych i tak trzeba ograniczyć, zanim trafi do Firestore.
+      const sanitizedWarmupAttempts: Record<string, { answerOrder: string[]; result: string; respondedAt: string }> = {};
+      if (warmupAttempts && typeof warmupAttempts === 'object') {
+        for (const [key, value] of Object.entries(warmupAttempts as Record<string, any>)) {
+          const idx = Number(key);
+          if (!Number.isInteger(idx) || idx < 0) continue;
+          const order = Array.isArray(value?.answerOrder) ? value.answerOrder.map((w: any) => String(w)).slice(0, 40) : null;
+          const result = typeof value?.result === 'string' && ['correct', 'close', 'incorrect'].includes(value.result) ? value.result : null;
+          if (!order || !result) continue;
+          sanitizedWarmupAttempts[String(idx)] = { answerOrder: order, result, respondedAt: new Date().toISOString() };
+        }
       }
 
       const items = taskData.sentences || [];
@@ -1298,10 +1314,15 @@ export function createApp() {
 
       const nowIso = new Date().toISOString();
 
-      // Aktualizacja dokumentu w specialTasks
+      // Aktualizacja dokumentu w specialTasks. Brak wcześniejszego zapisu
+      // rozgrzewki dla tej ścieżki (kursant bez logowania nie ma stałego
+      // połączenia z Firestore) — `warmup` dokłada się tu bezpiecznie, bez
+      // ryzyka nadpisania czegokolwiek, bo to jedyny zapis tego dokumentu.
       await taskDoc.ref.update({
         status: 'submitted',
-        studentAnswers: storedAnswers,
+        studentAnswers: Object.keys(sanitizedWarmupAttempts).length > 0
+          ? { ...storedAnswers, warmup: sanitizedWarmupAttempts }
+          : storedAnswers,
         evaluationResults: rows,
         submittedAt: nowIso,
         submittedViaDirectLink: true,
@@ -1429,6 +1450,14 @@ export function createApp() {
      ═══════════════════════════════════════════════════════════════════ */
   app.post('/api/homework-v2/generate', requireFirebaseAuth, async (req, res) => {
     try {
+      // Ta sama kanoniczna bramka co Functions (`endpoints.ts`,
+      // `requireHomeworkEngineV2`) — jedno źródło interpretacji env zamiast
+      // dwóch, żeby flaga nie mogła być włączona po jednej stronie i
+      // wyłączona po drugiej (patrz AGENT_LOG.md, hotfix P0, 2026-09-20).
+      if (!isHomeworkEngineV2Enabled()) {
+        return res.status(412).json({ error: ENGINE_DISABLED_MESSAGE });
+      }
+
       const studentUid = String(req.body?.studentUid || '').trim();
       if (!studentUid) return res.status(400).json({ error: 'Nie wskazano kursanta.' });
 
@@ -1467,11 +1496,9 @@ export function createApp() {
       const plan = planExercises({ context, requestedTypes, itemCount, plannedMinutes });
 
       const geminiKey = (process.env.GEMINI_API_KEY || '').trim();
-      const openAiKey = (process.env.OPENAI_API_KEY || '').trim();
 
       const aiCall = createAiCall({
         geminiApiKey: geminiKey,
-        openAiApiKey: openAiKey,
       });
 
       const result = await buildExerciseSet({

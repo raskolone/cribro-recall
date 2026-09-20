@@ -3968,3 +3968,125 @@ wprost w treści zlecenia.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (462/462, w tym 6
 nowych), npm run test:rules (44/44 na emulatorze), npm run build
 (przechodzi).
+
+---
+
+2026-09-20 (3) — Claude Code / Sonnet 5
+
+Zadanie: Wykonać obszerny dokument "P0 Homework Hotfix" (master prompt
+wklejony przez Macieja) — kanoniczna rozgrzewka z oceną
+correct/close/incorrect i trwałym zapisem próby, twardy guard modeli
+homework (wyłącznie gemini-2.5-flash) na wszystkich osiągalnych ścieżkach
+v1/v2/Express, oraz statyczny e-mail bez generowania przez AI.
+
+Zrobione: pełny opis w CHANGELOG.md, sekcja "AJ" (2026-09-20). Skrót:
+- Re-audyt na starcie (git log, grep) wykazał, że część założeń dokumentu
+  zlecenia była już nieaktualna — dwa wcześniejsze commity tej samej sesji
+  (0162cff, 5081140) częściowo naprawiły adapter v1 i guard modeli, ale
+  WYŁĄCZNIE dla HomeworkExercise.tsx/askForJson, nie dla rozgrzewki ani
+  pozostałych generatorów/ocen. Każdy punkt dokumentu zweryfikowano kodem
+  przed zmianą zamiast wykonać go ślepo.
+- Nowe: utils/warmupRounds.ts (kanoniczny adapter rozgrzewki przez
+  normalizeExercise + exerciseUiCopy), utils/unscrambleGrading.ts
+  (classifyUnscrambleAttempt — multiset, nie Set).
+- components/dashboard/HomeworkWarmupScrambler.tsx: przepisany na
+  buildWarmupRounds, obsługa correct/close/incorrect (close nie blokuje,
+  statyczny komunikat i18n "Byłeś/Byłaś blisko!", aria-live), nowy prop
+  onAttemptResult.
+- Trzej wywołujący rozgrzewki podłączeni: StudentHomeworkScreen.tsx
+  (natychmiastowy zapis do specialTasks.studentAnswers.warmup.<i>, oraz
+  naprawa handleSubmit żeby finalny zapis po ścieżkach nie kasował tej
+  mapy), DirectHomeworkScreen.tsx (zbiera próby lokalnie, wysyła w
+  istniejącym /api/homework/direct-submit, rozszerzonym o zwalidowane pole
+  warmupAttempts), AIExerciseGeneratorScreen.tsx (bez zapisu — brak
+  istniejącego modelu prób dla tego ekranu).
+- Guard modeli: HOMEWORK_GENERATION_MODELS jako literał ['gemini-2.5-flash']
+  as const + assertHomeworkModelAllowed w services/aiModels.ts, wołany
+  przed KAŻDYM wywołaniem dostawcy (poza pętlami retry) w:
+  generateTranslationExercises, generateFillInTheBlankExercises,
+  evaluateTranslations (dotąd NIE miało override mimo wołania z homework),
+  processBulkSentences, generateHomework (legacy), evaluateErrorCorrectionSentence,
+  evaluateTeacherHomework. generateHomeworkChatPipeline przepisany od zera —
+  koniec OpenAI w kroku 1 i w kaskadzie kroku 2, koniec cichych placeholderów
+  ("Sample English sentence") i stałej etykiety modelUsed.
+- Homework v2: functions/src/homeworkV2/openai.ts — OpenAI całkowicie
+  usunięte z V2_MODEL_CASCADE i z createAiCall (potwierdzone rg jako
+  bezpieczne — createOpenAiCall był martwy). endpoints.ts — OPENAI_API_KEY
+  zdjęty z trzech onCall (sekret globalny nietknięty dla innych funkcji).
+  server.ts /api/homework-v2/generate — dodana brakująca bramka
+  isHomeworkEngineV2Enabled() (import wprost z functions/src/homeworkV2/flag.ts,
+  ten sam wzorzec co istniejący import createAiCall z tego katalogu) +
+  usunięty przekazywany openAiApiKey.
+- Email: services/homeworkGenerator.ts — generatePersonalizedHomeworkNote
+  (wołało AI przy KAŻDYM otwarciu modala) zastąpione buildStaticHomeworkNote
+  (deterministyczne, 2 zdania: wołacz + temat + link). Stara funkcja i jej
+  jedyny test usunięte (rg potwierdził zero innych callerów).
+  HomeworkEmailConfirmationModal.tsx: init przez statyczną funkcję,
+  przycisk "Odśwież z AI" -> "Przywróć domyślną treść" (ta sama funkcja).
+- TeacherSpecialTaskModal.tsx: poprawione trzy hardkodowane, mylące napisy
+  UI ("OpenAI (GPT-4o mini) -> Gemini 3.1 Flash") na "Gemini 2.5 Flash" —
+  opisywały generateHomeworkChatPipeline, który już go nie woła.
+- Nowe testy: unscrambleGrading.test.ts (8), warmupRounds.test.ts (8),
+  homeworkModelGuard.test.ts (6, w tym dowód rzucania PRZED wywołaniem
+  sieci), +4 w normalizeExercise.test.ts, przepisany emailNotifications.test.ts
+  (-1/+2), zaktualizowany homeworkV2Pipeline.test.ts (kaskada bez OpenAI —
+  dokładnie ten test, o którym ostrzegał dokument zlecenia).
+
+Nie dokończone / do sprawdzenia:
+- Scenariusz manualny w przeglądarce NIE wykonany — brak w tej sesji
+  dostępu do interaktywnej przeglądarki i kredytów/kluczy produkcyjnych.
+  Do zrobienia na koncie testowym: (1) rozgrzewka, złapać "close" na
+  właściwych słowach w złej kolejności, sprawdzić komunikat + aktywny
+  "Dalej", (2) sprawdzić w Firestore specialTasks.studentAnswers.warmup,
+  (3) sprawdzić na Live Monitorze, że każdy generator/ocena pracy domowej
+  pokazuje wyłącznie Gemini 2.5 Flash.
+- Produkcja: brak weryfikacji wdrożonej rewizji Functions vs lokalny HEAD,
+  brak weryfikacji produkcyjnej wartości HOMEWORK_ENGINE_V2 — brak w tej
+  sesji dostępu do `firebase`/poświadczeń (ten sam ograniczenie co
+  poprzednie sesje, patrz CLAUDE.md sekcja 5 o node@22).
+- Plik functions/src/homeworkV2/openai.ts zachował swoją nazwę mimo że nie
+  zawiera już żadnego kodu OpenAI (tylko historyczny identyfikator modułu,
+  importowany w kilku miejscach jako `./openai` — zmiana nazwy pliku
+  wymagałaby dotknięcia 6+ importów bez żadnej zmiany zachowania, celowo
+  pominięte jako niezwiązany refaktor).
+
+Decyzje architektoniczne:
+- Zapis próby rozgrzewki w POLU studentAnswers.warmup zamiast nowego pola
+  top-level w specialTasks — unika zmiany firestore.rules (pole
+  studentAnswers już jest w hasOnly() dla zapisu kursanta; reguła sprawdza
+  tylko klucze najwyższego poziomu, nie zagnieżdżenie). To był świadomy
+  wybór właśnie po to, żeby NIE dotykać obszaru wysokiego ryzyka z
+  CLAUDE.md sekcja 3 bez wcześniejszej zgody.
+- DirectHomeworkScreen (token bez logowania) NIE dostał symetrycznego
+  natychmiastowego zapisu jak StudentHomeworkScreen — token-owy kursant nie
+  ma stałego połączenia z Firestore, więc jedyny bezpieczny, autoryzowany
+  moment zapisu to istniejący, jednorazowy POST /api/homework/direct-submit.
+  Rozgrzewkowe próby są więc trwale zapisane dopiero przy finalnym
+  oddaniu pracy, nie od razu — udokumentowana asymetria, nie przeoczenie.
+- fill_in_the_blank nie dostaje rundy rozgrzewki bez jawnego correctSentence/
+  fullSentence od generatora — rekonstrukcja pełnego zdania z samych
+  segmentów luk i banku słów (bez gwarancji kolejności) byłaby zgadywaniem,
+  którego CLAUDE.md wprost zabrania.
+- Brak wersji angielskiej statycznego e-maila (mimo że dokument zlecenia
+  o to prosił) — cały istniejący system mailingu jest sztywno polski (brak
+  i18next w services/homeworkEmail.ts i functions/src/emailTemplate.ts,
+  brak parametru języka), a lektor komunikuje się z kursantami wyłącznie
+  po polsku. Dodanie i18n do jednej linijki notatki przy reszcie szablonu
+  po polsku byłoby fikcyjną dwujęzycznością — świadome odstępstwo od
+  litery zlecenia, opisane też w CHANGELOG.md.
+
+Ryzyka: Brak zmian w firestore.rules (zapis rozgrzewki mieści się w już
+dopuszczonym polu studentAnswers), middleware autoryzacji (requireFirebaseAuth
+nietknięty) ani w interpretacji tokenu w homework/direct/:token (rozszerzono
+wyłącznie ciało żądania o jedno, zwalidowane po stronie serwera pole).
+Realna, przetestowana zmiana zachowania: handleSubmit() w
+StudentHomeworkScreen.tsx zapisuje teraz studentAnswers po pojedynczych
+ścieżkach (studentAnswers.0, studentAnswers.1, ...) zamiast jednym obiektem
+zbiorczym — konieczne, żeby nie kasować wcześniej zapisanej mapy warmup, ale
+to zmiana w działającej, żywej ścieżce finalnego oddania pracy domowej;
+przetestowana (490/490 testów), nie zweryfikowana wzrokowo end-to-end.
+HOMEWORK_ENGINE_V2 pozostaje false po obu stronach (config/featureFlags.ts
+i env Functions) — nic w tym zadaniu go nie włącza.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (490/490, baseline 462 +
+28 nowych/zmienionych netto), npm run build (przechodzi, dist/server.cjs i
+api/index.js przebudowane), git diff --check (czysto).

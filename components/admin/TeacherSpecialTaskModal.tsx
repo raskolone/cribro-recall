@@ -86,7 +86,7 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
           id: 'welcome',
           role: 'assistant',
           content: `Witaj! Tworzymy pracę domową na podstawie lekcji: **"${initialLesson.topic}"**.\n\nAutomatycznie załadowano **${wordsCount} słówek** z tej lekcji. Kliknij przycisk **„Generuj zdania”** poniżej lub napisz dodatkowe wskazówki do AI.`,
-          modelInfo: 'OpenAI (GPT-4o mini) → Gemini 3.1 Flash',
+          modelInfo: 'Gemini 2.5 Flash',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ];
@@ -95,8 +95,8 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
       {
         id: 'welcome',
         role: 'assistant',
-        content: 'Witaj! Jestem Asystentem Generatora Prac Domowych AI.\nDziałam w oparciu o dwustopniową komunikację modeli:\n1️⃣ **OpenAI (GPT-4o mini)** tworzy pierwotny szkic zdań na podstawie Twoich uwag.\n2️⃣ **Gemini 3.1 Flash** analizuje historię lekcji i ćwiczeń kursanta, weryfikuje logikę i dostosowuje poziom.\n\nNapisz, jakie zdania chcesz wygenerować lub wybierz słówka z lekcji poniżej!',
-        modelInfo: 'OpenAI (GPT-4o mini) → Gemini 3.1 Flash',
+        content: 'Witaj! Jestem Asystentem Generatora Prac Domowych AI.\nDziałam w oparciu o dwustopniową weryfikację Gemini 2.5 Flash:\n1️⃣ Generuję pierwotny szkic zdań na podstawie Twoich uwag.\n2️⃣ Weryfikuję logikę, historię lekcji i ćwiczeń kursanta oraz dostosowuję poziom.\n\nNapisz, jakie zdania chcesz wygenerować lub wybierz słówka z lekcji poniżej!',
+        modelInfo: 'Gemini 2.5 Flash',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
     ];
@@ -449,10 +449,10 @@ const TeacherSpecialTaskModal: React.FC<TeacherSpecialTaskModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-white">
-                  {i18n.t("Czat Generatora AI z 2-Modelową Pipeline")}
+                  {i18n.t("Czat Generatora AI z 2-Etapową Weryfikacją")}
                 </h2>
                 <span className="text-[10px] font-mono uppercase bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full">
-                  GPT-4o mini → Gemini 3.1 Flash
+                  Gemini 2.5 Flash
                 </span>
               </div>
               <p className="text-xs text-content-muted mt-0.5">

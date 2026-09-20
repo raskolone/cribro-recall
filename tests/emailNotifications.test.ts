@@ -106,20 +106,33 @@ test('buildHomeworkConfirmationEmail generuje powitanie z wołaczem, prostą tre
   assert.ok(email.text.includes('wyrozumski@maciej.pro'));
 });
 
-test('generatePersonalizedHomeworkNote tworzy spersonalizowaną notatkę z wołaczem i odniesieniem do lekcji', async () => {
-  const { generatePersonalizedHomeworkNote } = await import('../services/homeworkGenerator');
+test('buildStaticHomeworkNote: statyczna notatka zawiera wołacz, temat i link, bez wywołania AI (hotfix P0)', async () => {
+  const { buildStaticHomeworkNote } = await import('../services/homeworkGenerator');
 
-  const note = await generatePersonalizedHomeworkNote({
+  const note = buildStaticHomeworkNote({
     studentName: 'Bartłomiej',
     topicTitle: 'From Symptom to Solution: Troubleshooting an Aircraft Problem',
     lessonTopics: ['From Symptom to Solution: Troubleshooting an Aircraft Problem'],
-    vocabularySample: ['troubleshoot', 'engine stall', 'oil leak'],
-    exerciseCount: 6,
+    link: 'https://app.maciej.pro/hw?token=abc123',
   });
 
   assert.ok(note.startsWith('Cześć, Bartłomieju!'));
-  assert.ok(note.includes('From Symptom to Solution') || note.includes('ostatnią lekcję'));
-  assert.ok(note.length > 30);
+  assert.ok(note.includes('From Symptom to Solution: Troubleshooting an Aircraft Problem'));
+  assert.ok(note.includes('Link: https://app.maciej.pro/hw?token=abc123.'));
+  // Maksymalnie 2-3 zdania: co najwyżej dwie kropki kończące zdanie w treści
+  // (dwukropek w "Link:" nie liczy się jako kropka kończąca zdanie).
+  const sentenceEndings = (note.match(/\.(?:\s|$)/g) || []).length;
+  assert.ok(sentenceEndings <= 3, `oczekiwano maks. 3 zdań, było ${sentenceEndings}`);
+});
+
+test('buildStaticHomeworkNote: brak tematu/linku nie psuje zdania (statyczny fallback bez wymyślonych danych)', async () => {
+  const { buildStaticHomeworkNote } = await import('../services/homeworkGenerator');
+
+  const note = buildStaticHomeworkNote({ studentName: 'Zofia' });
+
+  assert.ok(note.startsWith('Cześć, Zofio!'));
+  assert.ok(note.includes('Przygotowałem dla Ciebie zestaw ćwiczeń.'));
+  assert.ok(!note.includes('Link:'));
 });
 
 

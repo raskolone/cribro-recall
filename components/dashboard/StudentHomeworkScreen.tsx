@@ -27,6 +27,7 @@ import { HomeworkType, SpecialTask, StudentTest } from '../../types';
 import { homeworkBlocks, homeworkItemType, isV1Task, studentTasksQuery } from '../../utils/homework';
 import { formatTaskDateTime } from './HomeworkScreen';
 import { evaluateTranslations } from '../../services/geminiService';
+import { HOMEWORK_GENERATION_MODELS } from '../../services/aiModels';
 import { getHomeworkAiSettings } from '../../services/homeworkAiSettingsService';
 import { HOMEWORK_TYPE_LABELS } from '../../services/homeworkGenerator';
 import { recordExerciseResults } from '../../services/learningProfile';
@@ -661,7 +662,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
         }));
         const given = translationAt.map((i: number) => String(answers[i] || ''));
         try {
-          evaluated = await evaluateTranslations(exercises, given, user.level || 'B1', '');
+          evaluated = await evaluateTranslations(exercises, given, user.level || 'B1', '', undefined, [...HOMEWORK_GENERATION_MODELS]);
         } catch (error) {
           console.error('Ocena tłumaczeń nie powiodła się:', error);
         }
@@ -707,9 +708,19 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
       const autoApproved = aiSettings.autoApproveAtFullConfidence && isFlawless;
       const nowIso = new Date().toISOString();
 
+      // Zapis pól `studentAnswers.<i>` po ścieżkach (nie jednym obiektem) —
+      // pełne nadpisanie klucza `studentAnswers` skasowałoby próby
+      // rozgrzewki zapisane wcześniej pod `studentAnswers.warmup.*`
+      // (onAttemptResult wyżej), bo Firestore nie scala zagnieżdżonych map
+      // przekazanych jako zwykła wartość pola.
+      const studentAnswersUpdate: Record<string, any> = {};
+      items.forEach((_: any, i: number) => {
+        studentAnswersUpdate[`studentAnswers.${i}`] = storedAnswers[i];
+      });
+
       await updateDoc(doc(db, 'specialTasks', activeTask.id), {
         status: autoApproved ? 'graded' : 'submitted',
-        studentAnswers: storedAnswers,
+        ...studentAnswersUpdate,
         evaluationResults: rows,
         submittedAt: nowIso,
         ...(autoApproved
@@ -1254,8 +1265,19 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
       return (
         <HomeworkWarmupScrambler
           sentences={items}
+          task={activeTask}
           onComplete={() => setWarmupPhase('exercises')}
           onSkip={() => setWarmupPhase('exercises')}
+          onAttemptResult={({ itemIndex, answerOrder, result }) => {
+            if (!activeTask?.id) return;
+            updateDoc(doc(db, 'specialTasks', activeTask.id), {
+              [`studentAnswers.warmup.${itemIndex}`]: {
+                answerOrder,
+                result,
+                respondedAt: new Date().toISOString(),
+              },
+            }).catch((err) => console.warn('Nie udało się zapisać próby rozgrzewki:', err));
+          }}
         />
       );
     }

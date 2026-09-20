@@ -64,6 +64,10 @@ export const DirectHomeworkScreen: React.FC = () => {
   const [token, setToken] = useState<string>('');
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [answers, setAnswers] = useState<Record<number, any>>({});
+  // Kursant bez logowania nie ma stałego połączenia z Firestore — próby
+  // rozgrzewki zbieramy lokalnie i wysyłamy razem z resztą w jedynym
+  // autoryzowanym wywołaniu /api/homework/direct-submit (patrz handleSubmit).
+  const [warmupAttempts, setWarmupAttempts] = useState<Record<number, { answerOrder: string[]; result: string; respondedAt: string }>>({});
   const [finalScore, setFinalScore] = useState<number | null>(null);
   const [evalResults, setEvalResults] = useState<any[]>([]);
 
@@ -170,6 +174,7 @@ export const DirectHomeworkScreen: React.FC = () => {
         body: JSON.stringify({
           token,
           answers,
+          ...(Object.keys(warmupAttempts).length > 0 ? { warmupAttempts } : {}),
         }),
       });
 
@@ -568,8 +573,15 @@ export const DirectHomeworkScreen: React.FC = () => {
     return shell(
       <HomeworkWarmupScrambler
         sentences={task.sentences}
+        task={task}
         onComplete={() => setWarmupPhase('exercises')}
         onSkip={() => setWarmupPhase('exercises')}
+        onAttemptResult={({ itemIndex, answerOrder, result }) => {
+          setWarmupAttempts((prev) => ({
+            ...prev,
+            [itemIndex]: { answerOrder, result, respondedAt: new Date().toISOString() },
+          }));
+        }}
       />
     );
   }

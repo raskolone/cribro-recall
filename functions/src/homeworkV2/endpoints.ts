@@ -30,14 +30,13 @@ import {
 import { composeFeedback } from './feedbackComposer';
 import { gradeAttempt } from './gradingEngine';
 import { getRecentMistakes, proposeReview, recordAttemptInProfile } from './learningProfile';
-import { createAiCall, createOpenAiCall } from './openai';
+import { createAiCall } from './openai';
 import { buildExerciseSet, planExercises } from './pipeline';
 import { ENGINE_DISABLED_MESSAGE, isHomeworkEngineV2Enabled } from './flag';
 import { getDb } from './db';
 import { getHomeworkAiSettings } from './settings';
 import { buildV2TaskPayload, newHomeworkSetId, selectSendableExercises } from './assignment';
 
-const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY');
 const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 
 const getSecretValue = (secret: ReturnType<typeof defineSecret>): string => {
@@ -97,7 +96,7 @@ const asStringArray = (value: unknown): string[] =>
 export const generateHomeworkV2 = onCall(
   {
     region: FUNCTION_REGION,
-    secrets: [GEMINI_API_KEY, OPENAI_API_KEY],
+    secrets: [GEMINI_API_KEY],
     // Generator + walidator + do dwóch regeneracji na zadanie. Limit 60 s
     // z Vercela by tu nie wystarczył — to jeden z powodów, dla których
     // silnik stoi w Functions, a nie w Expressie.
@@ -134,7 +133,6 @@ export const generateHomeworkV2 = onCall(
 
       const aiCall = createAiCall({
         geminiApiKey: getSecretValue(GEMINI_API_KEY),
-        openAiApiKey: getSecretValue(OPENAI_API_KEY),
       });
 
       const result = await buildExerciseSet({
@@ -261,7 +259,7 @@ export const assignHomeworkV2 = onCall(
 export const submitHomeworkV2Attempt = onCall(
   {
     region: FUNCTION_REGION,
-    secrets: [GEMINI_API_KEY, OPENAI_API_KEY],
+    secrets: [GEMINI_API_KEY],
     timeoutSeconds: 120,
     memory: '512MiB',
   },
@@ -341,7 +339,6 @@ export const submitHomeworkV2Attempt = onCall(
     if (autoApproveAtFullConfidence) {
       const call = createAiCall({
         geminiApiKey: getSecretValue(GEMINI_API_KEY),
-        openAiApiKey: getSecretValue(OPENAI_API_KEY),
       });
 
       const verdict = await gradeAttempt({
@@ -449,7 +446,7 @@ export const submitHomeworkV2Attempt = onCall(
  * go kursantowi. To jest przycisk „✨ Zaproponuj ocenę z AI".
  */
 export const proposeHomeworkV2Grade = onCall(
-  { region: FUNCTION_REGION, secrets: [GEMINI_API_KEY, OPENAI_API_KEY], timeoutSeconds: 120, memory: '512MiB' },
+  { region: FUNCTION_REGION, secrets: [GEMINI_API_KEY], timeoutSeconds: 120, memory: '512MiB' },
   async (request) => {
     requireHomeworkEngineV2();
     await requireTeacherUid(request.auth?.uid);
@@ -475,7 +472,6 @@ export const proposeHomeworkV2Grade = onCall(
 
     const call = createAiCall({
       geminiApiKey: getSecretValue(GEMINI_API_KEY),
-      openAiApiKey: getSecretValue(OPENAI_API_KEY),
     });
 
     const verdict = await gradeAttempt({

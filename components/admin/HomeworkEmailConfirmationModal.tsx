@@ -5,7 +5,7 @@ import { db, auth } from '../../firebase';
 import { User } from '../../types';
 import { buildHomeworkConfirmationEmail } from '../../services/homeworkEmail';
 import { formatPolishGreeting } from '../../utils/polishVocative';
-import { generatePersonalizedHomeworkNote } from '../../services/homeworkGenerator';
+import { buildStaticHomeworkNote } from '../../services/homeworkGenerator';
 
 interface HomeworkEmailConfirmationModalProps {
   isOpen: boolean;
@@ -44,7 +44,6 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
   const [recipientEmail, setRecipientEmail] = useState<string>('');
   const [subject, setSubject] = useState<string>('');
   const [customNote, setCustomNote] = useState<string>('');
-  const [isGeneratingNote, setIsGeneratingNote] = useState<boolean>(false);
   const [updateProfileEmail, setUpdateProfileEmail] = useState<boolean>(false);
   const [enableBcc, setEnableBcc] = useState<boolean>(true);
   const [bccEmail, setBccEmail] = useState<string>('wyrozumski@maciej.pro');
@@ -97,27 +96,32 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
     return fullName || student.username || 'Kursant';
   }, [student]);
 
-  const handleGenerateAIPersonalization = async () => {
-    if (!task) return;
-    setIsGeneratingNote(true);
-    try {
-      const vocab = (task.sentences || [])
-        .map((s: any) => s.targetWord || s.target_word_used || (typeof s === 'string' ? s : ''))
-        .filter(Boolean);
+  // Bezpieczny unikalny link do bezpośredniego wykonania zadania bez logowania —
+  // przeniesiony przed efekt inicjalizacji poniżej, bo statyczna notatka
+  // potrzebuje gotowego linku, żeby go od razu w sobie zawrzeć.
+  const directAccess = useMemo(() => {
+    if (!task) return { token: '', url: '', expiresAt: '' };
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.maciej.pro';
+    const token = task.accessToken || `hw_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
+    const expiresAt = task.accessExpiresAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    const url = `${origin}/hw?token=${token}`;
+    return { token, url, expiresAt };
+  }, [task]);
 
-      const note = await generatePersonalizedHomeworkNote({
-        studentName: student?.firstName || studentDisplayName,
-        topicTitle: task.title,
-        lessonTopics: task.lessonTopics || [task.title],
-        vocabularySample: task.vocabularySample || vocab,
-        exerciseCount: task.sentences?.length || task.itemCount || 6,
-      });
-      setCustomNote(note);
-    } catch (e) {
-      console.warn('Błąd generowania notatki AI:', e);
-    } finally {
-      setIsGeneratingNote(false);
-    }
+  /**
+   * Statyczna wiadomość — bez AI (hotfix P0, 2026-09-20). Wołacz, temat
+   * lekcji i link są już znane, więc treść jest w pełni deterministyczna;
+   * przycisk niżej pozwala ją przywrócić po ręcznej edycji, ale nigdy nie
+   * woła żadnego modelu.
+   */
+  const buildDefaultNote = () => {
+    if (!task) return '';
+    return buildStaticHomeworkNote({
+      studentName: student?.firstName || studentDisplayName,
+      topicTitle: task.title,
+      lessonTopics: task.lessonTopics || [task.title],
+      link: directAccess.url,
+    });
   };
 
   // Inicjalizacja pól na podstawie zadania i kursanta
@@ -135,12 +139,7 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
     );
 
     const prefilledNote = task.personalizedNote || task.customNote || '';
-    if (prefilledNote) {
-      setCustomNote(prefilledNote);
-    } else {
-      // Automatyczne ułożenie spersonalizowanej notatki przy pierwszym otwarciu
-      handleGenerateAIPersonalization();
-    }
+    setCustomNote(prefilledNote || buildDefaultNote());
 
     setErrorMessage(null);
     setSendSuccess(false);
@@ -148,7 +147,7 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
     // Jeśli e-mail kursanta jest placeholderem, domyślnie zaznacz chęć aktualizacji w profilu po wpisaniu właściwego
     const isPlaceholder = !initialEmail || initialEmail.includes('@student.vocabboost.com') || initialEmail.includes('@example.com');
     setUpdateProfileEmail(isPlaceholder);
-  }, [isOpen, task, student]);
+  }, [isOpen, task, student, directAccess]);
 
   const polishGreeting = useMemo(() => {
     const rawName = student?.firstName || student?.name || student?.username || '';
@@ -160,16 +159,6 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
     const lower = recipientEmail.toLowerCase().trim();
     return lower.includes('@student.vocabboost.com') || lower.includes('@example.com') || !lower.includes('@');
   }, [recipientEmail]);
-
-  // Bezpieczny unikalny link do bezpośredniego wykonania zadania bez logowania
-  const directAccess = useMemo(() => {
-    if (!task) return { token: '', url: '', expiresAt: '' };
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.maciej.pro';
-    const token = task.accessToken || `hw_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
-    const expiresAt = task.accessExpiresAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-    const url = `${origin}/hw?token=${token}`;
-    return { token, url, expiresAt };
-  }, [task]);
 
   // Generowanie dynamicznej treści e-maila
   const emailContent = useMemo(() => {
@@ -472,20 +461,11 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
                 </label>
                 <button
                   type="button"
-                  onClick={handleGenerateAIPersonalization}
-                  disabled={isGeneratingNote}
+                  onClick={() => setCustomNote(buildDefaultNote())}
                   className="text-[11px] font-semibold text-primary hover:text-primary-focus flex items-center gap-1 transition-colors px-2 py-0.5 rounded-md hover:bg-primary/10"
-                  title="Wygeneruj lub odśwież treść wiadomości przy użyciu AI"
+                  title="Przywróć domyślną, statyczną treść wiadomości"
                 >
-                  {isGeneratingNote ? (
-                    <>
-                      <Loader2 className="w-3 h-3 animate-spin" /> Generuję…
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3 h-3" /> Odśwież z AI
-                    </>
-                  )}
+                  <Sparkles className="w-3 h-3" /> Przywróć domyślną treść
                 </button>
               </div>
               <textarea

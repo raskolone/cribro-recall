@@ -1807,19 +1807,10 @@ var buildExerciseSet = async (input) => {
 // functions/src/homeworkV2/openai.ts
 var V2_PRIMARY_MODEL = "gemini-2.5-flash";
 var V2_FALLBACK_MODEL = "gemini-3.8-flash";
-var V2_TERTIARY_MODEL = "gpt-4o-mini";
 var V2_MODEL_CASCADE = [
   V2_PRIMARY_MODEL,
-  V2_FALLBACK_MODEL,
-  V2_TERTIARY_MODEL
+  V2_FALLBACK_MODEL
 ];
-var mapToActualOpenAIModel = (modelName) => {
-  const clean = String(modelName || "").replace(/^openai\//, "").trim().toLowerCase();
-  if (clean === "gpt-5.6-luna" || clean === "gpt-5.6" || clean.includes("luna")) return "gpt-4o";
-  if (clean.includes("gpt-4o-mini")) return "gpt-4o-mini";
-  if (clean.includes("gpt-4o")) return "gpt-4o";
-  return "gpt-4o-mini";
-};
 var mapToActualGeminiModel = (modelName) => {
   const clean = String(modelName || "").trim().toLowerCase();
   if (clean.includes("2.5-flash") || clean === "gemini-2.5-flash") return "gemini-2.5-flash";
@@ -1844,14 +1835,11 @@ var extractJson = (text) => {
     return JSON.parse(candidate.slice(start, end + 1));
   }
 };
-var OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 var GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 var REQUEST_TIMEOUT_MS = 6e4;
 var COST_PER_MTOK = {
   "gemini-2.5-flash": { input: 0.075, output: 0.3 },
-  "gemini-1.5-flash": { input: 0.075, output: 0.3 },
-  "gpt-4o": { input: 2.5, output: 10 },
-  "gpt-4o-mini": { input: 0.15, output: 0.6 }
+  "gemini-1.5-flash": { input: 0.075, output: 0.3 }
 };
 var estimateCostUsd = (apiModel, promptTokens, completionTokens) => {
   const rate = COST_PER_MTOK[apiModel];
@@ -1861,145 +1849,80 @@ var estimateCostUsd = (apiModel, promptTokens, completionTokens) => {
 var createAiCall = (keys) => {
   return async (request) => {
     const geminiKey = (keys.geminiApiKey || process.env.GEMINI_API_KEY || "").trim();
-    const openAiKey = (keys.openAiApiKey || process.env.OPENAI_API_KEY || "").trim();
-    if (!geminiKey && !openAiKey) {
-      throw new Error("Brak kluczy GEMINI_API_KEY oraz OPENAI_API_KEY \u2014 silnik v2 nie ma czym generowa\u0107.");
+    if (!geminiKey) {
+      throw new Error("Brak klucza GEMINI_API_KEY \u2014 silnik v2 nie ma czym generowa\u0107.");
     }
     const errors = [];
     for (const logicalModel of V2_MODEL_CASCADE) {
-      const isGemini = logicalModel.startsWith("gemini");
       const startedAt = Date.now();
-      if (isGemini) {
-        if (!geminiKey) {
-          errors.push(`${logicalModel}: brak GEMINI_API_KEY`);
-          continue;
-        }
-        const apiModel = mapToActualGeminiModel(logicalModel);
-        const url = `${GEMINI_BASE_URL}/${apiModel}:generateContent?key=${geminiKey}`;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-        try {
-          const response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [
-                {
-                  role: "user",
-                  parts: [{ text: request.user }]
-                }
-              ],
-              systemInstruction: {
-                parts: [{ text: `${request.system}
+      const apiModel = mapToActualGeminiModel(logicalModel);
+      const url = `${GEMINI_BASE_URL}/${apiModel}:generateContent?key=${geminiKey}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: request.user }]
+              }
+            ],
+            systemInstruction: {
+              parts: [{ text: `${request.system}
 
 Odpowiadaj wy\u0142\u0105cznie poprawnym JSON-em.` }]
-              },
-              generationConfig: {
-                responseMimeType: "application/json",
-                temperature: request.temperature ?? 0.3,
-                // Patrz komentarz przy `ModelRequest.thinkingBudget` — to jest
-                // pojedyncza zmiana, która ścięła 145 s do sekund na wywołanie.
-                thinkingConfig: { thinkingBudget: request.thinkingBudget ?? 0 }
-              }
-            }),
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
-          const latencyMs = Date.now() - startedAt;
-          if (!response.ok) {
-            const errText = await response.text();
-            errors.push(`${logicalModel}: HTTP ${response.status} (${errText.slice(0, 100)})`);
-            continue;
-          }
-          const payload = await response.json();
-          const content = payload.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          if (!content) {
-            errors.push(`${logicalModel}: pusta odpowied\u017A`);
-            continue;
-          }
-          const promptTokens = payload.usageMetadata?.promptTokenCount ?? 0;
-          const completionTokens = payload.usageMetadata?.candidatesTokenCount ?? 0;
-          console.info("[hw-v2] wywo\u0142anie modelu Gemini", {
-            taskName: request.taskName,
-            model: logicalModel,
-            apiModel,
-            latencyMs,
-            promptTokens,
-            completionTokens,
-            estimatedCostUsd: Number(estimateCostUsd(apiModel, promptTokens, completionTokens).toFixed(6))
-          });
-          return { data: extractJson(content), modelUsed: logicalModel, latencyMs };
-        } catch (error) {
-          clearTimeout(timeoutId);
-          const message = error instanceof Error ? error.message : String(error);
-          errors.push(`${logicalModel}: ${message}`);
-        }
-      } else {
-        if (!openAiKey) {
-          errors.push(`${logicalModel}: brak OPENAI_API_KEY`);
+            },
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: request.temperature ?? 0.3,
+              // Patrz komentarz przy `ModelRequest.thinkingBudget` — to jest
+              // pojedyncza zmiana, która ścięła 145 s do sekund na wywołanie.
+              thinkingConfig: { thinkingBudget: request.thinkingBudget ?? 0 }
+            }
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        const latencyMs = Date.now() - startedAt;
+        if (!response.ok) {
+          const errText = await response.text();
+          errors.push(`${logicalModel}: HTTP ${response.status} (${errText.slice(0, 100)})`);
           continue;
         }
-        const apiModel = mapToActualOpenAIModel(logicalModel);
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-        try {
-          const response = await fetch(OPENAI_URL, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${openAiKey}`
-            },
-            body: JSON.stringify({
-              model: apiModel,
-              messages: [
-                { role: "system", content: `${request.system}
-
-Odpowiadaj wy\u0142\u0105cznie poprawnym JSON-em.` },
-                { role: "user", content: request.user }
-              ],
-              temperature: request.temperature ?? 0.3,
-              response_format: { type: "json_object" }
-            }),
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
-          const latencyMs = Date.now() - startedAt;
-          if (!response.ok) {
-            const errText = await response.text();
-            errors.push(`${logicalModel}: HTTP ${response.status}`);
-            if (response.status === 401 || response.status === 429 || errText.includes("insufficient_quota")) {
-              errors.push(`OpenAI odmawia (${response.status}). Sprawd\u017A OPENAI_API_KEY i limity konta.`);
-            }
-            continue;
-          }
-          const payload = await response.json();
-          const content = payload.choices?.[0]?.message?.content || "";
-          if (!content) {
-            errors.push(`${logicalModel}: pusta odpowied\u017A`);
-            continue;
-          }
-          const promptTokens = payload.usage?.prompt_tokens ?? 0;
-          const completionTokens = payload.usage?.completion_tokens ?? 0;
-          console.info("[hw-v2] wywo\u0142anie modelu OpenAI", {
-            taskName: request.taskName,
-            model: logicalModel,
-            apiModel,
-            latencyMs,
-            promptTokens,
-            completionTokens,
-            estimatedCostUsd: Number(estimateCostUsd(apiModel, promptTokens, completionTokens).toFixed(6))
-          });
-          return { data: extractJson(content), modelUsed: logicalModel, latencyMs };
-        } catch (error) {
-          clearTimeout(timeoutId);
-          const message = error instanceof Error ? error.message : String(error);
-          errors.push(`${logicalModel}: ${message}`);
+        const payload = await response.json();
+        const content = payload.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        if (!content) {
+          errors.push(`${logicalModel}: pusta odpowied\u017A`);
+          continue;
         }
+        const promptTokens = payload.usageMetadata?.promptTokenCount ?? 0;
+        const completionTokens = payload.usageMetadata?.candidatesTokenCount ?? 0;
+        console.info("[hw-v2] wywo\u0142anie modelu Gemini", {
+          taskName: request.taskName,
+          model: logicalModel,
+          apiModel,
+          latencyMs,
+          promptTokens,
+          completionTokens,
+          estimatedCostUsd: Number(estimateCostUsd(apiModel, promptTokens, completionTokens).toFixed(6))
+        });
+        return { data: extractJson(content), modelUsed: logicalModel, latencyMs };
+      } catch (error) {
+        clearTimeout(timeoutId);
+        const message = error instanceof Error ? error.message : String(error);
+        errors.push(`${logicalModel}: ${message}`);
       }
     }
     throw new Error(`\u017Baden model nie odpowiedzia\u0142. Pr\xF3by: ${errors.join("; ")}`);
   };
 };
+
+// functions/src/homeworkV2/flag.ts
+var isHomeworkEngineV2Enabled = (env = process.env) => String(env.HOMEWORK_ENGINE_V2 ?? "").trim().toLowerCase() === "true";
+var ENGINE_DISABLED_MESSAGE = "Silnik prac domowych v2 jest wy\u0142\u0105czony (HOMEWORK_ENGINE_V2).";
 
 // functions/src/homeworkV2/learningProfile.ts
 var profileRef = (studentUid) => getDb().collection("users").doc(studentUid).collection("profile").doc("homeworkV2");
@@ -2622,7 +2545,7 @@ var fetchNotionBlocksText = async (token, blockId, depth = 0) => {
 };
 
 // server.ts
-function mapToActualOpenAIModel2(modelName) {
+function mapToActualOpenAIModel(modelName) {
   const clean = String(modelName || "").replace(/^openai\//, "").trim().toLowerCase();
   if (clean === "gpt-5.6-luna" || clean === "gpt-5.6" || clean.includes("luna")) {
     return "gpt-4o";
@@ -2794,7 +2717,7 @@ async function generateContentWithRetry(aiClient, contents, config, customModels
             console.warn("[Server] OPENAI_API_KEY not configured, skipping model");
             throw new Error("OPENAI_API_KEY not configured");
           }
-          const targetModel = mapToActualOpenAIModel2(model);
+          const targetModel = mapToActualOpenAIModel(model);
           const isJsonMode = config?.responseMimeType === "application/json";
           let finalPrompt = promptText;
           if (isJsonMode) {
@@ -3464,7 +3387,7 @@ function createApp() {
   });
   app2.post("/api/homework/direct-submit", async (req, res) => {
     try {
-      const { token, answers } = req.body;
+      const { token, answers, warmupAttempts } = req.body;
       if (!token || typeof token !== "string") {
         return res.status(400).json({ error: "missing_token", message: "Brak tokenu dost\u0119powego." });
       }
@@ -3495,6 +3418,17 @@ function createApp() {
           message: "Ta praca domowa zosta\u0142a ju\u017C wcze\u015Bniej oddana.",
           submittedAt: taskData.submittedAt
         });
+      }
+      const sanitizedWarmupAttempts = {};
+      if (warmupAttempts && typeof warmupAttempts === "object") {
+        for (const [key, value] of Object.entries(warmupAttempts)) {
+          const idx = Number(key);
+          if (!Number.isInteger(idx) || idx < 0) continue;
+          const order = Array.isArray(value?.answerOrder) ? value.answerOrder.map((w) => String(w)).slice(0, 40) : null;
+          const result = typeof value?.result === "string" && ["correct", "close", "incorrect"].includes(value.result) ? value.result : null;
+          if (!order || !result) continue;
+          sanitizedWarmupAttempts[String(idx)] = { answerOrder: order, result, respondedAt: (/* @__PURE__ */ new Date()).toISOString() };
+        }
       }
       const items = taskData.sentences || [];
       const normalizeSimple = (str) => String(str || "").toLowerCase().replace(/[.,!?;:"„”]/g, "").replace(/[’']/g, "'").replace(/\s+/g, " ").trim();
@@ -3576,7 +3510,7 @@ function createApp() {
       const nowIso = (/* @__PURE__ */ new Date()).toISOString();
       await taskDoc.ref.update({
         status: "submitted",
-        studentAnswers: storedAnswers,
+        studentAnswers: Object.keys(sanitizedWarmupAttempts).length > 0 ? { ...storedAnswers, warmup: sanitizedWarmupAttempts } : storedAnswers,
         evaluationResults: rows,
         submittedAt: nowIso,
         submittedViaDirectLink: true,
@@ -3689,6 +3623,9 @@ function createApp() {
   });
   app2.post("/api/homework-v2/generate", requireFirebaseAuth, async (req, res) => {
     try {
+      if (!isHomeworkEngineV2Enabled()) {
+        return res.status(412).json({ error: ENGINE_DISABLED_MESSAGE });
+      }
       const studentUid = String(req.body?.studentUid || "").trim();
       if (!studentUid) return res.status(400).json({ error: "Nie wskazano kursanta." });
       const lessonIds = Array.isArray(req.body?.lessonIds) ? req.body.lessonIds : [];
@@ -3720,10 +3657,8 @@ function createApp() {
       });
       const plan = planExercises({ context, requestedTypes, itemCount, plannedMinutes });
       const geminiKey = (process.env.GEMINI_API_KEY || "").trim();
-      const openAiKey = (process.env.OPENAI_API_KEY || "").trim();
       const aiCall = createAiCall({
-        geminiApiKey: geminiKey,
-        openAiApiKey: openAiKey
+        geminiApiKey: geminiKey
       });
       const result = await buildExerciseSet({
         context,
@@ -6319,7 +6254,7 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       let usedModel = "";
       if (openaiKey) {
         for (const modelName of openAiModels) {
-          const actualApiTarget = mapToActualOpenAIModel2(modelName);
+          const actualApiTarget = mapToActualOpenAIModel(modelName);
           console.log(`OpenAI Pipeline -> Wywo\u0142uj\u0119 model: ${modelName} (target API: ${actualApiTarget})`);
           try {
             const bodyPayload = {
