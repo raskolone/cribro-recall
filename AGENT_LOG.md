@@ -3841,3 +3841,73 @@ generowania pracy domowej — AI_MODEL_CASCADE/DEFAULT_COUNCIL używane przez
 czat/planer/generator zdań poza kreatorem HW celowo nie dotknięte.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (456/456), npm run
 build (przechodzi).
+
+---
+
+2026-09-20 (2) — Claude Code / Sonnet 5
+
+Zadanie: P0 — notatnik kursanta co wejście dubluje treść ("Dopisane
+z notatnika roboczego — [data]" + kolejny blok "Lesson 1" dokleja się
+wielokrotnie). Zlecenie zakładało automatyczny trigger w useEffect/hooku
+synchronizacji/onSelectStudent/montowaniu i prosiło o przeszukanie m.in.
+useScratchpad, useNotebookSync, CollaborativeNotebook.tsx,
+StudentNotebookView.tsx.
+
+Zrobione:
+- Sprawdzono: żaden z wymienionych plików/hooków (useScratchpad,
+  useNotebookSync, CollaborativeNotebook.tsx, StudentNotebookView.tsx) nie
+  istnieje w repo (`find` po nazwach — zero wyników).
+- grep po dosłownej frazie "Dopisane z notatnika roboczego" znalazł JEDNO
+  miejsce: adoptScratchpadForStudent() w services/scratchpadService.ts,
+  wołane z DOKŁADNIE jednego miejsca: handleAssignStudent() w
+  TeacherScratchpadScreen.tsx, na onClick przycisku w liście kandydatów
+  (jawne kliknięcie, nie useEffect/onChange/mount).
+- Zweryfikowano, że otwieranie notatnika kursanta z CRM/Cockpitu
+  (StudentDatabaseScreen.tsx, StudentOperationalHub.tsx,
+  TeacherLessonHistoryView.tsx — wszystkie przez
+  openScratchpadTab(`sp_${student.id}`) -> getScratchpadById()) jest
+  czystym odczytem, bez żadnego zapisu — ten fragment wymagania (2) był
+  już spełniony przed zmianą.
+- Prawdziwy mechanizm: `/scratchpad` bez `?id=` (zakładka "Notatnik" w
+  AdminPanel.tsx) tworzy przy KAŻDYM wejściu nowy roboczy dokument
+  (sp_<Date.now()>) z treścią domyślnego szablonu lektora
+  (getDefaultTemplate() w getOrCreateStudentScratchpad, może zawierać
+  "Lesson 1"). Klik "Przypisz kursanta" -> wybór tego samego kursanta w
+  KAŻDEJ takiej świeżej karcie dopisywał tę treść do jego stałego
+  notatnika bez ostrzeżenia. To "przypisanie", nie "wejście do notatnika
+  kursanta", duplikowało treść.
+- Naprawa (Human-in-the-loop, bez usuwania funkcji — zlecenie punkt 2
+  wprost dopuszcza manualne przenoszenie z potwierdzeniem, nie żąda
+  likwidacji): nowa wouldAppendToExistingNotes(student, teacher) w
+  scratchpadService.ts (czysty odczyt, wydzielona wspólna
+  isScratchpadUntouched() używana też przez adoptScratchpadForStudent).
+  handleAssignStudent() woła ją PRZED adoptScratchpadForStudent — jeśli
+  dopisanie faktycznie by nastąpiło, window.confirm() (wzorzec już
+  używany w repo) z jawną treścią o dopisaniu, nic nie nadpisujące.
+  Odmowa przerywa operację przed jakimkolwiek zapisem. Pierwsze
+  przypisanie (notatnik kursanta wciąż pusty) pomija potwierdzenie.
+
+Nie dokończone / do sprawdzenia:
+- Nic nie zweryfikowano wzrokowo w przeglądarce — sprawdzić na koncie
+  testowym: (1) świeży "Notatnik roboczy" + przypisanie kursanta BEZ
+  wcześniejszych notatek nie pokazuje potwierdzenia, (2) przypisanie
+  kursanta z istniejącymi notatkami pokazuje confirm() i "Anuluj" nic nie
+  zapisuje, (3) symulacja z zadania (klik kursant A -> lista -> klik
+  kursant A) — była już bezpieczna PRZED tą zmianą (czysty odczyt przez
+  getScratchpadById), potwierdzić że nadal tak jest.
+
+Decyzje architektoniczne: nie usunięto adoptScratchpadForStudent ani
+przycisku "Przypisz kursanta" — to jedyny istniejący sposób przenoszenia
+notatek z trybu roboczego do kursanta, a zlecenie punkt 2 dopuszcza go
+jako operację manualną z potwierdzeniem. Nie tworzono osobnego,
+nowego przycisku "Przepisz z roboczego" — istniejący przepływ przypisania
+już jest jawnym kliknięciem, brakowało tylko potwierdzenia przy realnym
+ryzyku (dopisanie do niepustego dokumentu).
+
+Ryzyka: Brak zmian w firestore.rules, middleware autoryzacji ani ścieżkach
+tokenowych bez logowania. Brak zmian w domyślnym zachowaniu
+getOrCreateStudentScratchpad/getScratchpadById. Grupowe notatniki
+(ensureGroupScratchpad w services/groupService.ts) nie dotknięte — nigdy
+nie miały logiki dopisywania.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (456/456), npm run
+build (przechodzi).
