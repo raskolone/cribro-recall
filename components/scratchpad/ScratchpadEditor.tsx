@@ -67,7 +67,9 @@ import {
   Target,
   FileSignature,
 } from 'lucide-react';
-import { ScratchpadDocument, ScratchpadTemplate, LessonAttachment, LessonRecord } from '../../types';
+import { ScratchpadDocument, ScratchpadTemplate, ScratchpadBlock, LessonAttachment, LessonRecord } from '../../types';
+import { isSharedNotebookV2Enabled } from '../../config/featureFlags';
+import { getScratchpadBlocksOrFallback } from '../../utils/scratchpadBlocks';
 import {
   buildScratchpadUrl,
   scratchpadContentBytes,
@@ -230,6 +232,21 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const [imageNotice, setImageNotice] = useState<string | null>(null);
   /** Ile zajmuje dokument — licznik w stopce, ostrzeżenie przed limitem. */
   const [contentBytes, setContentBytes] = useState(0);
+
+  /**
+   * Model blokowy (Iteracja 1, za flagą `SHARED_NOTEBOOK_V2`).
+   *
+   * Przy flagi wyłączonej to zawsze `null` i cała reszta edytora (raw
+   * `contentEditable` sterowany `docData.contentHtml` poniżej) działa
+   * dokładnie jak dotąd — zero zmian w zachowaniu UI. Przy fladze
+   * włączonej inicjalizuje się z `docData.blocks`, albo — jeśli dokument
+   * jeszcze ich nie ma — konwertuje istniejący `contentHtml` na bazowy
+   * blok przy pierwszym renderze. To fundament pod kolejną iterację
+   * (renderowanie i edycję per-blok); dziś niczego jeszcze nie wyświetla.
+   */
+  const [blocksState, setBlocksState] = useState<ScratchpadBlock[] | null>(() =>
+    isSharedNotebookV2Enabled() ? getScratchpadBlocksOrFallback(docData) : null
+  );
 
   /* Spis treści, podział na strony i motyw kartki */
   const [toc, setToc] = useState<TocEntry[]>([]);
@@ -684,6 +701,14 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       }
     }
   }, [docData.contentHtml, docData.version, paperTheme, rebuildToc, measurePages]);
+
+  // Synchronizacja stanu blokowego z dokumentem — patrz komentarz przy
+  // `blocksState` powyżej. Nie wpięte jeszcze w renderowanie ani w zapis
+  // (Iteracja 1 to fundament: adapter + inicjalizacja stanu).
+  useEffect(() => {
+    if (!isSharedNotebookV2Enabled()) return;
+    setBlocksState(getScratchpadBlocksOrFallback(docData));
+  }, [docData.blocks, docData.contentHtml, docData.version]);
 
   /* ═══════════════════════════════════════════════════════════════════
      OBRAZY, WSKAŹNIK LASEROWY I ORIENTACJA STRONY

@@ -38,6 +38,49 @@ export interface ModuleVisibility {
  */
 export const HOMEWORK_ENGINE_V2 = false;
 
+/**
+ * Model blokowy współdzielonego notatnika (Iteracja 1 — fundament).
+ *
+ * Rozszerzenie hybrydowe: `ScratchpadDocument.blocks` obok istniejącego
+ * `contentHtml`, bez migracji starych dokumentów. Przy `false`
+ * `ScratchpadEditor` działa dokładnie jak dotąd (surowy `contentEditable`
+ * sterowany `contentHtml`) — zero zmian w zachowaniu UI. Włączenie flagi
+ * (localStorage klucz `scratchpad_shared_notebook_v2` albo zmienna
+ * środowiskowa `VITE_SHARED_NOTEBOOK_V2`) odsłania fundament: adapter
+ * blocks↔HTML i inicjalizację stanu blokowego w edytorze — nie zmienia
+ * jeszcze samego renderowania.
+ */
+export const SHARED_NOTEBOOK_V2 = false;
+
+const readLocalStorageFlag = (key: string): boolean | null => {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    const raw = window.localStorage.getItem(key);
+    if (raw === null) return null;
+    return raw.trim().toLowerCase() === 'true';
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Aktywacja `SHARED_NOTEBOOK_V2` w trzech krokach: jawny override w
+ * localStorage (do testów ręcznych bez rebuildu), potem `VITE_SHARED_NOTEBOOK_V2`
+ * ze środowiska builda, na końcu stała powyżej (domyślnie wyłączona).
+ */
+export const isSharedNotebookV2Enabled = (): boolean => {
+  const fromLocalStorage = readLocalStorageFlag('scratchpad_shared_notebook_v2');
+  if (fromLocalStorage !== null) return fromLocalStorage;
+
+  const env: any = (typeof import.meta !== 'undefined' && (import.meta as any)?.env) || (typeof process !== 'undefined' && process.env) || {};
+  const fromEnv = env.VITE_SHARED_NOTEBOOK_V2;
+  if (typeof fromEnv === 'string' && fromEnv.trim() !== '') {
+    return fromEnv.trim().toLowerCase() === 'true';
+  }
+
+  return SHARED_NOTEBOOK_V2;
+};
+
 export const MODULE_VISIBILITY: ModuleVisibility = {
   streak: false,
   generalVocabularyGenerator: true,

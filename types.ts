@@ -1143,6 +1143,32 @@ export interface ScratchpadRevision {
   by: string;
 }
 
+/**
+ * Model blokowy notatnika (Iteracja 1, za flagą `SHARED_NOTEBOOK_V2` w
+ * `config/featureFlags.ts`). Współistnieje z `contentHtml`/`contentText` —
+ * patrz `utils/scratchpadBlocks.ts` po serializer/adapter w obie strony.
+ */
+export type ScratchpadBlockType =
+  | 'heading'
+  | 'text'
+  | 'bullet_list'
+  | 'vocabulary_pair'
+  | 'correction'
+  | 'callout'
+  | 'student_input'
+  | 'slide_break';
+
+export interface ScratchpadBlock {
+  id: string;
+  type: ScratchpadBlockType;
+  /** Tekst albo JSON (np. par słówek, korekt) — zależnie od `type`. */
+  content: string;
+  visibility: 'shared' | 'teacherOnly';
+  editPolicy: 'teacher' | 'studentInput';
+  order: number;
+  updatedAt: number;
+}
+
 export interface ScratchpadDocument {
   id: string;
   pin: string;
@@ -1229,6 +1255,13 @@ export interface ScratchpadDocument {
   };
   /** Do pięciu ostatnich migawek treści. Najnowsza pierwsza. */
   revisions?: ScratchpadRevision[];
+  /**
+   * Model blokowy (Iteracja 1, za flagą `SHARED_NOTEBOOK_V2`). Pole
+   * opcjonalne — brak nie oznacza błędu, tylko dokument sprzed
+   * wprowadzenia bloków (fallback na `contentHtml` w
+   * `utils/scratchpadBlocks.ts`).
+   */
+  blocks?: ScratchpadBlock[];
 }
 
 /**

@@ -679,7 +679,7 @@ service cloud.firestore {
         || (
              (resource.data.allowStudentEdit == true || (isAuthenticated() && 'studentId' in resource.data && request.auth.uid == resource.data.studentId))
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-                  'contentHtml', 'contentText', 'updatedAt', 'version', 'lastEditedBy'
+                  'contentHtml', 'contentText', 'updatedAt', 'version', 'lastEditedBy', 'blocks'
                 ])
            );
 

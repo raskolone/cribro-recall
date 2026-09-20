@@ -11,7 +11,7 @@ import {
   increment,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { ScratchpadDocument, ScratchpadRevision } from '../types';
+import { ScratchpadDocument, ScratchpadRevision, ScratchpadBlock } from '../types';
 import {
   generateAccessCode,
   normalizeAccessCode,
@@ -521,7 +521,16 @@ export async function saveScratchpadContent(
   id: string,
   contentHtml: string,
   contentText: string,
-  editorMeta?: { uid: string; name: string; role: 'teacher' | 'student' }
+  editorMeta?: { uid: string; name: string; role: 'teacher' | 'student' },
+  /**
+   * Model blokowy (Iteracja 1, za flagą `SHARED_NOTEBOOK_V2`). Wołający
+   * przekazuje to WYŁĄCZNIE, gdy edytor faktycznie pracuje w trybie
+   * blokowym — `contentHtml`/`contentText` powyżej muszą być już
+   * wynikiem `blocksToHtml`/`blocksToText` z `utils/scratchpadBlocks.ts`,
+   * ta funkcja ich nie przelicza. Pominięcie parametru (domyślne
+   * zachowanie edytora dziś) nie zmienia niczego poniżej.
+   */
+  blocks?: ScratchpadBlock[]
 ): Promise<ScratchpadSaveResult> {
   const now = new Date().toISOString();
   const current = getLocalScratchpad(id);
@@ -559,6 +568,7 @@ export async function saveScratchpadContent(
     version: (current?.version || 1) + 1,
     lastEditedBy: editorMeta || current?.lastEditedBy,
     revisions: revisions || current?.revisions,
+    blocks: blocks || current?.blocks,
   };
 
   saveLocalScratchpad(updatedDoc);
@@ -580,6 +590,10 @@ export async function saveScratchpadContent(
 
     if (revisions) {
       patch.revisions = revisions;
+    }
+
+    if (blocks) {
+      patch.blocks = blocks;
     }
 
     try {
