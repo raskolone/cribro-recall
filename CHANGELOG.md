@@ -198,6 +198,30 @@ we dwoje na żywo.
 
 ---
 
+### 🧩 Notatnik: fundament modelu blokowego za flagą `SHARED_NOTEBOOK_V2` (Iteracja 1) (2026-09-20, runda 41)
+
+**Zadanie:** wprowadzić fundament modelu blokowego we współdzielonym notatniku (`ScratchpadDocument`), rozszerzenie hybrydowe obok istniejącego `contentHtml`, bez migracji starych dokumentów i bez zmiany zachowania edytora, dopóki flaga jest wyłączona.
+
+**Added:**
+- `config/featureFlags.ts` — `SHARED_NOTEBOOK_V2 = false` i `isSharedNotebookV2Enabled()` (override przez `localStorage.scratchpad_shared_notebook_v2` albo `VITE_SHARED_NOTEBOOK_V2`, wzorem `HOMEWORK_ENGINE_V2`/`functions/src/homeworkV2/flag.ts`).
+- `types.ts` — `ScratchpadBlockType` (`heading`/`text`/`bullet_list`/`vocabulary_pair`/`correction`/`callout`/`student_input`/`slide_break`), `ScratchpadBlock`, `ScratchpadDocument.blocks?` (opcjonalne — brak nie oznacza błędu, tylko dokument sprzed modelu blokowego).
+- `utils/scratchpadBlocks.ts` — adapter i serializer: `htmlToBlocks` (fallback wsteczny — cały `contentHtml` jako jeden blok `text`), `blocksToHtml`/`blocksToText` (żeby stare widoki, podgląd, druk i eksport do Notion/PDF nadal czytały `contentHtml`/`contentText` tak jak dotąd), `getScratchpadBlocksOrFallback` (blocks jeśli istnieją, inaczej konwersja z HTML).
+- `services/scratchpadService.ts` — `saveScratchpadContent` przyjmuje opcjonalny piąty parametr `blocks?: ScratchpadBlock[]`; przy pominięciu (dzisiejsze wywołania z `TeacherScratchpadScreen`/`StudentScratchpadScreen`/`PublicScratchpadScreen`) zachowanie identyczne jak przed zmianą.
+- `components/scratchpad/ScratchpadEditor.tsx` — stan `blocksState`, `null` przy fladze wyłączonej (cały istniejący `contentEditable` sterowany `contentHtml` bez zmian); przy fladze włączonej inicjalizuje się i synchronizuje z `docData` przez `getScratchpadBlocksOrFallback` — jeszcze nie wpięty w renderowanie ani zapis, to fundament pod kolejną iterację.
+- `firestore.rules` (linia ok. 682, zgoda udzielona w zleceniu) — `'blocks'` dopisane do `hasOnly([...])` w regule `update` dla zapisu kursanta/gościa z linkiem w `scratchpads/{scratchpadId}`; nie zmienia, kto może pisać, tylko rozszerza listę pól, które ta ograniczona ścieżka zapisu może nieść.
+- `tests/scratchpadBlocks.test.ts` — 6 testów: `htmlToBlocks` (pusty dokument, konwersja 1:1), `blocksToHtml` (kolejność `order`, pominięcie `teacherOnly`), `blocksToText` (czysty tekst), `getScratchpadBlocksOrFallback` (istniejące `blocks` vs. fallback z `contentHtml`).
+
+**Decyzje architektoniczne:**
+- Zero migracji: `blocks` jest polem opcjonalnym, stare dokumenty bez tego pola działają identycznie jak dotąd — `getScratchpadBlocksOrFallback` konwertuje je w locie, nigdy nie zapisując wstecz.
+- `htmlToBlocks` celowo NIE parsuje HTML na wiele bloków (nagłówki/akapity osobno) — to wymagałoby parsera DOM i decyzji o granicach bloków, które ta iteracja (fundament) jeszcze nie podejmuje; fallback pakuje cały HTML w jeden blok `text` 1:1.
+- `ScratchpadEditor.tsx` NIE renderuje jeszcze UI per-blok — zlecenie wprost zabrania przepisywania edytora od zera; Iteracja 1 kończy się na typach, adapterze i inicjalizacji stanu za flagą.
+
+**Ryzyka:** dotyka `firestore.rules` — zmiana ograniczona do dopisania jednego klucza (`'blocks'`) do istniejącej listy `hasOnly([...])` w regule `update` dla zapisu kursanta/gościa; nie zmienia `allow get/list/create/delete`, nie dotyka `scratchpadPins`, middleware autoryzacji w `server.ts` ani żadnej ścieżki tokenowej. Zgoda na ten fragment była w treści zlecenia.
+
+**Weryfikacja:** `npx tsc --noEmit` (0 błędów), `npm test` (462/462 zielone, w tym 6 nowych), `npm run test:rules` (44/44 zielone na emulatorze, reguła `scratchpads` nadal odrzuca niedozwolone pola), `npm run build` (przechodzi). UI nie było klikane w przeglądarce — flaga jest domyślnie wyłączona, więc `ScratchpadEditor` nie zmienił zachowania do zweryfikowania wzrokowo.
+
+---
+
 ### 🧩 Generator Scenariusza Lekcji 2.0 — kontrakt 4 modułów, budżety czasowe po stronie backendu (2026-09-19, runda 40)
 
 **Zadanie:** nowy generator scenariusza kolejnej lekcji dla lektora (Etap 2.1), oparty o ścisły kontrakt: klient wysyła wyłącznie `{ studentId, durationMin }`, nigdy nie czyta Firestore przed wywołaniem AI. Cała logika (profil kursanta, ostatnia ukończona lekcja, tryb `returning`/`cold_start`, wywołanie Gemini) żyje w `server.ts`.

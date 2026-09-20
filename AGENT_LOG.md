@@ -3911,3 +3911,60 @@ getOrCreateStudentScratchpad/getScratchpadById. Grupowe notatniki
 nie miały logiki dopisywania.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (456/456), npm run
 build (przechodzi).
+
+2026-09-20 — Claude Code / Sonnet 5
+
+Zadanie: Iteracja 1 sprintu notatnika — fundament modelu blokowego
+(ScratchpadBlock) za flagą SHARED_NOTEBOOK_V2, jako rozszerzenie
+hybrydowe obok istniejącego contentHtml, bez migracji starych
+dokumentów i bez rewrite'u ScratchpadEditor.
+
+Zrobione:
+- config/featureFlags.ts: SHARED_NOTEBOOK_V2 = false +
+  isSharedNotebookV2Enabled() (override przez localStorage
+  scratchpad_shared_notebook_v2 albo VITE_SHARED_NOTEBOOK_V2).
+- types.ts: ScratchpadBlockType, ScratchpadBlock, ScratchpadDocument.blocks?
+  (opcjonalne).
+- utils/scratchpadBlocks.ts (nowy): htmlToBlocks (fallback wsteczny — cały
+  HTML jako jeden blok text), blocksToHtml/blocksToText (serializacja
+  z powrotem do HTML/tekstu, żeby stare widoki/eksport nie ucierpiały),
+  getScratchpadBlocksOrFallback.
+- services/scratchpadService.ts: saveScratchpadContent dostał opcjonalny
+  5. parametr blocks?: ScratchpadBlock[] — pominięcie (wszystkie dzisiejsze
+  wywołania) zachowuje dotychczasowe zachowanie 1:1.
+- components/scratchpad/ScratchpadEditor.tsx: stan blocksState
+  inicjalizowany/synchronizowany za flagą przez getScratchpadBlocksOrFallback;
+  przy fladze wyłączonej zawsze null, reszta edytora (raw contentEditable na
+  docData.contentHtml) bez zmian. Nie wpięte jeszcze w renderowanie/zapis —
+  to fundament pod kolejną iterację.
+- firestore.rules (linia ok. 682, zgoda w zleceniu): 'blocks' dopisane do
+  hasOnly([...]) w regule update dla zapisu kursanta/gościa w
+  scratchpads/{scratchpadId}. Nie zmienia, kto pisze — tylko rozszerza
+  listę pól dozwolonych w tej ograniczonej ścieżce.
+- tests/scratchpadBlocks.test.ts (nowy): 6 testów dla adaptera/serializera.
+- CHANGELOG.md: wpis runda 41.
+
+Nie dokończone / do sprawdzenia:
+- Parsowanie HTML na wiele bloków (heading/vocabulary_pair/... osobno)
+  celowo NIE zrobione — htmlToBlocks pakuje cały dokument w jeden blok
+  text 1:1. To zadanie kolejnej iteracji.
+- Renderowanie UI per-blok w ScratchpadEditor w ogóle nie istnieje —
+  blocksState dziś tylko się liczy i synchronizuje, nic go jeszcze nie
+  wyświetla ani nie edytuje.
+- Nic nie klikane w przeglądarce — flaga jest domyślnie wyłączona,
+  ScratchpadEditor nie zmienił zachowania widocznego dla użytkownika.
+
+Decyzje architektoniczne: zero migracji istniejących dokumentów — blocks
+jest polem opcjonalnym, fallback liczy się w locie i nigdy nie zapisuje
+wstecz do Firestore. Nie przepisano edytora — zlecenie wprost tego
+zabraniało.
+
+Ryzyka: dotknięto firestore.rules — WYŁĄCZNIE dopisanie klucza 'blocks'
+do istniejącej listy hasOnly() w regule update dla ograniczonej ścieżki
+zapisu kursanta/gościa (linia ok. 682). Nie dotknięto allow get/list/
+create/delete, scratchpadPins, middleware autoryzacji w server.ts ani
+żadnej ścieżki tokenowej bez logowania. Zgoda na ten fragment była
+wprost w treści zlecenia.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (462/462, w tym 6
+nowych), npm run test:rules (44/44 na emulatorze), npm run build
+(przechodzi).
