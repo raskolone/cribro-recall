@@ -3770,3 +3770,74 @@ wartości HomeworkType, żeby nie rozdwajać systemu typów w repo.
 Ryzyka: Brak zmian w firestore.rules, middleware autoryzacji ani ścieżkach
 tokenowych bez logowania. Zmiana notatnika w warstwie prezentacji/generowania
 HTML. Zmiana homeworku ograniczona do ekranu v1.
+
+---
+
+2026-09-20 — Claude Code / Sonnet 5
+
+Zadanie: (1) Usunąć OpenAI (GPT-4o, GPT-5.6 Luna) z kaskady generowania
+pracy domowej — zgłoszenie mówiło o Live Monitorze pokazującym sekwencję
+Gemini 2.5 Flash -> Gemini 3.8 Flash -> GPT-4o mini -> GPT-5.6 Luna
+(timeout 7500ms) przy generatorze zadań. Jedynym dopuszczalnym modelem ma
+być gemini-2.5-flash z thinkingBudget:0, błąd Gemini ma iść wprost do
+lektora zamiast być maskowany przejściem na inny dostawcę. (2) Kontrast
+przycisku "Koło Fortuny" w Notatniku A4 — jaskrawożółty tekst niewidoczny
+na jasnym tle.
+
+Zrobione:
+- services/aiModels.ts: nowa stała HOMEWORK_GENERATION_MODELS =
+  [PRIMARY_MODEL] (gemini-2.5-flash), celowo odrębna od AI_MODEL_CASCADE
+  (ta zostaje niezmieniona — obsługuje czat/planer/generator zdań poza
+  kreatorem HW, gdzie zejście na OpenAI wciąż jest pożądaną siecią
+  bezpieczeństwa).
+- services/homeworkGenerator.ts: MODELS_FOR_HOMEWORK -> 
+  HOMEWORK_GENERATION_MODELS. askForJson() stracił gałąź "narada awaryjna"
+  (runCouncil z DEFAULT_COUNCIL, który miał włączonego GPT-4o mini jako
+  recenzenta) — to ona realnie sprowadzała OpenAI z powrotem mimo
+  MODELS_FOR_HOMEWORK. Błąd (w tym pusta odpowiedź / niesparsowalny JSON)
+  leci teraz bez łapania dalej, z oryginalnym komunikatem od Gemini.
+  Dodano thinkingConfig:{thinkingBudget:0} i console.log surowego payloadu
+  (systemInstruction+prompt) przed wywołaniem. maxRetries podniesiony z 1
+  do 2 w generateTextWithUnifiedFallback (= próba + jeden retry sieciowy),
+  timeout z 7500ms do 15000ms (bez innych dostawców jako siatki
+  bezpieczeństwa jeden model potrzebuje więcej marginesu).
+- generateTranslations/generateGaps (ten sam plik) — te dwa typy zadań nie
+  idą przez askForJson, tylko wprost przez generateTranslationExercises/
+  generateFillInTheBlankExercises w services/geminiService.ts. Dodano tam
+  opcjonalny parametr modelsOverride NA KOŃCU listy argumentów (zero
+  zmian w istniejących wywołaniach pozycyjnych spoza HW, np.
+  AIExerciseGeneratorScreen.tsx) i homeworkGenerator.ts przekazuje przez
+  niego HOMEWORK_GENERATION_MODELS + thinkingConfig. Bez tego oba typy
+  nadal chodziłyby po pełnej kaskadzie z OpenAI mimo naprawy w askForJson.
+- components/scratchpad/ScratchpadEditor.tsx i
+  ScratchpadTeacherCompanionDrawer.tsx: przycisk Koła Fortuny stracił
+  klasy dark:text-amber-* i dostał stały, nieprzezroczysty jasny "badge"
+  (bg-amber-50 / border-amber-300 / text-amber-900, font-medium).
+
+Decyzje architektoniczne: w tym repo Tailwind 4 NIE ma zdefiniowanego
+@custom-variant dark oparty o klasę .dark (sprawdzone w index.css) —
+dark: domyślnie czyta prefers-color-scheme SYSTEMU, nie motyw appki
+(ThemeContext przełącza .dark/.light na <html>, ale Tailwind tego nie
+widzi). Stąd realna przyczyna zgłoszonego buga: przy jasnym motywie
+appki i ciemnym motywie systemu wygrywał dark:text-amber-300 na jasnym
+tle. To potwierdza, a nie tylko podejrzewa, przyczynę znanego długu z
+CLAUDE.md/CHANGELOG (~1169 wystąpień text-white / dark: nieprzetestowanych
+w trybie dziennym) — naprawiono tu tylko ten jeden przycisk (x2 miejsca),
+reszta zostaje jako dług, bo to spory, osobny zakres.
+
+Nie dokończone / do sprawdzenia:
+- Nic nie zweryfikowano wzrokowo w przeglądarce ani na Live Monitorze na
+  koncie testowym — sprawdzić: (1) "Układam zadania" w kreatorze HW
+  pokazuje na Live Monitorze wyłącznie Gemini 2.5 Flash, (2) wymuszony
+  błąd Gemini (np. zły klucz) pokazuje w UI treść błędu od Google, nie
+  ciche przejście na inny model, (3) przycisk Koła Fortuny czytelny w
+  obu ustawieniach motywu systemu.
+- Analiza `dark:` vs `.dark` to systemowy problem szerszy niż ten
+  przycisk — nie naprawiane całościowo, poza zakresem zlecenia.
+
+Ryzyka: Brak zmian w firestore.rules, middleware autoryzacji ani ścieżkach
+tokenowych bez logowania. Zmiana modeli ograniczona do ścieżki
+generowania pracy domowej — AI_MODEL_CASCADE/DEFAULT_COUNCIL używane przez
+czat/planer/generator zdań poza kreatorem HW celowo nie dotknięte.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (456/456), npm run
+build (przechodzi).
