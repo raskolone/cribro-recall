@@ -962,7 +962,13 @@ export const generateTranslationExercises = async (
   pastExercisesContext?: string,
   mistakesContext?: string,
   isGrammar?: boolean,
-  onModelAttempt?: (model: string) => void
+  onModelAttempt?: (model: string) => void,
+  /**
+   * Wymusza konkretną kaskadę modeli zamiast domyślnej `PREFERRED_AI_MODELS`.
+   * Używane przez generator pracy domowej, który nie może po cichu schodzić
+   * na OpenAI — patrz `HOMEWORK_GENERATION_MODELS` w `services/aiModels.ts`.
+   */
+  modelsOverride?: string[]
 ): Promise<TranslationExercise[]> => {
   const shortLesson = lessonContext ? `\n\n[LESSON / TOPIC CONTEXT]:\n${lessonContext.substring(0, 1000)}` : '';
   const shortProfile = studentProfileContext ? `\n\n[STUDENT SPECIFIC INSTRUCTIONS & PROFILE]:\n${studentProfileContext}` : '';
@@ -1030,10 +1036,11 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
     try {
       const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. IRONCLAD RULE: Every generated sentence MUST be strictly logical, natural, and make complete real-world sense to teach authentic context (never generate senseless or bizarre sentences just to test vocabulary). Always prioritize natural logic, practical communication context, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: 1) If the target sentence has FEWER THAN 8 words (< 8 words): split into mostly SINGLE WORDS or small pairs (e.g. phrasal verbs 'look up', prepositions 'in the'). 2) If the target sentence has 8 OR MORE WORDS (>= 8 words): group into LARGER logical phrase chunks (2-4 words per chunk, e.g. 'I decided to go', 'to the grocery store', 'after work'). Limit long sentences to 3 to 5 chunks maximum so it is achievable and serves as a good warmup before typing.";
       
-      const preferredModels = PREFERRED_AI_MODELS;
+      const preferredModels = modelsOverride && modelsOverride.length > 0 ? modelsOverride : PREFERRED_AI_MODELS;
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: sentenceGeneratorSchema,
+        ...(modelsOverride ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
       };
 
       let fallbackRes1 = await generateTextWithUnifiedFallback(
@@ -1860,7 +1867,13 @@ export const generateFillInTheBlankExercises = async (
   level: string,
   topicOrWords?: string,
   numSentences: number = 5,
-  customPrompt?: string
+  customPrompt?: string,
+  /**
+   * Wymusza konkretną kaskadę modeli zamiast domyślnej `PREFERRED_AI_MODELS`
+   * używanej przez `generateContentWithFallback` — patrz komentarz przy
+   * `generateTranslationExercises`.
+   */
+  modelsOverride?: string[]
 ): Promise<{ textWithBlanks: string; blanks: Record<string, string>; availableWords: string[] }> => {
   const prompt = `ROLE:
 Jesteś doświadczonym nauczycielem języka angielskiego.
@@ -1900,11 +1913,15 @@ Zwróć wynik WYŁĄCZNIE jako poprawny obiekt JSON o strukturze:
 }`;
 
   try {
-    const response = await generateContentWithFallback({ contents: prompt });
+    const response = await generateContentWithFallback({
+      contents: prompt,
+      preferredModels: modelsOverride,
+      ...(modelsOverride ? { config: { thinkingConfig: { thinkingBudget: 0 } } } : {}),
+    });
     const text = response?.text || '';
     const jsonText = extractJSON(text);
     const parsed = JSON.parse(jsonText);
-    
+
     if (parsed && parsed.textWithBlanks && parsed.blanks) {
       if (!parsed.availableWords || parsed.availableWords.length === 0) {
         parsed.availableWords = Object.values(parsed.blanks);

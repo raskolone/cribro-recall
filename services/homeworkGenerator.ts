@@ -7,16 +7,14 @@ import {
   WordOrderExercise,
 } from '../types';
 import {
-  PREFERRED_AI_MODELS,
   extractJSON,
   generateFillInTheBlankExercises,
   generateTextWithUnifiedFallback,
   generateTranslationExercises,
 } from './geminiService';
 import { getApprovedVocabularyText, splitVocabularyLines } from '../utils/vocabulary';
-import { PRIMARY_MODEL } from './aiModels';
+import { HOMEWORK_GENERATION_MODELS, PRIMARY_MODEL } from './aiModels';
 import { getStudentAiContext } from './learningProfile';
-import { runCouncil, EXERCISE_REVIEW_SYSTEM } from './aiCouncil';
 
 /**
  * Układanie pracy domowej z materiału lektora.
@@ -39,7 +37,11 @@ import { runCouncil, EXERCISE_REVIEW_SYSTEM } from './aiCouncil';
  */
 export const HOMEWORK_MODEL = PRIMARY_MODEL;
 
-const MODELS_FOR_HOMEWORK = PREFERRED_AI_MODELS;
+/**
+ * Praca domowa NIE schodzi na inne modele niż Gemini 2.5 Flash — patrz
+ * uzasadnienie przy `HOMEWORK_GENERATION_MODELS` w `services/aiModels.ts`.
+ */
+const MODELS_FOR_HOMEWORK = HOMEWORK_GENERATION_MODELS;
 
 export interface HomeworkSource {
   /** Lekcje wybrane przez lektora. */
@@ -269,31 +271,42 @@ WYMAGANIA:
   return `${vocativeGreeting} Przygotowałem dla Ciebie kilka zadań w oparciu o naszą ostatnią lekcję${topicFragment}.${vocabFragment} Ich wykonanie zajmie Ci około 5–10 minut — zachęcam do zrobienia ich przed naszym kolejnym spotkaniem!`;
 }
 
+/**
+ * Jedyne dopuszczalne wywołanie modelu dla pracy domowej: Gemini 2.5 Flash,
+ * bez cichego zejścia na OpenAI. `thinkingBudget: 0`, bo to zadanie
+ * generatywne, nie rozumowanie — dodatkowe "myślenie" tylko wydłuża czas
+ * odpowiedzi bez poprawy jakości.
+ *
+ * Błąd (w tym pusta odpowiedź / niepoprawny JSON) leci wprost do wywołującego
+ * z oryginalnym komunikatem od Google — żadnego maskowania przejściem na
+ * inny model, żeby lektor widział prawdziwą przyczynę awarii.
+ */
 const askForJson = async (prompt: string): Promise<{ parsed: any; modelUsed: string }> => {
-  // Szybkie bezpośrednie generowanie z limitem 7.5s i błyskawicznym przejściem do następnego modelu
+  console.log('[homeworkGenerator] Payload wysyłany do Gemini 2.5 Flash:', {
+    systemInstruction: SYSTEM_INSTRUCTION,
+    prompt,
+  });
+
+  const { text, modelUsed } = await generateTextWithUnifiedFallback(
+    prompt,
+    SYSTEM_INSTRUCTION,
+    MODELS_FOR_HOMEWORK,
+    { responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } },
+    undefined,
+    // Maksymalnie 1 ponowienie przy błędzie sieciowym (maxRetries: 2 = próba + 1 retry).
+    { taskName: 'Układanie pracy domowej (Gemini 2.5 Flash)', category: 'homework', timeoutMs: 15000, maxRetries: 2 }
+  );
+
+  if (!text || !text.trim()) {
+    throw new Error('Gemini 2.5 Flash zwrócił pustą odpowiedź.');
+  }
+
   try {
-    const { text, modelUsed } = await generateTextWithUnifiedFallback(
-      prompt,
-      SYSTEM_INSTRUCTION,
-      MODELS_FOR_HOMEWORK,
-      { responseMimeType: 'application/json' },
-      undefined,
-      { taskName: 'Układanie pracy domowej (szybki fallback)', category: 'homework', timeoutMs: 7500, maxRetries: 1 }
-    );
     return { parsed: JSON.parse(extractJSON(text)), modelUsed };
-  } catch (directErr) {
-    console.warn('[homeworkGenerator] Szybki fallback nie powiódł się, uruchamiam naradę awaryjną:', directErr);
-    try {
-      const councilRes = await runCouncil({
-        systemInstruction: SYSTEM_INSTRUCTION,
-        prompt,
-        reviewerSystemInstruction: EXERCISE_REVIEW_SYSTEM,
-        expectJson: true,
-      });
-      return { parsed: councilRes.data, modelUsed: councilRes.finalModel };
-    } catch (councilErr) {
-      throw directErr || councilErr;
-    }
+  } catch (parseErr: any) {
+    throw new Error(
+      `Gemini 2.5 Flash zwrócił odpowiedź, której nie da się odczytać jako JSON: ${parseErr?.message || parseErr}`
+    );
   }
 };
 
@@ -489,7 +502,12 @@ const generateTranslations = async (
     // Slot na profil kursanta istniał tu od początku i szedł pusty — teraz
     // wchodzi w niego briefing z krzywej uczenia.
     briefing,
-    req.perType
+    req.perType,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    MODELS_FOR_HOMEWORK
   );
   const items = Array.isArray(result) ? result : [];
   return { items, modelUsed: items[0]?.modelUsed || HOMEWORK_MODEL };
@@ -506,7 +524,8 @@ const generateGaps = async (
     level || req.level || 'B1',
     sourceText.slice(0, 2000),
     req.perType,
-    [req.instruction, briefing].filter(Boolean).join('\n\n')
+    [req.instruction, briefing].filter(Boolean).join('\n\n'),
+    MODELS_FOR_HOMEWORK
   );
   return { items: result ? [result] : [], modelUsed: HOMEWORK_MODEL };
 };

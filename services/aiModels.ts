@@ -49,6 +49,17 @@ export const OPENAI_MODEL_CASCADE: string[] = AI_MODEL_CASCADE.filter((m) =>
   m.startsWith('openai/')
 ).map((m) => m.replace('openai/', ''));
 
+/**
+ * Kaskada generowania pracy domowej — WYŁĄCZNIE Gemini 2.5 Flash.
+ *
+ * Świadome odstępstwo od `AI_MODEL_CASCADE`: praca domowa nie może po cichu
+ * schodzić na OpenAI, bo wtedy błąd Gemini jest niewidoczny — użytkownik
+ * widzi tylko, że zadziałał inny dostawca, a prawdziwa przyczyna awarii
+ * ginie. Jeśli Gemini zawiedzie, wywołanie ma rzucić błąd wprost, a nie
+ * maskować go przejściem na GPT.
+ */
+export const HOMEWORK_GENERATION_MODELS: string[] = [PRIMARY_MODEL];
+
 /** Kaskada Gemini — kolejność prób po wyczerpaniu modeli OpenAI. */
 export const GEMINI_MODEL_CASCADE: string[] = AI_MODEL_CASCADE.filter((m) =>
   m.startsWith('gemini')
