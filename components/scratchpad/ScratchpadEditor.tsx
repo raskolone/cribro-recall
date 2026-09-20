@@ -1786,7 +1786,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               type="button"
               onClick={handleLaunchWheelOfFortune}
               title="Uruchom Koło Fortuny na żywo (losowanie pytań rozgrzewkowych)"
-              className="h-8 px-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 dark:text-amber-300 flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-sm"
+              className="h-8 px-2.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 flex items-center gap-1.5 text-xs font-medium transition-all cursor-pointer shadow-sm"
             >
               <span>🎡</span>
               <span className="hidden lg:inline">Koło Fortuny</span>

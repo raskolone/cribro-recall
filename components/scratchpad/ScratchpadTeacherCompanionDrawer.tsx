@@ -178,7 +178,7 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
               type="button"
               onClick={onLaunchWheelOfFortune}
               title="Uruchom Koło Fortuny na żywo dla kursanta"
-              className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-950 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
+              className="px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-medium text-xs flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
             >
               <span>🎡</span>
               <span className="hidden sm:inline">Koło Fortuny</span>
