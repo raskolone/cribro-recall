@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Mic, Loader2, CheckCircle2, AlertTriangle, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { LessonRecord } from '../../types';
 import { useLiveLessonTranscript } from '../../hooks/useLiveLessonTranscript';
 import { generateLessonFromTranscript } from '../../services/transcriptLesson';
-import { approveTranscriptLesson } from '../../utils/transcriptLesson';
+import { approveTranscriptLesson, resolveLessonTopic } from '../../utils/transcriptLesson';
 import Button from '../ui/Button';
 
 /**
@@ -55,10 +55,25 @@ export const TranscriptLessonPanel: React.FC<TranscriptLessonPanelProps> = ({
   const hasBlocks = Boolean(record.structuredBlocks?.summary || record.lessonSummary);
   const isCompleted = record.sessionStatus === 'completed';
 
+  /*
+   * Najświeższy rekord, czytany po zakończeniu wywołania Gemini — nie ten
+   * zamknięty w domknięciu `handleGenerate` w chwili kliknięcia. Lektor może
+   * w tym czasie ręcznie poprawić temat w edytorze lekcji (osobny formularz
+   * w AdminPanel); odpowiedź AI, która przyjdzie później, nie może tej
+   * poprawki po cichu nadpisać.
+   */
+  const recordRef = useRef(record);
+  useEffect(() => {
+    recordRef.current = record;
+  }, [record]);
+
+  const isPlaceholderTopic = (topic: string | undefined) => /^Lekcja z transkrypcji/.test(topic || '');
+
   const handleGenerate = async () => {
     if (!onUpdateRecord) return;
     setIsGenerating(true);
     setError(null);
+    const topicBeforeGenerate = record.topic;
     try {
       const update = await generateLessonFromTranscript({
         transcript,
@@ -67,9 +82,26 @@ export const TranscriptLessonPanel: React.FC<TranscriptLessonPanelProps> = ({
         date: record.date,
         // Temat nadany automatycznie przy odbiorze nie jest tematem lekcji,
         // tylko nazwą zastępczą — model ma go wymyślić z rozmowy, nie powtórzyć.
-        topic: /^Lekcja z transkrypcji/.test(record.topic) ? undefined : record.topic,
+        topic: isPlaceholderTopic(record.topic) ? undefined : record.topic,
       });
-      await onUpdateRecord(update);
+
+      /*
+       * Lektor mógł ręcznie zmienić temat, podczas gdy Gemini jeszcze
+       * odpowiadał — wtedy jego edycja wygrywa (hierarchia w
+       * `resolveLessonTopic`), a odpowiedź AI dostarcza tylko resztę bloków.
+       */
+      const latestTopic = recordRef.current.topic;
+      const topicChangedDuringGenerate = latestTopic !== topicBeforeGenerate;
+      const resolvedTopic = resolveLessonTopic({
+        manualTopic: latestTopic,
+        manualTopicDirty: topicChangedDuringGenerate && !isPlaceholderTopic(latestTopic),
+        generatedTopic: update.topic,
+      });
+
+      await onUpdateRecord({
+        ...update,
+        ...(resolvedTopic ? { topic: resolvedTopic } : {}),
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

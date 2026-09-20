@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, X, AlertCircle, Calendar, User, FileText, Loader2, CheckCircle2, ExternalLink, RefreshCw, Bot } from 'lucide-react';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 import { generateLessonFromTranscript, persistQuestionUsageLogs, updateStudentInsightsProfile } from '../../services/transcriptLesson';
+import { resolveLessonTopic } from '../../utils/transcriptLesson';
 import { db, auth } from '../../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { LessonRecord, User as UserType } from '../../types';
@@ -36,6 +37,13 @@ export const ManualTranscriptImportModal: React.FC<ManualTranscriptImportModalPr
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [lessonDate, setLessonDate] = useState<string>(() => getIsoDateOnly(new Date()));
   const [lessonTopic, setLessonTopic] = useState<string>('');
+  /*
+   * Prawdziwa ręczna edycja pola tematu (klawiaturą przez lektora), w
+   * odróżnieniu od automatycznego podpowiedzenia tytułu spotkania Notion
+   * (patrz `handleSelectMeeting`). Tylko ta pierwsza bije temat wygenerowany
+   * przez AI — hierarchia źródła tematu w `resolveLessonTopic`.
+   */
+  const [lessonTopicDirty, setLessonTopicDirty] = useState<boolean>(false);
   const [rawText, setRawText] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +106,7 @@ export const ManualTranscriptImportModal: React.FC<ManualTranscriptImportModalPr
         setSelectedStudentId(students[0].id);
       }
       setError(null);
+      setLessonTopicDirty(false);
     }
   }, [isOpen, students, selectedStudentId]);
 
@@ -199,7 +208,20 @@ export const ManualTranscriptImportModal: React.FC<ManualTranscriptImportModalPr
         level: studentLevel,
       });
 
-      const finalTopic = generated.topic || lessonTopic.trim() || `Lekcja z notatek Notion (${dateToSave})`;
+      // Hierarchia źródła tematu (patrz `resolveLessonTopic`): ręczna edycja
+      // lektora bije temat z AI. Brak obu — lektor wpisuje temat ręcznie,
+      // zamiast dostać nazwę pliku, tytuł spotkania z Notion czy datę.
+      const resolvedTopic = resolveLessonTopic({
+        manualTopic: lessonTopic,
+        manualTopicDirty: lessonTopicDirty,
+        generatedTopic: generated.topic,
+      });
+
+      if (!resolvedTopic) {
+        setError('Nie udało się wykryć tematu lekcji z transkrypcji. Wpisz go ręcznie w polu „Temat lekcji” i spróbuj ponownie.');
+        setIsSubmitting(false);
+        return;
+      }
 
       // 2. Przygotuj pełny dokument LessonRecord
       const lessonDoc: LessonRecord = {
@@ -207,7 +229,7 @@ export const ManualTranscriptImportModal: React.FC<ManualTranscriptImportModalPr
         studentId: selectedStudentId,
         studentName,
         date: dateToSave,
-        topic: finalTopic,
+        topic: resolvedTopic,
         vocabularyText: generated.vocabularyText || '',
         lessonSummary: generated.lessonSummary || '',
         studentSpeaking: generated.studentSpeaking || '',
@@ -247,6 +269,7 @@ export const ManualTranscriptImportModal: React.FC<ManualTranscriptImportModalPr
       // 5. Zresetuj stan formularza i powiadom rodzica
       setRawText('');
       setLessonTopic('');
+      setLessonTopicDirty(false);
       onClose();
 
       if (onLessonCreated) {
@@ -362,7 +385,10 @@ export const ManualTranscriptImportModal: React.FC<ManualTranscriptImportModalPr
               type="text"
               placeholder="np. Business Negotiations & Salary Review"
               value={lessonTopic}
-              onChange={(e) => setLessonTopic(e.target.value)}
+              onChange={(e) => {
+                setLessonTopic(e.target.value);
+                setLessonTopicDirty(true);
+              }}
               disabled={isSubmitting}
               className="w-full px-3.5 py-2.5 rounded-xl bg-base-100 border border-line-strong text-xs font-medium text-text-hi placeholder:text-content-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50"
             />

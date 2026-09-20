@@ -3025,3 +3025,96 @@ Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji
 kodzie — wyłącznie `@google/genai` przez istniejący
 `generateContentWithRetry`. Brak migracji/backfillu, schemat istniejących
 dokumentów lekcji niezmieniony (nowe pole wyłącznie opcjonalne/addytywne).
+
+---
+
+2026-09-20 — Claude Code / Sonnet 5
+
+Zadanie: Title Generation Gate przy imporcie transkrypcji — zastąpić
+techniczny tytuł ("[KOD] Imię Nazwisko DD.MM.YYYY" / nazwa pliku)
+naturalnym tematem lekcji po angielsku generowanym przez Gemini z treści
+rozmowy, bez nowego wywołania AI, z ochroną ręcznej edycji lektora przed
+nadpisaniem przez spóźniony callback.
+
+Zrobione:
+- FAZA 0 (audyt): dwie ścieżki interaktywnego importu prowadzą do
+  wspólnego rdzenia `generateLessonFromTranscript` /
+  `parseTranscriptLesson` (`services/transcriptLesson.ts` +
+  `utils/transcriptLesson.ts`) — `ManualTranscriptImportModal.tsx`
+  (Notion + wklejony tekst) i `TranscriptLessonPanel.tsx` (live
+  transkrypcja Cribro Sift). Trzecia ścieżka, `syncNotionTranscriptsFromApi`
+  w `server.ts`, ustawia `topic: title` wprost z tytułu strony Notion —
+  ale to osobny, bezobsługowy bulk-sync bez wywołania Gemini w ogóle
+  (transkrypcja czeka na ręczne uzupełnienie bloków przez
+  `TranscriptLessonPanel` dopiero po imporcie) — świadomie pominięty,
+  bo dotknięcie go złamałoby zakaz nowego wywołania AI albo wymagałoby
+  osobnej decyzji architektonicznej, o którą zlecenie nie prosiło.
+- `utils/transcriptLesson.ts` — punkt 8 w `TRANSCRIPT_SYSTEM_INSTRUCTION`
+  i przepisany opis pola `"topic"` w `buildTranscriptLessonPrompt`: temat
+  po angielsku, 1-10 słów, do 80 znaków, zakaz imion/dat/kodów w
+  nawiasach/etykiet technicznych i generycznych, pusty string zamiast
+  zmyślania. Nowe czyste funkcje: `validateGeneratedTopic()` (walidacja
+  runtime odpowiedzi modelu — odrzuca, nie okalecza) i
+  `resolveLessonTopic()` (hierarchia: ręczna edycja > tytuł scenariusza >
+  temat z AI > brak). `parseTranscriptLesson` przyjmuje teraz
+  `metadata.studentName` i przepuszcza `topic` przez walidator.
+- `services/transcriptLesson.ts` — dopisane przekazanie `studentName` do
+  metadanych parsera (do wykrywania wycieku imienia/nazwiska w temacie).
+- `components/admin/ManualTranscriptImportModal.tsx` — nowy stan
+  `lessonTopicDirty` (tylko ręczne wpisywanie, nie auto-podpowiedź z
+  tytułu spotkania Notion), usunięty techniczny fallback
+  `Lekcja z notatek Notion (data)`; brak rozstrzygniętego tematu po
+  `resolveLessonTopic` blokuje zapis komunikatem błędu zamiast cichego
+  zapisu etykiety.
+- `components/admin/TranscriptLessonPanel.tsx` — `recordRef` łapie
+  najświeższy temat po zakończeniu wywołania Gemini; jeśli lektor zmienił
+  temat ręcznie w edytorze lekcji w międzyczasie, `resolveLessonTopic`
+  zachowuje jego edycję zamiast pozwolić odpowiedzi AI ją nadpisać.
+- `tests/transcriptLesson.test.ts` — 13 nowych testów jednostkowych na
+  `validateGeneratedTopic` i `resolveLessonTopic` (baza 425 + 13 = 438).
+- Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (438/438),
+  `npm run build` (przechodzi; `api/index.js` przebudowany bez zmian
+  treści, bo `server.ts` nie był dotykany w tym zadaniu).
+- CHANGELOG.md — sekcja W dopisana z pełnym opisem zmiany.
+
+Nie dokończone / do sprawdzenia:
+- UI NIE był sprawdzony wzrokowo w przeglądarce (brak dostępu do live
+  Gemini/Firestore w tej sesji agenta) — zgodnie z długiem technicznym w
+  CLAUDE.md sekcja 6.
+- Zlecenie wymieniało też import PDF w `ManualTranscriptImportModal` —
+  audyt pokazał, że ten modal obecnie nie ma ścieżki PDF (tylko Notion i
+  wklejony tekst). PDF istnieje w zupełnie osobnym imporcie
+  profilu+historii kursanta przy tworzeniu nowego konta
+  (`services/studentImportService.ts`,
+  `/api/gemini/analyze-student-import`, `StudentImportReviewCard.tsx`) —
+  to inna funkcja z inną analizą AI, celowo pominięta jako poza zakresem
+  (dotknięcie jej byłoby nowym zadaniem, nie tym samym Title Generation
+  Gate).
+- `resolveLessonTopic` ma gotowy parametr `scenarioTitle`, ale żadna z
+  dwóch ścieżek transkrypcji nie przekazuje tam jeszcze tytułu
+  powiązanego scenariusza (obie zaczynają importu bez linku do
+  scenariusza) — do podpięcia, jeśli/kiedy transkrypcja zostanie
+  powiązana ze scenariuszem przy imporcie.
+
+Decyzje architektoniczne:
+- Bramka generowania tematu wpleciona w istniejący, jedyny prompt
+  ekstrakcji transkrypcji (`buildTranscriptLessonPrompt` +
+  `TRANSCRIPT_SYSTEM_INSTRUCTION`) — zero nowego wywołania AI, zgodnie z
+  nienegocjowalnym guardrailem zlecenia.
+- Walidator (`validateGeneratedTopic`) świadomie ODRZUCA całe
+  podejrzane teksty (zwraca pusty string), zamiast próbować je naprawiać
+  (np. ucinać do 80 znaków albo wycinać nawiasy) — spójne z resztą
+  parsera transkrypcji (`asText`/`asVocabularyItems` też odrzucają
+  niekompletne pozycje zamiast je łatać) i z zasadą „model ma się
+  poprawić, a nie dostać po cichu okaleczoną wersję własnej odpowiedzi".
+- `syncNotionTranscriptsFromApi` w `server.ts` (bulk sync bez Gemini)
+  świadomie pominięty — patrz „Zrobione" wyżej.
+
+Ryzyka: Brak zmian w `firestore.rules`, brak zmian schematu bazy/migracji,
+brak nowych bibliotek (package.json/package-lock.json bez zmian), brak
+dodatkowego wywołania Gemini (ta sama, jedyna odpowiedź ekstrakcji
+transkrypcji obsługuje teraz też temat). Middleware autoryzacji
+(`requireFirebaseAuth`/`requireFirebaseAdmin`) i ścieżki tokenowe bez
+logowania niedotknięte. `server.ts` nie był w ogóle edytowany w tym
+zadaniu. Mapowanie daty i przypisanie kursanta (`studentId`)
+niezmienione.

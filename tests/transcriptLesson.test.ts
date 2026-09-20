@@ -5,7 +5,9 @@ import {
   approveTranscriptLesson,
   buildTranscriptLessonPrompt,
   parseTranscriptLesson,
+  resolveLessonTopic,
   TranscriptLessonError,
+  validateGeneratedTopic,
 } from '../utils/transcriptLesson';
 import { isStudentVisibleLesson } from '../utils/lessonBlocks';
 
@@ -175,6 +177,89 @@ describe('rozbiór odpowiedzi modelu', () => {
     assert.deepEqual(update.vocabularyItems, [
       { term: 'ok', translation: 'dobrze', contextSentence: '' },
     ]);
+  });
+});
+
+describe('bramka generowania tematu (validateGeneratedTopic)', () => {
+  it('przepuszcza naturalny, zwięzły temat po angielsku', () => {
+    assert.equal(validateGeneratedTopic('A Problem with a Delivery Document'), 'A Problem with a Delivery Document');
+  });
+
+  it('odrzuca kod spotkania w nawiasach', () => {
+    assert.equal(validateGeneratedTopic('[ABC123] Delivery Issue'), '');
+  });
+
+  it('odrzuca datę w temacie', () => {
+    assert.equal(validateGeneratedTopic('Lesson on 12.09.2026'), '');
+    assert.equal(validateGeneratedTopic('Meeting 2026-09-12 recap'), '');
+  });
+
+  it('odrzuca nazwę pliku (rozszerzenie)', () => {
+    assert.equal(validateGeneratedTopic('transcript_notes.pdf'), '');
+  });
+
+  it('odrzuca etykiety techniczne jako prefiks', () => {
+    assert.equal(validateGeneratedTopic('Lesson with Jan Kowalski'), '');
+    assert.equal(validateGeneratedTopic('Meeting notes — delivery problem'), '');
+    assert.equal(validateGeneratedTopic('Transcript of the call'), '');
+  });
+
+  it('odrzuca generyczne etykiety bez treści', () => {
+    assert.equal(validateGeneratedTopic('English Lesson'), '');
+    assert.equal(validateGeneratedTopic('Meeting'), '');
+    assert.equal(validateGeneratedTopic('Conversation'), '');
+  });
+
+  it('odrzuca temat zawierający imię/nazwisko kursanta', () => {
+    assert.equal(
+      validateGeneratedTopic('Ala Kowalska talks about her new job', { studentName: 'Ala Kowalska' }),
+      ''
+    );
+  });
+
+  it('odrzuca zbyt długi lub wielolinijkowy temat', () => {
+    assert.equal(validateGeneratedTopic('x'.repeat(81)), '');
+    assert.equal(validateGeneratedTopic('Delivery problem\nSecond line'), '');
+  });
+
+  it('odrzuca pusty string zamiast zmyślać temat', () => {
+    assert.equal(validateGeneratedTopic(''), '');
+    assert.equal(validateGeneratedTopic(undefined), '');
+  });
+});
+
+describe('hierarchia źródła tematu (resolveLessonTopic)', () => {
+  it('ręczna edycja lektora bije temat z AI', () => {
+    const topic = resolveLessonTopic({
+      manualTopic: 'Wersja lektora',
+      manualTopicDirty: true,
+      generatedTopic: 'A Problem with a Delivery Document',
+    });
+    assert.equal(topic, 'Wersja lektora');
+  });
+
+  it('bez ręcznej edycji wygrywa tytuł scenariusza nad tematem z AI', () => {
+    const topic = resolveLessonTopic({
+      manualTopic: 'Podpowiedź z Notion',
+      manualTopicDirty: false,
+      scenarioTitle: 'Negotiating a Delivery Delay',
+      generatedTopic: 'A Problem with a Delivery Document',
+    });
+    assert.equal(topic, 'Negotiating a Delivery Delay');
+  });
+
+  it('bez ręcznej edycji i scenariusza wygrywa temat z AI', () => {
+    const topic = resolveLessonTopic({
+      manualTopic: '',
+      manualTopicDirty: false,
+      generatedTopic: 'A Problem with a Delivery Document',
+    });
+    assert.equal(topic, 'A Problem with a Delivery Document');
+  });
+
+  it('brak wszystkiego zwraca pusty string zamiast fallbacku technicznego', () => {
+    const topic = resolveLessonTopic({});
+    assert.equal(topic, '');
   });
 });
 

@@ -46,6 +46,7 @@ export async function generateLessonFromTranscript(
     lessonId: input.lessonId,
     studentId: input.studentId,
     date: input.date,
+    studentName: input.studentName,
   });
 
   return parsed;
