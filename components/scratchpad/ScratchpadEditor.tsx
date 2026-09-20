@@ -100,7 +100,7 @@ import { ScratchpadLivePresentationModal } from './ScratchpadLivePresentationMod
 import { ScratchpadTeacherCompanionDrawer } from './ScratchpadTeacherCompanionDrawer';
 import { InteractiveExercise } from '../../services/lessonPlannerMethod';
 import { buildLessonTemplate, extractLastLessonSections, highestLessonNumber, LESSON_SECTIONS } from '../../utils/lessonTemplate';
-import { NOTEBOOK_COLORS, NOTEBOOK_INK, NOTEBOOK_SWATCHES } from '../../utils/notebookPalette';
+import { NOTEBOOK_INK, NOTEBOOK_SWATCHES, notebookHeadingColor } from '../../utils/notebookPalette';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { generateTextWithUnifiedFallback } from '../../services/geminiService';
 import { generateLessonRevision } from '../../services/scratchpadAiService';
@@ -927,6 +927,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         revisionHtml: willGenerateRevision
           ? `<p data-revision-pending="${pendingToken}">⏳ Generuję powtórkę na podstawie poprzedniej lekcji...</p>`
           : undefined,
+        paperTheme,
       });
 
       editorRef.current.insertAdjacentHTML('beforeend', html);
@@ -1387,17 +1388,17 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
     `;
 
     const sections = [
-      { title: 'Revision', color: NOTEBOOK_COLORS.rose, body: revText || '<p>• Przejrzyj korekty i słownictwo z poprzednich zajęć.</p>' },
-      { title: 'Main topic / Practice', color: NOTEBOOK_COLORS.green, body: topicText || (topic ? `<p><strong>Temat:</strong> ${topic}</p>` : '<p><br></p>') },
-      { title: 'Lesson Summary', color: NOTEBOOK_COLORS.blue, body: sumText || (text.length < 500 ? markdownToHtml(text) : '<p><br></p>') },
-      { title: 'Key Language & Corrections (New words)', color: NOTEBOOK_COLORS.orange, body: vocabText || '<p><br></p>' },
-      { title: 'Homework', color: NOTEBOOK_COLORS.violet, body: hwText || '<p>• Utrwalenie słówek w aplikacji Recall (Fiszki / Tłumaczenie zdań).</p>' },
+      { title: 'Revision', colorKey: 'rose' as const, body: revText || '<p>• Przejrzyj korekty i słownictwo z poprzednich zajęć.</p>' },
+      { title: 'Main topic / Practice', colorKey: 'green' as const, body: topicText || (topic ? `<p><strong>Temat:</strong> ${topic}</p>` : '<p><br></p>') },
+      { title: 'Lesson Summary', colorKey: 'blue' as const, body: sumText || (text.length < 500 ? markdownToHtml(text) : '<p><br></p>') },
+      { title: 'Key Language & Corrections (New words)', colorKey: 'orange' as const, body: vocabText || '<p><br></p>' },
+      { title: 'Homework', colorKey: 'violet' as const, body: hwText || '<p>• Utrwalenie słówek w aplikacji Recall (Fiszki / Tłumaczenie zdań).</p>' },
     ];
 
     sections.forEach(s => {
       const bodyHtml = s.body.startsWith('<') ? s.body : markdownToHtml(s.body);
       fullLessonHtml += `
-        <h3 style="color: ${s.color}">${s.title}</h3>
+        <h3 style="color: ${notebookHeadingColor(s.colorKey, paperTheme)}">${s.title}</h3>
         <div>${bodyHtml}</div>
       `;
     });

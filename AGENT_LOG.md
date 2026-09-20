@@ -3654,3 +3654,56 @@ istniejącym przełącznikiem, zgodnie z decyzją Macieja po pytaniu wprost.
 Ryzyka: Brak zmian w firestore.rules, middleware autoryzacji ani ścieżkach
 tokenowych — jedna stała w config/featureFlags.ts. Ryzyko biznesowe: patrz
 punkt o możliwym ukryciu już przydzielonych zadań v2 wyżej.
+
+2026-09-20 — Claude Code / Sonnet 5
+
+Zadanie: Zwiększyć kontrast typografii w Notatniku A4 — zamienić kolory
+pięciu predefiniowanych nagłówków sekcji lekcji na klasy Tailwind
+text-*-700/800/900 (żądanie podało konkretne pary np. text-rose-700,
+text-emerald-800) oraz upewnić się, że tekst podstawowy edytora ma
+text-gray-900 zamiast text-gray-500.
+
+Zrobione: Żądanie nie pasowało dosłownie do implementacji — kolory
+nagłówków to surowe hexy wpisywane wprost w HTML dokumentu (nie klasy CSS),
+świadomie dobrane w utils/notebookPalette.ts pod DWA motywy papieru naraz
+jednym wspólnym heksem (~3,4:1 jasny / ~4,4:1 ciemny). Wcześniejszy,
+ciemniejszy zestaw był już raz odrzucony w tym repo za psucie ciemnego
+motywu (komentarz w kodzie to dokumentuje). Zapytałem Macieja wprost —
+wybrał: osobne odcienie per motyw zamiast jednego ciemniejszego heksa dla
+obu. Zmiany:
+- utils/notebookPalette.ts: NOTEBOOK_COLORS[klucz] to teraz {light, dark}
+  zamiast stringa; dark = bez zmian; light = nowy, ciemniejszy odcień
+  (Tailwind 700-900: rose #9f1239, orange/amber-800 #92400e, green/
+  emerald-800 #065f46, blue-800 #1e40af, violet-800 #5b21b6). Dodano
+  notebookHeadingColor(klucz, paperTheme). Paleta paska narzędzi wydzielona
+  do TOOLBAR_COLORS, celowo BEZ podziału light/dark (uzasadnienie w
+  komentarzu przy stałej).
+- utils/lessonTemplate.ts: LESSON_SECTIONS ma colorKey zamiast heksa;
+  buildLessonTemplate przyjmuje nową opcję paperTheme (domyślnie 'light').
+- components/scratchpad/ScratchpadEditor.tsx: oba wywołania
+  buildLessonTemplate przekazują paperTheme ze stanu komponentu;
+  zduplikowana inline'owa lista sekcji przy imporcie z Notion (~linia 1389)
+  przestawiona na colorKey + notebookHeadingColor tak samo jak
+  lessonTemplate.ts.
+- Text-gray-900 dla tekstu podstawowego NIE dodany — już dziś steruje nim
+  NOTEBOOK_INK (#2c2822 jasny / #eae8e3 ciemny) przez zmienną CSS --pad-fg,
+  o WYŻSZYM kontraście niż text-gray-900 na białym tle. Dodanie martwej
+  klasy Tailwind do systemu sterowanego zmienną CSS nic by nie zrobiło.
+
+Nie dokończone / do sprawdzenia:
+- Nie zweryfikowano wzrokowo w przeglądarce (brak dostępu do zalogowanej
+  sesji) — sprawdzić realny kontrast nowych nagłówków na jasnym papierze
+  i że ciemny papier wygląda bez zmian.
+- Znana, zaakceptowana właściwość (nie wada tej zmiany): kolor nagłówka
+  zamraża się w dokumencie w chwili wstawienia sekcji. Sekcja wstawiona na
+  jasnym papierze i zapisana zachowa ten (ciemniejszy) odcień na zawsze,
+  również po późniejszym przełączeniu kartki na ciemną — tak samo działa
+  już dziś ręczne kolorowanie tekstu paskiem narzędzi w tym systemie.
+
+Decyzje architektoniczne: podział jednej wspólnej wartości koloru na
+light/dark per klucz w NOTEBOOK_COLORS — decyzja Macieja po pytaniu wprost,
+udokumentowana w komentarzu w notebookPalette.ts.
+
+Ryzyka: Brak zmian w firestore.rules, middleware autoryzacji ani ścieżkach
+tokenowych bez logowania — wyłącznie warstwa prezentacji/generowania HTML
+notatnika.

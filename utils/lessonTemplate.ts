@@ -1,4 +1,4 @@
-import { NOTEBOOK_COLORS } from './notebookPalette';
+import { NOTEBOOK_COLORS, notebookHeadingColor } from './notebookPalette';
 
 /**
  * Szablon wpisu lekcyjnego w notatniku.
@@ -105,13 +105,18 @@ export const templateDate = (date: Date = new Date()): string =>
  *
  * Wpisy zrobione wcześniej zachowują swoje kolory — są zapisane w treści
  * dokumentu i nikt ich nie przepisuje za lektorem.
+ *
+ * `colorKey` zamiast gotowego heksa: `NOTEBOOK_COLORS` ma dziś osobną wartość
+ * na jasny i ciemny papier (patrz `utils/notebookPalette.ts`), więc kolor
+ * rozstrzyga się dopiero w `buildLessonTemplate`, w chwili wstawienia sekcji,
+ * na podstawie aktualnego motywu papieru kursanta.
  */
-export const LESSON_SECTIONS: { title: string; color: string }[] = [
-  { title: 'Revision', color: NOTEBOOK_COLORS.rose },
-  { title: 'Main topic / Practice', color: NOTEBOOK_COLORS.green },
-  { title: 'Lesson Summary', color: NOTEBOOK_COLORS.blue },
-  { title: 'Key Language &amp; Corrections (New words)', color: NOTEBOOK_COLORS.orange },
-  { title: 'Homework', color: NOTEBOOK_COLORS.violet },
+export const LESSON_SECTIONS: { title: string; colorKey: keyof typeof NOTEBOOK_COLORS }[] = [
+  { title: 'Revision', colorKey: 'rose' },
+  { title: 'Main topic / Practice', colorKey: 'green' },
+  { title: 'Lesson Summary', colorKey: 'blue' },
+  { title: 'Key Language &amp; Corrections (New words)', colorKey: 'orange' },
+  { title: 'Homework', colorKey: 'violet' },
 ];
 
 /**
@@ -135,11 +140,14 @@ export const buildLessonTemplate = (options?: {
    * do sekcji Revision zamiast `recallItems`, gdy podany.
    */
   revisionHtml?: string;
+  /** Motyw papieru kursanta w chwili wstawienia — patrz komentarz przy `LESSON_SECTIONS`. Domyślnie jasny. */
+  paperTheme?: 'light' | 'dark';
 }): string => {
   const previous = options?.previousHtml || '';
   const number =
     options?.lessonNumber ?? highestLessonNumber(previous) + 1;
   const date = templateDate(options?.date);
+  const paperTheme = options?.paperTheme || 'light';
 
   const sections = LESSON_SECTIONS.map((section) => {
     let innerBody = '<p><br></p>';
@@ -170,7 +178,7 @@ export const buildLessonTemplate = (options?: {
       }
     }
 
-    return `<h3 style="color:${section.color}">${section.title}</h3>${innerBody}`;
+    return `<h3 style="color:${notebookHeadingColor(section.colorKey, paperTheme)}">${section.title}</h3>${innerBody}`;
   }).join('');
 
   const hasPreviousContent = previous.trim().length > 0 && previous.replace(/<[^>]+>/g, '').trim().length > 0;

@@ -4,27 +4,34 @@
  * ══ PO CO OSOBNY PLIK ══
  *
  * Kolory w notatniku nie są klasami CSS — `execCommand` i szablon lekcji
- * wpisują je WPROST w treść dokumentu (`style="color:…"`). Motyw nie ma więc
- * jak ich przestawić: ta sama wartość musi działać na jasnym papierze
- * i na ciemnej kartce, dziś i za rok, w dokumencie, którego nikt nie będzie
- * przepisywał.
+ * wpisują je WPROST w treść dokumentu (`style="color:…"`), więc motyw
+ * (jasny/ciemny papier) nie ma jak ich przestawić PO fakcie — kolor
+ * wybrany przy wstawieniu zostaje w dokumencie, dziś i za rok, w
+ * dokumencie, którego nikt nie będzie przepisywał.
  *
  * Dopóki palety nie było, były dwie: pięć barw nagłówków w szablonie lekcji
  * i pięć barw w pasku narzędzi, dobranych niezależnie i obie wyłącznie pod
  * jasny papier. Na ciemnej kartce granatowy #2563eb i fioletowy #7c3aed
  * schodziły poniżej progu czytelności, a reszta robiła się jaskrawymi
- * plamami różnej mocy.
+ * plamami różnej mocy. Rozwiązaniem było jedno wspólne wynagrodzenie
+ * jasności (~0,22) — 3,4:1 na jasnym papierze, 4,4:1 na ciemnym.
  *
- * ══ DLACZEGO WSZYSTKIE MAJĄ TĘ SAMĄ JASNOŚĆ ══
+ * ══ DLACZEGO NAGŁÓWKI SEKCJI (`NOTEBOOK_COLORS`) MAJĄ DZIŚ DWIE WARTOŚCI ══
  *
- * Każda z tych barw ma jasność względną około 0,22, czyli około 3,4:1 na
- * jasnym papierze i 4,4:1 na ciemnej kartce — po obu stronach czytelnie.
- * Wspólna jasność jest tym, co robi z nich JEDEN zestaw zamiast sześciu
- * niezależnych decyzji: różnią się wyłącznie odcieniem, bo tylko odcień
- * niesie tu znaczenie.
+ * 3,4:1 na jasnym papierze nie przechodzi WCAG AA (próg 4,5:1) — konkretna
+ * skarga na czytelność. Jeden wspólny, ciemniejszy hex naprawiłby jasny
+ * papier i wrócił do problemu z akapitu wyżej na ciemnym. Stąd
+ * `NOTEBOOK_COLORS[klucz]` ma teraz `{ light, dark }`: `dark` to oryginalna,
+ * już działająca wartość; `light` to osobno dobrany, ciemniejszy odcień
+ * (rodzina Tailwind 700–900) tylko pod jasny papier. Pasek narzędzi
+ * (`TOOLBAR_COLORS`) zostaje przy jednym wspólnym heksie — uzasadnienie przy
+ * tej stałej niżej.
  *
  * Wpisy zrobione wcześniej zachowują swoje kolory. Są zapisane w treści
- * dokumentu i nikt ich nie przepisuje za lektorem.
+ * dokumentu i nikt ich nie przepisuje za lektorem — dotyczy to też
+ * nagłówków wstawionych PRZED tą zmianą (zostają przy starym, jasnym
+ * odcieniu) i tych, które kursant zobaczy po zmianie motywu papieru już
+ * PO wstawieniu (patrz komentarz przy `NOTEBOOK_COLORS` niżej).
  */
 
 export interface NotebookColor {
@@ -32,10 +39,58 @@ export interface NotebookColor {
   value: string;
 }
 
-/** Sześć odcieni jednej jasności — źródło dla szablonu i paska narzędzi.
- * Zsynchronizowane z systemem kolorów Nocturne Green (tokens.css). */
-export const NOTEBOOK_COLORS = {
-  rose: '#fb7185',
+/**
+ * Kolory NAGŁÓWKÓW sekcji lekcji (`LESSON_SECTIONS`), osobno na jasny
+ * i ciemny papier.
+ *
+ * Jeden wspólny hex (patrz historia niżej w tym pliku) dawał tylko ~3,4:1 na
+ * jasnym papierze — poniżej progu WCAG AA (4,5:1) dla zwykłego tekstu.
+ * Podbicie do jednego, ciemniejszego heksa naprawiłoby jasny papier i
+ * zepsuło ciemny dokładnie tak, jak opisuje historia niżej („mocne, ciemne
+ * barwy... na ciemnej kartce robiły się jaskrawymi plamami"). Stąd para
+ * wartości na kolor: `dark` to bez zmian oryginalny, dobrany zestaw (nadal
+ * ~4,4:1 na ciemnej kartce); `light` to ciemniejszy, bardziej nasycony
+ * odcień z rodziny Tailwind 700–900, dobrany pod jasny papier.
+ *
+ * Kolor jest wpisany w HTML dokumentu w momencie WSTAWIENIA sekcji (patrz
+ * `buildLessonTemplate` w `utils/lessonTemplate.ts`), więc — tak jak reszta
+ * kolorów w notatniku — nagłówek zachowuje kolor z chwili napisania, nawet
+ * gdy kursant później przełączy kartkę na drugi motyw. To jest znana i
+ * zaakceptowana właściwość tego systemu (patrz „Wpisy zrobione wcześniej
+ * zachowują swoje kolory" niżej), nie nowa wada.
+ */
+export interface ThemedHex {
+  light: string;
+  dark: string;
+}
+
+export const NOTEBOOK_COLORS: Record<'rose' | 'red' | 'orange' | 'green' | 'blue' | 'violet', ThemedHex> = {
+  rose: { light: '#9f1239', dark: '#fb7185' },
+  red: { light: '#991b1b', dark: '#f87171' },
+  orange: { light: '#92400e', dark: '#fbbf24' },
+  green: { light: '#065f46', dark: '#72f0b4' },
+  blue: { light: '#1e40af', dark: '#67b5fa' },
+  violet: { light: '#5b21b6', dark: '#a78bfa' },
+};
+
+/** Kolor nagłówka sekcji dla danego motywu papieru. */
+export const notebookHeadingColor = (
+  key: keyof typeof NOTEBOOK_COLORS,
+  paperTheme: 'light' | 'dark'
+): string => NOTEBOOK_COLORS[key][paperTheme];
+
+/**
+ * Paleta paska narzędzi (kolor DOWOLNEGO zaznaczonego tekstu, nie
+ * nagłówków) — celowo NIE dostała podziału light/dark jak wyżej. Kursant
+ * koloruje nią słowo w trakcie pisania w jednym, ustalonym momencie; ten
+ * sam problem (kolor zamrożony w HTML w chwili wpisania) dotyczyłby jej
+ * tak samo, ale bez korzyści z góry — w przeciwieństwie do pięciu stałych
+ * nagłówków sekcji, tu nie wiadomo z góry, na jaki fragment tekstu kolor
+ * padnie, więc dobór „pod aktualny motyw" nie ma jednego oczywistego
+ * miejsca do zastosowania. Zostaje pierwotny, jeden-hex-na-kolor dobór
+ * (~3,4:1 / ~4,4:1) opisany w komentarzu niżej.
+ */
+export const TOOLBAR_COLORS = {
   red: '#f87171',
   orange: '#fbbf24',
   green: '#72f0b4',
@@ -51,9 +106,9 @@ export const NOTEBOOK_INK = {
 
 /** Paleta paska narzędzi. Zamknięta: to notatnik lekcyjny, nie edytor grafiki. */
 export const NOTEBOOK_SWATCHES: NotebookColor[] = [
-  { name: 'Czerwony', value: NOTEBOOK_COLORS.red },
-  { name: 'Pomarańczowy', value: NOTEBOOK_COLORS.orange },
-  { name: 'Zielony (Nocturne)', value: NOTEBOOK_COLORS.green },
-  { name: 'Niebieski', value: NOTEBOOK_COLORS.blue },
-  { name: 'Fioletowy', value: NOTEBOOK_COLORS.violet },
+  { name: 'Czerwony', value: TOOLBAR_COLORS.red },
+  { name: 'Pomarańczowy', value: TOOLBAR_COLORS.orange },
+  { name: 'Zielony (Nocturne)', value: TOOLBAR_COLORS.green },
+  { name: 'Niebieski', value: TOOLBAR_COLORS.blue },
+  { name: 'Fioletowy', value: TOOLBAR_COLORS.violet },
 ];
