@@ -3615,3 +3615,42 @@ Decyzje architektoniczne: brak nowych — kontynuacja podejścia z AB
 
 Ryzyka: Brak zmian w firestore.rules, middleware autoryzacji ani ścieżkach
 tokenowych bez logowania — wyłącznie dwa komponenty prezentacyjne.
+
+2026-09-20 — Claude Code / Sonnet 5
+
+Zadanie: Zgłoszenie "KRYTYCZNA REGRESJA" — kursant w pracy domowej stracił
+rozgrzewkę, pasek pigułek zadań, przyciski Wstecz/Dalej i "Odeślij pracę",
+zamiast tego widzi pojedyncze zadanie z blokadą "Sprawdź odpowiedź" i
+licznikiem prób. Żądanie: przywrócić w StudentHomeworkV2Screen.tsx.
+
+Zrobione: Zbadano — to NIE regresja, tylko dwa różne, celowo różne ekrany.
+StudentHomeworkV2Screen.tsx (silnik "treningu" v2, MAX_ATTEMPTS/hint ladder/
+mastery state zamrożone w functions/src/homeworkV2/contracts.ts §3.1) nigdy
+nie miał rozgrzewki/pigułek/free-nav — to zamierzone. Cała opisana
+funkcjonalność żyje w starym StudentHomeworkScreen.tsx (v1) i tam nadal
+działa bez zmian. Zapytałem Macieja wprost (dwie opcje: wyłączyć flagę vs.
+przepisać v2 pod model batch/free-nav) — wybrał rollback przez flagę.
+Zmieniono `config/featureFlags.ts`: `HOMEWORK_ENGINE_V2` z `true` na `false`
+(jedna linia — przełącznik zaprojektowany dokładnie do tego rollbacku,
+komentarz w pliku to potwierdza). Skutek: Dashboard.tsx, HomeworkScreen.tsx
+(widok lektora) i homeworkV2Client.ts już rozgałęziały się na tej samej
+fladze, więc kursant i lektor wracają do v1 w tym samym commicie, bez
+dotykania kodu ekranów.
+
+Nie dokończone / do sprawdzenia:
+- NIE zmieniono drugiej połowy przełącznika po stronie Cloud Functions
+  (functions/src/homeworkV2/flag.ts, env var HOMEWORK_ENGINE_V2 w
+  functions/.env / konsoli GCP) — to osobny deploy, nieproszony w tym
+  zadaniu. Backend v2 nadal przyjmuje onCall, jeśli ktoś by go wywołał.
+- NIE sprawdzono, czy jacyś żywi kursanci mają już przypisane zestawy
+  specialTasks z engineVersion:2 — po rollbacku takie zadanie staje się
+  niewidoczne w UI (ekran v1 filtruje wyłącznie v1), dopóki flaga nie
+  wróci na true. Sprawdzić przed ogłoszeniem rollbacku, jeśli ktoś poza
+  Maciejem miał już zadanie v2.
+
+Decyzje architektoniczne: żadna zmiana architektury — czysty rollback
+istniejącym przełącznikiem, zgodnie z decyzją Macieja po pytaniu wprost.
+
+Ryzyka: Brak zmian w firestore.rules, middleware autoryzacji ani ścieżkach
+tokenowych — jedna stała w config/featureFlags.ts. Ryzyko biznesowe: patrz
+punkt o możliwym ukryciu już przydzielonych zadań v2 wyżej.
