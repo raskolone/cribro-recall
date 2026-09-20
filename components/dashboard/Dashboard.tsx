@@ -516,6 +516,15 @@ const Dashboard: React.FC = () => {
           onBack={() => handleNavigate('dashboard')}
         />
       );
+      // Silnik v2 przypisuje dziś zadania domyślnie (`HOMEWORK_ENGINE_V2` w
+      // `config/featureFlags.ts`), ale bez tego rozgałęzienia kursant nie miał
+      // jak ich w ogóle zobaczyć — ekran kursanta zawsze renderował v1.
+      // `StudentHomeworkV2Screen` sam oddaje `fallback` (czyli v1 razem z całą
+      // dotychczasową historią), gdy kursant nie ma żadnego zestawu v2, więc
+      // nic tu nie znika dla nikogo, kto nie ma jeszcze pracy w nowym silniku.
+      if (HOMEWORK_ENGINE_V2 && user) {
+        return <StudentHomeworkV2Screen user={user} fallback={homeworkV1} initialTaskId={activeTaskId} />;
+      }
       return homeworkV1;
     }
     if (view === 'settings') {

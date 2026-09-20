@@ -3279,3 +3279,108 @@ Ryzyka: `firestore.rules` NIE dotknięty. Middleware autoryzacji w
 bez logowania (`homework/direct/:token`) niedotknięte. Dwa nowe
 endpointy Cloud Functions wymagają wdrożenia przed użyciem na produkcji
 (patrz wyżej).
+
+---
+
+2026-09-20 — Claude Code / Sonnet 5 (P0: podpięcie ekranu kursanta v2)
+
+Zadanie: sprawdzić stan `StudentHomeworkV2Screen.tsx` (odnotowany w
+poprzednim wpisie jako martwy import w `Dashboard.tsx`) i podpiąć go,
+żeby kursanci mogli wyświetlać i odsyłać nowo przypisane zadania v2
+(silnik v2 jest domyślnie włączony i to on dziś tworzy zadania po
+kliknięciu „+ Przypisz pracę domową").
+
+Audyt komponentu — NIE był kompletny w sensie technicznym, jeden
+prawdziwy błąd:
+- **Naruszenie Reguł Hooków**: `const [showManualHint, setShowManualHint]
+  = useState(false);` stało PO trzech wcześniejszych warunkowych
+  `return` (brak zadań / lista zadań / „to wszystko na dziś"). Przy
+  przejściu między tymi stanami React zgłosiłby zmianę kolejności
+  hooków (albo po cichu zgubił stan innych hooków) — to by się ujawniło
+  dopiero w przeglądarce, nie w `tsc`/testach. Naprawione: hook
+  przeniesiony na górę komponentu, obok reszty `useState`.
+- Poza tym komponent jest kompletny: pobiera zadania (`studentTasksQuery`
+  + filtr `isV2Task`), wysyła próby (`submitHomeworkAttemptV2`), ma
+  autosave szkicu do `specialTasks/{id}/drafts/{exerciseId}` (rules już
+  na to pozwalały — sprawdzone w `firestore.rules`, zero zmian
+  potrzebnych), i poprawnie oddaje `fallback` (ekran v1), gdy kursant
+  nie ma żadnego zestawu v2.
+- Ważna konsekwencja poprzedniej rundy (human-in-the-loop): odkąd
+  `submitHomeworkV2Attempt` już nie ocenia automatycznie, ten ekran
+  nadal działa mechanicznie (zapisuje próbę, przechodzi do następnego
+  zadania po trzech próbach), ale drabinka podpowiedzi/„pokaż wzorzec po
+  3 próbie" z założenia się nie uruchamia (bo `revealModelAnswer` jest
+  teraz zawsze `false` w domyślnej ścieżce) — kursant zamiast tego widzi
+  komunikat „zapisano, nauczyciel sprawdzi". To zgodne z zasadą
+  human-in-the-loop, nie regresja, ale zmienia charakter tego ekranu z
+  „trening z natychmiastowym coachingiem" na „odeślij i czekaj" — warto
+  to mieć na uwadze przy następnej rozmowie o UX.
+
+Zrobione:
+- `components/dashboard/StudentHomeworkV2Screen.tsx`: naprawiony błąd
+  kolejności hooków (wyżej). Dodany opcjonalny prop `initialTaskId` —
+  nawigacja z powiadomienia/kafelka na pulpicie (`hasNewHomework`,
+  `TeacherHomeworkNotification`-owy odpowiednik dla kursanta,
+  `StudentHomeworkGradedModal`) teraz otwiera właściwe zadanie od razu,
+  zamiast zostawiać kursanta na liście do ręcznego kliknięcia. Gdy
+  wskazany `taskId` NIE jest zadaniem v2 (kursant ma zarówno v1 jak i
+  v2, a link celuje w starsze zadanie v1), komponent oddaje `fallback`
+  zamiast pokazywać pustą/złą listę v2 — link z powiadomienia nie ginie.
+- `components/dashboard/Dashboard.tsx`: w gałęzi `view === 'homework'`
+  dla kursanta (`!isTeacher`) dodane rozgałęzienie: gdy
+  `HOMEWORK_ENGINE_V2` włączone i jest zalogowany `user`, renderuje się
+  `StudentHomeworkV2Screen` z `fallback={homeworkV1}` (już istniejący,
+  wcześniej przygotowany, ale nieużywany JSX) i `initialTaskId={activeTaskId}`.
+  Import `HOMEWORK_ENGINE_V2` i `StudentHomeworkV2Screen` były już w
+  pliku (martwe) — teraz obydwa faktycznie używane.
+
+Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (440/440),
+`npm run build` (przechodzi). UI NIE sprawdzony wzrokowo w przeglądarce
+— brak dostępu do zalogowanej sesji Firebase w tej sesji agenta (ten sam
+dług co reszta ostatnich rund, patrz `CLAUDE.md` sekcja 6). To jest
+teraz priorytet numer jeden do zrobienia przy najbliższym logowaniu:
+zalogować się jako kursant z przypisanym zadaniem v2 i przejść cały
+przepływ (lista → zadanie → wysłanie → powrót do listy → „to wszystko
+na dziś").
+
+Nie dokończone / do sprawdzenia:
+- Ekran v2 nie ma własnego przycisku „← Wróć do pulpitu" (v1 go ma).
+  Nie jest to ślepy zaułek — `TopBar` w `Dashboard.tsx` ma przycisk
+  Home niezależny od tego, co renderuje się w `<main>` — ale UX jest
+  niespójny między silnikami. Świadomie pominięte w tej rundzie (P0
+  było „działa i wysyła", nie parytet wizualny z v1).
+- Ekran v2 nie pokazuje kursantowi NICZEGO po tym, jak lektor
+  później zatwierdzi ocenę (`approveHomeworkV2Grade`) — nie ma
+  listenera na `attempts` po zatwierdzeniu, tylko na `drafts` (autosave)
+  i wynik bezpośrednio po `submitHomeworkAttemptV2`. Powiadomienie o
+  ocenie dociera dziś wyłącznie przez `StudentHomeworkGradedModal`/e-mail
+  (te same pola na `users/{uid}`, ustawiane przez
+  `/api/homework/notify-graded`, który `HomeworkV2ReviewScreen.tsx` już
+  woła po zatwierdzeniu) — więc kursant SIĘ DOWIE, ale nie zobaczy
+  szczegółowego rozbicia odpowiedzi w tym ekranie tak, jak widzi to w
+  v1 (`StudentHomeworkScreen.tsx`'s `viewingGradedTask`). Osobne
+  zadanie, jeśli ma być parytet.
+- Zero testów jednostkowych dla `StudentHomeworkV2Screen.tsx` — to
+  komponent czysto UI-owy (Firestore + hooki), reszta testów w repo nie
+  pokrywa takich komponentów (brak infrastruktury do testów
+  React/RTL w tym projekcie).
+
+Decyzje architektoniczne:
+- `initialTaskId` w `StudentHomeworkV2Screen` sprawdza dopasowanie do
+  listy zadań v2 PRZED otwarciem — jeśli zadania jeszcze nie doszły
+  (`isLoading`), czeka; jeśli doszły i go nie ma, oddaje `fallback`
+  zamiast zakładać z góry silnik. To samo zachowanie co reguła „brak
+  zestawów v2 → fallback" tuż obok, tylko rozszerzone o przypadek
+  konkretnego linku.
+- Nie dodawałem tu drabinki „wynik po zatwierdzeniu" (patrz wyżej) —
+  wymagałoby nowego listenera i nowego stanu ekranu („sprawdzone, oto
+  feedback"), a P0 dotyczyło wyłącznie „kursant widzi i odsyła", nie
+  pełnego zamknięcia pętli human-in-the-loop w tym konkretnym ekranie.
+
+Ryzyka: `firestore.rules` NIE dotknięty (i nie było trzeba — reguły dla
+`attempts`/`drafts` już istniały z wcześniejszej rundy i już pozwalały
+na to, czego ten ekran potrzebuje). Middleware autoryzacji w `server.ts`
+i ścieżki tokenowe bez logowania niedotknięte. `server.ts` w ogóle nie
+był edytowany. Zero zmian schematu danych — wyłącznie nowy, opcjonalny
+prop na już istniejącym komponencie i jedno nowe rozgałęzienie w
+`Dashboard.tsx`.

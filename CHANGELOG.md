@@ -2980,6 +2980,18 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 
 ---
 
+### Z. P0: Podpięcie ekranu kursanta v2 (`StudentHomeworkV2Screen.tsx`) do `Dashboard.tsx` (2026-09-20)
+- **Problem**: entry Y wyżej odnotowała, że silnik v2 domyślnie tworzy nowe zadania po „+ Przypisz pracę domową", ale `StudentHomeworkV2Screen.tsx` był martwym importem w `Dashboard.tsx` — kursanci nie mieli jak w ogóle zobaczyć ani odesłać zadania v2.
+- **Audyt komponentu**: znaleziony jeden prawdziwy błąd — `useState` dla `showManualHint` stał PO trzech warunkowych `return` (naruszenie Reguł Hooków), co ujawniłoby się dopiero w przeglądarce jako rozjazd kolejności hooków przy przejściu między widokami (lista/zadanie/koniec). Przeniesiony na górę komponentu razem z resztą stanu. Poza tym komponent jest kompletny: pobiera zadania, wysyła próby przez `submitHomeworkAttemptV2`, ma autosave szkicu do podkolekcji `drafts` (reguły Firestore już na to pozwalały z wcześniejszej rundy — zero zmian w `firestore.rules`), i poprawnie oddaje `fallback` (ekran v1), gdy kursant nie ma zestawu v2.
+- **`Dashboard.tsx`**: w gałęzi `view === 'homework'` dla kursanta dodane rozgałęzienie — gdy `HOMEWORK_ENGINE_V2` włączone, renderuje się `StudentHomeworkV2Screen` z `fallback={homeworkV1}` (JSX już przygotowany wcześniej, ale nieużywany) zamiast zawsze zwracać `homeworkV1`.
+- **Spójność nawigacji**: nowy prop `initialTaskId` w `StudentHomeworkV2Screen.tsx` — kliknięcie kafelka/powiadomienia ze wskazanym zadaniem otwiera je od razu, zamiast zostawiać kursanta na liście. Gdy wskazane zadanie NIE jest zadaniem v2 (kursant ma i v1, i v2, link celuje w starsze v1), komponent oddaje `fallback` zamiast pustej/złej listy v2.
+- **Skutek uboczny poprzedniej rundy (human-in-the-loop) odnotowany, nie naprawiony**: skoro `submitHomeworkV2Attempt` już nie ocenia automatycznie (entry Y), ten ekran nadal mechanicznie działa (zapisuje próbę, przechodzi dalej po 3 próbach), ale drabinka podpowiedzi/„pokaż wzorzec po 3 próbie" się nie uruchamia — kursant widzi generyczne „zapisano, nauczyciel sprawdzi" zamiast natychmiastowego coachingu. Zgodne z human-in-the-loop, ale zmienia charakter ekranu; do rozmowy przy następnej sesji.
+- Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (440/440), `npm run build` (przechodzi).
+- **Nie dokończone / do sprawdzenia**: UI NIE sprawdzony wzrokowo w przeglądarce (brak dostępu do zalogowanej sesji Firebase w środowisku agenta) — priorytet numer jeden przy najbliższym logowaniu. Ekran v2 nie ma własnego „← Wróć do pulpitu" (TopBar ma Home niezależnie, więc nie jest to ślepy zaułek, ale UX niespójny z v1). Ekran v2 nie pokazuje kursantowi rozbicia odpowiedzi po tym, jak lektor później zatwierdzi ocenę (`approveHomeworkV2Grade`) — powiadomienie dociera przez `StudentHomeworkGradedModal`/e-mail, ale nie ma szczegółowego widoku „sprawdzone" jak w v1.
+- Ryzyka: `firestore.rules` NIE dotknięty (reguły dla `attempts`/`drafts` już istniały). Middleware autoryzacji i ścieżki tokenowe bez logowania niedotknięte. `server.ts` nieedytowany. Zero zmian schematu danych.
+
+---
+
 
 ## 5. Przewodnik Szybkiego Startu dla Nowych Sesji i AI
 

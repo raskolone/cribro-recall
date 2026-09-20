@@ -34,6 +34,15 @@ interface StudentHomeworkV2ScreenProps {
    * i wyniki dalej działały.
    */
   fallback?: React.ReactNode;
+  /**
+   * Nawigacja z powiadomienia/kafelka na pulpicie ("Nowa praca domowa",
+   * widget "Wymaga uwagi" itd.) przekazuje konkretny `taskId`. Gdy to
+   * zadanie jest w silniku v2, otwiera je od razu. Gdy nie — może być
+   * zadaniem v1 kursanta, który ma RÓWNIEŻ jakiś zestaw v2 (więc `fallback`
+   * niżej by się nie uruchomił) — wtedy oddajemy `fallback`, żeby link nie
+   * ginął w liście złego silnika.
+   */
+  initialTaskId?: string | null;
 }
 
 interface V2Task {
@@ -75,7 +84,7 @@ const MASTERY_LABEL: Record<MasteryState, string> = {
   opanowane: 'Opanowane',
 };
 
-const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user, fallback }) => {
+const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user, fallback, initialTaskId }) => {
   const [tasks, setTasks] = useState<V2Task[]>([]);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
@@ -83,6 +92,12 @@ const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user,
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  // Musi stać przed każdym `return` warunkowym niżej — Reguły Hooków nie
+  // pozwalają wywołać `useState` dopiero po wcześniejszym wczesnym wyjściu
+  // z komponentu (przy pierwszym renderze bez `exercise` ten hook w ogóle
+  // by się nie wykonał, więc kolejny render z zadaniem rozjeżdżałby kolejność
+  // hooków i React zgłaszałby błąd/tracił stan pozostałych hooków).
+  const [showManualHint, setShowManualHint] = useState(false);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -106,6 +121,18 @@ const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user,
     );
     return unsubscribe;
   }, [user?.id]);
+
+  // Nawigacja z powiadomienia/kafelka wskazuje konkretne zadanie — otwiera
+  // się od razu, zamiast zostawiać kursanta na liście do ręcznego kliknięcia.
+  const didAutoOpenRef = useRef(false);
+  useEffect(() => {
+    if (!initialTaskId || isLoading || didAutoOpenRef.current) return;
+    if (tasks.some((t) => t.id === initialTaskId)) {
+      didAutoOpenRef.current = true;
+      setActiveTaskId(initialTaskId);
+      setIndex(0);
+    }
+  }, [initialTaskId, tasks, isLoading]);
 
   const activeTask = useMemo(
     () => tasks.find((t) => t.id === activeTaskId) || null,
@@ -208,7 +235,11 @@ const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user,
   }
 
   // Brak zestawów v2 — oddajemy ekran v1 razem z całą historią kursanta.
-  if (!activeTask && tasks.length === 0 && fallback) {
+  // Ten sam fallback także wtedy, gdy nawigacja celuje w konkretne zadanie,
+  // którego nie ma wśród zestawów v2 — to znaczy, że jest to zadanie v1
+  // kursanta, który ma RÓWNIEŻ jakiś zestaw v2 (inaczej trafiłby w gałąź
+  // wyżej), więc bez tego link z powiadomienia gubiłby się w liście v2.
+  if (!activeTask && fallback && (tasks.length === 0 || (initialTaskId && !tasks.some((t) => t.id === initialTaskId)))) {
     return <>{fallback}</>;
   }
 
@@ -259,7 +290,6 @@ const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user,
     );
   }
 
-  const [showManualHint, setShowManualHint] = useState(false);
   const canGoNext = state.done || (state.attemptsLeft === 0 && !state.awaitingCorrection);
 
   const availableHint =
