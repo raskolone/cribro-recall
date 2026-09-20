@@ -14,7 +14,7 @@ import { AlertTriangle, ChevronRight } from 'lucide-react';
 
 interface TeacherAttentionBannerProps {
   /** `filterStatus` — ten sam sentinel, który już rozumie HomeworkScreen. */
-  onOpenHomework: (filterStatus: 'submitted' | 'v2review') => void;
+  onOpenHomework: (filterStatus: 'submitted') => void;
 }
 
 export const TeacherAttentionBanner: React.FC<TeacherAttentionBannerProps> = ({ onOpenHomework }) => {
@@ -50,21 +50,12 @@ export const TeacherAttentionBanner: React.FC<TeacherAttentionBannerProps> = ({ 
         Wymaga Twojej uwagi
       </div>
       <div className="flex flex-wrap items-center gap-2 flex-1">
-        {submittedCount > 0 && (
+        {(submittedCount > 0 || flaggedV2Count > 0) && (
           <button
             onClick={() => onOpenHomework('submitted')}
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-warn/15 border border-warn/30 text-text-hi hover:bg-warn/25 transition-colors"
           >
-            {submittedCount} {submittedCount === 1 ? 'praca odesłana' : 'prac odesłanych'} do oceny
-            <ChevronRight size={14} />
-          </button>
-        )}
-        {flaggedV2Count > 0 && (
-          <button
-            onClick={() => onOpenHomework('v2review')}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-warn/15 border border-warn/30 text-text-hi hover:bg-warn/25 transition-colors"
-          >
-            {flaggedV2Count} {flaggedV2Count === 1 ? 'próba (v2)' : 'prób (v2)'} wymaga przeglądu
+            {submittedCount + flaggedV2Count} {submittedCount + flaggedV2Count === 1 ? 'praca czeka' : 'prac czeka'} na sprawdzenie
             <ChevronRight size={14} />
           </button>
         )}

@@ -511,6 +511,18 @@ export const resolveMastery = (
   return { state: earnedMastery ? 'opanowane' : 'ćwiczymy', requiresTeacherReview: false };
 };
 
+/**
+ * Human-in-the-loop: czy werdykt wolno wysłać kursantowi bez decyzji lektora.
+ *
+ * Domyślnie NIGDY — silnik oceny ma być wywoływany wyłącznie na życzenie
+ * lektora (przycisk „Zaproponuj ocenę z AI"). Jedyny wyjątek to opcjonalny
+ * przełącznik „Automatyczna ocena AI przy 100% pewności" (domyślnie
+ * wyłączony) — i nawet wtedy tylko dla `confidence === 1`, żeby nie
+ * powtórzyć błędu z v1 (kursant widział ocenę, zanim lektor ją zobaczył).
+ */
+export const shouldAutoApprove = (confidence: number, autoApproveEnabled: boolean): boolean =>
+  autoApproveEnabled === true && confidence === 1;
+
 // ---------------------------------------------------------------------------
 // Zgodność z v1
 // ---------------------------------------------------------------------------

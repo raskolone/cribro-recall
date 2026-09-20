@@ -19,11 +19,13 @@ import {
   AttemptNumber,
   ENGINE_VERSION,
   ExerciseContractV2,
+  GradingVerdictV2,
   MAX_ATTEMPTS,
   MasteryState,
   SCHEMA_VERSION,
   hintForAttempt,
   isExerciseContractV2,
+  shouldAutoApprove,
 } from './contracts';
 import { composeFeedback } from './feedbackComposer';
 import { gradeAttempt } from './gradingEngine';
@@ -32,6 +34,7 @@ import { createAiCall, createOpenAiCall } from './openai';
 import { buildExerciseSet, planExercises } from './pipeline';
 import { ENGINE_DISABLED_MESSAGE, isHomeworkEngineV2Enabled } from './flag';
 import { getDb } from './db';
+import { getHomeworkAiSettings } from './settings';
 import { buildV2TaskPayload, newHomeworkSetId, selectSendableExercises } from './assignment';
 
 const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY');
@@ -318,7 +321,158 @@ export const submitHomeworkV2Attempt = onCall(
         .sort((a, b) => (a.attemptNumber || 0) - (b.attemptNumber || 0))
         .pop()?.masteryState || 'nowe';
 
-    // --- ocena i feedback ----------------------------------------------------
+    const baseAttemptFields = {
+      exerciseId,
+      studentUid,
+      attemptNumber: effectiveAttempt,
+      answer,
+      isCorrectionAfterModelAnswer,
+      submittedAt: new Date().toISOString(),
+      createdAt: FieldValue.serverTimestamp(),
+    };
+
+    /* Human-in-the-loop: silnik oceny wywołuje się sam wyłącznie gdy lektor
+       jawnie włączył „Automatyczną ocenę AI przy 100% pewności" (domyślnie
+       wyłączone) — i nawet wtedy próba trafia do kursanta natychmiast tylko
+       gdy `confidence === 1`. W każdym innym przypadku ocenę uruchamia
+       dopiero `proposeHomeworkV2Grade` na życzenie lektora. */
+    const { autoApproveAtFullConfidence } = await getHomeworkAiSettings();
+
+    if (autoApproveAtFullConfidence) {
+      const call = createAiCall({
+        geminiApiKey: getSecretValue(GEMINI_API_KEY),
+        openAiApiKey: getSecretValue(OPENAI_API_KEY),
+      });
+
+      const verdict = await gradeAttempt({
+        contract,
+        answer,
+        attemptNumber: effectiveAttempt,
+        isCorrectionAfterModelAnswer,
+        previousState,
+        call,
+      });
+
+      if (shouldAutoApprove(verdict.confidence, autoApproveAtFullConfidence)) {
+        const feedback = await composeFeedback({ contract, verdict, answer, attemptNumber: effectiveAttempt, call });
+        const hintsUsed = Math.max(0, effectiveAttempt - 1);
+
+        await attemptsRef.add({
+          ...baseAttemptFields,
+          hintShown: hintForAttempt(contract, effectiveAttempt).level,
+          rubricScores: verdict.rubricScores,
+          weightedScore: verdict.weightedScore,
+          confidence: verdict.confidence,
+          rationale: verdict.rationale,
+          masteryState: verdict.masteryState,
+          requiresTeacherReview: false,
+          pendingTeacherApproval: false,
+          autoApproved: true,
+          schemaVersion: verdict.schemaVersion,
+          modelVersion: verdict.modelVersion,
+          feedbackMessage: feedback.message,
+        });
+
+        await recordAttemptInProfile(studentUid, String(task.teacherId || ''), contract, verdict, effectiveAttempt, hintsUsed);
+
+        // Kursant dostaje feedback i stan. Bez procentu, bez słupka (§3.1).
+        return {
+          message: feedback.message,
+          masteryState: feedback.masteryState,
+          nextHint: feedback.nextHint,
+          revealModelAnswer: feedback.revealModelAnswer,
+          modelAnswer: feedback.modelAnswer,
+          attemptsLeft: feedback.attemptsLeft,
+          attemptNumber: effectiveAttempt,
+          requiresTeacherReview: false,
+          pendingTeacherApproval: false,
+        };
+      }
+
+      // Pewność poniżej 100% mimo włączonego przełącznika — zostaje jako
+      // propozycja do przejrzenia, werdykt NIE trafia do kursanta.
+      await attemptsRef.add({
+        ...baseAttemptFields,
+        rubricScores: verdict.rubricScores,
+        weightedScore: verdict.weightedScore,
+        confidence: verdict.confidence,
+        rationale: verdict.rationale,
+        masteryState: verdict.masteryState,
+        requiresTeacherReview: true,
+        pendingTeacherApproval: true,
+        schemaVersion: verdict.schemaVersion,
+        modelVersion: verdict.modelVersion,
+      });
+
+      return {
+        message: 'Twoja odpowiedź została zapisana. Nauczyciel ją sprawdzi.',
+        masteryState: previousState,
+        nextHint: null,
+        revealModelAnswer: false,
+        attemptsLeft: Math.max(0, MAX_ATTEMPTS - effectiveAttempt),
+        attemptNumber: effectiveAttempt,
+        requiresTeacherReview: true,
+        pendingTeacherApproval: true,
+      };
+    }
+
+    // Domyślne zachowanie: silnik oceny się NIE uruchamia. Praca czeka na
+    // przycisk lektora „Zaproponuj ocenę z AI" (patrz `proposeHomeworkV2Grade`).
+    await attemptsRef.add({
+      ...baseAttemptFields,
+      requiresTeacherReview: true,
+      pendingTeacherApproval: true,
+    });
+
+    return {
+      message: 'Twoja odpowiedź została zapisana. Nauczyciel ją sprawdzi.',
+      masteryState: previousState,
+      nextHint: null,
+      revealModelAnswer: false,
+      attemptsLeft: Math.max(0, MAX_ATTEMPTS - effectiveAttempt),
+      attemptNumber: effectiveAttempt,
+      requiresTeacherReview: true,
+      pendingTeacherApproval: true,
+    };
+  }
+);
+
+// ---------------------------------------------------------------------------
+// 3b. Propozycja oceny na życzenie lektora
+// ---------------------------------------------------------------------------
+
+/**
+ * Uruchamia silnik oceny dla JEDNEJ próby, na żądanie lektora.
+ *
+ * Nic nie zapisuje w `attempts` — zwraca propozycję do edycji w UI. Dopiero
+ * `approveHomeworkV2Grade` utrwala (ewentualnie poprawiony) werdykt i wysyła
+ * go kursantowi. To jest przycisk „✨ Zaproponuj ocenę z AI".
+ */
+export const proposeHomeworkV2Grade = onCall(
+  { region: FUNCTION_REGION, secrets: [GEMINI_API_KEY, OPENAI_API_KEY], timeoutSeconds: 120, memory: '512MiB' },
+  async (request) => {
+    requireHomeworkEngineV2();
+    await requireTeacherUid(request.auth?.uid);
+
+    const taskId = String(request.data?.taskId || '').trim();
+    const attemptId = String(request.data?.attemptId || '').trim();
+    if (!taskId || !attemptId) throw new HttpsError('invalid-argument', 'Brak zadania lub próby.');
+
+    const taskRef = getDb().collection('specialTasks').doc(taskId);
+    const [taskSnap, attemptSnap] = await Promise.all([taskRef.get(), taskRef.collection('attempts').doc(attemptId).get()]);
+
+    if (!taskSnap.exists) throw new HttpsError('not-found', 'Zadanie nie istnieje.');
+    if (!attemptSnap.exists) throw new HttpsError('not-found', 'Próba nie istnieje.');
+
+    const task = taskSnap.data() as Record<string, unknown>;
+    const attempt = attemptSnap.data() as Record<string, unknown>;
+
+    const exercises = Array.isArray(task.sentences) ? task.sentences : [];
+    const contract = exercises.find(
+      (item: unknown) => (item as ExerciseContractV2)?.id === attempt.exerciseId
+    ) as ExerciseContractV2 | undefined;
+    if (!contract) throw new HttpsError('not-found', 'Ćwiczenie nie należy do tego zadania.');
+
     const call = createAiCall({
       geminiApiKey: getSecretValue(GEMINI_API_KEY),
       openAiApiKey: getSecretValue(OPENAI_API_KEY),
@@ -326,65 +480,88 @@ export const submitHomeworkV2Attempt = onCall(
 
     const verdict = await gradeAttempt({
       contract,
-      answer,
-      attemptNumber: effectiveAttempt,
-      isCorrectionAfterModelAnswer,
-      previousState,
+      answer: String(attempt.answer || ''),
+      attemptNumber: (attempt.attemptNumber || 1) as AttemptNumber,
+      isCorrectionAfterModelAnswer: attempt.isCorrectionAfterModelAnswer === true,
+      previousState: 'nowe',
       call,
     });
 
     const feedback = await composeFeedback({
       contract,
       verdict,
-      answer,
-      attemptNumber: effectiveAttempt,
+      answer: String(attempt.answer || ''),
+      attemptNumber: (attempt.attemptNumber || 1) as AttemptNumber,
       call,
     });
 
-    const hintsUsed = Math.max(0, effectiveAttempt - 1);
+    return { verdict, feedbackMessage: feedback.message };
+  }
+);
 
-    await attemptsRef.add({
-      exerciseId,
-      studentUid,
-      attemptNumber: effectiveAttempt,
-      answer,
-      hintShown: hintForAttempt(contract, effectiveAttempt).level,
-      isCorrectionAfterModelAnswer,
-      submittedAt: new Date().toISOString(),
-      createdAt: FieldValue.serverTimestamp(),
+// ---------------------------------------------------------------------------
+// 3c. Zatwierdzenie oceny przez lektora
+// ---------------------------------------------------------------------------
 
-      // Werdykt — zapisywany wyłącznie stąd.
+/**
+ * Utrwala werdykt (ewentualnie poprawiony przez lektora w UI) i odblokowuje
+ * feedback dla kursanta. To jest przycisk „Zatwierdź i wyślij do kursanta".
+ */
+export const approveHomeworkV2Grade = onCall(
+  { region: FUNCTION_REGION, timeoutSeconds: 60, memory: '256MiB' },
+  async (request) => {
+    requireHomeworkEngineV2();
+    const teacherUid = await requireTeacherUid(request.auth?.uid);
+
+    const taskId = String(request.data?.taskId || '').trim();
+    const attemptId = String(request.data?.attemptId || '').trim();
+    const verdict = request.data?.verdict as GradingVerdictV2 | undefined;
+    const feedbackMessage = String(request.data?.feedbackMessage || '').trim();
+
+    if (!taskId || !attemptId) throw new HttpsError('invalid-argument', 'Brak zadania lub próby.');
+    if (!verdict) throw new HttpsError('invalid-argument', 'Brak werdyktu do zatwierdzenia.');
+
+    const attemptRef = getDb().collection('specialTasks').doc(taskId).collection('attempts').doc(attemptId);
+    const attemptSnap = await attemptRef.get();
+    if (!attemptSnap.exists) throw new HttpsError('not-found', 'Próba nie istnieje.');
+
+    await attemptRef.update({
       rubricScores: verdict.rubricScores,
       weightedScore: verdict.weightedScore,
       confidence: verdict.confidence,
       rationale: verdict.rationale,
       masteryState: verdict.masteryState,
-      requiresTeacherReview: verdict.requiresTeacherReview,
+      requiresTeacherReview: false,
+      pendingTeacherApproval: false,
       schemaVersion: verdict.schemaVersion,
       modelVersion: verdict.modelVersion,
-      feedbackMessage: feedback.message,
+      feedbackMessage,
+      teacherApprovedAt: new Date().toISOString(),
+      teacherApprovedBy: teacherUid,
     });
 
-    await recordAttemptInProfile(
-      studentUid,
-      String(task.teacherId || ''),
-      contract,
-      verdict,
-      effectiveAttempt,
-      hintsUsed
-    );
+    const attempt = attemptSnap.data() as Record<string, unknown>;
+    const taskSnap = await getDb().collection('specialTasks').doc(taskId).get();
+    const task = taskSnap.data() as Record<string, unknown> | undefined;
+    const exercises = Array.isArray(task?.sentences) ? (task!.sentences as unknown[]) : [];
+    const contract = exercises.find(
+      (item) => (item as ExerciseContractV2)?.id === attempt.exerciseId
+    ) as ExerciseContractV2 | undefined;
 
-    // Kursant dostaje feedback i stan. Bez procentu, bez słupka (§3.1).
-    return {
-      message: feedback.message,
-      masteryState: feedback.masteryState,
-      nextHint: feedback.nextHint,
-      revealModelAnswer: feedback.revealModelAnswer,
-      modelAnswer: feedback.modelAnswer,
-      attemptsLeft: feedback.attemptsLeft,
-      attemptNumber: effectiveAttempt,
-      requiresTeacherReview: verdict.requiresTeacherReview,
-    };
+    if (task && contract) {
+      await recordAttemptInProfile(
+        String(attempt.studentUid || task.studentUid || ''),
+        String(task.teacherId || teacherUid),
+        contract,
+        verdict,
+        (attempt.attemptNumber || 1) as AttemptNumber,
+        Math.max(0, ((attempt.attemptNumber || 1) as number) - 1)
+      ).catch(() => {
+        // Profil nauki to statystyka, nie warunek zatwierdzenia oceny.
+      });
+    }
+
+    return { ok: true };
   }
 );
 

@@ -2,7 +2,7 @@ import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions } from '../firebase';
 import { HOMEWORK_ENGINE_V2 } from '../config/featureFlags';
-import type { ExerciseContractV2, MasteryState } from './homeworkV2/contracts';
+import type { ExerciseContractV2, GradingVerdictV2, MasteryState } from './homeworkV2/contracts';
 import { buildV2TaskPayload, newHomeworkSetId, selectSendableExercises } from '../functions/src/homeworkV2/assignment';
 import { aiMonitor } from './aiMonitorService';
 import { PRIMARY_MODEL } from './aiModels';
@@ -93,6 +93,8 @@ export interface SubmitAttemptResponse {
   attemptsLeft: number;
   attemptNumber: number;
   requiresTeacherReview: boolean;
+  /** Silnik oceny nie ruszył automatycznie — czeka na przycisk lektora. */
+  pendingTeacherApproval?: boolean;
 }
 
 export interface ReviewProposal {
@@ -291,4 +293,47 @@ export const proposeReviewV2 = async (studentUid: string): Promise<ReviewProposa
   );
   const result = await call({ studentUid });
   return result.data.proposals;
+};
+
+export interface ProposeGradeRequest {
+  taskId: string;
+  attemptId: string;
+}
+
+export interface ProposeGradeResponse {
+  verdict: GradingVerdictV2;
+  feedbackMessage: string;
+}
+
+/**
+ * Przycisk „✨ Zaproponuj ocenę z AI". Uruchamia silnik oceny dla jednej
+ * próby na życzenie lektora — nic nie zapisuje, tylko zwraca propozycję do
+ * edycji w podglądzie.
+ */
+export const proposeGradeV2 = async (request: ProposeGradeRequest): Promise<ProposeGradeResponse> => {
+  assertEnabled();
+  const call = httpsCallable<ProposeGradeRequest, ProposeGradeResponse>(functions, 'proposeHomeworkV2Grade', {
+    timeout: 120_000,
+  });
+  const result = await call(request);
+  return result.data;
+};
+
+export interface ApproveGradeRequest {
+  taskId: string;
+  attemptId: string;
+  verdict: GradingVerdictV2;
+  feedbackMessage: string;
+}
+
+/**
+ * Przycisk „Zatwierdź i wyślij do kursanta". Utrwala werdykt (ewentualnie
+ * poprawiony przez lektora) i odblokowuje feedback dla kursanta.
+ */
+export const approveGradeV2 = async (request: ApproveGradeRequest): Promise<void> => {
+  assertEnabled();
+  const call = httpsCallable<ApproveGradeRequest, { ok: boolean }>(functions, 'approveHomeworkV2Grade', {
+    timeout: 60_000,
+  });
+  await call(request);
 };

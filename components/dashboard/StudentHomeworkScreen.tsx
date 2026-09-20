@@ -27,6 +27,7 @@ import { HomeworkType, SpecialTask, StudentTest } from '../../types';
 import { homeworkBlocks, homeworkItemType, isV1Task, studentTasksQuery } from '../../utils/homework';
 import { formatTaskDateTime } from './HomeworkScreen';
 import { evaluateTranslations } from '../../services/geminiService';
+import { getHomeworkAiSettings } from '../../services/homeworkAiSettingsService';
 import { HOMEWORK_TYPE_LABELS } from '../../services/homeworkGenerator';
 import { recordExerciseResults } from '../../services/learningProfile';
 import { useDraftAnswers } from '../../hooks/useDraftAnswers';
@@ -644,8 +645,15 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
         .map((item: any, i: number) => (typeOf(item) === 'translation' ? i : -1))
         .filter((i: number) => i >= 0);
 
+      // Human-in-the-loop: silnik oceny AI wywołuje się na żądanie lektora
+      // (przycisk „Zaproponuj ocenę z AI" w `HomeworkScreen.tsx`), nie
+      // automatycznie przy wysłaniu. Jedyny wyjątek to opcjonalny
+      // przełącznik „Automatyczna ocena AI przy 100% pewności" (domyślnie
+      // wyłączony) — i nawet wtedy praca trafia do kursanta jako oceniona
+      // tylko gdy WSZYSTKIE odpowiedzi są w 100% poprawne, patrz niżej.
+      const aiSettings = await getHomeworkAiSettings();
       let evaluated: any[] = [];
-      if (translationAt.length > 0) {
+      if (translationAt.length > 0 && aiSettings.autoApproveAtFullConfidence) {
         const exercises = translationAt.map((i: number) => ({
           polishSentence: items[i].polishSentence,
           englishTranslation: items[i].englishTranslation,
@@ -693,11 +701,25 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             : answerToText(itemType, item, answers[i]);
       });
 
+      // Nawet przy włączonym przełączniku auto-ocena zatwierdza WYŁĄCZNIE
+      // bezbłędną pracę — każdy inny wynik czeka na lektora jak zawsze.
+      const isFlawless = rows.length > 0 && rows.every((r) => r.isCorrect && r.score === 100);
+      const autoApproved = aiSettings.autoApproveAtFullConfidence && isFlawless;
+      const nowIso = new Date().toISOString();
+
       await updateDoc(doc(db, 'specialTasks', activeTask.id), {
-        status: 'submitted',
+        status: autoApproved ? 'graded' : 'submitted',
         studentAnswers: storedAnswers,
         evaluationResults: rows,
-        submittedAt: new Date().toISOString(),
+        submittedAt: nowIso,
+        ...(autoApproved
+          ? {
+              grade: average,
+              reviewedAt: nowIso,
+              teacherFeedback: 'Wszystkie odpowiedzi poprawne — ocena zatwierdzona automatycznie (100% pewności).',
+              feedbackReadByStudent: false,
+            }
+          : {}),
       });
 
       try {

@@ -3118,3 +3118,164 @@ transkrypcji obsługuje teraz też temat). Middleware autoryzacji
 logowania niedotknięte. `server.ts` nie był w ogóle edytowany w tym
 zadaniu. Mapowanie daty i przypisanie kursanta (`studentId`)
 niezmienione.
+
+---
+
+2026-09-20 — Claude Code / Sonnet 5
+
+Zadanie: Ujednolicenie modułu prac domowych — zlikwidować w UI podział
+v1/v2 (zakładka „Lista prac" + przycisk „Przegląd v2"), jeden nagłówek
+„Zarządzanie Pracami Domowymi" + jeden przycisk „+ Przypisz pracę
+domową", i wymusić „Human-in-the-loop": silnik oceny AI wywoływany
+wyłącznie na żądanie lektora (przycisk „✨ Zaproponuj ocenę z AI"),
+z edycją przed „Zatwierdź i wyślij do kursanta"; nadesłana praca zawsze
+„Do sprawdzenia". Opcjonalny przełącznik „Automatyczna ocena AI przy
+100% pewności" (domyślnie wyłączony).
+
+Przed zaczęciem zauważyłem niescalone, ale przetestowane zmiany z
+poprzedniej sesji (Title Generation Gate, wpis wyżej) — niezwiązane z tym
+zadaniem, więc scommitowane osobno (`9b0a608`) przed przystąpieniem do
+pracy, zgodnie z zasadą „jeden commit = jedna zmiana".
+
+Audyt (przed zmianą kodu, przez subagenta Explore + ręczne dogłębne
+sprawdzenie kodu żywych ścieżek): `HomeworkScreen.tsx` jest mostem
+między v1 i v2, ale montowany WYŁĄCZNIE z `isTeacher=true`
+(`TeacherWorkScreen.tsx`, `AdminPanel.tsx`) — więc jego gałęzie
+`!isTeacher` (student workspace, `handleSubmitTask`) są martwym kodem.
+Żywa ścieżka studenta to osobny plik, `StudentHomeworkScreen.tsx`.
+Silnik v2 jest już domyślnie włączony (`HOMEWORK_ENGINE_V2 = true`)
+i faktycznie tworzy nowe zadania po „+ Przypisz pracę domową"
+(`HomeworkComposerV2`), ale `StudentHomeworkV2Screen.tsx` jest martwym
+importem w `Dashboard.tsx` — kursanci NIE mają dziś jak odpowiedzieć na
+zadanie v2 przez normalną nawigację. To pre-istniejąca luka, świadomie
+NIE naprawiona w tej rundzie (inny zakres — wymaga decyzji o UX ekranu
+kursanta, nie o module zarządzania/oceny). Zgłaszam to jako najważniejsze
+ryzyko tej rundy niżej.
+
+Prawdziwy "walidator w tle" znalazłem w `StudentHomeworkScreen.tsx:
+handleSubmit` (żywa ścieżka v1): `evaluateTranslations()` (AI) wołane
+automatycznie przy KAŻDYM wysłaniu pracy, zanim lektor cokolwiek zrobił.
+UI już poprawnie chowała wynik przed kursantem do czasu `status ===
+'graded'` — ale silnik i tak się uruchamiał, kosztował, i naruszał
+zasadę „na żądanie lektora" z tego zlecenia.
+
+Zrobione:
+- `HomeworkScreen.tsx`: usunięte przyciski „Lista prac (n)"/„Przegląd
+  v2" i stan `activeTab: 'v2review'`. Jeden przycisk „+ Przypisz pracę
+  domową" (zamienia się w „Wróć do listy" w trybie tworzenia). Nowa
+  funkcja `openTaskReview(task)` — jeden punkt otwarcia szczegółów,
+  kierujący na modal v1 albo na osadzony widok v2 wg `isV2Task(task)`;
+  podpięta we wszystkich miejscach, które wcześniej wołały
+  `setReviewTask`/`setPreviewTask` wprost (kafelki, `HomeworkTaskList`,
+  `initialTaskId` z nawigacji) — część z nich renderowałaby dla v2 pusty
+  widok v1 (inny kształt danych), więc to też naprawa błędu. Dodany
+  toggle „Automatyczna ocena AI przy 100% pewności" w nagłówku (tylko
+  lektor) i zapytanie `collectionGroup('attempts')` do oznaczania zadań
+  v2 jako „Do sprawdzenia" (ich `status` na dokumencie nadrzędnym nigdy
+  się nie zmienia — werdykt żyje w podkolekcji). Naprawiony przy okazji
+  bug: nawigacja z widgetu „Wymaga uwagi" (`initialTaskId`) otwierała
+  warsztat KURSANTA zamiast podglądu lektora, bo `activeTask`-owa sekcja
+  nie miała `isTeacher`-guarda.
+- `components/admin/HomeworkV2ReviewScreen.tsx`: przebudowany z osobnego
+  ekranu (lista wszystkich zestawów + zbiorczy boks „Wymaga uwagi") na
+  komponent JEDNEGO zadania osadzony w modalu. Zbiorczy boks usunięty —
+  pewność modelu zostaje jako subtelna notatka przy próbie. Dodane
+  przyciski „Zaproponuj ocenę z AI"/„Zatwierdź i wyślij do kursanta" na
+  poziomie pojedynczej próby.
+- `functions/src/homeworkV2/endpoints.ts`: `submitHomeworkV2Attempt`
+  przestał automatycznie oceniać każdą próbę. Domyślnie zapisuje się bez
+  werdyktu (`requiresTeacherReview: true`, `pendingTeacherApproval:
+  true`). Dwa nowe `onCall`: `proposeHomeworkV2Grade` (ocena na żądanie,
+  nic nie zapisuje) i `approveHomeworkV2Grade` (utrwala werdykt,
+  odblokowuje feedback). Wyjątek: gdy `system/homeworkAiSettings.
+  autoApproveAtFullConfidence` jest `true`, ocena nadal liczy się
+  automatycznie, ale finalizuje się bez lektora WYŁĄCZNIE przy
+  `confidence === 1` — inaczej ląduje jako propozycja do przejrzenia.
+  Nowy `functions/src/homeworkV2/settings.ts` (odczyt ustawienia po
+  stronie Cloud Functions) i nowa czysta funkcja `shouldAutoApprove()`
+  w `contracts.ts`.
+- `StudentHomeworkScreen.tsx:handleSubmit`: `evaluateTranslations()`
+  przeniesione za ten sam przełącznik (`services/
+  homeworkAiSettingsService.ts`) — domyślnie wcale się nie uruchamia,
+  korzysta z istniejącej ścieżki zapasowej „brak oceny modelu". Gdy
+  przełącznik włączony i WSZYSTKIE odpowiedzi w 100% poprawne, zadanie
+  trafia od razu jako `status: 'graded'` z automatyczną notatką; każdy
+  inny wynik czeka na lektora jak zawsze.
+- `HomeworkScreen.tsx`: `handleAnalyzeWithAI` → przycisk „✨ Zaproponuj
+  ocenę z AI", `handleSaveReview` → przycisk „Zatwierdź i wyślij do
+  kursanta" (logika obu bez zmian — to była już poprawna implementacja,
+  tylko źle nazwana).
+- Ujednolicone etykiety statusu w całym module: „Do sprawdzenia" / „W
+  trakcie" / „Sprawdzone" (`HomeworkTaskList.tsx`, kafelki, modal
+  podglądu) — wcześniej cztery różne nazwy dla tych samych trzech
+  stanów w różnych miejscach tego samego ekranu.
+- `services/homeworkV2Client.ts`: nowe `proposeGradeV2`/`approveGradeV2`.
+- `services/homeworkAiSettingsService.ts` (nowy) — odczyt/zapis
+  `system/homeworkAiSettings` po stronie klienta (Firestore client SDK
+  bezpośrednio — `system/{document=**}` w regułach już pozwala na to
+  każdemu `isAdmin()`/`teacher`, więc zero zmian w `firestore.rules`).
+- `TeacherAttentionBanner.tsx`, `TeacherHomeworkNotification.tsx`,
+  `Dashboard.tsx`: usunięty osobny kanał `onOpenV2Review`/`'v2review'` —
+  wszystko woła teraz `onOpenHomework(taskId)`/`filterStatus:'submitted'`,
+  bo `openTaskReview` w `HomeworkScreen.tsx` sam rozpoznaje silnik.
+- `tests/homeworkV2Contracts.test.ts`: 2 nowe testy na `shouldAutoApprove`
+  (baza 438 + 2 = 440).
+
+Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (440/440),
+`npm run build` (przechodzi), `npm --prefix functions run build`
+(przechodzi). UI NIE sprawdzony wzrokowo w przeglądarce.
+
+Nie dokończone / do sprawdzenia:
+- `StudentHomeworkV2Screen.tsx` nadal niepodpięty do nawigacji kursanta
+  (patrz audyt wyżej) — zadania v2 tworzone przez „+ Przypisz pracę
+  domową" nie mają dziś jak dotrzeć do kursanta przez normalny ekran.
+  To NIE zostało wprowadzone w tej rundzie, ale skoro `HOMEWORK_ENGINE_V2`
+  jest domyślnie `true`, każda nowa praca domowa dziś idzie tą martwą
+  ścieżką. Wymaga osobnej decyzji Macieja: naprawić routing w
+  `Dashboard.tsx`, czy tymczasowo wyłączyć flagę przy tworzeniu nowych
+  zadań, dopóki ekran kursanta nie będzie gotowy. To najważniejsza
+  rzecz do wyjaśnienia przed pokazaniem tego modułu prawdziwemu
+  kursantowi.
+- Nowe endpointy `onCall` (`proposeHomeworkV2Grade`,
+  `approveHomeworkV2Grade`) wymagają `npm run deploy:functions`, zanim
+  zadziałają na produkcji.
+- `/api/homework/notify-graded` (w `server.ts`, niedotknięty w tej
+  rundzie) nie weryfikuje, że wywołujący jest lektorem/adminem ani że
+  `studentUid` w body to faktyczny adresat — tylko `requireFirebaseAuth`.
+  Pre-istniejąca luka, teraz wołana też z nowego miejsca
+  (`HomeworkV2ReviewScreen.tsx` po zatwierdzeniu oceny v2). Nie
+  naprawiona — poza zakresem tego zlecenia, ale warto zamknąć osobno.
+- Auto-ocena przy 100% pewności (oba silniki) NIE wysyła e-maila —
+  tylko zapisuje `status: 'graded'`/werdykt w Firestore. Świadome
+  uproszczenie zakresu tej rundy.
+- Zero weryfikacji wzrokowej w przeglądarce (nowy toggle, osadzony
+  widok v2 w modalu, przyciski propose/approve) — zgodnie z długiem
+  technicznym z `CLAUDE.md` sekcja 6.
+
+Decyzje architektoniczne:
+- Traktowałem `StudentHomeworkScreen.tsx` (v1, żywa ścieżka) jako
+  faktyczny cel "Human-in-the-loop", a nie martwe gałęzie
+  `HomeworkScreen.tsx`/`StudentHomeworkV2Screen.tsx` — bo to jest kod,
+  który dziś naprawdę wykonuje się dla prawdziwych kursantów. Zmiana w
+  martwym kodzie nie miałaby żadnego efektu produkcyjnego.
+- Dla v2 przełącznik "100% pewności" nadal uruchamia `gradeAttempt`
+  automatycznie (żeby w ogóle poznać `confidence`), tylko finalizację
+  (zapis werdyktu + feedback dla kursanta) warunkuje wynikiem — bo
+  inaczej nie dałoby się nigdy wiedzieć, czy coś jest "100% pewne" bez
+  najpierw to ocenić. Ten sam wzorzec zastosowany w v1 (ocena liczy się,
+  ale trafia do kursanta tylko przy komplecie poprawnych odpowiedzi).
+- `HomeworkV2ReviewScreen.tsx` zostawiony jako osobny plik (nie scalony
+  do `HomeworkScreen.tsx`) mimo przebudowy na komponent jednego zadania —
+  inna domena danych (exercises/attempts vs sentences/studentAnswers),
+  osobny plik czytelniej rozdziela odpowiedzialność, zgodnie z
+  konwencją repo.
+- Nie ruszałem `firestore.rules` — `system/{document=**}` już pozwalało
+  na to, co było potrzebne (odczyt każdemu zalogowanemu, zapis
+  `isAdmin()`/`teacher`) dla nowego dokumentu ustawień.
+
+Ryzyka: `firestore.rules` NIE dotknięty. Middleware autoryzacji w
+`server.ts` (`requireFirebaseAuth`/`requireFirebaseAdmin`) NIE dotknięty
+— `server.ts` w ogóle nie był edytowany w tej rundzie. Ścieżki tokenowe
+bez logowania (`homework/direct/:token`) niedotknięte. Dwa nowe
+endpointy Cloud Functions wymagają wdrożenia przed użyciem na produkcji
+(patrz wyżej).

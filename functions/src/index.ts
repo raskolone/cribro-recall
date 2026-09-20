@@ -32,6 +32,8 @@ export {
   assignHomeworkV2,
   submitHomeworkV2Attempt,
   proposeHomeworkV2Review,
+  proposeHomeworkV2Grade,
+  approveHomeworkV2Grade,
 } from './homeworkV2/endpoints';
 
 /**
@@ -213,11 +215,13 @@ export const notifyStudentOnHomework = onDocumentCreated(
  * Powiadomienie e-mail o sprawdzonej pracy domowej (v1).
  *
  * Odpala się na przejściu `status` → `graded`, czyli dokładnie w momencie
- * `HomeworkScreen.tsx:handleSaveReview` (jedyne miejsce w kodzie, które
- * robi taką zmianę statusu). Silnik v2 nie ma tu odpowiednika: kursant
- * dostaje ocenę i feedback od razu przy każdej próbie
- * (`submitHomeworkV2Attempt`), nie przez późniejszą akcję lektora — patrz
- * `docs/plan-weekend-2026-09-12.md`, Etap A/B.
+ * `HomeworkScreen.tsx:handleSaveReview` (v1). Silnik v2 ma od tej samej
+ * rundy (ujednolicenie modułu prac domowych, human-in-the-loop) własny,
+ * jawny odpowiednik: `approveHomeworkV2Grade` — kursant dostaje ocenę i
+ * feedback dopiero po kliknięciu lektora „Zatwierdź i wyślij do kursanta",
+ * nie automatycznie przy każdej próbie. Wyjątek: opcjonalny przełącznik
+ * „Automatyczna ocena AI przy 100% pewności" w `system/homeworkAiSettings`
+ * (domyślnie wyłączony) — patrz `submitHomeworkV2Attempt`.
  *
  * Przełącznik `MailingSettings.enableHomeworkReviewed` istniał w panelu
  * Mailingu od dawna, ale żadna funkcja go nie czytała — to naprawia.

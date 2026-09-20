@@ -3,13 +3,11 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, collectionGroup, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { AlertTriangle, BookOpenCheck, ChevronRight, GraduationCap, X } from 'lucide-react';
+import { BookOpenCheck, ChevronRight, GraduationCap, X } from 'lucide-react';
 import { playNotificationChime } from '../../utils/notificationChime';
 
 interface TeacherHomeworkNotificationProps {
   onOpenHomework?: (taskId: string) => void;
-  /** Zgłoszenia v2 nie mają jednego `taskId` do otwarcia — prowadzą do kolejki. */
-  onOpenV2Review?: () => void;
 }
 
 interface NotificationItem {
@@ -17,7 +15,7 @@ interface NotificationItem {
   taskId: string;
   studentName: string;
   title: string;
-  itemType: 'homework' | 'test' | 'v2review';
+  itemType: 'homework' | 'test';
 }
 
 /**
@@ -36,7 +34,6 @@ interface NotificationItem {
  */
 export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationProps> = ({
   onOpenHomework,
-  onOpenV2Review,
 }) => {
   const [tasks, setTasks] = useState<Record<string, NotificationItem>>({});
   const [tests, setTests] = useState<Record<string, NotificationItem>>({});
@@ -122,7 +119,11 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
       console.warn('TeacherHomeworkNotification setup tests error:', e);
     }
 
-    // 3. Próby v2 oznaczone do przeglądu przez lektora
+    // 3. Próby silnika v2 czekające na ocenę lektora (patrz
+    //    `functions/src/homeworkV2/endpoints.ts:submitHomeworkV2Attempt` —
+    //    domyślnie żadna próba nie ma werdyktu, dopóki lektor nie kliknie
+    //    „Zaproponuj ocenę z AI"). Trafiają na tę samą listę co v1 —
+    //    ujednolicenie modułu prac domowych, human-in-the-loop.
     let unsubFlagged: (() => void) | undefined;
     try {
       const qFlagged = query(collectionGroup(db, 'attempts'), where('requiresTeacherReview', '==', true));
@@ -132,12 +133,14 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
           const next: Record<string, NotificationItem> = {};
           snapshot.docs.forEach((d) => {
             const data = d.data() as any;
-            next[`v2review-${d.id}`] = {
-              id: `v2review-${d.id}`,
-              taskId: d.ref.parent.parent?.id || '',
-              studentName: 'Praca domowa v2',
-              title: `Próba ${data.attemptNumber ?? ''} wymaga uwagi`.trim(),
-              itemType: 'v2review',
+            const taskId = d.ref.parent.parent?.id || '';
+            if (!taskId) return;
+            next[`v2attempt-${d.id}`] = {
+              id: `v2attempt-${d.id}`,
+              taskId,
+              studentName: 'Kursant',
+              title: `Próba ${data.attemptNumber ?? ''} czeka na ocenę`.trim(),
+              itemType: 'homework',
             };
           });
           setFlagged(next);
@@ -185,29 +188,19 @@ export const TeacherHomeworkNotification: React.FC<TeacherHomeworkNotificationPr
   const handleAction = (item: NotificationItem) => {
     handleDismiss(item.id);
     setIsExpanded(false);
-    if (item.itemType === 'v2review') {
-      onOpenV2Review?.();
-      return;
-    }
     onOpenHomework?.(item.taskId);
   };
 
   if (items.length === 0) return null;
 
   const iconFor = (type: NotificationItem['itemType']) =>
-    type === 'test' ? (
-      <GraduationCap size={16} />
-    ) : type === 'v2review' ? (
-      <AlertTriangle size={16} />
-    ) : (
-      <BookOpenCheck size={16} />
-    );
+    type === 'test' ? <GraduationCap size={16} /> : <BookOpenCheck size={16} />;
 
   const labelFor = (type: NotificationItem['itemType']) =>
-    type === 'test' ? 'Odesłano test' : type === 'v2review' ? 'Wymaga uwagi (v2)' : 'Odesłano pracę';
+    type === 'test' ? 'Odesłano test' : 'Odesłano pracę';
 
   const actionLabelFor = (type: NotificationItem['itemType']) =>
-    type === 'test' ? 'Zobacz test' : type === 'v2review' ? 'Zobacz kolejkę' : 'Sprawdź i oceń';
+    type === 'test' ? 'Zobacz test' : 'Sprawdź i oceń';
 
   // Portal do <body>, bo komponent wisi wewnątrz <main> panelu. Wystarczy, że
   // któryś z paneli po drodze animuje się transformem (a robi to niejeden

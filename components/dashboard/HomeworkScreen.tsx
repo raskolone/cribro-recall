@@ -2,11 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { User, SpecialTask, HomeworkType, TranslationExercise, FillInTheBlankExercise, ErrorCorrectionExercise, LessonRecord, StudentTest } from '../../types';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { generateTranslationExercises, generateFillInTheBlankExercises, evaluateErrorCorrectionSentence, evaluateTranslations, evaluateTeacherHomework, processBulkSentences, generateHomeworkChatPipeline } from '../../services/geminiService';
 import { generateFindErrors } from '../../services/homeworkGenerator';
 import { isTaskForStudent, studentTasksQuery, taskOwnerFields, homeworkItemType } from '../../utils/homework';
+import { isV2Task } from '../../services/homeworkV2/contracts';
+import {
+  subscribeHomeworkAiSettings,
+  setAutoApproveAtFullConfidence as setAutoApproveAtFullConfidenceSetting,
+} from '../../services/homeworkAiSettingsService';
 import { formatStudentDisplayName } from '../../utils/studentFormat';
 import { backfillTaskOwners } from '../../utils/backfillTaskOwners';
 import { getAllUsers } from '../../services/userService';
@@ -70,9 +75,9 @@ interface HomeworkScreenProps {
   onBack?: () => void;
   /**
    * Bez własnego tytułu i bez zewnętrznych marginesów — ekran jest wtedy
-   * sekcją wewnątrz „Zadań i testów", a nie osobną stroną. Przyciski trybów
-   * (lista / przypisz / przegląd v2) zostają: to nawigacja wewnątrz sekcji,
-   * a nie jej nagłówek.
+   * sekcją wewnątrz „Zadań i testów", a nie osobną stroną. Przycisk
+   * „+ Przypisz pracę domową" zostaje: to nawigacja wewnątrz sekcji, a nie
+   * jej nagłówek.
    */
   headless?: boolean;
 }
@@ -301,12 +306,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSavingHomework, setIsSavingHomework] = useState<boolean>(false);
   const isSavingRef = React.useRef<boolean>(false);
-  // Sentinel: toast "Wymaga uwagi" (v2) nawiguje tu przez `filterStatus`,
-  // bo to jedyny "extra" kanał, którym Sidebar/TeacherHomeworkNotification
-  // już umie sterować tym ekranem — patrz Dashboard.tsx `handleNavigate`.
-  const [activeTab, setActiveTab] = useState<'list' | 'create' | 'flashcards' | 'v2review'>(
-    initialFilterStatus === 'v2review' ? 'v2review' : 'list'
-  );
+  const [activeTab, setActiveTab] = useState<'list' | 'create' | 'flashcards'>('list');
 
   // Filter state for teacher
   const [filterStudentId, setFilterStudentId] = useState<string>('all');
@@ -338,9 +338,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
    */
   const showTiles = tileView || !isDesktop;
 
-  const [filterStatus, setFilterStatus] = useState<string>(
-    initialFilterStatus === 'v2review' ? 'all' : initialFilterStatus || 'all'
-  );
+  const [filterStatus, setFilterStatus] = useState<string>(initialFilterStatus || 'all');
   const [studentTests, setStudentTests] = useState<StudentTest[]>([]);
   const [previewTest, setPreviewTest] = useState<StudentTest | null>(null);
 
@@ -410,6 +408,19 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   const [teacherFeedbackText, setTeacherFeedbackText] = useState<string>('');
   const [isSavingReview, setIsSavingReview] = useState<boolean>(false);
 
+  // Ujednolicony moduł: jeden przycisk otwierania podglądu, który kieruje na
+  // odpowiedni widok w zależności od silnika zadania — v1 dostaje modal
+  // sentence-po-sentence, v2 dostaje widok z ćwiczeniami/próbami/propozycją AI.
+  const [v2ReviewTask, setV2ReviewTask] = useState<SpecialTask | null>(null);
+  const openTaskReview = (task: SpecialTask) => {
+    if (isV2Task(task)) {
+      setV2ReviewTask(task);
+    } else {
+      setReviewTask(task);
+      setTeacherFeedbackText(task.teacherFeedback || '');
+    }
+  };
+
   // Preview modal for assigned homework
   const [previewTask, setPreviewTask] = useState<SpecialTask | null>(null);
 
@@ -418,6 +429,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   useEscapeModal(!!reviewTask, () => setReviewTask(null));
+  useEscapeModal(!!v2ReviewTask, () => setV2ReviewTask(null));
   useEscapeModal(!!previewTask, () => setPreviewTask(null));
   useEscapeModal(showBulkAddModal, () => setShowBulkAddModal(false));
   useEscapeModal(!!taskToDelete, () => setTaskToDelete(null), 10);
@@ -645,14 +657,22 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   useEffect(() => {
     if (initialTaskId && tasks.length > 0) {
       const found = tasks.find(t => t.id === initialTaskId);
-      if (found) {
+      if (!found) return;
+      if (isTeacher) {
+        // Nawigacja z widgetu "Wymaga uwagi" prowadzi tu z konkretnym
+        // zadaniem do sprawdzenia — lektor ma dostać podgląd/ocenę, nie
+        // pusty warsztat kursanta (ten drugi renderuje się identycznie
+        // niezależnie od roli, więc bez tego rozróżnienia otwierał się tu).
+        openTaskReview(found);
+      } else {
         setActiveTask(found);
         setStudentAnswers({});
         setShowHints({});
         setSubmissionResult(null);
       }
     }
-  }, [initialTaskId, tasks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTaskId, tasks, isTeacher]);
 
   // Restore draft on initial load
   useEffect(() => {
@@ -1517,9 +1537,50 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
 
   const filteredTasks = activeTasks;
 
-  /* Czy w ogóle istnieje choć jeden zestaw silnika v2. Liczone z listy, którą
-     ekran i tak ma wczytaną — bez dodatkowego zapytania. */
-  const hasV2Sets = tasks.some((task: any) => task?.engineVersion === 2);
+  // Human-in-the-loop: przełącznik „Automatyczna ocena AI przy 100% pewności",
+  // domyślnie wyłączony. Czytany/zapisywany w `system/homeworkAiSettings`
+  // (patrz `services/homeworkAiSettingsService.ts`) — bez zmian w firestore.rules,
+  // `system/{document=**}` już pozwala na zapis każdemu lektorowi/adminowi.
+  const [autoApproveAtFullConfidence, setAutoApproveAtFullConfidence] = useState<boolean>(false);
+  const [isSavingAutoApprove, setIsSavingAutoApprove] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isTeacher) return;
+    return subscribeHomeworkAiSettings((settings) => setAutoApproveAtFullConfidence(settings.autoApproveAtFullConfidence));
+  }, [isTeacher]);
+
+  // Zadania silnika v2 nie zmieniają `status` na dokumencie — werdykt (i to,
+  // czy ktoś na niego czeka) żyje w podkolekcji `attempts`. Bez tego zapytania
+  // taka praca wyglądałaby na liście jak "W trakcie" na zawsze, nawet gdy
+  // kursant już odpowiedział i czeka na ocenę lektora.
+  const [v2NeedsReviewTaskIds, setV2NeedsReviewTaskIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!isTeacher) return;
+    const q = query(collectionGroup(db, 'attempts'), where('requiresTeacherReview', '==', true));
+    return onSnapshot(
+      q,
+      (snap) => {
+        const ids = new Set<string>();
+        snap.docs.forEach((d) => {
+          const taskId = d.ref.parent.parent?.id;
+          if (taskId) ids.add(taskId);
+        });
+        setV2NeedsReviewTaskIds(ids);
+      },
+      (err) => console.warn('Błąd zapytania o próby v2 do przeglądu:', err)
+    );
+  }, [isTeacher]);
+
+  const handleToggleAutoApprove = async (checked: boolean) => {
+    setIsSavingAutoApprove(true);
+    try {
+      await setAutoApproveAtFullConfidenceSetting(checked);
+    } catch (e) {
+      console.error('Nie udało się zapisać ustawienia automatycznej oceny AI:', e);
+    } finally {
+      setIsSavingAutoApprove(false);
+    }
+  };
 
   return (
     <div className={headless ? 'space-y-5' : 'max-w-6xl mx-auto space-y-6 pb-20'}>
@@ -1550,55 +1611,54 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
         )}
 
         {isTeacher && (
-          <div className="flex gap-2">
-            <Button
-              onClick={() => {
-                if (editingTask) {
-                  setEditingTask(null);
-                }
-                setActiveTab('list');
-              }}
-              variant={activeTab === 'list' ? 'primary' : 'secondary'}
-              className="flex items-center gap-2 text-sm"
-            >
-              <FileText size={16} />
-              Lista prac ({tasks.length})
-            </Button>
-            <Button
-              onClick={() => {
-                if (!editingTask) {
-                  setActiveTab('create');
-                }
-              }}
-              variant={activeTab === 'create' ? 'primary' : 'secondary'}
-              className="flex items-center gap-2 text-sm"
-            >
-              {editingTask ? (
-                <>
-                  <Edit3 size={16} className="text-warn" />
-                  Edycja pracy
-                </>
-              ) : (
-                <>
-                  <Plus size={16} />
-                  Przypisz pracę domową
-                </>
+          <div className="flex flex-col sm:items-end gap-2">
+            <div className="flex gap-2">
+              {activeTab === 'create' && (
+                <Button
+                  onClick={() => {
+                    if (editingTask) setEditingTask(null);
+                    setActiveTab('list');
+                  }}
+                  variant="secondary"
+                  className="flex items-center gap-2 text-sm"
+                >
+                  <FileText size={16} />
+                  Wróć do listy
+                </Button>
               )}
-            </Button>
-            {/* „Przegląd v2" pokazuje się dopiero, gdy JEST co przeglądać.
-                Silnik v2 jest włączony flagą, ale dopóki nikomu nie przypisano
-                zestawu v2, przycisk prowadził na ekran z dwoma zerami — czyli
-                był wejściem donikąd, którego nazwy nie da się odgadnąć. */}
-            {HOMEWORK_ENGINE_V2 && hasV2Sets && (
-              <Button
-                onClick={() => setActiveTab('v2review')}
-                variant={activeTab === 'v2review' ? 'primary' : 'secondary'}
-                className="flex items-center gap-2 text-sm"
-              >
-                <ShieldCheck size={16} />
-                Przegląd v2
-              </Button>
-            )}
+              {activeTab !== 'create' && (
+                <Button
+                  onClick={() => setActiveTab('create')}
+                  variant="primary"
+                  className="flex items-center gap-2 text-sm"
+                >
+                  {editingTask ? (
+                    <>
+                      <Edit3 size={16} className="text-warn" />
+                      Edycja pracy
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={16} />
+                      Przypisz pracę domową
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+            <label
+              className="flex items-center gap-2 text-xs text-content-muted cursor-pointer select-none"
+              title="Gdy włączone, ocena AI trafia do kursanta bez przeglądu lektora, ale wyłącznie przy 100% pewności modelu. Poniżej tego progu praca zawsze czeka na przycisk „Zaproponuj ocenę z AI”."
+            >
+              <input
+                type="checkbox"
+                checked={autoApproveAtFullConfidence}
+                disabled={isSavingAutoApprove}
+                onChange={(e) => handleToggleAutoApprove(e.target.checked)}
+                className="w-4 h-4 rounded border-white/20 bg-black/40 text-primary focus:ring-primary accent-primary cursor-pointer"
+              />
+              Automatyczna ocena AI przy 100% pewności
+            </label>
           </div>
         )}
       </div>
@@ -1838,11 +1898,6 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
           )}
         </Card>
       ) : null}
-
-      {/* ---------------- TEACHER V2 REVIEW ---------------- */}
-      {isTeacher && activeTab === 'v2review' && !activeTask && (
-        <HomeworkV2ReviewScreen />
-      )}
 
       {/* ---------------- TEACHER CREATE / EDIT HOMEWORK WORKSPACE ---------------- */}
       {/* Nowe zadanie układa kreator: kursant, materiał, typy ćwiczeń, termin.
@@ -2598,7 +2653,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               formatDate={formatTaskDateTime}
               onPreview={(task) => {
                 markTaskAsViewedByTeacher(task);
-                setPreviewTask(task);
+                isV2Task(task) ? setV2ReviewTask(task) : setPreviewTask(task);
               }}
               onEdit={
                 isTeacher
@@ -2612,17 +2667,18 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                 isTeacher
                   ? (task) => {
                       markTaskAsViewedByTeacher(task);
-                      setReviewTask(task);
-                      setTeacherFeedbackText(task.teacherFeedback || '');
+                      openTaskReview(task);
                     }
                   : undefined
               }
+              needsReviewTaskIds={v2NeedsReviewTaskIds}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {(isTeacher ? filteredTasks : tasks).map((task) => {
-                const isPending = task.status === 'pending';
-                const isSubmitted = task.status === 'submitted';
+                const needsV2Review = Boolean(task.id && v2NeedsReviewTaskIds.has(task.id));
+                const isPending = task.status === 'pending' && !needsV2Review;
+                const isSubmitted = task.status === 'submitted' || needsV2Review;
                 const isGraded = task.status === 'graded';
 
                 return (
@@ -2660,15 +2716,15 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                       >
                         {isSubmitted ? (
                           <>
-                            <CheckCircle2 size={12} /> Przesłano do oceny
+                            <CheckCircle2 size={12} /> Do sprawdzenia
                           </>
                         ) : isGraded ? (
                           <>
-                            <Award size={12} /> Oceniono
+                            <Award size={12} /> Sprawdzone
                           </>
                         ) : (
                           <>
-                            <Clock size={12} /> Do zrobienia
+                            <Clock size={12} /> W trakcie
                           </>
                         )}
                       </span>
@@ -2724,7 +2780,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                             variant="secondary"
                             onClick={() => {
                               markTaskAsViewedByTeacher(task);
-                              setPreviewTask(task);
+                              isV2Task(task) ? setV2ReviewTask(task) : setPreviewTask(task);
                             }}
                             className="text-xs flex items-center gap-1.5 cursor-pointer"
                           >
@@ -2769,8 +2825,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                                 variant="primary"
                                 onClick={() => {
                                   markTaskAsViewedByTeacher(task);
-                                  setReviewTask(task);
-                                  setTeacherFeedbackText(task.teacherFeedback || '');
+                                  openTaskReview(task);
                                 }}
                                 className="text-xs flex items-center gap-1.5 cursor-pointer"
                               >
@@ -2783,10 +2838,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                             <Button
                               size="sm"
                               variant="secondary"
-                              onClick={() => {
-                                setReviewTask(task);
-                                setTeacherFeedbackText(task.teacherFeedback || '');
-                              }}
+                              onClick={() => openTaskReview(task)}
                               className="text-xs flex items-center gap-1.5 text-primary border-primary/30"
                             >
                               <Award size={14} />
@@ -2910,7 +2962,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                           <Button
                             size="sm"
                             variant="secondary"
-                            onClick={() => setPreviewTask(task)}
+                            onClick={() => (isV2Task(task) ? setV2ReviewTask(task) : setPreviewTask(task))}
                             className="text-xs py-1 px-2.5 flex items-center gap-1 cursor-pointer"
                             title="Podgląd zadania i odpowiedzi kursanta"
                           >
@@ -2921,10 +2973,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                           <Button
                             size="sm"
                             variant="secondary"
-                            onClick={() => {
-                              setReviewTask(task);
-                              setTeacherFeedbackText(task.teacherFeedback || '');
-                            }}
+                            onClick={() => openTaskReview(task)}
                             className="text-xs py-1 px-2.5 flex items-center gap-1 text-primary border-primary/30 hover:bg-primary/10 cursor-pointer"
                             title="Edytuj ocenę lub komentarz"
                           >
@@ -3166,14 +3215,14 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
 
               <div className="flex justify-between items-center pt-2">
                 <Button onClick={handleAnalyzeWithAI} isLoading={isAnalyzing} className="flex items-center gap-2">
-                  <Sparkles size={18} /> Przeanalizuj z AI
+                  <Sparkles size={18} /> Zaproponuj ocenę z AI
                 </Button>
                 <div className="flex justify-end gap-3">
                   <Button variant="secondary" onClick={() => setReviewTask(null)}>
                     Zamknij
                   </Button>
                   <Button onClick={handleSaveReview} isLoading={isSavingReview} className="flex items-center gap-2">
-                    <Check size={18} /> Zapisz ocenę i komentarz
+                    <Check size={18} /> Zatwierdź i wyślij do kursanta
                   </Button>
                 </div>
               </div>
@@ -3181,6 +3230,42 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
           </Card>
         </div>
       )}
+
+      {/* ---------------- TEACHER V2 REVIEW MODAL ---------------- */}
+      {v2ReviewTask && (
+        <div className="fixed inset-0 bg-ink/72 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <Card className="w-full max-w-3xl liquid-glass border-primary/30 my-8 space-y-6">
+            <div className="flex justify-between items-start border-b border-white/10 pb-4">
+              <div>
+                <span className="text-xs font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-primary/20 text-primary font-bold">
+                  Przegląd & Ocena nauczyciela
+                </span>
+                <h2 className="text-xl font-bold text-white mt-2">{v2ReviewTask.title}</h2>
+                <p className="text-xs text-content-muted mt-1">
+                  Kursant: <strong className="text-white">{resolveStudentName(v2ReviewTask)}</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => setV2ReviewTask(null)}
+                className="p-1 rounded-lg text-content-muted hover:text-text-hi"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="max-h-[65vh] overflow-y-auto pr-2">
+              <HomeworkV2ReviewScreen task={v2ReviewTask} />
+            </div>
+
+            <div className="pt-4 border-t border-white/10 flex justify-end">
+              <Button variant="secondary" onClick={() => setV2ReviewTask(null)}>
+                Zamknij
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {showBulkAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <Card className="w-full max-w-2xl bg-base-300 border-white/10">
@@ -3239,10 +3324,10 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                   </Badge>
                   <Badge status={previewTask.status === 'submitted' || previewTask.status === 'graded' ? 'ok' : 'wait'}>
                     {previewTask.status === 'submitted'
-                      ? 'Przesłano do oceny'
+                      ? 'Do sprawdzenia'
                       : previewTask.status === 'graded'
-                      ? 'Oceniono'
-                      : 'Oczekuje na wykonanie'}
+                      ? 'Sprawdzone'
+                      : 'W trakcie'}
                   </Badge>
                 </div>
                 <h2 className="text-xl font-bold text-white">{previewTask.title}</h2>

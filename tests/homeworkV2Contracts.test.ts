@@ -19,6 +19,7 @@ import {
   isRubricScores,
   isV2Task,
   resolveMastery,
+  shouldAutoApprove,
   shouldRevealModelAnswer,
   usedTargetMaterial,
   weightedScore,
@@ -216,6 +217,18 @@ test('pewność dokładnie na progu jest już wiążąca', () => {
   });
   assert.equal(result.state, 'opanowane');
   assert.equal(result.requiresTeacherReview, false);
+});
+
+// --- human-in-the-loop: shouldAutoApprove ------------------------------------
+
+test('shouldAutoApprove: domyślnie (przełącznik wyłączony) nigdy nie zatwierdza samo', () => {
+  assert.equal(shouldAutoApprove(1, false), false);
+});
+
+test('shouldAutoApprove: włączony przełącznik zatwierdza wyłącznie przy 100% pewności', () => {
+  assert.equal(shouldAutoApprove(1, true), true);
+  assert.equal(shouldAutoApprove(0.99, true), false);
+  assert.equal(shouldAutoApprove(0, true), false);
 });
 
 // --- drabinka podpowiedzi ----------------------------------------------------

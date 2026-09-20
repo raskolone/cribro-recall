@@ -41,13 +41,19 @@ interface HomeworkTaskListProps {
   onEdit?: (task: SpecialTask) => void;
   onReview?: (task: SpecialTask) => void;
   formatDate: (value?: string) => string;
+  /**
+   * Zadania silnika v2 nigdy nie zmieniają `status` na dokumencie
+   * (werdykt żyje w podkolekcji `attempts`) — bez tego zestawu zostałyby
+   * pokazane jako "W trakcie" na zawsze, nawet gdy próba czeka na ocenę.
+   */
+  needsReviewTaskIds?: Set<string>;
 }
 
 const STATUS = {
   submitted: { label: 'Do sprawdzenia', icon: CheckCircle2, cls: 'bg-primary/20 text-primary' },
-  graded: { label: 'Oceniona', icon: Award, cls: 'bg-primary/15 text-primary' },
-  completed: { label: 'Zrobiona', icon: CheckCircle2, cls: 'bg-line-soft text-content-muted' },
-  pending: { label: 'Do zrobienia', icon: Clock, cls: 'bg-warn/20 text-warn' },
+  graded: { label: 'Sprawdzone', icon: Award, cls: 'bg-primary/15 text-primary' },
+  completed: { label: 'Sprawdzone', icon: CheckCircle2, cls: 'bg-line-soft text-content-muted' },
+  pending: { label: 'W trakcie', icon: Clock, cls: 'bg-warn/20 text-warn' },
 } as const;
 
 const TYPE_LABEL: Record<string, string> = {
@@ -65,6 +71,7 @@ const HomeworkTaskList: React.FC<HomeworkTaskListProps> = ({
   onEdit,
   onReview,
   formatDate,
+  needsReviewTaskIds,
 }) => (
   <div className="rounded-2xl border border-line-strong bg-base-200/40 overflow-hidden">
     {/* Nagłówek kolumn tylko tam, gdzie kolumny są widoczne. */}
@@ -78,7 +85,7 @@ const HomeworkTaskList: React.FC<HomeworkTaskListProps> = ({
 
     <ul className="divide-y divide-line">
       {tasks.map((task) => {
-        const status = STATUS[task.status] ?? STATUS.pending;
+        const status = (task.id && needsReviewTaskIds?.has(task.id)) ? STATUS.submitted : STATUS[task.status] ?? STATUS.pending;
         const StatusIcon = status.icon;
         const fresh = isNew?.(task);
 
@@ -153,7 +160,7 @@ const HomeworkTaskList: React.FC<HomeworkTaskListProps> = ({
               )}
               {/* „Sprawdź" tylko przy pracach, które naprawdę czekają na ocenę —
                   przycisk przy pracy niewysłanej nie miałby czego otworzyć. */}
-              {onReview && task.status === 'submitted' && (
+              {onReview && (task.status === 'submitted' || (task.id && needsReviewTaskIds?.has(task.id))) && (
                 <button
                   type="button"
                   onClick={() => onReview(task)}
