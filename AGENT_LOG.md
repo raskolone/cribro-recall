@@ -2958,3 +2958,70 @@ Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji
 (`requireFirebaseAuth`/`requireFirebaseAdmin` niedotknięte) ani ścieżkach
 tokenowych bez logowania. Brak migracji/backfillu, schemat dokumentów
 lekcji niezmieniony. Brak nowych zależności w `package.json`.
+
+---
+
+2026-09-20 — Claude Code / Sonnet 5
+
+Zadanie: Wdrożyć MVP "Kreatora Scenariuszy i Interaktywnego Canvasu" —
+opcjonalny, wersjonowany kontrakt `scenarioCanvasV2` (9 bloków), potok
+Planner->Auditor na Gemini, endpoint Lesson Refresh z selektywną
+podmianą odrzuconych elementów, lekki komponent Canvasu w React/Tailwind.
+
+Zrobione:
+- `types/scenarioCanvas.ts` — kontrakt 9 bloków, CanvasItem z review/
+  delivery/generation, budżety czasowe per długość lekcji.
+- `utils/scenarioCanvasValidation.ts` — czyste funkcje: dobór
+  applicable bloków (pomija grammar_review/older_lesson_refresh),
+  walidacja Plannera/Auditora/Refresh, budowanie canvasu, aplikowanie
+  patchy. 24 nowe testy w `tests/scenarioCanvas.test.ts`.
+- `services/scenarioCanvasAiService.ts` — Planner + Auditor + Lesson
+  Refresh, wyłącznie Gemini przez istniejący `generateContentWithRetry`
+  (reużyty z `scenarioAiService.ts`, zero nowego klienta AI).
+- `services/scenarioContextService.ts` — dopisane `hasGrammarContext`/
+  `grammarContext` do istniejącego `loadScenarioStudentContext` (bez
+  zmiany kontraktu v1, pola opcjonalne/dodatkowe).
+- `server.ts` — trzy nowe endpointy: `/api/scenario/canvas/generate`,
+  `/api/scenario/canvas/save`, `/api/scenario/canvas/refresh` (409 przy
+  stale `expectedRevision`, idempotencja przez `mutationId`).
+- `components/admin/ScenarioCanvasPanel.tsx` +
+  `ScenarioCanvasBlockCard.tsx`, `hooks/useScenarioCanvas.ts`,
+  `services/scenarioCanvasClient.ts` — UI zamontowany w `AdminPanel.tsx`
+  obok istniejącego `ScenarioPreviewPanel` (v1).
+- Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (425/425,
+  baza 401 + 24 nowe), `npm run build` (przechodzi).
+- Dwa commity: backend/kontrakt osobno od UI (`feat(scenario): kontrakt
+  i backend...` / `feat(scenario): lekki Canvas 2.0...`).
+
+Nie dokończone / do sprawdzenia:
+- UI NIE był sprawdzony wzrokowo w przeglądarce (brak dostępu do
+  live Gemini/Firestore w tej sesji) — tylko tsc/testy/build, zgodnie
+  z długiem technicznym z sekcji 6 CLAUDE.md.
+- Brak testów integracyjnych na żywym Gemini dla Plannera/Auditora/
+  Refresh (jak w istniejącym v1 — ten sam brak klucza w środowisku
+  agenta).
+- Auditor woła się zawsze automatycznie po Plannerze wewnątrz
+  `generateScenarioCanvasForStudent` — brak osobnego przełącznika UI
+  do jego pominięcia (nie było w zleceniu, ale warto potwierdzić z
+  Maciejem czy to pożądane, bo to dodatkowe wywołanie Gemini za każdym
+  razem).
+
+Decyzje architektoniczne:
+- `scenarioCanvasV2` jako całkowicie osobny, opcjonalny dokument obok
+  `plannedScenario` — zero migracji wstecznej zgodnie ze zleceniem.
+  Backend (nie model) decyduje o pominiętych blokach na podstawie
+  trybu i obecności `corrections`/`thingsToImprove` z ostatniej lekcji
+  (proxy dla "kontekstu gramatycznego" — w profilu nie ma osobnego pola
+  na gramatykę, reużyłem to samo pole, którego już używa v1 dla
+  `error_work`).
+- UI zamontowany jako druga, niezależna sekcja w `AdminPanel.tsx`
+  (obok v1), a nie jako zamiennik — zlecenie nie prosiło o usunięcie
+  v1, a `plannedScenario` ma inny kontrakt i inne miejsca użycia
+  (m.in. tool czatu Asystenta Lektora).
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji
+(`requireFirebaseAuth`/`requireFirebaseAdmin` niedotknięte) ani
+ścieżkach tokenowych bez logowania. Brak importów OpenAI w nowym
+kodzie — wyłącznie `@google/genai` przez istniejący
+`generateContentWithRetry`. Brak migracji/backfillu, schemat istniejących
+dokumentów lekcji niezmieniony (nowe pole wyłącznie opcjonalne/addytywne).
