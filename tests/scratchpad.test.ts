@@ -6,25 +6,17 @@ import {
 } from '../services/scratchpadService';
 import { formatAccessCode, normalizeAccessCode } from '../utils/accessCode';
 
-test('getInitialScratchpadContent otwiera notatnik pierwszym wpisem lekcyjnym', () => {
-  // Struktura zgłoszona 2026-09-12 — pięć sekcji lekcji, które Maciej
-  // dotąd wklejał ręcznie w Google Docs przed każdą lekcją.
+test('getInitialScratchpadContent nie wstawia już automatycznie bloku lekcji', () => {
+  // Do 2026-09-12..2026-09-19 nowy notatnik dostawał od razu blok "Lesson 1"
+  // (pięć sekcji, które Maciej dotąd wklejał ręcznie w Google Docs).
   //
-  // 2026-09-14: imię kursanta ZNIKŁO z treści startowej i to jest zamierzone.
-  // Notatnik zaczyna się od wpisu „Lesson 1 — <data>", a nie od zdania o tym,
-  // czyj to notatnik: nazwę kursanta niesie nagłówek okna, a instrukcja
-  // w dokumencie to tekst, który lektor i tak kasuje przy pierwszym pisaniu.
+  // 2026-09-20: notatnik ma wczytywać WYŁĄCZNIE istniejący stan z bazy —
+  // pusty dokument zostaje pusty, dopóki lektor sam nie kliknie
+  // "+ Nowa lekcja" w ScratchpadEditor.
   const result = getInitialScratchpadContent('Jan Kowalski');
 
-  assert.ok(result.html.includes('Lesson 1 —'));
-  assert.ok(result.html.includes('Revision'));
-  assert.ok(result.html.includes('Main topic / Practice'));
-  assert.ok(result.html.includes('Lesson Summary'));
-  assert.ok(result.html.includes('Key Language'));
-  assert.ok(result.html.includes('Homework'));
-
-  assert.ok(result.text.includes('Revision'));
-  assert.ok(result.text.includes('Homework'));
+  assert.equal(result.html, '');
+  assert.equal(result.text, '');
 });
 
 test('buildScratchpadUrl generuje czytelny URL z sformatowanym kodem PIN', () => {

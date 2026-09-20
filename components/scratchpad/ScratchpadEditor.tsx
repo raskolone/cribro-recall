@@ -100,7 +100,7 @@ import { ScratchpadLivePresentationModal } from './ScratchpadLivePresentationMod
 import { ScratchpadTeacherCompanionDrawer } from './ScratchpadTeacherCompanionDrawer';
 import { InteractiveExercise } from '../../services/lessonPlannerMethod';
 import { buildLessonTemplate, extractLastLessonSections, highestLessonNumber, LESSON_SECTIONS } from '../../utils/lessonTemplate';
-import { NOTEBOOK_INK, NOTEBOOK_SWATCHES, notebookHeadingColor } from '../../utils/notebookPalette';
+import { NOTEBOOK_INK, NOTEBOOK_SWATCHES, notebookHeadingColor, sanitizeFrozenHeadingContrast } from '../../utils/notebookPalette';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { generateTextWithUnifiedFallback } from '../../services/geminiService';
 import { generateLessonRevision } from '../../services/scratchpadAiService';
@@ -672,7 +672,9 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
     if (!isUserTypingRef.current) {
       if (editorRef.current.innerHTML !== docData.contentHtml) {
-        editorRef.current.innerHTML = docData.contentHtml || '';
+        // Podnosi kontrast starych, zamrożonych nagłówków sekcji na jasnym
+        // papierze — nie zapisuje nic do bazy, tylko to, co trafia do DOM-u.
+        editorRef.current.innerHTML = sanitizeFrozenHeadingContrast(docData.contentHtml || '', paperTheme);
         const txt = extractText(docData.contentHtml || '');
         setWordCount(txt.trim() ? txt.trim().split(/\s+/).length : 0);
         setContentBytes(scratchpadContentBytes(docData.contentHtml || ''));
@@ -681,7 +683,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         measurePages();
       }
     }
-  }, [docData.contentHtml, docData.version, rebuildToc, measurePages]);
+  }, [docData.contentHtml, docData.version, paperTheme, rebuildToc, measurePages]);
 
   /* ═══════════════════════════════════════════════════════════════════
      OBRAZY, WSKAŹNIK LASEROWY I ORIENTACJA STRONY

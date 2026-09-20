@@ -19,7 +19,6 @@ import {
   isValidAccessCode,
 } from '../utils/accessCode';
 import { getDefaultTemplate } from './scratchpadTemplateService';
-import { buildLessonTemplate } from '../utils/lessonTemplate';
 
 /** Usuwa znaczniki HTML dla wersji tekstowej — wystarczające dla podglądu/wyszukiwania. */
 const stripHtmlToText = (html: string): string =>
@@ -113,31 +112,24 @@ export function saveLocalScratchpad(docData: ScratchpadDocument): void {
 }
 
 /**
- * Zwraca bazowy szablon HTML dla nowo tworzonego dokumentu notatnika.
+ * Zwraca bazową (pustą) treść dla nowo tworzonego dokumentu notatnika.
  *
- * Odzwierciedla strukturę, której Maciej używał ręcznie w Google Docs przed
- * każdą lekcją (zgłoszenie 2026-09-12) — pięć sekcji z kolorowymi nagłówkami.
- * To jest wyłącznie STATYCZNY fallback "w kodzie": jeśli lektor ustawi
- * własny szablon jako domyślny w `scratchpadTemplates` (`isDefault: true`),
- * `getOrCreateStudentScratchpad` użyje JEGO treści zamiast tej — patrz niżej.
+ * Do 2026-09-20 nowy notatnik dostawał automatycznie wstawiony blok
+ * „Lesson 1" (zgłoszenie 2026-09-12, pięć sekcji z kolorowymi nagłówkami,
+ * odzwierciedlające strukturę, której Maciej używał ręcznie w Google Docs).
+ * Zmiana 2026-09-20: notatnik ma wczytywać WYŁĄCZNIE istniejący stan z bazy
+ * — pusty dokument zostaje pusty, dopóki lektor sam nie kliknie
+ * „+ Nowa lekcja" (`handleInsertLesson` w `ScratchpadEditor.tsx`), który
+ * wstawia dokładnie ten sam blok na żądanie. Jeśli lektor ustawi własny
+ * szablon jako domyślny w `scratchpadTemplates` (`isDefault: true`),
+ * `getOrCreateStudentScratchpad` nadal użyje JEGO treści — to jawny wybór
+ * lektora, nie automat w kodzie.
  */
-export function getInitialScratchpadContent(studentName: string): {
+export function getInitialScratchpadContent(_studentName: string): {
   html: string;
   text: string;
 } {
-  /*
-   * Nowy notatnik zaczyna się od PIERWSZEGO wpisu lekcyjnego, a nie od opisu
-   * tego, czym jest notatnik. Instrukcja w dokumencie roboczym to tekst, który
-   * lektor i tak kasuje przy pierwszym pisaniu — a kursant, który zajrzy
-   * wcześniej, zobaczy wtedy instrukcję obsługi zamiast swoich zajęć.
-   *
-   * Numer kolejnych lekcji dopisuje się sam z nagłówków (patrz
-   * `utils/lessonTemplate.ts`), więc pierwszy wpis to zawsze „Lesson 1".
-   */
-  const html = buildLessonTemplate({ previousHtml: '' });
-  const text = stripHtmlToText(html);
-
-  return { html, text };
+  return { html: '', text: '' };
 }
 
 /**

@@ -112,3 +112,55 @@ export const NOTEBOOK_SWATCHES: NotebookColor[] = [
   { name: 'Niebieski', value: TOOLBAR_COLORS.blue },
   { name: 'Fioletowy', value: TOOLBAR_COLORS.violet },
 ];
+
+/**
+ * Nagłówki wstawione PRZED podziałem `NOTEBOOK_COLORS` na `{light, dark}`
+ * (patrz historia wyżej w tym pliku) mają wpisany wprost w HTML jeden,
+ * wspólny hex — dziś przechowywany jako wartość `dark` w `NOTEBOOK_COLORS`
+ * — który na jasnym papierze daje ~3,4:1, poniżej progu WCAG AA. Te
+ * nagłówki są ZAPISANE w dokumencie i nikt ich nie przepisuje za lektorem
+ * (patrz komentarz wyżej), więc naprawa nie może być zapisem do bazy —
+ * to wyłącznie transformacja PRZY WCZYTANIU do edytora na jasny papier,
+ * ograniczona do nagłówków sekcji lekcji (`<h3>` z jednym z pięciu znanych
+ * tytułów), żeby nie dotknąć koloru, który lektor ręcznie nadał zwykłemu
+ * tekstowi paskiem narzędzi (te same heksy, inne znaczenie).
+ */
+const KNOWN_SECTION_TITLES = [
+  'Revision',
+  'Main topic / Practice',
+  'Lesson Summary',
+  'Key Language &amp; Corrections (New words)',
+  'Key Language & Corrections (New words)',
+  'Homework',
+];
+
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Podnosi kontrast starych, zamrożonych nagłówków sekcji lekcji na jasnym
+ * papierze. Bezpieczna do wywołania przy KAŻDYM wczytaniu treści do
+ * edytora — nie mutuje zapisanego dokumentu, tylko to, co się renderuje.
+ * Na ciemnym papierze nie robi nic (stare nagłówki tam już mają
+ * odpowiedni kontrast — to ten sam hex, co dzisiejsza wartość `dark`).
+ */
+export const sanitizeFrozenHeadingContrast = (html: string, paperTheme: 'light' | 'dark'): string => {
+  if (!html || paperTheme !== 'light') return html;
+
+  let result = html;
+  // Dopasowuje dokładnie to, co pisze `buildLessonTemplate` w utils/lessonTemplate.ts:
+  // `<h3 style="color:${hex}">${title}</h3>`, bez żadnych innych atrybutów w stylu.
+  (Object.keys(NOTEBOOK_COLORS) as (keyof typeof NOTEBOOK_COLORS)[]).forEach((key) => {
+    const { light, dark } = NOTEBOOK_COLORS[key];
+    if (light === dark) return;
+    const staleHex = escapeRegExp(dark);
+    KNOWN_SECTION_TITLES.forEach((title) => {
+      const pattern = new RegExp(
+        `<h3 style="color:${staleHex}">(\\s*${escapeRegExp(title)}\\s*)</h3>`,
+        'gi'
+      );
+      result = result.replace(pattern, `<h3 style="color:${light}">$1</h3>`);
+    });
+  });
+
+  return result;
+};
