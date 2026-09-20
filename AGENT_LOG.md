@@ -3577,3 +3577,41 @@ Decyzje architektoniczne:
 Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji, ścieżkach
 tokenowych bez logowania ani schemacie danych Firestore — zmiana wyłącznie
 w jednym komponencie prezentacyjnym (`HomeworkExercise.tsx`).
+
+2026-09-20 — Claude Code / Sonnet 5
+
+Zadanie: Doprecyzowanie fixu z wpisu AB (commit 15e3fe4) po teście na żywym
+UI kursanta — Maciej zgłosił, że rozsypanka v1 nadal pokazuje instrukcję AI
+zamiast zdania, i że StudentHomeworkV2Screen.tsx (krok 2/6, gap_from_context)
+pokazuje pusty szary obrys bez treści.
+
+Zrobione:
+- `components/dashboard/HomeworkExercise.tsx`, `type === 'word_order'`: dodany
+  filtr `looksLikeInstruction` — jeśli `polishHint`/`sourceSentence`/`prompt`
+  zaczyna się od wzorca instrukcji AI ("Popraw zdanie", "Zwróć uwagę",
+  "Instrukcja", "Ułóż"), traktowany jak pusty, więc renderer spada na
+  nagłówek bez boksu zamiast pokazać polecenie jako zdanie źródłowe.
+- `components/dashboard/StudentHomeworkV2Screen.tsx`: dodany `exerciseContent`
+  z fallbackiem `content || sentence || prompt || sourceText`, `console.error`
+  ze zrzutem `exercise` gdy wszystko puste, i czytelny komunikat błędu w UI
+  zamiast pustego bloku. `instruction` też ma teraz fallback tekstowy.
+
+Nie dokończone / do sprawdzenia:
+- Root cause pustego `exercise.content` w v2 NIE ustalony. Zbadano cały
+  pipeline backendowy (`assignment.ts` — `selectSendableExercises` wymaga
+  niepustego `content` przez `isExerciseContractV2` przed zapisem do
+  `sentences`; `endpoints.ts` — `submitHomeworkV2Attempt`/
+  `proposeHomeworkV2Grade`/`approveHomeworkV2Grade` tylko czytają istniejący
+  kontrakt z tablicy, nic nie nadpisują) — nie znaleziono ścieżki, która
+  powinna zapisać pusty `content`. Możliwe, że to dokument sprzed obecnej
+  wersji kontraktu albo ręcznie edytowany. Jeśli objaw wróci, sprawdzić log
+  `[StudentHomeworkV2Screen] Zadanie bez treści (content):` w konsoli
+  przeglądarki kursanta — da pełny zrzut obiektu zadania.
+- Zmiany NIE zostały obejrzane w przeglądarce przez agenta (brak dostępu do
+  zalogowanej sesji) — Maciej testuje sam na koncie kursanta.
+
+Decyzje architektoniczne: brak nowych — kontynuacja podejścia z AB
+(defensywne UI, nigdy nie pokazuj pustego ekranu).
+
+Ryzyka: Brak zmian w firestore.rules, middleware autoryzacji ani ścieżkach
+tokenowych bez logowania — wyłącznie dwa komponenty prezentacyjne.

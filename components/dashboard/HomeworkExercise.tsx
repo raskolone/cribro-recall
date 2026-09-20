@@ -99,7 +99,14 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
     const chosen: number[] = Array.isArray(answer) ? answer : [];
     const chunks: string[] = item.chunks || [];
     const remaining = chunks.map((_, i) => i).filter((i) => !chosen.includes(i));
-    const sourceSentence = item.polishHint || item.sourceSentence || item.prompt || '';
+    // Generator AI czasem wstrzykuje własną instrukcję ("Popraw zdanie. Zwróć
+    // uwagę na...") w pole źródłowe zamiast prawdziwego zdania polskiego.
+    // Taki tekst nie jest zdaniem do przetłumaczenia — traktujemy go jak brak
+    // źródła, żeby nie pokazać kursantowi polecenia zamiast treści zadania.
+    const looksLikeInstruction = (text: string) =>
+      /^(popraw zdanie|zwróć uwagę|instrukcja|ułóż)\b/i.test(text.trim());
+    const rawSourceSentence = item.polishHint || item.sourceSentence || item.prompt || '';
+    const sourceSentence = looksLikeInstruction(String(rawSourceSentence)) ? '' : rawSourceSentence;
 
     return (
       <div className="space-y-4">

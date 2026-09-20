@@ -292,6 +292,18 @@ const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user,
 
   const canGoNext = state.done || (state.attemptsLeft === 0 && !state.awaitingCorrection);
 
+  // Kontrakt v2 przewiduje wyłącznie `content` (patrz ExerciseContractV2 w
+  // functions/src/homeworkV2/contracts.ts), ale ekran nie może pokazać
+  // pustej karty, gdyby jakiś starszy/uszkodzony dokument tego pola nie miał —
+  // stąd defensywny fallback na nazwy z innych miejsc kontraktu oraz log
+  // do konsoli, żeby dało się zdiagnozować, które pole faktycznie zabrakło.
+  const exerciseContent =
+    exercise.content || (exercise as any).sentence || (exercise as any).prompt || (exercise as any).sourceText || '';
+  if (!exerciseContent) {
+    // eslint-disable-next-line no-console
+    console.error('[StudentHomeworkV2Screen] Zadanie bez treści (content):', exercise);
+  }
+
   const availableHint =
     state.hint ||
     exercise.hintSmall ||
@@ -357,8 +369,16 @@ const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user,
         </div>
 
         <div className="space-y-1.5">
-          <p className="text-xs text-content-muted font-medium">{exercise.instruction}</p>
-          <p className="text-lg sm:text-xl font-bold leading-relaxed text-white">{exercise.content}</p>
+          <p className="text-xs text-content-muted font-medium">
+            {exercise.instruction || 'Uzupełnij zdanie.'}
+          </p>
+          {exerciseContent ? (
+            <p className="text-lg sm:text-xl font-bold leading-relaxed text-white">{exerciseContent}</p>
+          ) : (
+            <p className="text-sm text-danger">
+              Nie udało się wczytać treści tego zadania. Wróć do listy i spróbuj ponownie albo zgłoś to lektorowi.
+            </p>
+          )}
         </div>
 
         {/* Wskazówka rozwijana */}
