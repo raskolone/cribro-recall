@@ -2120,6 +2120,69 @@ function deserializeLearningProfile(studentId, stored, baseLevel) {
   };
 }
 
+// utils/notionBlocksFetcher.ts
+var NOTION_API = "https://api.notion.com/v1";
+var NOTION_VERSION = "2022-06-28";
+var NOTION_BLOCKS_MAX_DEPTH = 4;
+var sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+var fetchNotionBlockChildrenPage = async (token, blockId, cursor) => {
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    await sleep(350);
+    const url = `${NOTION_API}/blocks/${blockId}/children${cursor ? `?start_cursor=${cursor}&page_size=100` : "?page_size=100"}`;
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Notion-Version": NOTION_VERSION,
+        "Content-Type": "application/json"
+      }
+    });
+    if (res.ok) return res.json();
+    const isRetryable = res.status === 429 || res.status >= 500;
+    if (isRetryable && attempt < maxAttempts) {
+      let retryAfterSeconds = 1;
+      const header = res.headers.get("retry-after");
+      if (header) retryAfterSeconds = Number(header) || retryAfterSeconds;
+      await sleep((retryAfterSeconds + 1) * 1e3);
+      continue;
+    }
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Notion GET /blocks/${blockId}/children \u2192 ${res.status}: ${detail.slice(0, 400)}`);
+  }
+  throw new Error(`Notion: przekroczono limit ponowie\u0144 dla /blocks/${blockId}/children`);
+};
+var richTextOf = (block) => {
+  const type = block?.type;
+  const body = type ? block[type] : void 0;
+  const richText = body?.rich_text;
+  if (!Array.isArray(richText)) return "";
+  return richText.map((part) => part?.plain_text || "").join("");
+};
+var fetchNotionBlocksText = async (token, blockId, depth = 0) => {
+  const lines = [];
+  let cursor;
+  do {
+    const data = await fetchNotionBlockChildrenPage(token, blockId, cursor);
+    for (const block of data?.results || []) {
+      if (!block || typeof block !== "object") continue;
+      const text = richTextOf(block);
+      if (text) lines.push(text);
+      if (block.has_children) {
+        const childDepth = depth + 1;
+        if (childDepth >= NOTION_BLOCKS_MAX_DEPTH) {
+          throw new Error(
+            `Notion: blok na g\u0142\u0119boko\u015Bci ${childDepth} nadal ma dzieci \u2014 przekroczono limit MAX_DEPTH=${NOTION_BLOCKS_MAX_DEPTH} dla bloku ${block.id}`
+          );
+        }
+        const childText = await fetchNotionBlocksText(token, block.id, childDepth);
+        if (childText) lines.push(childText);
+      }
+    }
+    cursor = data?.has_more ? data.next_cursor : void 0;
+  } while (cursor);
+  return lines.join("\n");
+};
+
 // server.ts
 function mapToActualOpenAIModel2(modelName) {
   const clean = String(modelName || "").replace(/^openai\//, "").trim().toLowerCase();
@@ -3889,38 +3952,6 @@ RESEND_API_KEY=${cleanKey}
       lastFetchStatus
     };
   }
-  async function fetchNotionBlocksText(token, blockId, depth = 0) {
-    if (depth > 4) return "";
-    const NOTION_API = "https://api.notion.com/v1";
-    const NOTION_VERSION = "2022-06-28";
-    const lines = [];
-    let cursor;
-    do {
-      const url = `${NOTION_API}/blocks/${blockId}/children${cursor ? `?start_cursor=${cursor}&page_size=100` : "?page_size=100"}`;
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Notion-Version": NOTION_VERSION,
-          "Content-Type": "application/json"
-        }
-      });
-      if (!res.ok) break;
-      const data = await res.json();
-      for (const block of data.results || []) {
-        const type = block.type;
-        if (block[type]?.rich_text) {
-          const text = (block[type].rich_text || []).map((t) => t.plain_text || "").join("");
-          if (text) lines.push(text);
-        }
-        if (block.has_children) {
-          const childText = await fetchNotionBlocksText(token, block.id, depth + 1);
-          if (childText) lines.push(childText);
-        }
-      }
-      cursor = data.has_more ? data.next_cursor : void 0;
-    } while (cursor);
-    return lines.join("\n");
-  }
   app2.get("/api/notion/config", requireFirebaseAdmin, async (_req, res) => {
     try {
       const cfg = await getNotionConfig();
@@ -4082,8 +4113,8 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
           error: 'Brak tokena Notion API. Wprowad\u017A token integracji (zaczynaj\u0105cy si\u0119 od "ntn_" lub "secret_"), aby przeszuka\u0107 udost\u0119pnione bazy.'
         });
       }
-      const NOTION_API = "https://api.notion.com/v1";
-      const NOTION_VERSION = "2022-06-28";
+      const NOTION_API2 = "https://api.notion.com/v1";
+      const NOTION_VERSION2 = "2022-06-28";
       const allDatabases = [];
       let cursor = void 0;
       let hasMore = true;
@@ -4100,11 +4131,11 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
         if (cursor) {
           requestBody.start_cursor = cursor;
         }
-        const searchRes = await fetch(`${NOTION_API}/search`, {
+        const searchRes = await fetch(`${NOTION_API2}/search`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Notion-Version": NOTION_VERSION,
+            "Notion-Version": NOTION_VERSION2,
             "Content-Type": "application/json"
           },
           body: JSON.stringify(requestBody)
@@ -4163,12 +4194,12 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
       if (!token) {
         return res.status(400).json({ error: 'Brak tokena Notion API. Wprowad\u017A token integracji (np. zaczynaj\u0105cy si\u0119 od "ntn_" lub "secret_").' });
       }
-      const NOTION_API = "https://api.notion.com/v1";
-      const NOTION_VERSION = "2022-06-28";
-      const userRes = await fetch(`${NOTION_API}/users/me`, {
+      const NOTION_API2 = "https://api.notion.com/v1";
+      const NOTION_VERSION2 = "2022-06-28";
+      const userRes = await fetch(`${NOTION_API2}/users/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Notion-Version": NOTION_VERSION
+          "Notion-Version": NOTION_VERSION2
         }
       });
       if (!userRes.ok) {
@@ -4183,10 +4214,10 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
       let meetingDbTitle = "Nie skonfigurowano";
       if (meetingNotesDbId) {
         try {
-          const dbRes = await fetch(`${NOTION_API}/databases/${meetingNotesDbId}`, {
+          const dbRes = await fetch(`${NOTION_API2}/databases/${meetingNotesDbId}`, {
             headers: {
               Authorization: `Bearer ${token}`,
-              "Notion-Version": NOTION_VERSION
+              "Notion-Version": NOTION_VERSION2
             }
           });
           if (dbRes.ok) {
@@ -4202,10 +4233,10 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
       let studentsDbTitle = "Nie skonfigurowano";
       if (studentsDbId) {
         try {
-          const sdbRes = await fetch(`${NOTION_API}/databases/${studentsDbId}`, {
+          const sdbRes = await fetch(`${NOTION_API2}/databases/${studentsDbId}`, {
             headers: {
               Authorization: `Bearer ${token}`,
-              "Notion-Version": NOTION_VERSION
+              "Notion-Version": NOTION_VERSION2
             }
           });
           if (sdbRes.ok) {
@@ -4237,8 +4268,8 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
     if (!token || !meetingNotesDbId || !adminApp) {
       return { found: 0, processed: 0, importedCount: 0, items: [], unmatchedTranscripts: [], lastFetchTime: (/* @__PURE__ */ new Date()).toISOString() };
     }
-    const NOTION_API = "https://api.notion.com/v1";
-    const NOTION_VERSION = "2022-06-28";
+    const NOTION_API2 = "https://api.notion.com/v1";
+    const NOTION_VERSION2 = "2022-06-28";
     const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
     const usersSnap = await adminDb.collection("users").get();
     const userList = usersSnap.docs.map((d) => {
@@ -4253,11 +4284,11 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
         level: u.level || ""
       };
     });
-    const queryRes = await fetch(`${NOTION_API}/databases/${meetingNotesDbId}/query`, {
+    const queryRes = await fetch(`${NOTION_API2}/databases/${meetingNotesDbId}/query`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        "Notion-Version": NOTION_VERSION,
+        "Notion-Version": NOTION_VERSION2,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({ page_size: 40 })
@@ -4442,16 +4473,16 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
           message: "Baza spotka\u0144 Notion nie jest jeszcze skonfigurowana."
         });
       }
-      const NOTION_API = "https://api.notion.com/v1";
-      const NOTION_VERSION = "2022-06-28";
+      const NOTION_API2 = "https://api.notion.com/v1";
+      const NOTION_VERSION2 = "2022-06-28";
       const sevenDaysAgo = /* @__PURE__ */ new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const sevenDaysAgoIso = sevenDaysAgo.toISOString();
-      const queryRes = await fetch(`${NOTION_API}/databases/${meetingNotesDbId}/query`, {
+      const queryRes = await fetch(`${NOTION_API2}/databases/${meetingNotesDbId}/query`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Notion-Version": NOTION_VERSION,
+          "Notion-Version": NOTION_VERSION2,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({

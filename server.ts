@@ -203,6 +203,7 @@ import {
   normalizeLevel,
   deserializeLearningProfile
 } from "./utils/learningCurve";
+import { fetchNotionBlocksText } from "./utils/notionBlocksFetcher";
 let pdfParse: any;
 try {
   const loadedPdf = typeof require !== "undefined" ? require("pdf-parse") : null;
@@ -2269,40 +2270,9 @@ export function createApp() {
     };
   }
 
-  async function fetchNotionBlocksText(token: string, blockId: string, depth = 0): Promise<string> {
-    if (depth > 4) return '';
-    const NOTION_API = 'https://api.notion.com/v1';
-    const NOTION_VERSION = '2022-06-28';
-    const lines: string[] = [];
-    let cursor: string | undefined;
-
-    do {
-      const url = `${NOTION_API}/blocks/${blockId}/children${cursor ? `?start_cursor=${cursor}&page_size=100` : '?page_size=100'}`;
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Notion-Version': NOTION_VERSION,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!res.ok) break;
-      const data: any = await res.json();
-      for (const block of data.results || []) {
-        const type = block.type;
-        if (block[type]?.rich_text) {
-          const text = (block[type].rich_text || []).map((t: any) => t.plain_text || '').join('');
-          if (text) lines.push(text);
-        }
-        if (block.has_children) {
-          const childText = await fetchNotionBlocksText(token, block.id, depth + 1);
-          if (childText) lines.push(childText);
-        }
-      }
-      cursor = data.has_more ? data.next_cursor : undefined;
-    } while (cursor);
-
-    return lines.join('\n');
-  }
+  // `fetchNotionBlocksText` (import, paginacja, głębokość, ponowienia) mieszka
+  // w utils/notionBlocksFetcher.ts — wydzielone, żeby dało się to przetestować
+  // bez uruchamiania całego serwera Express.
 
   // 1. GET /api/notion/config
   app.get('/api/notion/config', requireFirebaseAdmin, async (_req, res) => {

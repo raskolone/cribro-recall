@@ -2857,3 +2857,104 @@ zmienia `firestore.rules` ani middleware `requireFirebaseAuth`/
 `requireFirebaseAdmin`, endpoint nadal wymaga zalogowanego lektora/admina
 tak jak istniejący `/api/scenario/generate`. Brak zmian w ścieżkach
 tokenowych bez logowania.
+
+---
+
+2026-09-20 — Claude Code / Sonnet 5
+
+Zadanie: Zlecenie zakładało, że import notatek/transkrypcji z Notion gubi
+treść, bo parser rekurencyjny pobiera tylko bezpośrednie dzieci strony i
+pomija dzieci bloków `has_children === true` (zwłaszcza toggle i
+callout), z twardym limitem MAX_DEPTH=4, kontrolowaną obsługą błędów API
+(bez zapisu do bazy przy błędzie) i usunięciem rzekomego fallbacku
+słownictwa „apple/banana”.
+
+Audyt (Faza A) pokazał, że opis zadania trafnie opisuje
+`functions/src/notion/client.ts` (`pageToText`) — ale ten moduł jest
+martwym kodem od rundy 28 (2026-09-16, patrz CHANGELOG „Pełna Migracja
+Bazy Kursantów i Lekcji z Notion do Firestore”): `previewNotionSync`,
+`importNotionSelection` i `checkNotionDaily` zostały wtedy usunięte z
+`functions/src/index.ts` po jednorazowej pełnej migracji 22
+kursantów/110 lekcji do Firestore. Zostały tylko pliki źródłowe i testy
+jednostkowe (`tests/notionParse.test.ts`, `notionMatch.test.ts`,
+`notionLevel.test.ts`) importujące bezpośrednio z `functions/src/notion/*`
+— bez żadnego podpięcia do wdrożonego callable/triggera.
+
+Żywa ścieżka importu treści Notion to dziś `fetchNotionBlocksText` w
+`server.ts` (endpoint `/api/notion/meeting-content/:pageId`), używana
+przez `ManualTranscriptImportModal.tsx` do wstępnego wypełnienia
+formularza przed wygenerowaniem lekcji przez Gemini
+(`services/transcriptLesson.ts`) — nie ma tu zapisu do Firestore wprost z
+tej funkcji. Ta funkcja już schodziła w KAŻDY blok z `has_children`
+(bez filtra po słowach kluczowych toggle/callout) i już miała
+`depth > 4` jako granicę — ale błędy API (429/5xx/403/404) były po cichu
+połykane (`if (!res.ok) break`), zwracając uciętą treść zamiast błędu, a
+przekroczenie głębokości ucinało dane bez sygnału. Fallback
+„apple/banana” z opisu zadania nie istnieje jako fallback produkcyjny —
+to tylko placeholder w polu formularza ręcznego wpisywania lekcji
+(`AdminPanel.tsx:4996`, i18n klucz `pl.json`/`en.json`), niepowiązany z
+importem z Notion.
+
+Zapytałem Macieja wprost (AskUserQuestion), który pipeline naprawić —
+wybrał żywy (`server.ts`), rekomendowany ze względu na realny wpływ.
+
+Zrobione:
+- Nowy `utils/notionBlocksFetcher.ts` — wydzielona, testowalna wersja
+  `fetchNotionBlocksText`/`fetchNotionBlockChildrenPage` (wcześniej
+  lokalne domknięcia w `server.ts`): twardy `NOTION_BLOCKS_MAX_DEPTH = 4`
+  (błąd, gdy blok na głębokości 4 nadal ma dzieci, zamiast ucinania),
+  pacing 350 ms + do 3 prób dla 429/5xx z poszanowaniem `Retry-After`,
+  defensywna ekstrakcja `rich_text` (brak wyjątku na nieznanym typie
+  bloku czy pustych/`null` elementach), błąd API zawsze rzuca wyjątek
+  zamiast cicho zwracać pustą/uciętą treść.
+- `server.ts` — usunięto zduplikowaną definicję `fetchNotionBlocksText`,
+  doszedł import z `utils/notionBlocksFetcher.ts`; oba miejsca użycia
+  (`/api/notion/meeting-content/:pageId` i `syncNotionTranscriptsFromApi`)
+  już miały `try/catch` zwracający błąd 500 zamiast zapisu częściowych
+  danych, więc zamiana zachowania (throw zamiast cichego `break`) nie
+  wymagała zmian w wywołujących.
+- `tests/notionBlocksFetcher.test.ts` — 11 nowych testów: zagnieżdżenie
+  toggle→callout→paragraph, paginacja na dwóch poziomach z osobnym
+  kursorem, kolejność depth-first bez duplikacji, pusty wynik przy braku
+  sekcji, błąd bez częściowego zwrotu, retry na 429 z `Retry-After`
+  (zegar zastępczy `node:test` `mock.timers`), wyczerpanie ponowień na
+  5xx, błąd przy bloku na głębokości 4 z dziećmi, brak wyjątku na
+  bloku dokładnie na granicy głębokości, odporność na brakujące/`null`
+  pola `rich_text`, i sanity-check że tekst kursanta ze słowem „apple”
+  przechodzi bez filtrowania.
+- `api/index.js`, `dist/server.cjs` — przebudowane (`npm run build`),
+  zawierają nową wersję `fetchNotionBlocksText`.
+
+Nie dokończone / do sprawdzenia:
+- `functions/src/notion/client.ts` (`pageToText`) — martwy kod, NIE
+  naprawiony (poza zakresem wyboru Macieja). Nadal ma ten sam bug opisany
+  w zleceniu (filtr po słowach kluczowych toggle/callout, efektywny limit
+  głębokości 2). Jeśli ktoś kiedyś przywróci `previewNotionSync`/
+  `importNotionSelection`, ten bug wróci — testy `tests/notionParse.test.ts`
+  itd. dalej przechodzą, bo nie testują `pageToText`.
+- Zmiana nie była sprawdzona na żywo w przeglądarce (brak zalogowanej
+  sesji / tokenu Notion w tej sesji agenta) — zweryfikowana wyłącznie
+  przez `tsc --noEmit`, `npm test` (401/401 zielono, baza 390 + 11
+  nowych) i `npm run build`.
+- `ManualTranscriptImportModal.tsx` nadal po cichu zostawia puste pole
+  `rawText`, gdy `/api/notion/meeting-content/:pageId` zwróci błąd
+  (`if (res.ok) {...}` bez gałęzi na błąd) — teraz endpoint zwraca 500
+  zamiast 200 z uciętą treścią, więc lektor dostanie pustkę zamiast
+  częściowej notatki, ale nie zobaczy komunikatu błędu. Świadomie poza
+  zakresem (zadanie dotyczyło pobierania, nie UI błędów) — warto
+  poprawić w osobnej rundzie.
+
+Decyzje architektoniczne:
+- Wydzielenie `utils/notionBlocksFetcher.ts` z `server.ts` — jedyny
+  sposób na spełnienie wymogu testów regresyjnych z zadania bez mockowania
+  całej aplikacji Express (funkcje w `server.ts` to lokalne domknięcia,
+  nieeksportowane). Zero zmiany zachowania, czysta ekstrakcja.
+- Nie ruszałem `functions/src/notion/*` — Maciej wybrał zakres „żywy
+  pipeline”, a naprawa martwego kodu bez podpięcia do żadnego callable
+  nie miałaby wpływu produkcyjnego; wspomniane wyżej jako świadomie
+  pominięte.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji
+(`requireFirebaseAuth`/`requireFirebaseAdmin` niedotknięte) ani ścieżkach
+tokenowych bez logowania. Brak migracji/backfillu, schemat dokumentów
+lekcji niezmieniony. Brak nowych zależności w `package.json`.
