@@ -307,7 +307,7 @@ import { initializeApp as initializeApp2, cert, getApps as getApps2, getApp } fr
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore as getFirestore2 } from "firebase-admin/firestore";
 import { createHmac } from "crypto";
-import { GoogleGenAI as GoogleGenAI2, Type as Type2 } from "@google/genai";
+import { GoogleGenAI as GoogleGenAI3, Type as Type3 } from "@google/genai";
 
 // services/aiModels.ts
 var PRIMARY_MODEL = "gemini-2.5-flash";
@@ -571,7 +571,9 @@ Bran\u017Ca / kontekst zawodowy: ${industry || "brak danych \u2014 nie zgaduj ko
 Cele edukacyjne/zawodowe kursanta: ${goals || "brak danych"}
 Preferencje korekty b\u0142\u0119d\xF3w: brak wyodr\u0119bnionego pola w profilu \u2014 koryguj na bie\u017C\u0105co w module "error_work", bez nachalno\u015Bci w pozosta\u0142ych modu\u0142ach`;
   const errorWorkInstruction = mode === "returning" ? 'modu\u0142 "error_work" musi \u0107wiczy\u0107 DOK\u0141ADNIE te b\u0142\u0119dy i to s\u0142ownictwo, kt\xF3re pad\u0142y na OSTATNIEJ lekcji kursanta (patrz kontekst ni\u017Cej) \u2014 konkretne zdania/sytuacje do poprawy, nie og\xF3lna gramatyka.' : 'kursant nie ma jeszcze historii lekcji, wi\u0119c modu\u0142 "error_work" zamienia si\u0119 w \u0107wiczenia DIAGNOSTYCZNE \u2014 kr\xF3tkie zadania sprawdzaj\u0105ce realny poziom wzgl\u0119dem deklarowanego CEFR.';
-  return { mode, cefr, profileContext, lastLessonContext, errorWorkInstruction };
+  const grammarContext = String(lastLesson?.corrections || lastLesson?.thingsToImprove || "").trim();
+  const hasGrammarContext = grammarContext.length > 0;
+  return { mode, cefr, profileContext, lastLessonContext, errorWorkInstruction, hasGrammarContext, grammarContext };
 }
 
 // services/scenarioAiService.ts
@@ -729,6 +731,394 @@ async function resolveStudentRef(adminDb, studentRef) {
   }
   const { id, data } = matches[0];
   return { studentId: id, displayName: String(data.displayName || data.name || id) };
+}
+
+// services/scenarioCanvasAiService.ts
+import { GoogleGenAI as GoogleGenAI2, Type as Type2 } from "@google/genai";
+import { randomUUID as randomUUID2 } from "crypto";
+
+// types/scenarioCanvas.ts
+var CANVAS_BLOCK_IDS = [
+  "lesson_goal",
+  "warm_up",
+  "revision_translation",
+  "older_lesson_refresh",
+  "grammar_review",
+  "main_topic",
+  "language_focus",
+  "practice_enclosure",
+  "homework"
+];
+var CANVAS_DURATION_BUDGETS = {
+  45: {
+    warm_up: 4,
+    revision_translation: 5,
+    older_lesson_refresh: 4,
+    grammar_review: 6,
+    main_topic: 18,
+    language_focus: 4,
+    practice_enclosure: 3,
+    homework: 1
+  },
+  60: {
+    warm_up: 5,
+    revision_translation: 6,
+    older_lesson_refresh: 5,
+    grammar_review: 8,
+    main_topic: 24,
+    language_focus: 6,
+    practice_enclosure: 5,
+    homework: 1
+  },
+  90: {
+    warm_up: 7,
+    revision_translation: 9,
+    older_lesson_refresh: 7,
+    grammar_review: 12,
+    main_topic: 38,
+    language_focus: 9,
+    practice_enclosure: 7,
+    homework: 1
+  }
+};
+
+// utils/scenarioCanvasValidation.ts
+function computeApplicableCanvasBlockIds(mode, hasGrammarContext) {
+  return CANVAS_BLOCK_IDS.filter((id) => {
+    if (id === "grammar_review") return hasGrammarContext;
+    if (id === "older_lesson_refresh") return mode === "returning";
+    return true;
+  });
+}
+function validateCanvasPlannerOutput(parsed, applicableBlockIds) {
+  if (!parsed || !Array.isArray(parsed.blocks) || parsed.blocks.length !== applicableBlockIds.length) {
+    throw new Error("Model (Planner) zwr\xF3ci\u0142 nieprawid\u0142ow\u0105 liczb\u0119 blok\xF3w canvasu.");
+  }
+  for (let i = 0; i < applicableBlockIds.length; i++) {
+    const expectedId = applicableBlockIds[i];
+    const block = parsed.blocks[i];
+    if (!block || block.blockId !== expectedId) {
+      throw new Error(`Nieprawid\u0142owa kolejno\u015B\u0107 lub identyfikator bloku na pozycji ${i}: oczekiwano "${expectedId}".`);
+    }
+    if (!block.objective || !String(block.objective).trim()) {
+      throw new Error(`Blok "${expectedId}" nie ma celu (objective).`);
+    }
+    if (!Array.isArray(block.items) || block.items.length < 1 || block.items.length > 6) {
+      throw new Error(`Blok "${expectedId}" musi mie\u0107 od 1 do 6 punkt\xF3w.`);
+    }
+    for (const item of block.items) {
+      if (!item?.text || !String(item.text).trim()) {
+        throw new Error(`Blok "${expectedId}" zawiera pusty punkt.`);
+      }
+    }
+    if (expectedId === "main_topic") {
+      const rescueCount = block.items.filter((it) => it.kind === "rescue_question").length;
+      const windDownCount = block.items.filter((it) => it.kind === "wind_down_question").length;
+      if (rescueCount < 2 || rescueCount > 3) {
+        throw new Error('Blok "main_topic" musi mie\u0107 2-3 punkty typu "rescue_question".');
+      }
+      if (windDownCount !== 1) {
+        throw new Error('Blok "main_topic" musi mie\u0107 dok\u0142adnie 1 punkt typu "wind_down_question".');
+      }
+    }
+  }
+}
+function buildScenarioCanvas(parsed, applicableBlockIds, opts, makeId) {
+  const budgets = CANVAS_DURATION_BUDGETS[opts.durationMin];
+  const applicableSet = new Set(applicableBlockIds);
+  const modelByBlockId = new Map(parsed.blocks.map((b) => [b.blockId, b]));
+  const blocks = CANVAS_BLOCK_IDS.map((blockId) => {
+    if (!applicableSet.has(blockId)) {
+      return {
+        blockId,
+        objective: "",
+        durationMin: 0,
+        items: [],
+        skipped: true,
+        skipReason: blockId === "grammar_review" ? "Brak kontekstu gramatycznego do powt\xF3rki." : "Kursant nie ma jeszcze historii lekcji (cold start)."
+      };
+    }
+    const mod = modelByBlockId.get(blockId);
+    const items = mod.items.map((item) => ({
+      itemId: makeId(),
+      kind: item.kind,
+      text: item.text.trim(),
+      review: { state: "pending", rejectionReason: null },
+      delivery: {},
+      generation: 1
+    }));
+    return {
+      blockId,
+      objective: mod.objective.trim(),
+      durationMin: blockId === "lesson_goal" ? 0 : budgets[blockId],
+      items,
+      skipped: false,
+      ...mod.teacherNotes ? { teacherNotes: mod.teacherNotes.map((n) => n.trim()) } : {}
+    };
+  });
+  return {
+    version: 2,
+    canvasId: makeId(),
+    studentId: opts.studentId,
+    durationMin: opts.durationMin,
+    mode: opts.mode,
+    revision: 1,
+    blocks,
+    generatedAt: opts.generatedAt,
+    updatedAt: opts.generatedAt
+  };
+}
+function allItems(canvas) {
+  return canvas.blocks.flatMap((b) => b.items);
+}
+function validateCanvasAuditorOutput(parsed, canvas) {
+  if (!parsed || !Array.isArray(parsed.patches)) {
+    throw new Error("Model (Auditor) zwr\xF3ci\u0142 nieprawid\u0142ow\u0105 odpowied\u017A.");
+  }
+  const knownIds = new Set(allItems(canvas).map((it) => it.itemId));
+  for (const patch of parsed.patches) {
+    if (!patch?.itemId || !knownIds.has(patch.itemId)) {
+      throw new Error(`Auditor zwr\xF3ci\u0142 patch dla nieznanego itemId: "${patch?.itemId}".`);
+    }
+    if (!patch.text || !String(patch.text).trim()) {
+      throw new Error(`Auditor zwr\xF3ci\u0142 pusty tekst dla itemId "${patch.itemId}".`);
+    }
+  }
+}
+function applyCanvasAuditorPatch(canvas, patches) {
+  const patchByItemId = new Map(patches.map((p) => [p.itemId, p.text.trim()]));
+  if (patchByItemId.size === 0) return canvas;
+  return {
+    ...canvas,
+    blocks: canvas.blocks.map((block) => ({
+      ...block,
+      items: block.items.map(
+        (item) => patchByItemId.has(item.itemId) ? { ...item, text: patchByItemId.get(item.itemId) } : item
+      )
+    }))
+  };
+}
+function getRejectedItemIds(canvas) {
+  return allItems(canvas).filter((it) => it.review.state === "rejected").map((it) => it.itemId);
+}
+function validateCanvasRefreshOutput(parsed, rejectedItemIds) {
+  if (!parsed || !Array.isArray(parsed.items)) {
+    throw new Error("Model zwr\xF3ci\u0142 nieprawid\u0142ow\u0105 odpowied\u017A dla Lesson Refresh.");
+  }
+  const expected = new Set(rejectedItemIds);
+  const returned = new Set(parsed.items.map((it) => it.itemId));
+  if (expected.size !== returned.size || [...expected].some((id) => !returned.has(id))) {
+    throw new Error("Model zwr\xF3ci\u0142 inny zbi\xF3r itemId ni\u017C odrzucone elementy \u2014 Lesson Refresh odrzucony.");
+  }
+  for (const item of parsed.items) {
+    if (!item.text || !String(item.text).trim()) {
+      throw new Error(`Model zwr\xF3ci\u0142 pusty tekst dla podmienianego elementu "${item.itemId}".`);
+    }
+  }
+}
+function applyLessonRefresh(canvas, refreshed, mutationId, now) {
+  const patchByItemId = new Map(refreshed.items.map((it) => [it.itemId, it]));
+  return {
+    ...canvas,
+    revision: canvas.revision + 1,
+    updatedAt: now,
+    lastMutationId: mutationId,
+    blocks: canvas.blocks.map((block) => ({
+      ...block,
+      items: block.items.map((item) => {
+        const patch = patchByItemId.get(item.itemId);
+        if (!patch) return item;
+        return {
+          ...item,
+          text: patch.text.trim(),
+          kind: patch.kind,
+          generation: item.generation + 1,
+          review: { state: "pending", rejectionReason: null }
+        };
+      })
+    }))
+  };
+}
+
+// services/scenarioCanvasAiService.ts
+var CANVAS_PLANNER_MODEL = "gemini-2.5-pro";
+var CANVAS_FORMATTING_MODEL = "gemini-2.5-flash";
+var CANVAS_AUDITOR_MODEL = "gemini-2.5-flash";
+var CANVAS_REFRESH_MODEL = "gemini-2.5-flash";
+var CANVAS_BLOCK_LABELS = {
+  lesson_goal: "Cel lekcji (jedno zdanie, callout na g\xF3rze canvasu)",
+  warm_up: "Rozgrzewka",
+  revision_translation: "Powt\xF3rka / t\u0142umaczenie",
+  older_lesson_refresh: "Przypomnienie starszej lekcji (recykling materia\u0142u sprzed kilku spotka\u0144)",
+  grammar_review: "Powt\xF3rka gramatyki",
+  main_topic: "G\u0142\xF3wny temat",
+  language_focus: "Language focus (s\u0142ownictwo/zwroty do utrwalenia)",
+  practice_enclosure: "Zamkni\u0119cie \u0107wiczeniowe (kr\xF3tka praktyka utrwalaj\u0105ca)",
+  homework: "Praca domowa"
+};
+function plannerBlockSchema() {
+  return {
+    type: Type2.OBJECT,
+    properties: {
+      blockId: { type: Type2.STRING },
+      objective: { type: Type2.STRING },
+      items: {
+        type: Type2.ARRAY,
+        items: {
+          type: Type2.OBJECT,
+          properties: {
+            kind: { type: Type2.STRING, enum: ["question", "task", "note", "rescue_question", "wind_down_question"] },
+            text: { type: Type2.STRING }
+          },
+          required: ["kind", "text"]
+        }
+      },
+      teacherNotes: { type: Type2.ARRAY, items: { type: Type2.STRING } }
+    },
+    required: ["blockId", "objective", "items"]
+  };
+}
+async function generateScenarioCanvasForStudent(params) {
+  const { adminDb, geminiApiKey, studentId, durationMin, generateContentWithRetry: generateContentWithRetry2, geminiModelCascade } = params;
+  const { mode, cefr, profileContext, lastLessonContext, hasGrammarContext, grammarContext } = await loadScenarioStudentContext(adminDb, studentId);
+  const applicableBlockIds = computeApplicableCanvasBlockIds(mode, hasGrammarContext);
+  const ai = new GoogleGenAI2({ apiKey: geminiApiKey });
+  const blockListText = applicableBlockIds.map((id, idx) => `${idx + 1}. ${id} \u2014 ${CANVAS_BLOCK_LABELS[id]}`).join("\n");
+  const plannerPrompt = `Jeste\u015B do\u015Bwiadczonym metodykiem j\u0119zyka angielskiego (1:1, kursy zawodowe), uk\u0142adaj\u0105cym Canvas KONKRETNEJ lekcji dla konkretnego lektora i kursanta. Piszesz notatki robocze dla lektora, nie podr\u0119cznik ani ankiet\u0119.
+
+PROFIL KURSANTA:
+${profileContext}
+
+KONTEKST Z OSTATNIEJ LEKCJI:
+${lastLessonContext}
+
+KONTEKST GRAMATYCZNY DO POWT\xD3RKI (je\u015Bli dotyczy):
+${grammarContext || "brak"}
+
+PARAMETRY LEKCJI:
+D\u0142ugo\u015B\u0107: ${durationMin} minut
+Tryb: ${mode === "returning" ? "kursant powracaj\u0105cy (returning)" : "pierwszy kontakt / brak historii (cold_start)"}
+
+TEST NATURALNO\u015ACI (obowi\u0105zkowy): ka\u017Cde pytanie/polecenie brzmi jak \u017Cywa rozmowa dw\xF3ch ludzi, nigdy jak formularz ewaluacyjny ani ankieta HR. Zero korpo-\u017Cargonu ("leverage", "synergy", "usprawni\u0107" itp.).
+
+STRUKTURA \u2014 dok\u0142adnie te bloki, w tej kolejno\u015Bci:
+${blockListText}
+
+Dla ka\u017Cdego bloku podaj jednozdaniowy cel ("objective") oraz 1-6 konkretnych, samodzielnych punkt\xF3w ("items"), ka\u017Cdy z polem "kind" ("question", "task" lub "note").
+
+Blok "main_topic" MUSI dodatkowo zawiera\u0107: dok\u0142adnie 2-3 punkty z "kind": "rescue_question" (prostsze, awaryjne pytania na wypadek, gdy kursant utknie) oraz DOK\u0141ADNIE 1 punkt z "kind": "wind_down_question" (pytanie zamykaj\u0105ce temat, przej\u015Bcie do kolejnego bloku). Do "teacherNotes" wpisz modele odpowiedzi i prompt ratunkowy dla lektora.
+
+Nie podawaj czas\xF3w trwania ani identyfikator\xF3w \u2014 o to zadba backend.`;
+  const plannerSchema = {
+    type: Type2.OBJECT,
+    properties: {
+      blocks: { type: Type2.ARRAY, items: plannerBlockSchema() }
+    },
+    required: ["blocks"]
+  };
+  const plannerResponse = await generateContentWithRetry2(
+    ai,
+    plannerPrompt,
+    { responseMimeType: "application/json", responseSchema: plannerSchema },
+    [CANVAS_PLANNER_MODEL, CANVAS_FORMATTING_MODEL, ...geminiModelCascade]
+  );
+  if (!plannerResponse.text) throw new Error("Brak odpowiedzi z modelu Planner AI.");
+  const plannerClean = String(plannerResponse.text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
+  const plannerParsed = JSON.parse(plannerClean);
+  validateCanvasPlannerOutput(plannerParsed, applicableBlockIds);
+  const canvas = buildScenarioCanvas(
+    plannerParsed,
+    applicableBlockIds,
+    { studentId, durationMin, mode, generatedAt: (/* @__PURE__ */ new Date()).toISOString() },
+    randomUUID2
+  );
+  return auditScenarioCanvas(canvas, { geminiApiKey, generateContentWithRetry: generateContentWithRetry2, geminiModelCascade, cefr });
+}
+async function auditScenarioCanvas(canvas, opts) {
+  const reviewableItems = canvas.blocks.filter((b) => !b.skipped).flatMap((b) => b.items.map((it) => ({ blockId: b.blockId, itemId: it.itemId, kind: it.kind, text: it.text })));
+  if (reviewableItems.length === 0) return canvas;
+  const ai = new GoogleGenAI2({ apiKey: opts.geminiApiKey });
+  const auditorPrompt = `Jeste\u015B surowym redaktorem scenariuszy lekcji angielskiego (poziom ${opts.cefr}). Poni\u017Cej jest lista punkt\xF3w z gotowego Canvasu lekcji. Twoje JEDYNE zadanie: wskaza\u0107 punkty, kt\xF3re brzmi\u0105 sztucznie, nudno albo jak formularz/ankieta, i poda\u0107 ich POPRAWION\u0104 wersj\u0119 (\u017Cywa, konkretna, naturalna rozmowa).
+
+Zwr\xF3\u0107 patch WY\u0141\u0104CZNIE dla punkt\xF3w wymagaj\u0105cych poprawki \u2014 reszt\u0119 pomi\u0144 (nie zwracaj patcha dla dobrych punkt\xF3w). Nie tw\xF3rz nowych punkt\xF3w, nie zmieniaj ID, nie generuj nowego scenariusza od zera.
+
+PUNKTY:
+${reviewableItems.map((it) => `- itemId="${it.itemId}" [${it.blockId}/${it.kind}]: ${it.text}`).join("\n")}`;
+  const auditorSchema = {
+    type: Type2.OBJECT,
+    properties: {
+      patches: {
+        type: Type2.ARRAY,
+        items: {
+          type: Type2.OBJECT,
+          properties: {
+            itemId: { type: Type2.STRING },
+            text: { type: Type2.STRING }
+          },
+          required: ["itemId", "text"]
+        }
+      }
+    },
+    required: ["patches"]
+  };
+  const auditorResponse = await opts.generateContentWithRetry(
+    ai,
+    auditorPrompt,
+    { responseMimeType: "application/json", responseSchema: auditorSchema },
+    [CANVAS_AUDITOR_MODEL, ...opts.geminiModelCascade]
+  );
+  if (!auditorResponse.text) return canvas;
+  const cleanText = String(auditorResponse.text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
+  const parsed = JSON.parse(cleanText);
+  validateCanvasAuditorOutput(parsed, canvas);
+  return applyCanvasAuditorPatch(canvas, parsed.patches);
+}
+async function refreshScenarioCanvasBlocks(params) {
+  const { geminiApiKey, generateContentWithRetry: generateContentWithRetry2, geminiModelCascade, canvas, rejectedItemIds, teacherNotes, mutationId } = params;
+  const allItems2 = canvas.blocks.flatMap((b) => b.items.map((it) => ({ ...it, blockId: b.blockId })));
+  const rejectedSet = new Set(rejectedItemIds);
+  const rejected = allItems2.filter((it) => rejectedSet.has(it.itemId));
+  const acceptedAnchors = allItems2.filter((it) => it.review.state === "accepted").map((it) => it.text);
+  const noteByItemId = new Map(teacherNotes.map((n) => [n.itemId, n.note]));
+  const ai = new GoogleGenAI2({ apiKey: geminiApiKey });
+  const prompt = `Jeste\u015B metodykiem j\u0119zyka angielskiego. Lektor odrzuci\u0142 poni\u017Csze punkty scenariusza lekcji i poprosi\u0142 o ich podmian\u0119. Zwr\xF3\u0107 DOK\u0141ADNIE tyle nowych wersji, ile jest odrzuconych punkt\xF3w, ka\u017Cd\u0105 przypisan\u0105 do TEGO SAMEGO itemId \u2014 nie dodawaj, nie usuwaj, nie zmieniaj ID.
+
+ODRZUCONE PUNKTY I UWAGI LEKTORA:
+${rejected.map((it) => `- itemId="${it.itemId}" [${it.blockId}/${it.kind}]: "${it.text}"${noteByItemId.get(it.itemId) ? ` \u2014 uwaga lektora: ${noteByItemId.get(it.itemId)}` : ""}`).join("\n")}
+
+ZAAKCEPTOWANE PUNKTY (kotwice \u2014 nowe wersje NIE MOG\u0104 ich duplikowa\u0107 ani powtarza\u0107 tego samego pomys\u0142u):
+${acceptedAnchors.length ? acceptedAnchors.map((t) => `- ${t}`).join("\n") : "brak"}
+
+Zwr\xF3\u0107 ka\u017Cdy nowy punkt z tym samym "kind" co orygina\u0142, chyba \u017Ce uwaga lektora wyra\u017Anie prosi o inny typ.`;
+  const schema = {
+    type: Type2.OBJECT,
+    properties: {
+      items: {
+        type: Type2.ARRAY,
+        items: {
+          type: Type2.OBJECT,
+          properties: {
+            itemId: { type: Type2.STRING },
+            kind: { type: Type2.STRING, enum: ["question", "task", "note", "rescue_question", "wind_down_question"] },
+            text: { type: Type2.STRING }
+          },
+          required: ["itemId", "kind", "text"]
+        }
+      }
+    },
+    required: ["items"]
+  };
+  const response = await generateContentWithRetry2(
+    ai,
+    prompt,
+    { responseMimeType: "application/json", responseSchema: schema },
+    [CANVAS_REFRESH_MODEL, ...geminiModelCascade]
+  );
+  if (!response.text) throw new Error("Brak odpowiedzi z modelu Lesson Refresh AI.");
+  const cleanText = String(response.text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
+  const parsed = JSON.parse(cleanText);
+  validateCanvasRefreshOutput(parsed, rejectedItemIds);
+  return applyLessonRefresh(canvas, parsed, mutationId, (/* @__PURE__ */ new Date()).toISOString());
 }
 
 // utils/exerciseShuffle.ts
@@ -975,7 +1365,7 @@ var planExercises = (input) => {
 };
 
 // functions/src/homeworkV2/exerciseGenerator.ts
-import { randomUUID as randomUUID2 } from "crypto";
+import { randomUUID as randomUUID3 } from "crypto";
 
 // functions/src/homeworkV2/coreKnowledge.ts
 var ASSISTANT_IDENTITY = `Jeste\u015B Asystentem Cribro \u2014 cz\u0119\u015Bci\u0105 platformy do nauki angielskiego,
@@ -1148,7 +1538,7 @@ var finalizeContract = (input) => {
   const lessonIndex = Math.min(Math.max(1, draft.sourceLessonIndex), context.lessons.length) - 1;
   const lesson = context.lessons[lessonIndex] || context.lessons[0];
   return {
-    id: randomUUID2(),
+    id: randomUUID3(),
     engineVersion: ENGINE_VERSION,
     schemaVersion: SCHEMA_VERSION,
     promptVersion: PROMPT_VERSION,
@@ -4616,7 +5006,7 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
     try {
       const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, typeCounts, fileData, driveFile } = req.body;
       const apiKey = getGeminiApiKey();
-      const ai = new GoogleGenAI2({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI3({ apiKey: apiKey || "dummy" });
       let typeBreakdownInstruction = "";
       if (typeCounts && typeof typeCounts === "object" && Object.keys(typeCounts).length > 0) {
         const parts = Object.entries(typeCounts).filter(([t]) => !selectedTypes || selectedTypes.includes(t)).map(([type, count]) => `- ${type}: DOK\u0141ADNIE 1 ZADANIE ZBIORCZE zawieraj\u0105ce ${count} przyk\u0142ad\xF3w/zda\u0144 w bullet pointach`);
@@ -4728,26 +5118,26 @@ Zwr\xF3\u0107 wynik jako obiekt JSON zawieraj\u0105cy tablic\u0119 obiekt\xF3w p
         contents = [{ text: prompt }];
       }
       const schema = {
-        type: Type2.ARRAY,
+        type: Type3.ARRAY,
         description: "Array of test questions",
         items: {
-          type: Type2.OBJECT,
+          type: Type3.OBJECT,
           properties: {
-            type: { type: Type2.STRING, enum: ["multiple_choice", "fill_in_blank", "fill_in_blank_bank", "translation", "matching", "writing", "find_mistake"], description: "Type of the question" },
-            instruction: { type: Type2.STRING, description: 'Short instruction in Polish, e.g. "Uzupe\u0142nij luki:"' },
-            prompt: { type: Type2.STRING, description: "The question or the sentence to translate/fill" },
+            type: { type: Type3.STRING, enum: ["multiple_choice", "fill_in_blank", "fill_in_blank_bank", "translation", "matching", "writing", "find_mistake"], description: "Type of the question" },
+            instruction: { type: Type3.STRING, description: 'Short instruction in Polish, e.g. "Uzupe\u0142nij luki:"' },
+            prompt: { type: Type3.STRING, description: "The question or the sentence to translate/fill" },
             options: {
-              type: Type2.ARRAY,
-              items: { type: Type2.STRING },
+              type: Type3.ARRAY,
+              items: { type: Type3.STRING },
               description: "Options for multiple_choice, find_mistake or matching pairs."
             },
             wordBank: {
-              type: Type2.ARRAY,
-              items: { type: Type2.STRING },
+              type: Type3.ARRAY,
+              items: { type: Type3.STRING },
               description: "List of words in the word bank for fill_in_blank_bank"
             },
-            correctAnswer: { type: Type2.STRING, description: "The correct answer (exact string)." },
-            hint: { type: Type2.STRING, description: "Optional hint in Polish." }
+            correctAnswer: { type: Type3.STRING, description: "The correct answer (exact string)." },
+            hint: { type: Type3.STRING, description: "Optional hint in Polish." }
           },
           required: ["type", "instruction", "prompt", "correctAnswer"]
         }
@@ -4853,7 +5243,7 @@ tak, \u017Ceby \u0107wiczenie dalej sprawdza\u0142o to samo. Zwr\xF3\u0107 wynik
       if (!apiKey && !getOpenAIApiKey()) {
         return res.status(500).json({ error: "AI API key not configured. Please set GEMINI_API_KEY or OPENAI_API_KEY in environment variables." });
       }
-      const ai = new GoogleGenAI2({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI3({ apiKey: apiKey || "dummy" });
       const studentsListStr = typeof students === "string" ? students : Array.isArray(students) ? students.map((s) => `ID: ${s.id} | Imi\u0119/Nazwisko: ${s.name || s.username || ""} | Poziom: ${s.level || ""} | Opis: ${s.description || ""}`).join("\n") : "Brak bazy kursant\xF3w";
       let parsedDocText = textContent || "";
       let isPdfFallbackNeeded = false;
@@ -4968,22 +5358,22 @@ Zwr\xF3\u0107 dok\u0142adnie taki kszta\u0142t, bez komentarzy i bez bloku markd
 {"lessons":[{"date":"2024-03-12","studentId":"abc123","studentIds":["abc123"],"lessonTopic":"Present Perfect","revisionNotes":"...","vocabularyText":"deadline - termin\\nto meet - spotka\u0107","studentSpeaking":"...","thingsToImprove":"...","suggestedFollowUp":"..."}]}
 Gdy w materiale nie ma \u017Cadnej lekcji, zwr\xF3\u0107 {"lessons":[]} \u2014 nigdy nie wymy\u015Blaj lekcji, kt\xF3rych nie ma w tek\u015Bcie.`;
       const schema = {
-        type: Type2.OBJECT,
+        type: Type3.OBJECT,
         properties: {
           lessons: {
-            type: Type2.ARRAY,
+            type: Type3.ARRAY,
             items: {
-              type: Type2.OBJECT,
+              type: Type3.OBJECT,
               properties: {
-                date: { type: Type2.STRING },
-                studentId: { type: Type2.STRING },
-                studentIds: { type: Type2.ARRAY, items: { type: Type2.STRING } },
-                lessonTopic: { type: Type2.STRING },
-                revisionNotes: { type: Type2.STRING },
-                vocabularyText: { type: Type2.STRING },
-                studentSpeaking: { type: Type2.STRING },
-                thingsToImprove: { type: Type2.STRING },
-                suggestedFollowUp: { type: Type2.STRING }
+                date: { type: Type3.STRING },
+                studentId: { type: Type3.STRING },
+                studentIds: { type: Type3.ARRAY, items: { type: Type3.STRING } },
+                lessonTopic: { type: Type3.STRING },
+                revisionNotes: { type: Type3.STRING },
+                vocabularyText: { type: Type3.STRING },
+                studentSpeaking: { type: Type3.STRING },
+                thingsToImprove: { type: Type3.STRING },
+                suggestedFollowUp: { type: Type3.STRING }
               },
               required: ["date", "studentId", "lessonTopic", "revisionNotes", "vocabularyText"]
             }
@@ -5031,7 +5421,7 @@ Gdy w materiale nie ma \u017Cadnej lekcji, zwr\xF3\u0107 {"lessons":[]} \u2014 n
       if (!apiKey && !getOpenAIApiKey()) {
         return res.status(500).json({ error: "AI API key not configured. Please set GEMINI_API_KEY or OPENAI_API_KEY in environment variables." });
       }
-      const ai = new GoogleGenAI2({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI3({ apiKey: apiKey || "dummy" });
       let parsedDocText = textContent || "";
       let isPdfFallbackNeeded = false;
       if (pdfBase64) {
@@ -5092,27 +5482,27 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
 - aiComment: kr\xF3tkie podsumowanie w 1-2 zdaniach PO POLSKU \u2014 co znalaz\u0142e\u015B i na co lektor powinien zwr\xF3ci\u0107 uwag\u0119.
 - Zwr\xF3\u0107 wy\u0142\u0105cznie poprawny obiekt JSON zgodny ze schematem, bez komentarzy i bloku markdown.`;
       const schema = {
-        type: Type2.OBJECT,
+        type: Type3.OBJECT,
         properties: {
           extractedData: {
-            type: Type2.OBJECT,
+            type: Type3.OBJECT,
             properties: {
-              fullName: { type: Type2.STRING },
-              email: { type: Type2.STRING },
-              level: { type: Type2.STRING },
-              targetGoals: { type: Type2.STRING },
-              industry: { type: Type2.STRING },
-              generalNotes: { type: Type2.STRING },
+              fullName: { type: Type3.STRING },
+              email: { type: Type3.STRING },
+              level: { type: Type3.STRING },
+              targetGoals: { type: Type3.STRING },
+              industry: { type: Type3.STRING },
+              generalNotes: { type: Type3.STRING },
               historicalLessons: {
-                type: Type2.ARRAY,
+                type: Type3.ARRAY,
                 items: {
-                  type: Type2.OBJECT,
+                  type: Type3.OBJECT,
                   properties: {
-                    date: { type: Type2.STRING },
-                    dateAmbiguous: { type: Type2.BOOLEAN },
-                    summary: { type: Type2.STRING },
-                    vocabulary: { type: Type2.ARRAY, items: { type: Type2.STRING } },
-                    corrections: { type: Type2.ARRAY, items: { type: Type2.STRING } }
+                    date: { type: Type3.STRING },
+                    dateAmbiguous: { type: Type3.BOOLEAN },
+                    summary: { type: Type3.STRING },
+                    vocabulary: { type: Type3.ARRAY, items: { type: Type3.STRING } },
+                    corrections: { type: Type3.ARRAY, items: { type: Type3.STRING } }
                   },
                   required: ["date", "summary"]
                 }
@@ -5120,7 +5510,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
             },
             required: ["historicalLessons"]
           },
-          aiComment: { type: Type2.STRING }
+          aiComment: { type: Type3.STRING }
         },
         required: ["extractedData", "aiComment"]
       };
@@ -5240,6 +5630,115 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 zapisa\u0107 scenariusza." });
     }
   });
+  app2.post("/api/scenario/canvas/generate", requireFirebaseAuth, async (req, res) => {
+    try {
+      const studentId = String(req.body?.studentId || "").trim();
+      const durationMin = Number(req.body?.durationMin);
+      if (!studentId) return res.status(400).json({ error: "Nie wskazano kursanta." });
+      if (![45, 60, 90].includes(durationMin)) {
+        return res.status(400).json({ error: "Nieprawid\u0142owa d\u0142ugo\u015B\u0107 lekcji \u2014 dozwolone: 45, 60, 90 minut." });
+      }
+      const geminiApiKey = getGeminiApiKey();
+      if (!geminiApiKey) {
+        return res.status(500).json({ error: "GEMINI_API_KEY nie jest skonfigurowany." });
+      }
+      const adminApp2 = getAdminApp();
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const canvas = await generateScenarioCanvasForStudent({
+        adminDb,
+        geminiApiKey,
+        studentId,
+        durationMin,
+        generateContentWithRetry,
+        geminiModelCascade: GEMINI_MODEL_CASCADE
+      });
+      return res.json({ canvas });
+    } catch (err) {
+      if (err instanceof ScenarioContextError) {
+        return res.status(err.code === "not-found" ? 404 : 400).json({ error: err.code === "not-found" ? err.message : "insufficient-profile" });
+      }
+      console.error("[server] b\u0142\u0105d generowania canvasu scenariusza:", err);
+      return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 wygenerowa\u0107 canvasu." });
+    }
+  });
+  app2.post("/api/scenario/canvas/save", requireFirebaseAuth, async (req, res) => {
+    try {
+      const studentId = String(req.body?.studentId || "").trim();
+      const targetLessonId = String(req.body?.targetLessonId || "").trim();
+      const canvas = req.body?.canvas;
+      if (!studentId) return res.status(400).json({ error: "Nie wskazano kursanta." });
+      if (!targetLessonId) return res.status(400).json({ error: "Nie wskazano lekcji docelowej." });
+      if (!canvas || canvas.version !== 2 || !Array.isArray(canvas.blocks)) {
+        return res.status(400).json({ error: "Brak poprawnego canvasu do zapisania." });
+      }
+      const adminApp2 = getAdminApp();
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const recordRef = adminDb.collection("users").doc(studentId).collection("lessonRecords").doc(targetLessonId);
+      const recordSnap = await recordRef.get();
+      if (!recordSnap.exists) {
+        return res.status(404).json({ error: "Nie znaleziono lekcji docelowej." });
+      }
+      const scenarioCanvasSavedAt = (/* @__PURE__ */ new Date()).toISOString();
+      await recordRef.update({ scenarioCanvasV2: canvas, scenarioCanvasSavedAt });
+      return res.json({ ok: true, canvasSavedAt: scenarioCanvasSavedAt });
+    } catch (err) {
+      console.error("[server] b\u0142\u0105d zapisu canvasu scenariusza:", err);
+      return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 zapisa\u0107 canvasu." });
+    }
+  });
+  app2.post("/api/scenario/canvas/refresh", requireFirebaseAuth, async (req, res) => {
+    try {
+      const studentId = String(req.body?.studentId || "").trim();
+      const targetLessonId = String(req.body?.targetLessonId || "").trim();
+      const expectedRevision = Number(req.body?.expectedRevision);
+      const mutationId = String(req.body?.mutationId || "").trim();
+      const teacherNotes = Array.isArray(req.body?.teacherNotes) ? req.body.teacherNotes : [];
+      if (!studentId) return res.status(400).json({ error: "Nie wskazano kursanta." });
+      if (!targetLessonId) return res.status(400).json({ error: "Nie wskazano lekcji docelowej." });
+      if (!mutationId) return res.status(400).json({ error: "Brak mutationId." });
+      if (!Number.isFinite(expectedRevision)) return res.status(400).json({ error: "Brak expectedRevision." });
+      const geminiApiKey = getGeminiApiKey();
+      if (!geminiApiKey) {
+        return res.status(500).json({ error: "GEMINI_API_KEY nie jest skonfigurowany." });
+      }
+      const adminApp2 = getAdminApp();
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const recordRef = adminDb.collection("users").doc(studentId).collection("lessonRecords").doc(targetLessonId);
+      const recordSnap = await recordRef.get();
+      if (!recordSnap.exists) {
+        return res.status(404).json({ error: "Nie znaleziono lekcji docelowej." });
+      }
+      const data = recordSnap.data() || {};
+      const storedCanvas = data.scenarioCanvasV2;
+      if (!storedCanvas || storedCanvas.version !== 2) {
+        return res.status(404).json({ error: "Ta lekcja nie ma zapisanego canvasu scenariusza." });
+      }
+      if (storedCanvas.lastMutationId === mutationId) {
+        return res.json({ ok: true, canvas: storedCanvas });
+      }
+      if (storedCanvas.revision !== expectedRevision) {
+        return res.status(409).json({ error: "Canvas zosta\u0142 ju\u017C zmieniony przez inny zapis \u2014 od\u015Bwie\u017C i spr\xF3buj ponownie.", canvas: storedCanvas });
+      }
+      const rejectedItemIds = getRejectedItemIds(storedCanvas);
+      if (rejectedItemIds.length === 0) {
+        return res.status(400).json({ error: "Brak odrzuconych element\xF3w \u2014 nie ma czego od\u015Bwie\u017Ca\u0107." });
+      }
+      const refreshedCanvas = await refreshScenarioCanvasBlocks({
+        geminiApiKey,
+        generateContentWithRetry,
+        geminiModelCascade: GEMINI_MODEL_CASCADE,
+        canvas: storedCanvas,
+        rejectedItemIds,
+        teacherNotes,
+        mutationId
+      });
+      await recordRef.update({ scenarioCanvasV2: refreshedCanvas, scenarioCanvasSavedAt: refreshedCanvas.updatedAt });
+      return res.json({ ok: true, canvas: refreshedCanvas });
+    } catch (err) {
+      console.error("[server] b\u0142\u0105d Lesson Refresh canvasu:", err);
+      return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 od\u015Bwie\u017Cy\u0107 canvasu." });
+    }
+  });
   app2.post("/api/gemini/lesson-summary", requireFirebaseAdmin, async (req, res) => {
     try {
       const { notes, pdfBase64, driveFile, students, mode } = req.body;
@@ -5251,7 +5750,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       if (!apiKey && !getOpenAIApiKey()) {
         return res.status(500).json({ error: "AI API key not configured. Please set GEMINI_API_KEY or OPENAI_API_KEY in environment variables." });
       }
-      const ai = new GoogleGenAI2({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI3({ apiKey: apiKey || "dummy" });
       const studentsListStr = typeof students === "string" ? students : Array.isArray(students) ? students.map((s) => `ID: ${s.id} | Imi\u0119/Nazwisko: ${s.name || s.username || ""} | Poziom: ${s.level || ""} | Opis: ${s.description || ""}`).join("\n") : "Brak bazy kursant\xF3w";
       let promptContext = [];
       if (driveFile) {
@@ -5376,23 +5875,23 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
 - suggestedFollowUp (string, Ustalenia i najlepsze tematy na kolejn\u0105 lekcj\u0119, po polsku)
 `;
       const schema = {
-        type: Type2.OBJECT,
+        type: Type3.OBJECT,
         properties: {
-          studentId: { type: Type2.STRING },
-          studentIds: { type: Type2.ARRAY, items: { type: Type2.STRING } },
-          lessonTopic: { type: Type2.STRING },
-          revisionNotes: { type: Type2.STRING },
-          vocabularyText: { type: Type2.STRING },
-          studentSpeaking: { type: Type2.STRING },
-          thingsToImprove: { type: Type2.STRING },
-          suggestedFollowUp: { type: Type2.STRING },
+          studentId: { type: Type3.STRING },
+          studentIds: { type: Type3.ARRAY, items: { type: Type3.STRING } },
+          lessonTopic: { type: Type3.STRING },
+          revisionNotes: { type: Type3.STRING },
+          vocabularyText: { type: Type3.STRING },
+          studentSpeaking: { type: Type3.STRING },
+          thingsToImprove: { type: Type3.STRING },
+          suggestedFollowUp: { type: Type3.STRING },
           /* Bloki 2b-4 wprost. Wersja notatkowa ich nie wypełnia i nie musi —
              pola są opcjonalne, więc schemat jest jeden dla obu trybów. */
-          date: { type: Type2.STRING },
-          corrections: { type: Type2.STRING },
-          homeworkText: { type: Type2.STRING },
-          homeworkAnswerKey: { type: Type2.STRING },
-          nextLessonPlan: { type: Type2.STRING }
+          date: { type: Type3.STRING },
+          corrections: { type: Type3.STRING },
+          homeworkText: { type: Type3.STRING },
+          homeworkAnswerKey: { type: Type3.STRING },
+          nextLessonPlan: { type: Type3.STRING }
         },
         required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
       };
@@ -5434,14 +5933,14 @@ Zwr\xF3\u0107 JSON z polami:
 `;
       const apiKey = getGeminiApiKey();
       if (!apiKey && !getOpenAIApiKey()) return res.status(500).json({ error: "AI API key not configured." });
-      const ai = new GoogleGenAI2({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI3({ apiKey: apiKey || "dummy" });
       const response = await generateContentWithRetry(ai, prompt, {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type2.OBJECT,
+          type: Type3.OBJECT,
           properties: {
-            score: { type: Type2.NUMBER },
-            feedback: { type: Type2.STRING }
+            score: { type: Type3.NUMBER },
+            feedback: { type: Type3.STRING }
           },
           required: ["score", "feedback"]
         }
@@ -5461,7 +5960,7 @@ Zwr\xF3\u0107 JSON z polami:
       if (!geminiApiKey && !openaiApiKey) {
         return res.status(500).json({ error: "No AI API key configured. Please set OPENAI_API_KEY or GEMINI_API_KEY in environment variables." });
       }
-      const ai = new GoogleGenAI2({ apiKey: geminiApiKey || "DUMMY" });
+      const ai = new GoogleGenAI3({ apiKey: geminiApiKey || "DUMMY" });
       const isPl = language !== "en";
       const prompt = `Jeste\u015B do\u015Bwiadczonym, empatycznym i wybitnym metodykiem oraz nauczycielem j\u0119zyka angielskiego (ELT Pedagogical Specialist & Language Coach).
 Twoim zadaniem jest przedstawienie kompleksowego, merytorycznego i metodycznego komentarza dla kursanta na podstawie analizy jego wynik\xF3w w \u0107wiczeniach j\u0119zykowych.
@@ -5486,18 +5985,18 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       const response = await generateContentWithRetry(ai, prompt, {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type2.OBJECT,
+          type: Type3.OBJECT,
           properties: {
-            overallTeacherCommentary: { type: Type2.STRING },
+            overallTeacherCommentary: { type: Type3.STRING },
             keyStrengths: {
-              type: Type2.ARRAY,
-              items: { type: Type2.STRING }
+              type: Type3.ARRAY,
+              items: { type: Type3.STRING }
             },
             areasToImprove: {
-              type: Type2.ARRAY,
-              items: { type: Type2.STRING }
+              type: Type3.ARRAY,
+              items: { type: Type3.STRING }
             },
-            pedagogicalTip: { type: Type2.STRING }
+            pedagogicalTip: { type: Type3.STRING }
           },
           required: ["overallTeacherCommentary", "keyStrengths", "areasToImprove", "pedagogicalTip"]
         }
@@ -5680,7 +6179,7 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       const geminiKey = getGeminiApiKey();
       if (!finalAudioBuffer && (engine === "auto" || engine === "gemini") && geminiKey) {
         try {
-          const ai = new GoogleGenAI2({ apiKey: geminiKey });
+          const ai = new GoogleGenAI3({ apiKey: geminiKey });
           const voiceName = isMale ? "Puck" : "Kore";
           const modelsToTry = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash"];
           for (const m of modelsToTry) {
@@ -5829,7 +6328,7 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
           let gRetries = 2;
           while (gRetries > 0) {
             try {
-              const ai = new GoogleGenAI2({ apiKey: geminiKey });
+              const ai = new GoogleGenAI3({ apiKey: geminiKey });
               let fullPrompt = prompt || "";
               if (!fullPrompt && Array.isArray(messages)) {
                 fullPrompt = messages.map((m) => `${m.role}: ${m.content}`).join("\n");
@@ -6028,7 +6527,7 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
         let retries = 2;
         while (retries > 0) {
           try {
-            const ai = new GoogleGenAI2({ apiKey });
+            const ai = new GoogleGenAI3({ apiKey });
             const response = await ai.models.generateContent({ model: m, contents, config });
             return res.json({
               text: response?.text ?? "",

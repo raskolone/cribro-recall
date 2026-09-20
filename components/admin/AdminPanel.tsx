@@ -18,6 +18,7 @@ import { countVocabularyItems, buildVocabularySetTitle, splitVocabularyLines } f
 import { isLessonPendingConfirmation, extractLessonBlocks } from '../../utils/lessonBlocks';
 import { CascadingLessonDetails } from './CascadingLessonDetails';
 import { ScenarioPreviewPanel } from './ScenarioPreviewPanel';
+import { ScenarioCanvasPanel } from './ScenarioCanvasPanel';
 import { getGeneratedScenarios } from '../../services/scenarioService';
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
@@ -5334,6 +5335,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   {/* Generator Scenariusza Lekcji 2.0 */}
                   {viewingRecord && selectedUser?.id && (
                     <ScenarioPreviewPanel
+                      studentId={selectedUser.id}
+                      targetLessonId={viewingRecord.id}
+                    />
+                  )}
+
+                  {/* Kreator Scenariuszy i Interaktywny Canvas (MVP) */}
+                  {viewingRecord && selectedUser?.id && (
+                    <ScenarioCanvasPanel
                       studentId={selectedUser.id}
                       targetLessonId={viewingRecord.id}
                     />
