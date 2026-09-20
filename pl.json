@@ -441,5 +441,14 @@
   "flashcards.confirmQuitTitle": "Zakończ Sesję",
   "flashcards.confirmQuit": "Czy na pewno chcesz zakończyć sesję?",
   "common.cancel": "Anuluj",
-  "common.confirm": "Potwierdź"
+  "common.confirm": "Potwierdź",
+  "Ułóż zdanie": "Ułóż zdanie",
+  "Ułóż wyrazy w poprawnej kolejności.": "Ułóż wyrazy w poprawnej kolejności.",
+  "Uzupełnij luki": "Uzupełnij luki",
+  "Wpisz brakujące słowa.": "Wpisz brakujące słowa.",
+  "Przetłumacz zdanie": "Przetłumacz zdanie",
+  "Zapisz tłumaczenie w języku angielskim.": "Zapisz tłumaczenie w języku angielskim.",
+  "Popraw zdanie": "Popraw zdanie",
+  "Znajdź błąd i zapisz poprawną wersję zdania.": "Znajdź błąd i zapisz poprawną wersję zdania.",
+  "Nie udało się wczytać treści tego zadania. Możesz przejść do kolejnego ćwiczenia.": "Nie udało się wczytać treści tego zadania. Możesz przejść do kolejnego ćwiczenia."
 }

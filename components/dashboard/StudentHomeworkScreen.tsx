@@ -1382,6 +1382,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
 
         <div ref={exerciseCardRef} className="rounded-2xl border border-white/10 bg-base-200/50 p-4 sm:p-6 shadow-xl relative overflow-hidden backdrop-blur-sm">
           <HomeworkExercise
+            key={index}
             type={type}
             item={items[index]}
             answer={answers[index]}

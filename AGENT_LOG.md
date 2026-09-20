@@ -3707,3 +3707,66 @@ udokumentowana w komentarzu w notebookPalette.ts.
 Ryzyka: Brak zmian w firestore.rules, middleware autoryzacji ani ścieżkach
 tokenowych bez logowania — wyłącznie warstwa prezentacji/generowania HTML
 notatnika.
+
+2026-09-20 — Claude Code / Sonnet 5
+
+Zadanie: (1) Notatnik A4 — wyłączyć automatyczne wstawianie bloku "Lesson 1"
+przy tworzeniu nowego notatnika i podnieść kontrast STARYCH, już zapisanych
+nagłówków sekcji na jasnym papierze. (2) Adapter kanoniczny ćwiczeń pracy
+domowej (normalizeExercise) — koniec zduplikowanych fallbacków w
+HomeworkExercise.tsx, bezpieczna rozsypanka (bez TypeError na .word),
+deterministyczne nagłówki przez i18next.
+
+Zrobione:
+- services/scratchpadService.ts: getInitialScratchpadContent() zwraca teraz
+  puste { html: '', text: '' } zamiast buildLessonTemplate(...) — auto-wstaw
+  działał wyłącznie przy TWORZENIU nowego notatnika (getOrCreateStudentScratchpad,
+  ensureGroupScratchpad w services/groupService.ts), nie przy każdym otwarciu.
+  Import buildLessonTemplate usunięty jako nieużywany.
+- utils/notebookPalette.ts: nowa funkcja sanitizeFrozenHeadingContrast(html,
+  paperTheme) — retroaktywnie podnosi kontrast starych <h3 style="color:...">
+  z jednym z pięciu znanych tytułów sekcji, TYLKO przy wczytywaniu do edytora
+  na jasnym papierze, bez zapisu do bazy.
+- components/scratchpad/ScratchpadEditor.tsx: efekt ładujący docData.contentHtml
+  do editorRef.current.innerHTML przepuszcza treść przez sanitizeFrozenHeadingContrast;
+  dodano paperTheme do zależności efektu.
+- tests/scratchpad.test.ts: zaktualizowany test getInitialScratchpadContent
+  pod nowe (puste) zachowanie.
+- Nowy utils/normalizeExercise.ts: normalizeExercise(raw, task?) → CanonicalExercise
+  z czterema typami kanonicznymi (te same wartości co homeworkItemType() w
+  utils/homework.ts — word_order/fill_in_the_blank/translation/find_errors,
+  nie nowy enum), state ready/degraded/invalid (zero wyjątków), normalizeGapPayload()
+  obsługujący 4 formaty luki (BLANK_n, ___, {{gap:n}}, wordsToCut+fullSentence),
+  normalizeTokens() NIGDY nie odrzuca elementów rozsypanki (indeksy w answer
+  wskazują na tę tablicę — filtrowanie rozjechałoby zapisane odpowiedzi),
+  exerciseUiCopy() zwraca nagłówek/polecenie przez i18n.t().
+- components/dashboard/HomeworkExercise.tsx: cztery typy (poza multiple_choice,
+  nieopisanym w zleceniu, bez zmian) czytają teraz znormalizowany exercise
+  zamiast powielonych łańcuchów item.a||item.b||item.c; dodana karta dla
+  state 'invalid'.
+- components/dashboard/StudentHomeworkScreen.tsx: dodany key={index} na
+  <HomeworkExercise> — bez niego stan showHint przeciekał między pytaniami.
+  answerToText/getExerciseReviewRows NIE dotknięte (poza zakresem, ryzyko
+  regresji w zapisie/ocenie).
+- en.json / pl.json: nowe klucze na nagłówki/polecenia ćwiczeń.
+- Nowe testy: tests/normalizeExercise.test.ts (11 testów).
+
+Nie dokończone / do sprawdzenia:
+- Nic nie zweryfikowano wzrokowo w przeglądarce (brak dostępu do zalogowanej
+  sesji) — sprawdzić: nowy notatnik startuje pusty; stare lekcje mają czytelne
+  nagłówki na jasnym papierze; rozsypanka/luki/tłumaczenie/poprawa błędu
+  faktycznie działają na koncie testowym kursanta.
+- StudentHomeworkV2Screen.tsx (dziś nieużywany, HOMEWORK_ENGINE_V2=false)
+  świadomie NIE dotknięty — jeśli v2 kiedyś wróci, ten ekran nadal ma stare,
+  zduplikowane fallbacki.
+
+Decyzje architektoniczne: zapytałem Macieja wprost przed adapterem homeworku —
+(1) i18next zamiast hardkodowanej stałej EXERCISE_UI_COPY (CLAUDE.md §4);
+(2) zakres tylko v1 (żywa ścieżka), nie StudentHomeworkV2Screen.tsx. Typ
+kanoniczny w normalizeExercise.ts celowo NIE wprowadza nowego enuma
+(UNSCRAMBLE/GAP_FILL/...) opisanego w pierwotnym zleceniu — użyto istniejących
+wartości HomeworkType, żeby nie rozdwajać systemu typów w repo.
+
+Ryzyka: Brak zmian w firestore.rules, middleware autoryzacji ani ścieżkach
+tokenowych bez logowania. Zmiana notatnika w warstwie prezentacji/generowania
+HTML. Zmiana homeworku ograniczona do ekranu v1.

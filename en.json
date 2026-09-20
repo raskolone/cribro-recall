@@ -441,5 +441,14 @@
   "flashcards.confirmQuitTitle": "Quit Session",
   "flashcards.confirmQuit": "Are you sure you want to quit the session?",
   "common.cancel": "Cancel",
-  "common.confirm": "Confirm"
+  "common.confirm": "Confirm",
+  "Ułóż zdanie": "Arrange the sentence",
+  "Ułóż wyrazy w poprawnej kolejności.": "Put the words in the correct order.",
+  "Uzupełnij luki": "Fill in the blanks",
+  "Wpisz brakujące słowa.": "Type in the missing words.",
+  "Przetłumacz zdanie": "Translate the sentence",
+  "Zapisz tłumaczenie w języku angielskim.": "Write the translation in English.",
+  "Popraw zdanie": "Correct the sentence",
+  "Znajdź błąd i zapisz poprawną wersję zdania.": "Find the mistake and write the corrected sentence.",
+  "Nie udało się wczytać treści tego zadania. Możesz przejść do kolejnego ćwiczenia.": "This exercise couldn't be loaded. You can move on to the next one."
 }

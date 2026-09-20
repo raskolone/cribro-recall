@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import i18n from 'i18next';
 import { AlertCircle, Check, Copy, HelpCircle, Languages, Lightbulb, RotateCcw, Sparkles } from 'lucide-react';
 import { HomeworkType } from '../../types';
+import { CanonicalExercise, ExerciseSegment, normalizeExercise } from '../../utils/normalizeExercise';
 
 /**
  * Jedno ćwiczenie pracy domowej, w czterech odmianach.
@@ -11,6 +13,14 @@ import { HomeworkType } from '../../types';
  * klawiatura, przewijanie i połowa ekranu mniej.
  *
  * Komponent nie ocenia i nie zapisuje — trzyma tylko odpowiedź i oddaje ją wyżej.
+ *
+ * Surowy element z bazy (`item`) jest zawsze najpierw przepuszczony przez
+ * `normalizeExercise` (`utils/normalizeExercise.ts`) — różne kształty danych
+ * z generatora AI i starszych zadań (BLANK_n, potrójne podkreślenie, luka
+ * wstrzyknięta jako instrukcja zamiast zdania…) trafiają tutaj już jako
+ * jeden, jednolity kontrakt. `type` (prop) decyduje wyłącznie o TYPIE
+ * ćwiczenia — kształt pól czyta się już z `exercise`, nigdy z `item`
+ * bezpośrednio.
  */
 
 export interface HomeworkExerciseProps {
@@ -23,14 +33,27 @@ export interface HomeworkExerciseProps {
 const chipBase =
   'min-h-[2.75rem] px-3.5 rounded-xl border text-[15px] font-semibold transition-colors active:scale-[0.97]';
 
+const InvalidExerciseCard: React.FC<{ message?: string }> = ({ message }) => (
+  <div className="p-4 sm:p-5 rounded-2xl bg-amber-950/20 border border-amber-500/30 flex items-start gap-2.5">
+    <AlertCircle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+    <p className="text-sm text-amber-200 leading-relaxed">
+      {i18n.t(message || 'Nie udało się wczytać treści tego zadania. Możesz przejść do kolejnego ćwiczenia.')}
+    </p>
+  </div>
+);
+
 const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer, onChange }) => {
   const [showHint, setShowHint] = useState(false);
 
-  if (type === 'translation') {
-    const polishSentence = item.polishSentence || item.content || item.instruction || '';
-    const explicitHint = item.hint || item.hintSmall || item.hintLarge || (Array.isArray(item.requiredMaterial) ? item.requiredMaterial.join(', ') : item.requiredMaterial);
-    const targetRef = item.correctTranslation || item.modelAnswer || '';
-    const hintText = explicitHint || (item.learningObjective ? `Cel: ${item.learningObjective}` : null) || (targetRef ? `Zacznij od: "${String(targetRef).trim().split(/\s+/).slice(0, 2).join(' ')}…"` : null);
+  const exercise: CanonicalExercise = normalizeExercise(item, { type });
+
+  if (exercise.state === 'invalid') {
+    return <InvalidExerciseCard message={exercise.message} />;
+  }
+
+  if (exercise.type === 'translation') {
+    const polishSentence = exercise.sourceSentence || '';
+    const hintText = exercise.hint || null;
 
     return (
       <div className="space-y-4">
@@ -38,7 +61,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-bold uppercase tracking-wider">
             <Languages size={13} />
-            Przetłumacz na angielski
+            {i18n.t('Przetłumacz zdanie')}
           </span>
 
           {hintText && (
@@ -81,7 +104,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-content-muted">Twoja odpowiedź:</label>
-            <span className="text-[11px] text-content-muted/70">Wpisz całe zdanie po angielsku</span>
+            <span className="text-[11px] text-content-muted/70">{i18n.t('Zapisz tłumaczenie w języku angielskim.')}</span>
           </div>
           <textarea
             value={answer || ''}
@@ -95,27 +118,22 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
     );
   }
 
-  if (type === 'word_order') {
+  if (exercise.type === 'word_order') {
     const chosen: number[] = Array.isArray(answer) ? answer : [];
-    const chunks: string[] = item.chunks || [];
-    const remaining = chunks.map((_, i) => i).filter((i) => !chosen.includes(i));
-    // Generator AI czasem wstrzykuje własną instrukcję ("Popraw zdanie. Zwróć
-    // uwagę na...") w pole źródłowe zamiast prawdziwego zdania polskiego.
-    // Taki tekst nie jest zdaniem do przetłumaczenia — traktujemy go jak brak
-    // źródła, żeby nie pokazać kursantowi polecenia zamiast treści zadania.
-    const looksLikeInstruction = (text: string) =>
-      /^(popraw zdanie|zwróć uwagę|instrukcja|ułóż)\b/i.test(text.trim());
-    const rawSourceSentence = item.polishHint || item.sourceSentence || item.prompt || '';
-    const sourceSentence = looksLikeInstruction(String(rawSourceSentence)) ? '' : rawSourceSentence;
+    const tokens = exercise.tokens || [];
+    const remaining = tokens.map((_, i) => i).filter((i) => !chosen.includes(i));
+    const sourceSentence = exercise.sourceSentence || '';
 
     return (
       <div className="space-y-4">
         {/* Nagłówek: rozróżnia rozsypankę bez tekstu polskiego od tłumaczenia z klocków */}
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-bold uppercase tracking-wider">
           <Languages size={13} />
-          {sourceSentence ? 'Przetłumacz zdanie:' : 'Ułóż słowa w poprawnej kolejności:'}
+          {sourceSentence ? 'Przetłumacz zdanie:' : i18n.t('Ułóż zdanie')}
         </span>
 
+        {/* Boks ze zdaniem źródłowym renderuje się TYLKO, gdy realnie istnieje —
+            bez niego zostają same kafelki, żeby nie pokazywać pustej ramki. */}
         {sourceSentence && (
           <div className="p-4 sm:p-5 rounded-2xl bg-base-100/70 border border-white/10 shadow-inner">
             <p className="prose-justified text-lg sm:text-xl font-bold text-white leading-relaxed">
@@ -128,7 +146,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
         <div className="min-h-[5rem] rounded-xl border border-dashed border-white/20 bg-base-100/40 p-2.5 flex flex-wrap gap-2 items-start">
           {chosen.length === 0 && (
             <span className="text-[13px] text-content-muted px-1 py-2">
-              Dotykaj fragmentów poniżej, żeby ułożyć zdanie.
+              {i18n.t('Ułóż wyrazy w poprawnej kolejności.')}
             </span>
           )}
           {chosen.map((chunkIndex, position) => (
@@ -137,7 +155,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
               onClick={() => onChange(chosen.filter((_, i) => i !== position))}
               className={`${chipBase} bg-primary/15 border-primary/40 text-primary`}
             >
-              {chunks[chunkIndex]}
+              {tokens[chunkIndex]}
             </button>
           ))}
         </div>
@@ -149,7 +167,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
               onClick={() => onChange([...chosen, chunkIndex])}
               className={`${chipBase} bg-base-100/60 border-white/15 text-content`}
             >
-              {chunks[chunkIndex]}
+              {tokens[chunkIndex]}
             </button>
           ))}
         </div>
@@ -192,37 +210,16 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
     );
   }
 
-  if (type === 'fill_in_the_blank') {
-    // Trzy warianty jednego typu, bo generator v2 (`gap_from_context`) nie
-    // wysyła `textWithBlanks`/`availableWords` — tylko `content` ze zdaniem
-    // i luką oznaczoną jako `___`, uzupełnianą wpisanym słowem, bez banku.
-    const hasBlankTokens = /\[BLANK_\d+\]/.test(String(item.textWithBlanks || ''));
-    const contentGapMatch = String(item.content || item.text || item.sentence || '').match(/_{3,}/);
+  if (exercise.type === 'fill_in_the_blank') {
+    const segments = exercise.segments || [];
+    const availableWords = exercise.availableWords || [];
+    const hasBank = availableWords.length > 0;
 
-    if (!hasBlankTokens && contentGapMatch) {
-      const parts = String(item.content || item.text || item.sentence || '').split(/_{3,}/);
+    // Zdegradowany stan: żadna z czterech znanych postaci luki nie rozpoznana —
+    // pełne, swobodne pole tekstowe zamiast pustego, szarego boksu.
+    if (exercise.state === 'degraded') {
       const currentValue = typeof answer === 'string' ? answer : '';
-      return (
-        <div className="space-y-4">
-          <p lang="en" className="prose-justified text-lg sm:text-xl font-bold text-white leading-relaxed">
-            {parts[0]}
-            <input
-              type="text"
-              value={currentValue}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder="…"
-              className="inline-block min-w-[6rem] mx-1 px-2 py-1 align-middle bg-base-100/90 text-primary text-lg sm:text-xl font-bold border-b-2 border-primary/50 focus:border-primary focus:outline-none"
-            />
-            {parts.slice(1).join('___')}
-          </p>
-        </div>
-      );
-    }
-
-    if (!hasBlankTokens) {
-      // Zabezpieczenie: bez rozpoznanych luk kursant nie może zobaczyć pustego ekranu.
-      const fallbackText = String(item.content || item.text || item.sentence || item.instruction || '').trim();
-      const currentValue = typeof answer === 'string' ? answer : '';
+      const fallbackText = segments.map((s) => (s.kind === 'text' ? s.text : '')).join('');
       return (
         <div className="space-y-4">
           {fallbackText && (
@@ -243,16 +240,38 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
       );
     }
 
+    // Bez banku słów: dokładnie jedna luka, wpisywana bezpośrednio w zdaniu.
+    if (!hasBank) {
+      const currentValue = typeof answer === 'string' ? answer : '';
+      return (
+        <div className="space-y-4">
+          <p lang="en" className="prose-justified text-lg sm:text-xl font-bold text-white leading-relaxed">
+            {segments.map((segment, index) =>
+              segment.kind === 'text' ? (
+                <span key={index}>{segment.text}</span>
+              ) : (
+                <input
+                  key={index}
+                  type="text"
+                  value={currentValue}
+                  onChange={(e) => onChange(e.target.value)}
+                  placeholder="…"
+                  className="inline-block min-w-[6rem] mx-1 px-2 py-1 align-middle bg-base-100/90 text-primary text-lg sm:text-xl font-bold border-b-2 border-primary/50 focus:border-primary focus:outline-none"
+                />
+              )
+            )}
+          </p>
+        </div>
+      );
+    }
+
+    // Z bankiem słów: luki jako kafelki, wypełniane dotknięciem słowa z banku.
     const blanks: Record<string, string> = answer && typeof answer === 'object' ? answer : {};
-    const available: string[] = item.availableWords || [];
-    const parts = String(item.textWithBlanks || '').split(/(\[BLANK_\d+\])/g);
     const usedWords = Object.values(blanks);
+    const gapIds = segments.filter((s): s is Extract<ExerciseSegment, { kind: 'gap' }> => s.kind === 'gap').map((s) => s.gapId);
 
     const fillFirstEmpty = (word: string) => {
-      const blankIds = parts
-        .filter((p) => /^\[BLANK_\d+\]$/.test(p))
-        .map((p) => p.replace(/[[\]]/g, ''));
-      const target = blankIds.find((id) => !blanks[id]);
+      const target = gapIds.find((id) => !blanks[id]);
       if (target) onChange({ ...blanks, [target]: word });
     };
 
@@ -261,18 +280,16 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
         {/* Treść ćwiczenia jest angielska, a strona deklaruje polski. Bez tego
             przeglądarka dzieliłaby angielskie słowa według polskich wzorców. */}
         <p lang="en" className="prose-justified text-[15px] text-content leading-loose">
-          {parts.map((part, index) => {
-            const match = part.match(/^\[BLANK_(\d+)\]$/);
-            if (!match) return <span key={index}>{part}</span>;
-            const blankId = `BLANK_${match[1]}`;
-            const filled = blanks[blankId];
+          {segments.map((segment, index) => {
+            if (segment.kind === 'text') return <span key={index}>{segment.text}</span>;
+            const filled = blanks[segment.gapId];
             return (
               <button
                 key={index}
                 onClick={() => {
                   if (!filled) return;
                   const next = { ...blanks };
-                  delete next[blankId];
+                  delete next[segment.gapId];
                   onChange(next);
                 }}
                 className={`inline-flex items-center justify-center min-h-[2.25rem] min-w-[5rem] px-2.5 mx-0.5 align-middle rounded-lg border text-[14px] font-semibold ${
@@ -288,7 +305,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
         </p>
 
         <div className="flex flex-wrap gap-2">
-          {available.map((word, index) => {
+          {availableWords.map((word, index) => {
             const used = usedWords.includes(word);
             return (
               <button
@@ -310,17 +327,11 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
     );
   }
 
-  if (type === 'find_errors') {
-    const incorrect = String(item.incorrectSentence || item.content || '').trim();
+  if (exercise.type === 'find_errors') {
+    const incorrect = exercise.incorrectSentence || '';
     const currentValue = typeof answer === 'string' ? answer : '';
-    const explicitHint = item.hint || item.hintSmall || item.hintLarge || (Array.isArray(item.requiredMaterial) ? item.requiredMaterial.join(', ') : item.requiredMaterial);
-    const hintText = explicitHint || (item.learningObjective ? `Cel ćwiczenia: ${item.learningObjective}` : null);
-    // Pokazujemy "Znaczenie" tylko dla realnego tłumaczenia/kontekstu — nie dla instrukcji
-    // zadania, bo ta i tak już jest w odznace wyżej ("Znajdź i popraw błąd w zdaniu").
-    const genericInstructionLabels = ['znajdź i popraw błąd w zdaniu', 'znajdź błąd w zdaniu i go popraw', 'znajdź błąd', 'popraw błąd w zdaniu'];
-    const rawMeaning = item.polishHint || item.meaning || null;
-    const meaningText =
-      rawMeaning && !genericInstructionLabels.includes(String(rawMeaning).trim().toLowerCase()) ? rawMeaning : null;
+    const hintText = exercise.hint || null;
+    const meaningText = exercise.meaning || null;
 
     return (
       <div className="space-y-4">
@@ -328,7 +339,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold uppercase tracking-wider">
             <AlertCircle size={13} className="shrink-0 text-amber-400" />
-            Znajdź i popraw błąd w zdaniu
+            {i18n.t('Popraw zdanie')}
           </span>
 
           {hintText && (
