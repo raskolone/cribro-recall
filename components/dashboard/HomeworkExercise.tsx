@@ -99,11 +99,22 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
     const chosen: number[] = Array.isArray(answer) ? answer : [];
     const chunks: string[] = item.chunks || [];
     const remaining = chunks.map((_, i) => i).filter((i) => !chosen.includes(i));
+    const sourceSentence = item.polishHint || item.sourceSentence || item.prompt || '';
 
     return (
       <div className="space-y-4">
-        {item.polishHint && (
-          <p className="prose-justified text-[15px] text-content leading-snug">{item.polishHint}</p>
+        {/* Nagłówek: rozróżnia rozsypankę bez tekstu polskiego od tłumaczenia z klocków */}
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-bold uppercase tracking-wider">
+          <Languages size={13} />
+          {sourceSentence ? 'Przetłumacz zdanie:' : 'Ułóż słowa w poprawnej kolejności:'}
+        </span>
+
+        {sourceSentence && (
+          <div className="p-4 sm:p-5 rounded-2xl bg-base-100/70 border border-white/10 shadow-inner">
+            <p className="prose-justified text-lg sm:text-xl font-bold text-white leading-relaxed">
+              {sourceSentence}
+            </p>
+          </div>
         )}
 
         {/* Ułożone zdanie: dotknięcie fragmentu zdejmuje go z powrotem. */}
@@ -175,6 +186,56 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
   }
 
   if (type === 'fill_in_the_blank') {
+    // Trzy warianty jednego typu, bo generator v2 (`gap_from_context`) nie
+    // wysyła `textWithBlanks`/`availableWords` — tylko `content` ze zdaniem
+    // i luką oznaczoną jako `___`, uzupełnianą wpisanym słowem, bez banku.
+    const hasBlankTokens = /\[BLANK_\d+\]/.test(String(item.textWithBlanks || ''));
+    const contentGapMatch = String(item.content || item.text || item.sentence || '').match(/_{3,}/);
+
+    if (!hasBlankTokens && contentGapMatch) {
+      const parts = String(item.content || item.text || item.sentence || '').split(/_{3,}/);
+      const currentValue = typeof answer === 'string' ? answer : '';
+      return (
+        <div className="space-y-4">
+          <p lang="en" className="prose-justified text-lg sm:text-xl font-bold text-white leading-relaxed">
+            {parts[0]}
+            <input
+              type="text"
+              value={currentValue}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="…"
+              className="inline-block min-w-[6rem] mx-1 px-2 py-1 align-middle bg-base-100/90 text-primary text-lg sm:text-xl font-bold border-b-2 border-primary/50 focus:border-primary focus:outline-none"
+            />
+            {parts.slice(1).join('___')}
+          </p>
+        </div>
+      );
+    }
+
+    if (!hasBlankTokens) {
+      // Zabezpieczenie: bez rozpoznanych luk kursant nie może zobaczyć pustego ekranu.
+      const fallbackText = String(item.content || item.text || item.sentence || item.instruction || '').trim();
+      const currentValue = typeof answer === 'string' ? answer : '';
+      return (
+        <div className="space-y-4">
+          {fallbackText && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-base-100/70 border border-white/10 shadow-inner">
+              <p lang="en" className="prose-justified text-lg sm:text-xl font-bold text-white leading-relaxed">
+                {fallbackText}
+              </p>
+            </div>
+          )}
+          <textarea
+            value={currentValue}
+            onChange={(e) => onChange(e.target.value)}
+            rows={3}
+            placeholder="Wpisz pełne, uzupełnione zdanie po angielsku…"
+            className="w-full p-4 bg-base-100/90 text-white text-[15px] sm:text-base border border-white/15 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
+          />
+        </div>
+      );
+    }
+
     const blanks: Record<string, string> = answer && typeof answer === 'object' ? answer : {};
     const available: string[] = item.availableWords || [];
     const parts = String(item.textWithBlanks || '').split(/(\[BLANK_\d+\])/g);
@@ -247,7 +308,12 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
     const currentValue = typeof answer === 'string' ? answer : '';
     const explicitHint = item.hint || item.hintSmall || item.hintLarge || (Array.isArray(item.requiredMaterial) ? item.requiredMaterial.join(', ') : item.requiredMaterial);
     const hintText = explicitHint || (item.learningObjective ? `Cel ćwiczenia: ${item.learningObjective}` : null);
-    const meaningText = item.polishHint || (item.exerciseType === 'fix_sentence' && item.instruction ? item.instruction : null);
+    // Pokazujemy "Znaczenie" tylko dla realnego tłumaczenia/kontekstu — nie dla instrukcji
+    // zadania, bo ta i tak już jest w odznace wyżej ("Znajdź i popraw błąd w zdaniu").
+    const genericInstructionLabels = ['znajdź i popraw błąd w zdaniu', 'znajdź błąd w zdaniu i go popraw', 'znajdź błąd', 'popraw błąd w zdaniu'];
+    const rawMeaning = item.polishHint || item.meaning || null;
+    const meaningText =
+      rawMeaning && !genericInstructionLabels.includes(String(rawMeaning).trim().toLowerCase()) ? rawMeaning : null;
 
     return (
       <div className="space-y-4">
@@ -284,7 +350,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
           </p>
           {meaningText && (
             <p className="text-xs text-content-muted pt-2 border-t border-white/10 flex items-center gap-1.5">
-              <span className="font-semibold text-content">Instrukcja / Znaczenie:</span>
+              <span className="font-semibold text-content">Znaczenie:</span>
               <span className="italic">{meaningText}</span>
             </p>
           )}

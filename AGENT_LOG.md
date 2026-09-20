@@ -3519,3 +3519,61 @@ reguły dostępu ani zapisu. `endpoints.ts` dotknięty w jednym miejscu
 `pipeline.ts`) — bez zmiany logiki samego endpointu. Zmiana sygnatury
 `ValidateAllInput` jest breaking change dla kodu spoza tego repo, gdyby
 taki istniał (potwierdzone grepem, że nie istnieje tutaj).
+
+---
+
+2026-09-20 — Claude Code / Sonnet 5
+
+Zadanie: Naprawić 3 błędy renderowania w ekranie prac domowych kursanta —
+brak/zły nagłówek rozsypanki, zdublowana instrukcja przy „Znajdź błąd”,
+pusty ekran przy „Uzupełnij luki”. Zadanie opisywało to jako dotyczące
+`StudentHomeworkV2Screen.tsx`.
+
+Zrobione: Agent eksploracyjny ustalił, że opisane objawy (klocki `chunks`,
+tokeny `[BLANK_n]`, pole `polishHint`) nie istnieją w ogóle w silniku v2 —
+`StudentHomeworkV2Screen.tsx` renderuje wszystkie typy identycznie jako
+płaski tekst + textarea. Pasują dokładnie do silnika v1
+(`HomeworkExercise.tsx`). Zapytałem Macieja wprost, który ekran — potwierdził
+v1. Naprawione w `components/dashboard/HomeworkExercise.tsx`:
+- `word_order`: dodany deterministyczny nagłówek („Przetłumacz zdanie:” +
+  boks ze zdaniem polskim, gdy jest `polishHint`/`sourceSentence`/`prompt`;
+  „Ułóż słowa w poprawnej kolejności:” bez boksu, gdy nie ma).
+- `find_errors`: usunięty fallback `meaningText` na `item.instruction` (bo
+  duplikował odznakę „Znajdź i popraw błąd w zdaniu”); `meaningText` teraz
+  tylko z `polishHint`/`meaning`, odfiltrowane od listy generycznych etykiet;
+  etykieta zmieniona z „Instrukcja / Znaczenie:” na „Znaczenie:”.
+- `fill_in_the_blank`: dodane dwie nowe gałęzie obok istniejącego trybu
+  klocków (`[BLANK_n]` + bank słów) — tryb wolnego wpisu dla luki `___` w
+  `content` (bez banku, zgodnie z kontraktem `gap_from_context` w
+  `functions/src/homeworkV2/coreKnowledge.ts:120-128`) i zabezpieczenie
+  fallback (pełna treść + wolne pole tekstowe), żeby ekran nigdy nie był
+  pusty przy nierozpoznanym kształcie danych.
+
+Pełny opis z uzasadnieniem: `CHANGELOG.md`, sekcja 4, wpis AB.
+
+Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (445/445, bez nowych
+testów), `npm run build` (przechodzi).
+
+Nie dokończone / do sprawdzenia:
+- Zmiany NIE zostały obejrzane w przeglądarce — brak dostępu do zalogowanej
+  sesji w tej sesji agenta. Sprawdzić wzrokowo wszystkie 3 typy na realnym
+  zestawie z `homework/direct/:token` przed wysłaniem do kursantów.
+- Nie ustalono ROOT CAUSE, dlaczego element w kształcie v2 (`gap_from_context`)
+  w ogóle trafiał do renderera v1 — `isV1Task`/`isV2Task` w `utils/homework.ts`
+  powinno to filtrować po stronie zapytania, ale fallback w
+  `homeworkItemType()` (linia 76) sugeruje możliwą lukę dla starszych/
+  mieszanych dokumentów. Naprawa jest defensywna niezależnie od przyczyny.
+- Duplikat tej samej logiki `find_errors`/`fill_in_the_blank` w
+  `HomeworkScreen.tsx` (~linie 1750-1799, widok lektora/admina w
+  `TeacherWorkScreen.tsx`/`AdminPanel.tsx`) NIE był dotknięty — poza
+  zakresem tego zadania (ekran kursanta, nie lektora).
+
+Decyzje architektoniczne:
+- Zamiast przepisywać `fill_in_the_blank` pod jeden, nowy kształt danych,
+  zostawione wszystkie trzy warianty naraz (stare klocki / nowy wolny wpis /
+  fallback) — starsze zadania w bazie mogą wciąż mieć stary kształt
+  `textWithBlanks`, więc usunięcie tej gałęzi zepsułoby historyczne prace.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji, ścieżkach
+tokenowych bez logowania ani schemacie danych Firestore — zmiana wyłącznie
+w jednym komponencie prezentacyjnym (`HomeworkExercise.tsx`).
