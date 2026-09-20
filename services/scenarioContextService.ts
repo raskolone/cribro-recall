@@ -26,6 +26,9 @@ export interface ScenarioStudentContext {
   profileContext: string;
   lastLessonContext: string;
   errorWorkInstruction: string;
+  /** Dodane dla Canvasu 2.0 (`scenarioCanvasAiService`) — reużywa ten sam odczyt, zero dublowania. */
+  hasGrammarContext: boolean;
+  grammarContext: string;
 }
 
 /**
@@ -88,5 +91,8 @@ Preferencje korekty błędów: brak wyodrębnionego pola w profilu — koryguj n
     ? 'moduł "error_work" musi ćwiczyć DOKŁADNIE te błędy i to słownictwo, które padły na OSTATNIEJ lekcji kursanta (patrz kontekst niżej) — konkretne zdania/sytuacje do poprawy, nie ogólna gramatyka.'
     : 'kursant nie ma jeszcze historii lekcji, więc moduł "error_work" zamienia się w ćwiczenia DIAGNOSTYCZNE — krótkie zadania sprawdzające realny poziom względem deklarowanego CEFR.';
 
-  return { mode, cefr, profileContext, lastLessonContext, errorWorkInstruction };
+  const grammarContext = String(lastLesson?.corrections || lastLesson?.thingsToImprove || '').trim();
+  const hasGrammarContext = grammarContext.length > 0;
+
+  return { mode, cefr, profileContext, lastLessonContext, errorWorkInstruction, hasGrammarContext, grammarContext };
 }

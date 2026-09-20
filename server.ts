@@ -187,6 +187,9 @@ import {
 import { generateScenarioForStudent } from "./services/scenarioAiService";
 import { ScenarioContextError } from "./services/scenarioContextService";
 import { resolveStudentRef, StudentResolutionError } from "./services/studentResolver";
+import { ScenarioCanvasV2 } from "./types/scenarioCanvas";
+import { generateScenarioCanvasForStudent, refreshScenarioCanvasBlocks } from "./services/scenarioCanvasAiService";
+import { getRejectedItemIds } from "./utils/scenarioCanvasValidation";
 import { shuffleDistinct } from "./utils/exerciseShuffle";
 import { assembleContext } from "./functions/src/homeworkV2/contextAssembler";
 import { planExercises } from "./functions/src/homeworkV2/exercisePlanner";
@@ -3790,6 +3793,146 @@ Jesteś skrupulatnym asystentem lektora języka angielskiego weryfikującym prof
     } catch (err: any) {
       console.error('[server] błąd zapisu scenariusza lekcji:', err);
       return res.status(500).json({ error: err?.message || 'Nie udało się zapisać scenariusza.' });
+    }
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════
+     KREATOR SCENARIUSZY I INTERAKTYWNY CANVAS (MVP) — scenarioCanvasV2
+
+     Kontrakt dodatkowy, opcjonalny, obok `plannedScenario` — patrz
+     types/scenarioCanvas.ts. Planner → Auditor (Gemini) buduje draft
+     canvasu; zapis następuje wyłącznie na żądanie lektora z UI, a Lesson
+     Refresh podmienia SELEKTYWNIE wyłącznie odrzucone elementy, chroniony
+     przez `expectedRevision`/`mutationId` przed podwójnym/stale zapisem.
+     ═══════════════════════════════════════════════════════════════════ */
+
+  app.post('/api/scenario/canvas/generate', requireFirebaseAuth, async (req, res) => {
+    try {
+      const studentId = String(req.body?.studentId || '').trim();
+      const durationMin = Number(req.body?.durationMin) as ScenarioDurationMin;
+
+      if (!studentId) return res.status(400).json({ error: 'Nie wskazano kursanta.' });
+      if (![45, 60, 90].includes(durationMin)) {
+        return res.status(400).json({ error: 'Nieprawidłowa długość lekcji — dozwolone: 45, 60, 90 minut.' });
+      }
+
+      const geminiApiKey = getGeminiApiKey();
+      if (!geminiApiKey) {
+        return res.status(500).json({ error: 'GEMINI_API_KEY nie jest skonfigurowany.' });
+      }
+
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+
+      const canvas = await generateScenarioCanvasForStudent({
+        adminDb, geminiApiKey, studentId, durationMin,
+        generateContentWithRetry, geminiModelCascade: GEMINI_MODEL_CASCADE,
+      });
+
+      return res.json({ canvas });
+    } catch (err: any) {
+      if (err instanceof ScenarioContextError) {
+        return res.status(err.code === 'not-found' ? 404 : 400).json({ error: err.code === 'not-found' ? err.message : 'insufficient-profile' });
+      }
+      console.error('[server] błąd generowania canvasu scenariusza:', err);
+      return res.status(500).json({ error: err?.message || 'Nie udało się wygenerować canvasu.' });
+    }
+  });
+
+  app.post('/api/scenario/canvas/save', requireFirebaseAuth, async (req, res) => {
+    try {
+      const studentId = String(req.body?.studentId || '').trim();
+      const targetLessonId = String(req.body?.targetLessonId || '').trim();
+      const canvas = req.body?.canvas as ScenarioCanvasV2 | undefined;
+
+      if (!studentId) return res.status(400).json({ error: 'Nie wskazano kursanta.' });
+      if (!targetLessonId) return res.status(400).json({ error: 'Nie wskazano lekcji docelowej.' });
+      if (!canvas || canvas.version !== 2 || !Array.isArray(canvas.blocks)) {
+        return res.status(400).json({ error: 'Brak poprawnego canvasu do zapisania.' });
+      }
+
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+      const recordRef = adminDb.collection('users').doc(studentId).collection('lessonRecords').doc(targetLessonId);
+
+      const recordSnap = await recordRef.get();
+      if (!recordSnap.exists) {
+        return res.status(404).json({ error: 'Nie znaleziono lekcji docelowej.' });
+      }
+
+      const scenarioCanvasSavedAt = new Date().toISOString();
+      await recordRef.update({ scenarioCanvasV2: canvas, scenarioCanvasSavedAt });
+
+      return res.json({ ok: true, canvasSavedAt: scenarioCanvasSavedAt });
+    } catch (err: any) {
+      console.error('[server] błąd zapisu canvasu scenariusza:', err);
+      return res.status(500).json({ error: err?.message || 'Nie udało się zapisać canvasu.' });
+    }
+  });
+
+  app.post('/api/scenario/canvas/refresh', requireFirebaseAuth, async (req, res) => {
+    try {
+      const studentId = String(req.body?.studentId || '').trim();
+      const targetLessonId = String(req.body?.targetLessonId || '').trim();
+      const expectedRevision = Number(req.body?.expectedRevision);
+      const mutationId = String(req.body?.mutationId || '').trim();
+      const teacherNotes = Array.isArray(req.body?.teacherNotes) ? req.body.teacherNotes : [];
+
+      if (!studentId) return res.status(400).json({ error: 'Nie wskazano kursanta.' });
+      if (!targetLessonId) return res.status(400).json({ error: 'Nie wskazano lekcji docelowej.' });
+      if (!mutationId) return res.status(400).json({ error: 'Brak mutationId.' });
+      if (!Number.isFinite(expectedRevision)) return res.status(400).json({ error: 'Brak expectedRevision.' });
+
+      const geminiApiKey = getGeminiApiKey();
+      if (!geminiApiKey) {
+        return res.status(500).json({ error: 'GEMINI_API_KEY nie jest skonfigurowany.' });
+      }
+
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+      const recordRef = adminDb.collection('users').doc(studentId).collection('lessonRecords').doc(targetLessonId);
+      const recordSnap = await recordRef.get();
+      if (!recordSnap.exists) {
+        return res.status(404).json({ error: 'Nie znaleziono lekcji docelowej.' });
+      }
+
+      const data = recordSnap.data() || {};
+      const storedCanvas = data.scenarioCanvasV2 as ScenarioCanvasV2 | undefined;
+      if (!storedCanvas || storedCanvas.version !== 2) {
+        return res.status(404).json({ error: 'Ta lekcja nie ma zapisanego canvasu scenariusza.' });
+      }
+
+      /* Podwójne kliknięcie tego samego mutationId na tej samej rewizji dostaje
+         ten sam wynik bez ponownego wołania Gemini — idempotencja. */
+      if (storedCanvas.lastMutationId === mutationId) {
+        return res.json({ ok: true, canvas: storedCanvas });
+      }
+
+      if (storedCanvas.revision !== expectedRevision) {
+        return res.status(409).json({ error: 'Canvas został już zmieniony przez inny zapis — odśwież i spróbuj ponownie.', canvas: storedCanvas });
+      }
+
+      const rejectedItemIds = getRejectedItemIds(storedCanvas);
+      if (rejectedItemIds.length === 0) {
+        return res.status(400).json({ error: 'Brak odrzuconych elementów — nie ma czego odświeżać.' });
+      }
+
+      const refreshedCanvas = await refreshScenarioCanvasBlocks({
+        geminiApiKey,
+        generateContentWithRetry,
+        geminiModelCascade: GEMINI_MODEL_CASCADE,
+        canvas: storedCanvas,
+        rejectedItemIds,
+        teacherNotes,
+        mutationId,
+      });
+
+      await recordRef.update({ scenarioCanvasV2: refreshedCanvas, scenarioCanvasSavedAt: refreshedCanvas.updatedAt });
+
+      return res.json({ ok: true, canvas: refreshedCanvas });
+    } catch (err: any) {
+      console.error('[server] błąd Lesson Refresh canvasu:', err);
+      return res.status(500).json({ error: err?.message || 'Nie udało się odświeżyć canvasu.' });
     }
   });
 
