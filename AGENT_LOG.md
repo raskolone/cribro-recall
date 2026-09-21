@@ -5321,3 +5321,49 @@ Ryzyka: brak. Nie dotknięto firestore.rules, middleware autoryzacji,
 ścieżek tokenowych bez logowania ani kluczy API mailingu.
 Weryfikacja: npx tsc --noEmit (główny projekt i functions/) — 0 błędów;
 npm test — 508/508 zielone.
+
+## 2026-09-21 — Claude Code / Sonnet 5 (druga zmiana tej sesji)
+
+Zadanie: bramka wyboru kursanta przed wejściem do Notatnika A4 + likwidacja
+mechanizmu doklejania notatek roboczych do notatek kursanta.
+Odchylenie od zlecenia (potwierdzone z Maciejem przez AskUserQuestion PRZED
+wdrożeniem): zlecenie żądało całkowitego usunięcia modala potwierdzenia
+"Dopisać do istniejących notatek?" (`handleAssignStudent` w
+TeacherScratchpadScreen.tsx). Modal ten jest udokumentowanym w kodzie,
+świadomym zabezpieczeniem human-in-the-loop, potwierdzonym przez Macieja
+dzień wcześniej (patrz CHANGELOG wpis AO/AP, 2026-09-20/21) — zapobiega
+cichemu, nieodwracalnemu scaleniu treści roboczej z prawdziwymi notatkami
+kursanta. Zapytany wprost, Maciej potwierdził: zabezpieczenie ZOSTAJE,
+nowa bramka ma tylko OTWIERAĆ istniejący dokument kursanta, bez doklejania.
+Zrobione:
+- components/scratchpad/ScratchpadStudentPicker.tsx: dodano opcjonalny
+  prop `secondaryAction` (etykieta + onClick) renderowany pod listą —
+  komponent był już w pełni gotowy (szukajka, avatar/inicjał, poziom), ale
+  ZAIMPORTOWANY A NIEUŻYWANY w AdminPanel.tsx (martwy kod).
+- components/admin/AdminPanel.tsx: kafelek "Notatnik" (`handleTileClick`,
+  case 'notatnik') zamiast od razu `openScratchpadTab()` otwiera teraz
+  `ScratchpadStudentPicker` (nowy stan `isNotebookPickerOpen`) z listą
+  `users` i akcją pomocniczą "Otwórz notatnik roboczy (bez kursanta /
+  tryb testowy)". Wybór kursanta woła `openScratchpadTab(sp_<id>)` —
+  otwiera JEGO WŁASNY, istniejący dokument, bez żadnego scalania.
+- components/scratchpad/TeacherScratchpadScreen.tsx: nowy pasek widoczny,
+  gdy notatnik JEST już przypisany do kursanta — pigułka "Kursant: {imię}"
+  + "Zmień kursanta ▾" (stan `isSwitchPickerOpen`), otwiera notatnik innego
+  ucznia w nowej karcie (spójne z tym, jak każde inne wejście do notatnika
+  działa w aplikacji — `openScratchpadTab` zawsze robi `window.open`).
+  Pasek "Przypisz kursanta" (scalanie treści roboczej) i cały
+  `handleAssignStudent`/`wouldAppendToExistingNotes`/`confirmAsync`
+  NIE RUSZONE.
+Nie dokończone / do sprawdzenia:
+- Zero weryfikacji wzrokowej w przeglądarce.
+- Przycisk "Notatnik" pod flagą `SHOW_LEGACY_PANEL_TOOLS` (linia ~2189)
+  nadal woła `openScratchpadTab()` wprost, z pominięciem nowej bramki —
+  zostawiony bez zmian, bo oznaczony jako narzędzie legacy, poza zakresem.
+Decyzje architektoniczne: patrz "Odchylenie od zlecenia" wyżej — jedyna
+niejawna decyzja to interpretacja "Zmień kursanta" jako otwarcie NOWEJ
+karty (zamiast nawigacji w tej samej), bo tak działa każde inne wejście do
+notatnika w całej aplikacji (`openScratchpadTab`).
+Ryzyka: brak zmian w firestore.rules, middleware autoryzacji, ścieżkach
+tokenowych bez logowania. Zabezpieczenie przed nadpisaniem notatek
+kursanta (obszar realnego ryzyka utraty danych) świadomie NIE ZMIENIONE.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508).

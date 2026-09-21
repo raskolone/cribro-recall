@@ -18,6 +18,14 @@ interface ScratchpadStudentPickerProps {
    * („ostatnia / 2 ostatnie / 3 ostatnie lekcje").
    */
   headerExtra?: React.ReactNode;
+  /**
+   * Akcja pomocnicza pod listą — dla wejść, które mają też opcję pominięcia
+   * wyboru kursanta (np. notatnik roboczy bez przypisania).
+   */
+  secondaryAction?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 const displayName = (student: User): string => formatStudentDisplayName(student);
@@ -38,6 +46,7 @@ export const ScratchpadStudentPicker: React.FC<ScratchpadStudentPickerProps> = (
   subtitle = 'Wybierz kursanta, którego notatki chcesz otworzyć',
   icon,
   headerExtra,
+  secondaryAction,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -140,6 +149,16 @@ export const ScratchpadStudentPicker: React.FC<ScratchpadStudentPickerProps> = (
             })
           )}
         </div>
+
+        {secondaryAction && (
+          <button
+            type="button"
+            onClick={secondaryAction.onClick}
+            className="text-slate-400 hover:text-slate-200 text-sm font-medium py-2 border-t border-slate-800 w-full text-center block cursor-pointer"
+          >
+            {secondaryAction.label}
+          </button>
+        )}
       </div>
     </div>
   );

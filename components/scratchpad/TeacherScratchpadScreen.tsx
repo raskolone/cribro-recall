@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, query } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { AlertCircle, Loader2, UserPlus, Check } from 'lucide-react';
+import { AlertCircle, Loader2, UserPlus, Check, ChevronDown } from 'lucide-react';
 import { ScratchpadDocument } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { getAllUsers } from '../../services/userService';
@@ -9,6 +9,7 @@ import {
   adoptScratchpadForStudent,
   getOrCreateStudentScratchpad,
   getScratchpadById,
+  openScratchpadTab,
   subscribeScratchpad,
   saveScratchpadContent,
   updateScratchpadSettings,
@@ -92,6 +93,8 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
      celowo: `error` przełącza cały ekran na widok „Zamknij", a to jest
      dokładnie to, czego nie chcemy przy samym przypisaniu kursanta. */
   const [assignError, setAssignError] = useState<string | null>(null);
+  /** Rozwinięta lista do zmiany kursanta w pasku otwartego, przypisanego notatnika. */
+  const [isSwitchPickerOpen, setIsSwitchPickerOpen] = useState(false);
   /* Lista kursantów do przypisania. Ekran stoi teraz sam, poza panelem, więc
      nikt mu jej nie poda — wczytuje ją sam, raz przy wejściu. Jedno zapytanie
      o nazwy, bez żadnych danych lekcyjnych. */
@@ -479,6 +482,47 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
                   <span className="flex items-center gap-1.5 text-xs text-rose-400">
                     <AlertCircle size={13} /> {assignError}
                   </span>
+                )}
+              </div>
+            )}
+
+            {/* Pasek kontekstu — notatnik już przypisany do kursanta. Pozwala
+                przeskoczyć do notatnika innego ucznia bez wracania do panelu;
+                otwiera go w nowej karcie, tak jak każde inne wejście do
+                notatnika w aplikacji — TEN dokument (i ewentualny szkic w
+                trakcie pisania) zostaje nietknięty. */}
+            {scratchpadDoc.studentId && assignableStudents.length > 0 && (
+              <div className="relative px-4 py-2 border-b border-line-strong bg-base-200/40 flex items-center gap-2">
+                <span className="px-2.5 py-1 rounded-lg bg-primary/15 border border-primary/30 text-[12px] font-semibold text-primary">
+                  Kursant: {scratchpadDoc.studentName}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsSwitchPickerOpen((open) => !open)}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-semibold text-content-muted hover:text-text-hi hover:bg-white/[0.06] transition-colors"
+                >
+                  Zmień kursanta
+                  <ChevronDown size={13} />
+                </button>
+
+                {isSwitchPickerOpen && (
+                  <div className="absolute left-4 top-full mt-1 z-20 w-64 max-h-72 overflow-y-auto rounded-xl border border-line-strong bg-ink-2 shadow-ambient-lg p-1.5">
+                    {assignableStudents
+                      .filter((candidate) => candidate.id !== scratchpadDoc.studentId)
+                      .map((candidate) => (
+                        <button
+                          key={candidate.id}
+                          type="button"
+                          onClick={() => {
+                            openScratchpadTab(`sp_${candidate.id}`);
+                            setIsSwitchPickerOpen(false);
+                          }}
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-text-hi hover:bg-white/[0.07] transition-colors"
+                        >
+                          {candidate.name}
+                        </button>
+                      ))}
+                  </div>
                 )}
               </div>
             )}

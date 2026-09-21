@@ -3342,6 +3342,15 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 - Weryfikacja: `npx tsc --noEmit` w katalogu głównym i w `functions/` (0 błędów w obu), `npm test` (508/508). Zero weryfikacji wzrokowej w kliencie pocztowym.
 - Ryzyka: brak zmian w `firestore.rules`, middleware autoryzacji, ścieżkach tokenowych bez logowania ani w kluczu API mailingu.
 
+### AR. Bramka wyboru kursanta przed Notatnikiem A4 — bez ruszania zabezpieczenia przed doklejaniem (2026-09-21)
+- Zlecenie żądało też całkowitego usunięcia modala „Dopisać do istniejących notatek?" (zabezpieczenie z wpisu AO/AP wyżej). Zapytany wprost przed wdrożeniem, Maciej potwierdził: zabezpieczenie zostaje, nowa bramka ma tylko otwierać istniejący dokument kursanta bez scalania.
+- `components/scratchpad/ScratchpadStudentPicker.tsx` — komponent (szukajka + lista kursantów z avatarem/inicjałem i poziomem) już istniał w pełni gotowy, ale był zaimportowany a nieużywany w `AdminPanel.tsx` (martwy kod). Dodano mu opcjonalny `secondaryAction` (etykieta + onClick) pod listą.
+- `components/admin/AdminPanel.tsx` — kafelek „Notatnik" na pulpicie lektora (`handleTileClick('notatnik')`) otwierał notatnik roboczy bez pytania o kursanta; teraz najpierw pokazuje `ScratchpadStudentPicker` z akcją pomocniczą „Otwórz notatnik roboczy (bez kursanta / tryb testowy)". Wybór kursanta otwiera jego własny, istniejący dokument (`sp_<id>`) — zero doklejania.
+- `components/scratchpad/TeacherScratchpadScreen.tsx` — nowy pasek kontekstu, gdy notatnik jest już przypisany do kursanta: pigułka z imieniem + „Zmień kursanta ▾", otwierająca notatnik innego ucznia w nowej karcie (spójnie z tym, jak działa każde inne wejście do notatnika w aplikacji). Istniejący pasek „Przypisz kursanta" (scalanie treści roboczej, `handleAssignStudent` z potwierdzeniem `wouldAppendToExistingNotes`) pozostał bez zmian.
+- Świadomie pominięte: przycisk „Notatnik" pod flagą `SHOW_LEGACY_PANEL_TOOLS` nadal otwiera notatnik roboczy wprost — narzędzie legacy, poza zakresem.
+- Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (508/508). Zero weryfikacji wzrokowej w przeglądarce.
+- Ryzyka: brak zmian w `firestore.rules`, middleware autoryzacji, ścieżkach tokenowych bez logowania. Zabezpieczenie przed nieodwracalnym nadpisaniem/zdublowaniem notatek kursanta świadomie nietknięte.
+
 ---
 
 

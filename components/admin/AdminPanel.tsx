@@ -316,7 +316,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
 
   const handleTileClick = (tabId: string) => {
     if (tabId === 'notatnik') {
-      openScratchpadTab();
+      setIsNotebookPickerOpen(true);
       return;
     }
     const mappedTab = tabId === 'history' ? 'lesson-history' : tabId;
@@ -1669,6 +1669,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [roleFilter, setRoleFilter] = useState('all');
   const [levelFilter, setLevelFilter] = useState('all');
   const [isStudentPickerOpen, setIsStudentPickerOpen] = useState(false);
+  const [isNotebookPickerOpen, setIsNotebookPickerOpen] = useState(false);
   const [targetTabAfterSelect, setTargetTabAfterSelect] = useState<string | null>(null);
 
   // Archiwum to zamknięta współpraca, nie usunięte konto: domyślnie znika
@@ -2017,6 +2018,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   }, []);
 
   useEscapeModal(isStudentPickerOpen, () => setIsStudentPickerOpen(false));
+  useEscapeModal(isNotebookPickerOpen, () => setIsNotebookPickerOpen(false));
   useEscapeModal(showCreateStudentModal, () => {
     setShowCreateStudentModal(false);
     setCreateStudentError('');
@@ -5987,6 +5989,25 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </div>
         </div>
       </div>
+
+      <ScratchpadStudentPicker
+        isOpen={isNotebookPickerOpen}
+        onClose={() => setIsNotebookPickerOpen(false)}
+        students={users}
+        title="Wybierz notatnik kursanta"
+        subtitle="Otwórz dedykowany notatnik z historii lekcji lub rozpocznij pusty szkic."
+        onPick={(picked) => {
+          openScratchpadTab(picked.id ? `sp_${picked.id}` : undefined);
+          setIsNotebookPickerOpen(false);
+        }}
+        secondaryAction={{
+          label: '📝 Otwórz notatnik roboczy (bez kursanta / tryb testowy)',
+          onClick: () => {
+            openScratchpadTab();
+            setIsNotebookPickerOpen(false);
+          },
+        }}
+      />
 
       {/* Pop-up Modal dla Wyboru Kursanta */}
       {isStudentPickerOpen && (
