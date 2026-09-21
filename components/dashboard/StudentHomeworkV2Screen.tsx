@@ -383,10 +383,10 @@ const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user,
 
         {/* Wskazówka rozwijana */}
         {showManualHint && availableHint && !state.done && (
-          <div className="p-3.5 rounded-xl bg-amber-950/25 border border-amber-500/35 text-amber-200 text-xs sm:text-sm leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-200 shadow-sm">
-            <Lightbulb size={16} className="text-amber-400 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-xl bg-amber-950/25 border border-amber-500/35 text-warn text-xs sm:text-sm leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-200 shadow-sm">
+            <Lightbulb size={16} className="text-warn shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-amber-300 block text-[11px] uppercase tracking-wider mb-0.5">
+              <span className="font-bold text-warn block text-[11px] uppercase tracking-wider mb-0.5">
                 Wskazówka lektora:
               </span>
               <span>{availableHint}</span>

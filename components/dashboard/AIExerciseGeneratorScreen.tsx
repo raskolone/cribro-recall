@@ -4139,10 +4139,10 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                   </div>
 
                   {showHints[activeSentenceIndex] && exercises[activeSentenceIndex].hint && (
-                    <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/35 text-amber-200 text-xs sm:text-sm leading-relaxed text-left flex items-start gap-2.5 animate-in fade-in duration-200">
-                      <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/35 text-warn text-xs sm:text-sm leading-relaxed text-left flex items-start gap-2.5 animate-in fade-in duration-200">
+                      <Lightbulb className="w-4 h-4 text-warn shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-bold text-amber-300 block text-[11px] uppercase tracking-wider mb-0.5">
+                        <span className="font-bold text-warn block text-[11px] uppercase tracking-wider mb-0.5">
                           {language === 'pl' ? 'Wskazówka lektora:' : 'Tutor hint:'}
                         </span>
                         <span>{exercises[activeSentenceIndex].hint}</span>

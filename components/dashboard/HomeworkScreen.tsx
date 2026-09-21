@@ -241,7 +241,7 @@ export const renderExercisePrompt = (item: any, itemType: HomeworkType): React.R
         {item.hint && (
           <div>
             <span className="text-xs text-content-muted block mb-0.5">Wskazówka:</span>
-            <p className="text-amber-300 font-medium text-xs">💡 {item.hint}</p>
+            <p className="text-warn font-medium text-xs">💡 {item.hint}</p>
           </div>
         )}
         {item.polishHint && (

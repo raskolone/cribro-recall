@@ -82,7 +82,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
 
         {/* Zdanie do przetłumaczenia */}
         <div className="p-4 sm:p-5 rounded-2xl bg-base-100/70 border border-white/10 shadow-inner">
-          <p className="prose-justified text-lg sm:text-xl font-bold text-white leading-relaxed">
+          <p className="prose-justified text-lg sm:text-xl font-bold text-text-hi leading-relaxed">
             {polishSentence}
           </p>
         </div>
@@ -111,7 +111,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
             onChange={(e) => onChange(e.target.value)}
             rows={3}
             placeholder="Wpisz tłumaczenie po angielsku…"
-            className="w-full p-4 bg-base-100/90 text-white text-[15px] sm:text-base border border-white/15 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
+            className="w-full p-4 bg-base-100/90 text-text-hi text-[15px] sm:text-base border border-white/15 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
           />
         </div>
       </div>
@@ -136,7 +136,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
             bez niego zostają same kafelki, żeby nie pokazywać pustej ramki. */}
         {sourceSentence && (
           <div className="p-4 sm:p-5 rounded-2xl bg-base-100/70 border border-white/10 shadow-inner">
-            <p className="prose-justified text-lg sm:text-xl font-bold text-white leading-relaxed">
+            <p className="prose-justified text-lg sm:text-xl font-bold text-text-hi leading-relaxed">
               {sourceSentence}
             </p>
           </div>
@@ -190,7 +190,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
 
     return (
       <div className="space-y-4">
-        <p className="prose-justified text-lg font-bold text-white leading-snug">{item.question}</p>
+        <p className="prose-justified text-lg font-bold text-text-hi leading-snug">{item.question}</p>
         <div className="space-y-2">
           {options.map((option, index) => (
             <button
@@ -224,7 +224,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
         <div className="space-y-4">
           {fallbackText && (
             <div className="p-4 sm:p-5 rounded-2xl bg-base-100/70 border border-white/10 shadow-inner">
-              <p lang="en" className="prose-justified text-lg sm:text-xl font-bold text-white leading-relaxed">
+              <p lang="en" className="prose-justified text-lg sm:text-xl font-bold text-text-hi leading-relaxed">
                 {fallbackText}
               </p>
             </div>
@@ -234,7 +234,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
             onChange={(e) => onChange(e.target.value)}
             rows={3}
             placeholder="Wpisz pełne, uzupełnione zdanie po angielsku…"
-            className="w-full p-4 bg-base-100/90 text-white text-[15px] sm:text-base border border-white/15 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
+            className="w-full p-4 bg-base-100/90 text-text-hi text-[15px] sm:text-base border border-white/15 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
           />
         </div>
       );
@@ -245,7 +245,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
       const currentValue = typeof answer === 'string' ? answer : '';
       return (
         <div className="space-y-4">
-          <p lang="en" className="prose-justified text-lg sm:text-xl font-bold text-white leading-relaxed">
+          <p lang="en" className="prose-justified text-lg sm:text-xl font-bold text-text-hi leading-relaxed">
             {segments.map((segment, index) =>
               segment.kind === 'text' ? (
                 <span key={index}>{segment.text}</span>
@@ -363,7 +363,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
           <span className="text-[11px] font-mono uppercase tracking-wider text-content-muted font-bold block">
             Zdanie z błędem do poprawy:
           </span>
-          <p className="text-lg sm:text-xl font-bold text-white leading-relaxed">
+          <p className="text-lg sm:text-xl font-bold text-text-hi leading-relaxed">
             {incorrect}
           </p>
           {meaningText && (
@@ -408,7 +408,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
             onChange={(e) => onChange(e.target.value)}
             rows={3}
             placeholder="Wpisz w pełni poprawione zdanie po angielsku…"
-            className="w-full p-4 bg-base-100/90 text-white text-[15px] sm:text-base border border-white/15 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
+            className="w-full p-4 bg-base-100/90 text-text-hi text-[15px] sm:text-base border border-white/15 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
           />
         </div>
       </div>

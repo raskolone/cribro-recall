@@ -226,10 +226,10 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
         <section className="rounded-2xl bg-base-200/60 border border-amber-500/30 p-3.5 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-amber-500/20 text-warn border border-amber-500/30">
                 BLOK 3
               </span>
-              <h4 className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+              <h4 className="text-xs font-bold text-warn flex items-center gap-1.5">
                 <ListChecks size={14} />
                 {L.homeworkTitle}
               </h4>
@@ -247,7 +247,7 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
                 onClick={() => setShowAnswerKey((v) => !v)}
                 className="text-[11px] font-bold text-content-muted hover:text-text-hi flex items-center gap-1 cursor-pointer transition-colors"
               >
-                <KeyRound size={12} className="text-amber-400" />
+                <KeyRound size={12} className="text-warn" />
                 {showAnswerKey ? L.hideAnswerKey : L.showAnswerKey}
               </button>
               {showAnswerKey && (
@@ -264,10 +264,10 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
       {isTeacher && blocks.nextLesson && (
         <section className="rounded-2xl bg-yellow-950/15 border border-yellow-500/20 p-3.5 space-y-1.5">
           <div className="flex items-center gap-2">
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-yellow-500/20 text-warn border border-yellow-500/30">
               BLOK 4
             </span>
-            <h4 className="text-xs font-bold text-yellow-300 flex items-center gap-1.5">
+            <h4 className="text-xs font-bold text-warn flex items-center gap-1.5">
               <Target size={13} />
               {L.nextLessonTitle}
             </h4>
