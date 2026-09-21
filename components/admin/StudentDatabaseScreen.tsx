@@ -1073,9 +1073,6 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                             <div className="font-bold text-white group-hover:text-primary transition-colors truncate flex items-center gap-1.5">
                               <span>{fullName}</span>
                             </div>
-                            <div className="text-[11px] text-content-muted font-mono truncate">
-                              @{user.username}
-                            </div>
                           </div>
                         </div>
                       </td>
@@ -1586,7 +1583,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                     {userToDelete.firstName || userToDelete.lastName
                       ? `${userToDelete.firstName || ''} ${userToDelete.lastName || ''}`.trim()
                       : userToDelete.username}{' '}
-                    <span className="font-mono">(@{userToDelete.username})</span>
+                    {userToDelete.email && <span className="font-mono">({userToDelete.email})</span>}
                   </p>
                 </div>
               </div>
@@ -1808,7 +1805,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                           {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
                         </div>
                         <div className="text-[11px] text-content-muted font-mono truncate">
-                          {u.email || `@${u.username}`}
+                          {u.email || 'Brak e-maila'}
                         </div>
                       </div>
                       <span className="shrink-0 text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-content-muted uppercase">
@@ -1854,8 +1851,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                   <p className="text-xs text-content-muted">
                     {editingUser.firstName || editingUser.lastName
                       ? `${editingUser.firstName || ''} ${editingUser.lastName || ''}`.trim()
-                      : editingUser.username}{' '}
-                    <span className="font-mono">(@{editingUser.username})</span>
+                      : editingUser.username}
                   </p>
                 </div>
               </div>

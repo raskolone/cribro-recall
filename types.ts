@@ -21,6 +21,7 @@ export interface SoundSettings {
 
 export interface User {
   id?: string;
+  /** @deprecated Login odbywa się przez `email`. Pole zostaje tylko jako fallback nazwy wyświetlanej. */
   username: string;
   email: string;
   role: 'admin' | 'user' | 'teacher';
