@@ -1,4 +1,5 @@
 import { LessonRecord } from '../types';
+import { extractLessonBlocks } from './lessonBlocks';
 
 /**
  * Normalizacja WYŚWIETLANIA tematu/daty lekcji dla lektora.
@@ -15,6 +16,13 @@ import { LessonRecord } from '../types';
  * Ten moduł NIE zmienia tego, co jest zapisane w Firestore (poza
  * server.ts, gdzie zapobiega zapisaniu takiego tematu na przyszłość) —
  * to warstwa normalizacji na czas wyświetlania.
+ *
+ * ══ HIERARCHIA WYCIĄGANIA TEMATU (getDisplayLessonTopic) ══
+ * 1. `topic` — jeśli to realna treść, a nie surowy znacznik ISO.
+ * 2. Pierwsza linijka (maks. 60 znaków) z bloku 1 / podsumowania lekcji —
+ *    tam jest prawdziwy temat spotkania wyciągnięty z notatek Notion.
+ * 3. Nazwa kursanta/firmy, oczyszczona ze znacznika ISO.
+ * 4. Ostateczny fallback: „Lekcja z dnia DD.MM.YYYY”.
  */
 
 /** Fragment wyglądający jak surowa data/czas ISO (np. `2026-09-16T06:30` lub `2026-09-16`). */
@@ -58,17 +66,77 @@ export function formatLessonDateDDMMYYYY(dateStr?: string | null): string | null
   });
 }
 
-/**
- * Zwraca temat lekcji gotowy do wyświetlenia lektorowi:
- * - realny temat z Notion / wpisany ręcznie — bez zmian,
- * - brakujący lub surowy znacznik ISO — zastąpiony `Lekcja z dnia DD.MM.YYYY`
- *   (na podstawie prawdziwego pola `date` rekordu, nie zepsutego tematu).
- */
-export function getDisplayLessonTopic(record: Pick<LessonRecord, 'topic' | 'date'> | null | undefined): string {
-  const topic = record?.topic?.trim() || '';
+const MAX_TOPIC_LENGTH = 60;
 
+/** Pierwsza linijka tekstu, przycięta do `MAX_TOPIC_LENGTH` znaków (z wielokropkiem, gdy ucięta). */
+function firstLineTrimmed(text?: string | null): string {
+  if (!text) return '';
+  const firstLine = text.split('\n').map((l) => l.trim()).find((l) => l.length > 0) || '';
+  if (firstLine.length <= MAX_TOPIC_LENGTH) return firstLine;
+  return `${firstLine.slice(0, MAX_TOPIC_LENGTH).trim()}…`;
+}
+
+/**
+ * Czyści imię/nazwę kursanta (lub grupy/firmy) ze sklejonego surowego
+ * znacznika czasu ISO doklejonego przez narzędzie do nagrywania spotkań
+ * (np. „Dorota Komar-Janiszek (Media Saturn) - 2026-09-16T06:30:00.000Z"
+ * → „Dorota Komar-Janiszek (Media Saturn)").
+ */
+function cleanStudentNameFromIso(name?: string | null): string {
+  if (!name) return '';
+  return name
+    .replace(new RegExp(`[\\s\\-–—]*${ISO_DATETIME_FRAGMENT.source}[\\s\\-–—]*`, 'g'), ' ')
+    .trim();
+}
+
+/**
+ * Podzbiór pól `LessonRecord` potrzebny do wyciągnięcia tematu — celowo węższy
+ * niż `Partial<LessonRecord>`, żeby wywołania z sąsiednich, lżejszych typów
+ * kart (np. `CloseoutLessonCard`, gdzie `source` to zwykły `string`, nie unia
+ * `LessonRecord['source']`) nie wywalały się na niezwiązanych polach.
+ */
+type LessonTopicSource = Pick<
+  LessonRecord,
+  | 'topic'
+  | 'date'
+  | 'lessonSummary'
+  | 'studentName'
+  | 'structuredBlocks'
+  | 'thingsToImprove'
+  | 'vocabularyText'
+  | 'corrections'
+  | 'homeworkText'
+  | 'homeworkAnswerKey'
+  | 'nextLessonPlan'
+  | 'suggestedFollowUp'
+  | 'studentSpeaking'
+>;
+
+/**
+ * Zwraca temat lekcji gotowy do wyświetlenia lektorowi, wg hierarchii:
+ * 1. realny `topic` — bez zmian,
+ * 2. pierwsza linijka streszczenia lekcji (Blok 1 / `lessonSummary`),
+ * 3. nazwa kursanta/grupy oczyszczona ze znacznika ISO,
+ * 4. `Lekcja z dnia DD.MM.YYYY` na podstawie prawdziwego pola `date`.
+ */
+export function getDisplayLessonTopic(
+  record: Partial<LessonTopicSource> | null | undefined,
+  fallbackStudentName?: string | null
+): string {
+  const topic = record?.topic?.trim() || '';
   if (topic && !isJunkIsoTopic(topic)) {
     return topic;
+  }
+
+  const blocks = extractLessonBlocks((record || {}) as Partial<LessonRecord>);
+  const summaryTopic = firstLineTrimmed(blocks.summary || record?.lessonSummary);
+  if (summaryTopic && !isJunkIsoTopic(summaryTopic)) {
+    return summaryTopic;
+  }
+
+  const studentName = cleanStudentNameFromIso(record?.studentName || fallbackStudentName);
+  if (studentName) {
+    return studentName;
   }
 
   const formattedDate = formatLessonDateDDMMYYYY(record?.date);

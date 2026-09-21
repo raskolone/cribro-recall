@@ -410,3 +410,41 @@ export function isStudentVisibleLesson(record?: Partial<LessonRecord> | null): b
   return true;
 }
 
+/** Data lekcji znormalizowana do `YYYY-MM-DD`, żeby porównywać tylko dzień, nie godzinę/strefę. */
+function normalizedLessonDay(dateStr?: string | null): string | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Znajduje wiszące wpisy w statusie „Weryfikacja”, dla których ten sam kursant
+ * ma już w tym samym dniu potwierdzoną (widoczną dla kursanta) lekcję —
+ * najczęściej zdublowany wpis z importu Notion obok ręcznie uzupełnionego
+ * rekordu tej samej lekcji. Zwraca listę wpisów do jednorazowego skasowania,
+ * nie usuwa niczego samodzielnie.
+ */
+export function findDuplicatePendingLessons(lessons: Partial<LessonRecord>[]): Partial<LessonRecord>[] {
+  const confirmedDaysByStudent = new Map<string, Set<string>>();
+
+  for (const lesson of lessons) {
+    if (!isStudentVisibleLesson(lesson)) continue;
+    const day = normalizedLessonDay(lesson.date);
+    if (!day) continue;
+    const studentIds = lesson.studentId ? [lesson.studentId, ...(lesson.studentIds || [])] : (lesson.studentIds || []);
+    for (const sId of studentIds) {
+      if (!confirmedDaysByStudent.has(sId)) confirmedDaysByStudent.set(sId, new Set());
+      confirmedDaysByStudent.get(sId)!.add(day);
+    }
+  }
+
+  return lessons.filter((lesson) => {
+    if (!isLessonPendingConfirmation(lesson) || lesson.status === 'rejected') return false;
+    const day = normalizedLessonDay(lesson.date);
+    if (!day) return false;
+    const studentIds = lesson.studentId ? [lesson.studentId, ...(lesson.studentIds || [])] : (lesson.studentIds || []);
+    return studentIds.some((sId) => confirmedDaysByStudent.get(sId)?.has(day));
+  });
+}
+

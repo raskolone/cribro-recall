@@ -1,14 +1,12 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { User, LessonRecord } from '../../types';
-import { extractLessonBlocks, isLessonPendingConfirmation } from '../../utils/lessonBlocks';
+import { extractLessonBlocks, isLessonPendingConfirmation, findDuplicatePendingLessons } from '../../utils/lessonBlocks';
 import { getDisplayLessonTopic, formatLessonDateDDMMYYYY } from '../../utils/lessonDisplay';
 import { formatStudentDisplayName } from '../../utils/studentFormat';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import { auth } from '../../firebase';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import TTSButtons from '../flashcards/TTSButtons';
-import Markdown from 'react-markdown';
 import {
   BookOpen,
   Clock,
@@ -30,22 +28,18 @@ import {
   Layers,
   RefreshCw,
   Plus,
-  Copy,
-  Check,
   Award,
   AlertTriangle,
   ArrowUpDown,
   Tag,
-  KeyRound,
   Trash2,
   Database,
-  Target,
-  Activity,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 import { NotionImportPreviewModal, NotionPreviewItem } from './NotionImportPreviewModal';
+import { CascadingLessonDetails } from './CascadingLessonDetails';
 
 interface TeacherLessonHistoryViewProps {
   lessons: LessonRecord[];
@@ -57,6 +51,12 @@ interface TeacherLessonHistoryViewProps {
   onOpenHomework?: (student: User, lesson?: LessonRecord) => void;
   onOpenPresentation?: (lesson: LessonRecord, student?: User) => void;
   onDeleteLesson?: (studentId: string, lesson: LessonRecord) => Promise<void>;
+  onEditLesson?: (studentId: string, lesson: LessonRecord) => void;
+  onGenerateHomeworkFromLesson?: (studentId: string, lesson: LessonRecord) => void;
+  onConfirmLesson?: (studentId: string, lesson: LessonRecord) => void | Promise<void>;
+  onRejectLesson?: (studentId: string, lesson: LessonRecord) => void | Promise<void>;
+  onUpdateLesson?: (studentId: string, lesson: LessonRecord, updates: Partial<LessonRecord>) => Promise<void>;
+  onCleanupDuplicatePendingLessons?: (duplicates: LessonRecord[]) => Promise<void>;
   onAddNewLesson?: () => void;
 }
 
@@ -73,6 +73,12 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
   onOpenHomework,
   onOpenPresentation,
   onDeleteLesson,
+  onEditLesson,
+  onGenerateHomeworkFromLesson,
+  onConfirmLesson,
+  onRejectLesson,
+  onUpdateLesson,
+  onCleanupDuplicatePendingLessons,
   onAddNewLesson,
 }) => {
   const [selectedStudentTab, setSelectedStudentTab] = useState<string>('all');
@@ -80,8 +86,6 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [previewLesson, setPreviewLesson] = useState<LessonRecord | null>(null);
-  const [copiedSection, setCopiedSection] = useState<string | null>(null);
-  const [isAnswerKeyOpen, setIsAnswerKeyOpen] = useState(false);
   const [isCheckingNotion, setIsCheckingNotion] = useState(false);
   const [notionCheckMsg, setNotionCheckMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -92,6 +96,36 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
   const [notionPreviewItems, setNotionPreviewItems] = useState<NotionPreviewItem[]>([]);
   const [isNotionPreviewOpen, setIsNotionPreviewOpen] = useState(false);
   const [isImportingNotion, setIsImportingNotion] = useState(false);
+  const [isCleaningDuplicates, setIsCleaningDuplicates] = useState(false);
+
+  // Wpisy „Weryfikacja”, dla których ten sam kursant ma już potwierdzoną lekcję tego samego dnia —
+  // zwykle zdublowany wpis z importu Notion obok ręcznie uzupełnionego rekordu.
+  const duplicatePendingLessons = useMemo(() => findDuplicatePendingLessons(lessons) as LessonRecord[], [lessons]);
+
+  const handleCleanupDuplicates = async () => {
+    if (!onCleanupDuplicatePendingLessons || duplicatePendingLessons.length === 0) return;
+    if (
+      !window.confirm(
+        `Usunąć ${duplicatePendingLessons.length} zdublowanych wpisów „Weryfikacja”, dla których kursant ma już potwierdzoną lekcję tego samego dnia?`
+      )
+    ) {
+      return;
+    }
+    setIsCleaningDuplicates(true);
+    try {
+      await onCleanupDuplicatePendingLessons(duplicatePendingLessons);
+      setNotionCheckMsg({
+        type: 'success',
+        text: `Usunięto ${duplicatePendingLessons.length} zdublowanych wpisów „Weryfikacja”.`,
+      });
+      setTimeout(() => setNotionCheckMsg(null), 6000);
+    } catch (e: any) {
+      setNotionCheckMsg({ type: 'error', text: `Błąd czyszczenia duplikatów: ${e.message || String(e)}` });
+      setTimeout(() => setNotionCheckMsg(null), 7000);
+    } finally {
+      setIsCleaningDuplicates(false);
+    }
+  };
 
   const callNotionSync = async (body: Record<string, unknown>) => {
     const token = await auth.currentUser?.getIdToken();
@@ -298,13 +332,6 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
       });
   }, [lessons, selectedStudentTab, statusFilter, searchQuery, sortOrder, studentMap]);
 
-  const handleCopyText = (text: string, sectionKey: string) => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    setCopiedSection(sectionKey);
-    setTimeout(() => setCopiedSection(null), 2500);
-  };
-
   const formatDateLabel = (dateStr?: string) => {
     return formatLessonDateDDMMYYYY(dateStr) || dateStr || '-';
   };
@@ -312,12 +339,6 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
   const getStudentForLesson = (lesson: LessonRecord): User | undefined => {
     return studentMap.get(lesson.studentId);
   };
-
-  // Preview block data
-  const previewBlocks = useMemo(() => {
-    if (!previewLesson) return null;
-    return extractLessonBlocks(previewLesson);
-  }, [previewLesson]);
 
   return (
     <div className="space-y-4 pt-6 mt-8 border-t border-line-strong">
@@ -368,6 +389,20 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
             >
               <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
               Odśwież
+            </Button>
+          )}
+
+          {onCleanupDuplicatePendingLessons && duplicatePendingLessons.length > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleCleanupDuplicates}
+              isLoading={isCleaningDuplicates}
+              title="Usuń wpisy „Weryfikacja”, dla których kursant ma już potwierdzoną lekcję tego samego dnia"
+              className="text-xs flex items-center gap-1.5 py-1.5 px-3 border-line-strong hover:border-rose-400/40 text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 font-semibold"
+            >
+              <Trash2 size={13} />
+              Wyczyść duplikaty Weryfikacja ({duplicatePendingLessons.length})
             </Button>
           )}
 
@@ -870,18 +905,38 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
         )}
       </div>
 
-      {/* Slide-over Drawer / Modal Podglądu 4 Bloków Lekcji */}
-      {previewLesson && previewBlocks && (
+      {/* Modal Podglądu Lekcji — dokładnie ten sam komponent (CascadingLessonDetails), co w profilu kursanta */}
+      {previewLesson && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200">
           <div className="w-full max-w-3xl max-h-[90vh] flex flex-col bg-base-200 border border-primary/30 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-line-strong flex items-start justify-between gap-4 bg-base-300/70">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    Odbyta
-                  </span>
+                  {(() => {
+                    const isPending = isLessonPendingConfirmation(previewLesson);
+                    const isConfirmed = !isPending && previewLesson.status !== 'rejected';
+                    if (isPending) {
+                      return (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                          Weryfikacja
+                        </span>
+                      );
+                    }
+                    return (
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 border ${
+                          isConfirmed
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                            : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${isConfirmed ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                        {isConfirmed ? 'Odbyta' : 'Odrzucona'}
+                      </span>
+                    );
+                  })()}
                   <span className="text-xs font-mono text-content-muted flex items-center gap-1">
                     <Calendar size={12} />
                     {formatDateLabel(previewLesson.date)}
@@ -913,249 +968,85 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
               </button>
             </div>
 
-            {/* Modal Body: Two Distinct Aesthetic Blocks (1. Scenario / Plan vs 2. Realized Summary & 4 Notion Blocks) */}
-            <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
-              {/* ═══ BLOK 1: SCENARIUSZ I ZAŁOŻENIA LEKCJI (PLAN) ═══ */}
-              <div className="rounded-2xl border border-purple-500/25 bg-gradient-to-br from-purple-950/20 via-base-300/40 to-base-300/60 p-4 sm:p-5 space-y-3 shadow-sm">
-                <div className="flex items-center justify-between pb-2.5 border-b border-purple-500/20">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                      <Target size={15} />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-black uppercase tracking-wider text-purple-200">
-                        1. Scenariusz i założenia lekcji (Plan)
-                      </h4>
-                      <p className="text-[11px] text-content-muted">
-                        Zaplanowany temat, pytania przewodnie i cele dydaktyczne
-                      </p>
-                    </div>
-                  </div>
-                  {previewLesson.scenarioTopic && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-300 border border-purple-500/30">
-                      {previewLesson.scenarioTopic}
-                    </span>
-                  )}
-                </div>
-
-                {previewLesson.scenarioContent ? (
-                  <div className="text-xs text-text-hi whitespace-pre-wrap leading-relaxed bg-black/20 p-3.5 rounded-xl border border-white/5 font-sans">
-                    <Markdown>{previewLesson.scenarioContent}</Markdown>
-                  </div>
-                ) : previewLesson.scenarioTopic ? (
-                  <div className="text-xs text-text-hi leading-relaxed bg-black/20 p-3.5 rounded-xl border border-white/5">
-                    <span className="text-content-muted">Temat scenariusza: </span>
-                    <span className="font-semibold text-text-hi">{previewLesson.scenarioTopic}</span>
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-xl bg-black/15 border border-white/5 text-xs text-content-muted/80 italic">
-                    Brak przypisanego scenariusza przed lekcją (lekcja prowadzona w trybie swobodnym lub zaimportowana z transkrypcji).
-                  </div>
-                )}
-              </div>
-
-              {/* ═══ BLOK 2: PODSUMOWANIE I REALIZACJA LEKCJI (4 BLOKI NOTION) ═══ */}
-              <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-emerald-950/15 via-base-300/40 to-base-300/60 p-4 sm:p-5 space-y-5 shadow-sm">
-                <div className="flex items-center justify-between pb-2.5 border-b border-primary/20">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 rounded-lg bg-primary/20 text-primary border border-primary/30">
-                      <Sparkles size={15} />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-black uppercase tracking-wider text-primary">
-                        2. Podsumowanie lekcji i 4 Bloki Notion (Realizacja)
-                      </h4>
-                      <p className="text-[11px] text-content-muted">
-                        Faktyczny przebieg, słownictwo, korekty, zadania domowe i wnioski
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4 divide-y divide-line-soft">
-                  {/* Podsumowanie ogólne (Lesson Summary) */}
-                  {(previewBlocks.summary || previewLesson.lessonSummary) && (
-                    <div className="space-y-1.5 pt-1 first:pt-0">
-                      <h5 className="text-xs font-extrabold uppercase tracking-wider text-text-hi flex items-center gap-1.5">
-                        <FileText size={13} className="text-primary" />
-                        Podsumowanie lekcji (2-3 zdania)
-                      </h5>
-                      <div className="text-xs text-content leading-relaxed bg-black/20 p-3.5 rounded-xl border border-white/5 whitespace-pre-wrap">
-                        <Markdown>{previewBlocks.summary || previewLesson.lessonSummary}</Markdown>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Wypowiedzi kursanta & Obserwacje lektora (Student Speaking & Insights) */}
-                  {(previewLesson.studentSpeaking || previewLesson.studentInsights) && (
-                    <div className="space-y-1.5 pt-4">
-                      <h5 className="text-xs font-extrabold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
-                        <Activity size={13} />
-                        Wypowiedzi kursanta & Obserwacje profilowe (Notatka lektora)
-                      </h5>
-                      <div className="text-xs text-content leading-relaxed bg-sky-500/[0.04] p-3.5 rounded-xl border border-sky-500/20 whitespace-pre-wrap">
-                        <Markdown>{previewLesson.studentInsights || previewLesson.studentSpeaking}</Markdown>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Blok 1: Słownictwo (Words & Phrases) */}
-                  <div className="space-y-2.5 pt-4">
-                    <div className="flex items-center justify-between">
-                      <h5 className="text-xs font-extrabold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                        <BookOpen size={13} />
-                        Blok 1: Words & Phrases (Słownictwo)
-                      </h5>
-                      {previewBlocks.vocabulary && (
-                        <button
-                          type="button"
-                          onClick={() => handleCopyText(previewBlocks.vocabulary || '', 'vocab')}
-                          className="text-[11px] text-content-muted hover:text-primary flex items-center gap-1 transition-colors"
-                        >
-                          {copiedSection === 'vocab' ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                          {copiedSection === 'vocab' ? 'Skopiowano' : 'Kopiuj listę'}
-                        </button>
-                      )}
-                    </div>
-
-                    {previewBlocks.vocabulary ? (
-                      <div className="space-y-1.5">
-                        {previewBlocks.vocabulary
-                          .split('\n')
-                          .map((l) => l.trim())
-                          .filter(Boolean)
-                          .map((line, idx) => {
-                            const parts = line.split(/[-–—:=]/);
-                            const term = parts[0]?.trim() || line;
-                            const def = parts.slice(1).join(' - ').trim();
-
-                            return (
-                              <div
-                                key={idx}
-                                className="p-2 rounded-xl bg-base-300/50 border border-line-strong flex items-center justify-between gap-2 hover:border-primary/30 transition-colors"
-                              >
-                                <div className="flex items-baseline gap-2">
-                                  <span className="font-bold text-text-hi text-xs">{term}</span>
-                                  {def && <span className="text-xs text-content-muted">— {def}</span>}
-                                </div>
-                                <TTSButtons text={term} size="sm" />
-                              </div>
-                            );
-                          })}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-content-muted/60 italic">Brak zapisanego słownictwa.</p>
-                    )}
-                  </div>
-
-                  {/* Blok 2: Korekty językowe i wymowa (Corrections & Pronunciation) */}
-                  {previewBlocks.corrections && (
-                    <div className="space-y-2.5 pt-4">
-                      <div className="flex items-center justify-between">
-                        <h5 className="text-xs font-extrabold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
-                          <Sparkles size={13} />
-                          Blok 2: Corrections & Pronunciation (Korekty i wymowa)
-                        </h5>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyText(previewBlocks.corrections || '', 'grammar')}
-                          className="text-[11px] text-content-muted hover:text-sky-300 flex items-center gap-1 transition-colors"
-                        >
-                          {copiedSection === 'grammar' ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                          {copiedSection === 'grammar' ? 'Skopiowano' : 'Kopiuj'}
-                        </button>
-                      </div>
-                      <div className="p-3.5 rounded-xl bg-sky-500/[0.04] border border-sky-500/20 text-xs text-text-hi whitespace-pre-wrap leading-relaxed">
-                        <Markdown>{previewBlocks.corrections}</Markdown>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Blok 3: Zadanie Domowe (Homework) */}
-                  {(previewBlocks.homework || previewLesson.homeworkText) && (
-                    <div className="space-y-2.5 pt-4">
-                      <div className="flex items-center justify-between">
-                        <h5 className="text-xs font-extrabold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
-                          <ClipboardList size={13} />
-                          Blok 3: Homework (Zadanie domowe)
-                        </h5>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleCopyText(
-                              previewBlocks.homework || previewLesson.homeworkText || '',
-                              'hw'
-                            )
+            {/* Modal Body: CascadingLessonDetails — te same 4 Bloki Notion + Learning Curve co w profilu kursanta */}
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+              {(() => {
+                const student = getStudentForLesson(previewLesson);
+                const studentId = student?.id || previewLesson.studentId;
+                return (
+                  <CascadingLessonDetails
+                    record={previewLesson}
+                    studentName={student ? formatStudentDisplayName(student) : undefined}
+                    studentLevel={student?.level}
+                    onGenerateHomework={
+                      onGenerateHomeworkFromLesson
+                        ? () => {
+                            setPreviewLesson(null);
+                            onGenerateHomeworkFromLesson(studentId, previewLesson);
                           }
-                          className="text-[11px] text-content-muted hover:text-purple-300 flex items-center gap-1 transition-colors"
-                        >
-                          {copiedSection === 'hw' ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                          {copiedSection === 'hw' ? 'Skopiowano' : 'Kopiuj'}
-                        </button>
-                      </div>
-                      <div className="p-3.5 rounded-xl bg-purple-500/[0.04] border border-purple-500/20 text-xs text-text-hi whitespace-pre-wrap leading-relaxed">
-                        <Markdown>{previewBlocks.homework || previewLesson.homeworkText}</Markdown>
-                      </div>
-
-                      {/* Answer key toggle if available */}
-                      {(previewBlocks.answerKey || previewLesson.homeworkAnswerKey) && (
-                        <div className="mt-2">
-                          <button
-                            type="button"
-                            onClick={() => setIsAnswerKeyOpen(!isAnswerKeyOpen)}
-                            className="text-xs text-content-muted hover:text-purple-300 flex items-center gap-1.5 font-semibold transition-colors"
-                          >
-                            <KeyRound size={12} />
-                            <span>{isAnswerKeyOpen ? 'Ukryj klucz odpowiedzi' : 'Pokaż klucz odpowiedzi (Answer Key)'}</span>
-                          </button>
-                          {isAnswerKeyOpen && (
-                            <div className="mt-2 p-3 rounded-xl bg-base-300/80 border border-line-strong text-xs text-content-muted font-mono whitespace-pre-wrap">
-                              {previewBlocks.answerKey || previewLesson.homeworkAnswerKey}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Blok 4: Plan na kolejną lekcję (Next Lesson Plan) */}
-                  {(previewBlocks.nextLesson || previewLesson.nextLessonPlan) && (
-                    <div className="space-y-2.5 pt-4">
-                      <h5 className="text-xs font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                        <Sparkles size={13} />
-                        Blok 4: Next Lesson Plan (Plan na kolejną lekcję)
-                      </h5>
-                      <div className="p-3.5 rounded-xl bg-emerald-500/[0.04] border border-emerald-500/20 text-xs text-text-hi whitespace-pre-wrap leading-relaxed">
-                        <Markdown>{previewBlocks.nextLesson || previewLesson.nextLessonPlan}</Markdown>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Learning Curve */}
-                  {previewBlocks.learningCurve && (
-                    <div className="space-y-1.5 pt-4">
-                      <h5 className="text-xs font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                        <Activity size={13} />
-                        Learning Curve & Analiza pytań
-                      </h5>
-                      <div className="text-xs text-content leading-relaxed bg-amber-500/[0.04] p-3.5 rounded-xl border border-amber-500/20 whitespace-pre-wrap">
-                        <Markdown>{previewBlocks.learningCurve}</Markdown>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+                        : undefined
+                    }
+                    onConfirmLesson={
+                      onConfirmLesson ? () => onConfirmLesson(studentId, previewLesson) : undefined
+                    }
+                    onRejectLesson={
+                      onRejectLesson ? () => onRejectLesson(studentId, previewLesson) : undefined
+                    }
+                    onUpdateRecord={
+                      onUpdateLesson
+                        ? (updates) => onUpdateLesson(studentId, previewLesson, updates)
+                        : undefined
+                    }
+                  />
+                );
+              })()}
             </div>
 
-            {/* Modal Footer Actions */}
+            {/* Modal Footer Actions: Edytuj, Usuń, Otwórz Notatnik */}
             <div className="p-4 border-t border-line-strong flex items-center justify-between gap-3 bg-base-300/70">
               <div className="flex items-center gap-2">
                 {(() => {
                   const student = getStudentForLesson(previewLesson);
-                  if (!student) return null;
+                  const studentId = student?.id || previewLesson.studentId;
                   return (
                     <>
-                      {onOpenNotebook && (
+                      {onEditLesson && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            setPreviewLesson(null);
+                            onEditLesson(studentId, previewLesson);
+                          }}
+                          className="text-xs flex items-center gap-1.5 py-1.5 px-3 border-line-strong"
+                        >
+                          <FileEdit size={13} className="text-primary" />
+                          Edytuj
+                        </Button>
+                      )}
+
+                      {onDeleteLesson && student && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={async () => {
+                            if (
+                              window.confirm(
+                                `Czy na pewno chcesz usunąć lekcję „${getDisplayLessonTopic(previewLesson)}” z dnia ${formatDateLabel(previewLesson.date)}?`
+                              )
+                            ) {
+                              setPreviewLesson(null);
+                              await onDeleteLesson(studentId, previewLesson);
+                            }
+                          }}
+                          className="text-xs flex items-center gap-1.5 py-1.5 px-3 border-line-strong hover:border-rose-500/40 hover:text-rose-300"
+                        >
+                          <Trash2 size={13} className="text-rose-400" />
+                          Usuń
+                        </Button>
+                      )}
+
+                      {onOpenNotebook && student && (
                         <Button
                           size="sm"
                           variant="secondary"
@@ -1168,36 +1059,6 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
                         >
                           <FileEdit size={13} className="text-emerald-400" />
                           Otwórz Notatnik
-                        </Button>
-                      )}
-
-                      {onOpenHomework && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => {
-                            setPreviewLesson(null);
-                            onOpenHomework(student, previewLesson);
-                          }}
-                          className="text-xs flex items-center gap-1.5 py-1.5 px-3 border-line-strong"
-                        >
-                          <ClipboardList size={13} className="text-purple-400" />
-                          Zadaj pracę domową
-                        </Button>
-                      )}
-
-                      {onOpenPresentation && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => {
-                            setPreviewLesson(null);
-                            onOpenPresentation(previewLesson, student);
-                          }}
-                          className="text-xs flex items-center gap-1.5 py-1.5 px-3 border-line-strong"
-                        >
-                          <Airplay size={13} className="text-sky-400" />
-                          Prezentacja
                         </Button>
                       )}
                     </>

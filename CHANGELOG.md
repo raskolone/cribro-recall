@@ -198,6 +198,25 @@ we dwoje na żywo.
 
 ---
 
+### 🧩 Unifikacja podglądu lekcji (globalna Historia Lekcji ↔ profil kursanta), hierarchia tematu, czyszczenie duplikatów Weryfikacja (2026-09-21, runda 44)
+
+**Zadanie:** zlikwidować podwójną logikę wyświetlania lekcji — modal podglądu w globalnej "Historii Lekcji" renderował własny, uboższy układ ("1. Scenariusz i założenia", "2. Podsumowanie i 4 Bloki Notion") zamiast działającego akordeonu `CascadingLessonDetails` używanego w profilu kursanta, przez co często pokazywał "Brak zapisanego słownictwa" mimo że dane istniały. Dodatkowo: rozszerzyć hierarchię wyciągania tematu lekcji i dodać jednorazowe czyszczenie wiszących duplikatów `Weryfikacja`.
+
+**Zmienione:**
+- `components/admin/TeacherLessonHistoryView.tsx` — modal podglądu lekcji (`previewLesson`) renderuje teraz `<CascadingLessonDetails>` (ten sam komponent co w profilu kursanta, `AdminPanel.tsx`), zamiast własnego, zdublowanego układu bloków. Stopka modalu ograniczona do `Edytuj` / `Usuń` / `Otwórz Notatnik` (usunięte `Prezentacja` i `Zadaj pracę domową` — dublowały akcje dostępne już w wierszu tabeli). Dodano nowe propsy: `onEditLesson`, `onGenerateHomeworkFromLesson`, `onConfirmLesson`, `onRejectLesson`, `onUpdateLesson`, `onCleanupDuplicatePendingLessons`. Nowy przycisk nagłówka "Wyczyść duplikaty Weryfikacja (N)", widoczny tylko gdy `findDuplicatePendingLessons()` coś znajdzie.
+- `components/admin/AdminPanel.tsx` — `handleConfirmLessonDirectly`/`handleRejectNotionLesson` dostały opcjonalny `studentIdOverride`, żeby działały dla lekcji spoza aktualnie otwartego profilu kursanta (globalna tabela nie ma pojęcia "wybranego kursanta"). Nowy `handleUpdateLessonRecordForStudent` (dla przycisku "Utrwal czysty format" w `CascadingLessonDetails`). Zapis edycji lekcji (`handleSaveLessonRecord`) i obie powyższe funkcje odświeżają teraz `allTeacherLessons` (`fetchAllLessons`), żeby zmiany z globalnego podglądu były od razu widoczne w tabeli.
+- `utils/lessonDisplay.ts` — `getDisplayLessonTopic()` rozszerzony o pełną hierarchię: (1) realny `topic`, (2) pierwsza linijka (do 60 znaków) streszczenia lekcji/Bloku 1, (3) nazwa kursanta/firmy oczyszczona ze znacznika ISO, (4) `Lekcja z dnia DD.MM.YYYY`. Parametr typowany wąskim `Pick<LessonRecord, ...>` zamiast `Partial<LessonRecord>`, żeby wywołania z lżejszych typów kart (np. `CloseoutLessonCard`, gdzie `source` to zwykły `string`) nie padały na niezwiązanych polach.
+- `utils/lessonBlocks.ts` — nowa `findDuplicatePendingLessons()`: znajduje wpisy w statusie `Weryfikacja`, dla których ten sam kursant ma już potwierdzoną lekcję tego samego dnia (zdublowany import z Notion obok ręcznie uzupełnionego rekordu). Czysta funkcja, nic nie usuwa sama.
+- `tests/lessonDisplay.test.ts` (nowy, 11 testów) i `tests/lessonBlocks.test.ts` (+2 testy) — pokrycie nowej hierarchii tematu i `findDuplicatePendingLessons`.
+
+**Świadomie nieruszone:** `firestore.rules` — nie dotknięte. Permission bugfix przy kasowaniu/odrzucaniu lekcji (`deleteIfExists` w `services/lessonRecord.ts`) był już zrobiony w poprzedniej rundzie (43) i zweryfikowany jako wystarczający — patrz reguła `sets/{setId}` w `firestore.rules`, gdzie odczyt nieistniejącego dokumentu rzuca `permission-denied` z samej konstrukcji reguły (`resource.data.userId` na `resource == null`); `deleteIfExists` łapie ten wyjątek w `try/catch` zamiast przepuszczać go do lektora, więc operacja kasowania kończy się sukcesem mimo ostrzeżenia w konsoli.
+
+**Szczegóły i decyzje architektoniczne:** `AGENT_LOG.md`, wpis z 2026-09-21 (runda 44).
+
+Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (508/508), `npm run build` (przechodzi). UI NIE zweryfikowane wzrokowo w przeglądarce.
+
+---
+
 ### 🧹 Import z Notion na Pull-on-Demand, deduplikacja po dacie, likwidacja "salonu gier" AI z widoku lekcji (2026-09-21, runda 43)
 
 **Zadanie:** pakiet stabilizacji silnika lekcji — wyłączyć automatyczny import z Notion w tle, wymusić twardą deduplikację i idempotentne ID przy imporcie, ujednolicić format tematów/dat w widoku "Moje Lekcje", zastąpić poziomy pasek 20+ pigułek kursantów kompaktowym dropdownem, oraz usunąć 3 karty generatorów AI z widoku szczegółów pojedynczej lekcji.

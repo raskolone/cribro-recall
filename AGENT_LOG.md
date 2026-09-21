@@ -4834,3 +4834,139 @@ Weryfikacja: npx tsc --noEmit (0 błędów, po scaleniu z pracą obu
 podagentów), npm test (495/495 przechodzi), npm run build (przechodzi —
 vite build + esbuild server.ts + esbuild api/serverless.ts, bez nowych
 błędów).
+
+---
+
+2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: Unifikacja podglądu lekcji i likwidacja zdublowanych modali
+(80/20) — zlecenie z 4 punktami: (1) jeden wspólny komponent podglądu
+lekcji zamiast pustego modalu w globalnej Historii Lekcji obok
+działającego akordeonu w profilu kursanta, (2) sensowna ekstrakcja
+tytułu lekcji zamiast ślepego fallbacku "Lekcja z dnia...", (3) naprawa
+błędu uprawnień przy kasowaniu lekcji, (4) jednorazowe czyszczenie
+wiszących rekordów "Weryfikacja".
+
+Stan wyjściowy: w repo leżały już niescommitowane, przetestowane zmiany
+z poprzedniej sesji (przebudowa importu z Notion na Pull-on-Demand +
+wstępna wersja utils/lessonDisplay.ts + permission fix w
+deleteLessonRecord/rejectNotionLesson — dokładnie to, czego dotyczy
+punkt 3 zlecenia). Za zgodą Macieja scommitowałem je osobno przed
+rozpoczęciem tego zadania (commit c51c887), żeby nie mieszać dwóch
+niepowiązanych prac w jednym diffie.
+
+Zrobione:
+- Punkt 1 (unifikacja modalu): components/admin/TeacherLessonHistoryView.tsx
+  — modal podglądu lekcji (`previewLesson`) renderował własny, uboższy
+  układ 2 bloków ("Scenariusz i założenia" + "Podsumowanie i 4 Bloki
+  Notion") ze zduplikowaną logiką ekstrakcji bloków, przez co często
+  pokazywał "Brak zapisanego słownictwa" mimo istniejących danych.
+  Zastąpiony `<CascadingLessonDetails>` — dokładnie tym samym
+  komponentem, który renderuje podgląd w profilu kursanta
+  (AdminPanel.tsx, `viewingRecord`). Stopka modalu zredukowana do
+  Edytuj / Usuń / Otwórz Notatnik (usunięte Prezentacja i Zadaj pracę
+  domową — dublowały akcje z wiersza tabeli). Usunięto martwy kod:
+  `previewBlocks` memo, `handleCopyText`, `copiedSection`,
+  `isAnswerKeyOpen` (na poziomie widoku) i nieużywane już importy
+  (Markdown, TTSButtons, Copy, Check, KeyRound, Target, Activity).
+- Punkt 1 (wiring akcji): CascadingLessonDetails wymaga edycji/
+  potwierdzenia/odrzucenia/aktualizacji lekcji, ale globalna tabela nie
+  ma pojęcia "aktualnie wybranego kursanta" (w odróżnieniu od profilu).
+  W AdminPanel.tsx: `handleConfirmLessonDirectly` i
+  `handleRejectNotionLesson` dostały opcjonalny `studentIdOverride`
+  (domyślnie `selectedUser?.id`, jak dotychczas) — lokalne optymistyczne
+  aktualizacje stanu (`lessonRecords`, `viewingRecord`) uruchamiają się
+  tylko gdy `studentIdOverride` zgadza się z aktualnie otwartym
+  profilem, ale sam zapis w Firestore zawsze idzie pod właściwego
+  studenta. Nowy `handleUpdateLessonRecordForStudent` (dla przycisku
+  "Utrwal czysty format" w CascadingLessonDetails, wywoływanego z
+  poziomu globalnej tabeli). `handleSaveLessonRecord` i obie powyższe
+  funkcje wywołują teraz `fetchAllLessons(users)` po sukcesie, żeby
+  globalna tabela odświeżyła się natychmiast po edycji/potwierdzeniu/
+  odrzuceniu z poziomu własnego podglądu (przedtem tylko `onDeleteLesson`
+  to robił).
+- Punkt 2 (hierarchia tematu): utils/lessonDisplay.ts —
+  `getDisplayLessonTopic()` rozszerzony o pełną hierarchię z 4 punktów
+  ze zlecenia: (1) realny `topic`, (2) pierwsza linijka (max 60 znaków)
+  streszczenia lekcji / Bloku 1 (przez `extractLessonBlocks`), (3) nazwa
+  kursanta/firmy oczyszczona z doklejonego znacznika ISO (nowa
+  `cleanStudentNameFromIso`), (4) fallback "Lekcja z dnia DD.MM.YYYY".
+  Parametr celowo otypowany wąskim `Pick<LessonRecord, ...>` (nazwany
+  `LessonTopicSource`) zamiast `Partial<LessonRecord>` — z tym drugim
+  `tsc` wywalał się na wywołaniu z `TeacherTodayCockpit.tsx`, które
+  przekazuje `CloseoutLessonCard` (ma pole `source: string`, nie unię
+  `LessonRecord['source']`); węższy Pick nie widzi tego pola i konflikt
+  znika bez potrzeby rzutowania w miejscu wywołania.
+- Punkt 3 (permission bugfix): już zrobiony i zweryfikowany w
+  poprzedniej sesji (`deleteIfExists` w services/lessonRecord.ts,
+  commit c51c887) — sprawdziłem regułę `sets/{setId}` w
+  firestore.rules: odczyt (`getDoc`) nieistniejącego dokumentu fiszek
+  rzuca `permission-denied` z samej konstrukcji reguły
+  (`resource.data.userId` na `resource == null`), ale `deleteIfExists`
+  łapie ten wyjątek w try/catch zamiast przepuszczać go dalej, więc
+  `deleteLessonRecord`/`rejectNotionLesson` kończą się sukcesem mimo
+  ostrzeżenia w konsoli. Nie wymagało dalszych zmian.
+- Punkt 4 (czyszczenie duplikatów Weryfikacja): utils/lessonBlocks.ts —
+  nowa czysta funkcja `findDuplicatePendingLessons(lessons)`: dla
+  każdego wpisu w statusie Weryfikacja (`isLessonPendingConfirmation`,
+  z wyłączeniem `rejected`) sprawdza, czy ten sam kursant (po `studentId`
+  + `studentIds` dla grup) ma już potwierdzoną, widoczną dla kursanta
+  lekcję (`isStudentVisibleLesson`) tego samego dnia (porównanie przez
+  `toISOString().slice(0,10)`, żeby ignorować godzinę/strefę) — zwraca
+  listę duplikatów, nic nie usuwa sama. W
+  TeacherLessonHistoryView.tsx: nowy przycisk nagłówka "Wyczyść
+  duplikaty Weryfikacja (N)", widoczny tylko gdy coś znajdzie, z
+  potwierdzeniem `window.confirm` i nowym propsem
+  `onCleanupDuplicatePendingLessons`. W AdminPanel.tsx: wołanie
+  `deleteLessonRecord` dla każdego duplikatu + `fetchAllLessons`.
+- Testy: tests/lessonDisplay.test.ts (nowy, 11 testów — cała hierarchia
+  + isJunkIsoTopic), tests/lessonBlocks.test.ts (+2 testy dla
+  `findDuplicatePendingLessons`).
+
+Nie dokończone / do sprawdzenia:
+- UI NIE zweryfikowane wzrokowo w przeglądarce (brak dostępu do
+  działającej aplikacji w tej sesji) — do sprawdzenia przez Macieja:
+  (a) modal podglądu z globalnej Historii Lekcji faktycznie pokazuje te
+  same 4 bloki + Learning Curve co profil kursanta, z tymi samymi
+  danymi; (b) przyciski Edytuj/Usuń/Otwórz Notatnik w stopce działają
+  dla lekcji różnych kursantów bez przełączania profilu; (c) przycisk
+  "Wyczyść duplikaty Weryfikacja" pojawia się i znika poprawnie na
+  realnych danych.
+- Nie sprawdziłem telemetrycznie, czy `fetchAllLessons(users)` wołane
+  częściej (po edycji/potwierdzeniu/odrzuceniu/czyszczeniu duplikatów,
+  nie tylko po usunięciu jak dotychczas) nie wprowadza zauważalnego
+  opóźnienia przy dużej liczbie kursantów — funkcja już istniała i była
+  używana w tym samym wzorcu dla `onDeleteLesson`, więc ryzyko oceniam
+  jako niskie, ale nieprzetestowane na realnej bazie.
+
+Decyzje architektoniczne:
+- Nie dodawałem osobnego trybu "przycisk serwisowy uruchamiany ręcznie"
+  dla czyszczenia duplikatów Weryfikacja jako oddzielnego ekranu —
+  zlecenie dopuszczało też uruchomienie przy starcie, ale cichy
+  automatyczny delete przy każdym wejściu w widok wydawał się zbyt
+  ryzykowny bez możliwości cofnięcia. Wybrałem widoczny przycisk z
+  licznikiem i potwierdzeniem, chowany całkowicie gdy nie ma nic do
+  wyczyszczenia — spójne z filozofią UI z CLAUDE.md ("mniej znaczy
+  lepiej", kolor jako sygnał stanu).
+- `getDisplayLessonTopic` krok 3 (nazwa kursanta) czyta `record.studentName`
+  jeśli obecne, inaczej `fallbackStudentName` przekazany przez wołającego
+  — w TeacherLessonHistoryView nie jest obecnie przekazywany (kursant
+  jest znany z osobnego `getStudentForLesson()`/`formatStudentDisplayName()`
+  używanych bezpośrednio w UI obok tematu), więc krok 3 w praktyce
+  aktywuje się głównie dla rekordów, które mają wypełnione pole
+  `LessonRecord.studentName` (np. z importu Notion).
+- Usunięte przyciski "Prezentacja"/"Zadaj pracę domową" ze stopki
+  modalu podglądu pozostają dostępne jako ikony szybkich akcji w
+  wierszu tabeli (kolumna "Szybkie akcje") — nie zostały usunięte z
+  aplikacji, tylko z tego konkretnego, teraz ujednoliconego widoku,
+  zgodnie z treścią zlecenia ("jeśli dublują inne widoki").
+
+Ryzyka: NIE dotknięto firestore.rules, middleware autoryzacji w
+server.ts (`requireFirebaseAuth`/`requireFirebaseAdmin`) ani ścieżek
+tokenowych bez logowania (`homework/direct/:token`, notatnik po PIN).
+Zmiany dotyczą wyłącznie logiki UI/biznesowej lekcji w warstwie
+frontendu (TeacherLessonHistoryView.tsx, AdminPanel.tsx,
+utils/lessonBlocks.ts, utils/lessonDisplay.ts).
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508), npm run
+build (przechodzi — vite build + esbuild server.ts + esbuild
+api/serverless.ts, bez nowych błędów).

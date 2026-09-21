@@ -9,6 +9,7 @@ import {
   splitHomeworkAndAnswerKey,
   isLessonPendingConfirmation,
   isStudentVisibleLesson,
+  findDuplicatePendingLessons,
 } from '../utils/lessonBlocks';
 import { LessonRecord } from '../types';
 
@@ -234,6 +235,59 @@ Dalsza dyskusja o regulacjach prawnych UE (AI Act).`,
       vocabularyText: 'słownictwo',
     };
     assert.equal(isStudentVisibleLesson(confirmedRecord), true);
+  });
+
+  it('findDuplicatePendingLessons znajduje wpisy Weryfikacja z tego samego dnia co potwierdzona lekcja tego kursanta', () => {
+    const confirmed: Partial<LessonRecord> = {
+      id: 'confirmed-1',
+      studentId: 'student-a',
+      topic: 'Business English',
+      date: '2026-09-16',
+      status: 'confirmed',
+      lessonSummary: 'Podsumowanie',
+      vocabularyText: 'słownictwo',
+    };
+    const danglingPending: Partial<LessonRecord> = {
+      id: 'pending-1',
+      studentId: 'student-a',
+      topic: 'Milena Sesniak - 2026-09-16T06:30:00.000Z',
+      date: '2026-09-16',
+      isPendingConfirmation: true,
+    };
+    const unrelatedPendingOtherDay: Partial<LessonRecord> = {
+      id: 'pending-2',
+      studentId: 'student-a',
+      topic: 'Podsumowanie lekcji — brak daty — coś',
+      date: '2026-09-20',
+      isPendingConfirmation: true,
+    };
+    const pendingOtherStudent: Partial<LessonRecord> = {
+      id: 'pending-3',
+      studentId: 'student-b',
+      topic: 'Inny kursant',
+      date: '2026-09-16',
+      isPendingConfirmation: true,
+    };
+
+    const duplicates = findDuplicatePendingLessons([
+      confirmed,
+      danglingPending,
+      unrelatedPendingOtherDay,
+      pendingOtherStudent,
+    ]);
+
+    assert.deepEqual(duplicates.map((d) => d.id), ['pending-1']);
+  });
+
+  it('findDuplicatePendingLessons nie rusza wpisów bez potwierdzonej lekcji tego dnia', () => {
+    const onlyPending: Partial<LessonRecord> = {
+      id: 'pending-solo',
+      studentId: 'student-a',
+      topic: 'Solo pending',
+      date: '2026-09-16',
+      isPendingConfirmation: true,
+    };
+    assert.deepEqual(findDuplicatePendingLessons([onlyPending]), []);
   });
 });
 

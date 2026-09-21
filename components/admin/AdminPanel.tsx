@@ -999,6 +999,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       if (selectedUser?.id && targetStudentIds.includes(selectedUser.id)) {
         fetchUserLogsAndStats(selectedUser.id);
       }
+      fetchAllLessons(users);
     } catch (e: any) {
       alert('Błąd podczas zapisywania lekcji: ' + e.message);
     } finally {
@@ -1023,37 +1024,44 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     }
   };
 
-  const handleRejectNotionLesson = async (record: LessonRecord) => {
-    if (!selectedUser) return;
+  const handleRejectNotionLesson = async (record: LessonRecord, studentIdOverride?: string) => {
+    const studentId = studentIdOverride || selectedUser?.id;
+    if (!studentId) return;
     const confirmMsg = `Czy na pewno chcesz odrzucić lekcję „${record.topic}”?\n\nZostanie ona trwale usunięta z widoku i dodana do listy odrzuconych wpisów Notion, aby kolejne synchronizacje już jej nie importowały.`;
     if (!window.confirm(confirmMsg)) return;
 
     setIsRejectingLessonId(record.id);
 
-    // Optymistyczna aktualizacja: element znika z widoku natychmiast,
-    // zanim zapis w Firestore się zakończy. W razie błędu przywracamy stan.
+    // Optymistyczna aktualizacja lokalnego stanu profilu kursanta — dotyczy
+    // tylko widoku, w którym ten kursant jest aktualnie otwarty.
+    const isForOpenProfile = selectedUser?.id === studentId;
     const rejectedEntry = {
       id: record.notionPageId || record.id,
-      studentId: selectedUser.id,
+      studentId,
       topic: record.topic,
       date: record.date,
       rejectedAt: new Date().toISOString(),
       reason: 'Odrzucono przez nauczyciela (manualny przegląd)',
     };
-    setLessonRecords(prev => prev.filter(r => r.id !== record.id));
-    setRejectedLessons(prev => [rejectedEntry, ...prev]);
-    if (viewingRecord?.id === record.id) {
-      setShowLessonRecordModal(false);
-      setViewingRecord(null);
+    if (isForOpenProfile) {
+      setLessonRecords(prev => prev.filter(r => r.id !== record.id));
+      setRejectedLessons(prev => [rejectedEntry, ...prev]);
+      if (viewingRecord?.id === record.id) {
+        setShowLessonRecordModal(false);
+        setViewingRecord(null);
+      }
     }
 
     try {
-      await rejectNotionLesson(selectedUser.id, record);
+      await rejectNotionLesson(studentId, record);
       showToast(`Odrzucono lekcję „${record.topic}”. Dodano do listy ignorowanych z Notion.`);
+      fetchAllLessons(users);
     } catch (err: any) {
       // Rollback: przywracamy lekcję na liście i usuwamy wpis z czarnej listy.
-      setLessonRecords(prev => [record, ...prev]);
-      setRejectedLessons(prev => prev.filter(r => r.id !== rejectedEntry.id));
+      if (isForOpenProfile) {
+        setLessonRecords(prev => [record, ...prev]);
+        setRejectedLessons(prev => prev.filter(r => r.id !== rejectedEntry.id));
+      }
       alert("Błąd podczas odrzucania lekcji: " + (err?.message || String(err)));
     } finally {
       setIsRejectingLessonId(null);
@@ -1071,8 +1079,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     }
   };
 
-  const handleConfirmLessonDirectly = async (record: LessonRecord, customDate?: string) => {
-    if (!selectedUser) return;
+  const handleConfirmLessonDirectly = async (record: LessonRecord, customDate?: string, studentIdOverride?: string) => {
+    const studentId = studentIdOverride || selectedUser?.id;
+    if (!studentId) return;
     setIsConfirmingLessonId(record.id);
     try {
       let targetDate = customDate || record.date;
@@ -1081,7 +1090,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       }
       const cleanTopic = record.topic.replace(/^Podsumowanie lekcji\s*—\s*brak daty\s*—\s*/i, '').trim();
 
-      await confirmPendingLesson(selectedUser.id, record.id, {
+      await confirmPendingLesson(studentId, record.id, {
         date: targetDate,
         topic: cleanTopic,
         status: 'confirmed',
@@ -1101,11 +1110,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         updatedAt: new Date().toISOString(),
       };
 
-      setLessonRecords(prev => prev.map(r => r.id === record.id ? updatedRecord : r));
-      if (viewingRecord?.id === record.id) {
-        setViewingRecord(updatedRecord);
+      if (selectedUser?.id === studentId) {
+        setLessonRecords(prev => prev.map(r => r.id === record.id ? updatedRecord : r));
+        if (viewingRecord?.id === record.id) {
+          setViewingRecord(updatedRecord);
+        }
       }
       showToast(`Lekcja „${cleanTopic}” została zatwierdzona i jest widoczna dla kursanta!`);
+      fetchAllLessons(users);
     } catch (err: any) {
       alert("Błąd podczas zatwierdzania lekcji: " + (err?.message || String(err)));
     } finally {
@@ -1710,6 +1722,30 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       showToast('Zaktualizowano lekcję kursanta do formatu bloków Notion!');
     } catch (err: any) {
       alert('Błąd aktualizacji lekcji: ' + (err?.message || err));
+    }
+  };
+
+  /**
+   * Wariant `handleUpdateViewingRecord` dla podglądu z globalnej Historii Lekcji
+   * (`TeacherLessonHistoryView`), gdzie lekcja nie musi należeć do `selectedUser`
+   * — kursanta trzeba podać jawnie zamiast polegać na aktualnie otwartym profilu.
+   */
+  const handleUpdateLessonRecordForStudent = async (
+    studentId: string,
+    lesson: LessonRecord,
+    updatedFields: Partial<LessonRecord>
+  ) => {
+    try {
+      const updated = { ...lesson, ...updatedFields, updatedAt: new Date().toISOString() };
+      await updateDoc(doc(db, `users/${studentId}/lessonRecords`, lesson.id), updatedFields);
+      if (selectedUser?.id === studentId) {
+        setLessonRecords(prev => prev.map(r => (r.id === lesson.id ? updated : r)));
+        if (viewingRecord?.id === lesson.id) setViewingRecord(updated);
+      }
+      fetchAllLessons(users);
+    } catch (err: any) {
+      alert('Błąd aktualizacji lekcji: ' + (err?.message || err));
+      throw err;
     }
   };
 
@@ -2481,6 +2517,21 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               } catch (e: any) {
                 alert("Błąd podczas usuwania lekcji: " + (e.message || String(e)));
               }
+            }}
+            onEditLesson={(_studentId, lesson) => {
+              openLessonRecordModal('edit', lesson);
+            }}
+            onGenerateHomeworkFromLesson={(_studentId, lesson) => {
+              handleGenerateHomeworkFromLesson(lesson);
+            }}
+            onConfirmLesson={(studentId, lesson) => handleConfirmLessonDirectly(lesson, undefined, studentId)}
+            onRejectLesson={(studentId, lesson) => handleRejectNotionLesson(lesson, studentId)}
+            onUpdateLesson={handleUpdateLessonRecordForStudent}
+            onCleanupDuplicatePendingLessons={async (duplicates) => {
+              for (const dup of duplicates) {
+                await deleteLessonRecord(dup.studentId, dup);
+              }
+              fetchAllLessons(users);
             }}
             onAddNewLesson={() => {
               handleTileClick('lesson-planner');
