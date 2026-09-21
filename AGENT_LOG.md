@@ -4337,3 +4337,81 @@ działającego modala recenzji pracy (zmiana zachowania scrolla/centrowania) —
 przetestowana tsc/test/build, nie zweryfikowana wzrokowo.
 Weryfikacja całości: npx tsc --noEmit (0 błędów), npm test (495/495),
 npm run build (przechodzi).
+
+2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: Pocket Companion — dedykowany widok mobilny (< md) panelu lektora
+(3 kafelki: Dzisiaj/Kursanci/Historia lekcji + wejście do Asystenta AI w
+stopce), schowanie AI Live Monitor na telefonie, gate "użyj desktopu" dla
+Notatnika A4 i Planera lekcji na telefonie, pierwsza fala naprawy kontrastu
+tekstu w trybie jasnym (HomeworkExercise.tsx i pigułki podpowiedzi).
+
+Zrobione:
+- Nowy components/admin/TeacherMobileHub.tsx — 3 kafelki, każdy otwiera
+  pełnoekranowy sheet z lekkim podsumowaniem (nie desktopowy ekran):
+  "Dzisiaj" woła services/teacherCockpitService.ts (fetchTeacherCockpitData),
+  "Kursanci" to lista + wyszukiwarka + mini-podgląd z hand-offem do pełnego
+  profilu, "Historia lekcji" to płaska lista ostatnich 30 lekcji.
+- Nowy components/ui/DesktopOnlyNotice.tsx — komunikat "zoptymalizowane pod
+  desktop", wpięty w components/scratchpad/ScratchpadPage.tsx (lektor bez
+  parametru PIN na telefonie) i components/admin/AdminPanel.tsx (activeTab
+  === 'lesson-planner' na telefonie).
+- components/admin/AdminPanel.tsx: kafelki desktopowe owinięte w
+  `hidden md:block`, TeacherMobileHub renderowany tylko gdy
+  `!isDesktopUI && activeTab === null`. Wbudowany Asystent AI (strona
+  główna) też `hidden md:block` — zastępuje go pełnoekranowa nakładka
+  wywoływana z paska w stopce (nowy stan `mobileAssistantOpen`). Cztery
+  handlery przekazywane do <TeacherAssistant mode="embedded"> wyciągnięte
+  do nazwanych funkcji (handleAssistantNavigate/SelectStudent/
+  CreateLessonRecord/OpenInPresentation) przed `return`, żeby nie powielać
+  ~90 linii logiki między desktopem i mobilną nakładką.
+- components/admin/AdminAIActivityMonitor.tsx: `isAllowed` dostał dodatkowy
+  warunek `&& useIsDesktop()` — widżet nie renderuje się i zeruje własny
+  CSS var --rail-monitor na telefonie.
+- Kontrast (fala 1): components/dashboard/HomeworkExercise.tsx — 9x
+  text-white -> text-text-hi (białe na białym w trybie jasnym, mechanizm
+  auto-inwersji --color-white w index.css obejmuje tylko border/bg-white,
+  nie literalny text-white). Zduplikowany wzorzec pigułki "Wskazówka
+  lektora" (bg-amber-950/* + text-amber-200/300/400) w
+  AIExerciseGeneratorScreen.tsx, StudentHomeworkV2Screen.tsx,
+  LessonDetails.tsx (odznaki BLOK 3/4) i HomeworkScreen.tsx:244 zamieniony
+  na token text-warn (#9a6410 light / #e0a83a dark).
+
+Nie dokończone / do sprawdzenia:
+- Kontrast żółci/pomarańczy NIE jest domknięty w całej aplikacji — grep na
+  text-amber-[2-4]00|text-yellow-300 poza naprawionymi plikami wskazuje
+  jeszcze StudentHomeworkScreen.tsx, resztę AIExerciseGeneratorScreen.tsx,
+  StudentHeroHeader.tsx. Zostawione jako świadomy zakres tej sesji, nie
+  przeoczenie — patrz CHANGELOG.md wpis AN.
+- StudentDatabaseScreen.tsx (CRM z zamrożoną kolumną) NIE dostał mobilnego
+  układu kartowego — zlecenie prosiło o hub na stronie głównej, nie o
+  redesign każdego ekranu, do którego kafelki prowadzą po "Otwórz pełny
+  profil"/pełnej historii. Ten hand-off zostaje desktopowym UI na telefonie.
+- ŻADNA z wizualnych zmian NIE została zweryfikowana wzrokowo w
+  przeglądarce/na telefonie. Do zrobienia na koncie testowym lektora:
+  (1) telefon — 3 kafelki + pasek Asystenta na stronie głównej panelu,
+  każdy sheet się otwiera/zamyka, pełnoekranowa nakładka Asystenta się
+  otwiera z paska i zamyka krzyżykiem; (2) /scratchpad i "Planer lekcji" na
+  telefonie pokazują komunikat "użyj desktopu", nie desktopowy ekran;
+  (3) tryb jasny — pola tłumaczenia/multiple choice w HomeworkExercise.tsx
+  i pigułki "Wskazówka lektora" czytelne.
+
+Decyzje architektoniczne:
+- Próg mobile/desktop = hooks/useMediaQuery.ts useIsDesktop() (768px, próg
+  md), zgodnie z istniejącą konwencją repo (już używany w
+  HomeworkScreen.tsx) — nie wprowadzono nowego progu.
+- Mobilny hub NIE re-używa TeacherTodayCockpit.tsx/StandaloneStudentDatabaseScreen.tsx/
+  TeacherLessonHistoryView.tsx (ciężkie ekrany desktopowe) — woła
+  bezpośrednio fetchTeacherCockpitData i renderuje własne, lekkie listy w
+  components/admin/TeacherMobileHub.tsx, żeby sheet mobilny nie montował
+  desktopowego drzewa DOM.
+- Notatnik/Planer lekcji NIE dostały osobnych mobilnych kafelków w hubie
+  (spec opisał hub jako WYŁĄCZNIE 3 kafelki) — desktop-only gate dotyczy
+  tylko wejścia z bezpośredniego linku/nawigacji, nie hubu.
+
+Ryzyka: Brak zmian w firestore.rules, middleware autoryzacji. ScratchpadPage.tsx
+dostał dodatkowy early-return PRZED istniejącą logiką roli/PIN-u (ścieżka
+tokenowa bez logowania) — logika samego dostępu (kto widzi co) NIE została
+zmieniona, tylko dodany wcześniejszy warunek dla lektora na telefonie.
+Weryfikacja całości: npx tsc --noEmit (0 błędów), npm test (495/495),
+npm run build (przechodzi).
