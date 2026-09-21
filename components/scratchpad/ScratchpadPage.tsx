@@ -36,6 +36,7 @@ import { useIsDesktop } from '../../hooks/useMediaQuery';
 export const ScratchpadPage: React.FC = () => {
   const { user, isAuthReady } = useAuth();
   const [documentId, setDocumentId] = useState<string | null>(null);
+  const [studentName, setStudentName] = useState<string | null>(null);
   const [hasPinParam, setHasPinParam] = useState(false);
   const isDesktop = useIsDesktop();
 
@@ -43,8 +44,18 @@ export const ScratchpadPage: React.FC = () => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     setDocumentId(params.get('id') || params.get('doc'));
+    setStudentName(params.get('name'));
     setHasPinParam(Boolean(params.get('pin') || params.get('code') || params.get('p')));
   }, []);
+
+  /**
+   * Notatnik kursanta ma zawsze deterministyczne ID `sp_<studentId>`
+   * (patrz `getOrCreateStudentScratchpad`) — z samego adresu da się więc
+   * odzyskać, czyj to notatnik, bez dodatkowego zapytania. Dzięki temu
+   * `TeacherScratchpadScreen` może sam założyć dokument, gdy kursant nie
+   * miał go jeszcze nigdy (zamiast pokazywać błąd „nie znaleziono").
+   */
+  const studentIdFromDocumentId = documentId?.startsWith('sp_') ? documentId.slice(3) : null;
 
   /*
    * ══ CAŁA STRONA CHODZI ZA MOTYWEM KARTKI ══
@@ -119,7 +130,10 @@ export const ScratchpadPage: React.FC = () => {
       <TeacherScratchpadScreen
         variant="standalone"
         documentId={documentId}
-        student={{ id: null, name: 'Notatnik roboczy' }}
+        student={{
+          id: studentIdFromDocumentId,
+          name: studentIdFromDocumentId ? (studentName || 'Kursant') : 'Notatnik roboczy',
+        }}
         onClose={() => window.close()}
       />
     );

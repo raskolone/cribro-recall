@@ -5431,3 +5431,39 @@ zapisie lekcji + szablon Resend `sendLessonSummaryEmail` — w toku,
 przerwane przez kolejne zadanie (auto-tworzenie notatnika kursanta).
 Ryzyka: brak zmian w firestore.rules, middleware autoryzacji.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508).
+
+## 2026-09-21 — Claude Code / Sonnet 5 (piąta zmiana tej sesji)
+
+Zadanie: naprawa błędu "Nie znaleziono notatnika o podanym adresie" przy
+otwieraniu notatnika kursanta, który nigdy jeszcze notatnika nie miał.
+Zweryfikowane jako realny, odtwarzalny bug (nie fikcja z promptu) — i
+faktycznie łatwiejszy do trafienia po dzisiejszej zmianie AR (bramka
+wyboru kursanta), bo ta otwiera notatnik PO ID (`sp_<studentId>`) zamiast
+przez ścieżkę roboczą, która już miała "get or create".
+Zrobione:
+- services/scratchpadService.ts: `openScratchpadTab` przyjmuje teraz
+  opcjonalny drugi argument `studentName`, dopisywany do URL jako `&name=`.
+- components/scratchpad/ScratchpadPage.tsx: wyciąga `studentId` wprost z
+  `documentId` (deterministyczny wzorzec `sp_<studentId>`, ten sam co w
+  `getOrCreateStudentScratchpad`) i `name` z parametru URL — zamiast na
+  sztywno przekazywać `{ id: null, name: 'Notatnik roboczy' }` niezależnie
+  od tego, czyj notatnik faktycznie się otwiera.
+- components/scratchpad/TeacherScratchpadScreen.tsx (`init`): gdy
+  `getScratchpadById(documentId)` zwróci `null` I znamy `student.id`
+  (czyli adres wskazywał na konkretnego kursanta, tylko dokument jeszcze
+  nie istnieje) — dopada `getOrCreateStudentScratchpad` zamiast rzucać
+  błąd. Adres bez rozpoznanego kursanta (literówka, cudzy link) nadal
+  kończy się dotychczasowym błędem — nie zgadujemy.
+- Zaktualizowano oba wywołania `openScratchpadTab` dodane dzisiaj (bramka
+  wyboru kursanta w AdminPanel, "Zmień kursanta" w TeacherScratchpadScreen),
+  żeby przekazywały imię kursanta — tytuł nowo tworzonego notatnika jest
+  od razu poprawny, nie "Notatnik — Kursant".
+Nie dokończone: reszta zadania 1 (modal + mail podsumowania lekcji) wciąż
+w toku, przerwana kolejnym zadaniem (spellcheck w Notatniku).
+Ryzyka: brak zmian w firestore.rules. Uprawnienia `create` dla
+`scratchpads/{id}` NIE sprawdzone — zakładam bez weryfikacji, że reguły
+już na to pozwalają lektorowi, bo dokładnie ten sam
+`getOrCreateStudentScratchpad` jest już używany produkcyjnie w ścieżce
+roboczej (linia otwierana bez `documentId`) i działa.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508). Zero
+weryfikacji wzrokowej w przeglądarce.

@@ -186,14 +186,25 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
 
     const init = async () => {
       try {
-        const fetchDoc = documentId
-          ? getScratchpadById(documentId)
-          : getOrCreateStudentScratchpad(
+        let doc = documentId ? await withTimeout(getScratchpadById(documentId), 6000) : null;
+
+        /*
+         * Adres wskazuje na notatnik konkretnego kursanta (`sp_<studentId>`,
+         * patrz `ScratchpadPage` — stąd `student.id`), ale ten kursant nigdy
+         * jeszcze notatnika nie miał. To nie jest błąd „zły adres" — to
+         * pierwsze wejście, więc zakładamy dokument zamiast straszyć czerwonym
+         * ekranem. Adres bez rozpoznanego kursanta (np. literówka w linku)
+         * NADAL kończy się błędem niżej — nie zgadujemy, czego nie ma.
+         */
+        if (!doc && (documentId ? student.id : true)) {
+          doc = await withTimeout(
+            getOrCreateStudentScratchpad(
               { id: student.id || null, name: student.name || 'Kursant' },
               { uid: teacherUid, name: teacherName }
-            );
-
-        const doc = await withTimeout(fetchDoc, 6000);
+            ),
+            6000
+          );
+        }
 
         if (!doc) throw new Error('Nie znaleziono notatnika o podanym adresie.');
 
@@ -514,7 +525,7 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
                           key={candidate.id}
                           type="button"
                           onClick={() => {
-                            openScratchpadTab(`sp_${candidate.id}`);
+                            openScratchpadTab(`sp_${candidate.id}`, candidate.name);
                             setIsSwitchPickerOpen(false);
                           }}
                           className="w-full text-left px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-text-hi hover:bg-white/[0.07] transition-colors"

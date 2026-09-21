@@ -742,10 +742,15 @@ export function buildScratchpadUrl(
  * ją otworzyło (`window.opener`), a to jest dziura, przez którą treść z jednej
  * karty może sterować drugą.
  */
-export function openScratchpadTab(scratchpadId?: string | null): void {
+export function openScratchpadTab(scratchpadId?: string | null, studentName?: string | null): void {
   if (typeof window === 'undefined') return;
-  const url = scratchpadId ? `/scratchpad?id=${encodeURIComponent(scratchpadId)}` : '/scratchpad';
-  window.open(url, '_blank', 'noopener');
+  if (!scratchpadId) {
+    window.open('/scratchpad', '_blank', 'noopener');
+    return;
+  }
+  const params = new URLSearchParams({ id: scratchpadId });
+  if (studentName) params.set('name', studentName);
+  window.open(`/scratchpad?${params.toString()}`, '_blank', 'noopener');
 }
 
 /**

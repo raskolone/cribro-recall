@@ -5997,7 +5997,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         title="Wybierz notatnik kursanta"
         subtitle="Otwórz dedykowany notatnik z historii lekcji lub rozpocznij pusty szkic."
         onPick={(picked) => {
-          openScratchpadTab(picked.id ? `sp_${picked.id}` : undefined);
+          openScratchpadTab(picked.id ? `sp_${picked.id}` : undefined, picked.name);
           setIsNotebookPickerOpen(false);
         }}
         secondaryAction={{
