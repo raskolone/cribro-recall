@@ -4288,12 +4288,13 @@ Jesteś skrupulatnym asystentem lektora języka angielskiego weryfikującym prof
        * z transkrypcji trzy zdania streszczenia i pustą resztę pól, bo model
        * szukał gotowych sekcji, których w rozmowie nie ma.
        *
-       * Układ docelowy nie jest dowolny: to te same CZTERY BLOKI, które
-       * kursant i lektor widzą w historii lekcji (utils/lessonBlocks.ts) —
-       * Lekcja w skrócie, Key Language (słownictwo + korekty), Homework,
-       * Next Lesson, plus Learning Curve o wypowiedzi kursanta. Dlatego
-       * wersja transkrypcyjna MA generować pracę domową: blok 3 jest częścią
-       * układu, a pusty blok w historii to dziura, nie oszczędność.
+       * Układ docelowy nie jest dowolny: to te same bloki, które kursant
+       * i lektor widzą w historii lekcji (utils/lessonBlocks.ts) — Lekcja
+       * w skrócie, Key Language (słownictwo + korekty), Next Lesson, plus
+       * Learning Curve o wypowiedzi kursanta. Praca domowa (dawny Blok 3)
+       * już tu nie wraca: żyje wyłącznie w osobnym module ćwiczeń, więc
+       * dublowanie jej w notatce z lekcji było martwym powtórzeniem, nie
+       * kompletnością układu.
        */
       const transcriptInstruction = `# Cel
 Dostajesz SUROWĄ TRANSKRYPCJĘ lekcji języka angielskiego (zapis rozmowy lektora z kursantem) albo plik z takim zapisem.
@@ -4313,7 +4314,7 @@ Pomijaj wyłącznie to, co nie niesie treści: powitania, „yhy", problemy tech
 # Zasady
 - Wszystkie pola opisowe pisz PO POLSKU. Słownictwo naturalnie dwujęzycznie: "angielskie słowo - polskie tłumaczenie".
 - NIE WYMYŚLAJ niczego, czego nie ma w zapisie. Jeśli w rozmowie brakuje materiału do danego pola, wpisz: Brak danych w transkrypcji.
-- Pracę domową ułóż na podstawie materiału z TEJ lekcji (słownictwo i błędy, które faktycznie padły), a nie z niczego. Jeśli lektor zadał coś wprost — to jest praca domowa i przepisz ją dokładnie.
+- Nie generuj pracy domowej, zdań do tłumaczenia ani żadnych ćwiczeń — praca domowa żyje wyłącznie w osobnym module ćwiczeń, nie w notatce z lekcji.
 - Daty nie zgaduj: jeśli w zapisie nie padła, zostaw pole date puste.
 
 # Zanim wygenerujesz
@@ -4327,8 +4328,6 @@ Na podstawie podanej bazy kursantów dopasuj studentId oraz studentIds (gdy lekc
 - revisionNotes (string, BLOK 1 „Lekcja w skrócie": przebieg lekcji po polsku, 4-8 zdań — co ćwiczyliście i w jakiej kolejności)
 - vocabularyText (string, BLOK 2 „Key Language": każde słówko i zwrot w osobnej linii, ściśle "angielskie - polskie". Bez punktorów, bez markdown, bez numeracji.)
 - corrections (string, BLOK 2b „Korekty i wymowa": poprawki w formacie "❌ to, co powiedział kursant → ✅ poprawna wersja", po jednej na linię, z krótkim wyjaśnieniem po polsku, gdy jest potrzebne. Tu trafiają też uwagi o wymowie.)
-- homeworkText (string, BLOK 3 „Homework": konkretne zadanie oparte na materiale z tej lekcji — np. 8-10 ponumerowanych zdań do przetłumaczenia z polskiego na angielski, wykorzystujących nowe słownictwo i poprawione błędy. Bez odpowiedzi.)
-- homeworkAnswerKey (string, BLOK 3b „Klucz odpowiedzi": odpowiedzi do zadania wyżej, ta sama numeracja, nic poza nimi)
 - nextLessonPlan (string, BLOK 4 „Next Lesson": ustalenia i najlepsze tematy na kolejne zajęcia, po polsku)
 - studentSpeaking (string, „Learning Curve": 5-6 zdań po polsku, neutralnie — o czym kursant mówił, jak mu szło, co go interesuje)
 - thingsToImprove (string, ta sama treść co corrections — dla zgodności ze starszymi widokami)

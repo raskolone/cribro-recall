@@ -5410,3 +5410,24 @@ Decyzje architektoniczne: żadne niejawne poza zakresem ustalonym wcześniej.
 Ryzyka: brak zmian w firestore.rules, middleware autoryzacji, ścieżkach
 tokenowych bez logowania.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508).
+
+## 2026-09-21 — Claude Code / Sonnet 5 (czwarta zmiana tej sesji)
+
+Zadanie: dokończenie ujednolicenia — usunięcie generowania Bloku 3
+(praca domowa) też z DRUGIEJ ścieżki generowania lekcji z wklejonego
+tekstu, którą znalazłem przy poprzedniej zmianie. Zrobione po jawnym
+potwierdzeniu z Maciejem (miała jawny komentarz broniący jej istnienia).
+Zrobione:
+- server.ts (`/api/gemini/lesson-summary`, tryb 'transcript'):
+  zaktualizowano komentarz nad promptem (usunięto nieaktualne uzasadnienie
+  "MA generować pracę domową"), usunięto z instrukcji zdanie każące
+  układać pracę domową, dodano wprost zakaz, usunięto pola
+  `homeworkText`/`homeworkAnswerKey` z żądanego schematu JSON.
+- services/geminiService.ts (`generateLessonSummary`, ścieżka zapasowa
+  bez backendu, tryb 'transcript'): te same zmiany, dla spójności między
+  główną ścieżką a fallbackiem offline.
+Nie dokończone: pozostała część zadania 1 — modal human-in-the-loop po
+zapisie lekcji + szablon Resend `sendLessonSummaryEmail` — w toku,
+przerwane przez kolejne zadanie (auto-tworzenie notatnika kursanta).
+Ryzyka: brak zmian w firestore.rules, middleware autoryzacji.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508).

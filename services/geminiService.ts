@@ -2234,6 +2234,7 @@ Nie streszczaj — WYDOBĄDŹ z rozmowy wszystkie informacje o wartości dydakty
 Wynotuj: każde słowo i zwrot podane albo poprawione przez lektora (również wplecione w zdanie), każdą poprawkę błędu kursanta, uwagi o wymowie, omawianą gramatykę, ustalenia na przyszłość i to, o czym kursant mówił.
 Pomijaj powitania, „yhy", sprawy techniczne i ustalanie terminu.
 Nie wymyślaj niczego, czego nie ma w zapisie — brakujące pole wypełnij tekstem: Brak danych w transkrypcji.
+Nie generuj pracy domowej, zdań do tłumaczenia ani żadnych ćwiczeń — praca domowa żyje wyłącznie w osobnym module ćwiczeń, nie w notatce z lekcji.
 
 Lista dostępnych uczniów (wybierz studentId najbardziej pasującego ucznia z listy):
 ${studentsStr}
@@ -2248,8 +2249,6 @@ Zwróć WYŁĄCZNIE poprawny obiekt JSON o następującej strukturze:
   "revisionNotes": "BLOK 1 — przebieg lekcji po polsku, 4-8 zdań",
   "vocabularyText": "BLOK 2 — każde słówko w osobnej linii: angielskie - polskie, bez punktorów",
   "corrections": "BLOK 2b — poprawki w formacie: ❌ błąd → ✅ poprawnie, po jednej na linię; tu też wymowa",
-  "homeworkText": "BLOK 3 — 8-10 ponumerowanych zdań do tłumaczenia na materiale z tej lekcji, bez odpowiedzi",
-  "homeworkAnswerKey": "BLOK 3b — odpowiedzi do zadania wyżej, ta sama numeracja",
   "nextLessonPlan": "BLOK 4 — ustalenia i tematy na kolejne zajęcia, po polsku",
   "studentSpeaking": "Learning Curve — 5-6 zdań po polsku o tym, jak kursant mówił",
   "thingsToImprove": "ta sama treść co corrections",
