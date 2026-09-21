@@ -4090,3 +4090,93 @@ i env Functions) — nic w tym zadaniu go nie włącza.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (490/490, baseline 462 +
 28 nowych/zmienionych netto), npm run build (przechodzi, dist/server.cjs i
 api/index.js przebudowane), git diff --check (czysto).
+
+---
+
+2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: Pakiet stabilizacyjny P0 — (1) crash lifecycle w HomeworkWarmupScrambler
+przy przejściu z dłuższej na krótszą rundę, (2) dvh/scroll pod klawiaturę iOS na
+ekranach pracy domowej, (3) higiena kolorów amber/yellow w trybie jasnym,
+(4) usunięcie zahardkodowanego mock-fallbacku zdania, (5) whitespace i toast
+zamiast alert() w panelu sprawdzania prac lektora. Pełny opis: CHANGELOG.md
+sekcja AK.
+
+Zrobione:
+- HomeworkWarmupScrambler.tsx: synchroniczny reset stanu rundy w handleNext()
+  (ten sam event co setCurrentIndex), transitionLockRef, completeOnceRef,
+  obronny guard w renderze (`if (!item) return null`). Root cause potwierdzony
+  ręcznie: tymczasowe cofnięcie samego resetu odtworzyło dokładnie zgłoszony
+  `TypeError: Cannot read properties of undefined (reading 'word')`.
+- Usunięte canvas-confetti z HomeworkWarmupScrambler.tsx (import + wywołanie).
+  HomeworkExercise.tsx nigdy go nie miał. Cztery komponenty w
+  components/practice/ (PracticeZone — inny moduł, nie homework) zostawione
+  bez zmian, celowo.
+- Nowy test integracyjny tests/homeworkWarmupScrambler.test.tsx — PIERWSZY test
+  renderujący React w tym repo. Dodano jsdom + @testing-library/react jako
+  devDependencies (React 19 → @testing-library/react@16), npm test rozszerzony
+  o tests/*.test.tsx. Trzy nowe data-testid w komponencie do stabilnego
+  targetowania w teście.
+- Higiena kolorów: wszystkie surowe klasy `amber-*` w HomeworkWarmupScrambler.tsx
+  i HomeworkExercise.tsx zamienione na istniejące tokeny motywu (`warn`,
+  `primary`, `info` — patrz design/theme/tokens.css + index.css @theme), NIE na
+  dosłowne `text-slate-900` z dokumentu zlecenia (złamałoby tryb ciemny —
+  decyzja architektoniczna niżej).
+- DirectHomeworkScreen.tsx: `min-h-screen` → `min-h-[100dvh] overflow-y-auto` +
+  `pb-36` na kontenerze treści (jedyny realny h-screen-bez-scrolla na ścieżce
+  pracy domowej bez logowania).
+- HomeworkScreen.tsx: handleSaveReview() — alert() sukcesu zamieniony na
+  ActionToast (już istniejący, nieużywany dotąd w homework komponent
+  components/ui/ActionToast.tsx). Błędy zostają jako alert() (zgodnie ze
+  zleceniem: blokujące pop-upy tylko dla błędów).
+- Osobny, niezwiązany commit PRZED tym zadaniem: dokończono zastane, nieukończone
+  z poprzedniej sesji zmiany w services/homeworkGenerator.ts (wersja EN
+  buildStaticHomeworkNote + deduplikacja tematu) — zastane w working tree na
+  starcie sesji, przetestowane, wypchnięte osobno zgodnie z "jeden commit =
+  jedna zmiana".
+
+Nie dokończone / do sprawdzenia:
+- Punkt (5) zlecenia: "zbędna pusta przestrzeń przed listą odesłanych prac" —
+  NIE znaleziono w statycznej lekturze kodu HomeworkScreen.tsx/TeacherWorkScreen.tsx
+  (activeTab domyślnie 'list', kreator i widok pracy ucznia nie renderują się
+  na tej ścieżce). Możliwe że dotyczy stanu już naprawionego, innej roli/rozdzielczości,
+  albo czegoś widocznego tylko w przeglądarce. Wymaga weryfikacji wzrokowej na
+  koncie testowym lektora, z realnymi odesłanymi pracami do sprawdzenia.
+- Punkt (4) zlecenia (dosłowny string "Czasami tracę poczucie czasu...") —
+  NIE znaleziony w repo, bo hotfix P0 z dnia poprzedniego (commit 11e387e,
+  CHANGELOG.md wpis AJ) już usunął cichy fallback w generateHomeworkChatPipeline.
+  Zlecenie opisywało stan sprzed tamtej zmiany — nic do zrobienia poza
+  potwierdzeniem (grep czysty).
+- Manualny scenariusz w przeglądarce NIE wykonany (brak w tej sesji dostępu do
+  interaktywnej przeglądarki) — patrz lista w CHANGELOG.md wpis AK, ostatni
+  akapit.
+- StudentHomeworkScreen.tsx/HomeworkExercise.tsx świadomie NIE dostały zmiany
+  h-screen→dvh — renderują się już wewnątrz przewijalnej powłoki
+  Dashboard.tsx (`h-[100dvh]` na korzeniu), więc nie miały tego problemu.
+
+Decyzje architektoniczne:
+- Zlecenie dosłownie prosiło o `text-slate-900`/`bg-slate-100` do poprawy
+  kontrastu w trybie jasnym. Użyto zamiast tego istniejących tokenów motywu
+  (`warn`/`primary`/`info`), bo repo ma już pełny, zweryfikowany system
+  przełączania kolorów przez `data-theme` (patrz design/theme/tokens.css,
+  index.css @theme block) — dosłowne hardkodowanie złamałoby tryb ciemny
+  (niewidoczny ciemny tekst na granatowym tle). Zgodne z CLAUDE.md sekcja 4:
+  "kolory przez tokeny, nie surowe klasy".
+- Panel wyniku "close" w rozgrzewce zmieniony z amber na token `info`
+  (niebieski), nie na primary/emerald jak "correct" — celowo inny kolor niż
+  sukces, żeby kursant nadal widział różnicę między "poprawnie" a "blisko",
+  mimo usunięcia ostrzegawczego amber.
+- Pierwsza w repo infrastruktura testów renderujących React (jsdom +
+  @testing-library/react jako nowe devDependencies, npm test rozszerzony o
+  tests/*.test.tsx) — uzasadnione wprost wymaganym w zleceniu testem
+  integracyjnym dla komponentu, którego nie da się sensownie przetestować
+  bez montowania. jsdom ustawiany lokalnie w pliku testu, nie globalnie, żeby
+  nie spowolnić/nie zmienić zachowania pozostałych, czysto logicznych testów.
+
+Ryzyka: Brak zmian w firestore.rules, middleware autoryzacji ani interpretacji
+tokenu homework/direct/:token (DirectHomeworkScreen.tsx dostał wyłącznie
+kosmetyczną zmianę klas Tailwind, zero zmiany logiki/zapytań). Nowe
+devDependencies (jsdom, @testing-library/react) używane wyłącznie w nowym
+pliku testowym — zweryfikowano npm run build bez wpływu na dist/.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (495/495), npm run build
+(przechodzi).
