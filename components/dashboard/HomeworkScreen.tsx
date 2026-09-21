@@ -3155,8 +3155,8 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
 
       {/* ---------------- TEACHER REVIEW & GRADING MODAL ---------------- */}
       {reviewTask && (
-        <div className="fixed inset-0 bg-ink/72 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <Card className="w-full max-w-3xl liquid-glass border-primary/30 my-8 space-y-6">
+        <div className="fixed inset-0 bg-ink/72 backdrop-blur-md z-50 flex items-start justify-center p-4 overflow-y-auto">
+          <Card className="w-full max-w-3xl liquid-glass border-primary/30 my-4 space-y-6">
             <div className="flex justify-between items-start border-b border-white/10 pb-4">
               <div>
                 <span className="text-xs font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-primary/20 text-primary font-bold">
@@ -3241,8 +3241,8 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
 
       {/* ---------------- TEACHER V2 REVIEW MODAL ---------------- */}
       {v2ReviewTask && (
-        <div className="fixed inset-0 bg-ink/72 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <Card className="w-full max-w-3xl liquid-glass border-primary/30 my-8 space-y-6">
+        <div className="fixed inset-0 bg-ink/72 backdrop-blur-md z-50 flex items-start justify-center p-4 overflow-y-auto">
+          <Card className="w-full max-w-3xl liquid-glass border-primary/30 my-4 space-y-6">
             <div className="flex justify-between items-start border-b border-white/10 pb-4">
               <div>
                 <span className="text-xs font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-primary/20 text-primary font-bold">
