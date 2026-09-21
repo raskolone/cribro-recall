@@ -34,9 +34,9 @@ const chipBase =
   'min-h-[2.75rem] px-3.5 rounded-xl border text-[15px] font-semibold transition-colors active:scale-[0.97]';
 
 const InvalidExerciseCard: React.FC<{ message?: string }> = ({ message }) => (
-  <div className="p-4 sm:p-5 rounded-2xl bg-amber-950/20 border border-amber-500/30 flex items-start gap-2.5">
-    <AlertCircle size={18} className="text-amber-400 shrink-0 mt-0.5" />
-    <p className="text-sm text-amber-200 leading-relaxed">
+  <div className="p-4 sm:p-5 rounded-2xl bg-warn/10 border border-warn/30 flex items-start gap-2.5">
+    <AlertCircle size={18} className="text-warn shrink-0 mt-0.5" />
+    <p className="text-sm text-content leading-relaxed">
       {i18n.t(message || 'Nie udało się wczytać treści tego zadania. Możesz przejść do kolejnego ćwiczenia.')}
     </p>
   </div>
@@ -70,11 +70,11 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
               onClick={() => setShowHint((v) => !v)}
               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                 showHint
-                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm'
-                  : 'bg-amber-500/10 border-amber-500/25 text-amber-400 hover:bg-amber-500/20'
+                  ? 'bg-primary/15 border-primary/40 text-primary shadow-sm'
+                  : 'bg-base-200 border-line-strong text-content-muted hover:text-content'
               }`}
             >
-              <Lightbulb size={13} className={showHint ? 'text-amber-300 fill-amber-300/40' : 'text-amber-400'} />
+              <Lightbulb size={13} className={showHint ? 'text-primary fill-primary/30' : 'text-content-muted'} />
               <span>{showHint ? 'Ukryj wskazówkę' : 'Wskazówka'}</span>
             </button>
           )}
@@ -89,10 +89,10 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
 
         {/* Rozwijana wskazówka */}
         {showHint && hintText && (
-          <div className="p-3.5 rounded-xl bg-amber-950/25 border border-amber-500/35 text-amber-200 text-xs sm:text-sm leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-200 shadow-sm">
-            <Lightbulb size={16} className="text-amber-400 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-xl bg-base-200 border border-line-strong text-content text-xs sm:text-sm leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-200 shadow-sm">
+            <Lightbulb size={16} className="text-primary shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-amber-300 block text-[11px] uppercase tracking-wider mb-0.5">
+              <span className="font-bold text-text-hi block text-[11px] uppercase tracking-wider mb-0.5">
                 Wskazówka lektora:
               </span>
               <span>{hintText}</span>
@@ -337,8 +337,8 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
       <div className="space-y-4">
         {/* Nagłówek typu z odznaką i wskazówką */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold uppercase tracking-wider">
-            <AlertCircle size={13} className="shrink-0 text-amber-400" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-base-200 border border-line-strong text-content-muted text-xs font-bold uppercase tracking-wider">
+            <AlertCircle size={13} className="shrink-0 text-content-muted" />
             {i18n.t('Popraw zdanie')}
           </span>
 
@@ -348,19 +348,19 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
               onClick={() => setShowHint((v) => !v)}
               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                 showHint
-                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm'
-                  : 'bg-amber-500/10 border-amber-500/25 text-amber-400 hover:bg-amber-500/20'
+                  ? 'bg-primary/15 border-primary/40 text-primary shadow-sm'
+                  : 'bg-base-200 border-line-strong text-content-muted hover:text-content'
               }`}
             >
-              <Lightbulb size={13} className={showHint ? 'text-amber-300 fill-amber-300/40' : 'text-amber-400'} />
+              <Lightbulb size={13} className={showHint ? 'text-primary fill-primary/30' : 'text-content-muted'} />
               <span>{showHint ? 'Ukryj wskazówkę' : 'Wskazówka'}</span>
             </button>
           )}
         </div>
 
         {/* Zdanie z błędem w wyeksponowanej karcie */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-amber-950/20 border border-amber-500/30 space-y-2.5 shadow-sm">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-amber-400/90 font-bold block">
+        <div className="p-4 sm:p-5 rounded-2xl bg-base-100/70 border border-white/10 space-y-2.5 shadow-inner">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-content-muted font-bold block">
             Zdanie z błędem do poprawy:
           </span>
           <p className="text-lg sm:text-xl font-bold text-white leading-relaxed">
@@ -376,10 +376,10 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
 
         {/* Rozwijana wskazówka */}
         {showHint && hintText && (
-          <div className="p-3.5 rounded-xl bg-amber-950/25 border border-amber-500/35 text-amber-200 text-xs sm:text-sm leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-200 shadow-sm">
-            <Lightbulb size={16} className="text-amber-400 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-xl bg-base-200 border border-line-strong text-content text-xs sm:text-sm leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-200 shadow-sm">
+            <Lightbulb size={16} className="text-primary shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-amber-300 block text-[11px] uppercase tracking-wider mb-0.5">
+              <span className="font-bold text-text-hi block text-[11px] uppercase tracking-wider mb-0.5">
                 Wskazówka lektora:
               </span>
               <span>{hintText}</span>
