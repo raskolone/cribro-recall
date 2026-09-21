@@ -5947,7 +5947,7 @@ Pomijaj wy\u0142\u0105cznie to, co nie niesie tre\u015Bci: powitania, \u201Eyhy"
 # Zasady
 - Wszystkie pola opisowe pisz PO POLSKU. S\u0142ownictwo naturalnie dwuj\u0119zycznie: "angielskie s\u0142owo - polskie t\u0142umaczenie".
 - NIE WYMY\u015ALAJ niczego, czego nie ma w zapisie. Je\u015Bli w rozmowie brakuje materia\u0142u do danego pola, wpisz: Brak danych w transkrypcji.
-- Prac\u0119 domow\u0105 u\u0142\xF3\u017C na podstawie materia\u0142u z TEJ lekcji (s\u0142ownictwo i b\u0142\u0119dy, kt\xF3re faktycznie pad\u0142y), a nie z niczego. Je\u015Bli lektor zada\u0142 co\u015B wprost \u2014 to jest praca domowa i przepisz j\u0105 dok\u0142adnie.
+- Nie generuj pracy domowej, zda\u0144 do t\u0142umaczenia ani \u017Cadnych \u0107wicze\u0144 \u2014 praca domowa \u017Cyje wy\u0142\u0105cznie w osobnym module \u0107wicze\u0144, nie w notatce z lekcji.
 - Daty nie zgaduj: je\u015Bli w zapisie nie pad\u0142a, zostaw pole date puste.
 
 # Zanim wygenerujesz
@@ -5961,8 +5961,6 @@ Na podstawie podanej bazy kursant\xF3w dopasuj studentId oraz studentIds (gdy le
 - revisionNotes (string, BLOK 1 \u201ELekcja w skr\xF3cie": przebieg lekcji po polsku, 4-8 zda\u0144 \u2014 co \u0107wiczyli\u015Bcie i w jakiej kolejno\u015Bci)
 - vocabularyText (string, BLOK 2 \u201EKey Language": ka\u017Cde s\u0142\xF3wko i zwrot w osobnej linii, \u015Bci\u015Ble "angielskie - polskie". Bez punktor\xF3w, bez markdown, bez numeracji.)
 - corrections (string, BLOK 2b \u201EKorekty i wymowa": poprawki w formacie "\u274C to, co powiedzia\u0142 kursant \u2192 \u2705 poprawna wersja", po jednej na lini\u0119, z kr\xF3tkim wyja\u015Bnieniem po polsku, gdy jest potrzebne. Tu trafiaj\u0105 te\u017C uwagi o wymowie.)
-- homeworkText (string, BLOK 3 \u201EHomework": konkretne zadanie oparte na materiale z tej lekcji \u2014 np. 8-10 ponumerowanych zda\u0144 do przet\u0142umaczenia z polskiego na angielski, wykorzystuj\u0105cych nowe s\u0142ownictwo i poprawione b\u0142\u0119dy. Bez odpowiedzi.)
-- homeworkAnswerKey (string, BLOK 3b \u201EKlucz odpowiedzi": odpowiedzi do zadania wy\u017Cej, ta sama numeracja, nic poza nimi)
 - nextLessonPlan (string, BLOK 4 \u201ENext Lesson": ustalenia i najlepsze tematy na kolejne zaj\u0119cia, po polsku)
 - studentSpeaking (string, \u201ELearning Curve": 5-6 zda\u0144 po polsku, neutralnie \u2014 o czym kursant m\xF3wi\u0142, jak mu sz\u0142o, co go interesuje)
 - thingsToImprove (string, ta sama tre\u015B\u0107 co corrections \u2014 dla zgodno\u015Bci ze starszymi widokami)

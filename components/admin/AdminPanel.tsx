@@ -60,6 +60,7 @@ import { sortChronologically } from '../../utils/lessonDuplicates';
 import { confirmAsync } from '../../utils/appAlert';
 import AdminMailingScreen from './AdminMailingScreen';
 import ScratchpadStudentPicker from '../scratchpad/ScratchpadStudentPicker';
+import LessonSummaryEmailModal from './LessonSummaryEmailModal';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import TeacherAttentionBanner from './TeacherAttentionBanner';
 import TeacherLessonHistoryView from './TeacherLessonHistoryView';
@@ -880,6 +881,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       .filter(line => !lessonFormExcludedItems.includes(line));
 
     setIsSavingLessonRecord(true);
+    let primaryLessonRecordId: string | undefined = editingRecordId || undefined;
     try {
       if (editingRecordId) {
         const primaryStudentId = lessonFormStudentId || targetStudentIds[0];
@@ -999,14 +1001,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
             await saveRecallReview(sId, created.lessonRecordId, lessonFormRecallCandidates);
           }
 
+          if (sId === targetStudentIds[0]) {
+            primaryLessonRecordId = created.lessonRecordId;
+          }
+
           await updateDoc(doc(db, 'users', sId), {
              hasNewLesson: true,
              hasNewVocabulary: true
           });
         }
       }
-      
-      showToast(targetStudentIds.length > 1 
+
+      showToast(targetStudentIds.length > 1
         ? `Zapisano lekcję dla ${targetStudentIds.length} kursantów (zajęcia grupowe)!` 
         : `Zapisano lekcję.`);
       closeLessonRecordModal();
@@ -1014,6 +1020,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         fetchUserLogsAndStats(selectedUser.id);
       }
       fetchAllLessons(users);
+
+      /* Pytanie o wysyłkę maila z podsumowaniem zostaje wyłącznie dla lekcji
+         jednego kursanta — przy zajęciach grupowych nie ma jednego adresata,
+         a osobny mail do każdego to inna, nieopisana tu funkcja. */
+      if (targetStudentIds.length === 1) {
+        const primaryStudent = users.find((u) => u.id === targetStudentIds[0]);
+        if (primaryStudent) {
+          setPendingLessonSummaryEmail({
+            student: {
+              id: primaryStudent.id,
+              firstName: primaryStudent.firstName,
+              lastName: primaryStudent.lastName,
+              username: primaryStudent.username,
+              email: primaryStudent.email,
+            },
+            lesson: {
+              lessonRecordId: primaryLessonRecordId,
+              date: lessonFormDate,
+              summary: lessonFormSummary,
+              vocabulary: lessonFormWords,
+              corrections: lessonFormThingsToImprove,
+            },
+          });
+        }
+      }
     } catch (e: any) {
       alert('Błąd podczas zapisywania lekcji: ' + e.message);
     } finally {
@@ -1670,6 +1701,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [levelFilter, setLevelFilter] = useState('all');
   const [isStudentPickerOpen, setIsStudentPickerOpen] = useState(false);
   const [isNotebookPickerOpen, setIsNotebookPickerOpen] = useState(false);
+  /** Lekcja świeżo zapisana dla jednego kursanta — pyta, czy wysłać podsumowanie mailem. */
+  const [pendingLessonSummaryEmail, setPendingLessonSummaryEmail] = useState<{
+    student: { id?: string; firstName?: string; lastName?: string; username?: string; email?: string };
+    lesson: { lessonRecordId?: string; date?: string; summary?: string; vocabulary?: string; corrections?: string };
+  } | null>(null);
   const [targetTabAfterSelect, setTargetTabAfterSelect] = useState<string | null>(null);
 
   // Archiwum to zamknięta współpraca, nie usunięte konto: domyślnie znika
@@ -5989,6 +6025,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </div>
         </div>
       </div>
+
+      <LessonSummaryEmailModal
+        isOpen={Boolean(pendingLessonSummaryEmail)}
+        onClose={() => setPendingLessonSummaryEmail(null)}
+        student={pendingLessonSummaryEmail?.student || null}
+        lesson={pendingLessonSummaryEmail?.lesson || null}
+        onSent={() => setPendingLessonSummaryEmail(null)}
+      />
 
       <ScratchpadStudentPicker
         isOpen={isNotebookPickerOpen}

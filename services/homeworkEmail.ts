@@ -547,3 +547,130 @@ export function buildGradedHomeworkEmail(params: GradedHomeworkEmailParams): {
   return { subject, html, text, greeting };
 }
 
+// ──────────────────────────────────────────────────────────────
+// E-mail podsumowania lekcji: Key Language + korekty, human-in-the-loop
+// (wysyłany wyłącznie po jawnym potwierdzeniu lektora, nigdy automatycznie)
+// ──────────────────────────────────────────────────────────────
+export interface LessonSummaryEmailParams {
+  studentName?: string;
+  /** Data lekcji, YYYY-MM-DD lub już sformatowana — wyświetlana bez zmian, jeśli nie pasuje do wzorca. */
+  date?: string;
+  /** BLOK 1 — krótkie podsumowanie przebiegu lekcji. */
+  summary?: string;
+  /** BLOK 2 — słownictwo i zwroty, jedna pozycja na linię. */
+  vocabulary?: string;
+  /** BLOK 2b — korekty językowe. */
+  corrections?: string;
+  appUrl?: string;
+  unsubscribeUrl?: string;
+}
+
+export function buildLessonSummaryEmail(params: LessonSummaryEmailParams): {
+  subject: string;
+  html: string;
+  text: string;
+  greeting: string;
+} {
+  const {
+    studentName,
+    date,
+    summary,
+    vocabulary,
+    corrections,
+    appUrl = 'https://app.maciej.pro',
+    unsubscribeUrl,
+  } = params;
+
+  const greeting = formatPolishGreeting(studentName);
+  const dateFormatted = formatDate(date) || date || '';
+  const subject = dateFormatted
+    ? `Podsumowanie naszej lekcji z dnia ${dateFormatted} | Cribro English`
+    : 'Podsumowanie naszej lekcji | Cribro English';
+
+  const summaryHtml = summary?.trim()
+    ? `<p style="margin:0 0 16px;color:#334155;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(summary.trim())}</p>`
+    : '';
+
+  const vocabularyHtml = vocabulary?.trim()
+    ? `<div style="margin:16px 0 0;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px;">
+         <p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Key Language — słownictwo i zwroty</p>
+         <p style="margin:0;color:#0f172a;font-size:14px;line-height:1.8;white-space:pre-wrap;">${escapeHtml(vocabulary.trim())}</p>
+       </div>`
+    : '';
+
+  const correctionsHtml = corrections?.trim()
+    ? `<div style="margin:16px 0 0;background:#f0fdf4;border-left:4px solid #16a34a;padding:14px 18px;border-radius:0 10px 10px 0;">
+         <p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.05em;">Korekty i wymowa</p>
+         <p style="margin:0;color:#14532d;font-size:14px;line-height:1.7;white-space:pre-wrap;">${escapeHtml(corrections.trim())}</p>
+       </div>`
+    : '';
+
+  const unsubscribeHtml = unsubscribeUrl
+    ? `<p style="margin:16px 0 0;color:#94a3b8;font-size:11px;line-height:1.5;text-align:center;">
+         Nie chcesz otrzymywać powiadomień?
+         <a href="${escapeHtml(unsubscribeUrl)}" style="color:#64748b;text-decoration:underline;">
+           Wypisz się z powiadomień e-mail
+         </a>
+       </p>`
+    : '';
+
+  const html = `<!doctype html>
+<html lang="pl">
+  <body style="margin:0;padding:24px;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:540px;margin:0 auto;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.06);">
+      <tr>
+        <td style="background:linear-gradient(90deg, #0d9488, #3b82f6);height:6px;font-size:0;line-height:0;">&nbsp;</td>
+      </tr>
+      <tr>
+        <td style="padding:32px 32px 28px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <p style="margin:0;font-size:12px;letter-spacing:0.14em;font-weight:800;text-transform:uppercase;color:#0d9488;">CRIBRO ENGLISH</p>
+            <span style="font-size:11px;font-weight:600;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;padding:3px 8px;border-radius:999px;">PODSUMOWANIE LEKCJI</span>
+          </div>
+
+          <h1 style="margin:0 0 14px;font-size:22px;line-height:1.3;color:#0f172a;font-weight:800;">
+            ${escapeHtml(greeting)}
+          </h1>
+
+          <p style="margin:0 0 14px;color:#334155;font-size:15px;line-height:1.65;">
+            Dzięki za dzisiejszą lekcję! Poniżej zebrałem dla Ciebie najważniejsze zwroty, słownictwo oraz poprawki z naszego spotkania.
+          </p>
+
+          ${summaryHtml}
+          ${vocabularyHtml}
+          ${correctionsHtml}
+
+          <div style="margin:26px 0 0;text-align:center;">
+            <a href="${escapeHtml(appUrl)}"
+               style="display:inline-block;background:#0d9488;background:linear-gradient(135deg, #0d9488 0%, #0f766e 100%);color:#ffffff;text-decoration:none;
+                      padding:14px 28px;border-radius:10px;font-size:15px;font-weight:700;box-shadow:0 4px 12px rgba(13, 148, 136, 0.25);">
+              Otwórz historię w platformie →
+            </a>
+          </div>
+
+          ${INSTRUCTOR_CARD_HTML}
+          ${unsubscribeHtml}
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
+  const textLines: Array<string | null> = [
+    greeting,
+    '',
+    'Dzięki za dzisiejszą lekcję! Poniżej zebrałem dla Ciebie najważniejsze zwroty, słownictwo oraz poprawki z naszego spotkania.',
+    summary?.trim() ? `\n${summary.trim()}` : null,
+    vocabulary?.trim() ? `\nKey Language:\n${vocabulary.trim()}` : null,
+    corrections?.trim() ? `\nKorekty i wymowa:\n${corrections.trim()}` : null,
+    `\nOtwórz historię w platformie: ${appUrl}`,
+    unsubscribeUrl ? `\nWypisz się z powiadomień: ${unsubscribeUrl}` : null,
+    '',
+    '—',
+    'Maciej Wyrozumski',
+    'CRIBRO ENGLISH',
+  ];
+
+  return { subject, html, text: textLines.filter((line) => line !== null).join('\n'), greeting };
+}
+

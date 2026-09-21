@@ -5467,3 +5467,43 @@ już na to pozwalają lektorowi, bo dokładnie ten sam
 roboczej (linia otwierana bez `documentId`) i działa.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508). Zero
 weryfikacji wzrokowej w przeglądarce.
+
+## 2026-09-21 — Claude Code / Sonnet 5 (szósta zmiana tej sesji)
+
+Zadanie: dokończenie zadania 1 — modal human-in-the-loop po zapisie
+lekcji + szablon Resend `buildLessonSummaryEmail`. Ostatni brakujący
+kawałek z oryginalnego zlecenia "Uproszczenie Parsowania Lekcji".
+Zrobione:
+- services/homeworkEmail.ts: nowa funkcja `buildLessonSummaryEmail`
+  (subject "Podsumowanie naszej lekcji z dnia [data] | Cribro English",
+  pierwsza osoba, sekcje Key Language + Korekty renderowane z surowego
+  tekstu pól `vocabularyText`/`corrections`, CTA "Otwórz historię w
+  platformie →", stopka `INSTRUCTOR_CARD_HTML` reużyta z istniejących
+  szablonów).
+- components/admin/LessonSummaryEmailModal.tsx (nowy plik): modal
+  potwierdzenia — wzorowany na HomeworkEmailConfirmationModal, ale
+  bez zakładki ćwiczeń/tokenu bezpośredniego dostępu (lekcja nie ma
+  takiego linku). Wysyła przez ten sam, już istniejący endpoint
+  `/api/mailing/test-send` (mimo nazwy, to ogólny "wyślij zbudowany
+  mail" endpoint — używa go już HomeworkEmailConfirmationModal do
+  realnej wysyłki, nie tylko testowej). Po udanej wysyłce zapisuje
+  `summaryEmailSentAt` na dokumencie `lessonRecords/{id}`.
+- components/admin/AdminPanel.tsx: `handleSaveLessonRecord` po
+  pomyślnym zapisie — WYŁĄCZNIE dla lekcji JEDNEGO kursanta (zajęcia
+  grupowe pomijają to pytanie, bo nie ma jednego adresata) — otwiera
+  `LessonSummaryEmailModal` z danymi ze świeżo zapisanego formularza
+  (bez dodatkowego odczytu z Firestore). `primaryLessonRecordId`
+  śledzi ID zapisanej/utworzonej lekcji w obu gałęziach (edycja/nowa).
+Nie dokończone / do sprawdzenia:
+- Zero weryfikacji wzrokowej w przeglądarce (modal, treść maila,
+  wysyłka realna przez Resend).
+- Zadanie 1 jest teraz w całości zamknięte (parser + modal + szablon).
+- Zadanie 6 (spellcheck PL/EN w Notatniku) czeka na pełną specyfikację
+  od Macieja — dwukrotnie przyszła ucięta w tym samym miejscu.
+Ryzyka: brak zmian w firestore.rules, middleware autoryzacji, ścieżkach
+tokenowych. Nowy modal aktualizuje `lessonRecords/{id}` z poziomu
+klienta lektora (`updateDoc`) — ten sam wzorzec zapisu co reszta
+`handleSaveLessonRecord` w tym samym pliku, nic nowego pod względem
+uprawnień.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508),
+npm run build (przechodzi, zbudowano dist/ + server.cjs + api/index.js).
