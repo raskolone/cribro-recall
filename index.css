@@ -1760,16 +1760,14 @@ tr.liquid-glass-hover:hover {
   --rail-base: max(0.75rem, env(safe-area-inset-bottom));
   /* Wysokość pigułki monitora AI; 0, gdy monitor się nie renderuje. */
   --rail-monitor: 0px;
-  /* Wysokość przycisku zgłaszania błędu — stała, zawsze widoczny. */
-  --rail-bug: 60px;
+  /* Zgłaszanie błędu przeniesione w prawy górny róg (fixed top-16 right-4 w
+     BugReporter.tsx), żeby nigdy nie nakładało się na przyciski akcji
+     (Dalej/Wstecz/Odeślij) na dole ekranu — nie zajmuje już miejsca w tej
+     kolejce, stąd 0px. */
+  --rail-bug: 0px;
 }
 
-/* Druga pozycja w kolejce: zgłaszanie błędu nad monitorem. */
-.rail-bug {
-  bottom: calc(var(--rail-base) + var(--rail-monitor));
-}
-
-/* Trzecia pozycja: powiadomienia i toasty nad jednym i drugim. */
+/* Druga pozycja w kolejce: powiadomienia i toasty nad monitorem. */
 .rail-notice {
   bottom: calc(var(--rail-base) + var(--rail-monitor) + var(--rail-bug));
 }
