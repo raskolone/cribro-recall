@@ -198,6 +198,27 @@ we dwoje na żywo.
 
 ---
 
+### 🎯 Kokpit lektora (desktop): 4 kafelki zamiast rozwijanego paska „Więcej narzędzi", pasek szybkiego zapytania do Asystenta AI (2026-09-21, runda 42)
+
+**Zadanie:** uprościć główną nawigację pulpitu lektora na desktopie do 4 wyrazistych kafelków i dedykowanej strefy Asystenta AI, likwidując rozwijaną listę drugorzędnych narzędzi.
+
+**Zmienione:** `components/admin/AdminPanel.tsx`
+- Siatka główna (`data-coach="tour-teacher-main"`) zredukowana z 4+3+2 (kafelki + rząd „Zadania/Planer/Mailing" + zwijane „Więcej narzędzi": Słownictwo/Statystyki) do dokładnie 4 kafelków: `Dzisiaj (Cockpit)` (CENTRUM DNIA), `Moi kursanci` (BAZA CRM, dawniej „Kursanci"), `Moje lekcje` (LEKCJE I NOTATKI, dawniej „Historia lekcji" — sam tytuł kafelka, id `lesson-history` i pozostałe wystąpienia etykiety w profilu kursanta/turze bez zmian), `Narzędzia lektora` (ZESTAW NARZĘDZI, nowy kafelek zastępujący usunięty kafelek „Notatnik").
+- Kliknięcie `Narzędzia lektora` otwiera `GSAPModal` (`toolsDrawerOpen` state) z 6 kafelkami drugorzędnymi: Notatnik lekcyjny (A4), Zadania i testy, Planer lekcji, Mailing (z odznaką liczby nieprzeczytanych), Słownictwo, Statystyki — dokładnie te same akcje (`handleTileClick`) co wcześniej rozsiane po dwóch rzędach.
+- Nieprzeczytana poczta (`unreadMailingCount`) sygnalizowana teraz na kafelku `Narzędzia lektora` (pulsująca odznaka „X NOWYCH", wzorem istniejącego mechanizmu `hasNotification`/`notificationCount` w kafelkach), nie tylko wewnątrz podwidoku.
+- Usunięty stan `showMoreTools` (zwijany pasek). Nowy stan `toolsDrawerOpen`.
+- Stan `mobileAssistantOpen` przemianowany na `assistantOverlayOpen` i odchudzony z `md:hidden` — ta sama pełnoekranowa nakładka czatu (dotąd tylko telefon/Pocket Companion) obsługuje teraz też desktop.
+- Pod siatką 4 kafelków nowy pasek „Zapytaj o dzisiejsze lekcje, kursanta lub zaplanuj ćwiczenie..." z przyciskiem „Otwórz czat AI" — otwiera `assistantOverlayOpen` zamiast osadzonego na stałe czatu. Strona główna panelu (`activeTab === null`) nie renderuje już pełnego `<TeacherAssistant mode="embedded">` obok kafelków — dostęp do czatu jest wyłącznie przez pasek/nakładkę, żeby nie kolidował z układem kafelków.
+- `components/dashboard/tourSteps.ts` — `buildTeacherTourSteps`: 5 kroków (`tour-teacher-main/context/scratchpad/work/more`) zastąpione 2 krokami (`tour-teacher-main/tools`) zgodnymi z nową siatką; poprzednie kroki wskazywały już częściowo na nieistniejące elementy (`tour-teacher-context` nie miał odpowiadającego kafelka `data-coach` od czasu wcześniejszej rundy).
+
+**Poza zakresem (świadomie):** `components/admin/TeacherMobileHub.tsx` (Pocket Companion, telefon < md) NIE zmieniony — ma własny, wcześniej zaprojektowany układ 3 kafelków + pasek Asystenta w stopce; zlecenie dotyczyło głównej nawigacji desktopowej.
+
+**Weryfikacja:** `npx tsc --noEmit` (0 błędów), `npm test` (495/495 zielone), `npm run build` (przechodzi). UI NIE zweryfikowane wzrokowo w przeglądarce — panel lektora wymaga zalogowanego konta testowego, do zrobienia przez Macieja: (1) siatka 4 kafelków i podwidok „Narzędzia lektora" (otwiera się/zamyka, wszystkie 6 akcji trafiają do właściwego modułu), (2) pasek Asystenta AI otwiera pełnoekranową nakładkę czatu i zamyka się krzyżykiem, (3) odznaka nieprzeczytanej poczty na kafelku `Narzędzia lektora`.
+
+**Ryzyka:** brak zmian w `firestore.rules`, middleware autoryzacji, ścieżkach tokenowych bez logowania.
+
+---
+
 ### 🧩 Notatnik: fundament modelu blokowego za flagą `SHARED_NOTEBOOK_V2` (Iteracja 1) (2026-09-20, runda 41)
 
 **Zadanie:** wprowadzić fundament modelu blokowego we współdzielonym notatniku (`ScratchpadDocument`), rozszerzenie hybrydowe obok istniejącego `contentHtml`, bez migracji starych dokumentów i bez zmiany zachowania edytora, dopóki flaga jest wyłączona.

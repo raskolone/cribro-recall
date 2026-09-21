@@ -4415,3 +4415,64 @@ tokenowa bez logowania) — logika samego dostępu (kto widzi co) NIE została
 zmieniona, tylko dodany wcześniejszy warunek dla lektora na telefonie.
 Weryfikacja całości: npx tsc --noEmit (0 błędów), npm test (495/495),
 npm run build (przechodzi).
+
+---
+
+2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: Refaktoryzacja kokpitu lektora (desktop) do układu 4 głównych
+kafelków (2x2) zamiast siatki 4 kafelków + rząd 3 narzędzi + zwijane
+"Więcej narzędzi", plus dedykowana strefa Asystenta AI pod siatką.
+
+Zrobione:
+- components/admin/AdminPanel.tsx: siatka główna zredukowana do 4 kafelków
+  — Dzisiaj (Cockpit)/CENTRUM DNIA, Moi kursanci/BAZA CRM (dawniej
+  "Kursanci"), Moje lekcje/LEKCJE I NOTATKI (dawniej "Historia lekcji" —
+  zmieniony tylko tytuł tego kafelka), Narzędzia lektora/ZESTAW NARZĘDZI
+  (nowy, zastępuje usunięty kafelek "Notatnik").
+- Kafelek "Narzędzia lektora" otwiera GSAPModal (stan `toolsDrawerOpen`) z
+  6 kafelkami: Notatnik lekcyjny (A4), Zadania i testy, Planer lekcji,
+  Mailing (odznaka nieprzeczytanych), Słownictwo, Statystyki — te same
+  handlery (`handleTileClick`) co poprzednio rozsiane po dwóch usuniętych
+  rzędach ("3 narzędzia pomocnicze" + zwijane "Więcej narzędzi").
+  Usunięty stan `showMoreTools`.
+- `unreadMailingCount` sygnalizowany teraz na kafelku "Narzędzia lektora"
+  (odznaka "X NOWYCH", istniejący mechanizm hasNotification), nie tylko
+  wewnątrz podwidoku.
+- Stan `mobileAssistantOpen` -> `assistantOverlayOpen`, nakładka
+  pełnoekranowego czatu odchudzona z `md:hidden` — obsługuje teraz też
+  desktop, nie tylko telefon/Pocket Companion.
+- Pod siatką 4 kafelków: pasek "Zapytaj o dzisiejsze lekcje, kursanta lub
+  zaplanuj ćwiczenie..." + przycisk "Otwórz czat AI", otwiera
+  `assistantOverlayOpen`. Strona główna (activeTab === null) nie renderuje
+  już osadzonego na stałe `<TeacherAssistant mode="embedded">` — dostęp do
+  czatu wyłącznie przez pasek/nakładkę.
+- components/dashboard/tourSteps.ts: buildTeacherTourSteps — 5 kroków
+  (main/context/scratchpad/work/more) zastąpione 2 (main/tools) zgodnymi z
+  nową siatką; tour-teacher-context i tak nie miał już odpowiadającego
+  data-coach od wcześniejszej rundy (dangling).
+- CHANGELOG.md: nowy wpis (runda 42).
+
+Nie dokończone / do sprawdzenia:
+- UI NIE zweryfikowane wzrokowo w przeglądarce — panel lektora wymaga
+  zalogowanego konta testowego. Do sprawdzenia przez Macieja: siatka 4
+  kafelków, otwieranie/zamykanie podwidoku "Narzędzia lektora" (6 akcji
+  trafiają do właściwego modułu), pasek Asystenta AI otwiera/zamyka
+  pełnoekranową nakładkę czatu, odznaka nieprzeczytanej poczty na kafelku.
+
+Decyzje architektoniczne:
+- components/admin/TeacherMobileHub.tsx (Pocket Companion, telefon < md)
+  NIE zmieniony — ma własny, wcześniej zaprojektowany układ 3 kafelków +
+  pasek Asystenta w stopce; zlecenie dotyczyło głównej nawigacji
+  desktopowej (siatka `hidden md:block`).
+- Etykieta "Historia lekcji" zmieniona TYLKO na tym jednym kafelku
+  desktopowego pulpitu — pozostałe wystąpienia (zakładka w profilu
+  kursanta, TeacherMobileHub, i18n) zostały bez zmian, bo dotyczą innego
+  kontekstu niż zlecenie.
+- Podwidok "Narzędzia lektora" zbudowany na istniejącym components/ui/
+  GSAPModal.tsx (reużycie), nie nowy komponent modalny.
+
+Ryzyka: Brak zmian w firestore.rules, middleware autoryzacji w server.ts,
+ścieżkach tokenowych bez logowania.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (495/495), npm run
+build (przechodzi).

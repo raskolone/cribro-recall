@@ -63,40 +63,17 @@ export const buildTeacherTourSteps = (): CoachStep[] => [
   {
     coachId: 'tour-teacher-main',
     group: 'Prowadzenie lekcji',
-    title: 'Trzy narzędzia na każdą lekcję',
+    title: 'Cztery kafelki, jeden pulpit',
     description:
-      'Profil kursanta, kontekst przed lekcją i notatnik. To jest komplet do przeprowadzenia zajęć — reszta panelu obsługuje to, co dzieje się między nimi.',
+      'Dzisiaj (Cockpit) do bieżącej roboty, Moi kursanci to Twoja baza CRM, Moje lekcje to notatki i historia, a Narzędzia lektora chowają resztę — notatnik, zadania, planer, mailing, słownictwo i statystyki.',
     preferredPlacement: 'bottom',
   },
   {
-    coachId: 'tour-teacher-context',
-    group: 'Przed lekcją',
-    title: 'Kontekst przed lekcją',
-    description:
-      'Wybierasz kursanta i zakres — ostatnią lekcję, dwie albo trzy — a model układa z notatek krótką odprawę: co się działo, o czym mówił kursant, jakie słowa padły i co się chwieje.',
-    tip: 'Otwórz to na minutę przed zajęciami zamiast czytać historię lekcji.',
-  },
-  {
-    coachId: 'tour-teacher-scratchpad',
-    group: 'W trakcie lekcji',
-    title: 'Notatnik',
-    description:
-      'Wspólny dokument na żywo. Otwiera się pusty — kursanta przypisujesz w trakcie, a wtedy treść trafia do jego stałego notatnika.',
-    tip: 'Kursant wchodzi linkiem albo PIN-em, bez logowania.',
-  },
-  {
-    coachId: 'tour-teacher-work',
-    group: 'Między lekcjami',
-    title: 'Zadania i testy',
-    description:
-      'Jedno miejsce na przypisywanie, ocenianie i przeglądanie prac domowych oraz testów.',
-  },
-  {
-    coachId: 'tour-teacher-more',
+    coachId: 'tour-teacher-tools',
     group: 'Reszta panelu',
-    title: 'Więcej narzędzi',
+    title: 'Narzędzia lektora',
     description:
-      'Planer lekcji, prezentacja, słownictwo i statystyki. Zwinięte, bo sięga się po nie rzadziej niż co zajęcia.',
-    preferredPlacement: 'top',
+      'Notatnik na żywo, zadania i testy, planer lekcji, mailing, słownictwo i statystyki — jeden kafelek otwiera lekki podwidok ze wszystkimi naraz, więc nie zaśmiecają strony głównej.',
+    tip: 'Kursant do notatnika wchodzi linkiem albo PIN-em, bez logowania.',
   },
 ];

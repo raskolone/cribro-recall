@@ -33,6 +33,7 @@ import { useFirebaseAdminApi } from '../../hooks/useFirebaseAdminApi';
 import { importVocabularyFromLessons } from '../../services/vocabularyService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import { GSAPModal } from '../ui/GSAPModal';
 import AdminTestGenerator from './AdminTestGenerator';
 import AllTestsTeacherView from './AllTestsTeacherView';
 import PublicTestPanel from './PublicTestPanel';
@@ -128,9 +129,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   const isAdmin = currentUser?.role === 'admin';
   /** Próg `md` (768px) — poniżej niego pulpit lektora zamienia się w Pocket Companion. */
   const isDesktopUI = useIsDesktop();
-  const [mobileAssistantOpen, setMobileAssistantOpen] = useState(false);
-  /** Druga listwa narzędzi — zwinięta, bo to wejścia „raz na tydzień". */
-  const [showMoreTools, setShowMoreTools] = useState(false);
+  const [assistantOverlayOpen, setAssistantOverlayOpen] = useState(false);
+  /** Kafelek "Narzędzia lektora" otwiera lekki podwidok z zestawem narzędzi drugorzędnych. */
+  const [toolsDrawerOpen, setToolsDrawerOpen] = useState(false);
   const [profileSaveModal, setProfileSaveModal] = useState<{ isOpen: boolean; success: boolean; title: string; message: string } | null>(null);
   /**
    * Która sekcja profilu jest widoczna.
@@ -1947,7 +1948,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   /*
    * Uchwyty Asystenta AI wyciągnięte poza JSX, bo w wersji mobilnej ten sam
    * czat wyświetlamy w pełnoekranowej nakładce po kliknięciu paska w stopce
-   * (patrz `mobileAssistantOpen` niżej) — bez wydzielenia trzeba by je
+   * (patrz `assistantOverlayOpen` niżej) — bez wydzielenia trzeba by je
    * powielić w dwóch miejscach i pielić dwa razy przy każdej zmianie.
    */
   const handleAssistantNavigate = (mod: string, extra?: any) => {
@@ -1970,7 +1971,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         const u = users.find((x) => x.id === sId);
         if (u) setSelectedUser(u as UserWithId);
       }
-      setMobileAssistantOpen(false);
+      setAssistantOverlayOpen(false);
       setTimeout(() => {
         tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 150);
@@ -1983,7 +1984,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     const u = users.find((x) => x.id === studentId);
     if (u) {
       handleSelectUser(u as UserWithId, 'profile');
-      setMobileAssistantOpen(false);
+      setAssistantOverlayOpen(false);
     }
   };
 
@@ -2009,7 +2010,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     setLessonFormScenarioContent(lessonDraft.summary || '');
     openLessonRecordModal('edit', undefined, true);
     showToast('Przeniesiono propozycję lekcji z Asystenta AI do Dziennika!');
-    setMobileAssistantOpen(false);
+    setAssistantOverlayOpen(false);
   };
 
   const handleAssistantOpenInPresentation = async (scenarioData: any, studentId?: string, studentName?: string) => {
@@ -2036,7 +2037,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       await savePresentationToStorage(pres);
       setActiveTab('presentation');
       showToast('Scenariusz z Asystenta AI załadowany do Prezentacji Live!');
-      setMobileAssistantOpen(false);
+      setAssistantOverlayOpen(false);
       setTimeout(() => {
         tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 150);
@@ -2126,20 +2127,22 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             }
             setActiveTab('homework');
           }}
-          onOpenAssistant={() => setMobileAssistantOpen(true)}
+          onOpenAssistant={() => setAssistantOverlayOpen(true)}
         />
       )}
 
-      {/* Pełnoekranowa nakładka Asystenta AI na telefonie — ten sam czat co embedded
-          na desktopie (patrz uchwyty `handleAssistant*` wyżej), tylko bez współdzielenia
-          layoutu z resztą panelu, żeby otwierał się natychmiast na cały ekran. */}
-      {mobileAssistantOpen && (
-        <div className="md:hidden fixed inset-0 z-[96] bg-base-100 flex flex-col">
+      {/* Pełnoekranowa nakładka Asystenta AI — wywoływana z paska szybkiego zapytania
+          pod siatką 4 kafelków na desktopie oraz z paska w stopce Pocket Companion na
+          telefonie (patrz uchwyty `handleAssistant*` wyżej). Ten sam czat co embedded,
+          tylko bez współdzielenia layoutu z resztą panelu, żeby otwierał się natychmiast
+          na cały ekran zamiast kolidować z kafelkami. */}
+      {assistantOverlayOpen && (
+        <div className="fixed inset-0 z-[96] bg-base-100 flex flex-col">
           <header className="shrink-0 flex items-center justify-between px-4 py-3.5 border-b border-line-strong bg-base-200/80">
             <span className="text-sm font-bold text-text-hi">Asystent AI</span>
             <button
               type="button"
-              onClick={() => setMobileAssistantOpen(false)}
+              onClick={() => setAssistantOverlayOpen(false)}
               className="p-2 rounded-xl border border-line-strong text-content-muted hover:text-text-hi cursor-pointer"
               aria-label="Zamknij"
             >
@@ -2177,7 +2180,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           )}
         </div>
 
-        {/* 1. Główne 4 kafelki lektora (Dzisiaj/Cockpit, Kursanci, Historia lekcji, Notatnik) */}
+        {/* Główne 4 kafelki lektora (Dzisiaj/Cockpit, Moi kursanci, Moje lekcje, Narzędzia lektora) */}
         <div
           ref={mainMenuRef}
           data-coach="tour-teacher-main"
@@ -2188,50 +2191,46 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               id: 'today',
               title: 'Dzisiaj (Cockpit)',
               badge: 'Centrum dnia',
-              desc: 'Operacyjny widok dnia — rozkład zajęć, zadania do sprawdzenia, lekcje do domknięcia i szybkie planowanie',
+              desc: 'Operacyjny widok dnia — rozkład zajęć, zadania do sprawdzenia, szybki briefing',
               icon: Calendar,
             },
             {
               id: 'students',
-              title: 'Kursanci',
+              title: 'Moi kursanci',
               badge: 'Baza CRM',
-              desc: 'Baza kursantów — wybierz kursanta, aby zarządzać profilami, lekcjami, pracami domowymi i materiałami',
+              desc: 'Baza kursantów — profile, postępy, historia współpracy i przypisywanie zadań',
               icon: Users,
             },
             {
               id: 'lesson-history',
-              title: 'Historia lekcji',
-              badge: 'Wszystkie lekcje',
-              desc: 'Globalna baza wszystkich zrealizowanych lekcji, transkrypcji i 4 bloków Notion',
+              title: 'Moje lekcje',
+              badge: 'Lekcje i notatki',
+              desc: 'Zrealizowane i zaplanowane lekcje, tematy, notatki oraz materiały powtórkowe',
               icon: BookOpen,
             },
             {
-              id: 'notatnik',
-              title: 'Notatnik',
-              badge: 'Na każdej lekcji',
-              desc: 'Wspólny notatnik na żywo — treść widzi i edytuje kursant razem z Tobą',
-              icon: FileEdit,
+              id: 'tools',
+              title: 'Narzędzia lektora',
+              badge: 'Zestaw narzędzi',
+              desc: 'Notatnik na żywo, zadania i testy, planer lekcji, mailing, baza słownictwa i statystyki',
+              icon: Layers,
+              hasNotification: unreadMailingCount > 0,
+              notificationCount: unreadMailingCount,
             }
           ].map((tile) => {
             const IconComp = tile.icon;
-            const isActive = activeTab === tile.id || (tile.id === 'today' && activeTab === 'cockpit') || (tile.id === 'lesson-history' && (activeTab === 'lesson-history' || activeTab === 'history'));
+            const isActive = tile.id === 'tools'
+              ? toolsDrawerOpen
+              : activeTab === tile.id || (tile.id === 'today' && activeTab === 'cockpit') || (tile.id === 'lesson-history' && (activeTab === 'lesson-history' || activeTab === 'history'));
             const hasNotification = Boolean((tile as any).hasNotification);
             const notificationCount = Number((tile as any).notificationCount || 0);
 
             return (
               <div
                 key={tile.id}
-                data-coach={
-                  tile.id === 'context'
-                    ? 'tour-teacher-context'
-                    : tile.id === 'notatnik'
-                    ? 'tour-teacher-scratchpad'
-                    : undefined
-                }
+                data-coach={tile.id === 'tools' ? 'tour-teacher-tools' : undefined}
                 onClick={() =>
-                  (tile as any).route
-                    ? onViewChange?.((tile as any).route)
-                    : handleTileClick(tile.id)
+                  tile.id === 'tools' ? setToolsDrawerOpen(true) : handleTileClick(tile.id)
                 }
                 className={`p-4.5 sm:p-5 cursor-pointer flex flex-col justify-between select-none transition-[border-color,box-shadow,background-color] duration-200 rounded-2xl relative overflow-hidden transform-gpu ${
                   hasNotification
@@ -2302,95 +2301,88 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           })}
         </div>
 
-        {/* 2. Trzy narzędzia pomocnicze (Zadania i testy, Planer lekcji, Mailing) - symetryczne, wyśrodkowane */}
-        <div data-coach="tour-teacher-work" className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 max-w-5xl mx-auto w-full justify-center">
-          {[
-            { id: 'homework', title: 'Zadania i testy', icon: ClipboardList },
-            { id: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
-            {
-              id: 'mailing',
-              title: 'Mailing',
-              icon: Mail,
-              badge: unreadMailingCount > 0 ? String(unreadMailingCount) : undefined,
-            },
-          ].map((item) => {
-            const IconComp = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleTileClick(item.id)}
-                className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-[border-color,box-shadow,background-color] duration-200 cursor-pointer transform-gpu ${
-                  item.badge
-                    ? 'border-amber-400/60 bg-amber-500/10 text-amber-200'
-                    : isActive
-                    ? 'border-primary ring-2 ring-primary/80 ring-offset-1 ring-offset-base-300 shadow-[0_0_25px_rgba(114,240,180,0.35)] bg-gradient-to-br from-primary/[0.22] via-primary/[0.08] to-base-200 text-primary font-black'
-                    : 'liquid-glass-tile text-content-muted hover:text-text-hi'
-                }`}
-              >
-                {item.badge && (
-                  <span className="absolute -top-1.5 -right-1.5 h-5 min-w-[1.25rem] px-1 rounded-full bg-amber-500 text-accent-ink text-[10px] font-bold flex items-center justify-center border border-black/20">
-                    {item.badge}
-                  </span>
-                )}
-                {isActive && (
-                  <span className="absolute top-2 right-2 flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                  </span>
-                )}
-                <IconComp size={18} className={isActive ? 'text-primary' : ''} />
-                <span>{item.title}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* 3. Więcej narzędzi — wyśrodkowane symetrycznie */}
-        <div data-coach="tour-teacher-more" className="space-y-3 max-w-5xl mx-auto w-full">
-          <button
-            type="button"
-            onClick={() => setShowMoreTools((prev) => !prev)}
-            className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-content-muted hover:text-text-hi transition-colors cursor-pointer"
-          >
-            {showMoreTools ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            Więcej narzędzi
-          </button>
-
-          {showMoreTools && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-5xl mx-auto w-full justify-center">
-              {[
-                { tab: 'flashcard-sets', title: 'Słownictwo', icon: BookMarked },
-                { tab: 'admin-stats', title: 'Statystyki', icon: BarChart2 },
-              ].map((item) => {
-                const IconComp = item.icon;
-                const isActive = activeTab === item.tab;
-                return (
-                  <button
-                    key={item.tab}
-                    onClick={() => handleTileClick(item.tab)}
-                    className={`relative flex flex-col items-center justify-center gap-1.5 min-h-[4.5rem] py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-[border-color,box-shadow,background-color] duration-200 text-center cursor-pointer transform-gpu ${
-                      isActive
-                        ? 'border-primary ring-2 ring-primary/80 ring-offset-1 ring-offset-base-300 shadow-[0_0_25px_rgba(114,240,180,0.35)] bg-gradient-to-br from-primary/[0.22] via-primary/[0.08] to-base-200 text-primary font-black'
-                        : 'liquid-glass-tile text-content-muted hover:text-text-hi'
-                    }`}
-                  >
-                    {isActive && (
-                      <span className="absolute top-2 right-2 flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                      </span>
-                    )}
-                    <IconComp size={18} className={isActive ? 'text-primary' : ''} />
-                    <span className="leading-tight">{item.title}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        {/* Strefa Asystenta AI — pasek szybkiego zapytania pod siatką kafelków,
+            bez kolizji z ich układem. Kliknięcie otwiera pełnoekranowy czat
+            (ta sama nakładka co Pocket Companion na telefonie). */}
+        <button
+          type="button"
+          onClick={() => setAssistantOverlayOpen(true)}
+          className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl border border-line-strong bg-base-200/80 hover:border-primary/60 hover:bg-base-200 transition-colors text-left cursor-pointer group max-w-5xl mx-auto"
+        >
+          <span className="shrink-0 p-2.5 rounded-xl bg-primary/15 text-primary border border-primary/30 group-hover:bg-primary/25 transition-colors">
+            <Sparkles size={20} />
+          </span>
+          <span className="flex-1 text-sm text-content-muted group-hover:text-text-hi transition-colors truncate">
+            Zapytaj o dzisiejsze lekcje, kursanta lub zaplanuj ćwiczenie...
+          </span>
+          <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-primary px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 group-hover:bg-primary group-hover:text-accent-ink transition-colors">
+            Otwórz czat AI
+          </span>
+        </button>
       </div>
       </div>
+
+      {/* Podwidok "Narzędzia lektora" — kafelki drugorzędne otwierane z Kafelka 4 */}
+      <GSAPModal isOpen={toolsDrawerOpen} onClose={() => setToolsDrawerOpen(false)} maxWidth="max-w-3xl">
+        <div className="bg-base-200 border border-line-strong rounded-2xl p-5 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-extrabold uppercase tracking-wider text-text-hi flex items-center gap-2">
+              <Layers size={16} className="text-primary" />
+              Narzędzia lektora
+            </h2>
+            <button
+              type="button"
+              onClick={() => setToolsDrawerOpen(false)}
+              className="p-1.5 rounded-lg border border-line-strong text-content-muted hover:text-text-hi cursor-pointer"
+              aria-label="Zamknij"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {[
+              { id: 'notatnik', title: 'Notatnik lekcyjny (A4)', icon: FileEdit },
+              { id: 'homework', title: 'Zadania i testy', icon: ClipboardList },
+              { id: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
+              {
+                id: 'mailing',
+                title: 'Mailing',
+                icon: Mail,
+                badge: unreadMailingCount > 0 ? String(unreadMailingCount) : undefined,
+              },
+              { id: 'flashcard-sets', title: 'Słownictwo', icon: BookMarked },
+              { id: 'admin-stats', title: 'Statystyki', icon: BarChart2 },
+            ].map((item) => {
+              const IconComp = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setToolsDrawerOpen(false);
+                    handleTileClick(item.id);
+                  }}
+                  className={`relative flex flex-col items-center justify-center gap-1.5 min-h-[5rem] py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-[border-color,box-shadow,background-color] duration-200 text-center cursor-pointer transform-gpu ${
+                    item.badge
+                      ? 'border-amber-400/60 bg-amber-500/10 text-amber-200'
+                      : isActive
+                      ? 'border-primary ring-2 ring-primary/80 ring-offset-1 ring-offset-base-300 shadow-[0_0_25px_rgba(114,240,180,0.35)] bg-gradient-to-br from-primary/[0.22] via-primary/[0.08] to-base-200 text-primary font-black'
+                      : 'liquid-glass-tile text-content-muted hover:text-text-hi'
+                  }`}
+                >
+                  {item.badge && (
+                    <span className="absolute -top-1.5 -right-1.5 h-5 min-w-[1.25rem] px-1 rounded-full bg-amber-500 text-accent-ink text-[10px] font-bold flex items-center justify-center border border-black/20">
+                      {item.badge}
+                    </span>
+                  )}
+                  <IconComp size={18} className={isActive ? 'text-primary' : ''} />
+                  <span className="leading-tight">{item.title}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </GSAPModal>
 
       {/* GŁÓWNY WIDOK: MODUŁ MAILING / PLANER / PREZENTACJA / KURSANCI / HISTORIA LEKCJI / ZADANIA / SŁOWNICTWO / STATYSTYKI LUB STRONA GŁÓWNA (CHAT) */}
       <div className="w-full max-w-[1640px] mx-auto px-3 sm:px-6 lg:px-8">
@@ -2710,18 +2702,12 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </div>
         </div>
       ) : (
-        /* activeTab === null: Strona główna panelu lektora - centralny Asystent AI / Chat.
-           Tylko na desktopie — na telefonie ten sam czat pokazuje pełnoekranowa
-           nakładka `mobileAssistantOpen` wywołana z paska w stopce Pocket Companion. */
-        <div className="hidden md:block mt-3.5 max-w-4xl mx-auto w-full animate-in fade-in duration-200">
-          <TeacherAssistant
-            mode="embedded"
-            onNavigateToModule={handleAssistantNavigate}
-            onSelectStudent={handleAssistantSelectStudent}
-            onCreateLessonRecord={handleAssistantCreateLessonRecord}
-            onOpenInPresentation={handleAssistantOpenInPresentation}
-          />
-        </div>
+        /* activeTab === null: strona główna panelu lektora — wyłącznie 4 kafelki
+           i pasek szybkiego zapytania (patrz wyżej), bez oddzielnego, pełnego
+           czatu na stronie głównej. Czat otwiera się w pełnoekranowej nakładce
+           `assistantOverlayOpen` (pasek na desktopie / stopka Pocket Companion
+           na telefonie). */
+        null
       )}
         </GSAPModuleTransition>
       </div>
