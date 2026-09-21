@@ -179,11 +179,11 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
   };
 
   /** Pull-on-Demand: krok 2. Zapisuje wyłącznie to, co lektor zaznaczył w modalu. */
-  const handleConfirmNotionImport = async (pageIds: string[]) => {
+  const handleConfirmNotionImport = async (pageIds: string[], topicOverrides: Record<string, string>) => {
     if (selectedStudentTab === 'all' || pageIds.length === 0) return;
     setIsImportingNotion(true);
     try {
-      const data = await callNotionSync({ mode: 'import', studentId: selectedStudentTab, pageIds });
+      const data = await callNotionSync({ mode: 'import', studentId: selectedStudentTab, pageIds, topicOverrides });
       const imported = Number(data.importedCount || 0);
       setLastImportedCount(imported);
       setIsNotionPreviewOpen(false);

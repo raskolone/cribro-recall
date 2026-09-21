@@ -2680,10 +2680,92 @@ export function createApp() {
    * do `users/{studentId}/lessonRecords`, czyli tego samego miejsca, które
    * czyta i kasuje reszta aplikacji.
    */
+  interface NotionTranscriptExtraction {
+    topic: string;
+    date: string;
+    summary: string;
+    keyLanguage: Array<{ phrase: string; translation: string; context: string }>;
+    corrections: Array<{ original: string; correction: string; rule: string }>;
+  }
+
+  const EMPTY_NOTION_EXTRACTION: NotionTranscriptExtraction = {
+    topic: '', date: '', summary: '', keyLanguage: [], corrections: [],
+  };
+
+  // Ekstrakcja Gemini Flash dla pojedynczej transkrypcji Notion — wywoływana
+  // zarówno w podglądzie (żeby lektor zobaczył realny temat/podsumowanie
+  // przed importem), jak i przy samym imporcie zaznaczonych stron (koszt
+  // pomijalny, bo dotyczy tylko kilku zaznaczonych stron, nie całej listy).
+  async function extractNotionTranscriptData(
+    transcriptText: string,
+    fallbackDate: string,
+  ): Promise<NotionTranscriptExtraction> {
+    try {
+      const apiKey = getGeminiApiKey();
+      const ai = new GoogleGenAI({ apiKey: apiKey || 'dummy' });
+
+      const schema = {
+        type: Type.OBJECT,
+        properties: {
+          topic: { type: Type.STRING, description: 'Zwięzły, merytoryczny temat lekcji po angielsku (max 6-8 słów)' },
+          date: { type: Type.STRING, description: 'Rzeczywista data spotkania w formacie YYYY-MM-DD, jeśli pada w transkrypcji' },
+          summary: { type: Type.STRING, description: '2-3 zdania podsumowania po polsku o czym była lekcja' },
+          keyLanguage: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                phrase: { type: Type.STRING },
+                translation: { type: Type.STRING },
+                context: { type: Type.STRING },
+              },
+              required: ['phrase', 'translation'],
+            },
+          },
+          corrections: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                original: { type: Type.STRING },
+                correction: { type: Type.STRING },
+                rule: { type: Type.STRING },
+              },
+              required: ['original', 'correction'],
+            },
+          },
+        },
+        required: ['topic', 'summary', 'keyLanguage', 'corrections'],
+      };
+
+      const response = await generateContentWithRetry(ai, transcriptText.slice(0, 20000), {
+        systemInstruction: 'Jesteś asystentem lektora angielskiego. Na podstawie transkrypcji lekcji wyodrębnij temat, datę (jeśli pada wprost), zwięzłe podsumowanie po polsku, nowe słownictwo/zwroty oraz poprawki błędów kursanta. Zwróć wyłącznie JSON zgodny ze schematem.',
+        responseMimeType: 'application/json',
+        responseSchema: schema,
+        thinkingConfig: { thinkingBudget: 0 },
+      });
+
+      const text = response?.text;
+      if (!text) return { ...EMPTY_NOTION_EXTRACTION, date: fallbackDate };
+
+      const json = JSON.parse(text);
+      return {
+        topic: typeof json.topic === 'string' ? json.topic.trim() : '',
+        date: typeof json.date === 'string' && json.date.trim() ? json.date.trim() : fallbackDate,
+        summary: typeof json.summary === 'string' ? json.summary.trim() : '',
+        keyLanguage: Array.isArray(json.keyLanguage) ? json.keyLanguage : [],
+        corrections: Array.isArray(json.corrections) ? json.corrections : [],
+      };
+    } catch (err) {
+      console.error('[Notion Gemini Extraction Error]:', err);
+      return { ...EMPTY_NOTION_EXTRACTION, date: fallbackDate };
+    }
+  }
+
   async function syncNotionTranscriptsFromApi(
-    options: { mode: 'preview' | 'import'; studentId?: string; pageIds?: string[] }
+    options: { mode: 'preview' | 'import'; studentId?: string; pageIds?: string[]; topicOverrides?: Record<string, string> }
   ): Promise<{ found: number; processed: number; importedCount?: number; items: any[]; unmatchedTranscripts?: any[]; lastFetchTime: string }> {
-    const { mode, studentId: studentIdFilter, pageIds } = options;
+    const { mode, studentId: studentIdFilter, pageIds, topicOverrides } = options;
     const allowedPageIds = mode === 'import' ? new Set(pageIds || []) : null;
 
     const cfg = await getNotionConfig();
@@ -2731,7 +2813,13 @@ export function createApp() {
 
     const queryData: any = await queryRes.json();
     const pages = queryData.results || [];
-    const processedItems: Array<{ id: string; title: string; studentName: string; date: string; status: string }> = [];
+    const processedItems: Array<{
+      id: string; title: string; studentName: string; date: string; status: string;
+      aiTopic?: string; aiDate?: string; aiSummary?: string;
+      keyLanguageCount?: number; correctionsCount?: number;
+      keyLanguage?: NotionTranscriptExtraction['keyLanguage'];
+      corrections?: NotionTranscriptExtraction['corrections'];
+    }> = [];
     const unmatchedTranscripts: Array<{ id: string; title: string; date: string; snippet: string; reason: string }> = [];
 
     for (const page of pages) {
@@ -2879,8 +2967,33 @@ export function createApp() {
         continue;
       }
 
+      // Tytuł strony Notion bywa nadany przez narzędzie do nagrywania spotkań
+      // i wygląda np. "Milena Sesniak - 2026-09-16T06:30:00.000Z" — surowy
+      // znacznik czasu ISO doklejony do imienia, a nie prawdziwy temat lekcji.
+      // Zapisanie go wprost jako `topic` wygląda w UI lektora jak zepsuty rekord.
+      const safeTopic = isJunkIsoTopic(title)
+        ? `Lekcja z dnia ${formatLessonDateDDMMYYYY(dateStr) || dateStr}`
+        : title;
+
       if (mode === 'preview') {
-        processedItems.push({ id: page.id, title, studentName, date: dateStr, status: 'do importu' });
+        // Ekstrakcja AI już na etapie podglądu — lektor ma zobaczyć realny
+        // temat i podsumowanie zanim cokolwiek zaakceptuje, nie surowy tytuł
+        // strony Notion czy gołą datę ISO.
+        const extraction = await extractNotionTranscriptData(transcriptText, dateStr);
+        processedItems.push({
+          id: page.id,
+          title,
+          studentName,
+          date: dateStr,
+          status: 'do importu',
+          aiTopic: extraction.topic || safeTopic,
+          aiDate: extraction.date || dateStr,
+          aiSummary: extraction.summary,
+          keyLanguageCount: extraction.keyLanguage.length,
+          correctionsCount: extraction.corrections.length,
+          keyLanguage: extraction.keyLanguage,
+          corrections: extraction.corrections,
+        });
         continue;
       }
 
@@ -2891,29 +3004,40 @@ export function createApp() {
         continue;
       }
 
-      // Tytuł strony Notion bywa nadany przez narzędzie do nagrywania spotkań
-      // i wygląda np. "Milena Sesniak - 2026-09-16T06:30:00.000Z" — surowy
-      // znacznik czasu ISO doklejony do imienia, a nie prawdziwy temat lekcji.
-      // Zapisanie go wprost jako `topic` wygląda w UI lektora jak zepsuty rekord.
-      const safeTopic = isJunkIsoTopic(title)
-        ? `Lekcja z dnia ${formatLessonDateDDMMYYYY(dateStr) || dateStr}`
-        : title;
+      // Ponowna ekstrakcja tylko dla zaznaczonych stron — modal podglądu
+      // jest jedynym krokiem potwierdzenia, więc lekcja trafia do Firestore
+      // od razu kompletna (temat/data/podsumowanie/słownictwo/korekty),
+      // bez osobnego etapu "wygeneruj bloki i potwierdź" jak wcześniej.
+      const extraction = await extractNotionTranscriptData(transcriptText, dateStr);
+      const finalTopic = (topicOverrides?.[page.id]?.trim()) || extraction.topic || safeTopic;
+      const finalDate = extraction.date || dateStr;
+
+      const vocabularyText = extraction.keyLanguage
+        .map((item) => `${item.phrase} - ${item.translation}${item.context ? `\n"${item.context}"` : ''}`)
+        .join('\n');
+      const corrections = extraction.corrections
+        .map((item) => `❌ ${item.original} → ✅ ${item.correction}${item.rule ? `\n${item.rule}` : ''}`)
+        .join('\n');
 
       const lessonPayload = {
         studentId,
         studentIds: matchedUser.isGroup && matchedUser.memberIds?.length ? matchedUser.memberIds : [studentId],
         studentName,
-        date: dateStr,
-        topic: safeTopic,
+        date: finalDate,
+        topic: finalTopic,
+        lessonSummary: extraction.summary,
+        vocabularyText,
+        corrections,
         rawTranscript: transcriptText,
         liveTranscript: transcriptText,
         notionPageId: page.id,
         source: 'notion',
         isGroupLesson: Boolean(matchedUser.isGroup),
-        sessionStatus: 'draft',
-        status: 'pending_confirmation',
-        isPendingConfirmation: true,
-        pendingReason: 'Transkrypcja z Notion czeka na wygenerowanie bloków lekcji',
+        sessionStatus: 'completed',
+        status: 'confirmed',
+        isPendingConfirmation: false,
+        isDateMissing: false,
+        pendingReason: '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -2922,7 +3046,7 @@ export function createApp() {
       // dokument zamiast dokładać bliźniaka.
       await lessonsRef.doc(`notion_${page.id}`).set(lessonPayload, { merge: true });
 
-      processedItems.push({ id: page.id, title, studentName, date: dateStr, status: 'zaimportowano' });
+      processedItems.push({ id: page.id, title, studentName, date: finalDate, status: 'zaimportowano' });
     }
 
     const nowIso = new Date().toISOString();
@@ -2943,18 +3067,21 @@ export function createApp() {
 
   // 4. POST /api/notion/fetch-transcripts — Pull-on-Demand: podgląd (bez zapisu)
   // albo import ograniczony do jawnie zaznaczonych stron dla jednego kursanta.
-  // Body: { mode: 'preview' | 'import', studentId?: string, pageIds?: string[] }
+  // Body: { mode: 'preview' | 'import', studentId?: string, pageIds?: string[], topicOverrides?: Record<string,string> }
   app.post('/api/notion/fetch-transcripts', requireFirebaseAdmin, async (req, res) => {
     try {
       const mode = req.body?.mode === 'import' ? 'import' : 'preview';
       const studentId = typeof req.body?.studentId === 'string' && req.body.studentId ? req.body.studentId : undefined;
       const pageIds = Array.isArray(req.body?.pageIds) ? req.body.pageIds.filter((id: unknown) => typeof id === 'string') : [];
+      const topicOverrides: Record<string, string> | undefined = req.body?.topicOverrides && typeof req.body.topicOverrides === 'object'
+        ? Object.fromEntries(Object.entries(req.body.topicOverrides).filter(([, v]) => typeof v === 'string') as [string, string][])
+        : undefined;
 
       if (mode === 'import' && (!studentId || pageIds.length === 0)) {
         return res.status(400).json({ error: 'Import wymaga wybranego kursanta i przynajmniej jednej zaznaczonej strony.' });
       }
 
-      const result = await syncNotionTranscriptsFromApi({ mode, studentId, pageIds });
+      const result = await syncNotionTranscriptsFromApi({ mode, studentId, pageIds, topicOverrides });
       return res.json({
         ok: true,
         ...result,

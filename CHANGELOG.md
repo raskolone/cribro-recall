@@ -198,6 +198,23 @@ we dwoje na żywo.
 
 ---
 
+### 🧠 Ekstrakcja Gemini Flash w imporcie transkrypcji z Notion — koniec z surowym tytułem/ISO, gotowa lekcja od razu po akceptacji (2026-09-21, runda 46)
+
+**Zadanie:** Pull-on-Demand import z Notion (`server.ts:2683` `syncNotionTranscriptsFromApi`, endpoint `/api/notion/fetch-transcripts`) miał już selekcję per-kursant, idempotentność i modal podglądu, ale tytuł lekcji był surowym tytułem strony Notion (albo fallbackiem "Lekcja z dnia..."), a zaakceptowany import zapisywał tylko `topic/date/rawTranscript` ze statusem `pending_confirmation` — lektor musiał później osobno wygenerować bloki lekcji.
+
+**Zmienione:**
+- `server.ts` — nowa funkcja `extractNotionTranscriptData(transcriptText, fallbackDate)`: wywołuje Gemini (kaskada `AI_MODEL_CASCADE`, zaczyna od `gemini-2.5-flash`, `thinkingConfig.thinkingBudget: 0`, `responseSchema` z polami `topic/date/summary/keyLanguage[]/corrections[]`) i zwraca sparsowany JSON z fallbackiem na pustą strukturę przy błędzie (jedna nieudana strona nie wywraca całego importu). W gałęzi `mode: 'preview'` `syncNotionTranscriptsFromApi` wywołuje ekstrakcję dla każdej nowej strony i dokłada do itemu `aiTopic/aiDate/aiSummary/keyLanguageCount/correctionsCount/keyLanguage/corrections`. W gałęzi `mode: 'import'` ekstrakcja uruchamia się ponownie tylko dla jawnie zaznaczonych stron (koszt pomijalny), a zapis do `lessonRecords` idzie już z kompletnymi polami (`topic` — edytowany przez lektora `topicOverrides[pageId]` albo temat z AI, `date`, `lessonSummary`, `vocabularyText` i `corrections` sformatowane z tablic AI) oraz statusem `confirmed`/`isPendingConfirmation: false` zamiast dotychczasowego `pending_confirmation`/`draft`.
+- `components/admin/NotionImportPreviewModal.tsx` — `NotionPreviewItem` rozszerzony o pola AI; tytuł w karcie podglądu to teraz edytowalny `<input>` (domyślnie `aiTopic`), pod nim podsumowanie AI i liczniki "X zwrotów"/"Y korekt". `onConfirmImport` przyjmuje teraz też `topicOverrides: Record<string,string>` z edycjami lektora.
+- `components/admin/AdminPanel.tsx` (`handleImportNotionForOpenStudent`) i `components/admin/TeacherLessonHistoryView.tsx` (`handleConfirmNotionImport`) — oba call site'y modala przekazują `topicOverrides` dalej do body requestu.
+
+**Decyzja architektoniczna:** import z Notion przestaje przechodzić przez etap `pending_confirmation` → ręczne „wygeneruj bloki" → potwierdź. Modal podglądu z ekstrakcją AI JEST teraz jedynym krokiem human-in-the-loop — po kliknięciu „Zaimportuj zaznaczone" lekcja ląduje w Firestore od razu ze statusem `confirmed` i kompletnymi polami. `structuredBlocks` (`utils/lessonBlocks.ts`) świadomie NIE jest tu ustawiane — tak jak wcześniej, klient wylicza bloki przy renderze przez `extractLessonBlocks()`.
+
+**Świadomie nieruszone:** `firestore.rules`, `requireFirebaseAuth`/`requireFirebaseAdmin` (endpoint już był za `requireFirebaseAdmin`), ścieżki tokenowe bez logowania.
+
+Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (508/508), `npm run build` (przechodzi). Ręczny test w przeglądarce (podgląd/import realnej transkrypcji z Notion) NIE wykonany w tej sesji.
+
+---
+
 ### 🧩 CRM Kursantów: konfiguracja kolumn, sortowanie, błyskawiczne tooltipy; scalenie profilu kursanta do 4 zakładek; odchudzenie panelu ucznia (2026-09-21, runda 45)
 
 **Zadanie:** personalizacja tabeli kursantów (widoczność kolumn, sortowanie, natychmiastowe tooltipy zamiast natywnego `title`), scalenie profilu kursanta z 6+ zakładek do 4, usunięcie szumu z panelu ucznia (moduł Słownictwo & AI).

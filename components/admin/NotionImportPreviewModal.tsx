@@ -9,6 +9,10 @@ export interface NotionPreviewItem {
   studentName: string;
   date: string;
   status: string;
+  aiTopic?: string;
+  aiSummary?: string;
+  keyLanguageCount?: number;
+  correctionsCount?: number;
 }
 
 interface NotionImportPreviewModalProps {
@@ -17,7 +21,7 @@ interface NotionImportPreviewModalProps {
   studentName: string;
   items: NotionPreviewItem[];
   isImporting: boolean;
-  onConfirmImport: (pageIds: string[]) => void;
+  onConfirmImport: (pageIds: string[], topicOverrides: Record<string, string>) => void;
 }
 
 /**
@@ -37,9 +41,13 @@ export const NotionImportPreviewModal: React.FC<NotionImportPreviewModalProps> =
 
   const importable = items.filter((item) => item.status === 'do importu');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [topicEdits, setTopicEdits] = useState<Record<string, string>>({});
 
   React.useEffect(() => {
-    if (isOpen) setSelected(new Set(importable.map((item) => item.id)));
+    if (isOpen) {
+      setSelected(new Set(importable.map((item) => item.id)));
+      setTopicEdits({});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, items]);
 
@@ -126,8 +134,34 @@ export const NotionImportPreviewModal: React.FC<NotionImportPreviewModalProps> =
                     >
                       {item.status === 'istnieje' ? 'Już zaimportowano' : item.status}
                     </span>
+                    {isImportable && (typeof item.keyLanguageCount === 'number' || typeof item.correctionsCount === 'number') && (
+                      <>
+                        {typeof item.keyLanguageCount === 'number' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border bg-base-200 text-content-muted border-line-strong">
+                            {item.keyLanguageCount} zwrotów
+                          </span>
+                        )}
+                        {typeof item.correctionsCount === 'number' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border bg-base-200 text-content-muted border-line-strong">
+                            {item.correctionsCount} korekt
+                          </span>
+                        )}
+                      </>
+                    )}
                   </div>
-                  <p className="text-sm font-bold text-text-hi truncate mt-0.5">{item.title}</p>
+                  {isImportable ? (
+                    <input
+                      type="text"
+                      value={topicEdits[item.id] ?? item.aiTopic ?? item.title}
+                      onChange={(e) => setTopicEdits((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                      className="w-full mt-1 px-2 py-1 text-sm font-bold text-text-hi bg-base-200/70 border border-line rounded-lg focus:outline-none focus:border-primary/50"
+                    />
+                  ) : (
+                    <p className="text-sm font-bold text-text-hi truncate mt-0.5">{item.title}</p>
+                  )}
+                  {isImportable && item.aiSummary && (
+                    <p className="text-xs text-content-muted mt-1.5 leading-relaxed">{item.aiSummary}</p>
+                  )}
                 </div>
               </div>
             );
@@ -145,7 +179,7 @@ export const NotionImportPreviewModal: React.FC<NotionImportPreviewModalProps> =
             <Button
               size="sm"
               variant="primary"
-              onClick={() => onConfirmImport(Array.from(selected))}
+              onClick={() => onConfirmImport(Array.from(selected), topicEdits)}
               isLoading={isImporting}
               disabled={selected.size === 0}
               className="flex items-center gap-1.5"

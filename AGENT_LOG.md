@@ -5140,3 +5140,48 @@ Ryzyka: NIE dotknięto firestore.rules, middleware autoryzacji w
 server.ts ani ścieżek tokenowych bez logowania. Zmiany wyłącznie w
 components/admin/AdminPanel.tsx i components/admin/StudentProfileHeader.tsx.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508).
+
+---
+
+2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: Pakiet "Inteligentny Fetch Transkrypcji Notion oraz Pulpit Hero
+Chatu AI" — Część 1: ekstrakcja Gemini Flash w imporcie Notion. (Część 2,
+przywrócenie Hero Chat na pulpicie, osobny commit tej samej sesji.)
+Zrobione:
+- Audyt: `/api/notion/fetch-transcripts` + `syncNotionTranscriptsFromApi`
+  (server.ts) i `NotionImportPreviewModal.tsx` już istniały z pełną
+  selekcją per-kursant, idempotentnością i modalem podglądu — brakowało
+  tylko ekstrakcji AI (temat był surowym tytułem strony Notion) i
+  zapisu kompletnej lekcji przy imporcie.
+- server.ts: nowa funkcja `extractNotionTranscriptData()` (Gemini Flash,
+  thinkingBudget 0, responseSchema topic/date/summary/keyLanguage[]/
+  corrections[]). Wpięta w obie gałęzie `syncNotionTranscriptsFromApi`:
+  preview dokłada aiTopic/aiSummary/liczniki do itemu, import zapisuje
+  lekcję z gotowym topic/date/lessonSummary/vocabularyText/corrections
+  i statusem 'confirmed' zamiast dotychczasowego 'pending_confirmation'.
+- NotionImportPreviewModal.tsx: edytowalny input tematu (domyślnie
+  aiTopic), podgląd podsumowania AI, liczniki zwrotów/korekt.
+  onConfirmImport przyjmuje teraz topicOverrides.
+- AdminPanel.tsx (handleImportNotionForOpenStudent) i
+  TeacherLessonHistoryView.tsx (handleConfirmNotionImport) — oba call
+  site'y modala przekazują topicOverrides dalej.
+Nie dokończone / do sprawdzenia:
+- Zero weryfikacji wzrokowej w przeglądarce — realny podgląd/import
+  transkrypcji z Notion (poprawność sformatowania vocabularyText/
+  corrections z tablic AI, wygląd edytowalnego inputu w modalu).
+Decyzje architektoniczne:
+- Import z Notion przestaje przechodzić przez etap pending_confirmation
+  → ręczne "wygeneruj bloki" → potwierdź. Modal podglądu z ekstrakcją AI
+  JEST teraz jedynym krokiem human-in-the-loop — zaakceptowana lekcja
+  ląduje w Firestore od razu jako 'confirmed', kompletna. Nie ustawiamy
+  structuredBlocks (utils/lessonBlocks.ts) — tak jak wcześniej, klient
+  wylicza bloki przy renderze przez extractLessonBlocks().
+- Ekstrakcja uruchamia się ponownie przy imporcie (nie cache'ujemy
+  wyniku z podglądu) — prostsze niż stan pośredni po stronie serwera,
+  koszt pomijalny bo dotyczy tylko zaznaczonych stron.
+Ryzyka: NIE dotknięto firestore.rules, middleware autoryzacji w
+server.ts ani ścieżek tokenowych bez logowania. Endpoint już był za
+requireFirebaseAdmin, bez zmian w tym zakresie.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508), npm run
+build (przechodzi, w tym server.cjs i api/index.js).

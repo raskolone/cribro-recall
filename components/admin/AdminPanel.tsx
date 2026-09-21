@@ -1129,7 +1129,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     }
   };
 
-  const handleImportNotionForOpenStudent = async (pageIds: string[]) => {
+  const handleImportNotionForOpenStudent = async (pageIds: string[], topicOverrides: Record<string, string>) => {
     if (!selectedUser || pageIds.length === 0) return;
     setIsImportingNotionForStudent(true);
     try {
@@ -1140,7 +1140,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ mode: 'import', studentId: selectedUser.id, pageIds }),
+        body: JSON.stringify({ mode: 'import', studentId: selectedUser.id, pageIds, topicOverrides }),
       });
       const contentType = res.headers.get('content-type') || '';
       const data: any = contentType.includes('application/json') ? await res.json() : {};

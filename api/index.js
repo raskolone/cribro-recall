@@ -4655,8 +4655,73 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
+  const EMPTY_NOTION_EXTRACTION = {
+    topic: "",
+    date: "",
+    summary: "",
+    keyLanguage: [],
+    corrections: []
+  };
+  async function extractNotionTranscriptData(transcriptText, fallbackDate) {
+    try {
+      const apiKey = getGeminiApiKey();
+      const ai = new GoogleGenAI3({ apiKey: apiKey || "dummy" });
+      const schema = {
+        type: Type3.OBJECT,
+        properties: {
+          topic: { type: Type3.STRING, description: "Zwi\u0119z\u0142y, merytoryczny temat lekcji po angielsku (max 6-8 s\u0142\xF3w)" },
+          date: { type: Type3.STRING, description: "Rzeczywista data spotkania w formacie YYYY-MM-DD, je\u015Bli pada w transkrypcji" },
+          summary: { type: Type3.STRING, description: "2-3 zdania podsumowania po polsku o czym by\u0142a lekcja" },
+          keyLanguage: {
+            type: Type3.ARRAY,
+            items: {
+              type: Type3.OBJECT,
+              properties: {
+                phrase: { type: Type3.STRING },
+                translation: { type: Type3.STRING },
+                context: { type: Type3.STRING }
+              },
+              required: ["phrase", "translation"]
+            }
+          },
+          corrections: {
+            type: Type3.ARRAY,
+            items: {
+              type: Type3.OBJECT,
+              properties: {
+                original: { type: Type3.STRING },
+                correction: { type: Type3.STRING },
+                rule: { type: Type3.STRING }
+              },
+              required: ["original", "correction"]
+            }
+          }
+        },
+        required: ["topic", "summary", "keyLanguage", "corrections"]
+      };
+      const response = await generateContentWithRetry(ai, transcriptText.slice(0, 2e4), {
+        systemInstruction: "Jeste\u015B asystentem lektora angielskiego. Na podstawie transkrypcji lekcji wyodr\u0119bnij temat, dat\u0119 (je\u015Bli pada wprost), zwi\u0119z\u0142e podsumowanie po polsku, nowe s\u0142ownictwo/zwroty oraz poprawki b\u0142\u0119d\xF3w kursanta. Zwr\xF3\u0107 wy\u0142\u0105cznie JSON zgodny ze schematem.",
+        responseMimeType: "application/json",
+        responseSchema: schema,
+        thinkingConfig: { thinkingBudget: 0 }
+      });
+      const text = response?.text;
+      if (!text) return { ...EMPTY_NOTION_EXTRACTION, date: fallbackDate };
+      const json = JSON.parse(text);
+      return {
+        topic: typeof json.topic === "string" ? json.topic.trim() : "",
+        date: typeof json.date === "string" && json.date.trim() ? json.date.trim() : fallbackDate,
+        summary: typeof json.summary === "string" ? json.summary.trim() : "",
+        keyLanguage: Array.isArray(json.keyLanguage) ? json.keyLanguage : [],
+        corrections: Array.isArray(json.corrections) ? json.corrections : []
+      };
+    } catch (err) {
+      console.error("[Notion Gemini Extraction Error]:", err);
+      return { ...EMPTY_NOTION_EXTRACTION, date: fallbackDate };
+    }
+  }
   async function syncNotionTranscriptsFromApi(options) {
-    const { mode, studentId: studentIdFilter, pageIds } = options;
+    const { mode, studentId: studentIdFilter, pageIds, topicOverrides } = options;
     const allowedPageIds = mode === "import" ? new Set(pageIds || []) : null;
     const cfg = await getNotionConfig();
     const token = cfg.token;
@@ -4807,35 +4872,60 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
         });
         continue;
       }
+      const safeTopic = isJunkIsoTopic(title) ? `Lekcja z dnia ${formatLessonDateDDMMYYYY(dateStr) || dateStr}` : title;
       if (mode === "preview") {
-        processedItems.push({ id: page.id, title, studentName, date: dateStr, status: "do importu" });
+        const extraction2 = await extractNotionTranscriptData(transcriptText, dateStr);
+        processedItems.push({
+          id: page.id,
+          title,
+          studentName,
+          date: dateStr,
+          status: "do importu",
+          aiTopic: extraction2.topic || safeTopic,
+          aiDate: extraction2.date || dateStr,
+          aiSummary: extraction2.summary,
+          keyLanguageCount: extraction2.keyLanguage.length,
+          correctionsCount: extraction2.corrections.length,
+          keyLanguage: extraction2.keyLanguage,
+          corrections: extraction2.corrections
+        });
         continue;
       }
       if (!allowedPageIds.has(page.id)) {
         processedItems.push({ id: page.id, title, studentName, date: dateStr, status: "pomini\u0119to (nie zaznaczono)" });
         continue;
       }
-      const safeTopic = isJunkIsoTopic(title) ? `Lekcja z dnia ${formatLessonDateDDMMYYYY(dateStr) || dateStr}` : title;
+      const extraction = await extractNotionTranscriptData(transcriptText, dateStr);
+      const finalTopic = topicOverrides?.[page.id]?.trim() || extraction.topic || safeTopic;
+      const finalDate = extraction.date || dateStr;
+      const vocabularyText = extraction.keyLanguage.map((item) => `${item.phrase} - ${item.translation}${item.context ? `
+"${item.context}"` : ""}`).join("\n");
+      const corrections = extraction.corrections.map((item) => `\u274C ${item.original} \u2192 \u2705 ${item.correction}${item.rule ? `
+${item.rule}` : ""}`).join("\n");
       const lessonPayload = {
         studentId,
         studentIds: matchedUser.isGroup && matchedUser.memberIds?.length ? matchedUser.memberIds : [studentId],
         studentName,
-        date: dateStr,
-        topic: safeTopic,
+        date: finalDate,
+        topic: finalTopic,
+        lessonSummary: extraction.summary,
+        vocabularyText,
+        corrections,
         rawTranscript: transcriptText,
         liveTranscript: transcriptText,
         notionPageId: page.id,
         source: "notion",
         isGroupLesson: Boolean(matchedUser.isGroup),
-        sessionStatus: "draft",
-        status: "pending_confirmation",
-        isPendingConfirmation: true,
-        pendingReason: "Transkrypcja z Notion czeka na wygenerowanie blok\xF3w lekcji",
+        sessionStatus: "completed",
+        status: "confirmed",
+        isPendingConfirmation: false,
+        isDateMissing: false,
+        pendingReason: "",
         createdAt: (/* @__PURE__ */ new Date()).toISOString(),
         updatedAt: (/* @__PURE__ */ new Date()).toISOString()
       };
       await lessonsRef.doc(`notion_${page.id}`).set(lessonPayload, { merge: true });
-      processedItems.push({ id: page.id, title, studentName, date: dateStr, status: "zaimportowano" });
+      processedItems.push({ id: page.id, title, studentName, date: finalDate, status: "zaimportowano" });
     }
     const nowIso = (/* @__PURE__ */ new Date()).toISOString();
     await adminDb.collection("system").doc("notion").set({
@@ -4856,10 +4946,11 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
       const mode = req.body?.mode === "import" ? "import" : "preview";
       const studentId = typeof req.body?.studentId === "string" && req.body.studentId ? req.body.studentId : void 0;
       const pageIds = Array.isArray(req.body?.pageIds) ? req.body.pageIds.filter((id) => typeof id === "string") : [];
+      const topicOverrides = req.body?.topicOverrides && typeof req.body.topicOverrides === "object" ? Object.fromEntries(Object.entries(req.body.topicOverrides).filter(([, v]) => typeof v === "string")) : void 0;
       if (mode === "import" && (!studentId || pageIds.length === 0)) {
         return res.status(400).json({ error: "Import wymaga wybranego kursanta i przynajmniej jednej zaznaczonej strony." });
       }
-      const result = await syncNotionTranscriptsFromApi({ mode, studentId, pageIds });
+      const result = await syncNotionTranscriptsFromApi({ mode, studentId, pageIds, topicOverrides });
       return res.json({
         ok: true,
         ...result
