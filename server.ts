@@ -2795,7 +2795,13 @@ export function createApp() {
       };
     });
 
-    // 2. Zapytaj bazę spotkań w Notion o ostatnie strony
+    // 2. Zapytaj bazę spotkań w Notion o ostatnie strony.
+    // Sortowanie po created_time malejąco jest tu konieczne: bez niego Notion
+    // zwraca strony w kolejności nieokreślonej, więc przy bazie większej niż
+    // page_size świeżo dodana dzisiejsza transkrypcja mogła nie zmieścić się
+    // w pierwszych 40 wynikach i modal pokazywał "Brak stron w Notion
+    // powiązanych z tym kursantem", mimo że strona istniała.
+    console.log('[Notion Fetch] Zapytanie do bazy', { databaseId: meetingNotesDbId, mode, studentIdFilter: studentIdFilter || null, pageSize: 40 });
     const queryRes = await fetch(`${NOTION_API}/databases/${meetingNotesDbId}/query`, {
       method: 'POST',
       headers: {
@@ -2803,16 +2809,21 @@ export function createApp() {
         'Notion-Version': NOTION_VERSION,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ page_size: 40 }),
+      body: JSON.stringify({
+        page_size: 40,
+        sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+      }),
     });
 
     if (!queryRes.ok) {
       const errTxt = await queryRes.text();
+      console.error('[Notion Fetch] Błąd zapytania Notion', queryRes.status, errTxt.slice(0, 300));
       throw new Error(`Błąd zapytania bazy Notion (${queryRes.status}): ${errTxt.slice(0, 300)}`);
     }
 
     const queryData: any = await queryRes.json();
     const pages = queryData.results || [];
+    console.log('[Notion Fetch] Zwrócono stron:', pages.length);
     const processedItems: Array<{
       id: string; title: string; studentName: string; date: string; status: string;
       aiTopic?: string; aiDate?: string; aiSummary?: string;
@@ -2904,6 +2915,26 @@ export function createApp() {
             }
           }
         }
+      }
+
+      // Dopasowanie po samym nazwisku — tytuły stron Notion bywają nadane
+      // przez narzędzie do nagrywania spotkań i nie zawsze zaczynają się od
+      // imienia (np. tylko nazwisko albo "spotkanie z p. Wach").
+      if (!matchedUser) {
+        for (const u of userList) {
+          if (u.name) {
+            const nameParts = u.name.toLowerCase().split(/\s+/).filter((p: string) => p.length > 2);
+            const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
+            if (lastName && lastName.length >= 3 && (normTitle.includes(lastName) || normTranscript.includes(lastName))) {
+              matchedUser = u;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!matchedUser) {
+        console.log('[Notion Fetch] Brak dopasowania kursanta dla strony', { pageId: page.id, title });
       }
 
       // Jeśli transkrypcja nie pasuje do żadnego kursanta w bazie (np. spotkanie prywatne/inne):
