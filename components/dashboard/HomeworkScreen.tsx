@@ -19,6 +19,7 @@ import { getAllUsers } from '../../services/userService';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import ConfirmModal from '../ui/ConfirmModal';
+import ActionToast, { ActionToastState } from '../ui/ActionToast';
 import { LessonSelectionModal } from './LessonSelectionModal';
 import HomeworkComposer from '../admin/HomeworkComposer';
 import HomeworkComposerV2 from '../admin/HomeworkComposerV2';
@@ -408,6 +409,9 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   const [reviewTask, setReviewTask] = useState<SpecialTask | null>(null);
   const [teacherFeedbackText, setTeacherFeedbackText] = useState<string>('');
   const [isSavingReview, setIsSavingReview] = useState<boolean>(false);
+  // Mikro-potwierdzenie zapisu oceny (toast) zamiast pełnoekranowego alert() —
+  // ten drugi zabierał fokus i trzeba go było odklikać, żeby wrócić do listy.
+  const [reviewToast, setReviewToast] = useState<ActionToastState | null>(null);
 
   // Ujednolicony moduł: jeden przycisk otwierania podglądu, który kieruje na
   // odpowiedni widok w zależności od silnika zadania — v1 dostaje modal
@@ -1344,7 +1348,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
         }
       }
 
-      alert('Ocena i komentarz zostały zapisane! Kursant otrzyma powiadomienie.');
+      setReviewToast({ title: 'Ocena i komentarz zostały zapisane', description: 'Kursant otrzyma powiadomienie.' });
       setReviewTask(null);
       await loadData();
     } catch (e: any) {
@@ -1587,6 +1591,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
 
   return (
     <div className={headless ? 'space-y-5' : 'max-w-6xl mx-auto space-y-6 pb-20'}>
+      <ActionToast toast={reviewToast} onDismiss={() => setReviewToast(null)} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {headless ? (
